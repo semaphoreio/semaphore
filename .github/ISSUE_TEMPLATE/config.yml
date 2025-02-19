@@ -1,0 +1,18 @@
+blank_issues_enabled: false
+contact_links:
+
+name: Security Vulnerability
+url: https://semaphoreci.com/security
+about: Please report security vulnerabilities through our security page
+name: Community Support
+url: https://github.com/semaphoreci/semaphore/discussions
+about: Ask and answer questions in our community discussions
+name: Enterprise Support
+url: https://semaphoreci.com/support
+about: Enterprise customers can get dedicated support here
+name: Documentation
+url: https://docs.semaphoreci.com
+about: Check our documentation for answers to common questions
+name: Feature Request Guidelines
+url: https://github.com/semaphoreci/semaphore/blob/main/CONTRIBUTING.md#feature-requests
+about: Please read our guidelines before submitting a feature request
