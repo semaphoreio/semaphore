@@ -1,0 +1,60 @@
+<%= if @conn.assigns.permissions["project.deployment_targets.view"] do %>
+  <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <div class="flex justify-between items-start">
+      <div>
+        <p class="mb0 b">Deployment Targets</p>
+        <p class="mb3 measure">
+          Connect your servers and model the interaction between your continious delivery pipeline and your deployment environments.<br />
+          Read in more details: <a href="https://docs.semaphoreci.com/essentials/deployment-targets/">Docs: Deployment Targets</a>.
+        </p>
+      </div>
+
+      <%= if not Enum.empty?(@targets) do %>
+      <div class="flex flex-column justify-between self-stretch">
+        <div class="flex flex-row-reverse">
+          <%= if @conn.assigns.permissions["project.deployment_targets.manage"] do %>
+                <%= link "Create New", to: deployments_path(@conn, :new, @project.name), class: "btn btn-primary" %>
+          <% end %>
+        </div>
+        <div class="flex flex-row-reverse items-center">
+          <a href="#" aria-label="grid-view" aria-controls="deployments-container" aria-selected="false">
+            <span class="material-symbols-outlined md-36 link-blue mr2" >
+              window
+            </span>
+          </a>
+          <a href="#" aria-label="list-view" aria-controls="deployments-container" aria-selected="true">
+            <span class="material-symbols-outlined md-36 link-blue mr2 fill">
+              table_rows
+            </span>
+          </a>
+        </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= if @targets |> Enum.empty? do %>
+      <div class="">
+        <h4 class="f4 mt2 mb0">Deployment Targets has not been configured yet.</h4>
+        <%= if @conn.assigns.permissions["project.deployment_targets.manage"] do %>
+          <p class="mb0 mt2 measure">
+            <%= link "Create your first Deployment Target",
+                  to: deployments_path(@conn, :new, @project.name),
+                  class: "btn btn-primary" %>
+          </p>
+        <% end %>
+      </div>
+    <% else %>
+      <%= render FrontWeb.DeploymentsView, "_items.html",
+                  conn: @conn, project: @project,
+                  targets: @targets %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+      Sorry, you can’t access Deployment Targets.<br>
+      Ask organization owner or any of the admins to give you access permission.
+    </p>
+  </div>
+<% end %>

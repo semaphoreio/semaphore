@@ -1,0 +1,37 @@
+version: "v1.0"
+name: Auto promotion test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: B1
+    task:
+      jobs:
+        - commands:
+            - echo 123
+
+promotions:
+  - name: Foo promotion
+    pipeline_file: foo.yml
+    auto_promote_on:
+      - result: passed
+      - result: failed
+        result_reason: test
+      - result: stopped
+        branch:
+          - b1
+          - b2
+      - result: canceled
+        labels:
+          - b3
+          - b4
+      - result: failed
+        label_patterns:
+          - dev-
+          - ".*"
+  - name: Bar promotion
+    pipeline_file: bar.yml
+    auto_promote:
+      when: "result = 'passed' and branch =~ 'dev-.*'"

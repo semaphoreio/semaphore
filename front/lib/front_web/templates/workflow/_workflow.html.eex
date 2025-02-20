@@ -1,0 +1,33 @@
+<div class="relative">
+  <div class="absolute flex top-0 right-0 nt3 z-2">
+    <%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, @conn.assigns[:organization_id]) do %>
+      <div class="bg-white ph2 nr2 nb2">
+        <input type="checkbox" name="showSkippedBlocks" class="dn" />
+        <button class="btn btn-secondary" name="toggleSkippedBlocks">
+          Show skipped blocks
+        </button>
+      </div>
+    <% end %>
+    <div class="bg-white ph2 nr2 nb2">
+      <%= link to: "/workflows/#{@workflow_id}/edit" do %>
+        <button id="editWorkflow" class="btn btn-secondary" <%= if !@permissions["project.workflow.manage"], do: "disabled" %>>
+          Edit Workflow
+        </button>
+      <% end %>
+    </div>
+  </div>
+  <div id="diagram" class="overflow-x-scroll overflow-y-none nowrap pl3 pl4-m pt4 pr6 pb6 nh3 nh4-m bt b--lighter-gray">
+    <div id="diagram-container" class="flex">
+      <div
+        class="dib v-top"
+        data-poll-href="<%= pipeline_path(@conn, :path, @workflow_id, @selected_pipeline_id) %>"
+        data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+        data-poll-state="poll">
+        <div class="c-pipeline-phase">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+</div>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.pipelineStatusUrl = "<%= pipeline_path(@conn, :status, @workflow_id, @selected_pipeline_id) %>";
+</script>

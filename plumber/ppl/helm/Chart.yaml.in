@@ -1,0 +1,6 @@
+apiVersion: v2
+name: plumber
+description: A Helm chart for deploying Semaphore plumber application
+type: application
+version: "@chartVersion@"
+appVersion: ""

@@ -1,0 +1,18 @@
+<%= if FrontWeb.PeopleView.show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
+  <div>
+    <%= if @org_scope? do %>
+      <%= render FrontWeb.GroupsView, "modify_group_popup.html", conn: @conn %>
+      <div class="flex-m">
+        <div>
+          <button id="open_group_popup" class="btn btn-primary flex items-center"><span class="material-symbols-outlined mr2">group_add</span>Create a group</button>
+        </div>
+      </div>
+    <% else %>
+      <div class="flex-m">
+        <div>
+          <button id="add_group_to_project" class="btn btn-primary flex items-center"><span class="material-symbols-outlined mr2">group_add</span>Add groups</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

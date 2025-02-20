@@ -1,0 +1,21 @@
+---
+image: projecthub-rest-api
+imageTag: latest
+imagePullSecrets: []
+replicas: 1
+resources:
+  limits:
+    cpu: "0.2"
+    memory: 250Mi
+  requests:
+    cpu: 20m
+    memory: 125Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

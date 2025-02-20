@@ -1,0 +1,13 @@
+version: "v1.0"
+name: Failing - job limit longer than pipeline default limit
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - task:
+      jobs:
+        - execution_time_limit:
+            hours: 36
+          commands:
+            - echo foo

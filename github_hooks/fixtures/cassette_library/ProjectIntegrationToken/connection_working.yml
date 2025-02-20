@@ -1,0 +1,125 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.github.com/app/installations/13545123/access_tokens
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Awesome-Octocat-App
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2MDc2ODMzMTIsImV4cCI6MTYwNzY4MzkxMiwiaXNzIjoiMTU4MDYifQ.hP7HP8OJC1auCQE9yzYaYUk5oSiOmjSTFwywe28FcrB_4GSK3Nv_KZnOxJ9bJq6rkCoQ71gsZPJgeVWuhaQO9dZTJwUVaZVpHznXaYSlHNGxdCIx7zwlg9te5qpMIhSOvrHestUZrEEEFbD6HPNehynF1v7lK4mopsDPza64AEpwxkCj9kgIIE-rZKP3i-6YQVfkxHgI3171BNpGbpzSO0hOdfaL-cg6ZdlmZtr1QNKiW5rq3eP4cdKBPavKDSYG6D3aXqhelEgANBc9ePLpsYzuqUoRxYVUHQHJ6tQKOAtO3fX7x4He1oWbevz_uVy9-0tQQg5iKlLVdhZxlEF26w
+      Accept:
+      - application/vnd.github.v3+json
+  response:
+    status:
+      code: 201
+      message:
+    headers:
+      Date:
+      - Fri, 11 Dec 2020 10:41:53 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '288'
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Vary:
+      - Accept, Accept-Encoding, Accept, X-Requested-With, Accept-Encoding
+      ETag:
+      - '"805c6b8a275aaf458ddeb2dfdf4c4657d37e3c740ff957f35a90077336188691"'
+      X-GitHub-Media-Type:
+      - github.v3; format=json
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes,
+        X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-XSS-Protection:
+      - 1; mode=block
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      X-GitHub-Request-Id:
+      - D701:9652:1E4B5AC:22CFEA9:5FD34CF0
+    body:
+      encoding: UTF-8
+      string: '{"token":"v1.faf07f11a0b851f1669ca7ce399aed6683fd9e8c","expires_at":"2020-12-11T11:41:52Z","permissions":{"administration":"read","checks":"write","contents":"write","metadata":"read","pull_requests":"read","repository_hooks":"write","statuses":"write"},"repository_selection":"selected"}'
+    http_version:
+  recorded_at: Fri, 11 Dec 2020 10:41:52 GMT
+- request:
+    method: post
+    uri: https://api.github.com/app/installations/13545123/access_tokens
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Awesome-Octocat-App
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2MDgwMTc0NDgsImV4cCI6MTYwODAxODA0OCwiaXNzIjoiMTU4MDYifQ.FcRco2ubaqn2LkBXC_7hHASZsskrs7129_npf0XFVjfpNW8IaKPhNyNybTQVDF0BHWLn7ulbMQCrX1-15casI2q-Zf6HwhyjAl6yz-FluhzRvohdo9Ph9E6b5HkGDYMmUvAAiCUXVuAqhexmOOYb3y_ZkaiNVXRCLqYjbdfIsjLLrJL7bipm0xgKQwdTHbBFzCjOyhD48Yjz-kk8Q1sL4V-sIIIMUdp4gFhnTV4IFSRWl2S5R1L_Tb5soMPOmZJaq-AKQhmUnOfrL8TfqwPNi8TrVAOGS4lSrfuSF9RClB1sABgbdUDz-XahHAdOchP0GIfuxhewQXMaTO0rtmjXmA
+      Accept:
+      - application/vnd.github.v3+json
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      Date:
+      - Tue, 15 Dec 2020 07:30:48 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '334'
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Vary:
+      - Accept, Accept-Encoding, Accept, X-Requested-With, Accept-Encoding
+      Etag:
+      - '"66757f76e3000d4e6249800a718ef07a872f3d19413224bbd2b8fd96085cfc85"'
+      X-Github-Media-Type:
+      - github.v3; format=json
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes,
+        X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - 1; mode=block
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      X-Github-Request-Id:
+      - CD82:F753:45AE156:500D47A:5FD86628
+    body:
+      encoding: UTF-8
+      string: '{"token":"v1.b6216d700e13079e60d7f2bcbfd8fdf8dc783f4c","expires_at":"2020-12-15T08:30:48Z","permissions":{"members":"read","organization_hooks":"write","administration":"read","checks":"write","contents":"write","metadata":"read","pull_requests":"read","repository_hooks":"write","statuses":"write"},"repository_selection":"selected"}'
+    http_version:
+  recorded_at: Tue, 15 Dec 2020 07:30:48 GMT
+recorded_with: VCR 4.0.0

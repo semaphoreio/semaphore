@@ -1,0 +1,6 @@
+apiVersion: v2
+name: front
+description: A Helm chart for deploying Semaphore front application
+type: application
+version: "@chartVersion@"
+appVersion: ""

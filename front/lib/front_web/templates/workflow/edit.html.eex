@@ -1,0 +1,42 @@
+<%= render FrontWeb.WorkflowView, "edit/style.html" %>
+<%= render FrontWeb.WorkflowView, "edit/navigation.html", conn: @conn, project: @project, workflow: @workflow, hook: @hook %>
+<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ProjectName = "<%= @project.name %>"
+
+  window.InjectedDataByBackend.CanDismissAndExit = true
+  window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
+    "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, @conn.assigns.organization_id),
+    "hidePromotions" => @hide_promotions,
+    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns.organization_id)
+  }) %>;
+
+  window.InjectedDataByBackend.OrgSecretNameList = <%= raw Poison.encode!(
+    Enum.map(@org_secrets, fn s -> s.name end),
+    escape: :html_safe
+  )%>;
+  window.InjectedDataByBackend.ProjectSecretNameList = <%= raw Poison.encode!(
+    Enum.map(@project_secrets, fn s -> s.name end),
+    escape: :html_safe
+  )%>;
+
+  window.InjectedDataByBackend.DeploymentTargetsList = <%= raw Poison.encode!(@deployment_targets) %>;
+
+  window.InjectedDataByBackend.AgentTypes = <%= raw Poison.encode!(@agent_types) %>;
+
+  window.InjectedDataByBackend.WorkflowData = {
+    createdInEditor: false,
+    initialYAML: <%= raw Poison.encode!(@initial_yaml, escape: :html_safe) %>,
+    yamls: <%= raw Poison.encode!(@yamls, escape: :html_safe) %>
+  };
+
+  window.InjectedDataByBackend.CommitForm = <%= raw Poison.encode!(%{
+    "CommitPath" => project_path(@conn, :commit_config, @project.name),
+    "DismissPath" => workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id),
+    "CheckWorkflowPath" => project_path(@conn, :check_workflow, @project.name),
+    "PushBranch" => wf_editor_push_branch(@hook),
+    "InitialBranch" => wf_editor_init_branch(@hook),
+    "Avatar" => @commiter_avatar
+  }, escape: :html_safe) %>;
+</script>

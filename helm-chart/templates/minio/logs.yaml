@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.global.logs.secretName }}
+  namespace: {{ .Release.Namespace }}
+stringData:
+  LOGS_STORAGE_BACKEND: "s3"
+  LOGS_STORAGE_S3_URL: "https://logs.{{.Values.global.domain.name}}"
+  AWS_REGION: "local"
+  S3_BUCKET_NAME: "semaphore-logs"
+  AWS_ACCESS_KEY_ID: {{ .Values.global.logs.username }}
+  AWS_SECRET_ACCESS_KEY: {{ .Values.global.logs.password }}
+{{- if .Values.global.logs.local.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio-logs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: minio-logs
+    product: semaphoreci
+{{- if eq .Values.ingress.className "gce" }}
+  annotations:
+    cloud.google.com/backend-config: '{"ports": {"9000":"minio-logs-backend-config"}}'
+    cloud.google.com/neg: '{"ingress": true}'
+{{- end }}
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9000
+    targetPort: 9000
+  selector:
+    app: minio-logs
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio-logs
+  labels:
+    app: minio-logs
+    product: semaphoreci
+spec:
+  serviceName: minio-logs
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio-logs
+  template:
+    metadata:
+      labels:
+        app: minio-logs
+        product: semaphoreci
+    spec:
+      containers:
+      - name: minio-logs
+        image: minio/minio:{{ .Values.global.logs.local.version }}
+        env:
+          - name: MINIO_ROOT_USER
+            value: {{ .Values.global.logs.username }}
+          - name: MINIO_ROOT_PASSWORD
+            value: {{ .Values.global.logs.password }}
+        ports:
+        - containerPort: 9000
+        command: ["sh"]
+        args: ["-c", "mkdir -p /minio-data/semaphore-logs && minio server /minio-data"]
+        volumeMounts:
+        - name: minio-logs-storage
+          mountPath: "/minio-data"
+        livenessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /minio/health/live
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 15
+  volumeClaimTemplates:
+  - metadata:
+      name: minio-logs-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.global.logs.local.size }}
+---
+{{- if .Values.ingress.enabled }}
+{{- if eq .Values.ingress.className "gce" }}
+apiVersion: cloud.google.com/v1
+kind: BackendConfig
+metadata:
+  name: minio-logs-backend-config
+  namespace: {{ .Release.Namespace }}
+spec:
+  timeoutSec: 30
+  connectionDraining:
+    drainingTimeoutSec: 30
+  logging:
+    enable: true
+  healthCheck:
+    checkIntervalSec: 10
+    timeoutSec: 10
+    port: 9000
+    type: HTTP
+    requestPath: /minio/health/live
+{{- end }}
+{{- end }}
+{{- end }}

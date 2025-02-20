@@ -1,0 +1,57 @@
+<style>
+.project-jumpto .jumpto-results a[aria-selected="true"] {
+  background:linear-gradient(to right,rgba(255,255,255,.001),#f1f5f5 20%,#f1f5f5 80%,rgba(255,255,255,.001))
+}
+</style>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.QueryList = {}
+  window.InjectedDataByBackend.QueryList.HookUrl = "<%= raw project_path(@conn, :filtered_blocked, @project.name) %>";
+  window.InjectedDataByBackend.QueryList.Data = <%= raw Poison.encode!(@hooks) %>;
+</script>
+<div class="bb b--lighter-gray nt3-m pb2 mb3">
+  <div class="mb2">
+    <div><strong>Project:</strong> <%= link @project.name, to: project_path(@conn, :show, @project.name) %> </div>
+  </div>
+</div>
+<h1 class="f2 f1-m lh-title mb1">Recently blocked branches</h1>
+<p class="mb4 measure">You can add branches that were blocked by the whitelist filter.</p>
+
+<div id="hooks" class="mw8 center pa4-m shadow-2-m br3">
+  <div>
+    <h1 class="f2 f1-m mb0">Choose branch</h1>
+    <p class="mb4 measure">
+      Select a branch you'd like to add to Semaphore.
+    </p>
+
+    <div class="project-jumpto">
+      <div class="mt3 mt4-m mb3">
+        <input type="text" class="form-control w-100" placeholder="Filter branches…">
+      </div>
+
+      <div class="jumpto-results"></div>
+      <div class="jumpto-placeholder">
+        <%= @hooks |> Enum.map(fn(hook) -> %>
+          <a href="<%= hook.html_url %>" data-branch-name="<%= hook.display_name %>" data-action="buildBlocked" class="link db bb b--lighter-gray pv2 hide-child hover-bg-row-highlight">
+            <div class="flex pv1">
+              <div class="flex-shrink-0 pr3">
+                <img src="<%= hook.icon %>" alt="branch" class="v-mid">
+              </div>
+              <div class="flex-auto">
+                <div class="flex-ns items-start justify-between">
+                  <div>
+                    <h3 class="f4 dark-gray mb0"><%= hook.display_name %></h3>
+                  </div>
+                  <div class="child dn db-ns flex-shrink-0 btn btn-primary">
+                    →
+                  </div>
+                </div>
+              </div>
+            </div>
+          </a>
+        <% end) %>
+      </div>
+
+    </div>
+
+  </div>
+</div>

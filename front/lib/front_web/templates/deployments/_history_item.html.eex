@@ -1,0 +1,44 @@
+<div class="bg-washed-<%= details_color(@state) %> overflow-hidden">
+    <div class="pa3 bg-washed-<%= details_color(@state) %> bt b--black-075 %>">
+        <div class="flex items-center justify-between">
+            <div class="flex items-start">
+                <span class="material-symbols-outlined fill mr1 <%= details_color(@state) %>">
+                    <%= details_circle(@state) %>
+                </span>
+
+                <div>
+                    <div class="flex items-center">
+                        <%= link @deployment.pipeline.name, class: "b db link dark-gray underline-hover",
+                                to: workflow_path(@conn, :show, @deployment.pipeline.workflow_id,
+                                                    pipeline_id: @deployment.pipeline_id) %>
+
+                        <%= render FrontWeb.DeploymentsView, "items/__buttons.html", conn: @conn, deployment: @deployment %>
+                    </div>
+
+                    <div class="flex items-center">
+                        <span class="material-symbols-outlined f6"><%= git_ref_icon(@deployment.hook) %></span>
+                        <%= link @deployment.hook.name, to: branch_path(@conn, :show, @deployment.pipeline.branch_id),
+                                class: "ml1 db link dark-gray underline-hover" %>
+
+                        <span class="mh1">·</span>
+
+                        <%= render(FrontWeb.PipelineView, "_env_vars.html", pipeline: @deployment.pipeline) %>
+
+                        <span class="material-symbols-outlined f6">commit</span>
+                        <%= link String.slice(@deployment.hook.head_commit_sha, 0..6), to: commit_url(@deployment.hook),
+                            class: "ml1 link dark-gray underline-hover" %>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="flex items-center">
+                <div class="ml2 ml3-m ml0-l mr3-l tr-l f6">
+                    <%= time_ago(@deployment.triggered_at) %>
+                    <br>by <%= @deployment.author_name %>
+                </div>
+                <img src="<%= @deployment.author_avatar_url %>" width="32" height="32" class="db br-100 ba b--black-50"/>
+            </div>
+        </div>
+    </div>
+</div>

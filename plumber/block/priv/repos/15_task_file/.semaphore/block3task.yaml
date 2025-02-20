@@ -1,0 +1,14 @@
+jobs:
+  - name: job1
+    commands:
+    - echo job1
+  - name: job2
+    commands:
+    - echo foo
+prologue:
+  commands:
+    - echo prolog_cmd_1
+    - echo prolog_cmd_2
+env_vars:
+  - name: ENV_VAR_1
+    value: one

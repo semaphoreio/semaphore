@@ -1,0 +1,7 @@
+<div class="flex flex-row items-center justify-around">
+  <span class="material-symbols-outlined md-36 mr3 red">running_with_errors</span>
+  <p class="measure mb0 red">
+    The latest task execution has failed. Make sure you passed correct data.
+    In case of trouble, please <a href="/support">contact Support</a>.
+  </p>
+</div>

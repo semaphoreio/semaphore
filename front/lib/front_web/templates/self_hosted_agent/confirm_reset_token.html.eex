@@ -1,0 +1,27 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="bg-white shadow-1 br3 pa3 pa4-l">
+    <h3 class="f3 f2-m mb1">Reset token for <%= @agent_type.name %>?</h3>
+    <p class="b red mv3">This cannot be undone!</p>
+    <div>
+      If you continue:
+
+      <ul class="mt2">
+        <li>You won't be able to start agents of this type with the old registration token anymore</li>
+        <li>The current running agents will remain working. However, you should restart them once you update their configuration with the new registration token, or you can disable them right now, if you prefer.</li>
+      </ul>
+
+      <div class="mw6">
+          <%= form_for @conn, self_hosted_agent_reset_token_path(@conn, :reset_token, @agent_type.name), [method: :post], fn f -> %>
+            <div class="items-center mb3">
+              <%= checkbox f, :disconnect_running_agents %>
+              <%= label f, :disconnect_running_agents, "Disconnect all currently running agents", class: "ml2 pointer" %>
+            </div>
+            <%= submit "Reset token", class: "btn btn-danger mr2" %>
+            <%= link "Nevermind",
+                to: self_hosted_agent_path(@conn, :show, @agent_type.name),
+                class: "btn btn-secondary" %>
+          <% end %>
+      </div>
+    </div>
+  </div>
+</div>

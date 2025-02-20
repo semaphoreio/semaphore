@@ -1,0 +1,12 @@
+<%= if @conn.assigns.permissions["project.pre_flight_checks.manage"] do %>
+    <div class="bt b--lighter-gray pt3 mt4">
+        <%= form_for @conn, project_pfc_path(@conn, :delete, @project.name), [method: :delete], fn _f -> %>
+            <p class="mb3 measure">
+                Remove the current setup. Please proceed with caution.
+            </p>
+            <%= submit "Delete pre-flight checks",
+                class: "btn btn-danger w-100 w-auto-ns mb2 mb0-ns mr2",
+                data: [confirm: "You're about to prune pre-flight checks. Are you sure?"]%>
+        <% end %>
+    </div>
+<% end %>

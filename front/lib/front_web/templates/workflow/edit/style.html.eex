@@ -1,0 +1,112 @@
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.48.0/codemirror.css">
+
+<style>
+  .code-mirror-style-semaphore.CodeMirror {
+    background: #fff;
+    color: #24292e;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-gutters {
+    background: #fff;
+    border-right-width: 1px;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-guttermarker {
+    color: white;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-guttermarker-subtle {
+    color: #d0d0d0;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-linenumber {
+    color: #959da5;
+    padding: 0 10px 0 20px;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-lines {
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    font-size: 12px;
+    background: #fff;
+    line-height: 20px;
+  }
+
+  .code-mirror-style-semaphore .CodeMirror-line {
+    padding: 0 20px 0 10px;
+    color: #032f62;
+  }
+
+  .code-mirror-style-semaphore .cm-atom {
+    color: #22863a;
+  }
+
+  .code-mirror-style-semaphore .cm-string {
+    color: #032f62;
+  }
+
+  .CodeMirror-lint-markers {
+    width: 16px;
+  }
+
+  .CodeMirror-lint-marker-error {
+    background-position: center center;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    display: inline-block;
+    height: 16px;
+    width: 16px;
+    vertical-align: middle;
+    position: relative;
+
+    background: red;
+    border-radius: 50%;
+    width: 7px;
+    height: 7px;
+  }
+
+  .wf-edit-commit-table td:nth-child(1) {
+    width: inherit !important;
+    text-align: right;
+    color: rgba(0,0,0,.4);
+    padding-left: 12px;
+    padding-right: 0px;
+    border-right: 0px !important;
+  }
+
+  .wf-edit-commit-table td:nth-child(2) {
+    width: inherit !important;
+    text-align: right;
+    color: rgba(0,0,0,.4);
+    border-right: 1px solid rgba(0,0,0,.15);
+    padding-left: 6px;
+    padding-right: 12px;
+  }
+
+  .wf-edit-commit-table td:nth-child(3) {
+    width: 100%;
+    white-space: pre;
+  }
+
+.wf-edit-selected {
+ box-shadow:0 0 0 3px #00359f !important;
+ position:relative;
+ z-index:4
+}
+.wf-edit-selected::after,
+.wf-edit-hover::after {
+ content:"Edit";
+ width:30px;
+ height:16px;
+ color:#fff;
+ text-align:center;
+ font-size:11px;
+ font-weight:500;
+ border-radius:4px;
+ position:absolute;
+ top:-10px;
+ right:-8px
+}
+.wf-edit-selected::after {
+ background:#00359f
+}
+</style>

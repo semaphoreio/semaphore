@@ -1,0 +1,51 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: dashboardhub
+    image: ${IMAGE:-dashboardhub}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-dashboardhub}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - MIX_ENV=dev
+
+    ports:
+      - "50051"
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+
+    environment:
+      IN_DOCKER: "true"
+      POSTGRES_DB_NAME: "dashboardhub"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: 1
+      AMQP_URL: "amqp://rabbitmq:5672"
+      GRPC_API: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+
+volumes:
+  postgres-data:
+    driver: local

@@ -1,0 +1,460 @@
+.node rect {
+  stroke: #fff;
+  fill: #fff;
+}
+
+.edgePath path {
+  stroke-width: 3px;
+}
+
+.c-job-long-lines {
+  white-space: pre;
+}
+
+.c-job-wrap-lines {
+  white-space: pre-wrap;
+}
+
+.c-job-code-block tr td:first-child {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.c-job-code-block tr:hover td {
+  background-color: #EBF3F3;
+}
+
+.c-job-code-block tr.highlight:hover td {
+  background-color: #a4a7aaa1;
+}
+
+.c-job-code-block tr.highlight td {
+  background-color: #a8abae61;
+}
+
+.c-job-code-block tr.c-job-command-passed,
+.c-job-code-block tr.c-job-command-failed {
+  cursor: pointer
+}
+
+.c-job-code-block .c-job-command td {
+  border-top: 1px solid
+  rgba(0,0,0,.15);
+}
+
+.hide {
+  display: none;
+}
+
+.btn {
+  cursor: pointer;
+}
+
+.pointer {
+  cursor: pointer;
+}
+
+.uppercase {
+  text-transform: uppercase;
+}
+
+summary.no-expand::marker {
+  content: "";
+}
+
+.b--lightest-red {
+  border-color: #fdd
+}
+
+.b--lightest-green {
+  border-color: #cef1c8
+}
+
+.b--lightest-gray {
+  border-color: #e5eaea
+}
+
+.code-plus::before {
+  position: absolute;
+  content: "+";
+}
+
+.code-minus::before {
+  position: absolute;
+  content: "-";
+}
+
+.no-ligatures {
+  -webkit-font-feature-settings: none;
+  font-feature-settings: none;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+}
+
+.c-insights-chart {
+  position: relative;
+  z-index: 0;
+}
+.c-insights-chart .tooltip  {
+  display: inherit;
+}
+
+.domain {
+  stroke-width: 0;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 16;
+  font-size: 16px;
+}
+
+.material-symbols-outlined.f1 {
+  font-size: 3rem;
+}
+
+.material-symbols-outlined.f2 {
+  font-size: 2.25rem;
+}
+
+.material-symbols-outlined.f3 {
+  font-size: 1.5rem;
+}
+
+.material-symbols-outlined.f4 {
+  font-size: 1.25rem;
+}
+
+.material-symbols-outlined.f5 {
+  font-size: 1rem;
+}
+
+.material-symbols-outlined.f6 {
+  font-size: .875rem;
+}
+
+.material-symbols-outlined.f7 {
+  font-size: .75rem;
+}
+
+.material-symbols-outlined.b {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
+sem-tooltip slot[slot="content"],
+sem-popover slot[slot="content"] {
+  display: none;
+}
+
+sem-tooltip {
+  display: inherit;
+}
+
+.sem-tooltip-anchor {
+  display: inherit;
+}
+
+.sem-tooltip {
+  z-index: 1000;
+  display: none;
+}
+
+.sem-tooltip[data-show] {
+  display: block;
+}
+
+.sem-tooltip .sem-tooltip-arrow,
+.sem-tooltip .sem-tooltip-arrow::before {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+}
+
+.sem-tooltip > .sem-tooltip-arrow {
+  visibility: hidden;
+}
+
+.sem-tooltip > .sem-tooltip-arrow::before {
+  visibility: visible;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.sem-tooltip[data-popper-placement^='top'] .sem-tooltip-arrow {
+  bottom: -6px;
+}
+
+.sem-tooltip[data-popper-placement^='bottom'] .sem-tooltip-arrow {
+  top: -6px;
+}
+
+.sem-tooltip[data-popper-placement^='left'] .sem-tooltip-arrow {
+  right: -6px;
+}
+
+.sem-tooltip[data-popper-placement^='right'] .sem-tooltip-arrow {
+  left: -6px;
+}
+
+sem-popover {
+  display: inherit;
+}
+
+.sem-popover-anchor {
+  display: inherit;
+}
+
+.sem-popover {
+  z-index: 1;
+  box-shadow: rgb(0 0 0 / 35%) 0 6px 30px 3px, rgb(0 0 0 / 8%) 0 0 0 1px;
+  display: none;
+}
+
+.sem-popover[data-show] {
+  display: block;
+}
+
+.sem-popover .sem-popover-arrow,
+.sem-popover .sem-popover-arrow::before {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  z-index: -1;
+}
+
+.sem-popover > .sem-popover-arrow {
+  visibility: hidden;
+}
+
+.sem-popover > .sem-popover-arrow::before {
+  visibility: visible;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.sem-popover[data-popper-placement^='top'] .sem-popover-arrow {
+  bottom: -6px;
+}
+
+.sem-popover[data-popper-placement^='bottom'] .sem-popover-arrow {
+  top: -6px;
+}
+
+.sem-popover[data-popper-placement^='left'] .sem-popover-arrow {
+  right: -6px;
+}
+
+.sem-popover[data-popper-placement^='right'] .sem-popover-arrow {
+  left: -6px;
+}
+
+.tooltip {
+  box-shadow: rgb(0 0 0 / 35%) 0 6px 30px 3px, rgb(0 0 0 / 8%) 0 0 0 1px;
+}
+
+.css-tooltip {
+  position: relative;
+}
+
+.css-tooltip-text {
+  visibility: hidden;
+  width: 150pt;
+  background-color: black;
+  color: #fff;
+  text-align: justify;
+  font-size: smaller;
+  padding: 5px;
+  border-radius: 6px;
+  top: 105%;
+  left: 50%;
+  margin-left: -75pt;
+  position: absolute;
+  z-index: 1;
+}
+
+.css-tooltip:hover .css-tooltip-text {
+  visibility: visible;
+}
+
+.mr-auto { margin-right: auto; }
+.ml-auto { margin-left:  auto; }
+
+.c-billing-chart .tooltip  {
+  display: inherit;
+}
+
+.c-billing-chart {
+  position: relative;
+}
+
+.c-billing-chart .duration {
+    fill: none;
+    stroke: var(--purple);
+    stroke-width: 3;
+}
+
+.c-billing-chart .deviation {
+    fill: var(--purple);
+    opacity: 0.1;
+}
+
+.c-billing-chart .axis {
+    font-size: 12px;
+    color: #999;
+    shape-rendering: crispEdges;
+}
+
+.c-billing-chart .axis path {
+        fill: none;
+}
+
+.c-billing-chart .axis line {
+        fill: none;
+}
+
+.c-billing-chart .focus-line {
+  fill: none;
+  stroke-width: 1px;
+  shape-rendering: crispEdges;
+  stroke-dasharray: 2, 2;
+}
+
+.c-billing-chart .focus-line--locked {
+  stroke-dasharray: 0;
+}
+
+.c-billing-chart .focus-circle {
+        fill: black;
+}
+
+.c-billing-chart .tick line {
+    stroke: rgba(0, 0, 0, 0.05);
+}
+
+.c-billing-chart .overlay {
+    fill: none;
+    stroke: none;
+    pointer-events: all;
+}
+
+.c-billing-chart .tooltip {
+    color: white;
+    background-color: rgba(0, 0, 0, 1);
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.c-insights-failure-rate-chart .axis {
+    font-size: 12px;
+    color: #999;
+    shape-rendering: crispEdges;
+}
+
+.c-insights-failure-rate-chart .axis path {
+    fill: none;
+}
+
+.c-insights-failure-rate-chart .axis line {
+    fill: none;
+}
+
+.c-insights-failure-rate-chart .focus-line {
+    fill: none;
+    stroke: var(--lightest-gray);
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+}
+
+.c-insights-failure-rate-chart .focus-circle {
+    fill: black;
+}
+
+.c-insights-failure-rate-chart .tick line {
+    stroke: rgba(0, 0, 0, 0.05);
+}
+
+.c-insights-failure-rate-chart .overlay {
+    fill: none;
+    stroke: none;
+    pointer-events: all;
+}
+
+.c-insights-failure-rate-chart .tooltip {
+    display: none;
+    font-size: 10px;
+    color: white;
+    background-color: black;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+.c-insights-failure-rate-chart .passed {
+    fill: var(--green);
+}
+
+.c-insights-frequency-chart .axis {
+    font-size: 12px;
+    color: #999;
+    shape-rendering: crispEdges;
+}
+
+.c-insights-frequency-chart .axis path {
+    fill: none;
+}
+
+.c-insights-frequency-chart .axis line {
+    fill: none;
+}
+
+.c-insights-frequency-chart .focus-line {
+    fill: none;
+    stroke: var(--lightest-gray);
+    stroke-width: 1px;
+    shape-rendering: crispEdges;
+}
+
+.c-insights-frequency-chart .focus-circle {
+    fill: black;
+}
+
+.c-insights-frequency-chart .tick line {
+    stroke: rgba(0, 0, 0, 0.05);
+}
+
+.c-insights-frequency-chart .overlay {
+    fill: none;
+    stroke: none;
+    pointer-events: all;
+}
+
+.c-insights-frequency-chart .tooltip {
+    display: none;
+    font-size: 10px;
+    color: white;
+    background-color: black;
+    padding: 8px;
+    border-radius: 4px;
+}
+
+
+.c-insights-frequency-chart .passed {
+    fill: var(--green);
+}
+
+.c-org-health-column {
+    width: 150px;
+    flex-shrink: 0.1;
+    flex-grow: 0.1;
+    max-width: 170px;
+    padding: 8px;
+}
+
+.c-org-health-column-start {
+    width: 200px;
+    flex-shrink: 0.2;
+    flex-grow: 1;
+}

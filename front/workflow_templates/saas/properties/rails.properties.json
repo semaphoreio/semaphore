@@ -1,0 +1,18 @@
+{
+  "title": "Ruby on Rails",
+  "description": "Test your Rails project",
+  "category": "Ruby",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Checkout code",
+    "Start PostgreSQL 11",
+    "Set Ruby version to 2.6.5",
+    "Install and cache gems",
+    "Set up database",
+    "Run RSpec tests"
+  ],
+  "icon": "lang-rails.svg",
+  "template_path": "templates/rails.yml",
+  "workflow_tip": "rails",
+  "pinned": true
+}

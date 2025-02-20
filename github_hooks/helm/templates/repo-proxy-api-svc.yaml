@@ -1,0 +1,15 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $chartName }}-repo-proxy-api"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ $chartName }}-repo-proxy-api"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP

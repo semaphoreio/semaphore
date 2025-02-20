@@ -1,0 +1,85 @@
+version: v1.0
+name: "🏗️ Flutter CI/CD Pipeline"
+
+agent:
+  machine:
+    type: {{ machine_type }}  # Specify machine type 
+    os_image: {{ os_image }}  # Specify OS image 
+
+# Configure early stopping and auto-cancel behavior
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on the main branch
+
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Fetch the latest code from the repository
+      - 'cache restore flutter-packages-$SEMAPHORE_GIT_BRANCH-$(checksum pubspec.yaml),flutter-packages-$(checksum pubspec.yaml),flutter-packages'  # Restore cached Flutter packages
+      - flutter pub get  # Fetch project dependencies
+
+blocks:
+  - name: "📦 Install Dependencies"
+    dependencies: []
+    task:
+      jobs:
+        - name: "📂 Install and Cache Flutter"
+          commands:
+            - 'cache store flutter-packages-$SEMAPHORE_GIT_BRANCH-$(checksum pubspec.yaml),flutter-packages-$(checksum pubspec.yaml),flutter-packages'  # Cache the Flutter dependencies
+
+  - name: "🔍 Lint"
+    dependencies:
+      - "📦 Install Dependencies"
+    task:
+      jobs:
+        - name: "🧹 Format Code"
+          commands:
+            - flutter format --set-exit-if-changed .  # Ensure code formatting matches the project's style
+        - name: "🔎 Analyze Code"
+          commands:
+            - flutter analyze .  # Run static code analysis
+
+  - name: "🧪 Unit and Widget Tests"
+    dependencies:
+      - "📦 Install Dependencies"
+    task:
+      jobs:
+        - name: "✅ Run Tests"
+          commands:
+            - flutter test test  # Run unit and widget tests
+
+  - name: "📱 Run UI Tests"
+    dependencies:
+      - "📦 Install Dependencies"
+    task:
+      prologue:
+        commands:
+          - device_uuid=$(xcrun simctl create ios-simulator com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro com.apple.CoreSimulator.SimRuntime.iOS-14-5)  # Create an iOS simulator
+          - xcrun simctl boot $device_uuid  # Boot the iOS simulator
+      jobs:
+        - name: "➕ Add New Item"
+          commands:
+            - flutter test integration_test/add_new_todo_item_test.dart  # Run integration test for adding items
+        - name: "✏️ Edit Existing Item"
+          commands:
+            - flutter test integration_test/edit_existing_item_test.dart  # Run integration test for editing items
+        - name: "🗑️ Delete Item"
+          commands:
+            - flutter test integration_test/delete_existing_item_test.dart  # Run integration test for deleting items
+    run:
+      when: "change_in('/lib', {default_branch: 'main', pipeline_file: 'ignore'})"  # Trigger only when changes are made in the /lib directory
+
+  - name: "📦 Build Artifact"
+    dependencies:
+      - "📦 Install Dependencies"
+    task:
+      jobs:
+        - name: "📱 Generate IPA"
+          commands:
+            - flutter build ios --no-codesign  # Build iOS app without signing
+            - artifact push job build/ios/iphoneos/Runner.app  # Push the app artifact

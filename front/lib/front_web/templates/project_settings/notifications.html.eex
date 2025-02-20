@@ -1,0 +1,19 @@
+<%= if @permissions["project.general_settings.view"] do %>
+	<div>
+		<h2 class="f3 f2-m mb0">Notifications</h2>
+		<p class="mb3 measure">Receive notification when pipelines pass or fail.</p>
+
+		<div class="mb6">
+			<%= link "Go to global notifications", to: notifications_path(@conn, :index), class: "btn btn-primary" %>
+			<p class="gray mv3">
+			<img src="<%= assets_path() %>/images/icn-info-15.svg" class="v-mid mr1" style="transform: translateY(-.1em);">
+			We’ll take you to the organization settings.</p>
+		</div>
+	</div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Project Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

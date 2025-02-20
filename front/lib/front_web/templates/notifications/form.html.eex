@@ -1,0 +1,161 @@
+<%= if @permissions["organization.notifications.manage"] do %>
+<div>
+  <h2 class="f3 f2-m mb3 bb b--black-10 pb2"><%= @form_title %></h2>
+
+  <%= form_for @conn, @action, [method: @method], fn f -> %>
+
+      <div class="mb4">
+        <%= label f, :name, "Name of the Notification",
+            class: "db b mb1",
+            placeholder: "e.g. release-cycle-notification" %>
+        <%= if Map.get(@errors, :name) do %>
+          <%= text_input f, :name,
+              class: "form-control w-100 w-75-m form-control-error",
+              value: @notification.metadata.name,
+              placeholder: "e.g. release-cycle-notification" %>
+          <p class="f6 fw5 red mt1 mb0"><%= capitalize_error_message(@errors.name.message) %></p>
+        <% else %>
+          <%= text_input f, :name,
+              class: "form-control w-100 w-75-m",
+              value: @notification.metadata.name,
+              placeholder: "e.g. release-cycle-notification" %>
+        <% end %>
+      </div>
+
+      <div class="mb3">
+        <label class="db b nb2">Rules</label>
+
+        <%= Enum.map(@notification.spec.rules, fn rule -> %>
+          <% {rule_hash, _} = Time.utc_now.microsecond %>
+          <div class="mv3 pa3 bg-white shadow-1 br3 rule-container">
+
+            <div class="mb3">
+              <%= label f, :rule, "Name of the Rule", class: "db b mb1" %>
+              <%= text_input f, :rule,
+                  name: "rule_#{rule_hash}[name]",
+                  value: rule.name,
+                  class: "form-control w-100 w-75-m",
+                  placeholder: "e.g. On master branches" %>
+            </div>
+
+            <p class="mb3">
+              After Successful or Failed pipeline…
+            </p>
+
+            <div class="mb3 pl4">
+              <%= label f, :projects, "in Projects", class: "db b mb1" %>
+              <%= text_input f, :projects,
+                  name: "rule_#{rule_hash}[projects]",
+                  value: rule.filter.projects |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. my-project, /hotfix-*/, /.*/" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+            <div class="mb3 pl4">
+              <label class="db b mb1">
+                Branches
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= text_input f, :branches,
+                  name: "rule_#{rule_hash}[branches]",
+                  value: rule.filter.branches |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. master, /prod-*/, /.*/" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+            <div class="mb3 pl4">
+              <label class="db b mb1">
+                Pipelines
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= text_input f, :pipelines,
+                  name: "rule_#{rule_hash}[pipelines]",
+                  value: rule.filter.pipelines |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. staging-deploy.yml, production-deploy.yml" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+            <div class="mb3 pl4">
+              <label class="db b mb1">
+                Results
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= text_input f, :results,
+                  name: "rule_#{rule_hash}[results]",
+                  value: rule.filter.results |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. stopped, failed" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated</p>
+            </div>
+
+            <p class="mb3">
+              Send notification to Slack…
+            </p>
+            <div class="mb3 pl4">
+              <%= label f, :slack_endpoint, "Slack Endpoint", class: "db b mb1" %>
+              <%= text_input f, :slack_endpoint,
+                  name: "rule_#{rule_hash}[slack_endpoint]",
+                  value: rule.notify.slack.endpoint,
+                  class: "form-control w-100",
+                  placeholder: "https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXX" %>
+              <p class="f6 mt1 mb0 nb1">How to find my <a href="https://get.slack.help/hc/en-us/articles/115005265063-Incoming-WebHooks-for-Slack" target="_blank" rel="noopener">Slack webhook</a>?</p>
+            </div>
+            <div class="mb3 pl4">
+              <%= label f, :slack_channels, "Send to Slack channel(s)", class: "db b mb1" %>
+              <%= text_input f, :slack_channels,
+                  name: "rule_#{rule_hash}[slack_channels]",
+                  value: rule.notify.slack.channels |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. #general, #development" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated</p>
+            </div>
+
+            <p class="mb3">
+              And/Or to a webhook…
+            </p>
+            <div class="mb3 pl4">
+              <%= label f, :webhook_endpoint, "Endpoint", class: "db b mb1" %>
+              <%= text_input f, :webhook_endpoint,
+                  name: "rule_#{rule_hash}[webhook_endpoint]",
+                  value: if(rule.notify.webhook == nil, do: "", else: rule.notify.webhook.endpoint),
+                  class: "form-control w-100",
+                  placeholder: "https://example.com/webhook" %>
+            </div>
+            <div class="mb3 pl4">
+              <%= label f, :webhook_secret, "Secret name", class: "db b mb1" %>
+              <%= text_input f, :webhook_secret,
+                  name: "rule_#{rule_hash}[webhook_secret]",
+                  value: if(rule.notify.webhook == nil, do: "", else: rule.notify.webhook.secret),
+                  class: "form-control w-100",
+                  placeholder: "webhook-secret" %>
+              <p class="f6 mt1 mb0 nb1">Read more about <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/essentials/webhook-notifications/#securing-webhook-notifications" target="_blank" rel="noopener">securing webhook notifications</a></p>
+            </div>
+
+            <div class="f6 tc bt b--lighter-gray pv2 mt4 nh3 nb3 bg-washed-gray br3 br--bottom">
+              <a href="#" class="link gray hover-dark-gray remove-rule">Delete Rule…</a>
+            </div>
+          </div>
+        <% end) %>
+
+        <div class="mv1">
+            <a href="#" class="f6 gray add-rule">+ Add another Rule</a>
+        </div>
+
+      </div>
+
+      <div class="mt3 pt3 bt b--black-15">
+        <div class="flex">
+          <%= submit "Save Notification", class: "btn btn-primary mr2" %>
+          <%= link "Cancel",
+              to: @cancel_path,
+              class: "btn btn-secondary" %>
+        </div>
+      </div>
+  <% end %>
+</div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t manage Organization Notifications.<br>Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

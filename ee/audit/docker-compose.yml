@@ -1,0 +1,80 @@
+services:
+  app:
+    container_name: audit
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/audit/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+
+    tty: true
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+      - S3:S3
+
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      AMQP_URL: "amqp://rabbitmq:5672"
+      S3_HOST: "S3"
+      POSTGRES_DB_NAME: "audit"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: "5"
+      START_CONSUMER: "true"
+      START_GRPC_API: "true"
+      START_STREAMER: "true"
+      IN_DOCKER: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  S3:
+    image: adobe/s3mock:3.12.0
+    environment:
+      initialBuckets: "test-bucket"
+
+volumes:
+  postgres-data:
+    driver: local
+
+  redis-data:
+    driver: local

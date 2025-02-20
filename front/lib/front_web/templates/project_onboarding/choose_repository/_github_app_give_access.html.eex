@@ -1,0 +1,11 @@
+<a href="<%= Front.GithubApp.app_url() %>/installations/new?state=o_<%= @organization.id %>" target="_blank" class="link db dark-gray pv3 ph2 bt b--black-10 hide-child hover-bg-row-highlight">
+  <div class="flex">
+    <div class="flex-shrink-0 mt1 mr2">
+      <img src="<%= image_source("icn-plus-nav.svg") %>" width="16" height="16">
+    </div>
+    <div class="w-100">
+      <h3 class="f4 mb0">Give access to more repositories</h3>
+      <p class="f4 measure black-60 mb0">Jump to GitHub to allow access</p>
+    </div>
+  </div>
+</a>

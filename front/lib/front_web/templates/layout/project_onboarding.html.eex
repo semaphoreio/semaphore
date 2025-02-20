@@ -1,0 +1,37 @@
+<%= render_layout "app.html", assigns do %>
+  <%= case @project_setup_phase do %>
+    <% "Choose repository" -> %>
+
+      <div class="dn db-m mb4">
+        <span class="ph3 pv1 bg-green white br-pill">1. Choose repository</span>
+        <span class="gray mh2">→</span>
+        <span>2. Add people</span>
+        <span class="gray mh2">→</span>
+        <span>3. Set up workflow</span>
+      </div>
+
+    <% "Add people" -> %>
+
+      <div class="dn db-m mb4">
+        <span>1. Choose repository (<%= @project.name %>) <span class="dark-green">✓</span></span>
+        <span class="gray mh2">→</span>
+        <span class="ph3 pv1 bg-green white br-pill">2. Add people</span>
+        <span class="gray mh2">→</span>
+        <span>3. Set up workflow</span>
+      </div>
+
+    <% "Set up workflow" -> %>
+
+      <div class="dn db-m mb4">
+        <span>1. Choose repository (<%= @project.name %>) <span class="dark-green">✓</span></span>
+        <span class="gray mh2">→</span>
+        <span>2. Add people <span class="dark-green">✓</span></span>
+        <span class="gray mh2">→</span>
+        <span class="ph3 pv1 bg-green white br-pill">3. Set up workflow</span>
+      </div>
+
+  <% end %>
+  <div class="pa3 pa4-m bg-lightest-blue br3" style="min-height: calc(100vh - 184px)">
+    <%= @inner_content %>
+  </div>
+<% end %>

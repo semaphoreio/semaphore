@@ -1,0 +1,23 @@
+image: auth
+imageTag: latest
+imagePullSecrets: []
+replicas: 1
+logging: info
+forceIpCheck: true
+
+resources:
+  limits:
+    cpu: 300m
+    memory: 250Mi
+  requests:
+    cpu: 100m
+    memory: 125Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

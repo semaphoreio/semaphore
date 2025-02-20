@@ -1,0 +1,61 @@
+<h3 class="f3 f2-m mb1">Delete <%= @project.name %>?</h3>
+<p class="b red mv3">This cannot be undone!</p>
+<div>
+  If you continue:
+
+  <ul class="mb3">
+    <li>You’ll remove this project from Semaphore for everybody</li>
+    <li>You won't remove the repository</li>
+    <li>You’ll be able to add the same repository to Semaphore again</li>
+  </ul>
+</div>
+
+<div class="mw6">
+  <div class="mt3">
+    <%= form_for @conn, project_settings_path(@conn, :submit_delete, @project.id), [method: :post], fn f -> %>
+      <%= unless Front.on_prem?() do %>
+      <div class="mv3">
+        <%= label f, :reason, "Reason for deleting", class: "db b mb1" %>
+        <%= select f, :reason,
+            [
+              [key: "Choose one", value: "", disabled: true, selected: true],
+              [key: "This is a test project, I’ll be back!", value: "This is a test project, I’ll be back!"],
+              [key: "Missing features", value: "Missing features"],
+              [key: "Too buggy", value: "Too buggy"],
+              [key: "Too slow", value: "Too slow"],
+              [key: "Hard to use", value: "Hard to use"],
+              [key: "I can’t set up my project and I'm frustrated", value: "I can’t set up my project and I'm frustrated"],
+              [key: "Other", value: "Other"]
+            ],
+            class: manage_field_class(:project_delete, @changeset, :reason) %>
+         <%= manage_error_message(:project_delete, @changeset, :reason) %>
+       </div>
+       <div class="mv3">
+        <%= label f, :feedback, "Quick feedback", class: "db b mb1" %>
+         <%= textarea f, :feedback,
+             name: "feedback",
+             rows: "3",
+             class: manage_field_class(:project_delete, @changeset, :feedback),
+             placeholder: compose_feedback_placeholder(@project.created_at) %>
+         <%= manage_error_message(:project_delete, @changeset, :feedback) %>
+      </div>
+      <% end %>
+      <div class="mv3">
+        <%= label f, :delete_confirmation,
+            "Enter project name to confirm", class: "db b mb1" %>
+        <%= text_input f, :delete_confirmation,
+            name: "delete_confirmation",
+            placeholder: "#{@project.name}",
+            class: manage_field_class(:project_delete, @changeset, :delete_confirmation) %>
+        <%= manage_error_message(:project_delete, @changeset, :delete_confirmation) %>
+      </div>
+      <div class="mv3">
+        <%= submit "Delete project", class: "btn btn-danger mr2" %>
+        <%= link "Nevermind",
+            to: project_settings_path(@conn, :general, @project.name),
+            class: "btn btn-secondary" %>
+        <!-- When confirmed, redirect to homepage (my-work) and show confirmation message -->
+      </div>
+    <% end %>
+  </div>
+</div>

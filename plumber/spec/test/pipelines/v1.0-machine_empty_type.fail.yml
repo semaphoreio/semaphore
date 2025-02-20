@@ -1,0 +1,22 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: ""
+    os_image: ""
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
+  - name: Block 2
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
+        - name: job2
+          commands:
+            - echo Single command job

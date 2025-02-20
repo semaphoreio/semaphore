@@ -1,0 +1,241 @@
+global:
+  domain:
+    ip: ""
+    name: ""
+    configMapName: "base-domain"
+
+  organization:
+    secretName: "organization"
+    name: "semaphore"
+    defaultAgentType:
+      secretName: "default-agent-type"
+      enabled: true
+      name: "s1-kubernetes"
+
+  telemetry:
+    enabled: true
+    endpoint: "https://telemetry.semaphore.io/ingest"
+    cron: "0 0 * * *"
+
+  rootUser:
+    secretName: "root-user"
+    name: "Root"
+    email: "root@example.com"
+    githubLogin: ""
+
+  database:
+    secretName: "postgres"
+    host: "postgres"
+    port: 5432
+    username: postgres
+    password: postgres
+    ssl: false
+    local:
+      enabled: true
+      version: 14.15-alpine3.21
+      maxConnections: "1000"
+      sharedBuffers: 1024MB
+      size: 4Gi
+
+  rabbitmq:
+    secretName: "rabbitmq"
+    host: "rabbitmq"
+    port: 5672
+    managementPort: 15672
+    username: rabbitmq
+    password: rabbitmq
+    protocol: amqp
+    local:
+      enabled: true
+      version: 3.13.7-management-alpine
+      size: 2Gi
+
+  redis:
+    secretName: "redis"
+    host: redis
+    port: "6379"
+    username: ""
+    password: ""
+    local:
+      enabled: true
+      version: 7.2.4-alpine3.19
+      size: 1Gi
+
+  image:
+    registry: ghcr.io/semaphoreio
+
+  authentication:
+    configMapName: "authentication"
+
+    # If secretName is empty, the secrets will be auto-generated.
+    # If specified, the secret used must contain the following keys:
+    # - SESSION_SECRET_KEY_BASE
+    # - TOKEN_HASHING_SALT
+    # - OIDC_CLIENT_SECRET
+    # - OIDC_MANAGE_CLIENT_SECRET
+    # - KC_ADMIN_LOGIN
+    # - KC_ADMIN_PASSWORD
+    secretName: ""
+
+  internalApi:
+    configMapName: "internal-api-urls"
+
+  #
+  # By default, no metrics are sent anywhere.
+  # However, you can send metrics to a graphite host.
+  #
+  statsd:
+    enabled: false
+    image: statsd
+    metricsNamespace: "os"
+    graphiteHost: ""
+
+  sidecarEncryptor:
+    image: encryptor
+
+  artifacts:
+    secretName: "minio-artifacts"
+    username: "semaphore"
+    password: "semaphore"
+    local:
+      enabled: true
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      size: 3Gi
+
+  cache:
+    username: "semaphore"
+    password: "semaphore"
+    local:
+      enabled: true
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      size: 3Gi
+
+  logs:
+    secretName: "minio-logs"
+    username: "semaphore"
+    password: "semaphore"
+    local:
+      enabled: true
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+      size: 3Gi
+
+  # If secretName is empty, the secrets will be auto-generated.
+  # If specified, the secret used must contain the following keys:
+  # - artifacts
+  # - logs
+  jwt:
+    secretName: ""
+
+  # If secretName is empty, the AES key used for encryption will be auto-generated.
+  # If specified, the secret used must contain the following keys:
+  # - key
+  encryption:
+    secretName: ""
+
+  githubApp:
+    secretName: ""
+
+  bitbucketApp:
+    secretName: ""
+
+  gitlabApp:
+    secretName: ""
+
+tags:
+  enterprise: false
+
+toolbox:
+  version: "v1.22.5"
+
+#
+# Ingress configuration
+#
+ingress:
+  enabled: true
+
+  #
+  # Specify the name of the static IP address
+  # Required when ingress.className=gce
+  #
+  staticIpName: ""
+
+  #
+  # Set the Ingress class:
+  # - gce: when deploying chart on GKE
+  # - traefik: when deploying on VM with k3s
+  #
+  className: "gce"
+
+  #
+  # SSL Configuration
+  #
+  ssl:
+    enabled: true
+
+    #
+    # Specify SSL certificate type:
+    # - google: when using Google-managed certificates
+    # - custom: when providing a certificate yourself
+    #
+    type: "google"
+
+    #
+    # Name of the Google managed certificate in GCP
+    # Required when ingress.ssl.type=google
+    #
+    certName: ""
+
+    #
+    # Name of the Kubernetes Secret containing the TLS certificate and key.
+    # Required when ingress.ssl.type=custom
+    #
+    secretName: "tls-secret"
+
+    #
+    # The full-chain certificate.
+    # Required when ingress.ssl.type=custom
+    #
+    crt: ""
+
+    #
+    # The private key used to generate the certificate.
+    # Required when ingress.ssl.type=custom
+    #
+    key: ""
+
+#
+# Overrides for subcharts
+#
+
+emissary-ingress:
+  nameOverride: ambassador
+  fullnameOverride: ambassador
+  replicaCount: 1
+  agent:
+    enabled: false
+  waitForApiext:
+    enabled: false
+  service:
+    nameOverride: "ambassador"
+    type: NodePort
+    ports:
+      - name: http
+        port: 8080
+        targetPort: 8080
+    annotations:
+      cloud.google.com/backend-config: '{"default": "emissary-ingress-backend-config"}'
+      cloud.google.com/neg: '{"ingress": true}'
+
+controller:
+  install: true
+  endpointSecret:
+    name: organization
+    key: endpoint
+  agent:
+    defaultImage: "registry.semaphoreci.com/ubuntu:22.04"
+    defaultPodSpec:
+      mainContainer:
+        env: []
+        envFrom:
+          - secretRef:
+              name: job-extra-environment

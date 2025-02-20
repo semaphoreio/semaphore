@@ -1,0 +1,100 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: guard
+    image: ${IMAGE:-guard}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/guard/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+    ports:
+      - "4000:4000"
+      - "4003:4003" # Id endpoint
+      - "4004:4004" # Github integration
+
+    tty: true
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+      - adminer:adminer
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: always
+    command: ["bash", "-c", "elixir --name app@127.0.0.1 -S mix run --no-halt"]
+
+    environment:
+      SESSION_COOKIE_NAME: "_sxtesting_session"
+      SESSION_SECRET_KEY_BASE: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+      TOKEN_HASHING_SALT: "pepper"
+      IN_DOCKER: "true"
+      POSTGRES_FRONT_DB_NAME: "front"
+      POSTGRES_DB_NAME: "guard"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: "5"
+      AMQP_URL: "amqp://rabbitmq:5672"
+      BASE_DOMAIN: "localhost"
+      ID_API: "true"
+      START_GPRC_HEALTH_CHECK: "true"
+      START_GPRC_GUARD_API: "true"
+      START_GRPC_AUTH_API: "true"
+      START_GRPC_USER_API: "true"
+      START_GRPC_ORGANIZATION_API: "true"
+      START_GRPC_INSTANCE_CONFIG_API: "true"
+      INSTANCE_CONFIG_API: "true"
+      START_INSTANCE_CONFIG: "true"
+      START_FEATURE_PROVIDER: "true"
+      ROOT_LOGIN: "true"
+      ROOT_LOGIN_METHOD: "github"
+      DEFAULT_LOGIN_METHOD: "local"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+volumes:
+  postgres-data:
+    driver: local

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: notifications
+description: A Helm chart for deploying Semaphore notifications application
+type: application
+version: "@chartVersion@"
+appVersion: ""

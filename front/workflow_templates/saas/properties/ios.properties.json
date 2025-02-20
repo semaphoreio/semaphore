@@ -1,0 +1,17 @@
+{
+  "title": "iOS with Fastlane",
+  "description": "Build Swift project with Fastlane",
+  "category": "iOS / macOS",
+  "features": [
+    "MacOS with Xcode12 environment",
+    "Code checkout",
+    "Code signing for iOS projects",
+    "TestFlight integration",
+    "HockeyApp integration"
+  ],
+  "template_path": "templates/ios.yml",
+  "icon": "lang-fastlane.svg",
+  "preview": "https://github.com/semaphoreci/workflows/blob/master/previews/fastlane.png?raw=true",
+  "workflow_tip": "other",
+  "pinned": true
+}

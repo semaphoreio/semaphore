@@ -1,0 +1,22 @@
+version: "v1.0"
+name: Parallel pipelines example
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+
+queue:
+  -  when: "branch = 'master'"
+     name: production
+     processing: serialized
+
+  -  when: true
+     name: production
+     processing: parallel
+
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - sleep 5

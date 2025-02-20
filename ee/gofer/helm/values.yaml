@@ -1,0 +1,26 @@
+---
+image: gofer
+imageTag: latest
+imagePullSecrets: []
+
+db:
+  name: gofer
+
+dbPoolSize: 1
+replicas: 1
+resources:
+  limits:
+    cpu: '0.3'
+    memory: 300Mi
+  requests:
+    cpu: '0.1'
+    memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

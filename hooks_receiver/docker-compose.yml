@@ -1,0 +1,44 @@
+services:
+  app:
+    image: ${IMAGE:-hooks-receiver}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-hooks-receiver}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+    ports:
+      - "4000:4000"
+
+    tty: true
+    links:
+      - rabbitmq:rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    
+    environment:
+      IN_DOCKER: "true"
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      PUBLISH_TO_RABBIT: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+
+    volumes:
+      - .:/app
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5

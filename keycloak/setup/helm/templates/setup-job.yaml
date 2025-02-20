@@ -1,0 +1,86 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Chart.Name }}-job
+  annotations:
+    "helm.sh/hook": "post-install"
+    "helm.sh/hook-delete-policy": "before-hook-creation,hook-succeeded"  # Important for retry
+    "helm.sh/hook-weight": "0"
+  namespace: {{ .Release.Namespace }}
+spec:
+  ttlSecondsAfterFinished: {{ .Values.job.ttlAfterFinished }}
+  template:
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      serviceAccountName: {{ .Chart.Name }}-sa
+      containers:
+      - name: {{ .Chart.Name }}-job
+        image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+        imagePullPolicy: Always
+        env:
+          - name: BASE_DOMAIN
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }
+          - name: TF_VAR_keycloak_url
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: KC_LOCAL_URL } }
+          - name: TF_VAR_semaphore_realm
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: KC_REALM } }
+          - name: TF_VAR_semaphore_user_management_client_id
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OIDC_MANAGE_CLIENT_ID } }
+          - name: TF_VAR_semaphore_user_management_client_name
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OIDC_MANAGE_CLIENT_ID } }
+          - name: TF_VAR_semaphore_client_id
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OIDC_CLIENT_ID } }
+          - name: TF_VAR_semaphore_client_name
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OIDC_CLIENT_ID } }
+          - name: TF_VAR_semaphore_realm_update_password_action
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: ENABLE_TEMPORARY_PASSWORDS } }
+          - name: TF_VAR_keycloak_admin_username
+            valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_LOGIN } }
+          - name: TF_VAR_keycloak_admin_password
+            valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: KC_ADMIN_PASSWORD } }
+          - name: TF_VAR_semaphore_user_management_client_secret
+            valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: OIDC_MANAGE_CLIENT_SECRET } }
+          - name: TF_VAR_semaphore_client_secret
+            valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: OIDC_CLIENT_SECRET } }
+          - name: TF_VAR_semaphore_client_root_url
+            value: "https://id.$(BASE_DOMAIN)"
+          - name: TF_VAR_semaphore_client_base_url
+            value: "https://me.$(BASE_DOMAIN)"
+          - name: TF_VAR_semaphore_client_admin_url
+            value: "https://id.$(BASE_DOMAIN)"
+          - name: TF_VAR_semaphore_client_valid_redirect_uris
+            value: '["https://id.$(BASE_DOMAIN)/oidc/callback"]'
+          - name: TF_VAR_semaphore_client_valid_post_logout_redirect_uris
+            value: '["https://id.$(BASE_DOMAIN)/*"]'
+          - name: TF_VAR_semaphore_client_web_origins
+            value: '["https://id.$(BASE_DOMAIN)"]'
+          - name: TF_VAR_github_provider_client_id
+            value: ""
+          - name: TF_VAR_github_provider_client_secret
+            value: ""
+          - name: TF_VAR_github_provider_authorization_url
+            value: ""
+          - name: TF_VAR_bitbucket_provider_client_id
+            value: ""
+          - name: TF_VAR_bitbucket_provider_client_secret
+            value: ""
+          - name: TF_VAR_bitbucket_provider_authorization_url
+            value: ""
+          - name: TF_VAR_gitlab_provider_client_id
+            value: ""
+          - name: TF_VAR_gitlab_provider_client_secret
+            value: ""
+          - name: TF_VAR_gitlab_provider_authorization_url
+            value: ""
+          - name: TF_VAR_semaphore_realm_login_theme
+            value: "semaphore"
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+      restartPolicy: OnFailure

@@ -1,0 +1,33 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Deployments = {};
+    window.InjectedDataByBackend.Deployments.BaseUrl = "<%= raw deployments_path(@conn, :show, @project.name, @target.id) %>";
+    window.InjectedDataByBackend.Deployments.Filters = <%= raw Poison.encode!(@resources.page_args[:filters], escape: :html_safe) %>;
+</script>
+<%= if @conn.assigns.permissions["project.deployment_targets.view"] do %>
+    <div class="bg-washed-gray mt3 br3 ba b--black-075 pa4">
+        <div class="flex justify-between items-start flex-row-reverse">
+            <div class="w-100">
+                <%= link " ← Deployment Targets", to: deployments_path(@conn, :index, @project.name), class: "gray link f6 mb2 dib" %>
+                <div class="flex justify-between">
+                    <p class="f3 b mr4"><%= @target.name %></p>
+                    <%= if @target.url != "" do %><p><a href="<%= @target.url %>"><%= @target.url %></a></p>                    <% end %>
+                </div>
+
+                <%= if @target.description != "" do %><p class="mb3 w-75"><%= @target.description %></p><% end %>
+
+                <%= render FrontWeb.DeploymentsView, "_history.html", conn: @conn,
+                            project: @project, target: @target,
+                            page_args: @resources.page_args,
+                            page: @target.history_page %>
+            </div>
+        </div>
+    </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+      Sorry, you can’t access Deployment Targets.<br>
+      Ask organization owner or any of the admins to give you access permission.
+    </p>
+  </div>
+<% end %>

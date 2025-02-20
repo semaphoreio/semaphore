@@ -1,0 +1,114 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: "{{ $chartName }}"
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceName: "{{ $chartName }}"
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ $chartName }}"
+  template:
+    metadata:
+      labels:
+        app: "{{ $chartName }}"
+        product: semaphoreci
+    spec:
+      volumes:
+        - name: repohub-storage-volume
+          emptyDir:
+            sizeLimit: "5Gi"
+      initContainers:
+{{ include "initContainers.waitForPostgres" . | indent 8 }}
+      containers:
+        - name: "{{ $chartName }}"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            {{- include "env.db.go" . | indent 12 }}
+            - name: START_INTERNAL_API
+              value: "yes"
+            - name: START_REPO_FETCHER
+              value: "no"
+            - name: START_MONITOR
+              value: "no"
+            - name: DB_NAME
+              value: front
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: APPLICATION_NAME
+              value: "repohub"
+
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.repohub.resources }}
+          resources:
+{{ toYaml .Values.repohub.resources | indent 12 }}
+{{- end }}
+
+          volumeMounts:
+            - mountPath: "/var/repos"
+              name: repohub-storage-volume
+
+        - name: "{{ $chartName }}-fetcher"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          env:
+            {{- include "env.db.go" . | indent 12 }}
+            - name: START_INTERNAL_API
+              value: "no"
+            - name: START_REPO_FETCHER
+              value: "yes"
+            - name: START_REPO_CLEANER
+              value: "yes"
+            - name: START_MONITOR
+              value: "yes"
+            - name: DB_NAME
+              value: front
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.repohubFetcher.resources }}
+          resources:
+{{ toYaml .Values.repohubFetcher.resources | indent 12 }}
+{{- end }}
+
+          volumeMounts:
+            - mountPath: "/var/repos"
+              name: repohub-storage-volume
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,12 @@
+<div class="pollman-container" data-poll-param-filters="<%= @conn.assigns.filters %>" data-poll-state="poll" data-poll-href="/projects/<%= @project.id %>/queues">
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+  <div class="mt3"><div class="flex-m bg-white br2 shadow-1 c-loading-placeholder c-loading-placeholder-thick" style="min-height: 100px;"></div></div>
+</div>

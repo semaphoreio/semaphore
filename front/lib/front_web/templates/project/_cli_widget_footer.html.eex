@@ -1,0 +1,11 @@
+<details class="nb1 pointer bt b--lighter-gray pt2 mt3">
+  <summary class="gray hover-dark-gray">Install <code class="f6 dark-gray">sem</code> CLI & Connect to <code class="f6 dark-gray"><%= @organization.name %></code></summary>
+  <div class="mt2 mb3">
+    <div class="b mb1">Install sem command line tools</div>
+    <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash" size="36" readonly>
+  </div>
+  <div class="mb1">
+    <div class="b mb1">Connect to <%= @organization.name %> organization</div>
+    <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem connect <%= "#{@organization.username}.#{Application.get_env(:front, :domain)} _YOUR_API_TOKEN_" %>" size="36" readonly>
+  </div>
+</details>

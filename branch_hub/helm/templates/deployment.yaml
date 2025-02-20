@@ -1,0 +1,108 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "branchhub-grpc"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ $baseName }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $baseName }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ $baseName }}"
+  replicas: {{ .Values.replicas }}
+  template:
+    metadata:
+      name: {{ $baseName }}
+      labels:
+        app: {{ $baseName }}
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.waitForPostgres" . | indent 8 }}
+      containers:
+        - name: {{ $baseName }}
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: MIX_ENV
+              value: prod
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.db.poolSize | quote }}
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 13 }}
+{{- end }}
+
+          readinessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 5
+          livenessProbe:
+            grpc:
+              port: 50051
+            initialDelaySeconds: 10
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

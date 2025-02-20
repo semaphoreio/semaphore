@@ -1,0 +1,61 @@
+<!--
+
+A site wide announcement displays useful news to our customers. There can be
+only one active site wide announcement, and each new announcement has a
+unique ID.
+
+Usage:
+
+  1. Modify the content.
+  2. Update the data-id . Incremental number update is :ok_hand:.
+
+Implementation details:
+
+When an announcement is closed, we store a cookie in the customers browser
+with that ID.
+
+Scenarios:
+
+1. There is no cookie in the customers browser
+   => We show the announcement
+
+2. There is a cookie in the customer's browser, but the ID is different
+   => This cookie was set when a customer closed a previous announcements.
+   => We show the announcement.
+
+3. There is a cookie in the customer's browser, and the ID is the same as
+   the current announcement.
+   => We hide the announcement.
+
+The manager of the announcement can be found in:
+
+assets/js/announcement.js
+
+-->
+<div id="announcement" data-id=105 class="f6 ph3 pv2 bg-lightest-yellow bb b--black-15" style="display:none;">
+
+  <div class="flex justify-between">
+    <div class="pr4">
+      <strong>NEW:</strong>
+
+      Edit your workflows with our new (beta) Workflow Builder. Visit any of
+      your workflows and hit edit to start building new pipelines.
+
+      <!-- In case you need a list
+        <ul class="mb0">
+          <li></li>
+          <li></li>
+        </ul>
+      -->
+
+      <!-- In case you need a bolded element
+        <strong>Hello</strong>
+      -->
+    </div>
+
+    <div class="f3 lh-solid">
+      <a data-action="close" href="#" class="link black-50 hover-black pa2">×</a>
+    </div>
+  </div>
+
+</div>

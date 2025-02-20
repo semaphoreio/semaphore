@@ -1,0 +1,9 @@
+<div>
+    <div class="mb3">
+    <%= link "← Back to Audit Logs", to: "/audit", class: "black" %>
+    </div>
+
+    <p class="mb3 measure">
+        Streaming of audit data from Semaphore to an external location like AWS S3 or Google Cloud Storage.
+    </p>
+</div>

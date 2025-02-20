@@ -1,0 +1,46 @@
+# Free topology pipeline example with 6 blocks:
+#
+#  A - B - C
+#    /   \
+#  D       E - F
+#
+version: "v1.0"
+name: Free topology - complex topology
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+
+blocks:
+  - name: A
+    # Empty array means "no dependencies" -> start immediately
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo foo]
+  - name: B
+    dependencies: [A, D]
+    task:
+      jobs:
+        - commands: [echo bar]
+  - name: C
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo baz]
+  - name: D
+    # Empty array means "no dependencies" -> start immediately
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo foo-bar]
+  - name: E
+    dependencies: [B]
+    task:
+      jobs:
+        - commands_file: commands/job1.cmd
+  - name: F
+    dependencies: [E]
+    task:
+      jobs:
+        - commands_file: commands/job2.cmd

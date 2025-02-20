@@ -1,0 +1,73 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - ${IMAGE_LOCAL:-public-api:latest}
+        - ${IMAGE}:${IMAGE_TAG}
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=${BUILD_ENV:-dev}
+      ssh:
+        - default
+    ports:
+      - "4000:4004"
+    environment:
+      USER_API_URL: 127.0.0.1:50052
+      INTERNAL_API_URL_RBAC: 127.0.0.1:50052
+      REPO_PROXY_URL: 127.0.0.1:50052
+      GOFER_GRPC_URL: 127.0.0.1:50052
+      PERIODIC_SCHEDULER_URL: 127.0.0.1:50052
+      PPL_GRPC_URL: 127.0.0.1:50052
+      WF_GRPC_URL: 127.0.0.1:50052
+      SELF_HOSTED_HUB_URL: 127.0.0.1:50052
+      SECRETHUB_GRPC_URL: 127.0.0.1:50052
+      FEATURE_GRPC_URL: 127.0.0.1:50052
+      JOBS_API_URL: 127.0.0.1:50052
+      API_VERSION: ${API_VERSION:-v2}
+      AMQP_URL: "amqp://rabbitmq:5672"
+      SSH_AUTH_SOCK: "/ssh-agent"
+      CACHE_HOST: "redis-cache"
+      CACHE_PORT: "6379"
+      CACHE_POOL_SIZE: "5"
+      IN_DOCKER: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+
+    volumes:
+      - .:/app
+      - /app/_build
+      - /app/deps
+      - /.elixir_ls
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+
+    links:
+      - rabbitmq:rabbitmq
+      - redis-cache:redis-cache
+    
+  redis-cache:
+    image: "redis:5-buster"
+    entrypoint: "redis-server --appendonly yes"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5

@@ -1,0 +1,83 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.global.rabbitmq.secretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: rabbitmq
+    product: semaphoreci
+data:
+  protocol: {{ .Values.global.rabbitmq.protocol | b64enc }}
+  host: {{ .Values.global.rabbitmq.host | b64enc }}
+  port: {{ .Values.global.rabbitmq.port | toString | b64enc }}
+  username: {{ .Values.global.rabbitmq.username | b64enc }}
+  password: {{ .Values.global.rabbitmq.password | b64enc }}
+  amqp-url: {{ printf "%s://%s:%s@%s:%s?verify=verify_none" .Values.global.rabbitmq.protocol .Values.global.rabbitmq.username .Values.global.rabbitmq.password .Values.global.rabbitmq.host (toString .Values.global.rabbitmq.port) | b64enc }}
+{{- if .Values.global.rabbitmq.local.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: {{ .Release.Namespace }}
+spec:
+  serviceName: "rabbitmq"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+        product: semaphoreci
+    spec:
+      priorityClassName: high-priority
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:{{ .Values.global.rabbitmq.local.version }}
+          ports:
+            - containerPort: {{ .Values.global.rabbitmq.port }}
+              name: amqp
+            - containerPort: {{ .Values.global.rabbitmq.managementPort }}
+              name: management
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq
+                  key: username
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq
+                  key: password
+          volumeMounts:
+            - name: rabbitmq-storage
+              mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-storage
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: {{ .Values.global.rabbitmq.local.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.global.rabbitmq.port }}
+      targetPort: {{ .Values.global.rabbitmq.port }}
+      name: amqp
+    - port: {{ .Values.global.rabbitmq.managementPort }}
+      targetPort: {{ .Values.global.rabbitmq.managementPort }}
+      name: management
+  selector:
+    app: rabbitmq
+{{- end }}

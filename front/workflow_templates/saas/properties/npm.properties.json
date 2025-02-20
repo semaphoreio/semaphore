@@ -1,0 +1,16 @@
+{
+  "title": "Node.js",
+  "description": "Test your Node project with npm",
+  "category": "JavaScript",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "Node.js version set to 12",
+    "Install and cache npm packages",
+    "Run tests"
+  ],
+  "icon": "lang-nodejs.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/npm.yml",
+  "pinned": true
+}

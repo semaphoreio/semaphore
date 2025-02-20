@@ -1,0 +1,51 @@
+<style>
+    summary[data-element="dtw-summary"][data-state="hidden"] {
+        pointer-events: none;
+        user-select: none;
+    }
+</style>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Deployments = {};
+    window.InjectedDataByBackend.Deployments.Accessible = <%= @conn.assigns.permissions["project.deployment_targets.manage"] %>
+</script>
+<%= if @conn.assigns.permissions["project.deployment_targets.manage"] do %>
+    <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+        <div class="bg-white shadow-1 br3 pa3 pa4-l">
+            <h2 class="f3 f2-m pb2 mb4 bb bw1">New Deployment Target</h2>
+            <%= form_for @changeset, deployments_path(@conn, :create, @project.name), [name: :target, as: :target, method: :post], fn form -> %>
+                <div class="bl b--light-gray ml3 pl3" data-element="dtw-container">
+                    <% section_defaults = [conn: @conn, form: form, project_name: @project.name, resources: @resources] %>
+                    <%= for form_section <- form_sections() do %>
+                        <%= render FrontWeb.DeploymentsView, "__section_new.html", Keyword.merge(section_defaults, form_section) %>
+                    <% end %>
+
+                    <details id="dtw-section-done" class="mb3" data-element="dtw-section">
+                        <summary class="db pointer nl4" data-element="dtw-summary">
+                            <div class="flex items-center">
+                                <div class="w2 h2 br-100 bg-light-gray flex items-center justify-around white flex-center mr2" data-element="dtw-bubble">
+                                    <span class="material-symbols-outlined">done</span>
+                                </div>
+                                <div class="b flex items-center light-gray" data-element="dtw-header">Done</div>
+                            </div>
+                        </summary>
+                    </details>
+                </div>
+
+                <div class="mt4">
+                    <div class="flex">
+                        <%= submit "Create", id: "dtw-create-button", class: "btn btn-primary mr3 disabled", type: "button" %>
+                        <%= link "Cancel", to: deployments_path(@conn, :index, @project.name), class: "btn btn-secondary" %>
+                    </div>
+                </div>
+            <% end %>
+        </div>
+    </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+      Sorry, you can’t modify Deployment Targets.<br>
+      Ask organization owner or any of the admins to give you access permission.
+    </p>
+  </div>
+<% end %>

@@ -1,0 +1,9 @@
+=============================================================================================
+Congratulations, Semaphore has been installed successfully!
+
+To start using the app, go to: https://id.{{ .Values.global.domain.name }}/login
+
+You can fetch credentials for the login running this command:
+
+echo "Email: $(kubectl get secret {{ .Values.global.rootUser.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret {{ .Values.global.rootUser.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret {{ .Values.global.rootUser.secretName }} -n {{ .Release.Namespace }} -o jsonpath='{.data.token}' | base64 -d)"
+=============================================================================================

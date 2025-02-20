@@ -1,0 +1,8 @@
+<%= case workflow_condition(@workflow) do %>
+  <% :CONCEIVING -> %>
+    <%= render FrontWeb.SchedulersView, "workflows/conceiving.html", conn: @conn %>
+  <% :MISCARRIED -> %>
+    <%= render FrontWeb.SchedulersView, "workflows/miscarried.html", conn: @conn %>
+  <% :DELIVERED -> %>
+    <%= render FrontWeb.SchedulersView, "workflows/delivered.html", conn: @conn, workflow: @workflow %>
+<% end %>

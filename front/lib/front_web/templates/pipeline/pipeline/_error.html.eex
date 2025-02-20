@@ -1,0 +1,28 @@
+<% alias Front.WorkflowPage.Errors %>
+<% alias Front.WorkflowPage.Errors.StructuredError %>
+
+<%= cond do %>
+  <% Errors.is_structured_error?(@pipeline.error_description) -> %>
+    <% {:ok, err} = StructuredError.parse(@pipeline.error_description) %>
+
+    <%= cond do %>
+      <% StructuredError.missing_branch?(err) -> %>
+        <%= render FrontWeb.PipelineView, "pipeline/_errors_when_missing_branch.html", pipeline: @pipeline, err: err %>
+
+      <% StructuredError.invalid_when?(err) -> %>
+        <%= render FrontWeb.PipelineView, "pipeline/_errors_when.html", pipeline: @pipeline, err: err %>
+
+      <% StructuredError.initialization_failed?(err) -> %>
+        <%= render FrontWeb.PipelineView, "pipeline/_errors_init_failed.html", pipeline: @pipeline, err: err %>
+
+      <% true -> %>
+        <%= render FrontWeb.PipelineView, "pipeline/_errors_unknown.html", pipeline: @pipeline %>
+
+    <% end %>
+
+  <% Errors.tabs_used_for_indentation?(@pipeline.error_description) -> %>
+    <%= render FrontWeb.PipelineView, "pipeline/_errors_tabs.html" %>
+
+  <% true -> %>
+    <%= render FrontWeb.PipelineView, "pipeline/_errors_unknown.html", pipeline: @pipeline %>
+<% end %>

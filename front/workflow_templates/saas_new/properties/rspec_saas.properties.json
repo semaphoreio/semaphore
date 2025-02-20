@@ -1,0 +1,12 @@
+{
+  "title": "RSpec",
+  "description": "Use Bundler, Bundler-audit, RuboCop, and Brakeman to test your Rails app. This CI pipeline uses Knapsack Pro to paralelize your tests. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Rails</span><span class='f6 normal mr1 ph1 br2 bg-indigo white'>RuboCop</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Knapsack</span></div>",
+  "short_description": "Run your Ruby RSpec suite",
+  "group": "ci",
+  "language": "Ruby",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-ruby.svg",
+  "template_path": "templates/rspec_saas.yml",
+  "workflow_tip": "other"
+}

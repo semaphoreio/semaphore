@@ -1,0 +1,94 @@
+version: v1.0
+name: "☕ Java Spring CI Pipeline"
+
+agent:
+  machine:
+    type: {{ machine_type }}  # Machine type optimized for CI/CD
+    os_image: {{ os_image }}
+
+fail_fast:
+  stop:
+    when: branch != 'master'  # Stop execution early for non-master branches
+auto_cancel:
+  running:
+    when: branch != 'master'  # Auto-cancel running pipelines on non-master branches
+  queued:
+    when: branch = 'master'  # Auto-cancel queued pipelines for master branch
+    
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Fetch the latest code from the repository
+      - sem-version java 17  # Use Java 17 for the project
+      - cache restore  # Restore cached dependencies
+
+blocks:
+  - name: "⚙️ Build"
+    task:
+      env_vars:
+        - name: MAVEN_OPTS
+          value: '-Dmaven.repo.local=.m2'  # Use a local Maven repository to speed up builds
+      jobs:
+        - name: "📦 Compile and Package"
+          commands:
+            - 'mvn -q package jmeter:configure -Dmaven.test.skip=true'  # Build and configure the project without running tests
+            - cache store  # Cache the build output for later use
+
+  - name: "🧪 Test"
+    task:
+      env_vars:
+        - name: MAVEN_OPTS
+          value: '-Dmaven.repo.local=.m2'
+      jobs:
+        - name: "✅ Unit Tests"
+          commands:
+            - mvn -q test-compile -Dmaven.test.skip=true  # Compile test code
+            - mvn test  # Run unit tests
+        - name: "🔗 Integration Tests"
+          commands:
+            - mvn -q test-compile -Dmaven.test.skip=true  # Compile test code
+            - mvn test -Pintegration-testing  # Run integration tests with the specific Maven profile
+      epilogue:
+        always:
+          commands:
+            - test-results publish target/surefire-reports/*.xml  # Publish test reports to Semaphore
+
+  - name: "🚀 Performance Tests"
+    task:
+      env_vars:
+        - name: MAVEN_OPTS
+          value: '-Dmaven.repo.local=.m2'
+      jobs:
+        - name: "📊 Benchmark Tests"
+          commands:
+            - java -version  # Confirm Java version
+            - java -jar target/spring-pipeline-demo.jar > /dev/null &  # Start the application in the background
+            - sleep 20  # Wait for the application to initialize
+            - 'mvn -q jmeter:jmeter'  # Run JMeter performance tests
+            - 'mvn jmeter:results'  # Process JMeter test results
+
+  - name: "🐳 Dockerize"
+    task:
+      env_vars:
+        - name: MAVEN_OPTS
+          value: '-Dmaven.repo.local=.m2'  # Use a local Maven repository to speed up builds
+        - name: ENVIRONMENT
+          value: dev  # Environment variable for Docker build
+      secrets:
+        - name: dockerhub  # DockerHub credentials for pushing images
+      jobs:
+        - name: "📦 Docker Build and Push"
+          commands:
+            - 'cache restore spring-pipeline-build-$SEMAPHORE_GIT_BRANCH-$(checksum pom.xml),spring-pipeline-build-$SEMAPHORE_GIT_BRANCH,spring-pipeline-build'  # Restore specific build caches
+            - mvn -q package -Dmaven.test.skip=true  # Build the application without running tests
+            - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin  # Log in to DockerHub
+            - 'docker pull "$DOCKER_USERNAME"/semaphore-demo-java-spring:latest || true'  # Pull the latest Docker image for caching
+            - 'docker build --cache-from "$DOCKER_USERNAME"/semaphore-demo-java-spring:latest --build-arg ENVIRONMENT="${ENVIRONMENT}" -t "$DOCKER_USERNAME"/semaphore-demo-java-spring:latest .'  # Build the Docker image with caching
+            - 'docker push "$DOCKER_USERNAME"/semaphore-demo-java-spring:latest'  # Push the new image to DockerHub
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "📊 Merge Reports"
+        commands:
+          - test-results gen-pipeline-report  # Generate a unified test report for all test results

@@ -1,0 +1,24 @@
+
+<% {gtag_enabled?, gtag} = gtag_enabled?(@conn) %>
+<%= if gtag_enabled? do %>
+  <script async nonce="<%= @conn.assigns[:script_src_nonce] %>" type="text/javascript" src="https://www.googletagmanager.com/gtag/js?id=<%= gtag %>"></script>
+  <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    var userID = "<%= @conn.assigns[:user_id] %>";
+
+    if(localStorage.getItem("signUpRecorded") === "yes") {
+      console.log("t-skipped: " + userID);
+    } else {
+      console.log("t-staring: " + userID);
+
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', '<%= gtag %>', {'user_id': userID });
+      gtag("event", "sign_up");
+
+      console.log("t-finishing: " + userID);
+
+      localStorage.setItem("signUpRecorded", "yes")
+    }
+  </script>
+<% end %>

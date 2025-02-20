@@ -1,0 +1,6 @@
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.AgentsConfig = <%= raw json_config(@conn, @activity) %>
+</script>
+<div id="agents-app">
+</div>

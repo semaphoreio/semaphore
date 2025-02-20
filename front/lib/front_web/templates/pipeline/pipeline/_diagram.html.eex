@@ -1,0 +1,15 @@
+<%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, @conn.assigns[:organization_id]) do %>
+  <svg
+    pipeline="<%= @pipeline.id %>"
+    nodes="<%= Poison.encode!(nodes(@pipeline.blocks, @conn)) %>"
+    edges="<%= Poison.encode!(edges(@pipeline.blocks)) %>"
+    indirect_edges="<%= Poison.encode!(indirect_edges(@pipeline.blocks)) %>"></svg>
+<% else %>
+  <svg
+    pipeline="<%= @pipeline.id %>"
+    nodes="<%= Poison.encode!(nodes(@pipeline.blocks, @conn)) %>"
+    edges="<%= Poison.encode!(edges(@pipeline.blocks)) %>"></svg>
+<% end %>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  InteractivePipelineTree.redrawDiagrams("<%= @pipeline.id %>")
+</script>

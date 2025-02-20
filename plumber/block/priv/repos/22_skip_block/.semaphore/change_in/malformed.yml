@@ -1,0 +1,14 @@
+version: "v1.0"
+name: Malformed change_in call
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Block 1
+    skip:
+      when: "change_in('1.txt', 'this is invalid param')"
+    task:
+      jobs:
+        - commands:
+            - echo 123

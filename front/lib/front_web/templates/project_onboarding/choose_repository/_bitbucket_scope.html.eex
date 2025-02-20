@@ -1,0 +1,23 @@
+<div class="pt4 pb4">
+  <div class="relative mw7 center">
+    <div>
+      <img src="<%= image_source("ill-curious-girl.svg") %>" alt="curious girl" class="db center">
+      <p class="f4 f3-m tc mt3">Connect your Bitbucket repositories</p>
+    </div>
+
+    <div class="flex-m nh3">
+      <div class="center w-50-m ma3">
+        <%= link to: bitbucket_update_scope_path(@conn, :bitbucket), method: :post, class: "db btn btn-secondary" do %>
+          <div class="tc pv4-m">
+            <div class="flex items-center justify-center f3 b">
+              <svg class="mr2" height="16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m.75 1.03245833c-.14770886-.00186341-.28870022.06164481-.38515321.17353028-.096453.11188547-.13849446.26069532-.11484679.40651139l2.1225 12.885c.05458753.3254738.33499161.564766.665.567542h10.1825c.2476964.003146.4603858-.1755131.5-.420042l2.1225-13.03c.0236477-.14581607-.0183938-.29462592-.1148468-.40651139s-.2374443-.17539369-.3851532-.17348861zm8.9375 9.31254167h-3.25l-.88-4.5975h4.9175z"></path></svg>
+              <span>All repositories</span>
+            </div>
+            <p class="f4 measure center mb0">Import my public &amp; private repositories</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <p class="f6 black-60 measure center mv3 tc">We’ll take you to Bitbucket to confirm.<br> You can always change this later.</p>
+  </div>
+</div>

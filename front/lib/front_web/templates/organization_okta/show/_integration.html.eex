@@ -1,0 +1,23 @@
+<h1 class="f3 f2-m mb0">Okta Integration</h1>
+<p>Single Sign-On with SAML and automatic user provisioning with SCIM. <a href="https://docs.semaphoreci.com/security/okta">Docs: Okta Integration</a>.</p>
+
+<div>
+    <div class="flex justify-between items-center">
+        <div>
+            <div class="dib bg-green white ph1 br2">Connected</div>
+        </div>
+        <%= if @permissions["organization.okta.manage"] do %>
+          <div class="button-group">
+            <a class="btn btn-small btn-secondary" href="<%=organization_okta_path(@conn, :form) %>">Edit</a>
+            <a class="btn btn-small btn-secondary hover-red" href="<%=organization_okta_path(@conn, :disconnect_notice, @integration.id) %>">Disconnect</a>
+          </div>
+        <% end %>
+    </div>
+</div>
+
+<div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+  <div class="flex items-center justify-between">
+    <div class="b">Connected Members</div>
+    <div><%= @no_of_okta_members %></div>
+  </div>
+</div>

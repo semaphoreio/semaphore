@@ -1,0 +1,119 @@
+apiVersion: v2
+name: semaphore
+description: A Helm chart for installing Semaphore CI
+type: application
+version: "@chartVersion@"
+appVersion: ""
+dependencies:
+  - name: emissary-ingress
+    version: "8.9.1"
+    repository: https://app.getambassador.io
+  - name: controller
+    version: "0.2.4"
+    repository: https://renderedtext.github.io/helm-charts
+    condition: controller.install
+  - name: artifacthub
+    version: "@chartVersion@"
+    repository: "file://../artifacthub/helm"
+  - name: auth
+    version: "@chartVersion@"
+    repository: "file://../auth/helm"
+  - name: bootstrapper
+    version: "@chartVersion@"
+    repository: "file://../bootstrapper/helm"
+  - name: guard
+    version: "@chartVersion@"
+    repository: "file://../guard/helm"
+  - name: gofer
+    version: "@chartVersion@"
+    repository: "file://../ee/gofer/helm"
+    tags:
+      - enterprise
+  - name: secrethub
+    version: "@chartVersion@"
+    repository: "file://../secrethub/helm"
+  - name: self-hosted-hub
+    version: "@chartVersion@"
+    repository: "file://../self_hosted_hub/helm"
+  - name: loghub2
+    version: "@chartVersion@"
+    repository: "file://../loghub2/helm"
+  - name: keycloak
+    version: "@chartVersion@"
+    repository: "file://../keycloak/image/helm"
+  - name: keycloak-setup
+    version: "@chartVersion@"
+    repository: "file://../keycloak/setup/helm"
+  - name: periodic-scheduler
+    version: "@chartVersion@"
+    repository: "file://../periodic_scheduler/scheduler/helm"
+  - name: projecthub
+    version: "@chartVersion@"
+    repository: "file://../projecthub/helm"
+  - name: projecthub-public
+    version: "@chartVersion@"
+    repository: "file://../projecthub-rest-api/helm"
+  - name: public-api-gateway
+    version: "@chartVersion@"
+    repository: "file://../public-api-gateway/helm"
+  - name: repository_hub
+    version: "@chartVersion@"
+    repository: "file://../repository_hub/helm"
+  - name: github_hooks
+    version: "@chartVersion@"
+    repository: "file://../github_hooks/helm"
+  - name: notifications
+    version: "@chartVersion@"
+    repository: "file://../notifications/helm"
+  - name: zebra
+    version: "@chartVersion@"
+    repository: "file://../zebra/helm"
+  - name: front
+    version: "@chartVersion@"
+    repository: "file://../front/helm"
+  - name: badges
+    version: "@chartVersion@"
+    repository: "file://../badge/helm"
+  - name: branch_hub
+    version: "@chartVersion@"
+    repository: "file://../branch_hub/helm"
+  - name: hooks-receiver
+    version: "@chartVersion@"
+    repository: "file://../hooks_receiver/helm"
+  - name: dashboardhub
+    version: "@chartVersion@"
+    repository: "file://../dashboardhub/helm"
+  - name: hooks-processor
+    version: "@chartVersion@"
+    repository: "file://../hooks_processor/helm"
+  - name: plumber
+    version: "@chartVersion@"
+    repository: "file://../plumber/ppl/helm"
+  - name: plumber-public
+    version: "@chartVersion@"
+    repository: "file://../public-api/v1alpha/helm"
+  - name: public-api
+    version: "@chartVersion@"
+    repository: "file://../public-api/v2/helm"
+  - name: rbac
+    version: "@chartVersion@"
+    repository: "file://../rbac/ce/helm"
+  - name: repohub
+    version: "@chartVersion@"
+    repository: "file://../repohub/helm"
+  - name: scouter
+    version: "@chartVersion@"
+    repository: "file://../scouter/helm"
+  - name: github-notifier
+    version: "@chartVersion@"
+    repository: "file://../github_notifier/helm"
+  - name: pre-flight-checks-hub
+    version: "@chartVersion@"
+    repository: "file://../ee/pre_flight_checks/helm"
+    tags:
+      - enterprise
+  - name: velocity-hub
+    version: "@chartVersion@"
+    repository: "file://../ee/velocity/helm"
+    tags:
+      - enterprise

@@ -1,0 +1,55 @@
+image: front
+imageTag: latest
+imagePullSecrets: []
+
+featureFlags:
+  mountPath: "/home/front/app/features.yml"
+
+gettingStarted:
+  mountPath: "/home/front/app/getting-started.yml"
+
+workflowTemplates:
+  mountPath: "/home/front/app/workflow_templates/ce"
+
+redis:
+  poolSize: 5
+
+projectPage:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 700Mi
+    requests:
+      cpu: '0.2'
+      memory: 300Mi
+
+jobPage:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 500Mi
+    requests:
+      cpu: '0.2'
+      memory: 200Mi
+
+cacheReactor:
+  env: "local"
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 500Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

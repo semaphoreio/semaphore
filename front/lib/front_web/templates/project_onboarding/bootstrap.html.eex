@@ -1,0 +1,7 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  InjectedDataByBackend.NewProjectBootstrapConfig = <%= raw json_config_bootstrap(@conn) %>;
+</script>
+
+
+ <div class="" id="new-project-app">
+ </div>

@@ -1,0 +1,83 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.FilterOptions = <%= raw Poison.encode!([]) %>;
+  window.InjectedDataByBackend.BranchUrl = "<%= project_path(@conn, :filtered_branches, @project.name, with_archived: true) %>";
+  window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>";
+</script>
+<style>
+  .branch-jumpto {
+      position: relative;
+  }
+  .branch-jumpto input {
+      position:relative;
+      z-index:2;
+  }
+  .branch-jumpto input:focus {
+      outline: none;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+  }
+  .branch-jumpto .jumpto-results {
+      position: absolute;
+      left: 1px;
+      font-size: 15px;
+      background-color: #fff;
+      width: 11rem;
+      border-radius: 5px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+      max-height: 300px;
+      overflow: auto;
+      z-index: 1;
+  }
+  .branch-jumpto .jumpto-results .autocomplete-result {
+      display: flex;
+      align-items: center;
+      padding: 3px 8px;
+      color: #2e3637;
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+  }
+  .branch-jumpto .jumpto-results .autocomplete-result:hover {
+      background-color: #cef1c8;
+  }
+  .branch-jumpto .jumpto-results .autocomplete-result img {
+      flex-shrink: 0;
+  }
+
+  .branch-jumpto .jumpto-results span[aria-selected="true"],
+  .branch-jumpto .jumpto-results span[aria-selected="true"]:hover,
+  .branch-jumpto .jumpto-results span:focus,
+  .branch-jumpto .jumpto-results span:active {
+      background-color: #00a569;
+      color: #fff;
+  }
+</style>
+<div class="flex flex-column item-start mb1">
+  <div class="flex flex-wrap items-center mh4 mv1">
+    <div class="flex items-center mv1">
+      <div class="branch-jumpto">
+        <input type="text" class="form-control mr2" placeholder="Find by branch name…"
+                        data-key="branch_name" value="<%= @page_args[:filters].branch_name %>">
+        <input type="hidden" class="form-control" placeholder="Find…">
+        <div class="jumpto-results"></div>
+      </div>
+      <div>
+        <input type="text" class="form-control mr2" placeholder="Find by pipeline file…"
+                        data-key="pipeline_file" value="<%= @page_args[:filters].pipeline_file %>">
+      </div>
+      <select data-key="triggered_by" class="db form-control mr2">
+        <%= options_for_select([
+                        "By everyone": "",
+                    "By me": @conn.assigns.user_id],
+                    @page_args[:filters].triggered_by) %>
+      </select>
+      <%= render FrontWeb.SchedulersView, "history/datetime.html",
+            conn: @conn, project: @project, page_args: @page_args,
+            options: [
+                %{name: "1 month ago", timestamp: Timex.shift(Timex.now, months: -1)},
+                %{name: "3 months ago", timestamp: Timex.shift(Timex.now, months: -3)},
+                %{name: "6 months ago", timestamp: Timex.shift(Timex.now, months: -6)}
+            ] %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,17 @@
+<div class="mw6 center pv5-m">
+  <h1 class="f3 lh-title mb1">Well done, we found the existing configuration!</h1>
+  <p class="mb4">Looks like you already have <code class="f6 ba ph1 br2">.yml</code> configuration in this project.<br class="dn di-m"> What would you like to do?</p>
+  <div class="">
+    <div class="mv3">
+      <a href="<%= project_path(@conn, :show, @project.name) %>" class="db f4 mb1">I will use the existing configuration</a>
+      <p class="mb0 measure">We’ll take you directly to the project, but don’t forget to push to repository to see your work running there.</p>
+    </div>
+    <div class="f6 w2 h2 flex items-center justify-center ba br-100">
+      or
+    </div>
+    <div class="mv3">
+      <a href="<%= project_onboarding_path(@conn, :template, @project.name) %>" class="db f4 mb1">I want to configure this project from scratch</a>
+      <p class="mb0 measure">We’ll take you through the usual setup process</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,20 @@
+<%= unless is_nil(@pipeline.env_vars) or Enum.empty?(@pipeline.env_vars) do %>
+  <% overlay_id = "#{@pipeline.id}-env-vars" %>
+  <a href="#" class="link dark-gray underline" data-action="open-overlay" data-overlay-id="<%= overlay_id %>">
+    <%= pluralize("parameter", Enum.count(@pipeline.env_vars)) %>
+  </a>
+  <span class="mh1">&middot;</span>
+  <div id="<%= overlay_id %>" style="display: none;">
+    <div class="bg-white popup w-40 br3 pa3 tl">
+      <h3 class="mb0">Parameters overview</h3>
+      <p class="f4">This list shows the parameters that were forwarded to the selected pipeline.</p>
+      <%= for env_var <- @pipeline.env_vars do %>
+        <div class="flex justify-between pv2 ph2 bb b--black-10 hover-bg-washed-gray">
+          <div class="flex items-center"><span class="gray"><%= env_var.name %></span></div>
+          <div><span class="gray"><%= env_var.value %></span></div>
+        </div>
+      <% end %>
+      <button type="button" class="btn btn-secondary" data-action="close-overlay">Close</button>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,20 @@
+<%= if @can_delete do %>
+  <h2 class="f00 mb1">☠️</h2>
+  <h3 class="f3 f2-m mb1">Delete <%= @organization.name %> organization?</h2>
+
+  <p class="mb4">You have to delete all projects first, to be able to delete the organization forever. Jump to each project from the list below and come back to delete the organization.</p>
+
+  <ul class="mt3">
+    <%= Enum.map(@projects, fn p -> %>
+      <li>
+        <%= link p.name, to: project_path(@conn, :show, p.name) %>
+      </li>
+    <% end) %>
+  </ul>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Organization Settings.<br>
+      Ask organization owner or any of the admins to give you access.</p>
+  </div>
+<% end %>

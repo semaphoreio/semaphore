@@ -1,0 +1,91 @@
+version: v1.0  # Semaphore configuration version
+name: "🐹 Go CI Pipeline"  # Pipeline display name
+
+agent:
+  machine:
+    type: {{ machine_type }}  # Define the machine type (e.g., e1-standard-2)
+    os_image: {{ os_image }}  # Specify the OS image (e.g., ubuntu2004)
+
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop execution early for non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Fetch the latest code from the repository
+      - sem-version go 1.21  # Use Go version 1.21
+      - export GOPATH=~/go  # Set Go path
+      - export PATH=/home/semaphore/go/bin:$PATH  # Update PATH with Go bin directory
+      - cache restore  # Restore cached dependencies to save time
+      - go mod download  # Download project dependencies
+      - go install gotest.tools/gotestsum@latest  # Install gotestsum for enhanced test output
+
+blocks:
+  - name: "🛠️ Setup and Cache"
+    dependencies: []
+    task:
+      jobs:
+        - name: "📦 Install Dependencies"
+          commands:
+            - go install golang.org/x/lint/golint@latest  # Install linter
+            - go install honnef.co/go/tools/cmd/staticcheck@latest  # Install static checker
+            - cache store  # Save the current state of dependencies for future runs
+
+  - name: "🔍 Code Quality"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "✨ Lint and Vet"
+          commands:
+            - golint ./...  # Run linter to enforce coding standards
+            - go vet ./...  # Run vet tool to detect issues
+            - staticcheck ./...  # Perform static analysis
+            - go fmt ./...  # Ensure code is formatted correctly
+
+  - name: "🔐 Security Checks"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "🛡️ Security Scan"
+          commands:
+            - go install golang.org/x/vuln/cmd/govulncheck@latest  # Install vulnerability scanner
+            - govulncheck ./...  # Check for known vulnerabilities in dependencies
+
+  - name: "🧪 Test Suite"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      env_vars:
+        - name: GO_TEST_REPORT
+          value: "test-results.xml"  # Define the test report output path
+      jobs:
+        - name: "🟢 Go Test"
+          parallelism: 4  # Run tests across 4 parallel jobs for efficiency
+          commands:
+            - gotestsum --junitfile=$GO_TEST_REPORT -- -coverprofile=coverage.txt -covermode=atomic ./...  # Run tests with coverage and generate JUnit report
+            - go tool cover -func=coverage.txt  # Display coverage report
+      epilogue:
+        always:
+          commands:
+            - test-results publish $GO_TEST_REPORT  # Publish test results to Semaphore
+
+  - name: "📦 Build"
+    dependencies: ["🧪 Test Suite"]
+    task:
+      jobs:
+        - name: "🔨 Build Binary"
+          commands:
+            - GOOS=linux GOARCH=amd64 go build -o bin/app  # Build for Linux
+            - GOOS=darwin GOARCH=amd64 go build -o bin/app-darwin  # Build for macOS
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "Merge Reports 📊"
+        commands:
+          - test-results gen-pipeline-report  # Generate a summary report of test results

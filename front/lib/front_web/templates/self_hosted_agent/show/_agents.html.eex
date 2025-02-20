@@ -1,0 +1,33 @@
+<div id="self-hosted-agents">
+  <%= Enum.map(@agents, fn agent -> %>
+    <div class="shadow-1 bg-white pa3 mv3 br3">
+      <div class="pl2-l">
+        <div>
+          <div class="flex-l items-center justify-between">
+            <h3 class="f4 mb1">
+              <span class="green">●</span>
+              <%= agent.name %>
+            </h3>
+            <div class="f5 gray mb0">
+              <% conn_at = Timex.from_unix(agent.connected_at.seconds) %>
+              <%= if is_latest?(agent.version) do %>
+                <%= agent.version %>
+              <% else %>
+                <span class="orange" data-tippy-content="A new version <%= latest_agent_version() %> is available.">⚠️ <%= agent.version %></span>
+              <% end %>
+              · Connected <%= Timex.from_now(conn_at) %> ·
+              <%= if !agent.disabled do %>
+                <%= link "Disconnect", to: self_hosted_agent_confirm_disable_path(@conn, :confirm_disable, @agent_type.name, agent.name), class: "gray disable-self-hosted-agent" %>
+              <% else %>
+                <span class="gray">Already disconnected</span>
+              <% end %>
+            </div>
+          </div>
+          <div class="f5 gray mb0">
+            <%= agent.os %> · <%= agent.ip_address %> · PID: <%= agent.pid %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end) %>
+</div>

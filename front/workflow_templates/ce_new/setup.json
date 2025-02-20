@@ -1,0 +1,87 @@
+{
+  "groups": [
+    {
+      "label": "Blank",
+      "name": "blank"
+    },
+    {
+      "label": "CI Workflows",
+      "name": "ci"
+    },
+    {
+      "label": "Deployment Workflows",
+      "name": "cd"
+    }
+  ],
+  "filters": [
+   {
+      "label": "Environment",
+      "type": "radio",
+      "searchField": "environment",
+      "options": [
+        {
+          "value": "docker",
+          "label": "Docker"
+        },
+        {
+          "value": "linux",
+          "label": "Linux"
+        },
+        {
+          "value": "macos",
+          "label": "Mac OS"
+        }
+      ]
+    },
+    {
+      "label": "Use case",
+      "type": "multiple",
+      "searchField": "tags",
+      "options": [
+        {
+          "value": "ci_pipeline",
+          "label": "CI Pipeline"
+        },
+        {
+          "value": "security_checks",
+          "label": "Security Checks"
+        },
+        {
+          "value": "delivery",
+          "label": "Delivery"
+        },
+        {
+          "value": "deployment",
+          "label": "Deployment"
+        }
+      ]
+    },
+    {
+      "label": "Language",
+      "type": "multiple",
+      "searchField": "language",
+      "options": [
+        {
+          "value": "ruby",
+          "label": "Ruby"
+        },
+        {
+          "value": "python",
+          "label": "Python"
+        },
+        {
+          "value": "javascript",
+          "label": "JavaScript"
+        },
+        {
+          "value": "java",
+          "label": "Java"
+        },
+        {
+          "value": "golang",
+          "label": "Go"
+        }
+      ]
+    }
+  ]
+}

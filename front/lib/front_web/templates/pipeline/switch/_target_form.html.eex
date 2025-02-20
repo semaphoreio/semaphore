@@ -1,0 +1,121 @@
+<form action="<%= target_path(@conn, :trigger, @workflow.id, @pipeline.id, @switch.id, @target.name) %>" hidden data-promotion-target="<%= @target.name %>" promote-confirmation class="bg-washed-yellow pv2 br2 ba b--black-15">
+  <div class="f5 b flex items-center bb b--black-15 pb2 mb2 ph3"><img src=<%= image_source("icn-deploy.svg") %> class="mr2">Promote to <%= @target.name %>?</div>
+
+  <%= if length(@target.parameters) > 0 do %>
+    <div class="mb2 ph3 bb b--black-15">
+      <%= Enum.map(@target.parameters, fn param -> %>
+        <div class="mb2">
+          <div class="flex justify-between items-baseline">
+            <label for="<%= param.name %>" class="db f6 b mb1"><%= param.name %></label>
+
+            <%= if param.required do %>
+              <small class="f7 gray">required</small>
+            <% else %>
+              <small class="f7 gray">optional</small>
+            <% end %>
+          </div>
+
+          <%= if param.options == [] do %>
+            <input
+              name="parameters[<%= param.name %>]"
+              id="<%= param.name %>"
+              type="text"
+              class="form-control form-control-small w-100"
+              <%= if param.default_value do %>value="<%= param.default_value %>"<% end %>
+              <%= if param.required do %>required<% end %>
+              >
+          <% else %>
+            <select
+             name="parameters[<%= param.name %>]"
+             id="<%= param.name %>"
+             <%= if param.required do %>required<% end %>
+             data-promotion-param-name="<%= param.name %>"
+             autocomplete="off"
+            >
+              <%= ([param.default_value] ++ param.options) |> Enum.uniq() |> Enum.map(fn o -> %>
+                <%= cond do %>
+                <% param.default_value == o and o == "" and !param.required -> %>
+                  <option hidden disabled selected value> -- select an option -- </option>
+                <% param.default_value == o and o == "" and param.required -> %>
+                  <option selected value><span class="gray">(default empty value)</span></option>
+                <% param.default_value == o -> %>
+                  <option selected value="<%= o %>"><%= o %> <span class="gray">(default)</span></option>
+                <% true -> %>
+                  <option value="<%= o %>"><%= o %></option>
+                <% end %>
+              <% end) %>
+            </select>
+          <% end %>
+
+          <p class="f7 gray mt1 mb0"><%= param.description %></p>
+        </div>
+      <% end) %>
+    </div>
+  <% end %>
+
+  <div class="ph3 pv1">
+    <button confirm-promotion
+            data-switch="<%= @switch.id %>"
+            data-promotion-target="<%= @target.name %>"
+            class="btn btn-primary btn-small mr2">
+            Start promotion
+    </button>
+
+    <button quit-promotion data-switch="<%= @switch.id %>" data-promotion-target="<%= @target.name %>" class="btn btn-secondary btn-small">Nevermind</button>
+  </div>
+</form>
+
+<style>
+.ts-control {
+  font-size: .9375rem;
+  border-radius: 6px;
+  line-height: 1.5;
+  box-shadow: '0 0 0 1px rgba(0,0,0,.2),inset 0 1px 1px 0 #e5e8ea';
+  padding: 0px 0px;
+
+  > input {
+    font-size: .9375rem;
+    border-radius: 6px;
+    line-height: 1.5;
+    padding: 3px 8px !important;
+  }
+
+  .item {
+    font-size: .9375rem;
+    border-radius: 6px;
+    line-height: 1.5;
+    padding: 3px 8px !important;
+  }
+}
+
+.plugin-dropdown_input .dropdown-input {
+  background: transparent;
+  border: solid #d0d0d0;
+  border-radius: 6px;
+  border-width: 0 0 1px;
+  box-shadow: none;
+  display: block;
+  padding: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dropdown-input-wrap {
+  border-radius: 6px;
+}
+
+.ts-dropdown {
+  background: #fff;
+  border-top: 0;
+  border: solid #d0d0d0;
+  border-radius: 6px;
+  border-width: 0 0 1px;
+  left: 0;
+  margin: .25rem 0 0;
+  position: absolute;
+  top: 100%;
+  width: 100%;
+  z-index: 10;
+}
+
+</style>

@@ -1,0 +1,19 @@
+<div style="display: none;">
+  <div id="jobSettings">
+    <div id="job-log-settings" class="f6 pa2">
+      <div class="b mv1 ph2">Log display settings</div>
+      <label class="flex items-center pv1 ph2 br2 pointer hover-bg-lightest-blue">
+        <input type="checkbox" id="job-log-dark" name="job-log-dark" data-action="toggleDarkTheme" <%= if @log_state[:dark], do: "checked" %>>
+        <span class="ml1">Dark Theme</span>
+      </label>
+      <label class="flex items-center pv1 ph2 br2 pointer hover-bg-lightest-blue">
+        <input type="checkbox" id="job-wrap-lines" name="job-wrap-lines" data-action="toggleWrapLines" <%= if @log_state[:wrap], do: "checked" %>>
+        <span class="ml1">Wrap Lines</span>
+      </label>
+      <label class="flex items-center pv1 ph2 br2 pointer hover-bg-lightest-blue">
+        <input type="checkbox" id="job-sticky-commands" name="job-sticky-commands" data-action="toggleStickyCommands" <%= if @log_state[:sticky], do: "checked" %>>
+        <span class="ml1">Sticky Commands</span>
+      </label>
+    </div>
+  </div>
+</div>

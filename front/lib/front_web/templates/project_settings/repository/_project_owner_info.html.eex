@@ -1,0 +1,54 @@
+<div class="mb1">
+  <label class="b mr1">OAuth API token owner</label>
+  <%= if @project_token do %>
+    <%= if @project_token.valid do %>
+      <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+    <% else %>
+      <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">&nbsp;
+      <span class="f5 fw5 red">Failed to establish connection</span>
+    <% end %>
+  <% end %>
+</div>
+<div class="flex items-center">
+  <img src="<%= @project_owner.avatar_url %>" class="br-100 mr2 ba b--black-50" width="32">
+  <div class="f5 f4-m"><%= @project_owner.name %></div>
+</div>
+
+<%= if @project_token do %>
+  <%= if @project_owner.id == @conn.assigns.user_id do %>
+    <%= if @project_token.valid do %>
+      <p class="f6 measure-wide mt2 mb0">You are the owner of the OAuth API token, usually the one who created the project originally. You can change it in <a href="<%= project_settings_path(@conn, :general, @project.name) %>">general settings</a>.</p>
+    <% else %>
+      <%= if @project_token.scope == :ONLY_PUBLIC do %>
+        <p class="f6 measure-wide mt2 mb3">There’s a connection issue. Looks like you revoked the access to private repositories for Semaphore on GitHub.</p>
+        <p class="f6 mv2">
+          Please check the connection between Semaphore and GitHub in <a href="<%= "//me.#{Application.get_env(:front, :domain)}/account" %>">account settings</a>.
+        </p>
+      <% else %>
+        <p class="f6 measure-wide mt2 mb3">There’s a connection issue. Looks like you revoked the access for Semaphore on GitHub.</p>
+        <p class="f6 mv2">
+          Please check the connection between Semaphore and GitHub in <a href="<%= "//me.#{Application.get_env(:front, :domain)}/account" %>">account settings</a>.
+        </p>
+      <% end %>
+    <% end %>
+  <% else %>
+    <%= if @project_token.valid do %>
+      <p class="f6 measure-wide mt2 mb0">This person is the owner of the OAuth API token, usually the one who created the project originally. You can change it in <a href="<%= project_settings_path(@conn, :general, @project.name) %>">general settings</a>.</p>
+    <% else %>
+      <%= if @project_token.scope == :ONLY_PUBLIC do %>
+        <p class="f6 measure-wide mt2 mb3">There’s a connection issue. Looks like the owner of the OAuth API token (usually the original project creator) revoked the access to private repositories for Semaphore on GitHub.</p>
+        <p class="f6 mv2">
+          Please ask them to check the connection between Semaphore and GitHub in <a href="<%= "//me.#{Application.get_env(:front, :domain)}/account" %>">account settings</a>.
+        </p>
+      <% else %>
+        <p class="f6 measure-wide mt2 mb3">There’s a connection issue. Looks like the owner of the OAuth API token (usually the original project creator) is no longer with your organization.</p>
+        <p class="f6 mv2">
+          To update the OAuth API token owner and unblock the pipelines — <a href="<%= support_path(@conn, :new) %>">Contact Us</a>
+        </p>
+        <p class="f6 mv2">
+          If OAuth API token owner is a member of your organization, please ask them to check the connection between Semaphore and GitHub in <a href="<%= "//me.#{Application.get_env(:front, :domain)}/account" %>">account settings</a>.
+        </p>
+      <% end %>
+    <% end %>
+  <% end %>
+<% end %>

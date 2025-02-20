@@ -1,0 +1,15 @@
+{
+  "title": "yarn",
+  "description": "Test your JS project with yarn",
+  "category": "JavaScript",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Node.js version set to 8",
+    "Code checkout",
+    "yarn install",
+    "yarn test"
+  ],
+  "icon": "lang-yarn.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/yarn.yml"
+}

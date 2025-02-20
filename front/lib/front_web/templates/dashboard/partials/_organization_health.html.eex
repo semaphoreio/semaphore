@@ -1,0 +1,7 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.OrganizationHealthConfig = <%= raw json_config(@conn) %>
+</script>
+
+
+<div id="organization-health-app">
+</div>

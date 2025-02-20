@@ -1,0 +1,19 @@
+version: v1.0
+name: Pipeline with task_file property
+agent:
+  machine:
+    type: foo
+    os_image: bar
+blocks:
+  - name: Block 1
+    dependencies: []
+    task_file: block1task.yaml
+  - name: Block 2
+    dependencies: []
+    task:
+      jobs:
+        - commands:
+            - echo foo
+  - name: Block 3
+    dependencies: []
+    task_file: block3task.yaml

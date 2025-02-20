@@ -1,0 +1,6 @@
+apiVersion: v2
+name: scouter
+description: A Helm chart for deploying Semaphore scouter application
+type: application
+version: "@chartVersion@"
+appVersion: ""

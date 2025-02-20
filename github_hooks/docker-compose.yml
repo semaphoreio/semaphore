@@ -1,0 +1,115 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: github_hooks
+    image: ${IMAGE:-github_hooks-app}:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        - BUILD_ENV=development
+    command: "bundle exec spring server"
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    links:
+      - db:db
+      - redis:redis
+      - rabbitmq:rabbitmq
+      - sidecar_encryptor:sidecar_encryptor
+    environment:
+      IN_DOCKER: "true"
+      POSTGRES_DB_NAME: "front"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: 1
+      BASE_DOMAIN: "semaphore.test"
+      ENCRYPTOR_URL: "sidecar_encryptor:50052"
+      AMQP_URL: "amqp://rabbitmq:5672"
+      REDIS_SIDEKIQ_URL: "redis://redis:6379"
+      REDIS_JOB_LOGS_URL: "redis://redis:6379"
+      INTERNAL_API_URL_RBAC: "localhost:50051"
+      INTERNAL_API_URL_PLUMBER: "localhost:50051"
+      INTERNAL_API_URL_REPOSITORY: "localhost:50051"
+      INTERNAL_API_URL_HOOKS: "localhost:50051"
+      LOG_LEVEL: "debug"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+
+  db:
+    image: "postgres:9.6"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: "redis:7"
+    entrypoint: "redis-server --appendonly yes"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  pgweb:
+    container_name: pgweb
+    image: sosedoff/pgweb:0.14.1
+    restart: always
+    links:
+      - db:db
+    environment:
+      DATABASE_URL: "postgres://postgres:the-cake-is-a-lie@db:5432/front?sslmode=disable"
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  sidecar_encryptor:
+    build:
+      context: ../encryptor
+      dockerfile: Dockerfile
+      cache_from:
+        - "${REGISTRY_HOST:-local}/encryptor/${BRANCH:-master}:${IMAGE_TAG:-prod}"
+      args:
+        - APP_NAME=encryptor
+    expose:
+      - "50052"
+    environment:
+      START_API: "yes"
+      GRPC_API_PORT: "50052"
+      ENCRYPTOR_TYPE: "no-op"
+
+volumes:
+  postgres-data:
+    driver: local

@@ -1,0 +1,89 @@
+{
+   "ref": "refs/heads/master",
+   "after": "f204bcfa19af28bdaa1aab0550caf8a79641e9ab",
+   "before": "b36d7ccb212416b0920f8e4d732656214b7d4a73",
+   "created": false,
+   "deleted": false,
+   "forced": false,
+   "compare": "https://github.com/BackerKit/BackerKit/compare/b36d7ccb2124...f204bcfa19af",
+   "commits": [
+     {
+       "id": "f204bcfa19af28bdaa1aab0550caf8a79641e9ab",
+       "distinct": true,
+       "message": "add shippo customs item creator back",
+       "timestamp": "2014-05-14T10:27:41-07:00",
+       "url": "https://github.com/BackerKit/BackerKit/commit/f204bcfa19af28bdaa1aab0550caf8a79641e9ab",
+       "author": {
+         "name": "Dan Hansen & Maxwell Salzberg",
+         "email": "pair+dan+maxwell@backerkit.com"
+       },
+       "committer": {
+         "name": "Dan Hansen & Maxwell Salzberg",
+         "email": "pair+dan+maxwell@backerkit.com"
+       },
+       "added": [
+         "app/workers/shippo_customs_item_creator_worker.rb"
+       ],
+       "removed": [],
+       "modified": [
+         "app/controllers/admin/skus_controller.rb"
+       ]
+     }
+   ],
+   "head_commit": {
+     "id": "f204bcfa19af28bdaa1aab0550caf8a79641e9ab",
+     "distinct": true,
+     "message": "add shippo customs item creator back",
+     "timestamp": "2014-05-14T10:27:41-07:00",
+     "url": "https://github.com/BackerKit/BackerKit/commit/f204bcfa19af28bdaa1aab0550caf8a79641e9ab",
+     "author": {
+       "name": "Dan Hansen & Maxwell Salzberg",
+       "email": "pair+dan+maxwell@backerkit.com"
+     },
+     "committer": {
+       "name": "Dan Hansen & Maxwell Salzberg",
+       "email": "pair+dan+maxwell@backerkit.com"
+     },
+     "added": [
+       "app/workers/shippo_customs_item_creator_worker.rb"
+     ],
+     "removed": [],
+     "modified": [
+       "app/controllers/admin/skus_controller.rb"
+     ]
+   },
+   "repository": {
+     "id": 6233227,
+     "name": "BackerKit",
+     "url": "https://github.com/BackerKit/BackerKit",
+     "description": "It\'s BackerKit!",
+     "homepage": "www.backerkit.com",
+     "watchers": 2,
+     "stargazers": 2,
+     "forks": 0,
+     "fork": false,
+     "size": 81036,
+     "owner": {
+       "name": "BackerKit",
+       "email": ""
+     },
+     "private": true,
+     "open_issues": 0,
+     "has_issues": true,
+     "has_downloads": true,
+     "has_wiki": true,
+     "language": "Ruby",
+     "created_at": 1350330634,
+     "pushed_at": 1400088466,
+     "master_branch": "master",
+     "organization": "BackerKit"
+   },
+   "sender": {
+     "id": 123,
+     "login": "octocat"
+   },
+   "pusher": {
+     "name": "maxwell",
+     "email": "maxwell@backerkit.com"
+   }
+}

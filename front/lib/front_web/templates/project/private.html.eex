@@ -1,0 +1,12 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+window.InjectedDataByBackend.FilterOptions = <%= raw Poison.encode!(@filters, escape: :html_safe) %>;
+window.InjectedDataByBackend.BranchUrl = "<%= project_path(@conn, :filtered_branches, @project.name, with_archived: true) %>";
+window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
+</script>
+
+<div class="bg-washed-gray pa3 br3 mt3 ba b--black-075">
+  <div id="workflow-lists">
+    <%= render FrontWeb.ProjectView, "_tabs.html", project: @project, conn: @conn, type: @type, requester: @requester, permissions: @permissions %>
+    <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, pollman: @pollman, page: :project %>
+  </div>
+</div>

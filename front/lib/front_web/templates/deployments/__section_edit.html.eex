@@ -1,0 +1,5 @@
+<div class="bl b--light-gray ml3 pl3">
+    <h3 class="f3 pb2 mb4"><%= @title %></h3>
+    <%= render FrontWeb.DeploymentsView, @template, conn: @conn, form: @form, resources: @resources,
+            project_name: @project_name, show_description?: false %>
+</div>

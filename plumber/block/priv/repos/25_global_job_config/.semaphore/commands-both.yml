@@ -1,0 +1,30 @@
+version: "v1.0"
+name: Global job config test - both global and block prologue commands
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+queue:
+  name: global-job-config-test
+  scope: project
+global_job_config:
+  prologue:
+    commands:
+      - mkdir gjc_test
+      - touch gjc_test/global_prologue_1.txt
+      - touch gjc_test/global_prologue_2.txt
+blocks:
+  - task:
+      prologue:
+        commands:
+          - touch gjc_test/block_prologue_1.txt
+          - mv gjc_test/global_prologue_2.txt gjc_test/block_prologue_2.txt
+      epilogue:
+        commands:
+          - rm -rf gjc_test
+      jobs:
+        - commands:
+            - if [[ -e gjc_test/global_prologue_1.txt ]]; then exit 0 ; else exit 127; fi
+            - if [[ -e gjc_test/global_prologue_2.txt ]]; then exit 127 ; else exit 0; fi
+            - if [[ -e gjc_test/block_prologue_1.txt ]]; then exit 0 ; else exit 127; fi
+            - if [[ -e gjc_test/block_prologue_2.txt ]]; then exit 0 ; else exit 127; fi

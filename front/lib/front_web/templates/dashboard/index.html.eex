@@ -1,0 +1,14 @@
+
+<%= case @dashboard do %>
+  <% "starred" -> %>
+    <%= render FrontWeb.DashboardView, "partials/_starred.html", starred_items: @starred_items %>
+  <% "organization-health" -> %>
+    <%= render FrontWeb.DashboardView, "partials/_organization_health.html", conn: @conn %>
+  <% _ -> %>
+    <div class="bg-washed-gray pa3 br3 ba b--black-075">
+      <p class="mb3">In the last 7 days</p>
+      <div class="nb3">
+        <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, pollman: @pollman, page: :dashboard %>
+      </div>
+    </div>
+<% end %>

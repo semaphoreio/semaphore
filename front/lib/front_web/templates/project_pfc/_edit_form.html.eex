@@ -1,0 +1,95 @@
+<% agent_envs = agent_envs(@cloud_agents, @self_hosted_agents, @organization_id) %>
+<%= if map_size(agent_envs) == 0 do %>
+    <div class="shadow-1 bg-washed-yellow pa3">
+        <p class="mb0">
+            No agent types available. You can create new agent types <a href="/self_hosted_agents">here</a>.
+        </p>
+    </div>
+<% else %>
+    <%= form_for @changeset, project_pfc_path(@conn, :put, @project.name), [method: :put], fn f -> %>
+        <style>
+            .ts-control, .ts-control input, .ts-dropdown { font-size: 1rem; }
+            .ts-control .item[aria-disabled=true] { background-color: #ff0000; }
+            .ts-dropdown div[aria-disabled=true] { display: none; }
+            #organization_pfc_secrets > option:disabled { display: none; }
+        </style>
+        <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+            window.InjectedDataByBackend.PreFlightChecks = {};
+            window.InjectedDataByBackend.PreFlightChecks.AgentEnvs = <%= raw Poison.encode!(agent_envs, escape: :html_safe) %>
+        </script>
+        <div class="mb4">
+            <%= label f, :commands, "Commands", class: "db b mb2" %>
+            <div class="input-textarea">
+                <%= textarea f, :commands, value: Enum.join(input_value(f, :commands), "\n"),
+                    disabled: !@conn.assigns.permissions["project.pre_flight_checks.manage"],
+                    placeholder: "Commands...",
+                    class: "form-control w-100 code", wrap: "off", rows: "4" %>
+            </div>
+
+            <%= if f.errors[:commands] do %>
+                <div class="f5 b mv1 red">
+                    <%= translate_error(f.errors[:commands]) %>
+                </div>
+            <% end %>
+        </div>
+
+        <div class="mb4">
+            <%= label f, :secrets, "Secrets (optional)", class: "db b mb2" %>
+            <div class="input-textarea-group">
+                <%= multiple_select f, :secrets, secret_options(@changeset, @secrets),
+                        disabled: !@conn.assigns.permissions["project.pre_flight_checks.manage"],
+                        placeholder: "Secrets...",
+                        class: "w-100" %>
+            </div>
+            <%= if f.errors[:secrets] do %>
+                <div class="f5 b mv1 red">
+                    <%= translate_error(f.errors[:secrets]) %>
+                </div>
+            <% end %>
+        </div>
+
+        <div class="mb2">
+            <%= checkbox f, :has_custom_agent, data: [element: "agent-config-toggle"],
+                disabled: !@conn.assigns.permissions["project.pre_flight_checks.manage"] %>
+            <%= label f, :has_custom_agent, "Override default agent configuration", class: "ml2" %>
+        </div>
+
+        <div data-element="agent-config-container" class="mt2 mb4 pa3 bg-washed-gray br3 ba b--black-075" >
+            <%= inputs_for f, :agent, fn fa -> %>
+                <div class="mb3">
+                    <label class="db b mb1" for="project_pfc_agent_env_type">Environment type</label>
+                    <select id="project_pfc_agent_env_type" class="form-control w-100 w-75-m">
+                        <%= options_for_select env_type_options(@cloud_agents, @self_hosted_agents, @organization_id),
+                                selected_env_type(@changeset, @cloud_agents, @self_hosted_agents, @organization_id) %>
+                    </select>
+                </div>
+                <div class="mb3">
+                    <%= label fa, :machine_type, "Machine type", class: "db b mb1" %>
+                    <%= select fa, :machine_type, machine_type_options(@changeset, @cloud_agents, @self_hosted_agents, @organization_id),
+                        disabled: !@conn.assigns.permissions["project.pre_flight_checks.manage"],
+                        class: "form-control w-100 w-75-m" %>
+                    <%= if fa.errors[:machine_type]  do %>
+                        <div class="f5 b mv1 red">
+                            <%= translate_error(fa.errors[:machine_type]) %>
+                        </div>
+                    <% end %>
+                </div>
+                <div class="mb3">
+                    <%= label fa, :os_image, "OS image", class: "db b mb1" %>
+                    <%= select fa, :os_image, os_image_options(@changeset, @cloud_agents, @self_hosted_agents, @organization_id),
+                        disabled: !@conn.assigns.permissions["project.pre_flight_checks.manage"],
+                        class: "form-control w-100 w-75-m" %>
+                    <%= if fa.errors[:os_image]  do %>
+                        <div class="f5 b mv1 red">
+                            <%= translate_error(fa.errors[:os_image]) %>
+                        </div>
+                    <% end %>
+                </div>
+            <% end %>
+        </div>
+
+        <%= if @conn.assigns.permissions["project.pre_flight_checks.manage"] do %>
+            <%= submit "Save changes", id: "project_pfc_submit", class: "btn btn-primary primary" %>
+        <% end %>
+    <% end %>
+<% end %>

@@ -1,0 +1,16 @@
+<div class="header" id="global-page-header">
+  <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
+    <a href="https://<%= Application.fetch_env!(:front, :domain) %>/product" class="link flex items-center flex-shrink-0 pv1">
+      <img src="<%= assets_path() %>/images/semaphore-logo-sign-black.svg" alt="logo" width="26">
+      <img src="<%= assets_path() %>/images/semaphore-logo-type.svg" alt="semaphore" style="margin-left: 6px; padding-top: 3px" class="dn di-m" width="106">
+    </a>
+
+    <div class="flex items-center flex-shrink-0">
+      <p class="f6 mb0">Blazing-fast build and deploy!</p>
+      <a href="<%= login_url(@conn) %>" class="btn btn-secondary btn-small ml3">Log in</a>
+    <%= if not Front.on_prem?() do %>
+      <a href="<%= signup_url(@conn) %>" class="btn btn-secondary btn-small ml3">Sign up</a>
+    <% end %>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+<div
+    data-poll-background
+    data-poll-state="poll"
+    data-poll-href="<%= "/workflows/#{@workflow.id}/status" %>"
+    data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+    data-poll-param-pipeline_id="<%= @selected_pipeline_id %>"
+    class="flex items-center gray pb3 mv1">
+  <img class="mr2" width="22" height="22" src=<%= image_source("spinner-2.svg") %> />
+  Fetching pipelines...
+</div>
+
+<%= render "_workflow.html", conn: @conn, workflow_id: @workflow.id, selected_pipeline_id: @selected_pipeline_id, permissions: @permissions %>
+<%= render FrontWeb.SharedView, "_tips.html", conn: @conn, project: @project, right_or_left: "right", workflow: @workflow %>

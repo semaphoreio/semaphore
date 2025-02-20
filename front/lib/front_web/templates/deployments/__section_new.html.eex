@@ -1,0 +1,15 @@
+<%= content_tag :details, id: "dtw-section-#{@name}", class: "mb3", 'data-element': "dtw-section" do %>
+    <summary class="db pointer nl4" data-element="dtw-summary" data-state="hidden">
+        <div class="flex items-center">
+            <div data-element="dtw-bubble" class="w2 h2 br-100 bg-light-gray flex items-center justify-around white flex-center mr2"><%= @index %></div>
+            <div data-element="dtw-header" class="b flex items-center light-gray"><%= @title %></div>
+        </div>
+    </summary>
+
+    <%= render FrontWeb.DeploymentsView, @template, conn: @conn, form: @form, resources: @resources,
+            project_name: @project_name, show_description?: true %>
+
+    <div class="ml2 mv4" data-element="next-button">
+        <button class="btn-primary btn-small btn" type="button" data-action="dtw-next-section">Next</button>
+    </div>
+<% end %>

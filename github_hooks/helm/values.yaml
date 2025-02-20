@@ -1,0 +1,69 @@
+image: github_hooks
+imageTag: latest
+imagePullSecrets: []
+
+hooks:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 500Mi
+    requests:
+      cpu: 100m
+      memory: 150Mi
+
+repoProxyApi:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: '0.6'
+      memory: 400Mi
+    requests:
+      cpu: '0.3'
+      memory: 150Mi
+
+sidekiq:
+  replicas: 1
+  dbPoolSize: 5
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 500Mi
+    requests:
+      cpu: '0.1'
+      memory: 150Mi
+
+sidekiqWeb:
+  replicas: 1
+  webConcurrency: 1
+  maxThreads: 1
+  resources:
+    limits:
+      cpu: '0.3'
+      memory: 200Mi
+    requests:
+      cpu: '0.03'
+      memory: 100Mi
+
+sidecarEncryptor:
+  resources:
+    limits:
+      cpu: 50m
+      memory: 100Mi
+    requests:
+      cpu: 10m
+      memory: 25Mi
+
+db:
+  name: front
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

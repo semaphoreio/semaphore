@@ -1,0 +1,11 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.Environment = {}
+  window.InjectedDataByBackend.Environment.Env = "<%= Application.get_env(:front, :environment) %>"
+  window.InjectedDataByBackend.Integrations = {}
+  window.InjectedDataByBackend.Userpilot = <%= raw userpilot_config_json(@conn) %>
+<%= if @conn.assigns[:js] do %>
+  window.InjectedDataByBackend.JS = "<%= @conn.assigns[:js] %>"
+<% end %>
+</script>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" src="<%= static_path(@conn, "/projects/assets/app.js") %>"></script>

@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+if [ `whoami` == 'vagrant' ]; then
+  `sudo $@`
+else
+  `$@`
+fi

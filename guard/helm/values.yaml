@@ -1,0 +1,103 @@
+image: guard
+imageTag: latest
+imagePullSecrets: []
+
+replicas: 1
+logging: info
+forceIpCheck: true
+
+sidecarEncryptor:
+  resources:
+    limits:
+      cpu: 50m
+      memory: 100Mi
+    requests:
+      cpu: 10m
+      memory: 25Mi
+
+api:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 4
+  resources:
+    limits:
+      cpu: '0.3'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+consumers:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 5
+  resources:
+    limits:
+      cpu: '0.2'
+      memory: 300Mi
+    requests:
+      cpu: '0.03'
+      memory: 100Mi
+
+idHttpApi:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 1
+  resources:
+    limits:
+      cpu: '0.2'
+      memory: 300Mi
+    requests:
+      cpu: 50m
+      memory: 200Mi
+
+authenticationApi:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 150Mi
+
+organizationApi:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 150Mi
+
+userApi:
+  logging:
+    level: info
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 150Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

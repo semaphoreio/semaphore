@@ -1,0 +1,55 @@
+image: artifacthub
+imageTag: latest
+imagePullSecrets: []
+
+db:
+  name: artifacthub
+
+publicApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.2'
+      memory: 100Mi
+    requests:
+      cpu: '0.1'
+      memory: 50Mi
+
+internalApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 50Mi
+    requests:
+      cpu: 25m
+      memory: 25Mi
+
+bucketCleanerScheduler:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 20m
+      memory: 50Mi
+    requests:
+      cpu: 5m
+      memory: 25Mi
+
+bucketCleanerWorker:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 100Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

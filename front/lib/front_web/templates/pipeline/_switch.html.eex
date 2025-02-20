@@ -1,0 +1,95 @@
+<div
+  class="pa3"
+  switch="<%= @switch.id %>"
+  data-poll-state="poll"
+  data-poll-href="<%= pipeline_path(@conn, :switch, @workflow.id, @pipeline.id, @switch.id) %>"
+  data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+  data-poll-param-selected_trigger_event_id="<%= @selected_trigger_event_id %>">
+  <div>
+    <div class="mb3 flex items-center justify-between nt1">
+      <div class="gray pr1">Promotions</div>
+    </div>
+    <%= Enum.map @switch.targets, fn target -> %>
+    <!-- Target -->
+    <div class="bg-white shadow-1 pa2 mb3 br2">
+      <!-- Promote button -->
+      <%= if target.deployment do %>
+        <%= render FrontWeb.PipelineView, "switch/_deployment_box.html", conn: @conn,
+            workflow: @workflow, pipeline: @pipeline, switch: @switch, target: target, can_promote?: @can_promote? %>
+      <% else %>
+        <%= render FrontWeb.PipelineView, "switch/_regular_box.html", conn: @conn,
+            workflow: @workflow, pipeline: @pipeline, switch: @switch, target: target, can_promote?: @can_promote? %>
+      <% end %>
+
+      <div class="mt2">
+        <%= Enum.map target.events, fn event -> %>
+        <%= case {event.processed, event.result} do %>
+          <% {false, _} -> %>
+          <!-- Triggering promotion is in progress -->
+          <div trigger-event data-switch="<%= @switch.id %>" data-promotion-target="<%= target.name %>" class="f5 flex items-center justify-between ph2 pv1 nh2 bt b--black-15 hide-child">
+            <div class="pr2 flex items-center">
+              <img class="mr2" width="16" height="16" src=<%= image_source("spinner-2.svg") %> />
+              <div class="gray">
+                Starting promotion...
+              </div>
+            </div>
+            <div class="w1 child">
+              <span>◀</span>
+            </div>
+          </div>
+          <% {true, :FAILED} -> %>
+          <!-- Failed to trigger promotion -->
+          <div trigger-event data-switch="<%= @switch.id %>" data-promotion-target="<%= target.name %>" class="f5 flex items-center justify-between ph2 pv1 nh2 bt b--black-15 hide-child">
+            <div class="pr2 flex items-center">
+              <img src=<%= image_source("icn-not-complete.svg") %> class="mr2" width="16" height="16" />
+              <div class="gray">
+                Failed to promote
+                <span class="gray">
+                  <%= if event.author do %>
+                    · by <%= event.author.name %>, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
+                  <% else %>
+                    · Auto-Promoted, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
+                  <% end %>
+                </span>
+              </div>
+            </div>
+            <div class="w1 child">
+              <span>◀</span>
+            </div>
+          </div>
+          <% {true, :PASSED} -> %>
+          <!-- Triggered promotion -->
+          <div
+                    data-trigger-event-processed=true
+                    trigger-event="<%= event.pipeline_id %>"
+                    data-triggered-pipeline="<%= event.pipeline_id %>"
+                    data-switch="<%= @switch.id %>"
+                    data-origin-pipeline="<%= @pipeline.id %>"
+                    data-triggered-pipeline-href="<%= pipeline_path(@conn, :show, @workflow.id, event.pipeline_id, nonce: @conn.assigns[:script_src_nonce]) %>"
+                    data-promotion-target="<%= target.name %>"
+                    class="hover-bg-washed-gray pointer f5 flex items-center justify-between ph2 pv1 nh2 bt b--black-15 <%= if @selected_trigger_event_id == event.pipeline_id, do: "wf-switch-item-selected", else: "hide-child" %>"
+                    <%= if @selected_trigger_event_id == event.pipeline_id, do: "selected" %>>
+  <div class="pr2 flex items-center">
+    <img src=<%= image_source(FrontWeb.SwitchView.status_icon(event)) %> class="mr2" width="16" height="16" />
+    <div>
+      <%= "#{event.pipeline.name} " %>
+      <span class="gray"> · <%= raw FrontWeb.SwitchView.timer(event) %>
+            <%= if event.author do %>
+              · by <%= event.author.name %>, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
+            <% else %>
+              · Auto-Promoted, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
+            <% end %>
+          </span>
+        </div>
+      </div>
+      <div class="w1 child">
+        <span>◀</span>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+</div>
+</div>
+<% end %>
+</div>
+</div>

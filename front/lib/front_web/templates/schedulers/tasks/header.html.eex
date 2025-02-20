@@ -1,0 +1,30 @@
+<div class="flex-l justify-between">
+  <div class="flex-l items-center">
+    <span data-element="expand_arrow" data-state="collapsed" class="material-symbols-outlined f6">expand_more</span>
+    <span data-element="expand_arrow" data-state="expanded" class="material-symbols-outlined f6">expand_less</span>
+    <span class="material-symbols-outlined"><%= task_icon(@scheduler) %></span>
+    <p class="mb0 b ml1"><%= @scheduler.name %></p>
+  </div>
+</div>
+<div class="flex items-center justify-between ">
+  <div class="flex items-center mr3">
+    <span class="material-symbols-outlined f6">fork_right</span>
+    <%= target_link(@project, @scheduler) %>
+  </div>
+  <div class="button-group">
+    <%= link "View", to: schedulers_path(@conn, :show, @project.name, @scheduler.id), class: "btn btn-secondary" %>
+    <%= if @permissions["project.scheduler.manage"] do %>
+      <%= link "Edit", to: schedulers_path(@conn, :edit, @project.name, @scheduler.id), class: "btn btn-secondary" %>
+      <%= link "Delete", to: schedulers_path(@conn, :destroy, @project.name, @scheduler.id), method: :delete, class: "btn btn-secondary",
+                    data: [confirm: "You're about to delete this Task forever. Are you sure?"]  %>
+    <% else %>
+      <button class="btn btn-secondary" disabled>Edit</button>
+      <button class="btn btn-secondary" disabled>Delete</button>
+    <% end %>
+  </div>
+  <%= if @permissions["project.scheduler.manage"] do %>
+    <%= link "Run Now", to: schedulers_path(@conn, :form_just_run, @project.name, @scheduler.id), class: "btn btn-primary ml3 btn-small" %>
+  <% else %>
+      <button class="btn btn-primary ml3 btn-small" disabled>Run Now</button>
+  <% end %>
+</div>

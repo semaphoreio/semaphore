@@ -1,0 +1,162 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 50055
+      targetPort: 50055
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}"
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: Recreate
+    rollingUpdate: null
+  template:
+    metadata:
+      name: {{ .Chart.Name }}-pod
+      labels:
+        app: {{ .Chart.Name }}
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          command: ["/bin/sh", "-c"]
+          args: ["bin/gofer eval \"Gofer.ReleaseTasks.migrate()\" && bin/gofer start"]
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc-port
+              containerPort: 50055
+          env:
+            - name: PLUMBER_URL
+              value: "ppl:50053"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: DB_HOSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.database.secretName }}
+                  key: host
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.database.secretName }}
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.database.secretName }}
+                  key: password
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: K8S_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+            - name: REPOHUB_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_REPOHUB
+            - name: INTERNAL_API_URL_RBAC
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_RBAC
+            - name: INTERNAL_API_URL_SECRETHUB
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_SECRETHUB
+            - name: ROLES_CACHE_ENABLED
+              value: "false"
+            - name: ROLES_CACHE_EXPIRATION_TTL
+              value: "120"
+            - name: ROLES_CACHE_EXPIRATION_INTERVAL
+              value: "60"
+            - name: ROLES_CACHE_SIZE_LIMIT
+              value: "1000"
+            - name: ROLES_CACHE_RECLAIM_COEF
+              value: "0.5"
+            - name: START_GRPC
+              value: "true"
+            - name: START_CACHE
+              value: "false"
+            - name: START_ENGINES
+              value: "true"
+            - name: START_METRICS
+              value: "false"
+
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 13 }}
+{{- end }}
+
+          startupProbe:
+            grpc:
+              port: 50055
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            grpc:
+              port: 50055
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

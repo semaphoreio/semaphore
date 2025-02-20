@@ -1,0 +1,14 @@
+---
+image: public-api-gateway
+imageTag: latest
+imagePullSecrets: []
+
+replicas: 1
+
+resources:
+  limits:
+    cpu: "0.5"
+    memory: 300Mi
+  requests:
+    cpu: "0.15"
+    memory: 150Mi

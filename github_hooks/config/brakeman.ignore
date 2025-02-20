@@ -1,0 +1,89 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "Weak Hash",
+      "warning_code": 90,
+      "fingerprint": "37e49cf2dd11b6553a31d69644cf16679c01fcc8a4d51c7ec8067a3d54d186af",
+      "check_name": "WeakHash",
+      "message": "Weak hashing algorithm used: MD5",
+      "file": "lib/semaphore/pagination_cursor.rb",
+      "line": 74,
+      "link": "https://brakemanscanner.org/docs/warning_types/weak_hash/",
+      "code": "Digest::MD5.hexdigest(params.to_json)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Semaphore::PaginationCursor",
+        "method": "params_digest"
+      },
+      "user_input": "params",
+      "confidence": "High",
+      "cwe_id": [
+        328
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Cross-Site Request Forgery",
+      "warning_code": 7,
+      "fingerprint": "6f5239fb87c64764d0c209014deb5cf504c2c10ee424bd33590f0a4f22e01d8f",
+      "check_name": "ForgerySetting",
+      "message": "`protect_from_forgery` should be called in `ApplicationController`",
+      "file": "app/controllers/application_controller.rb",
+      "line": 1,
+      "link": "https://brakemanscanner.org/docs/warning_types/cross-site_request_forgery/",
+      "code": null,
+      "render_path": null,
+      "location": {
+        "type": "controller",
+        "controller": "ApplicationController"
+      },
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        352
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Unmaintained Dependency",
+      "warning_code": 120,
+      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
+      "check_name": "EOLRails",
+      "message": "Support for Rails 6.1.7.9 ended on 2024-10-01",
+      "file": "Gemfile.lock",
+      "line": 257,
+      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
+      "code": null,
+      "render_path": null,
+      "location": null,
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        1104
+      ],
+      "note": ""
+    },
+    {
+      "warning_type": "Unmaintained Dependency",
+      "warning_code": 121,
+      "fingerprint": "edf687f759ec9765bd5db185dbc615c80af77d6e7e19386fc42934e7a80307af",
+      "check_name": "EOLRuby",
+      "message": "Support for Ruby 3.0.6 ended on 2024-03-31",
+      "file": ".ruby-version",
+      "line": 1,
+      "link": "https://brakemanscanner.org/docs/warning_types/unmaintained_dependency/",
+      "code": null,
+      "render_path": null,
+      "location": null,
+      "user_input": null,
+      "confidence": "High",
+      "cwe_id": [
+        1104
+      ],
+      "note": ""
+    }
+  ],
+  "updated": "2024-10-25 14:16:35 +0200",
+  "brakeman_version": "6.2.2"
+}

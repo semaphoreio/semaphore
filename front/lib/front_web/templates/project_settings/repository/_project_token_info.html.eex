@@ -1,0 +1,27 @@
+<div class="mb1">
+  <label class="b mr1">GitHub App Installation</label>
+  <%= if @project_token do %>
+    <%= if @project_token.valid do %>
+      <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+    <% else %>
+      <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">&nbsp;
+      <span class="f5 fw5 red">Failed to establish connection</span>
+    <% end %>
+  <% end %>
+</div>
+<%= if @github_installation != nil and @permissions["project.repository_info.manage"] do %>
+  <%= if @github_installation.installation_id > 0 do %>
+    <div class="flex items-center">
+      <div class="f5 f4-m">
+        <%= link "Configure GitHub App Settings ↗", to: "#{@github_installation.setup_url}?state=p_#{@project.id}", target: "_blank" %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= unless @project_token.valid do %>
+    <p class="f6 measure-wide mt2 mb3">There’s a connection issue. It looks like you revoked the access to this repository for Semaphore's GitHub App.</p>
+    <p class="f6 mv2">
+      Please check the <%= link "Semaphore's GitHub Application", to: "#{@github_installation.setup_url}?state=p_#{@project.id}", target: "_blank" %>.
+    </p>
+  <% end %>
+<% end %>

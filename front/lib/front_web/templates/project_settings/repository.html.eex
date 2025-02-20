@@ -1,0 +1,106 @@
+<%= if @permissions["project.repository_info.view"] do %>
+  <h2 class="f3 f2-m mb0">Repository</h2>
+  <p class="mb3">Control how this project communicates with repository</p>
+
+  <%= if @project.integration_type == :GITHUB_OAUTH_TOKEN and @permissions["project.repository_info.manage"] do %>
+    <div class="bg-washed-yellow ba b--black-15 ph3 pv2 mb4 br2">
+      <div class="pb2 mb2 bb b--black-15">
+        <div class="flex items-center">
+          <span class="">This project is using <strong>OAuth API token</strong> to connect to GitHub.</span>
+        </div>
+      </div>
+      <p class="f6 measure-wide mb2">We advise that you switch connection type to <a href="https://docs.semaphoreci.com/account-management/connecting-github-and-semaphore/#oauth-app-vs-github-app">GitHub app.</a></p>
+      <%= if @github_installation && @github_installation.installation_id > 0 do %>
+        <div class="mb1">
+          <%= form_for @conn, project_settings_path(@conn, :github_switch, @project.name), [id: "switch-to-github-app"], fn _f -> %>
+            <%= submit "Switch to GitHub App", class: "btn btn-green" %>
+          <% end %>
+        </div>
+      <% else %>
+        <div class="mb2">
+          <%= submit "Switch to GitHub App", class: "btn disabled" %>
+        </div>
+        <p class="f6 measure-wide mb1"><strong>Before switching, please make sure that <a href="<%= Application.get_env(:front, :github_app_url) %>/installations/new?state=p_<%= @project.id %>" target="_blank">GitHub app</a> is installed and has access to this repository.</strong></p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= form_for @changeset, project_settings_path(@conn, :update, @project.name), [method: :put], fn f -> %>
+    <div class="mb3 pb3 bb b--lighter-gray">
+      <label class="db b mb1">URL</label>
+      <div class="flex">
+        <%= text_input f, :repo_url, disabled: !@permissions["project.repository_info.manage"], placeholder: "Repository address", class: "form-control w-100 mr2 #{if f.errors[:repo_url], do: "form-control-error" }" %>
+        <%= submit "Change…", disabled: !@permissions["project.repository_info.manage"], class: "btn btn-secondary" %>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="mb3 pb3 bb b--lighter-gray">
+    <%= if @project.integration_type == :GITHUB_APP do %>
+      <%= render FrontWeb.ProjectSettingsView, "repository/_project_token_info.html", permissions: @permissions, project: @project, project_token: @project_token, github_installation: @github_installation, conn: @conn %>
+    <% else %>
+      <%= render FrontWeb.ProjectSettingsView, "repository/_project_owner_info.html", project: @project, project_token: @project_token, project_owner: @project_owner, conn: @conn %>
+    <% end %>
+  </div>
+
+  <%= if @project.integration_type == :GITHUB_APP do %>
+    <div class="mb3">
+  <% else %>
+    <div class="mb3 pb3 bb b--lighter-gray">
+  <% end %>
+      <div class="mb1">
+        <label class="b mr1">Deploy Key</label>
+        <%= if @deploy_key do %>
+          <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+        <% else %>
+          <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">
+          <span class="f5 fw5 red">Failed to establish connection</span>
+        <% end %>
+        <%= if @permissions["project.repository_info.manage"] do %>
+          <span class="f5 fw5">·
+            <%= link "Regenerate", to: project_settings_path(@conn, :regenerate_deploy_key, @project.name), data: [confirm: "Are you sure? This will regenerate a Deployment Key on Repository."], method: :post %>
+          </span>
+        <% end %>
+      </div>
+      <%= if @deploy_key do %>
+        <div class="flex items-center">
+          <img src="<%= assets_path() %>/images/icn-key.svg" class="mr2">
+          <div class="f5 f4-m"><%= @deploy_key.title %></div>
+        </div>
+        <div class="code word-wrap">(<%= @deploy_key.fingerprint %>)</div>
+        <div class="f6 gray mt1">Added on <%= @deploy_key.created_at %></div>
+      <% else %>
+        <p class="f6 measure-wide mb3"><%= @deploy_key_message %></p>
+      <% end %>
+    </div>
+
+  <div class="mb3">
+    <div class="mb1">
+      <label class="b mr1">Webhook</label>
+      <%= if @hook do %>
+        <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+      <% else %>
+        <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">
+        <span class="f5 fw5 red">Failed to establish connection</span>
+      <% end %>
+      <%= if @permissions["project.repository_info.manage"] do %>
+        <span class="f5">·
+          <%= link "Regenerate", to: project_settings_path(@conn, :regenerate_webhook, @project.name), method: :post %>
+        </span>
+      <% end %>
+    </div>
+    <%= if @hook do %>
+      <div>
+        <input id="webhook" type="text" class="form-control w-100 mr2" value="<%= @hook.url %>" readonly disabled>
+      </div>
+    <% else %>
+      <p class="f6 measure-wide mb3"><%= @hook_message %></p>
+    <% end %>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Repository Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

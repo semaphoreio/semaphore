@@ -1,0 +1,12 @@
+{
+  "title": "PHP Laravel",
+  "description": "Run Laravel tests in Docker with PostgreSQL and Redis support. Includes PHPUnit and Dusk browser testing. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-purple white'>Laravel</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>PHPUnit</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Dusk</span></div>",
+  "short_description": "Run your PHP Laravel suite",
+  "group": "ci",
+  "language": "PHP",
+  "environment": "docker",
+  "use_case": "ci_pipeline",
+  "icon": "lang-php.svg",
+  "template_path": "templates/laravel_docker.yml",
+  "workflow_tip": "other"
+}

@@ -1,0 +1,27 @@
+<div id="workflow-editor-tabs" class="pv2">
+</div>
+
+<div class="nb4">
+  <div id="workflow-editor-visual-editor" class="bg-white relative bt b--lighter-gray nh4">
+    <div class="flex">
+      <div class="flex-auto">
+        <!-- Workflow Container -->
+        <div id="workflow-editor-diagram" class="overflow-x-scroll overflow-y-none nowrap pl4 pt4 pr6 pb6">
+        </div>
+      </div>
+
+      <div id="workflow-editor-config-panel" class="f5 bg-white bl b--lighter-gray" style="position: absolute; right: 0; width: 360px; height: 642px; z-index: 5;">
+        <!-- resize handler -->
+        <div data-resize="" style="width: 7px; height: 50px; position: absolute; left: -4px; top: calc(50% - 25px); background: white; border: 1px solid #d2d9d9; border-radius: 2px; cursor: col-resize;">
+          <div style="width: 1px; height: 44px; background: #d2d9d9; position: absolute; left: 2px; top: 2px; cursor: col-resize;"></div>
+        </div>
+
+        <div id="workflow-editor-config-panel-content" class="overflow-y-scroll">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="workflow-editor-code-editor" class="code-mirror-style-semaphore bg-white f5 lh-title bg-white relative b--lighter-gray ba mt3 mt4-m">
+  </div>
+</div>

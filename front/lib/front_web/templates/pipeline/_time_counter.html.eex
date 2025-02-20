@@ -1,0 +1,3 @@
+<span timer <%= run_pipeline?(@pipeline) %> seconds="<%= total_seconds(@pipeline) %>" class="f5 code <%= pipeline_timer_color(@pipeline) %>">
+  <%= total_time(@pipeline) %>
+</span>

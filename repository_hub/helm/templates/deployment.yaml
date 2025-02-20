@@ -1,0 +1,206 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $chartName }}"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ $chartName }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $chartName }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ $chartName }}"
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: {{ $chartName }}
+      labels:
+        app: {{ $chartName }}
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: {{ $chartName }}
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          env:
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.db.poolSize | quote }}
+            - name: HOOKS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: ENCRYPTOR_URL
+              value: "localhost:50052"
+            - name: USER_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_USER
+            - name: PROJECTHUB_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_PROJECT
+            - name: REPOSITORY_INTEGRATOR_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_REPOSITORY_INTEGRATOR
+            - name: ORGANIZATION_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_ORGANIZATION
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 13 }}
+{{- end }}
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+
+        - name: "{{ $chartName }}-encryptor"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.sidecarEncryptor.image }}:{{ .Values.global.sidecarEncryptor.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50052
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: START_API
+              value: "yes"
+            - name: GRPC_API_PORT
+              value: "50052"
+            - name: ENCRYPTOR_AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.encryption.name" . }}
+                  key: key
+          livenessProbe:
+            grpc:
+              port: 50052
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+          readinessProbe:
+            grpc:
+              port: 50052
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            successThreshold: 1
+{{- if .Values.sidecarEncryptor.resources }}
+          resources:
+{{ toYaml .Values.sidecarEncryptor.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

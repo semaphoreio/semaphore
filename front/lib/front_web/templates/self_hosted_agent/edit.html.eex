@@ -1,0 +1,16 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="mb4">
+    <h1 class="f3 mb0">Editing <%= @agent_type.name %></h1>
+  </div>
+  <div class="bg-white shadow-1 br3">
+    <div class="pa3 pa4-l">
+      <div class="flex">
+        <div class="mr4">
+          <img src="<%= assets_path() %>/images/icn-self-hosted.svg" class="db mb2 w2 h2">
+        </div>
+
+        <%= render FrontWeb.SelfHostedAgentView, "_form.html", agent_type_model: @agent_type_model, conn: @conn, action: @action %>
+      </div>
+    </div>
+  </div>
+</div>

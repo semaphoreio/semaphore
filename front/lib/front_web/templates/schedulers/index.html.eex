@@ -1,0 +1,73 @@
+<style>
+  details summary::-webkit-details-marker { display: none; }
+  details[open] > summary span[data-element="expand_arrow"][data-state="collapsed"] { display: none; }
+  details:not([open]) > summary span[data-element="expand_arrow"][data-state="expanded"] { display: none; }
+</style>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.Tasks = {};
+  window.InjectedDataByBackend.Tasks.Page = "index";
+  window.InjectedDataByBackend.Tasks.BaseUrl = "<%= schedulers_path(@conn, :index, @project.name) %>";
+  window.InjectedDataByBackend.Tasks.CanLoad = <%= @permissions["project.scheduler.view"] %>
+</script>
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["project.scheduler.view"] do %>
+    <p class="mb3 measure">
+      Define tasks to trigger workflows according to your preference.
+      Read in more detail: <a href="https://docs.semaphoreci.com/essentials/schedule-a-workflow-run/">Docs: Tasks</a>.
+    </p>
+    <div class="mb4 flex items-center justify-between">
+      <%= if @permissions["project.scheduler.manage"] do %>
+        <%= link "New Task", class: "btn btn-primary", to: schedulers_path(@conn, :new, @project.name) %>
+      <% else %>
+        <button class="btn btn-primary" disabled>New Task</button>
+      <% end %>
+      <input type="text" value="<%= @query %>", class="form-control w-100 w5-l" placeholder="Search…" data-action="filterTasks">
+    </div>
+    <%= if Enum.empty?(@page.entries) do %>
+      <%= if @page.total_entries == 0 do %>
+        <div class="tc pv6">
+          <img src="<%= assets_path() %>/images/profile-bot-mono.svg" alt="robot" class="w3 br-100 mb3">
+          <h4 class="f4 mt2 mb0">No active Tasks</h4>
+          <p class="mb0 measure center">When you create some, you should see them here</p>
+        </div>
+      <% else %>
+        <div class="tc pv6">
+          <h4 class="f4 mt2 mb0">Page out of bounds</h4>
+          <p class="mb0 measure center">Please return to the <a href="<%= schedulers_path(@conn, :index, @project.name) %>">first page</a></p>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="nb3 nb4-l pb4">
+        <%= for {scheduler, index} <- Enum.with_index(@page.entries) do %>
+          <%= content_tag :details, open: index < 1, class: "shadow-1 br3 bg-white mv3",
+                          data: [element: "taskDetails", label: scheduler.name] do %>
+            <summary class="pa3 flex justify-between bb b--black-20 pointer">
+              <%= render FrontWeb.SchedulersView, "tasks/header.html",
+                  conn: @conn, project: @project, scheduler: scheduler, permissions: @permissions %>
+            </summary>
+            <%= render FrontWeb.SchedulersView, "tasks/details.html",
+                  conn: @conn, project: @project, scheduler: scheduler, permissions: @permissions %>
+            <%= render FrontWeb.SchedulersView, "tasks/last_run.html",
+                  conn: @conn, project: @project, scheduler_id: scheduler.id,
+                  trigger: scheduler.latest_trigger %>
+          <% end %>
+        <% end %>
+      </div>
+      <%= if @page.total_pages > 1 do %>
+        <%= render FrontWeb.SchedulersView, "tasks/pagination.html", conn: @conn, page: @page,
+              path: schedulers_path(@conn, :index, @project.name) %>
+      <% end %>
+    <% end %>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">
+        Sorry, you can’t access Project Tasks.<br>
+        Ask organization owner or any of the admins to give you access permission.
+      </p>
+    </div>
+  <% end %>
+</div>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.WorkflowPageUrlTemplate = "<%= raw workflow_path(@conn, :show, :wf_id) %>";
+</script>

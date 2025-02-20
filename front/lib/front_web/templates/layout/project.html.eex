@@ -1,0 +1,91 @@
+<%= render_layout "app.html", assigns do %>
+  <div class="mb3 nt3-m">
+    <div class="flex-l items-center justify-between bb b--lighter-gray pb2 mb3">
+      <div class="b mb1">Project</div>
+      <div class="mb1">
+        <% {:safe, provider_icon} = icon(@project, class: "v-mid mr1", width: "16") %>
+        <%= link raw(provider_icon <> human_accessible_repo_name(@project)),
+            to: human_accessible_repository_url(@project),
+            class: "link dark-gray underline-hover flex items-center"
+       %>
+      </div>
+    </div>
+    <div class="flex-l justify-between">
+      <div class="mb3 mb0-l pr4-m">
+        <h1 class="f2 f1-m lh-title mb1">
+          <%= @project.name %>
+          <span starred="<%= @starred? %>"
+                data-favorite-id="<%= @project.id %>"
+                data-favorite-kind="project"
+                class="system-sans-serif dib f5 <%= star_class(@starred?) %> hover-yellow pointer v-mid"
+                style="transform: translateY(-.1em); margin-left: 2px; -webkit-text-stroke: 1px rgba(0,0,0,.35);"
+                data-tippy-content="<%= star_tippy_content(@starred?) %>"
+                data-tippy-swap-content="<%= star_tippy_content(!@starred?) %>">★
+          </span>
+        </h1>
+        <p class="mb0 measure-wide"><%= Front.Decorators.Header.Project.project_description(@project.description) %></p>
+      </div>
+      <div class="pt1-l">
+        <%= if !assigns[:permissions] or @permissions["project.workflow.manage"] do %>
+          <%= link "Edit Workflow", to: project_path(@conn, :edit_workflow, @project.name), class: "btn btn-secondary" %>
+        <% else %>
+          <button class="btn btn-secondary" disabled="true">Edit Workflow</button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <%= link raw(~s'<svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 10.594H4v1.4h8v-1.4zM4 7.594h8v1.4H4v-1.4zM10.234 5.994H5.766l2.25-1.853 2.218 1.853z" fill="#697678"/><path fill-rule="evenodd" clip-rule="evenodd" d="M15 6.243L7.997.533 1.07 6.244V15H15V6.243zm-12.53.663l5.532-4.563L13.6 6.908V13.6H2.47V6.906z"/></svg>
+<span>Activity</span>'),
+        to: project_path(@conn, :show, @project.name),
+        class: Front.Decorators.Header.Project.tab_class(@conn, project_path(@conn, :show, @project.name)) %>
+    <%= if FeatureProvider.feature_visible?(:deployment_targets, @conn.assigns[:organization_id]) do %>
+      <%= link raw(~s'
+            <span class="material-symbols-outlined">cloud_upload</span>
+            <span class="ml2">Deployments</span>
+          '), to: deployments_path(@conn, :index, @project.name, []),
+          class: Front.Decorators.Header.Project.tab_class(@conn, deployments_path(@conn, :index, @project.name, [])) %>
+    <% end %>
+    <%= if FeatureProvider.feature_enabled?(:pipeline_summaries, @conn.assigns[:organization_id]) do %>
+      <%= link raw(~s'
+            <svg height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6.5 2.998v10m3-4v4m3-8v8m-9-7v7" fill="none" stroke="#292e33" stroke-width="1.5" />
+            </svg>
+            <span>Insights</span>
+          '), to: insights_index_path(@conn, :index, @project.name, []),
+          class: Front.Decorators.Header.Project.tab_class(@conn, insights_index_path(@conn, :index, @project.name, [])) %>
+    <% end %>
+    <%= if FeatureProvider.feature_enabled?(:artifacts, @conn.assigns[:organization_id]) do %>
+      <%= link raw(~s'
+<svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M8 .675c-.952 0-1.87.31-2.552 1.006-.638.653-1 1.58-1.044 2.723-1.144.043-2.07.406-2.723 1.044C.985 6.13.675 7.048.675 8s.31 1.87 1.006 2.552c.653.638 1.58 1 2.723 1.044.043 1.144.406 2.07 1.044 2.723.681.696 1.6 1.006 2.552 1.006s1.87-.31 2.552-1.006c.638-.654 1-1.58 1.044-2.723 1.144-.043 2.07-.406 2.723-1.044.696-.681 1.006-1.6 1.006-2.552s-.31-1.87-1.006-2.552c-.654-.638-1.58-1-2.723-1.044-.043-1.144-.406-2.07-1.044-2.723C9.87.985 8.952.675 8 .675zM5.8 4.638c0-.978.282-1.602.65-1.978.369-.378.9-.585 1.55-.585s1.181.207 1.55.585c.368.376.65 1 .65 1.978 0 .14-.005.282-.017.425l-.04.518A3.22 3.22 0 008 4.769a3.22 3.22 0 00-2.142.812l-.041-.518a5.377 5.377 0 01-.017-.425zm-.22 1.22l-.517-.041a5.377 5.377 0 00-.425-.018c-.978 0-1.602.283-1.978.65-.378.37-.585.9-.585 1.551 0 .65.207 1.181.585 1.55.376.368 1 .65 1.978.65.14 0 .282-.005.425-.017l.518-.04A3.22 3.22 0 014.769 8c0-.822.307-1.572.812-2.142zm.278 4.561l-.041.518a5.379 5.379 0 00-.017.425c0 .978.282 1.602.65 1.978.369.378.9.585 1.55.585s1.181-.207 1.55-.585c.368-.376.65-1 .65-1.978 0-.14-.005-.282-.017-.425l-.04-.518c-.571.505-1.321.812-2.143.812a3.219 3.219 0 01-2.142-.812zm4.561-.277l.518.041c.143.012.285.018.425.018.978 0 1.602-.283 1.978-.65.378-.37.585-.9.585-1.551 0-.65-.207-1.181-.585-1.55-.376-.368-1-.65-1.978-.65-.14 0-.282.005-.425.017l-.518.04c.505.571.812 1.321.812 2.143 0 .822-.306 1.572-.812 2.142zM6.17 8A1.831 1.831 0 119.83 8 1.831 1.831 0 016.17 8z"/></svg>
+<span>Artifacts</span>'),
+        to: artifacts_path(@conn, :projects, @project.name),
+        class: Front.Decorators.Header.Project.tab_class(@conn, artifacts_path(@conn, :projects, @project.name)) %>
+    <% end %>
+    <%= link raw(~s'<svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><g clip-path="url(#clip0)"><path d="M8.75 7.25h-1.5v1.5h1.5v-1.5zM7.25 10.281h1.5v1.5h-1.5v-1.5zM5.75 7.25h-1.5v1.5h1.5v-1.5zM5.75 10.281h-1.5v1.5h1.5v-1.5zM10.25 7.25h1.5v1.5h-1.5v-1.5zM10.25 10.281h1.5v1.5h-1.5v-1.5z"/><path fill-rule="evenodd" clip-rule="evenodd" d="M4.25 0h1.5v1h4.5V0h1.5v1.009A3.5 3.5 0 0115 4.5v7a3.5 3.5 0 01-3.5 3.5h-7A3.5 3.5 0 011 11.5v-7a3.5 3.5 0 013.25-3.491V0zM2.4 5.994V11.5a2.1 2.1 0 002.1 2.1h7a2.1 2.1 0 002.1-2.1V5.994H2.4zm11.2-1.4V4.5a2.1 2.1 0 00-2.1-2.1h-7a2.1 2.1 0 00-2.1 2.1v.094h11.2z"/></g></svg>
+<span>Tasks</span>'),
+        to: schedulers_path(@conn, :index, @project.name),
+        class: Front.Decorators.Header.Project.tab_class(@conn, schedulers_path(@conn, :index, @project.name)) %>
+    <%= if FeatureProvider.feature_enabled?(:superjerry_tests, @conn.assigns[:organization_id]) do %>
+    <%= link raw(~s'
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M4.32215 2.40754C3.83035 2.44932 3.36676 2.66339 3.01508 3.01508C2.62125 3.4089 2.4 3.94305 2.4 4.5V11.5C2.4 12.057 2.62125 12.5911 3.01508 12.9849C3.4089 13.3788 3.94305 13.6 4.5 13.6H11.5C12.057 13.6 12.5911 13.3788 12.9849 12.9849C13.3788 12.5911 13.6 12.057 13.6 11.5V4.5C13.6 3.94305 13.3788 3.4089 12.9849 3.01508C12.6332 2.66339 12.1697 2.44933 11.6779 2.40754C11.5297 3.42145 10.6566 4.2 9.60157 4.2H6.39844C5.34344 4.2 4.47027 3.42145 4.32215 2.40754ZM11.388 1H11.5C12.4283 1 13.3185 1.36875 13.9749 2.02513C14.6313 2.6815 15 3.57174 15 4.5V11.5C15 12.4283 14.6313 13.3185 13.9749 13.9749C13.3185 14.6313 12.4283 15 11.5 15H4.5C3.57174 15 2.6815 14.6313 2.02513 13.9749C1.36875 13.3185 1 12.4283 1 11.5V4.5C1 3.57174 1.36875 2.6815 2.02513 2.02513C2.6815 1.36875 3.57174 1 4.5 1H4.61204C4.98173 0.401754 5.64353 0.00312424 6.39844 0.00312424H9.60157C10.3565 0.00312424 11.0183 0.401754 11.388 1ZM5.7 2.10156C5.7 1.71583 6.0127 1.40312 6.39844 1.40312H9.60157C9.9873 1.40312 10.3 1.71583 10.3 2.10156C10.3 2.4873 9.9873 2.8 9.60157 2.8H6.39844C6.0127 2.8 5.7 2.4873 5.7 2.10156ZM4.7 6.8C4.3134 6.8 4 7.1134 4 7.5C4 7.8866 4.3134 8.2 4.7 8.2H11.3C11.6866 8.2 12 7.8866 12 7.5C12 7.1134 11.6866 6.8 11.3 6.8H4.7ZM4.7 9.81562C4.3134 9.81562 4 10.129 4 10.5156C4 10.9022 4.3134 11.2156 4.7 11.2156H11.3C11.6866 11.2156 12 10.9022 12 10.5156C12 10.129 11.6866 9.81562 11.3 9.81562H4.7Z"></path>
+            </svg>
+            <span>Flaky Tests</span>
+          '), to: flaky_tests_index_path(@conn, :index, @project.name, []),
+          class: Front.Decorators.Header.Project.tab_class(@conn, flaky_tests_index_path(@conn, :index, @project.name)) %>
+    <% end %>
+    <%= link raw(~s'<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5C1 3.57174 1.36875 2.6815 2.02513 2.02513C2.6815 1.36875 3.57174 1 4.5 1H11.5C12.4283 1 13.3185 1.36875 13.9749 2.02513C14.6313 2.6815 15 3.57174 15 4.5V11.5C15 12.4283 14.6313 13.3185 13.9749 13.9749C13.3185 14.6313 12.4283 15 11.5 15H4.5C3.57174 15 2.6815 14.6313 2.02513 13.9749C1.36875 13.3185 1 12.4283 1 11.5V4.5ZM4.5 2.4C3.94305 2.4 3.4089 2.62125 3.01508 3.01508C2.62125 3.4089 2.4 3.94305 2.4 4.5V11.5C2.4 12.057 2.62125 12.5911 3.01508 12.9849C3.29338 13.2632 3.64176 13.4554 4.01874 13.5441V12.6562C4.01874 11.1651 5.22757 9.95625 6.71874 9.95625H9.31249C10.8037 9.95625 12.0125 11.1651 12.0125 12.6562V13.5365C12.3775 13.4447 12.7143 13.2555 12.9849 12.9849C13.3788 12.5911 13.6 12.057 13.6 11.5V4.5C13.6 3.94305 13.3788 3.4089 12.9849 3.01508C12.5911 2.62125 12.057 2.4 11.5 2.4H4.5ZM10.6125 13.6V12.6562C10.6125 11.9383 10.0305 11.3562 9.31249 11.3562H6.71874C6.00077 11.3562 5.41874 11.9383 5.41874 12.6562V13.6H10.6125ZM7.99999 5.16875C7.32516 5.16875 6.77811 5.7158 6.77811 6.39062C6.77811 7.06545 7.32516 7.6125 7.99999 7.6125C8.67481 7.6125 9.22186 7.06545 9.22186 6.39062C9.22186 5.7158 8.67481 5.16875 7.99999 5.16875ZM5.37811 6.39062C5.37811 4.9426 6.55197 3.76875 7.99999 3.76875C9.44801 3.76875 10.6219 4.9426 10.6219 6.39062C10.6219 7.83865 9.44801 9.0125 7.99999 9.0125C6.55197 9.0125 5.37811 7.83865 5.37811 6.39062Z"/>
+</svg>
+<span>People</span>'),
+        to: people_path(@conn, :project, @project.name),
+        class: Front.Decorators.Header.Project.tab_class(@conn, people_path(@conn, :project, @project.name)) %>
+    <%= link raw(~s'<svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.996a.1.1 0 00-.099.086l-.25 1.784L6.733 4a4.193 4.193 0 00-1.554.9l-.327.299-1.68-.69a.1.1 0 00-.124.043l-.502.87a.1.1 0 00.026.128L4 6.667l-.093.43a4.216 4.216 0 00-.005 1.788l.093.43-1.438 1.112a.1.1 0 00-.026.129l.502.869a.1.1 0 00.124.043l1.68-.68.326.3c.445.41.979.726 1.568.913l.42.134.25 1.783a.1.1 0 00.099.086h1.003a.1.1 0 00.099-.087l.24-1.777.424-.133a4.192 4.192 0 001.575-.91l.326-.298 1.652.669a.1.1 0 00.124-.043l.502-.869a.1.1 0 00-.026-.13L12.013 9.34l.095-.433a4.217 4.217 0 00-.004-1.831l-.097-.433 1.4-1.093a.1.1 0 00.026-.129l-.502-.869a.1.1 0 00-.125-.042l-1.65.677-.328-.297a4.192 4.192 0 00-1.56-.896l-.425-.133-.24-1.778a.1.1 0 00-.1-.087H7.502zm-1.485-.108A1.5 1.5 0 017.501.596h1.003a1.5 1.5 0 011.486 1.3l.124.916c.472.192.912.446 1.309.752l.852-.35a1.5 1.5 0 011.868.638l.502.87a1.5 1.5 0 01-.376 1.932l-.718.56a5.63 5.63 0 01.004 1.548l.721.557a1.5 1.5 0 01.382 1.937l-.502.869a1.5 1.5 0 01-1.861.64l-.852-.344a5.59 5.59 0 01-1.329.768l-.124.915a1.5 1.5 0 01-1.486 1.3H7.5a1.5 1.5 0 01-1.486-1.292l-.13-.93a5.597 5.597 0 01-1.325-.771l-.877.354a1.5 1.5 0 01-1.861-.64l-.502-.869a1.5 1.5 0 01.382-1.937l.756-.584a5.645 5.645 0 01.003-1.494l-.752-.587a1.5 1.5 0 01-.376-1.933l.502-.869a1.5 1.5 0 011.868-.637l.877.36a5.593 5.593 0 011.305-.755l.13-.932zM7.989 6.7a1.3 1.3 0 100 2.6 1.3 1.3 0 000-2.6zM5.29 8a2.7 2.7 0 115.4 0 2.7 2.7 0 01-5.4 0z"/></svg>
+<span>Settings</span>'),
+        to: project_settings_path(@conn, :general, @project.name),
+        class: Front.Decorators.Header.Project.tab_class(@conn, project_settings_path(@conn, :general, @project.name)) %>
+  </nav>
+  <%= Map.get(assigns, :nested_layout) || @inner_content %>
+<% end %>

@@ -1,0 +1,51 @@
+{
+  "after" : "26727bc851bbcd3c8cb08698172cdd68361126d0",
+  "base_ref" : "refs/heads/master",
+  "before" : "0000000000000000000000000000000000000000",
+  "commits" : [  ],
+  "compare" : "https://github.com/markoa/tagtest/compare/v1",
+  "created" : true,
+  "deleted" : false,
+  "forced" : true,
+  "head_commit" : { "added" : [ ".gitignore",
+                                "README.md"
+],
+"author" : { "email" : "marko@renderedtext.com",
+             "name" : "Marko Anastasov",
+             "username" : "markoa"
+},
+"committer" : { "email" : "marko@renderedtext.com",
+                "name" : "Marko Anastasov",
+                "username" : "markoa"
+},
+"distinct" : true,
+"id" : "26727bc851bbcd3c8cb08698172cdd68361126d0",
+"message" : "Initial commit",
+"modified" : [  ],
+"removed" : [  ],
+"timestamp" : "2012-05-18T03:53:12-07:00",
+"url" : "https://github.com/markoa/tagtest/commit/26727bc851bbcd3c8cb08698172cdd68361126d0"
+},
+"pusher" : { "email" : "marko@renderedtext.com",
+             "name" : "markoa"
+},
+"ref" : "refs/tags/v1",
+"repository" : { "created_at" : "2012/05/18 03:53:12 -0700",
+                 "description" : "",
+                 "fork" : false,
+                 "forks" : 1,
+                 "has_downloads" : true,
+                 "has_issues" : true,
+                 "has_wiki" : true,
+                 "name" : "tagtest",
+                 "open_issues" : 0,
+                 "owner" : { "email" : "marko@renderedtext.com",
+                             "name" : "markoa"
+},
+"private" : false,
+"pushed_at" : "2012/05/18 03:53:57 -0700",
+"size" : 128,
+"url" : "https://github.com/markoa/tagtest",
+"watchers" : 1
+}
+}

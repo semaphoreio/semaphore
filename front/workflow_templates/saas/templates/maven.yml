@@ -1,0 +1,15 @@
+version: v1.0
+name: Java
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Maven
+    task:
+      jobs:
+        - name: Build
+          commands:
+            - checkout
+            - sem-version java 1.8
+            - mvn -B package --file pom.xml

@@ -1,0 +1,13 @@
+{
+  "title": "Haskell",
+  "description": "Test Haskell project with cabal",
+  "category": "Other",
+  "features": [
+    "Docker environment with Haskell 8.8",
+    "Code checkout",
+    "Build and test with cabal"
+  ],
+  "icon": "lang-haskell.svg",
+  "template_path": "templates/haskell.yml",
+  "workflow_tip": "other"
+}

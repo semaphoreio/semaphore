@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bootstrapper
+description: A Helm chart for deploying Semaphore post installation setup job
+type: application
+version: "@chartVersion@"
+appVersion: ""

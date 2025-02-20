@@ -1,0 +1,4 @@
+<span class="flex items-center">
+  <span class="gray ml1 mr2">·</span>
+  <%= link "Stop", to: job_path(@conn, :stop, @job.id), method: :post, class: "btn btn-secondary btn-tiny", data: [confirm: "Are you sure you want to stop this job?"]%>
+</span>

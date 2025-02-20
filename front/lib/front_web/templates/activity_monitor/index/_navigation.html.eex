@@ -1,0 +1,8 @@
+<div class="bb b--lighter-gray nt3-m pb2 mb3">
+  <div class="mb2">
+    <div>
+      <strong>Organization:</strong>
+      <%= link @activity.org_name, to: project_path(@conn, :index) %>
+    </div>
+  </div>
+</div>

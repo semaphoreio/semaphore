@@ -1,0 +1,31 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Tasks.Basics = {
+        name: "<%= @scheduler.name %>",
+        description: "<%= @scheduler.description %>"
+    };
+</script>
+
+<%= if @show_description? do %>
+    <div class="ml2 measure">
+        Provide information that will allow your team to identify and understand what this task runs.
+    </div>
+<% end %>
+
+<div class="ml2 mt2 mb4" data-validation="name">
+    <%= label @form, :name, class: "db b mb2" do %>
+        Name of the target
+    <% end %>
+    <%= text_input @form, :name, value: @scheduler.name, class: "form-control w-100 w-50-m",
+        "data-validation-input": "name", placeholder: "e.g. health check" %>
+    <div class="f5 b mv1 red" data-validation-message="name"></div>
+</div>
+
+<div class="ml2 mt2 mb4" data-validation="description">
+    <%= label @form, :description, class: "db b mb2" do %>
+        Description <span class="gray normal">(optional)</span>
+    <% end %>
+    <%= text_input @form, :description, value: @scheduler.description,
+        class: "form-control w-100 w-50-m", "data-validation-input": "description",
+        placeholder: "e.g. runs scheduled pings to our production environments." %>
+    <div class="f5 b mv1 red" data-validation-message="description"></div>
+</div>

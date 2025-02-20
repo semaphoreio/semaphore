@@ -1,0 +1,8 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.jsonArtifactsURL = "<%= raw @json_artifacts_url %>";
+  window.InjectedDataByBackend.encodedEmail = "<%= encoded_email(@organization, @user) %>";
+  window.InjectedDataByBackend.scope = "job";
+</script>
+
+<div id="test-results" class="no-ligatures">
+</div>

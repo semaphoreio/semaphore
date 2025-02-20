@@ -1,0 +1,60 @@
+<div id="aws-instructions" style="display: none;">
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">1. Save the access token</h3>
+    <p class="mb3"><span class="serif">⚠️</span> For your own security, we'll show you the token only once.</p>
+<pre class="self-hosted-agent-access-token f6 bg-washed-yellow pa3 ba b--black-075" style="display: none"><%= @token %></pre>
+    <p class="m0"><button class="self-hosted-agent-access-token-reveal btn btn-small btn-secondary">Reveal</button></p>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">2. Download the CDK application and install dependencies</h3>
+    <p class="mb3">Make sure you have Node.js and NPM installed and paste the following lines in your console, one by one.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+curl -sL https://github.com/renderedtext/agent-aws-stack/archive/refs/tags/v0.2.8.tar.gz -o agent-aws-stack.tar.gz
+tar -xf agent-aws-stack.tar.gz
+cd agent-aws-stack-0.2.8
+npm i
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">3. Build your AMI</h3>
+    <p class="mb3">Make sure you have Packer and Python 3 installed. Also, make sure you have your AWS credentials properly configured in your machine. Then, paste the following line in your console.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+make packer.build
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">4. Create the encrypted SSM parameter for the agent type registration token</h3>
+    <p class="mb3">Using the token provided in step 1 and a name of your choice, paste the following line in your console.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+aws ssm put-parameter \
+  --name YOUR_SSM_PARAMETER_NAME \
+  --value "YOUR_AGENT_TYPE_REGISTRATION_TOKEN" \
+  --type SecureString
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">5. Set environment variables</h3>
+    <p class="mb3">Using the SSM parameter created in step 4, choose a name for your stack, and paste the following lines in your console.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+export SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME=YOUR_SSM_PARAMETER_NAME
+export SEMAPHORE_AGENT_STACK_NAME=YOUR_STACK_NAME
+export SEMAPHORE_ORGANIZATION=YOUR_ORGANIZATION
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">6. Bootstrap the CDK application</h3>
+    <p class="mb3">The AWS CDK requires a few resources to be around for it to work properly. Using your AWS account id and region, run the following command:</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+npm run bootstrap -- aws://YOUR_AWS_ACCOUNT_ID/YOUR_AWS_REGION
+</pre>
+  </div>
+
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">7. Deploy the stack</h3>
+    <p class="mb3">Paste the following line in your console.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+npm run deploy
+</pre>
+    <p class="mv3">For more details, check the <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/aws-support">docs</a>.</p>
+  </div>
+</div>

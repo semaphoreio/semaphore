@@ -1,0 +1,13 @@
+version: "v1.0"
+name: Failing - block limit longer than job default limit
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - execution_time_limit:
+      minutes: 2400
+    task:
+      jobs:
+        - commands:
+            - echo foo

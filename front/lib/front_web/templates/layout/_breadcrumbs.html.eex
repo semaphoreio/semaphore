@@ -1,0 +1,6 @@
+<div class="breadcrumb">
+  <%= Enum.map(@ancestors, fn ancestor -> %>
+    <div class="breadcrumb-item"><a href="<%= ancestor.link %>"><%= ancestor.text %></a></div>
+  <% end) %>
+  <div class="breadcrumb-item active">Push</div>
+</div>

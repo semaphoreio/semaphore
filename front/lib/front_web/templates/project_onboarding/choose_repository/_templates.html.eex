@@ -1,0 +1,78 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" id="disabled-repository" type="text/x-handlebars-template">
+  <div class="x-repository-box" data-name="{{ full_name }}" >
+      <div class="link db dark-gray pv3 ph2 bt b--black-10 hide-child hover-bg-row-highlight">
+        <div class="flex">
+            <div class="flex-shrink-0 mt1 mr2">
+              <img src="<%= image_source("icn-repository.svg") %>" alt="repository" class="o-50">
+            </div>
+            <div class="w-100">
+              <h3 class="f4 mb0 flex items-center justify-between">
+                <span class="mid-gray">{{ full_name }}</span>
+                <span class="f6 fw5"><span class="dn di-m child gray mr1">You need admin access on GitHub</span> <span class="inline-flex items-center justify-center w1 h1 bg-gray white br-100 ba b--gray bw1">✗</span></span>
+              </h3>
+              <p class="f4 measure mid-gray mb0">{{ description }}</p>
+            </div>
+          </div>
+      </div>
+    </div>
+</script>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" id="enabled-repository" type="text/x-handlebars-template">
+  <div class="x-repository-box" data-name="{{ full_name }}" >
+      <%= form_for @conn, project_onboarding_path(@conn, :create), fn _f -> %>
+        <input id="integration_type" name="integration_type" type="hidden" value="<%= @conn.assigns.integration_type %>">
+        <input id="name" name="duplicate" type="hidden" value="false">
+        <input id="name" name="name" type="hidden" value="{{ name }}">
+        <input id="name" name="url" type="hidden" value="{{ url }}">
+
+        <submit data-name="{{ name }}" data-url="{{ url }}" data-description="{{ description }}" data-full_name="{{ full_name }}" class="link db dark-gray pv3 ph2 bt b--black-10 hide-child hover-bg-row-highlight pointer">
+          <div class="flex">
+            <div class="flex-shrink-0 mt1 mr2">
+              <img src="<%= image_source("icn-repository.svg") %>" alt="repository">
+            </div>
+            <div class="w-100">
+              <h3 class="f4 mb0 flex items-center justify-between">
+                <span>{{ full_name }}</span>
+                <span class="f6 fw5"><span class="dn di-m child green mr1">Choose</span> <span class="inline-flex items-center justify-center w1 h1 bg-green white br-100 ba b--green bw1">→</span></span>
+              </h3>
+              <p class="f4 measure black-60 mb0">{{ description }}</p>
+            </div>
+          </div>
+        </submit>
+      <% end %>
+    </div>
+</script>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" id="duplicate-repository" type="text/x-handlebars-template">
+  <div class="pv3 ph2 bt bl br b--black-10 bg-lightest-yellow">
+    <div class="flex">
+      <div class="flex-shrink-0 mt1 mr2">
+        <img src="<%= image_source("icn-repository.svg") %>" alt="repository">
+      </div>
+      <div class="w-100">
+        <h3 class="f4 mb0 flex items-center justify-between">{{ full_name }}</h3>
+        <p class="f4 measure black-60 mb0">{{ description }}</p>
+
+        <div class="bg-white pa3 mt3 mr2 shadow-1 br2">
+          <p class="mb0">You’ve already connected this repo to Semaphore before. Jump to connected project(s):</p>
+          <ul class="mb3">
+          {{#projects}}
+            <li><a href="{{path}}">{{name}}</a></li>
+          {{/projects}}
+          </ul>
+
+          <p class="mb3 pt2 bt b--black-10">In case you want to make a duplicate project, go ahead and can set up this repo again. Every time you push to the repo, Semaphore will run all connected projects.</p>
+          <%= form_for @conn, project_onboarding_path(@conn, :create), fn _f -> %>
+            <input id="integration_type" name="integration_type" type="hidden" value="<%= @conn.assigns.integration_type %>">
+            <input id="name" name="duplicate" type="hidden" value="true">
+            <input id="name" name="name" type="hidden" value="{{ name }}">
+            <input id="name" name="url" type="hidden" value="{{ url }}">
+            <submit class="btn btn-secondary">
+              Make a duplicate project
+            </submit>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</script>

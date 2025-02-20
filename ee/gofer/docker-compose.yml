@@ -1,0 +1,52 @@
+services:
+  app:
+    build: 
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/guard/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        APP_NAME: gofer
+        BUILD_ENV: test
+    image: ${IMAGE:-guard}:${TAG:-latest}
+    container_name: app
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+
+  postgres:
+    container_name: postgres
+    image: "postgres:9.6"
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  pgwev:
+    container_name: pgweb
+    image: sosedoff/pgweb:0.11.7
+    restart: always
+    links: 
+      - postgres:postgres
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy

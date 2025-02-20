@@ -1,0 +1,22 @@
+<div class="bg-washed-gray pa3 br3 ba b--black-075">
+  <%= if Enum.empty?(@starred_items) do %>
+    <div class="tc mv5 mv6-ns">
+      <%= icon("ill-curious-girl") %>
+      <h4 class="f4 mt2 mb0">You didn’t star anything yet</h4>
+      <p class="mb0 measure center">Star from the 'Projects' menu in the header and hit refresh</p>
+    </div>
+  <% else %>
+    <div class="nt3 nb3">
+      <%= @starred_items |> Enum.map(fn(item) -> %>
+        <a href="<%= item.path %>" class="link db f3 dark-gray shadow-1 shadow-hover bg-white br2 ph3 pv2 mv3">
+          <span class="system-sans-serif dib f5 washed-gray v-mid mr2 f6 mid-gray mr2 v-mid" style="transform: translateY(-.1em); -webkit-text-stroke: 1px rgba(0,0,0,.35);">★</span><%= item.name %>
+        </a>
+      <% end) %>
+    </div>
+  <% end %>
+
+</div>
+
+<%= if Enum.any?(@starred_items) do %>
+  <p class="f6 gray mt3 tr">✳ Star from the 'Projects' menu in the header and hit refresh</p>
+<% end %>

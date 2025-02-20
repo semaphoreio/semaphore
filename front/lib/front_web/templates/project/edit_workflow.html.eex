@@ -1,0 +1,52 @@
+<%= render FrontWeb.WorkflowView, "edit/style.html" %>
+
+<div id="workflow-editor-nav" class="bb b--lighter-gray nt3-m pb2">
+	<div class="flex-m justify-between mb2">
+		<div class="pr3 mb2 mb0-m">
+			<div><strong>Project:</strong> <%= link @project.name, to: project_path(@conn, :show, @project.name) %></div>
+      <div><strong>Branch:</strong> <%= @project.repo_default_branch %><span class="f6"></span></div>
+		</div>
+
+    <div class="flex items-start flex-shrink-0 pt1">
+      <a data-action=editorDismiss href='#' class="btn btn-secondary mr3">Dismiss and Exit</a>
+      <a data-action=toggleCommitDialog href="#" class="btn btn-primary">Run the workflow <img src="<%= assets_path() %>/images/icn-down-white.svg" class="v-mid"></a>
+    </div>
+	</div>
+</div>
+
+<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ProjectName = "<%= @project.name %>";
+
+  window.InjectedDataByBackend.CanDismissAndExit = true
+  window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
+    "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, @conn.assigns.organization_id),
+    "hidePromotions" => @hide_promotions,
+    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns.organization_id)
+  }) %>;
+
+  window.InjectedDataByBackend.SecretNameList = <%= raw Poison.encode!(
+    Enum.map(@secrets, fn s -> s.name end),
+    escape: :html_safe
+  )%>;
+
+  window.InjectedDataByBackend.DeploymentTargetsList = <%= raw Poison.encode!(@deployment_targets) %>;
+
+  window.InjectedDataByBackend.AgentTypes = <%= raw Poison.encode!(@agent_types) %>;
+
+  window.InjectedDataByBackend.WorkflowData = {
+    createdInEditor: false,
+    initialYAML: <%= raw Poison.encode!(@project.initial_pipeline_file, escape: :html_safe) %>,
+    yamls: <%= raw Poison.encode!(@yamls, escape: :html_safe) %>
+  };
+
+  window.InjectedDataByBackend.CommitForm = <%= raw Poison.encode!(%{
+    "CommitPath" => project_path(@conn, :commit_config, @project.name),
+    "DismissPath" => project_path(@conn, :show, @project.name),
+    "CheckWorkflowPath" => project_path(@conn, :check_workflow, @project.name),
+    "PushBranch" => @project.repo_default_branch,
+    "InitialBranch" => @project.repo_default_branch,
+    "Avatar" => @commiter_avatar
+  }, escape: :html_safe) %>;
+</script>

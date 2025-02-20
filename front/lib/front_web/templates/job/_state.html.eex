@@ -1,0 +1,73 @@
+<div
+    class="flex-m justify-between pollman-container"
+    data-poll-background
+    data-poll-state="<%= @pollman.state %>"
+    data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+    data-poll-href="<%= @pollman.href %>">
+    <div class="flex items-center">
+        <span class="mr1">Total Time:</span><%= raw job_timer(@job) %>
+
+        <%= if @job.state == "pending" || @job.state == "running" do %>
+            <%= render FrontWeb.JobView, "_running_job_actions.html", conn: @conn, job: @job %>
+        <% end %>
+    </div>
+
+    <div class="flex-m nh2 nh0-m">
+        <%= if @self_hosted and @job.agent_name != "" and @conn.assigns.authorization == :member do %>
+            <div class="flex items-center ph2">
+                <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger flex items-center" data-value="<%= @job.agent_name %>" data-template="agentName">
+                    <img src="<%= assets_path() %>/images/profile-bot-mono.svg" width="16px" height="16px" alt="robot icon" class="db ml1 mr2">
+                    Agent
+                </span>
+            </div>
+        <% end %>
+
+        <div class="flex items-center ph2">
+            <a href="<%= job_path(@conn, :plain_logs, @job.id) %>" class="link gray hover-dark-gray flex items-center" target="_blank">
+                <img src="<%= assets_path() %>/images/icn-arrowtopright-15.svg" width="16px" height="16px" alt="arrow pointing top-right" class="db ml1 mr2">
+                Raw
+            </a>
+        </div>
+
+        <%= if @conn.assigns.authorization == :member do %>
+          <div class="flex items-center ph2">
+              <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger flex items-center" data-value="<%= @job.id %>" data-template="jobCLI">
+                  <img src="<%= assets_path() %>/images/icn-console-15.svg" width="16px" height="16px" alt="console" class="db ml1 mr2">
+                  CLI
+              </span>
+              <span class="gray mh1">·</span>
+
+              <%= cond do %>
+                  <% @self_hosted and Front.on_prem?() -> %>
+                      <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger" data-value="<%= debug_or_attach_self_hosted_txt(@debug_action) %>" data-template="sshSelfHostedMenu">
+                          SSH <%= @debug_action |> String.capitalize() %>
+                      </span>
+                  <% @can_debug -> %>
+                      <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger" data-value="<%= debug_or_attach_cmd(@debug_action, @job.id) %>" data-template="sshMenu">
+                          SSH <%= @debug_action |> String.capitalize() %>
+                      </span>
+                  <% true -> %>
+                      <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger" data-value="<%= debug_or_attach_txt(@debug_action) %>" data-template="sshDisabledMenu">
+                          SSH <%= @debug_action |> String.capitalize() %>
+                      </span>
+              <% end %>
+          </div>
+        <% end %>
+
+        <div class="flex items-center ph2">
+            <span class="gray hover-dark-gray pointer js-job-dropdown-menu-trigger flex items-center" data-template="jobSettings">
+                <img src="<%= assets_path() %>/images/icn-sliders-15.svg" width="16px" height="16px" alt="cogwheel" class="db ml1 mr2">
+                Preferences
+            </span>
+        </div>
+    </div>
+
+    <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+      if (window.Tippy !== undefined) {
+        window.Tippy.defaultDropdown('.js-job-dropdown-menu-trigger')
+      }
+      if (window.JobLogs !== undefined) {
+        window.JobLogs.updateJobState("<%= @job.state %>")
+      }
+    </script>
+</div>

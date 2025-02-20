@@ -1,0 +1,14 @@
+{
+  "title": "Python package",
+  "description": "Test your package on multiple versions",
+  "category": "Python",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Python versions 2.7, 3.5, 3.6 and 3.7",
+    "pytest"
+  ],
+  "icon": "lang-python.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/python-package.yml"
+}

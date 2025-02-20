@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="rspec" tests="4" skipped="0" failures="2" errors="0" time="0.014588" timestamp="2021-03-29T14:19:21+02:00" hostname="skipi-HP-EliteBook-8560p">
+  <properties>
+    <property name="seed" value="50410" />
+  </properties>
+  <testcase classname="spec.calculator.adder_spec" name="Calculator::Adder sums arguments #1" file="./spec/calculator/adder_spec.rb" time="0.000436"></testcase>
+  <testcase classname="spec.calculator.adder_spec" name="Calculator::Adder sums arguments #2" file="./spec/calculator/adder_spec.rb" time="0.012473">
+    <failure message="
+expected: -1
+     got: 3
+
+(compared using ==)
+" type="RSpec: :Expectations: :ExpectationNotMetError">Failure/Error: expect(result).to eq(-1)
+
+  expected: -1
+       got: 3
+
+  (compared using ==)
+./spec/calculator/adder_spec.rb: 11:in `block (2 levels) in &lt;top (required)&gt;&apos;</failure>
+  </testcase>
+  <testcase classname="spec.calculator.subtractor_spec" name="Calculator::Subtractor subtracts arguments #1" file="./spec/calculator/subtractor_spec.rb" time="0.000097"></testcase>
+  <testcase classname="spec.calculator.subtractor_spec" name="Calculator::Subtractor subtracts arguments #2" file="./spec/calculator/subtractor_spec.rb" time="0.000146">
+    <failure message="
+expected: 3
+     got: -1
+
+(compared using ==)
+" type="RSpec: :Expectations: :ExpectationNotMetError">Failure/Error: expect(result).to eq(3)
+
+  expected: 3
+       got: -1
+
+  (compared using ==)
+./spec/calculator/subtractor_spec.rb: 11:in `block (2 levels) in &lt;top (required)&gt;&apos;</failure>
+  </testcase>
+</testsuite>

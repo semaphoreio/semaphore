@@ -1,0 +1,31 @@
+<details class="mt3">
+  <summary class="f6 pointer">
+    How to install sem CLI and connect?
+  </summary>
+
+  <div class="mv3">
+    <div class="b mb1">1. Install sem command line tools</div>
+    <input
+       class="x-select-on-click form-control w-100"
+       type="text"
+       value="curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash"
+       size="36"
+       readonly
+      >
+  </div>
+
+  <div class="mb3">
+    <div class="b mb1">2. Connect to the organization</div>
+    <input
+       class="x-select-on-click form-control w-100"
+       type="text"
+       value="sem connect <%= @organization.username %>.<%= Application.fetch_env!(:front, :domain) %> _YOUR_API_TOKEN_"
+       size="36"
+       readonly
+      >
+  </div>
+
+  <p class="f6 mb0">
+  More in the docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/sem-command-line-tool/" target="_blank" rel="noopener">sem CLI reference</a>
+  </p>
+</details>

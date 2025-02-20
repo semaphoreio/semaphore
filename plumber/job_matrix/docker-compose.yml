@@ -1,0 +1,30 @@
+services:
+  devapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        APP_NAME: job_matrix
+    container_name: devapp
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./home_dir:/home/dev
+      - ../:/home/dev/repo
+
+  ciapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: test
+      args:
+        APP_NAME: job_matrix
+    container_name: ciapp
+    profiles: ["ci"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - "../:/app/repo"
+    working_dir: "/app/repo/job_matrix"

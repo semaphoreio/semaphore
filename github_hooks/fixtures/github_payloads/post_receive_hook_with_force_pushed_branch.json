@@ -1,0 +1,90 @@
+{
+  "ref": "refs/heads/develop",
+  "after": "31650e8769502de4b0650f7e1488dea79faa0888",
+  "before": "9841a4fe0ccc28af24b50ad88d8d88519f11b722",
+  "created": false,
+  "deleted": false,
+  "forced": true,
+  "compare": "https://github.com/salesmaster/sm-web/compare/9841a4fe0ccc...31650e876950",
+  "commits": [
+
+  ],
+  "head_commit": {
+    "id": "31650e8769502de4b0650f7e1488dea79faa0888",
+    "distinct": true,
+    "message": "Merge pull request #14 from salesmaster/techdebt/make_existing_tests_pass\n\nWork on making existing tests pass",
+    "timestamp": "2013-06-13T13:34:51-07:00",
+    "url": "https://github.com/salesmaster/sm-web/commit/31650e8769502de4b0650f7e1488dea79faa0888",
+    "author": {
+      "name": "Jamie Buchanan",
+      "email": "jamie@salesmaster.co.uk",
+      "username": "jamiebuchanan"
+    },
+    "committer": {
+      "name": "Jamie Buchanan",
+      "email": "jamie@salesmaster.co.uk",
+      "username": "jamiebuchanan"
+    },
+    "added": [
+      "spec/features/order_bank/create_quote/multiple_quotes_on_a_single_vehicle_do_not_interfere_spec.rb",
+      "spec/features/stock_book/add_vehicle/salesperson_adds_a_new_vehicle_spec.rb",
+      "spec/features/stock_book/edit_vehicle/editing_specs_and_options_on_pipeline_stock_vehicles_spec.rb",
+      "spec/features/stock_book/salesperson_adds_a_new_vehicle_spec.rb",
+      "spec/support/feature_helpers/dsl.rb",
+      "spec/support/feature_helpers/test_object/account.rb",
+      "spec/support/feature_helpers/test_object/base.rb",
+      "spec/support/feature_helpers/test_object/salesperson.rb"
+    ],
+    "removed": [
+      "spec/features/vehicles/editing_specs_and_options_on_a_quoted_stock_vehicle.rb",
+      "spec/features/vehicles/list_vehicles_spec.rb"
+    ],
+    "modified": [
+      ".gitignore",
+      "Gemfile",
+      "Gemfile.lock",
+      "app/models/vehicle.rb",
+      "config/environments/development.rb",
+      "config/environments/test.rb",
+      "spec/factories/brands.rb",
+      "spec/factories/users.rb",
+      "spec/features/quotes/create/multiple_quotes_on_a_single_vehicle_do_not_interfere_spec.rb",
+      "spec/features/vehicles/editing_specs_and_options_on_pipeline_stock_vehicles_spec.rb",
+      "spec/lib/imports/adp_new_row_spec.rb",
+      "spec/lib/imports/sli_row_spec.rb",
+      "spec/models/vehicle_spec.rb",
+      "spec/support/sidekiq.rb",
+      "spec/support/sunspot.rb"
+    ]
+  },
+  "repository": {
+    "id": 2354314,
+    "name": "sm-web",
+    "url": "https://github.com/salesmaster/sm-web",
+    "description": "SalesMaster - Automotive Software",
+    "homepage": "http://www.salesmaster.co.uk",
+    "watchers": 0,
+    "stargazers": 0,
+    "forks": 2,
+    "fork": false,
+    "size": 3952,
+    "owner": {
+      "name": "salesmaster",
+      "email": null
+    },
+    "private": true,
+    "open_issues": 0,
+    "has_issues": true,
+    "has_downloads": true,
+    "has_wiki": true,
+    "language": "Ruby",
+    "created_at": 1315557298,
+    "pushed_at": 1371567682,
+    "master_branch": "master",
+    "organization": "salesmaster"
+  },
+  "pusher": {
+    "name": "j1mr10rd4n",
+    "email": "jim@j1mr10rd4n.info"
+  }
+}

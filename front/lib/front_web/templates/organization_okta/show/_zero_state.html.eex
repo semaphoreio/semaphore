@@ -1,0 +1,17 @@
+<h1 class="f3 f2-m mb0">Okta Integration</h1>
+<p>Single sign-on with SAML and automatic user provisioning with SCIM. <a href="https://docs.semaphoreci.com/security/okta/overview/" target="_blank">Docs: Okta Integration</a>.</p>
+
+<div class="mv3">
+    <p class="b mb0">When configured</p>
+    <ul class="pl3">
+        <li>Users can log in via your Okta dashboard</li>
+        <li>Okta will create, update and deactivate organization members</li>
+    </ul>
+</div>
+
+<%= if @permissions["organization.okta.manage"] do %>
+    <%= link "Set Up", to: organization_okta_path(@conn, :form), class: "btn btn-primary"%>
+<% else %>
+    <%# Dummy disabled button %>
+    <button class="btn btn-primary", disabled="true">Set Up</button>
+<% end %>

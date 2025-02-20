@@ -1,0 +1,25 @@
+// Mocha configuration file
+// https://mochajs.org/#configuring-mocha-nodejs
+{
+  "extension": [
+    "ts",
+    "tsx",
+    "jsx",
+    "js"
+  ],
+  "spec": [
+    "js/**/*.spec.*"
+  ],
+  "no-deprecations": true,
+  "reporter": "mocha-multi-reporters",
+  "reporter-options": "configFile=reporter-config.json",
+  "require": [
+    "ts-node/register",
+    "esbuild-runner/register",
+    "source-map-support/register",
+    "jsdom-global/register"
+  ],
+  "timeout": 10000,
+  "color": true,
+  "exit": true
+}

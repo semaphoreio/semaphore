@@ -1,0 +1,6 @@
+<div class="flex-m justify-between mb4">
+  <div class="pr4-m">
+    <h1 class="f2 f1-m lh-title mb1">Activity Monitor</h1>
+    <p class="measure-wide mb3 mb0-m">Everything currently running across all projects</p>
+  </div>
+</div>

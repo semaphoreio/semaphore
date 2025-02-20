@@ -1,0 +1,35 @@
+export PATH="$PATH:$(go env GOPATH)/bin"
+
+rm -rf pkg/api/descriptors/*
+
+# internal api
+
+mkdir -p pkg/api/descriptors/artifacthub
+sed --in-place '/go_package/d' tmp/internal_api/artifacthub.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacthub";' >> tmp/internal_api/artifacthub.proto
+
+protoc \
+       --proto_path tmp/internal_api \
+       --proto_path tmp/internal_api/include \
+       --proto_path tmp/internal_api/include/internal_api \
+       --go_out=pkg/api/descriptors/artifacthub \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/artifacthub \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/internal_api/artifacthub.proto
+
+# public api
+
+mkdir -p pkg/api/descriptors/artifacts
+sed --in-place '/go_package/d' tmp/public_api/semaphore/artifacts.v1.proto
+echo 'option go_package = "github.com/semaphoreio/semaphore/artifacthub/pkg/api/descriptors/artifacts";' >> tmp/public_api/semaphore/artifacts.v1.proto
+
+protoc \
+       --proto_path tmp/public_api/semaphore \
+       --go_out=pkg/api/descriptors/artifacts \
+       --go_opt=paths=source_relative \
+       --go-grpc_out=pkg/api/descriptors/artifacts \
+       --go-grpc_opt=paths=source_relative \
+       --go-grpc_opt=require_unimplemented_servers=false \
+       tmp/public_api/semaphore/artifacts.v1.proto

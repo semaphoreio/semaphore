@@ -1,0 +1,19 @@
+version: v1.0
+name: Run in Docker
+agent:
+  machine:
+    type: f1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/node:10' # Your primary container where commands are run
+    - name: database
+      image: 'registry.semaphoreci.com/postgres:11'
+
+blocks:
+  - name: Hello World
+    task:
+      jobs:
+        - name: Test job
+          commands:
+            - checkout # Check out the code
+            - echo "Hello from my 'main' container"

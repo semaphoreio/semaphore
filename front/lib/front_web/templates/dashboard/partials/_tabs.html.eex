@@ -1,0 +1,7 @@
+<div class="tabs mb4">
+  <% me_tab_name = "Me" %>
+  <% everybody_tab_name = "Everybody" %>
+
+  <%= link me_tab_name, to: "/me", class: "tab #{navigation_element_style(me_tab_name, @current_tab)}" %>
+  <%= link everybody_tab_name, to: "/everybody", class: "tab #{navigation_element_style(everybody_tab_name, @current_tab)}" %>
+</div>

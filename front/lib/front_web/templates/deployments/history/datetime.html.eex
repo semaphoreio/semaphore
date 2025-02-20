@@ -1,0 +1,23 @@
+<div class="mt3 mr3 item-center flex-column">
+    <div class="btn btn-secondary date-dropdown" data-template="datePicker">
+        <span class="mr3">Jump to date</span>
+        <img src="<%= assets_path() %>/images/icn-updown.svg">
+    </div>
+
+    <div id="datePicker">
+        <div class="pa2">
+            <%= for option <- @options do %>
+                <div class="pointer pv1 ph2 hover-bg-green hover-white br2 x-dashboard-date-picker"
+                        data-timestamp="<%= DateTime.to_unix(option.timestamp, :microsecond) %>">
+                    <%= option.name %>
+                </div>
+            <% end %>
+        </div>
+        <div class="mh3 pv3 bt b--black-10">
+            <div class="flex items-center">
+                <input id="pikadayInput" type="text" readonly="true"
+                        class="form-control" placeholder="Pick a date…">
+            </div>
+        </div>
+    </div>
+</div>

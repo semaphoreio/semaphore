@@ -1,0 +1,45 @@
+# ESlint will ingore files listed here
+# This is a "temporary"(🙃) list of files that are skipped by the eslint linter.
+# When working on one of these files, you can remove it from this list, and fix the linting errors 🙏.
+js/workflow_view/trigger_event.js
+build.js
+js/activity_monitor/main.js
+js/app.js
+js/dashboard.js
+js/edit_notification.js
+js/escape_html.js
+js/job_logs/components/live_settings.js
+js/job_logs/components/settings.js
+js/job_logs/events/command_output_event.js
+js/job_logs/events_fetcher.spec.js
+js/job_logs/highlight.js
+js/job_logs/job_output.js
+js/job_logs/job_output.spec.js
+js/job_logs/live.js
+js/job_logs/log_line.js
+js/job_logs/logs.js
+js/job_logs/render.js
+js/job_logs/render.spec.js
+js/job_logs/templates/command.js
+js/job_logs/templates/command.spec.js
+js/job_logs/templates/job_output.spec.js
+js/job_logs/templates/log_line.js
+js/jump_to/component.js
+js/jump_to/jump_to.js
+js/jump_to/template.js
+js/manage_secret.js
+js/me/components/requester.js
+js/notice.js
+js/pre_flight_checks/agent.js
+js/project/components/choose_select.js
+js/project/project.js
+js/project_settings/artifacts.js
+js/project_settings/badge.js
+js/project_settings/general.js
+js/query_list.js
+js/repository.js
+js/sleep_detector.js
+js/watchman.js
+js/workflow_list.js
+js/workflow_view/pipeline.js
+js/workflow_view/timer.js

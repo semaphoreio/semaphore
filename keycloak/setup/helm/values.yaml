@@ -1,0 +1,5 @@
+image: keycloak-setup
+imageTag: latest
+imagePullSecrets: []
+job:
+  ttlAfterFinished: 60

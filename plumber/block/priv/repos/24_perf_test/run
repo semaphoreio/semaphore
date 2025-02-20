@@ -1,0 +1,7 @@
+#!/bin/bash
+
+TOKEN=$RANDOM
+
+for i in `seq $1` ; do 
+  ~/go/src/github.com/semaphoreci/cli/sem create wf -p plumber -l $TOKEN-$i
+done

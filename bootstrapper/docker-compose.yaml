@@ -1,0 +1,17 @@
+version: '3.6'
+
+services:
+
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-bootstrapper}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        - APP_NAME=bootstrapper
+    tty: true
+    volumes:
+      - .:/app
+      - /tmp:/tmp

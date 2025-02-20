@@ -1,0 +1,19 @@
+{
+  "default_stop_words": [
+    "defmodule",
+    "defrecord",
+    "defimpl",
+    "def.+(.+\/\/.+).+do"
+  ],
+  "skip_files": [
+    "lib/internal_api",
+    "test/support"
+  ],
+  "print_summary": true,
+  "coverage_options": {
+    "treat_no_relevant_lines_as_covered": true
+  },
+  "terminal_options": {
+    "print_files": true
+  }
+}

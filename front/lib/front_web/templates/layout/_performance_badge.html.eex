@@ -1,0 +1,40 @@
+<div id="x-call-trace" class="dn" style="z-index: 10; position: absolute; width: 80%; min-height: 200px; padding: 1em 2em; top: 100px; background: white; left: 10%; border: 1px solid gray; border-radius: 2px;">
+  <h1>Call Trace</h1>
+  <%= raw Front.Tracing.report(@conn) %>
+</div>
+<% duration = Front.Tracing.total_duratin(@conn) %>
+<% color = if duration > 500, do: "orange", else: "springgreen" %>
+<div class="fixed bottom-0 right-0 code f5 ph2 z-999" style="background: <%= color %>">
+  <span id="x-call-trace-toggle" >
+    <%= System.get_env("HOSTNAME") %> | Backend: <%= duration %>ms
+  </span>
+  |
+  <span id="x-pollman">
+    Pollman(<span id="x-pollman-state">running</span>) <a class="pointer" id="x-pollman-toggle">Stop</a><a class="ml2 hide pointer" title="poll once" id="x-pollman-poll-once">🔄</a>
+  </span>
+</div>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  const toggle = document.getElementById("x-call-trace-toggle");
+  toggle.onclick = function() { document.getElementById("x-call-trace").classList.toggle("dn") };
+
+  let pollmanRunning = true;
+  const pollmanToggle = document.getElementById("x-pollman-toggle");
+  const pollmanPollOnce = document.getElementById("x-pollman-poll-once");
+
+  pollmanPollOnce.onclick = function() {
+    Pollman.pollNow(Pollman.options);
+  }
+
+  pollmanToggle.onclick = function() {
+    pollmanRunning = !pollmanRunning;
+    if(pollmanRunning) {
+      Pollman.start()
+      pollmanPollOnce.classList.add("hide");
+    } else {
+      Pollman.stop()
+      pollmanPollOnce.classList.remove("hide");
+    }
+    document.getElementById("x-pollman-state").innerText = pollmanRunning ? "running" : "stopped";
+    document.getElementById("x-pollman-toggle").innerText = pollmanRunning ? "Stop" : "Start";
+  }
+</script>

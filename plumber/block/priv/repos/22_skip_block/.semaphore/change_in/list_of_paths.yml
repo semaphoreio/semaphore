@@ -1,0 +1,14 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Block 1
+    skip:
+      when: "change_in(['/.semaphore/2.txt', '../foo/foo.txt'])"
+    task:
+      jobs:
+        - commands:
+            - exit 127

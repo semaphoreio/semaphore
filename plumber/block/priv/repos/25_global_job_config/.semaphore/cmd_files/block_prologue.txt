@@ -1,0 +1,2 @@
+touch gjc_test/block_prologue_1.txt
+mv gjc_test/global_prologue_2.txt gjc_test/block_prologue_2.txt

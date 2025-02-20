@@ -1,0 +1,42 @@
+<div class="bg-white relative">
+  <div class="pa5-m">
+    <div class="mw6 center shadow-1-m pa4-m">
+      <div class="flex items-start justify-between mb3">
+        <div>
+          <h1 class="f3 mb1">Choose branch</h1>
+          <p class="pr4 mb0 measure">Semaphore will commit the workflow configuration to this branch when you’re done editing.</p>
+        </div>
+        <a href="<%= project_path(@conn, :show, @project.name) %>" class="btn btn-secondary btn-small">Cancel</a>
+      </div>
+
+      <div class="f6 gray">
+        Latest active branches in this project
+      </div>
+
+      <div class="bg-white bb b--lighter-gray pb2">
+        <%= Enum.map(@branches, fn branch -> %>
+          <div class="mv2 truncate">
+            <%= link branch.name, to: "#{branch.html_url}/edit_workflow" %>
+          </div>
+        <% end) %>
+      </div>
+
+      <!-- Pagination -->
+      <div class="flex justify-between mt2 mt3-m">
+        <div class="button-group">
+          <%= if @first_page? do %>
+            <a class="btn btn-secondary btn-small disabled">Previous</a>
+          <% else %>
+            <%= link "Previous", to: project_path(@conn, :edit_workflow, @project.name, page_token: @previous_page_token, direction: "previous"), class: "btn btn-secondary btn-small" %>
+          <% end %>
+
+          <%= if @last_page? do %>
+            <a class="btn btn-secondary btn-small disabled">Next</a>
+          <% else %>
+            <%= link "Next", to: project_path(@conn, :edit_workflow, @project.name, page_token: @next_page_token, direction: "next"), class: "btn btn-secondary btn-small" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

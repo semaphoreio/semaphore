@@ -1,0 +1,6 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.InsightsConfig = <%= raw json_config(@conn, @project, @default_branch_name) %>
+</script>
+
+<div id="insights-app">
+</div>

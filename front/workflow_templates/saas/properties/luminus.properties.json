@@ -1,0 +1,16 @@
+{
+  "title": "Clojure",
+  "description": "Build and test your Clojure app",
+  "category": "Other",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Install dependencies using a cache for faster builds",
+    "Run the unit tests",
+    "Package the app as a single, standalone jar file"
+  ],
+  "icon": "lang-clojure.svg",
+  "preview": "https://github.com/semaphoreci/workflows/blob/master/previews/clojureluminus.png?raw=true",
+  "workflow_tip": "other",
+  "template_path": "templates/luminus.yml"
+}

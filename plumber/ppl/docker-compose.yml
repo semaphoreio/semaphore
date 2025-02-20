@@ -1,0 +1,123 @@
+version: '3.6'
+
+services:
+  app:
+    image: ${IMAGE:-ppl}:${TAG:-latest}
+    build:
+      context: ..
+      cache_from:
+        - "${IMAGE:-ppl}:${IMAGE_TAG:-latest}"
+      dockerfile: ppl/Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=dev
+      ssh:
+        - default
+
+    environment:
+      IN_DOCKER: "true"
+      DB_URL: "ecto://postgres:PASSWORD@postgres/ppl_repo"
+      DB_PASSWORD: postgres
+      POSTGRES_DB_SSL: "false"
+      POSTGRES_DB_NAME: "ppl_repo"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: "5"
+      BLOCK_POSTGRES_DB_SSL: "false"
+      BLOCK_POSTGRES_DB_NAME: "ppl_repo"
+      BLOCK_POSTGRES_DB_USER: "postgres"
+      BLOCK_POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      BLOCK_POSTGRES_DB_HOST: "db"
+      BLOCK_POSTGRES_DB_POOL_SIZE: "5"
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      INTERNAL_API_URL_TASK: "task_api:50051"
+      INTERNAL_API_URL_REPO_PROXY: "repo_proxy_api:50052"
+      REPO_PROXY_NEW_GRPC_URL: "repo_proxy_api:50052"
+      IN_FLIGHT_DESCRIBE_LIMIT: 50
+      IN_FLIGHT_LIST_LIMIT: 50
+      PPL_QUEUE_LIMIT: 9
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      task_api:
+        condition: service_healthy
+      repo_proxy_api:
+        condition: service_healthy
+    tty: true
+    volumes:
+      - .:/app:delegated
+
+  db:
+    image: "postgres:9.6"
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  repo_proxy_api:
+    build:
+      context: ../
+      dockerfile: repo_proxy_ref/Dockerfile
+      args:
+        APP_NAME: repo_proxy_ref
+        MIX_ENV: "prod"
+      target: runner
+    environment:
+      GRPC_PORT: "50052"
+    ports:
+      - 50052:50052
+    healthcheck:
+      test: ["CMD-SHELL", "grpc_health_probe -addr=:50052"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  task_api:
+    build:
+      context: ../
+      dockerfile: task_api_referent/Dockerfile
+      args:
+        APP_NAME: task_api_referent
+        MIX_ENV: "prod"
+      target: runner
+    environment:
+      GRPC_PORT: "50052"
+    ports:
+      - 50051:50051
+    healthcheck:
+      test: ["CMD-SHELL", "grpc_health_probe -addr=:50051"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  pgweb:
+    image: sosedoff/pgweb:0.14.1
+    restart: always
+    profiles: ["dev"]
+    links:
+      - db:db
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/block_repo?sslmode=disable"
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy

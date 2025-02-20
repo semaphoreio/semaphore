@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>404 Page Not Found · Semaphore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="<%= assets_path() %>/css/app-semaphore-min.css">
+
+    <!-- Favicons for all platforms -->
+    <link rel="apple-touch-icon" sizes="180x180" href="<%= assets_path() %>/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<%= assets_path() %>/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<%= assets_path() %>/images/favicon-16x16.png">
+    <link rel="manifest" href="<%= assets_path() %>/images/site.webmanifest">
+    <link rel="shortcut icon" href="<%= assets_path() %>/images/favicon.ico">
+    <meta name="msapplication-TileColor" content="#00d477">
+    <meta name="msapplication-config" content="<%= assets_path() %>/images/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
+    <style>
+      body {
+        background:
+          linear-gradient(135deg, #1a237e 25%, transparent 25%) -150px 0,
+          linear-gradient(225deg, #92c9ff 25%, #b33f3f00 25%) -150px 0,
+          linear-gradient(315deg, #505ee2 25%, transparent 25%),
+          linear-gradient(45deg,  #f3f1ec 25%, transparent 25%);
+        background-size: 300px 300px;
+        background-color: #00a569;
+        animation: move-bg 30s linear infinite;
+      }
+
+      @keyframes move-bg {
+        0%   { background-position: -150px 0, -150px 0, 0 0, 0 0; }
+        100% { background-position: 150px 0, 150px 0, 300px 0, 300px 0; }
+      }
+    </style>
+  </head>
+
+  <body>
+
+  <%= if anonymous?(@conn) do %>
+    <header class="white ph3 pt3 pb4 pb6-m" style="background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);">
+      <div class="flex-m items-center justify-between">
+        <a href="https://me.<%= Application.fetch_env!(:front, :domain) %>/" class="db">
+          <img src="<%= assets_path() %>/images/semaphore-logo-full-white.svg" alt="Semaphore Logo">
+        </a>
+        <%= if not Front.on_prem?() do %>
+          <div class="flex-ns items-center">
+            <div class="f5 fw5 pr2 mv3 mv0-m flex justify-center">
+              <a href="https://<%= Application.fetch_env!(:front, :domain) %>/product" class="link white-90 hover-white ph2">Product</a>
+              <a href="https://<%= Application.fetch_env!(:front, :domain) %>/pricing" class="link white-90 hover-white ph2">Pricing</a>
+              <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/" class="link white-90 hover-white ph2">Docs</a>
+              <a href="<%= login_url(@conn) %>" class="link white-90 hover-white ph3 bl b--white-50">Log in</a>
+              <a href="<%= signup_url(@conn) %>" class="link white-90 hover-white ph3 bl b--white-50">Sign up</a>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </header>
+  <% else %>
+    <header class="white ph3 pt3 pb4 pb6-m" style="background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);">
+      <a href="https://me.<%= Application.fetch_env!(:front, :domain) %>/" class="db">
+        <img src="<%= assets_path() %>/images/semaphore-logo-full-white.svg" alt="Semaphore Logo">
+      </a>
+    </header>
+  <% end %>
+
+    <div class="tc pt3 ph3">
+      <div class="mw6 center br3 shadow-1 pv5 bg-white ph3">
+        <h1 class="fw3 lh-solid mb3" style="font-size: 112px">404</h1>
+        <h2 class="f2 fw5 black-80 mb0">Page not found</h2>
+        <%= if anonymous?(@conn) do %>
+          <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= login_url(@conn) %>" class="link black-50 hover-black-80">log in →</a></p>
+        <% else %>
+        <%= if not Front.on_prem?() do %>
+          <%= if Enum.all?([:user, :project], fn m -> Enum.member?(Map.keys(@conn.assigns), m) end) do %>
+            <%= if @conn.assigns.user.gitlab_scope == :NONE &&
+              @conn.assigns.project.integration_type == :GITLAB do %>
+              <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= connect_with(@conn, :gitlab) %>" class="link black-50 hover-black-80">connect with GitLab →</a></p>
+            <% end %>
+
+            <%= if @conn.assigns.user.bitbucket_scope == :NONE && @conn.assigns.project.integration_type == :BITBUCKET do %>
+              <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= connect_with(@conn, :bitbucket) %>" class="link black-50 hover-black-80">connect with Bitbucket →</a></p>
+            <% end %>
+
+            <%= if @conn.assigns.user.github_scope == :NONE && @conn.assigns.project.integration_type == :GITHUB_APP do %>
+              <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= connect_with(@conn, :github) %>" class="link black-50 hover-black-80">connect with GitHub →</a></p>
+            <% end %>
+
+            <%= if @conn.assigns.user.github_scope == :NONE && @conn.assigns.project.integration_type == :GITHUB_OAUTH_TOKEN do %>
+              <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= connect_with(@conn, :github) %>" class="link black-50 hover-black-80">connect with GitHub →</a></p>
+            <% end %>
+             <% end %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+  </body>
+</html>

@@ -1,0 +1,3 @@
+mkdir gjc_test
+touch gjc_test/global_prologue_1.txt
+touch gjc_test/global_prologue_2.txt

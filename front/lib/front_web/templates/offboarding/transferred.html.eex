@@ -1,0 +1,13 @@
+<div class="flex-m items-center justify-between bb b--lighter-gray pv2 hover-bg-row-highlight">
+  <div class="inline-flex f4 f3-m b mb1 mb0-m">
+    <a class="link db dark-gray underline-hover" href="<%= project_path(@conn, :show, @project.name) %>"><%= @project.name %></a>
+    <%= link raw(icon("icn-settings-15", alt: "cog", class: "v-mid", width: "16")), to: project_settings_path(@conn, :general, @project.name), class: "hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1" %>
+  </div>
+  <div>
+    <%= if @success do %>
+      <span class="green">✓ Transferred</span>
+    <% else %>
+      <span data-offboarding="failed" class="red">✗ <%= @message %></span>
+    <% end %>
+  </div>
+</div>

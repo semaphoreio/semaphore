@@ -1,0 +1,6 @@
+apiVersion: v2
+name: secrethub
+description: A Helm chart for deploying Semaphore secrethub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

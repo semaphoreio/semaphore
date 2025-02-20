@@ -1,0 +1,12 @@
+{
+  "title": "Python - Django",
+  "description": "Run a comprehensive CI pipeline for your Django application with parallel tasks for dependency management, code analysis, unit tests, browser tests, and security checks. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Python</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Django</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>MySQL</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Pylint</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Browser Tests</span></div>",
+  "short_description": "Run your Django application",
+  "group": "ci",
+  "language": "Python",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-python.svg",
+  "template_path": "templates/python_saas_django.yml",
+  "workflow_tip": "other"
+}

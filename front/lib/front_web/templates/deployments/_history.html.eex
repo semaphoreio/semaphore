@@ -1,0 +1,65 @@
+<div class="shadow-1 br3 bg-white overflow-hidden">
+    <div class="flex flex-row justify-between b bb b--black-075 bw1">
+        <p class="ph3 pv3 mb0">Deployment History</p>
+        <%= render FrontWeb.DeploymentsView, "history/datetime.html",
+            conn: @conn, project: @project, page_args: @page_args,
+            options: [
+                %{name: "1 month ago", timestamp: Timex.shift(Timex.now, months: -1)},
+                %{name: "3 months ago", timestamp: Timex.shift(Timex.now, months: -3)},
+                %{name: "6 months ago", timestamp: Timex.shift(Timex.now, months: -6)}
+            ] %>
+    </div>
+
+    <div class="flex flex-rowm justify-between">
+        <%= render FrontWeb.DeploymentsView, "history/filters.html",
+                conn: @conn, project: @project, target: @target, page_args: @page_args %>
+    </div>
+
+    <%= if Enum.empty?(@page.deployments) do %>
+        <div class="pa3 pv2">
+            <div class="justify-between tc pa3">
+                <span class="material-symbols-outlined md-36">hourglass_empty</span>
+                <div class="flex justify-around">
+                    <p class="gray measure">
+                        We didn't find any deployments matching your criteria.
+                    </p>
+                </div>
+            </div>
+        </div>
+    <% else %>
+        <%= for deployment <- @page.deployments do %>
+            <%= render FrontWeb.DeploymentsView, "_history_item.html",
+                        conn: @conn,
+                        project: @project,
+                        deployment: deployment,
+                        state: deployment_state(deployment) %>
+        <% end %>
+    <% end %>
+</div>
+
+<%= unless Enum.empty?(@page.deployments) do %>
+    <div class="flex justify-center mv3">
+        <%= if @page.cursor_after do %>
+            <div>
+                Back to <%= link "Newest", to: deployments_path(@conn, :show, @project.name, @target.id,
+                    filters: @page_args[:filters]) %>
+                <span class="ml1 mr2">·</span>
+            </div>
+        <% end %>
+        <div class="button-group">
+            <%= if @page.cursor_after do %>
+                <%= link "Newer", class: "btn btn-secondary", to: deployments_path(@conn, :show, @project.name, @target.id,
+                        direction: :AFTER, timestamp: @page.cursor_after, filters: @page_args[:filters]) %>
+            <% else %>
+                <button class="btn btn-secondary" disabled="disabled">Newer</button>
+            <% end %>
+
+            <%= if @page.cursor_before do %>
+                <%= link "Older", class: "btn btn-secondary", to: deployments_path(@conn, :show, @project.name, @target.id,
+                        direction: :BEFORE, timestamp: @page.cursor_before, filters: @page_args[:filters]) %>
+            <% else %>
+                <button class="btn btn-secondary" disabled="disabled">Older</button>
+            <% end %>
+        </div>
+    </div>
+<% end %>

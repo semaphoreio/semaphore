@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dashboardhub
+description: A Helm chart for deploying Semaphore dashboardhub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

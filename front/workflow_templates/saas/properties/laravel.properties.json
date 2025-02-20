@@ -1,0 +1,16 @@
+{
+  "title": "Laravel",
+  "description": "Test your Laravel application",
+  "category": "PHP",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Checkout code",
+    "Install and cache dependencies",
+    "Set up database",
+    "Run PHPUnit tests"
+  ],
+  "icon": "lang-laravel.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/laravel.yml",
+  "pinned": true
+}

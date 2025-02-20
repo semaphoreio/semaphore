@@ -1,0 +1,21 @@
+#
+# Fixture used to set up fake response from Repohub.
+#
+# See: test/support/fake_services.ex
+#
+
+version: "v1.0"
+name: Deploy
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+
+blocks:
+  - name: "Deploy"
+    task:
+      jobs:
+      - name: Deploy
+        commands:
+          - checkout
+          - make deploy

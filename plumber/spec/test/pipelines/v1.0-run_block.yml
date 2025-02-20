@@ -1,0 +1,23 @@
+version: "v1.0"
+name: Run block when
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1
+    run:
+      when: "branch =~ 'run-ci$'"
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo "Block is executed when pattern is matched"
+  - name: Block 2
+    run:
+      when: false
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo "Block should never be executed"

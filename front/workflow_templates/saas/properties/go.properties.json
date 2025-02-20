@@ -1,0 +1,10 @@
+{
+  "title": "Go",
+  "description": "Test your Go project",
+  "category": "Other",
+  "features": ["Ubuntu 20.04 bash environment", "Code checkout", "go test"],
+  "icon": "lang-go.svg",
+  "template_path": "templates/go.yml",
+  "workflow_tip": "other",
+  "pinned": true
+}

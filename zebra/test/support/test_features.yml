@@ -1,0 +1,16 @@
+basic_setup:
+feature_with_int_quantity:
+  quantity: 100
+feature_with_str_quantity:
+  quantity: "101"
+disabled_feature:
+  enabled: false
+disabled_feature_with_int_quantity:
+  enabled: false
+  quantity: 102
+disabled_feature_with_str_quantity:
+  enabled: false
+  quantity: "103"
+full_setup:
+  enabled: true
+  quantity: 104

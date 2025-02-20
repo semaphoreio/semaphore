@@ -1,0 +1,27 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+window.InjectedDataByBackend.FilterOptions = <%= raw Poison.encode!(@filters, escape: :html_safe) %>;
+window.InjectedDataByBackend.BranchUrl = "<%= project_path(@conn, :filtered_branches, @project.name, with_archived: true) %>";
+window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
+</script>
+
+<div class="mb3 nt2-m pb3 bb b--lighter-gray">
+  <div class="flex-l justify-between">
+    <div class="mb3 mb0-l pr4-m">
+      <h1 class="f2 f1-m lh-title mb1">
+        <%= "#{@organization.username}/#{@project.name}" %>
+      </h1>
+      <p class="mb0 measure-wide">
+        <%= icon(@project, class: "v-mid mr2", width: "16") %>
+        <%= link human_accessible_repo_name(@project), to: human_accessible_repository_url(@project), target: "_blank" %><%= description(@project.description) %>
+      </p>
+    </div>
+  </div>
+</div>
+
+<div class="bg-washed-gray pa3 br3 mt3 ba b--black-075">
+  <div id="workflow-lists">
+    <%= render FrontWeb.ProjectView, "public/_tabs.html", project: @project, conn: @conn, type: @type, requester: @requester %>
+
+    <%= render FrontWeb.ProjectView, "public/_workflows.html", project: @project, conn: @conn, pollman: @pollman, workflows: @workflows, page: :project %>
+  </div>
+</div>

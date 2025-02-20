@@ -1,0 +1,11 @@
+image: bootstrapper
+imageTag: latest
+imagePullSecrets: []
+
+resources:
+  limits:
+    cpu: '0.05'
+    memory: 50Mi
+  requests:
+    cpu: '0.01'
+    memory: 25Mi

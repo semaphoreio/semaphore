@@ -1,0 +1,21 @@
+version: v1.0
+name: Python
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: pytest
+          commands:
+            - sem-version python 3.7
+            - checkout
+            - python -m pip install --upgrade pip
+            - pip install -r requirements.txt
+            - pip install flake8
+            - flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+            - flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            - pip install pytest
+            - pytest

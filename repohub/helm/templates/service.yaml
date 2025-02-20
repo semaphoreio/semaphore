@@ -1,0 +1,16 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $chartName }}-internal-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: {{ $chartName }}
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP

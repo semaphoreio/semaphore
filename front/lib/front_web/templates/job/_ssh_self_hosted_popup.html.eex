@@ -1,0 +1,9 @@
+<div style="display: none;">
+  <div id="sshSelfHostedMenu">
+    <div class="f6 pa3">
+      <div>
+        {{VALUE}}
+      </div>
+    </div>
+  </div>
+</div>

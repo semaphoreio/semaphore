@@ -1,0 +1,71 @@
+# Source: public-api-gateway/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+---
+# Source: public-api-gateway/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Chart.Name }}"
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}"
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: "{{ .Chart.Name }}"
+      labels:
+        app: "{{ .Chart.Name }}"
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      containers:
+        - name: "{{ .Chart.Name }}"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: http-port
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            - name: ARTIFACTS_V1_PUBLIC_GRPC_API_ENDPOINT
+              value: "artifacthub-public-grpc-api:50052"
+            - name: WORKFLOWS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
+              value: "workflows-v1alpha-public-grpc-api:50051"
+            - name: SECRETS_V1BETA_PUBLIC_GRPC_API_ENDPOINT
+              value: "secrets-v1beta-public-grpc-api:50051"
+            - name: DASHBOARDS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
+              value: "dashboards-v1alpha-public-grpc-api:50051"
+            - name: JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
+              value: "jobs-v1alpha-public-grpc-api:50051"
+            - name: NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
+              value: "notifications-v1alpha-public-grpc-api:50051"
+            - name: PROJECT_SECRETS_V1_PUBLIC_GRPC_API_ENDPOINT
+              value: "secrethub-grpc:50051"
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 13 }}
+{{- end }}

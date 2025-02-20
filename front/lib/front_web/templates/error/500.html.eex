@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>500 · Internal Server Error</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="<%= assets_path() %>/css/app-semaphore-min.css">
+
+    <!-- Favicons for all platforms -->
+    <link rel="apple-touch-icon" sizes="180x180" href="<%= assets_path() %>/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="<%= assets_path() %>/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="<%= assets_path() %>/images/favicon-16x16.png">
+    <link rel="manifest" href="<%= assets_path() %>/images/site.webmanifest">
+    <link rel="shortcut icon" href="<%= assets_path() %>/images/favicon.ico">
+    <meta name="msapplication-TileColor" content="#00d477">
+    <meta name="msapplication-config" content="<%= assets_path() %>/images/browserconfig.xml">
+    <meta name="theme-color" content="#ffffff">
+
+    <style>
+      body {
+        background:
+          linear-gradient(135deg, #351767 25%, transparent 25%) -150px 0,
+          linear-gradient(225deg, #caabff 25%, #b33f3f00 25%) -150px 0,
+          linear-gradient(315deg, #6339ab 25%, transparent 25%),
+          linear-gradient(45deg,  #f3f1ec 25%, transparent 25%);
+        background-size: 300px 300px;
+        background-color: #8658d6;
+        animation: move-bg 30s linear infinite;
+      }
+
+      @keyframes move-bg {
+        0%   { background-position: -150px 0, -150px 0, 0 0, 0 0; }
+        100% { background-position: 150px 0, 150px 0, 300px 0, 300px 0; }
+      }
+
+      h1 {
+        animation: blink 2.5s steps(1, end) infinite;
+      }
+      @keyframes blink {
+        0%, 100% { color: inherit; }
+        50% { color: #8658d6 ; }
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <header class="white ph3 pt3 pb4 pb6-m" style="background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);">
+      <a href="https://me.<%= Application.fetch_env!(:front, :domain) %>/" class="db">
+        <img src="<%= assets_path() %>/images/semaphore-logo-full-white.svg" alt="Semaphore Logo">
+      </a>
+    </header>
+
+    <div class="tc pt3 ph3">
+      <div class="mw6 center br3 shadow-1 pv5 bg-white ph3">
+        <h1 class="fw3 lh-solid mb3" style="font-size: 112px">500</h1>
+        <h2 class="f4 fw5 black-80 mb0">There’s a problem with Semaphore</h2>
+        <p class="f4 black-80 mb3=0">Try again or check <a href="https://status.<%= Application.fetch_env!(:front, :domain) %>" class="link black-50 hover-black-80">Semaphore Status →</a></p>
+      </div>
+    </div>
+
+  </body>
+</html>

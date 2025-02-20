@@ -1,0 +1,31 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+after_pipeline:
+  task:
+    jobs:
+      - name: Generate pipeline test results report
+        commands:
+          - test-results gen-pipeline-report
+      - name: DB cleanup
+        commands:
+          - psql truncate all
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
+  - name: Block 2
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job
+        - name: job2
+          commands:
+            - echo Single command job

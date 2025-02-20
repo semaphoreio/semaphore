@@ -1,0 +1,12 @@
+version: "v1.0"
+name: Cmd_File test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+
+blocks:
+  - task:
+      jobs:
+        - name: Job 1
+          commands_file: cmd_file_1.sh

@@ -1,0 +1,41 @@
+ <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Redirecting to GitHub...</title>
+        <style>
+            body {
+                background-color: white;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                padding: 50px;
+                color: black;
+            }
+            button {
+                padding: 10px 20px;
+                font-size: 16px;
+                margin-top: 20px;
+                cursor: pointer;
+            }
+        </style>
+        <script>
+            // Function to redirect automatically after a few seconds
+            function redirect() {
+                console.log("Redirecting to GitHub...");
+                document.getElementById("redirectForm").submit();
+            }
+
+            // Redirect after 2 seconds if not already redirected
+            setTimeout(redirect, 2000);
+        </script>
+    </head>
+    <body onload="redirect()">
+        <h1>Redirecting you to GitHub...</h1>
+        <p>If it does not happen automatically after a few seconds, press this button:</p>
+        <form id="redirectForm" action="<%= @url %>" method="post">
+          <input type="hidden" name="manifest" id="manifest" value="<%= @manifest %>">
+          <button type="submit">Go to GitHub</button>
+        </form>
+    </body>
+    </html>

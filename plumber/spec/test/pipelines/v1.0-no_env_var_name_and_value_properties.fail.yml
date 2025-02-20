@@ -1,0 +1,16 @@
+version: "v1.0"
+name: Missing value property in env_vars
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: Job 1
+          env_vars:
+            - name: ENV_VAR_NAME
+            - value: "value"
+          commands:
+            - echo foo

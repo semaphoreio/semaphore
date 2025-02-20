@@ -1,0 +1,141 @@
+# This is a Semaphore configuration file for fan-in/fan-out workflow using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+version: v1.0  # Semaphore configuration version
+name: "🌟 Fan-In/Fan-Out Pipeline"  # Pipeline display name
+
+# Define the machine type, OS image, and containers
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/node:20'  # Node.js 20 container
+    - name: postgres
+      image: registry.semaphoreci.com/postgres:17  # PostgreSQL 17 for database operations
+    - name: redis
+      image: registry.semaphoreci.com/redis:7.0  # Redis 7.0 for caching
+
+# Configure when to stop the pipeline early
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+blocks:
+  # Initial setup block (fan-out starts here)
+  - name: "🛠️ Setup"
+    dependencies: []
+    task:
+      jobs:
+        - name: "📦 Install Dependencies"
+          commands:
+            - echo "Checking out code..."
+            - echo "Installing project dependencies..."
+            - echo "Setup completed successfully!"
+
+  # Parallel testing blocks (fan-out)
+  - name: "🧪 Unit Tests"
+    dependencies: ["🛠️ Setup"]
+    task:
+      jobs:
+        - name: "🟢 Run Unit Tests"
+          commands:
+            - echo "Running unit tests in container..."
+            - echo "Unit tests passed successfully!"
+
+  - name: "🔍 Integration Tests"
+    dependencies: ["🛠️ Setup"]
+    task:
+      env_vars:
+        - name: DATABASE_URL
+          value: postgresql://postgres@postgres:5432/test_db
+        - name: REDIS_URL
+          value: redis://redis:6379
+      jobs:
+        - name: "🔄 Run Integration Tests"
+          commands:
+            - echo "Setting up test database..."
+            - echo "Running integration tests with PostgreSQL..."
+            - echo "Running cache tests with Redis..."
+            - echo "Integration tests passed successfully!"
+
+  - name: "🌐 E2E Tests"
+    dependencies: ["🛠️ Setup"]
+    task:
+      jobs:
+        - name: "🎭 Run E2E Tests"
+          commands:
+            - echo "Starting containerized environment..."
+            - echo "Running end-to-end tests..."
+            - echo "E2E tests passed successfully!"
+
+  # Code quality checks (fan-out)
+  - name: "✨ Code Quality"
+    dependencies: ["🛠️ Setup"]
+    task:
+      jobs:
+        - name: "🔍 Lint"
+          commands:
+            - echo "Running code linting in container..."
+            - echo "Linting passed successfully!"
+        - name: "📊 Type Check"
+          commands:
+            - echo "Running type checks in container..."
+            - echo "Type checking passed successfully!"
+
+  # Security checks (fan-out)
+  - name: "🔐 Security"
+    dependencies: ["🛠️ Setup"]
+    task:
+      jobs:
+        - name: "🛡️ Security Scan"
+          commands:
+            - echo "Scanning container dependencies..."
+            - echo "Running container security checks..."
+            - echo "Security scan completed successfully!"
+
+  # Build block (fan-in)
+  - name: "📦 Build"
+    dependencies: ["🧪 Unit Tests", "🔍 Integration Tests", "🌐 E2E Tests", "✨ Code Quality", "🔐 Security"]
+    task:
+      jobs:
+        - name: "🔨 Build Production"
+          commands:
+            - echo "Building production Docker image..."
+            - echo "Running multi-stage build..."
+            - echo "Build completed successfully!"
+
+  # Docker build and push (fan-in)
+  - name: "🐳 Docker"
+    dependencies: ["📦 Build"]
+    task:
+      secrets:
+        - name: dockerhub-credentials
+      jobs:
+        - name: "📦 Build and Push"
+          commands:
+            - echo "Logging into Docker registry..."
+            - echo "Pushing production image..."
+            - echo "Docker image published successfully!"
+
+  # Deploy block (final fan-in)
+  - name: "🚀 Deploy"
+    dependencies: ["🐳 Docker"]
+    task:
+      secrets:
+        - name: aws-credentials
+      jobs:
+        - name: "🌍 Deploy to Production"
+          commands:
+            - echo "Configuring deployment credentials..."
+            - echo "Updating container service..."
+            - echo "Rolling out new containers..."
+            - echo "Deployment completed successfully!"

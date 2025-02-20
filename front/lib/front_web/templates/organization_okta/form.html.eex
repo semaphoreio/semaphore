@@ -1,0 +1,28 @@
+<h1 class="f3 f2-m mb0">Okta Integration Setup</h1>
+
+<p>You are setting up Okta integration for your organization. This will allow your Okta members to directly log in to Semaphore from your Okta dashboard.</p>
+
+<%= form_for @changeset, organization_okta_path(@conn, :create), [method: :post], fn f -> %>
+    <%= hidden_input f, :idempotency_token, value: Ecto.UUID.generate() %>
+
+    <%= label f, :sso_url, "Single Sign-On URL", class: "db b mt3" %>
+    <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :sso_url, name: "Single Sign-On URL" %>
+    <%= text_input f, :sso_url, class: "form-control w-100", placeholder: "ex. https://example_org.okta.com/app/app_name/id/sso/saml", value: input_value(f, :sso_url) %>
+
+    <%= label f, :issuer, "SAML Issuer", class: "db b mt3" %>
+    <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :issuer, name: "SAML issuer" %>
+    <%= text_input f, :issuer, class: "form-control w-100", placeholder: "ex. http://example-org.okta.com", value: input_value(f, :issuer) %>
+
+    <%= label f, :certificate, "SAML Certificate", class: "db b mt3" %>
+    <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :certificate, name: "Certificate" %>
+    <%= textarea f, :certificate, placeholder: "Paste your x509 certificate here...", class: "form-control w-100", wrap: "off", rows: "6", style: "resize: vertical;" %>
+
+    <p class="mt2">
+        <a href="https://docs.semaphoreci.com/security/okta/installation/" target="_blank">Docs: How to find SAML Issuer and Certificate?</a>
+    </p>
+
+    <div class="flex mt4">
+        <%= submit "Save", class: "btn btn-primary primary" %>
+        <%= link "Cancel", to: organization_okta_path(@conn, :show), class: "btn btn-secondary ml2" %>
+    </div>
+<% end %>

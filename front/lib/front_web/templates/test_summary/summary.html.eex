@@ -1,0 +1,8 @@
+<%= if visible?(@pipeline.summary, @pipeline.result) do %>
+  <span class="<%= state_class(@pipeline.summary, @pipeline.result)%>">
+    <%= summary_content(@pipeline.summary, @pipeline.result) %>
+  </span>
+  <span class="mh1">
+    &middot;
+  </span>
+<% end %>

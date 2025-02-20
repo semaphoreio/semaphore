@@ -1,0 +1,139 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.OwnerUrl = "<%= raw project_path(@conn, :filtered_new_owners, @project.name) %>";
+</script>
+<style>
+.project-jumpto {
+  position: relative;
+}
+.project-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.project-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.project-jumpto .jumpto-results {
+  position: absolute;
+  top: 126px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 510px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.project-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.project-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+
+.project-jumpto .jumpto-results span[aria-selected="true"],
+.project-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.project-jumpto .jumpto-results span:focus,
+.project-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+</style>
+
+<%= if @permissions["project.general_settings.view"] do %>
+  <h2 class="f3 f2-m mb0">General</h2>
+  <p class="mb3">Set up the project basics</p>
+
+  <%= form_for @owner_changeset, project_settings_path(@conn, :change_owner, @project.name), [method: :post], fn f -> %>
+    <div class="mb3 pb3 bb b--lighter-gray project-jumpto">
+      <label for="badge-branch" class="db b mb2">Project Owner</label>
+      <div class="flex items-center mb0">
+        <img src="<%= @project_owner.avatar_url %>" class="br-100 mr2 ba b--black-50" width="32">
+        <div class="f5 f4-m"><%= @project_owner.name %></div>
+      </div>
+      <%= if @project_owner.id == @conn.assigns.user_id do %>
+        <p class="f6 mt2 mb2">You are the project owner, usually the one who created the project originally.</p>
+      <% else %>
+        <p class="f6 mt2 mb2">This person is the project owner, usually the one who created the project originally.</p>
+      <% end %>
+      <%= if @permissions["project.general_settings.manage"] do %>
+        <div class="flex">
+          <%= hidden_input f, :owner_id, value: "" %>
+          <%= text_input f, :owner_name,
+            placeholder: "Find…",
+            autocomplete: "off",
+            class: "form-control w-100 mr2 #{if f.errors[:owner_id], do: "form-control-error" }" %>
+          <button class="btn btn-secondary">Change…</button>
+        </div>
+        <%= if f.errors[:owner_id] do %>
+          <div class="f5 b mv1 red"><%= translate_error(f.errors[:owner_id]) %></div>
+        <% end %>
+        <div class="jumpto-results"></div>
+      <% else %>
+        <div class="flex">
+          <%= text_input f, :owner_name,
+            disabled: true,
+            placeholder: "Find…",
+            class: "form-control w-100 mr2" %>
+          <button disabled="true" class="btn btn-secondary">Change…</button>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+
+  <div class="mb3 pb3 bb b--lighter-gray">
+    <label class="db b mb1">Visibility</label>
+    <div class="flex items-center">
+      <%= unless @project.public do %>
+        <img src="<%= assets_path() %>/images/icn-lock.svg" class="mr2">
+      <% end %>
+      <input id="project-visibility" type="hidden" value="<%= @project.public %>">
+
+      <div id="project-public" class="f5 f4-m">
+        Public
+        <%= if @permissions["project.general_settings.manage"] do %> · 
+          <%= link "Change to private…", to: project_settings_path(@conn, :make_private, @project.name), data: [action: "changeToPrivate"], method: :post %>
+        <% end %>
+      </div>
+      <div id="project-private" class="f5 f4-m">
+        Private
+        <%= if @permissions["project.general_settings.manage"] do %> · 
+          <%= if @project.repo_public do %>
+            <%= link "Change to public…", to: project_settings_path(@conn, :make_public, @project.name), data: [action: "changeToPublic"], method: :post %>
+          <% else %>
+            <%= link "Change to public…", to: project_settings_path(@conn, :make_public, @project.name), data: [action: "changeToPublic", confirm: "You are about to change this project to be visible by everyone. Are you sure?"], method: :post %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%= render FrontWeb.ProjectSettingsView, "general/_form.html", project: @project, changeset: @changeset, conn: @conn, permissions: @permissions %>
+
+  <%= if @permissions["project.delete"] do %>
+    <div class="bt b--lighter-gray pt3 mt4">
+      <p class="b mb0">Delete project</p>
+      <p class="mb0">
+      <%= link "Proceed with caution…", to: project_settings_path(@conn, :confirm_delete, @project.name) %>
+      </p>
+    </div>
+  <% end %>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Project Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

@@ -1,0 +1,14 @@
+<%= if @permissions["organization.general_settings.view"] do %>
+  <h2 class="f3 f2-m mb0">Contacts</h2>
+
+  <p class="measure">Manage your contact information to ensure that our support and customer success team can easily reach you when needed.</p>
+
+  <%= for {_key, value} <- @map_of_contact_changesets do %>
+    <%= render FrontWeb.OrganizationContactsView, "_form_for_single_contact.html", permissions: @permissions, conn: @conn, contact_changeset: value%>
+  <% end %>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Contacts.<br>Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

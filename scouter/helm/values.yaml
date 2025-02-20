@@ -1,0 +1,23 @@
+image: scouter
+imageTag: latest
+imagePullSecrets: []
+
+api:
+  replicas: 1
+  dbPoolSize: '5'
+  resources:
+    limits:
+      cpu: 100m
+      memory: 150Mi
+    requests:
+      cpu: 50m
+      memory: 50Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

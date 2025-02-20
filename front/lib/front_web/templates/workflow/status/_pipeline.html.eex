@@ -1,0 +1,26 @@
+<div>
+  <div
+    workflow-tree-item
+    data-pipeline-id="<%= @pipeline.id %>"
+    data-pipeline-status-url="<%= pipeline_path(@conn, :status, @workflow.id, @pipeline.id) %>"
+    class="inline-flex items-center">
+    <%= raw FrontWeb.PipelineView.pipeline_status(@pipeline, workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id)) %>
+    <%= raw @tree_connector %>
+    <%= if not is_nil(@workflow.hook) do %>
+      <a class="link dark-gray underline-hover" href="<%= workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>">
+        <%= @pipeline.name %>
+      </a>
+    <% else %>
+      <span class="dark-gray underline-hover"><%= @pipeline.name %></span>
+    <% end %>
+    <span class="mh1">&middot;</span>
+    <%= render(FrontWeb.TestSummaryView, "summary_with_link.html", conn: @conn, pipeline: @pipeline) %>
+    <%= render(FrontWeb.PipelineView, "_env_vars.html", pipeline: @pipeline) %>
+    <%= render(FrontWeb.PipelineView, "_time_counter.html", pipeline: @pipeline) %>
+    <span class="mh1">&middot;</span>
+    <span class="gray">
+      <%= raw FrontWeb.PipelineView.format_triggerer(@conn, @workflow, @pipeline) %>
+      <time-ago datetime="<%= format_date(@pipeline.timeline.created_at) %>"></time-ago>
+    </span>
+  </div>
+</div>

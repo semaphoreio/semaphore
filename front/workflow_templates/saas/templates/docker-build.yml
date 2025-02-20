@@ -1,0 +1,14 @@
+version: v1.0
+name: Docker
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Build
+    task:
+      jobs:
+        - name: docker build
+          commands:
+            - checkout
+            - docker build -t your-image .

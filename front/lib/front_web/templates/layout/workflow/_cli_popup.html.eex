@@ -1,0 +1,22 @@
+<div style="display: none;">
+  <div id="workflowCLI">
+    <div class="f5 pa3">
+      <div class="mb3">
+        <div class="b mb1">Stop workflow</div>
+        <input class="x-select-on-click form-control w-100" type="text" value="sem stop workflow <%= @workflow.id %>" readonly>
+      </div>
+
+      <div>
+        <div class="b mb1">Rerun workflow</div>
+        <input
+           class="x-select-on-click form-control w-100"
+           type="text"
+           value="sem rebuild workflow <%= @workflow.id %>"
+           readonly
+          >
+      </div>
+
+      <%= render FrontWeb.SharedView, "_connect_cli_instructions.html", organization: @organization %>
+    </div>
+  </div>
+</div>

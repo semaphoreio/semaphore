@@ -1,0 +1,15 @@
+version: v1.0
+name: Erlang
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Test
+    task:
+      jobs:
+      - name: Rebar
+        commands:
+          - sem-version erlang 21
+          - rebar3 compile
+          - rebar3 eunit

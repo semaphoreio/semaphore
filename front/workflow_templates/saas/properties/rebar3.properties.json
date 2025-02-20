@@ -1,0 +1,15 @@
+{
+  "title": "Erlang",
+  "description": "Build Erlang project with rebar3",
+  "category": "Other",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "Erlang version set to 21",
+    "Code checkout",
+    "Build and test Erlang with Rebar3"
+  ],
+  "icon": "lang-erlang.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/rebar3.yml"
+}

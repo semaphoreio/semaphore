@@ -1,0 +1,22 @@
+image: public_api
+imageTag: latest
+replicas: 1
+
+logging:
+  level: info
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 100Mi
+  limits:
+    memory: 250Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

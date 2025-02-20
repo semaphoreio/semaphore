@@ -1,0 +1,28 @@
+# njsscan configuration file
+# https://github.com/ajinabraham/njsscan#configure-njsscan
+---
+- nodejs-extensions:
+  - .js
+  - .jsx
+  - .ts
+  - .tsx
+
+  template-extensions:
+  - .new
+  - .hbs
+  - ''
+
+  ignore-filenames:
+  - spec.js
+  - spec.jsx
+  - spec.ts
+  - spec.tsx
+
+  ignore-paths:
+  - node_modules
+
+  ignore-rules: []
+
+  severity-filter:
+  - WARNING
+  - ERROR

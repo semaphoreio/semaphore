@@ -1,0 +1,5 @@
+<div class="shadow-1 bg-washed-yellow pa3 mv4 br3">
+  <p>The registration token was successfully reset for <b><%= @agent_type.name %></b>. For your own security, we’ll show you the new token only once. Please, update the running agents configuration with the new token. After that, either restart all the agents manually or disable them all at once here.</p>
+  <pre class="self-hosted-agent-access-token f6 pa3 ba b--black-075" style="display: none"><%= @token %></pre>
+  <p class="m0"><button class="self-hosted-agent-access-token-reveal btn btn-small btn-secondary">Reveal</button></p>
+</div>

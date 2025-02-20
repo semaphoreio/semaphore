@@ -1,0 +1,16 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $baseName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: {{ $baseName }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4000
+      protocol: TCP

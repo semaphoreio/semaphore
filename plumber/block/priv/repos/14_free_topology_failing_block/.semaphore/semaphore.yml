@@ -1,0 +1,32 @@
+version: v1.0
+name: Free topology pipeline - failing test
+agent:
+  machine:
+    type: foo
+    os_image: bar
+blocks:
+  - name: A
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo foo, sleep 1]
+  - name: B
+    dependencies: [A, D]
+    task:
+      jobs:
+        - commands: [echo bar]
+  - name: C
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo baz]
+  - name: D
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo D, failing command, sleep 1]
+  - name: E
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo E]

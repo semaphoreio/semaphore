@@ -1,0 +1,9 @@
+[
+  verbose: false,
+  private: false,
+  skip: false,
+  router: "",
+  exit: "false",
+  format: "txt",
+  ignore: ["Config.HTTPS"],
+]

@@ -1,0 +1,15 @@
+billing:
+artifacts:
+activity_monitor:
+multiple_organizations:
+badges:
+bitbucket:
+test_results:
+help:
+feedback:
+expose_cloud_agent_types:
+deployment_targets:
+self_hosted_agents:
+  enabled: false
+pre_flight_checks:
+  enabled: false

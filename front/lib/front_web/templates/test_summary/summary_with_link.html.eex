@@ -1,0 +1,8 @@
+<%= if visible?(@pipeline.summary, @pipeline.result) do %>
+  <a class="link underline-hover <%= state_class(@pipeline.summary, @pipeline.result)%>" href="<%= test_results_path(@conn, :pipeline_summary, @pipeline.workflow_id) %>">
+    <%= summary_content(@pipeline.summary, @pipeline.result) %>
+  </a>
+  <span class="mh1">
+    &middot;
+  </span>
+<% end %>

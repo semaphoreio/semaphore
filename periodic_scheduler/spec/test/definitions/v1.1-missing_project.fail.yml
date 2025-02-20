@@ -1,0 +1,19 @@
+apiVersion: v1.1
+kind: Schedule
+metadata:
+  name: foo name
+  id: some-uuid
+spec:
+  recurring: true
+  branch: master
+  at: "* * * "
+  pipeline_file: .semaphore/cron.yml
+  parameters:
+    - name: example
+      description: Exemplary parameter
+      required: true
+      default_value: option1
+      options:
+        - option1
+        - option2
+        - option3

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: self-hosted-hub
+description: A Helm chart for deploying Semaphore self_hosted_hub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

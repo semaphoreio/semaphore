@@ -1,0 +1,131 @@
+<%= form_for @changeset, project_settings_path(@conn, :update, @project.name), [method: :put], fn f -> %>
+  <div class="mb3">
+    <div class="mb4">
+      <%= label f, :name, "Name and Description", class: "db b mb2" %>
+      <div class="input-textarea-group">
+        <%= text_input f, :name, disabled: !@permissions["project.general_settings.manage"], placeholder: "Name of the project", class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }" %>
+        <%= textarea f, :description, disabled: !@permissions["project.general_settings.manage"], placeholder: "Description", class: "form-control w-100", wrap: "off", rows: "4" %>
+      </div>
+      <%= if f.errors[:name] do %>
+        <div class="f5 b mv1 red"><%= translate_error(f.errors[:name]) %></div>
+      <% end %>
+    </div>
+    <label for="project-repository" class="db b mb0">What to build?</label>
+    <p class="mb3">Which event will trigger the run.</p>
+    <div id="build-settings" class="f5 f4-m">
+      <div class="flex items-center">
+        <%= radio_button f, :run, false, disabled: !@permissions["project.general_settings.manage"], data: [action: "pauseBuild"] %>
+        <%= label f, :run, class: "ml2", for: "project_run_false" do %>
+          Do not run on any events
+        <% end %>
+      </div>
+      <div class="flex items-center">
+        <%= radio_button f, :run, true, disabled: !@permissions["project.general_settings.manage"], data: [action: "resumeBuild"] %>
+        <%= label f, :run, "Run on", class: "ml2", for: "project_run_true" %>
+      </div>
+      <div id="build-options" class="ml3 mt2 pa3 bg-washed-gray br3 ba b--black-075 <%= if f.errors[:run_on], do: "form-control-error" %>">
+        <div class="flex items-center">
+          <%= checkbox f, :build_branches, disabled: !@permissions["project.general_settings.manage"], data: [action: "branchSwitch"] %>
+          <%= label f, :build_branches, "Branches", class: "ml2" %>
+        </div>
+        <div id="branch-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
+          <p class="f5 b mb1">Which branches to run?</p>
+          <div class="flex items-center">
+            <%= radio_button f, :whitelist_branches, false, disabled: !@permissions["project.general_settings.manage"], data: [action: "runAllBranches"] %>
+            <%= label f, :whitelist_branches, "All", class: "ml2", for: "project_whitelist_branches_false" %>
+          </div>
+          <div class="flex items-center">
+            <%= radio_button f, :whitelist_branches, true, disabled: !@permissions["project.general_settings.manage"], data: [action: "whitelistBranches"] %>
+            <%= label f, :whitelist_branches, "Whitelisted only", class: "ml2", for: "project_whitelist_branches_true" %>
+          </div>
+          <div id="whitelisted-branches" class="mt2">
+            <%= text_input f, :branch_whitelist, disabled: !@permissions["project.general_settings.manage"], placeholder: "e.g. branch-1, branch-2, /.*/", class: "form-control w-100 #{if f.errors[:branch_whitelist], do: "form-control-error"}" %>
+            <%= if f.errors[:branch_whitelist] do %>
+              <div class="f5 b mv1 red"><%= translate_error(f.errors[:branch_whitelist]) %></div>
+            <% end %>
+            <p class="f6 mt1 mb0">Whitelist the branches you want to run. Comma separate multiple values. Regular expressions allowed.</p>
+          </div>
+        </div>
+        <div class="flex items-center">
+          <%= checkbox f, :build_tags, disabled: !@permissions["project.general_settings.manage"], data: [action: "tagSwitch"] %>
+          <%= label f, :build_tags, "Tags", class: "ml2" %>
+        </div>
+        <div id="tag-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
+          <p class="f5 b mb1">Which tags to run?</p>
+          <div class="flex items-center">
+            <%= radio_button f, :whitelist_tags, false, disabled: !@permissions["project.general_settings.manage"], data: [action: "runAllTags"] %>
+            <%= label f, :whitelist_tags, "All", class: "ml2", for: "project_whitelist_tags_false" %>
+          </div>
+          <div class="flex items-center">
+            <%= radio_button f, :whitelist_tags, true, disabled: !@permissions["project.general_settings.manage"], data: [action: "whitelistTags"] %>
+            <%= label f, :whitelist_tags, "Whitelisted only", class: "ml2", for: "project_whitelist_tags_true" %>
+          </div>
+          <div id="whitelisted-tags" class="mt2">
+            <%= text_input f, :tag_whitelist, disabled: !@permissions["project.general_settings.manage"], placeholder: "e.g. tag-1, tag-2, /.*/", class: "form-control w-100 #{if f.errors[:tag_whitelist], do: "form-control-error"}" %>
+            <%= if f.errors[:tag_whitelist] do %>
+              <div class="f5 b mv1 red"><%= translate_error(f.errors[:tag_whitelist]) %></div>
+            <% end %>
+            <p class="f6 mt1 mb0">Whitelist the tags you want to run. Comma separate multiple values. Regular expressions allowed.</p>
+          </div>
+        </div>
+        <%= if @project.integration_type in [:GITHUB_APP, :GITHUB_OAUTH_TOKEN] do %>
+          <div class="flex items-center">
+            <%= checkbox f, :build_prs, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= label f, :build_prs, "Pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :build_forked_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "forkedPRSwitch"] %>
+            <%= label f, :build_forked_prs, "Forked pull requests", class: "ml2" %>
+          </div>
+          <div id="pull-request-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
+            <p class="f5 b mb1">How to handle secrets?</p>
+            <div class="flex items-center">
+              <%= radio_button f, :expose_secrets, false, disabled: !@permissions["project.general_settings.manage"], data: [action: "disableSecrets"] %>
+              <%= label f, :expose_secrets, "Do not expose", class: "ml2", for: "project_expose_secrets_false" %>
+            </div>
+            <div class="flex items-center">
+              <%= radio_button f, :expose_secrets, true, disabled: !@permissions["project.general_settings.manage"], data: [action: "exposeSecrets"] %>
+              <%= label f, :expose_secrets, "Expose", class: "ml2", for: "project_expose_secrets_true" %>
+            </div>
+            <div id="exposed-secrets" class="mt2">
+              <%= text_input f, :allowed_secrets, disabled: !@permissions["project.general_settings.manage"], placeholder: "e.g. secret-1, secret-2", class: "form-control w-100 #{if f.errors[:allowed_secrets], do: "form-control-error"}" %>
+              <%= if f.errors[:allowed_secrets] do %>
+                <div class="f5 b mv1 red"><%= translate_error(f.errors[:allowed_secrets]) %></div>
+              <% end %>
+              <p class="f6 mt1 mb0">Whitelist the secrets you want to expose. Comma separate multiple values.</p>
+            </div>
+            <p class="f5 b mv1">How to handle fork contributors?</p>
+            <div class="flex items-center">
+              <%= radio_button f, :filter_contributors, false, disabled: !@permissions["project.general_settings.manage"], data: [action: "openContributors"] %>
+              <%= label f, :filter_contributors, "Run workflows for all contributors", class: "ml2", for: "project_filter_contributors_false" %>
+            </div>
+            <div class="flex items-center">
+              <%= radio_button f, :filter_contributors, true, disabled: !@permissions["project.general_settings.manage"], data: [action: "filterContributors"] %>
+              <%= label f, :filter_contributors, "Run workflows only for trusted contributors", class: "ml2", for: "project_filter_contributors_true" %>
+            </div>
+            <div id="allowed-contributors" class="mt2">
+              <%= text_input f, :allowed_contributors, disabled: !@permissions["project.general_settings.manage"], placeholder: "e.g. github-login-1, github-login-2", class: "form-control w-100 #{if f.errors[:allowed_contributors], do: "form-control-error"}" %>
+              <%= if f.errors[:allowed_contributors] do %>
+                <div class="f5 b mv1 red"><%= translate_error(f.errors[:allowed_contributors]) %></div>
+              <% end %>
+              <p class="f6 mt1 mb0">Whitelist the GitHub logins you trust to run workflows. Comma separates multiple values.</p>
+            </div>
+          </div>
+        <% end %>
+        <div class="mt3 pt3 bt b--lighter-gray">
+          <div class="db f5 b mb1">Pipeline file location</div>
+          <div>
+            <%= text_input f, :initial_pipeline_file, disabled: !@permissions["project.general_settings.manage"], class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }", placeholder: ".semaphore/sempahore.yml" %>
+            <%= if f.errors[:initial_pipeline_file] do %>
+              <div class="f5 b mv1 red"><%= translate_error(f.errors[:initial_pipeline_file]) %></div>
+            <% end %>
+          </div>
+        </div>
+        <%= if f.errors[:run_on] do %>
+          <div class="f5 b mv1 red"><%= translate_error(f.errors[:run_on]) %></div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <%= submit "Save changes", disabled: !@permissions["project.general_settings.manage"], class: "btn btn-primary mr2" %>
+<% end %>

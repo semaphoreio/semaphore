@@ -1,0 +1,15 @@
+{
+  "title": "Elixir",
+  "description": "Test your Elixir project with mix",
+  "category": "Elixir",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Elixir version set to 1.9",
+    "Code checkout",
+    "mix deps.get",
+    "mix test"
+  ],
+  "icon": "lang-elixir.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/mix.yml"
+}

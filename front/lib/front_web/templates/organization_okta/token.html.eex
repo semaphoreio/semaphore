@@ -1,0 +1,15 @@
+<h1 class="f3 f2-m mb0">Okta Integration is ready</h1>
+<p>Now go to Okta and set up SCIM user provisioning.</p>
+
+<p class="b mb0">SCIM Authorization token</p>
+<p>Okta uses this token to create, update and disable users on Semaphore. <a href="#">Learn how to set it up</a>.</p>
+
+<div class="f6 bg-washed-yellow ph3 ba b--black-075 flex items-center">
+    <pre class="ma0 pv3 overflow-scroll"><%= @token %></pre>
+</div>
+
+<p class="mt3"><span class="serif">⚠️</span> For your own security, we’ll show you the token only once.</p>
+
+<div class="flex mt4">
+    <%= link "View Integration", to: organization_okta_path(@conn, :show), class: "btn btn-primary" %>
+</div>

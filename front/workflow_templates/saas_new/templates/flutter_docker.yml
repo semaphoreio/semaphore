@@ -1,0 +1,89 @@
+# This is a Semaphore configuration file for Flutter projects using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+version: v1.0  # Semaphore configuration version
+name: "💙 Flutter CI Pipeline"  # Pipeline display name
+
+# Define the machine type, OS image, and containers
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/flutter:3.16'  # Flutter 3.16 container
+
+# Configure when to stop the pipeline early
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+# Commands to run before each job
+global_job_config:
+  prologue:
+    commands:
+      - checkout                    # Get the code from repository
+      - flutter pub get            # Install dependencies
+      - cache restore             # Restore cached dependencies
+
+# Pipeline blocks represent groups of jobs that can run in parallel
+blocks:
+  # Block for setting up dependencies and caching
+  - name: "🛠 Setup and Cache"
+    dependencies: []
+    task:
+      jobs:
+        - name: Install Dependencies
+          commands:
+            - cache store  # Cache dependencies for future runs
+
+  # Block for code quality checks
+  - name: "🔍 Code Quality"
+    dependencies: ["🛠 Setup and Cache"]
+    task:
+      jobs:
+        - name: Analyze and Format
+          commands:
+            - flutter analyze       # Static code analysis
+            - flutter format --set-exit-if-changed .  # Check code formatting
+
+  # Block for security checks
+  - name: "🔐 Security Checks"
+    dependencies: ["🛠 Setup and Cache"]
+    task:
+      jobs:
+        - name: Security Scan
+          commands:
+            - flutter pub outdated  # Check for outdated dependencies
+            - flutter pub deps      # Display dependency tree
+
+  # Block for running tests
+  - name: "🧪 Test Suite"
+    dependencies: ["🛠 Setup and Cache"]
+    task:
+      jobs:
+        - name: "🟢 Flutter Tests"
+          parallelism: 4  # Run tests in parallel
+          commands:
+            - flutter test --coverage  # Run tests with coverage
+            - flutter pub global activate remove_from_coverage
+            - flutter pub global run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '.g.dart$' # Remove generated files from coverage
+
+  # Block for building the app
+  - name: "📦 Build"
+    dependencies: ["🧪 Test Suite"]
+    task:
+      jobs:
+        - name: Android Build
+          commands:
+            - flutter build apk --release  # Build Android APK
+        - name: iOS Build
+          commands:
+            - flutter build ios --release --no-codesign  # Build iOS without signing

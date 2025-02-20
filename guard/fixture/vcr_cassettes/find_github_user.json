@@ -1,0 +1,94 @@
+[
+  {
+    "request": {
+      "body": "\"\\\"\\\"\"",
+      "headers": {
+        "Accept": "application/vnd.github.hellcat-preview+json",
+        "User-agent": "tentacat",
+        "Authorization": "token e406ed1cce15b68a83f4d40c924dc128ba66e9e8"
+      },
+      "method": "get",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/users/bmarkons"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"login\":\"bmarkons\",\"id\":9396752,\"node_id\":\"MDQ6VXNlcjkzOTY3NTI=\",\"avatar_url\":\"https://avatars0.githubusercontent.com/u/9396752?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/bmarkons\",\"html_url\":\"https://github.com/bmarkons\",\"followers_url\":\"https://api.github.com/users/bmarkons/followers\",\"following_url\":\"https://api.github.com/users/bmarkons/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/bmarkons/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/bmarkons/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/bmarkons/subscriptions\",\"organizations_url\":\"https://api.github.com/users/bmarkons/orgs\",\"repos_url\":\"https://api.github.com/users/bmarkons/repos\",\"events_url\":\"https://api.github.com/users/bmarkons/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/bmarkons/received_events\",\"type\":\"User\",\"site_admin\":false,\"name\":\"Marko Bogdanović\",\"company\":\"@renderedtext\",\"blog\":\"https://bmarkons.github.io\",\"location\":\"Novi Sad, Serbia\",\"email\":\"mamaveb@gmail.com\",\"hireable\":true,\"bio\":\"Engineer @semaphoreci\",\"public_repos\":56,\"public_gists\":5,\"followers\":14,\"following\":29,\"created_at\":\"2014-10-25T18:27:38Z\",\"updated_at\":\"2020-03-06T13:54:46Z\"}",
+      "headers": {
+        "Date": "Fri, 06 Mar 2020 15:37:37 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "1236",
+        "Server": "GitHub.com",
+        "Status": "200 OK",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4992",
+        "X-RateLimit-Reset": "1583512561",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"0ae1c8dd6e3615730a5d4c5e81b0dbc6\"",
+        "Last-Modified": "Fri, 06 Mar 2020 13:54:46 GMT",
+        "X-OAuth-Scopes": "user:email",
+        "X-Accepted-OAuth-Scopes": "",
+        "X-GitHub-Media-Type": "github.v3; param=hellcat-preview; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "C6E3:7F22:4ABE2DF:588BD5E:5E626E41"
+      },
+      "status_code": 200,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "\"\\\"\\\"\"",
+      "headers": {
+        "Accept": "application/vnd.github.hellcat-preview+json",
+        "User-agent": "tentacat",
+        "Authorization": "token e406ed1cce15b68a83f4d40c924dc128ba66e9e8"
+      },
+      "method": "get",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/users/milica-nerlovic"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"login\":\"milica-nerlovic\",\"id\":21684087,\"node_id\":\"MDQ6VXNlcjIxNjg0MDg3\",\"avatar_url\":\"https://avatars3.githubusercontent.com/u/21684087?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/milica-nerlovic\",\"html_url\":\"https://github.com/milica-nerlovic\",\"followers_url\":\"https://api.github.com/users/milica-nerlovic/followers\",\"following_url\":\"https://api.github.com/users/milica-nerlovic/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/milica-nerlovic/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/milica-nerlovic/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/milica-nerlovic/subscriptions\",\"organizations_url\":\"https://api.github.com/users/milica-nerlovic/orgs\",\"repos_url\":\"https://api.github.com/users/milica-nerlovic/repos\",\"events_url\":\"https://api.github.com/users/milica-nerlovic/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/milica-nerlovic/received_events\",\"type\":\"User\",\"site_admin\":false,\"name\":\"Milica Nerlović\",\"company\":null,\"blog\":\"\",\"location\":null,\"email\":null,\"hireable\":null,\"bio\":null,\"public_repos\":16,\"public_gists\":0,\"followers\":5,\"following\":0,\"created_at\":\"2016-09-01T14:30:50Z\",\"updated_at\":\"2020-03-06T09:13:50Z\"}",
+      "headers": {
+        "Date": "Fri, 06 Mar 2020 15:37:38 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "1234",
+        "Server": "GitHub.com",
+        "Status": "200 OK",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4991",
+        "X-RateLimit-Reset": "1583512562",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"3f5c422766e24522b1ba146eee3ae598\"",
+        "Last-Modified": "Fri, 06 Mar 2020 09:13:50 GMT",
+        "X-OAuth-Scopes": "user:email",
+        "X-Accepted-OAuth-Scopes": "",
+        "X-GitHub-Media-Type": "github.v3; param=hellcat-preview; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "C6E3:7F22:4ABE338:588BDC8:5E626E41"
+      },
+      "status_code": 200,
+      "type": "ok"
+    }
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "title": "RSpec",
+  "description": "Run your Ruby RSpec suite",
+  "category": "Ruby",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "Ruby version set to 2.6.0",
+    "Code checkout",
+    "Install dependencies",
+    "Run RSpec suite"
+  ],
+  "icon": "lang-ruby.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/rspec.yml"
+}

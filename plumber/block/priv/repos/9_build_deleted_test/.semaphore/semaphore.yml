@@ -1,0 +1,26 @@
+version: "v1.0"
+name: deleted task test
+agent:
+  machine:
+    type: deleted build test
+    os_image: ubuntu1804
+blocks:
+  - name: block1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo foo
+            - echo bar
+        - name: job2
+          commands:
+            - echo baz
+  - name: block2
+    task:
+      boosters:
+        - name: family_of_boosted_jobs_1
+          type: cucumber
+          job_count: 2
+        - type: rspec
+          name: family_of_boosted_jobs_2
+          job_count: 3

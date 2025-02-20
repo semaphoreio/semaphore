@@ -1,0 +1,101 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $baseName }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $baseName }}
+  replicas: {{ .Values.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: {{ $baseName }}
+      labels:
+        app: {{ $baseName }}
+        product: semaphoreci
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
+      containers:
+        - name: {{ $baseName }}
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+          - containerPort: 4000
+            name: http
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            - name: BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: PUBLISH_TO_RABBIT
+              value: "true"
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+          startupProbe:
+            httpGet:
+              path: /health_check/ping
+              port: 4000
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /health_check/ping
+              port: 4000
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,63 @@
+<style>
+.nowrap .job-log-line-body {
+  white-space: pre;
+  word-wrap: normal;
+}
+</style>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+window.InjectedDataByBackend.Watchman.MetricTags = [
+  "<%= @organization.username %>",
+  "<%= @project.name %>"
+]
+
+window.InjectedDataByBackend.ArtifactLogsURL = <%= raw Poison.encode!(@artifact_logs_url) %>;
+window.InjectedDataByBackend.LogState = <%= raw Poison.encode!(@log_state) %>;
+window.InjectedDataByBackend.FinishedJob = <%= @finished_job %>;
+window.InjectedDataByBackend.EventsPath = "<%= raw logs_url(@conn, @job, @organization) %>";
+window.InjectedDataByBackend.EventsToken = "<%= raw @token %>"
+</script>
+
+<div class="gray pv2">
+  <%= render FrontWeb.JobView, "_state.html", conn: @conn, pollman: @pollman, job: @job, can_debug: @can_debug, debug_action: @debug_action, self_hosted: @self_hosted, project: @project %>
+</div>
+
+<div class="relative">
+  <%= unless @finished_job do %>
+    <div class="absolute right-0 bottom-0 mr3 mb3 z-3">
+      <div class="flex f7 lh-solid code" id="job-log-live-settings">
+        <div class="pv1 ph2 pointer bg-gray white hover-bg-red ba bw1" data-action="toggleLive"></div>
+      </div>
+    </div>
+  <% end %>
+  <div class="absolute left-0 bottom-0 ml3 mb3 z-3">
+    <div id="job-log-jump" class="tc bg-white shadow-1 br3">
+      <a href="#top" data-action="jumpTop" class="link db dark-gray hover-gray ph1 bb b--lighter-gray">↑</a>
+      <a href="#bottom" data-action="jumpBottom" class="link db dark-gray hover-gray ph1">↓</a>
+    </div>
+  </div>
+  <div id="job-log-container" class="job-log-container br3" style="height: 800px;">
+    <div id="job-log-failure-message" class="f6 dark-red bg-washed-red pv1 ph2 dn">
+      <p class="measure-wide mb0"></p>
+    </div>
+    <div id="job-log-pending-message" class="f6 pv1 ph2 dn">
+      <p class="measure-wide mb0"><%= job_pending_message(@job) %></p>
+    </div>
+    <div id="job-log-info-message" class="f6 pv1 ph2 dn">
+      <% link_url = artifacts_path(@conn, :jobs_download, @job.id, "agent/job_logs.txt") %>
+      <p class="measure-wide mb0">
+        The logs for this job were trimmed due to its size.<br/>
+        You can download the <a href="<%= raw link_url %>">full logs</a> from the artifact store.
+      </p>
+    </div>
+    <div id="job-log" class="job-log-loading dn"></div>
+  </div>
+</div>
+
+<%= render "_ssh_self_hosted_popup.html", conn: @conn %>
+<%= render "_ssh_disabled_popup.html", conn: @conn, project: @project %>
+<%= render "_ssh_popup.html", organization: @organization, user: @user %>
+<%= render "_cli_popup.html", organization: @organization, user: @user %>
+<%= if @self_hosted and @conn.assigns.authorization == :member do %>
+  <%= render "_agent_name_popup.html", organization: @organization, user: @user %>
+<% end %>
+<%= render "_settings_popup.html", conn: @conn, job: @job, log_state: @log_state %>

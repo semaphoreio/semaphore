@@ -1,0 +1,64 @@
+<div class="bg-white shadow-1 ph3 pv2 mv3 br3 items-center">
+  <div class="flex justify-between pv3 ph2">
+    <div>
+      <div>
+        <%= if @setup.status == :ACTIVE do %>
+          Status: <span class="green">Active</span>
+        <% else %>
+          Status: <span class="red">Paused</span>
+        <% end %>
+      </div>
+
+      <div class="mt3">
+        <span class="mb0">Bucket Name:
+          <strong>
+            <%= case @setup.provider do
+              :S3 -> @setup.s3_config.bucket
+            end
+            %>
+          </strong>
+        </span>
+      </div>
+
+      <div>
+        Stream configured: <strong><%= @meta.created_at %></strong>
+      </div>
+
+      <div>
+        Last edited by: <strong><%= @meta.activity_toggled_by %></strong>
+      </div>
+
+      <div class="mt3">
+        Audit logs are streamed to the bucket once per day.
+      </div>
+    </div>
+
+    <div class="items-center">
+      <%= form_for @conn, audit_path(@conn, :delete), [method: :delete], fn _f -> %>
+        <div class="button-group">
+          <%= if @setup.status == :ACTIVE do %>
+            <%= button "Pause",
+                  to: audit_path(@conn, :status, [action: :pause]),
+                  class: "btn btn-secondary",
+                  title: "Pause stream",
+                  data: [confirm: "You're about to pause audit log exporting. Are you sure?"],
+                  disabled: !@permissions["organization.audit_logs.manage"] %>
+          <% else %>
+              <%= button "Activate",
+                  to: audit_path(@conn, :status, [action: :active]),
+                  class: "btn btn-secondary",
+                  data: [confirm: "You're about to activate audit log exporting. Are you sure?"],
+                  disabled: !@permissions["organization.audit_logs.manage"] %>
+          <% end %>
+
+          <%= link "Edit", to: audit_path(@conn, :setup), class: "btn btn-secondary", disabled: !@permissions["organization.audit_logs.manage"] %>
+
+          <%= submit "Delete…",
+              data: [confirm: "Careful! This will delete the Audit streaming configuration. Are you sure?"],
+              class: "btn btn-secondary",
+              disabled: !@permissions["organization.audit_logs.manage"] %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

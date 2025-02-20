@@ -1,0 +1,53 @@
+<%= render FrontWeb.WorkflowView, "edit/style.html" %>
+
+<div id="workflow-editor-nav" class="bb b--lighter-gray nt3-m pb2">
+	<div class="flex-m items-center justify-between mb2">
+		<div class="pr3 mb2 mb0-m">
+      <span class="ph3 pv1 bg-lightest-green dark-green br-pill">Customizing the <strong><%= @template_title %></strong> template</span>
+		</div>
+
+    <div class="flex items-start flex-shrink-0 pt1">
+      <a data-action=toggleCommitDialog href="#" class="btn btn-primary">Run the workflow ▾</a>
+    </div>
+	</div>
+</div>
+
+<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ProjectName = "<%= @project.name %>"
+
+  window.InjectedDataByBackend.CanDismissAndExit = false
+  window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
+    "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, @conn.assigns.organization_id),
+    "hidePromotions" => @hide_promotions,
+    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns.organization_id)
+  }) %>;
+
+  window.InjectedDataByBackend.OrgSecretNameList = <%= raw Poison.encode!(
+    Enum.map(@secrets, fn s -> s.name end),
+    escape: :html_safe
+  )%>;
+  window.InjectedDataByBackend.ProjectSecretNameList = <%= raw Poison.encode!(
+    []
+  )%>;
+
+  window.InjectedDataByBackend.DeploymentTargetsList = <%= raw Poison.encode!(@deployment_targets) %>;
+
+  window.InjectedDataByBackend.AgentTypes = <%= raw Poison.encode!(@agent_types) %>;
+
+  window.InjectedDataByBackend.WorkflowData = {
+    createdInEditor: true,
+    initialYAML: <%= raw Poison.encode!(@project.initial_pipeline_file, escape: :html_safe) %>,
+    yamls: <%= raw Poison.encode!(@yamls, escape: :html_safe) %>
+  };
+
+  window.InjectedDataByBackend.CommitForm = <%= raw Poison.encode!(%{
+    "CommitPath" => project_path(@conn, :commit_config, @project.name),
+    "DismissPath" => "",
+    "CheckWorkflowPath" => project_path(@conn, :check_workflow, @project.name),
+    "PushBranch" => "set-up-semaphore",
+    "InitialBranch" => "set-up-semaphore",
+    "Avatar" => @commiter_avatar
+  }, escape: :html_safe) %>;
+</script>

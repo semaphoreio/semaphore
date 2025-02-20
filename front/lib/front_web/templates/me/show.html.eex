@@ -1,0 +1,36 @@
+<div class="bg-washed-gray pa3 br3 ba b--black-075">
+
+<p class="mb3 pb2">Hey <%= name(@user) %>! How’s it going? <br> Select one of your organizations to continue:</p>
+
+<div class="flex flex-wrap mv3 nr3">
+  <%= Enum.map(@organizations, fn organization -> %>
+    <%= link to: home_page(organization), class: "link w5 h4 truncate dark-gray bg-white shadow-1 pa3 mr3 mr4-m mb3 mb4-m shadow-hover br3" do %>
+      <img src="<%= organization.avatar_url %>" class="db br-100 mb2">
+      <div class="f3 b truncate"><%= organization.name %></div>
+      <div class="gray truncate"><%= org_url(organization) %></div>
+    <% end %>
+  <% end) %>
+  <%= unless Application.fetch_env!(:front, :single_tenant) do %>
+    <%= if FrontWeb.BillingView.can_create_organization?(@conn) do %>
+      <%= link to: organization_onboarding_path(@conn, :new), class: "link w5 h4 truncate pa3 mr3 mr4-m mb3 mb4-m bg-green white shadow-1 shadow-hover br3" do %>
+        <div class="f3 b">+ Create new</div>
+        <div class="f4">Add new organization</div>
+        <div class="tr" style="margin-top: -72px; margin-right: -40px">
+          <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-guy-thumbup.svg" %> alt="">
+        </div>
+      <% end %>
+    <% else %>
+      <a
+        class="link w5 h4 truncate pa3 mr3 mr4-m mb3 mb4-m black shadow-1 shadow-hover br3 bg-light-gray bg-pattern-wave"
+        data-tippy-content="You have reached the maximum number of free/trial organizations. Please delete some."
+      >
+        <div class="f3 b">+ Create new</div>
+        <div class="f4">Add new organization</div>
+        <div class="tr" style="margin-top: -72px; margin-right: -40px">
+          <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-guy-thumbup.svg" %> alt="">
+        </div>
+      </a>
+    <% end %>
+  <% end %>
+</div>
+</div>

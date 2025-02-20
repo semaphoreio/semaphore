@@ -1,0 +1,41 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: scouter
+    image: ${IMAGE:-scouter}:${TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        - MIX_ENV=dev
+    ports:
+      - "50051"
+    links:
+      - db:db
+
+    environment:
+      POSTGRES_DB_NAME: "scouter"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: 1
+      MIX_ENV: ${MIX_ENV:-dev}
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:9.6
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+volumes:
+  postgres-data:
+    driver: local

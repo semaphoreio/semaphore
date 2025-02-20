@@ -1,0 +1,19 @@
+<%= if @conn.assigns[:workflow_tip] do %>
+  <div id="workflow-tips-popup" data-project="<%= @project.name %>" class="fixed bottom-0 <%= @right_or_left %>-0 z-9999 w-100 mw6 c-slide-from-bottom">
+    <div class="bg-washed-green br3 shadow-2 pa3 pa4-ns mh3 mb3">
+      <div id="workflow-tips-close-popup" class="f3 absolute top-0 right-0 mr3 mid-gray hover-dark-gray pt2 pr2 pb4 pl4 lh-solid pointer">
+        ×
+      </div>
+      <div class="flex items-start justify-between mb3">
+        <div>
+          <p class="f5 mb0 pr4 measure-narrow">Hey, how’s it going? Here’s a couple of tips to get you up to speed.</p>
+        </div>
+        <div class="flex-shrink-0 mr3 mr0-m">
+          <img src="<%= assets_path() %>/images/ill-hand-wave.svg" class="db">
+        </div>
+      </div>
+
+      <%= render "tips/#{@conn.assigns[:workflow_tip]}.html", workflow: @workflow, conn: @conn %>
+    </div>
+  </div>
+<% end %>

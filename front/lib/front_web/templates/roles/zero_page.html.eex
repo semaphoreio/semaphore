@@ -1,0 +1,12 @@
+<h1 class="f2 f2-m mb0">Roles</h2>
+<p class="mb3 measure">
+  You can manage access control roles used within your organization. Roles can be defined on the organization level and project level.
+  Each role has a set of permissions that define what actions can be performed by users with a given role.
+</p>
+
+<div class="pv6 tc">
+  <div class="f00">🗝</div>
+  <p class="f6 measure-narrow center mv3">
+    Sorry, your organization does not have access to manage roles.
+  </p>
+</div>

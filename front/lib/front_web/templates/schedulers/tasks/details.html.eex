@@ -1,0 +1,82 @@
+<div class="ph3 pv1 flex justify-between bg-washed-grey pb2 bb b--black-20">
+  <div class="flex-column-l items-center">
+    <%= if @scheduler.description != "" do %>
+      <p class="mb0 gray f5"><%= @scheduler.description %></p>
+    <% end %>
+    <div class="overflow-auto pv2">
+      <table class="collapse pl1 mb0">
+        <tbody>
+          <tr>
+            <td class="v-top pr2">What will run:</td>
+            <td>
+              <div class="flex items-center">
+                <span class="material-symbols-outlined f6">fork_right</span>
+                <%= target_link(@project, @scheduler) %>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td class="v-top pr2">Status:</td>
+            <td>
+              <%= if @scheduler.blocked do %>
+                <span class="ph1 br2 bg-red white">Blocked</span>
+              <% else %>
+                <%= if @scheduler.inactive do %>
+                  <span class="ph1 br2 bg-gray white">Inactive</span> ·
+                  <%= link "Activate", to: schedulers_path(@conn, :activate, @project.name, @scheduler.id), class: "gray",
+                                        data: [confirm: "You're about to activate this Scheduler. Are you sure?"], method: :post %>
+                <% else %>
+                  <span class="ph1 br2 bg-green white">Active</span> ·
+                  <%= if @permissions["project.scheduler.manage"] do %>
+                    <%= link "Deactivate", to: schedulers_path(@conn, :deactivate, @project.name, @scheduler.id), class: "gray",
+                                        data: [confirm: "You're about to deactivate this Scheduler. Are you sure?"], method: :post %>
+                  <% end %>
+                  <%= if not (is_nil(@scheduler.at) or @scheduler.at == "") do %>
+                    <span class="gray ml2 f6">(Next run: <span cron-next expression="<%= standardize_expression(@scheduler.at) %>"></span>)</span>
+                  <% end %>
+                <% end %>
+              <% end %>
+            </td>
+          </tr>
+          <tr>
+            <td class="v-top pr2">Scheduled:</td>
+            <td class="flex items-center">
+              <%= if @scheduler.recurring do %>
+                <span class="material-symbols-outlined green b">check</span>
+                <span class="gray f6"><span cron-when expression="<%= standardize_expression(@scheduler.at) %>"></span></span>
+              <% else %>
+                <span class="material-symbols-outlined red b">close</span>
+                <span class="gray f6">This task is not scheduled and it has to be triggered manually. Click "Run Now" button to start the task.</span>
+              <% end %>
+            </td>
+          </tr>
+          <tr>
+            <td class="v-top pr2">Parameters:</td>
+            <td class="flex items-center">
+              <%= if Enum.empty?(@scheduler.parameters) do %>
+                <span class="material-symbols-outlined red b">close</span>
+                <p class="gray f6 mb0 truncate mw7">No parameters defined.</p>
+              <% else %>
+                <span class="material-symbols-outlined green b">check</span>
+                <p class="gray f6 mb0 truncate mw7">
+                  <%= Enum.map_join(@scheduler.parameters, ", ", & &1.name) %>
+                </p>
+              <% end %>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="f6 mb0 mt1 gray">
+      Created <%= @scheduler.created_at %> · Last edit by <%= @scheduler.updated_by %>,
+      <%= @scheduler.updated_at %>
+      <%= if @scheduler.activity_toggled_by != "" do %>
+        · <%= if @scheduler.inactive do %>
+          Deactivated
+        <% else %>
+          Reactivated
+        <% end %> by <%= @scheduler.activity_toggled_by %>, <%= @scheduler.activity_toggled_at %>
+      <% end %>
+    </p>
+  </div>
+</div>

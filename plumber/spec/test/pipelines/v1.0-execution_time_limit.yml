@@ -1,0 +1,27 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+execution_time_limit:
+  hours: 1
+blocks:
+  - name: Block 1
+    execution_time_limit:
+      minutes: 30
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - docker-compose up
+  - name: Block 2
+    task:
+      jobs:
+        - commands_file: commands/job2.cmd
+          execution_time_limit:
+              minutes: 15
+  - name: Block 3
+    task:
+      jobs:
+        - commands_file: commands/job3.cmd

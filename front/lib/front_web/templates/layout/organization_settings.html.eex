@@ -1,0 +1,76 @@
+<%= render_layout "organization.html", assigns do %>
+  <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <p class="mb4">Edit organization basics, global Secrets and Notifications</p>
+    <div class="flex-l">
+      <div class="w6-l flex-shrink-0 pr4-l pb3">
+        <div>
+          <%= if @conn.request_path == settings_path(@conn, :show) do %>
+            <%= link "General", to: settings_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "General", to: settings_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:instance_git_integration, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ git_integration_path(@conn, :show, []) do %>
+              <%= link "Git integration", to: git_integration_path(@conn, :show, []), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Git integration", to: git_integration_path(@conn, :show, []), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+          <%= if @conn.request_path =~ secrets_path(@conn, :index)  do %>
+            <%= link "Secrets", to: secrets_path(@conn, :index), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Secrets", to: secrets_path(@conn, :index), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ notifications_path(@conn, :index) do %>
+            <%= link "Notifications", to: notifications_path(@conn, :index), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Notifications", to: notifications_path(@conn, :index), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ roles_path(@conn, :index) do %>
+            <%= link "Roles", to: roles_path(@conn, :index), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Roles", to: roles_path(@conn, :index), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:ip_allow_list, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ settings_path(@conn, :ip_allow_list) do %>
+              <%= link "IP Allow List", to: settings_path(@conn, :ip_allow_list), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "IP Allow List", to: settings_path(@conn, :ip_allow_list), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+          <%= if @conn.request_path =~ organization_pfc_path(@conn, :show) do %>
+            <%= link "Initialization jobs", to: organization_pfc_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Initialization jobs", to: organization_pfc_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:rbac__saml, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ organization_okta_path(@conn, :show) do %>
+              <%= link "Okta Integration", to: organization_okta_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Okta Integration", to: organization_okta_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+        <%= if not Front.on_prem?() do %>
+          <%= if @conn.request_path =~ organization_contacts_path(@conn, :show) do %>
+            <%= link "Contacts", to: organization_contacts_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Contacts", to: organization_contacts_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+        <% end %>
+        <%= if FeatureProvider.feature_enabled?(:open_id_connect_filter, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ organization_jwt_config_path(@conn, :show) do %>
+              <%= link "OIDC Token", to: organization_jwt_config_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "OIDC Token", to: organization_jwt_config_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+      <div class="w-100-l pa3 pa4-l bg-white shadow-1 br3" style="min-height: 400px">
+        <div class="mw6 center">
+          <%= Map.get(assigns, :nested_layout) || @inner_content %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

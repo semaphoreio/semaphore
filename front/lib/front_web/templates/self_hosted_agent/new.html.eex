@@ -1,0 +1,25 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["organization.self_hosted_agents.manage"] do %>
+    <div class="mb4">
+      <h1 class="f3 mb0">New Self-Hosted Agent Type</h1>
+      <p class="mb0">Register and run multiple instances in this agent type</p>
+    </div>
+    <div class="bg-white shadow-1 br3">
+      <div class="pa3 pa4-l">
+        <div class="flex">
+          <div class="mr4">
+            <img src="<%= assets_path() %>/images/icn-self-hosted.svg" class="db mb2 w2 h2">
+          </div>
+
+          <%= render FrontWeb.SelfHostedAgentView, "_form.html", agent_type_model: @agent_type_model, conn: @conn, action: @action %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">Sorry, you can’t create new Self Hosted Agents.<br>
+        Ask organization owner or any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>

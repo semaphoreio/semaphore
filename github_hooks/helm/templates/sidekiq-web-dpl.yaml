@@ -1,0 +1,70 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ $chartName }}-sidekiq-web"
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.sidekiqWeb.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ $chartName }}-sidekiq-web"
+  template:
+    metadata:
+      name: "{{ $chartName }}-sidekiq-web"
+      labels:
+        app: "{{ $chartName }}-sidekiq-web"
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      containers:
+        - name: "{{ $chartName }}-sidekiq-web"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          command: ["bash", "-c"]
+          args: ["bundle exec puma sidekiq.ru -C config/puma_sidekiq.rb"]
+          imagePullPolicy: Always
+          ports:
+            - name: web-port
+              containerPort: 3000
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: internal-api-urls
+          env:
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: SESSION_SECRET_KEY_BASE } }
+
+            - name: SCRIPT_NAME
+              value: "/sidekiq"
+            - name: WEB_CONCURRENCY
+              value: {{ .Values.sidekiqWeb.webConcurrency | quote }}
+            - name: MAX_THREADS
+              value: {{ .Values.sidekiqWeb.maxThreads | quote }}
+
+            - name: REDIS_HOST
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: host }}
+            - name: REDIS_PORT
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: port }}
+            - name: REDIS_USERNAME
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: username }}
+            - name: REDIS_SIDEKIQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: password }}
+            - name: REDIS_SIDEKIQ_URL
+              value: "redis://$(REDIS_USERNAME)@$(REDIS_HOST):$(REDIS_PORT)"
+
+{{- if .Values.sidekiq.resources }}
+          resources:
+{{ toYaml .Values.sidekiq.resources | indent 12 }}
+{{- end }}

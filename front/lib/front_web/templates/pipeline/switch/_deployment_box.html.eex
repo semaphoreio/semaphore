@@ -1,0 +1,30 @@
+<%= if FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns[:organization_id]) do %>
+  <div class="inline-flex">
+    <span class="material-symbols-outlined mt1 mr2 dt-icon">
+      <%= if @target.deployment.allowed?, do: "lock_open", else: "lock" %>
+    </span>
+    <div promotion-box data-promotion-target="<%= @target.name %>">
+      <%= if @can_promote? && @target.deployment.allowed? do %>
+        <button promote-button class="btn btn-secondary" data-promotion-target="<%= @target.name %>" data-switch="<%= @switch.id %>">
+          <img class="v-mid mr1" width="26" height="14" src=<%= image_source("icn-deploy.svg") %>> <%= @target.name %>
+        </button>
+      <% else %>
+        <button disabled class="btn btn-secondary">
+          <img class="v-mid mr1" width="26" height="14" src=<%= image_source("icn-deploy.svg") %>> <%= @target.name %>
+        </button>
+      <% end %>
+      <%= render FrontWeb.PipelineView, "switch/_target_form.html", workflow: @workflow, pipeline: @pipeline, switch: @switch, target: @target, conn: @conn %>
+      <div hidden data-promotion-target="<%= @target.name %>" starting-promotion class="bg-washed-yellow ph3 pv2 br2 ba b--black-15">
+        <div class="f5 b flex items-center bb b--black-15 pb2 mb2"><img src=<%= image_source("icn-deploy.svg") %> class="mr2">Promote to <%= @target.name %>?</div>
+        <div>
+          <button class="btn btn-working btn-small mr2">Starting promotion…</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <%= if @target.deployment.message do %>
+    <p class="f6 mt1 mb0 nb1 gray">
+      <%= raw deployment_message(@conn, @target.deployment) %>
+    </p>
+  <% end %>
+<% end %>

@@ -1,0 +1,28 @@
+version: '3.6'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        - MIX_ENV=${MIX_ENV:-dev}
+      ssh:
+        - default
+      cache_from:
+        - ${MASTER_IMAGE:-public-api-gateway}:${IMAGE_TAG:-latest}
+    ports:
+      - "8080:8080"
+
+    environment:
+      SSH_AUTH_SOCK: /ssh-agent
+      MIX_ENV: ${MIX_ENV:-dev}
+      SECRETS_V1BETA_PUBLIC_GRPC_API_ENDPOINT: ${SECRETS_V1BETA_PUBLIC_GRPC_API_ENDPOINT:-localhost:50051}
+      PROJECT_SECRETS_V1_PUBLIC_GRPC_API_ENDPOINT: ${PROJECT_SECRETS_V1_PUBLIC_GRPC_API_ENDPOINT:-project-secrets:8080}
+      DASHBOARDS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT: ${DASHBOARDS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT:-dashboards:8080}
+      JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT: ${JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT:-jobs:8080}
+      NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT: ${NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT:-notifications:8080}
+      ARTIFACTS_V1_PUBLIC_GRPC_API_ENDPOINT: ${ARTIFACTS_V1_PUBLIC_GRPC_API_ENDPOINT:-artifacts:8080}
+
+    tty: true

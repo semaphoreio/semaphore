@@ -1,0 +1,35 @@
+---
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $baseName }}-bitbucket
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: {{ $baseName }}-bitbucket
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4000
+      protocol: TCP
+
+---
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $baseName }}-gitlab
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: {{ $baseName }}-gitlab
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4000
+      protocol: TCP

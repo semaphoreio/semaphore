@@ -1,0 +1,6 @@
+apiVersion: v2
+name: artifacthub
+description: A Helm chart for deploying Semaphore artifacthub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

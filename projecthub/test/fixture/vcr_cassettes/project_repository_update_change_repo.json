@@ -1,0 +1,272 @@
+[
+  {
+    "request": {
+      "body": "\"\\\"\\\"\"",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token faketoken12345"
+      },
+      "method": "get",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/repos/fakeuser/fakerepo"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"id\":123456789,\"node_id\":\"AAAAAAAAAAAAAAAAAAAA==\",\"name\":\"fakerepo\",\"full_name\":\"fakeuser/fakerepo\",\"private\":false,\"owner\":{\"login\":\"fakeuser\",\"id\":987654321,\"node_id\":\"MDQ6VXNlcjk4NzY1NDMyMQ==\",\"avatar_url\":\"https://avatars1.githubusercontent.com/u/987654321?v=4\",\"gravatar_id\":\"\",\"url\":\"https://api.github.com/users/fakeuser\",\"html_url\":\"https://github.com/fakeuser\",\"followers_url\":\"https://api.github.com/users/fakeuser/followers\",\"following_url\":\"https://api.github.com/users/fakeuser/following{/other_user}\",\"gists_url\":\"https://api.github.com/users/fakeuser/gists{/gist_id}\",\"starred_url\":\"https://api.github.com/users/fakeuser/starred{/owner}{/repo}\",\"subscriptions_url\":\"https://api.github.com/users/fakeuser/subscriptions\",\"organizations_url\":\"https://api.github.com/users/fakeuser/orgs\",\"repos_url\":\"https://api.github.com/users/fakeuser/repos\",\"events_url\":\"https://api.github.com/users/fakeuser/events{/privacy}\",\"received_events_url\":\"https://api.github.com/users/fakeuser/received_events\",\"type\":\"User\",\"site_admin\":false},\"html_url\":\"https://github.com/fakeuser/fakerepo\",\"description\":\"A fake repository for testing\",\"fork\":false,\"url\":\"https://api.github.com/repos/fakeuser/fakerepo\",\"created_at\":\"2023-06-01T12:00:00Z\",\"updated_at\":\"2023-06-01T12:01:00Z\",\"pushed_at\":\"2023-06-01T12:02:00Z\",\"git_url\":\"git://github.com/fakeuser/fakerepo.git\",\"ssh_url\":\"git@github.com:fakeuser/fakerepo.git\",\"clone_url\":\"https://github.com/fakeuser/fakerepo.git\",\"svn_url\":\"https://github.com/fakeuser/fakerepo\",\"size\":42,\"stargazers_count\":3,\"watchers_count\":3,\"language\":\"Elixir\",\"has_issues\":true,\"has_projects\":true,\"has_downloads\":true,\"has_wiki\":true,\"has_pages\":false,\"forks_count\":1,\"archived\":false,\"disabled\":false,\"open_issues_count\":0,\"license\":null,\"default_branch\":\"main\"}",
+      "headers": {
+        "Date": "Thu, 01 Jun 2023 12:30:00 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "1024",
+        "Server": "GitHub.com",
+        "Status": "200 OK",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "1111",
+        "X-RateLimit-Reset": "1111111111",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "Last-Modified": "Wed, 29 Apr 2020 17:41:02 GMT",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "repo",
+        "X-OAuth-Client-Id": "123123123123123123",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=1111111; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "FFFFFAAAAAA1111111110000000A00000000"
+      },
+      "status_code": 200,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "\"\\\"\\\"\"",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token faketoken12345"
+      },
+      "method": "get",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/users/fakeuser"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"login\":\"fakeuser\",\"id\":987654321,\"node_id\":\"AAAAAAAAAAAAAAAAAAAA==\",\"avatar_url\":\"https://avatars1.githubusercontent.com/u/987654321?v=4\",\"url\":\"https://api.github.com/users/fakeuser\",\"html_url\":\"https://github.com/fakeuser\",\"followers\":10,\"following\":5,\"created_at\":\"2020-01-01T10:00:00Z\",\"updated_at\":\"2023-06-01T12:00:00Z\"}",
+      "headers": {
+        "Date": "Thu, 01 Jun 2023 12:30:00 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "1024",
+        "Server": "GitHub.com",
+        "Status": "200 OK",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "1111",
+        "X-RateLimit-Reset": "1111111111",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "Last-Modified": "Wed, 29 Apr 2020 17:41:02 GMT",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "repo",
+        "X-OAuth-Client-Id": "123123123123123123",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=1111111; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "FFFFFAAAAAA1111111110000000A00000000"
+      },
+      "status_code": 200,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "\"\"",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token faketoken12345"
+      },
+      "method": "delete",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/repos/fakeuser/fakerepo/keys/987654"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"message\":\"Not Found\",\"documentation_url\":\"https://developer.github.com/v3/repos/keys/#remove-a-deploy-key\"}",
+      "headers": {
+        "Date": "Thu, 01 Jun 2023 12:31:00 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "109",
+        "Server": "GitHub.com",
+        "Status": "404 Not Found",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4985",
+        "X-RateLimit-Reset": "1111111111",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "repo",
+        "X-OAuth-Client-Id": "111111111111111111",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "Vary": "Accept-Encoding, Accept, X-Requested-With",
+        "X-GitHub-Request-Id": "FFFF:AAAAA:1111111:0000000:00000000"
+      },
+      "status_code": 404,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "\"\"",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token yourtokencomeshere"
+      },
+      "method": "delete",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/repos/test/hello-world-2/hooks/44460364"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"message\":\"Not Found\",\"documentation_url\":\"https://developer.github.com/v3/repos/hooks/#delete-a-hook\"}",
+      "headers": {
+        "Date": "Wed, 29 Apr 2020 18:12:16 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "104",
+        "Server": "GitHub.com",
+        "Status": "404 Not Found",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4984",
+        "X-RateLimit-Reset": "1111111111",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "admin:repo_hook, repo",
+        "X-OAuth-Client-Id": "111111111111111111",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "Vary": "Accept-Encoding, Accept, X-Requested-With",
+        "X-GitHub-Request-Id": "FFFF:AAAAA:1111111:0000000:00000000"
+      },
+      "status_code": 404,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "{\"key\":\"ssh-rsa EXAMPLESSHPUBLICKEY \\n\",\"read_only\":true,\"title\":\"semaphore-test-semaphore\"}",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token yourtokencomeshere"
+      },
+      "method": "post",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/repos/test/hello-world-2/keys"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"id\":42831746,\"key\":\"ssh-rsa EXAMPLESSHPUBLICKEY\",\"url\":\"https://api.github.com/repos/test/hello-world-2/keys/42831746\",\"title\":\"semaphore-test-semaphore\",\"verified\":true,\"created_at\":\"2020-04-29T18:12:16Z\",\"read_only\":true}",
+      "headers": {
+        "Date": "Wed, 29 Apr 2020 18:12:16 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "610",
+        "Server": "GitHub.com",
+        "Status": "201 Created",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4983",
+        "X-RateLimit-Reset": "1588185801",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "",
+        "X-OAuth-Client-Id": "111111111111111111",
+        "Location": "https://api.github.com/repos/test/hello-world-2/keys/42831746",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "FFFF:AAAAA:1111111:0000000:00000000"
+      },
+      "status_code": 201,
+      "type": "ok"
+    }
+  },
+  {
+    "request": {
+      "body": "{\"config\":{\"url\":\"https://hooks.com/github?hash_id=eed48383-8938-4180-bb59-1f8414b6ecae\"},\"events\":[\"push\",\"pull_request\",\"member\"],\"name\":\"web\"}",
+      "headers": {
+        "User-agent": "tentacat",
+        "Authorization": "token yourtokencomeshere"
+      },
+      "method": "post",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/repos/test/hello-world-2/hooks"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"type\":\"Repository\",\"id\":123456,\"name\":\"web\",\"active\":true,\"events\":[\"member\",\"pull_request\",\"push\"],\"config\":{\"url\":\"https://hooks.com/github?hash_id=eed48383-8938-4180-bb59-1f8414b6ecae\",\"insecure_ssl\":\"0\",\"content_type\":\"form\"},\"updated_at\":\"2020-04-29T18:12:16Z\",\"created_at\":\"2020-04-29T18:12:16Z\",\"url\":\"https://api.github.com/repos/test/hello-world-2/hooks/123456\",\"test_url\":\"https://api.github.com/repos/test/hello-world-2/hooks/123456/test\",\"ping_url\":\"https://api.github.com/repos/test/hello-world-2/hooks/123456/pings\",\"last_response\":{\"code\":null,\"status\":\"unused\",\"message\":null}}",
+      "headers": {
+        "Date": "Wed, 29 Apr 2020 18:12:17 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": "655",
+        "Server": "GitHub.com",
+        "Status": "201 Created",
+        "X-RateLimit-Limit": "5000",
+        "X-RateLimit-Remaining": "4982",
+        "X-RateLimit-Reset": "1111111111",
+        "Cache-Control": "private, max-age=60, s-maxage=60",
+        "Vary": "Accept, Authorization, Cookie, X-GitHub-OTP",
+        "ETag": "\"aaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "X-OAuth-Scopes": "repo, user:email",
+        "X-Accepted-OAuth-Scopes": "admin:repo_hook, repo, write:repo_hook",
+        "X-OAuth-Client-Id": "111111111111111111",
+        "Location": "https://api.github.com/repos/test/hello-world-2/hooks/123456",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "1; mode=block",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "X-GitHub-Request-Id": "FFFF:AAAAA:1111111:0000000:00000000"
+      },
+      "status_code": 201,
+      "type": "ok"
+    }
+  }
+]

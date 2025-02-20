@@ -1,0 +1,13 @@
+{
+  "title": "Build Docker",
+  "description": "Build image from your Dockerfile",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "Build Docker image"
+  ],
+  "icon": "lang-docker.svg",
+  "template_path": "templates/docker-build.yml",
+  "workflow_tip": "docker_build",
+  "pinned": true
+}

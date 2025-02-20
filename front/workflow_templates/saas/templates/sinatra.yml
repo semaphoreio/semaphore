@@ -1,0 +1,25 @@
+version: v1.0
+name: Sinatra
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Install dependencies
+    task:
+      jobs:
+        - name: bundle install
+          commands:
+            - checkout
+            - cache restore
+            - bundle install --deployment --path vendor/bundle
+            - cache store
+  - name: Tests
+    task:
+      jobs:
+        - name: rspec
+          commands:
+            - checkout
+            - cache restore
+            - bundle install --deployment --path vendor/bundle
+            - bundle exec rspec

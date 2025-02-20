@@ -1,0 +1,11 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.UserId = "<%= @user.id %>";
+  window.InjectedDataByBackend.OrgId = "<%= @organization_id %>";
+  window.InjectedDataByBackend.CheckURL = "<%= @check_url %>";
+  window.InjectedDataByBackend.NextScreen = "<%= @next_screen %>";
+</script>
+
+<p class="mb3 pb2">Hey <%= name(@user) %>! How’s it going? <br> We are setting up permissions for your account. This can take a couple of moments.</p>
+
+<div id="spinners">
+</div>

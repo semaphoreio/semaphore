@@ -1,0 +1,9 @@
+<%= if Enum.all?(Enum.map(@member.subject_role_bindings, &(InternalApi.RBAC.RoleBindingSource.key(&1.source))), &(&1 == :ROLE_BINDING_SOURCE_MANUALLY))  do %>
+  <button class="btn btn-secondary" name="remove-btn" user_id="<%= @member.id %>">
+    ×
+  </button>
+<% else %>
+  <button class="btn btn-secondary disabled" data-tippy-content="This user was added through Git sync, or inherited access to project through the organization role they have, hence they can not be removed from the project manually">
+    ×
+  </button>
+<% end %>

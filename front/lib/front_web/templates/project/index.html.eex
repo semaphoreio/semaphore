@@ -1,0 +1,35 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <p class="mb3 mb4-l">
+    All projects in this organization
+  </p>
+
+  <div>
+    <div class="center bg-white shadow-1 br3 pa3 pa4-l mb4-l">
+
+      <%= if Enum.any?(@categorized_projects) do %>
+        <table class="collapse w-100">
+          <%= Enum.map(@categorized_projects, fn {category, projects} -> %>
+
+            <%= projects |> Enum.with_index |> Enum.map(fn {project, index} -> %>
+              <tr>
+                <%= if index == 0 do %>
+                  <td class="w2 w3-m pb3 pr3 gray v-top nowrap"><%= category %></td>
+                <% else %>
+                  <td class="w2 w3-m pb3 pr3 gray v-top nowrap">&nbsp;</td>
+                <% end %>
+                <td class="pb3 v-top">
+                  <a href="<%= project_path(@conn, :show, project.name) %>" class="link db dark-gray underline-hover">
+                    <div class="f4 b"><%= project.name %></div>
+                  </a>
+                    <p class="f4 measure gray mb0"><%= project.description %></p>
+                </td>
+              </tr>
+            <% end) %>
+
+          <% end) %>
+        </table>
+      <% end %>
+
+    </div>
+  </div>
+</div>

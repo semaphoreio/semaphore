@@ -1,0 +1,14 @@
+{
+  "title": "Parallel",
+  "description": "Run your CI across parallel jobs",
+  "category": "CI patterns",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Three parallel jobs",
+    "Code checkout"
+  ],
+  "icon": "lang-blank.svg",
+  "template_path": "templates/parallel.yml",
+  "workflow_tip": "other",
+  "preview": "https://github.com/semaphoreci/workflows/blob/master/previews/single-block-parallel.png?raw=true"
+}

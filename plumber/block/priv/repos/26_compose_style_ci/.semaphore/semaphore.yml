@@ -1,0 +1,46 @@
+version: "v1.0"
+name: basic test
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: grc.io/rt/web:123-123-124
+
+    - name: postgres
+      image: grc.io/rt/pg:123-123-1sdf
+      command: "/bin/bash"
+      env_vars:
+        - name: PG_PASSWORD
+          value: shifra
+
+    - name: statsd
+      image: aws.io/semaphore/statsd-custom:latest
+      secrets:
+        - name: influx-connection-data
+
+    - name: test-123
+      image: aws.io/semaphore/test-image
+      entrypoint: rm -rf
+      user: root
+
+  image_pull_secrets:
+    - name: gcr-pull-secret
+    - name: ecr-pull-secret
+blocks:
+  - task:
+      jobs:
+      - name: job_blk_1
+        commands:
+          - echo foo
+  - task:
+      agent:
+        machine:
+          type: e1-standard-2
+        containers:
+          - name: main
+            image: grc.io/image_block_2
+      jobs:
+      - name: job_blk_2
+        commands:
+          - echo bar

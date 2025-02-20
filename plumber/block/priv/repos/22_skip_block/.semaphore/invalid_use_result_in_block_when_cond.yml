@@ -1,0 +1,28 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Testing
+    skip:
+      when: false
+    task:
+      jobs:
+        - commands:
+            - echo "testing"
+  - name: Testing 2
+    skip:
+      when: "branch = 'master' and result = 'passed'"
+    task:
+      jobs:
+        - commands:
+            - echo "Invalid due to using result keyword outside of auto-promotion conditions."
+  - name: Deployment - skip on dev branches
+    skip:
+      when: "(branch =~ '^dev' and branch != 'dev-execute-dpl') or tag =~ '^v0\.'"
+    task:
+      jobs:
+        - commands:
+            - echo 123

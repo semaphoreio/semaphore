@@ -1,0 +1,19 @@
+version: v1.0
+name: Elixir
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: mix test
+    task:
+      jobs:
+        - name: mix deps.get
+          commands:
+            - sem-version elixir 1.9
+            - checkout
+            - mix deps.get
+            - mix test
+      env_vars:
+        - name: MIX_ENV
+          value: test

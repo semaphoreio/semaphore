@@ -1,0 +1,46 @@
+version: "v1.0"
+name: Deploy to stating
+agent:
+  machine:
+    type: e1-standard-2
+
+  containers:
+    - name: main
+      image: grc.io/rt/web:123-123-124
+
+    - name: postgres
+      image: grc.io/rt/pg:123-123-1sdf
+      command: "/bin/bash"
+      env_vars:
+        - name: PG_PASSWORD
+          value: shifra
+
+    - name: statsd
+      image: aws.io/semaphore/statsd-custom:latest
+      secrets:
+        - name: influx-connection-data
+
+    - name: test-123
+      image: aws.io/semaphore/test-image
+      entrypoint: rm -rf
+      user: root
+
+  image_pull_secrets:
+    - name: gcr-pull-secret
+    - name: ecr-pull-secret
+
+blocks:
+  - name: "Build ppl"
+    task:
+      jobs:
+      - name: language versions
+        commands:
+          - nproc
+          - ls -lah
+          - df -h
+          - env
+          - ruby -v
+          - sem-version ruby 2.3
+          - ruby -v
+          - sem-version ruby 2.5
+          - ruby -v

@@ -1,0 +1,13 @@
+{
+  "title": "Swift",
+  "description": "Test your Swift project",
+  "category": "iOS / macOS",
+  "features": [
+    "MacOS with Xcode12 environment",
+    "Code checkout",
+    "swift test"
+  ],
+  "icon": "lang-swift.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/swift.yml"
+}

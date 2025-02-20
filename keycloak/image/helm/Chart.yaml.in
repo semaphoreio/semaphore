@@ -1,0 +1,6 @@
+apiVersion: v2
+name: keycloak
+description: A Helm chart for deploying Semaphore keycloak application
+type: application
+version: "@chartVersion@"
+appVersion: ""

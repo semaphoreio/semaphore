@@ -1,0 +1,22 @@
+version: "v1.0"
+name: Global job config test - both global and block env vars
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+queue:
+  name: global-job-config-test
+  scope: project
+global_job_config:
+  env_vars:
+    - name: GLOBAL_ENV_VAR
+      value: "1"
+blocks:
+  - task:
+      env_vars:
+        - name: BLOCK_ENV_VAR
+          value: "2"
+      jobs:
+        - commands:
+            - if [[ $GLOBAL_ENV_VAR != "1" ]]; then exit 127 ; else exit 0; fi
+            - if [[ $BLOCK_ENV_VAR != "2" ]]; then exit 127 ; else exit 0; fi

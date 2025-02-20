@@ -1,0 +1,19 @@
+<div class="f5 mt4">
+  <div class="flex items-center justify-between mb2 mb3-m">
+    <h2 class="f4 gray fw4 mb0">Deployments</h2>
+
+    <%= link to: "#", class: "f5" do %>
+      + Set up<span class="dn di-m"> deployment</span>
+    <% end %>
+  </div>
+
+  <div id="project-queue-list">
+    <%= render FrontWeb.ProjectView, "_queues.html", project: @project, queues: @queues, conn: @conn %>
+  </div>
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  if (typeof ProjectQueueList !== 'undefined') {
+    ProjectQueueList.init();
+  }
+</script>

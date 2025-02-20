@@ -1,0 +1,121 @@
+<details>
+<summary class="f4 f3-m fw6 mb1 pointer">Learn the basics</summary>
+<div class="f5 mb3">
+  <p class="mb3">Congrats! You've already set up your first <b>Job</b>.</p><p class="mb3">Every&nbsp;<b>Job </b>runs in an isolated environment from the rest. You are currently running on <b>Ubuntu 18.04</b> environment but you can also run on <b>MacOS</b> or <b>Docker</b> based environments.</p><p class="mb3">Semaphore <b>toolbox</b> is the set of CLI tools which come <br>out-of-the-box with your environment. Use <b>checkout</b>&nbsp;to pull your code or <b>cache </b>to gain faster runs. Customize the environment to your specific needs by using&nbsp;<b>sem-version </b>and <b>sem-service </b>commands.</p>
+</div>
+</details>
+
+<details>
+<summary class="f4 f3-m fw6 mb1 pointer">Set up the language version</summary>
+<div class="f5 mb3">
+  <p class="mb3">Use the sem-service command from the toolbox and set up the language version.</p>
+  <div class="flex">
+    <div class="flex-shrink-0 mr3">
+      <img src="<%= image_source("edit-workflow-popup.svg") %>">
+    </div>
+    <div class="flex-auto">
+      <div class="bg-black-05 pa2 br3">
+        <label class="db f7 mb1 b nt1">Jobs</label>
+        <div class="f7 code bg-white br2 ba b--black-30">
+          <div class="bb b--black-30 ph2 pv1">
+            Run Tests</div>
+          <div class="ph2 pv1 overflow-auto nowrap"># Use your language version<br><span style="font-size: 0.75rem;">sem-version ruby 2.5<br>sem-version elixir 1.7.3<br>sem-version erlang 21.3<br>sem-version go 1.9<br>sem-version java 11<br></span><span style="font-size: 0.75rem;">sem-version php 7.3<br>sem-version python 2.7<br>sem-version scala 2.12.7<br>sem-version node 12.3</span></div><div class="ph2 pv1 overflow-auto nowrap"><span style="font-size: 0.75rem;"><br># Run unit tests<br>make unit.test</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="mt3">Make sure to use sem-version command in each Job that needs specific language version.</p>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Spin up the database or some other service</summary>
+  <div class="f5 mb3">
+    <p class="mb3">Use the sem-service command from the toolbox and set up the language version.</p>
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">Integration Tests</div>
+            <div class="ph2 pv1 overflow-auto nowrap"># Start your services<br>sem-service start postgres 11<br><span style="font-size: 0.75rem;">sem-service start mysql 5.6<br></span><span style="font-size: 0.75rem;">sem-service start redis 5<br></span><span style="font-size: 0.75rem;">sem-service start memcached 1.5<br></span><span style="font-size: 0.75rem;">sem-service start mongodb 4.1<br></span><span style="font-size: 0.75rem;">sem-service start elasticsearch 6.5.1<br></span><span style="font-size: 0.75rem;">sem-service start rabbitmq 3.7</span></div><div class="ph2 pv1 overflow-auto nowrap"><br># Run integration tests<br>make integration.test</div>
+          </div>
+          <label class="db f7 mb1 mt1 b">Environment Variables</label>
+          <div class="input-group flex-auto">
+            <input readonly="" type="text" class="w-50 form-control form-control-small code" placeholder="Name" value="DATABASE_URL">
+            <input readonly="" type="text" class="w-50 form-control form-control-small code" placeholder="Value" value="<local-db-url>">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Use Secrets for your credentials</summary>
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">1. Create a Secret</h4>
+        <p class="mb0">Secrets are global and can be shared between the projects. Go to <a href="/secrets/new" target="_blank" rel="noopener">create a Secret</a>.</p>
+      </div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-1.svg") %>" alt="Create global secret">
+      </div>
+    </div>
+  </div>
+
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">2. Attach to a Workflow</h4>
+        <p class="mb0">Navigate to a project, edit the workflow and attach the secret.</p>
+      </div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-2.svg") %>" alt="Attach secret to workflow">
+      </div>
+    </div>
+  </div>
+</details>
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Use cache</summary>
+  <div class="f5 mb3">
+    <p class="mb3">Use the <b>cache</b> command from the toolbox to speed up Jobs.</p>
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 mb2 br3">
+          <label class="db f7 mb1 b nt1">Prologue</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="ph2 pv1 overflow-auto nowrap"><span style="font-size: 0.75rem;">cache restore</span></div>
+          </div>
+        </div>
+        <div class="bg-black-05 pa2 mb2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Install dependencies</div><div class="ph2 pv1 overflow-auto nowrap"># Use your package manager</div><div class="ph2 pv1 overflow-auto nowrap">bundle install<br>npm install<br><span style="font-size: 0.75rem;">yarn install<br></span><span style="font-size: 0.75rem;">pip install<br></span><span style="font-size: 0.75rem;">mix deps.get<br></span><span style="font-size: 0.75rem;">php composer.phar install<br>mvn install</span></div>
+          </div>
+        </div><div class="bg-black-05 pa2 mb2 br3">
+          <label class="db f7 mb1 b nt1">Epilogue</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+
+            <div class="ph2 pv1 overflow-auto nowrap">cache store</div></div></div></div></div>
+  </div>
+</details>
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Publish XML test results</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Semaphore can consume XML test results and prepare reports
+      for your pipelines. Follow the instructions on the
+      <%= link "Tests", to: test_results_path(@conn, :pipeline_summary, @workflow.id), target: "_blank", rel: "noopener" %>
+      tab.
+    </p>
+  </div>
+</details>

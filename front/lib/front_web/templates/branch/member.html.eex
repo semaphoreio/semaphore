@@ -1,0 +1,39 @@
+<div class="bb b--lighter-gray nt3-m pb3">
+  <div class="flex-l items-end nh3">
+    <div class="ph3">
+      <span class="b db-l mr1">Project</span>
+      <div class="inline-flex items-center">
+        <%= link @project.name, to: project_path(@conn, :show, @project.name) %>
+        <%= link raw(icon("icn-settings-15", alt: "cog", class: "v-mid", width: "16")), to: project_settings_path(@conn, :general, @project.name), class: "hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1" %>
+      </div>
+    </div>
+    <div class="b dn db-l">
+        ›
+    </div>
+  </div>
+</div>
+
+<div class="pv3">
+  <div class="flex-l justify-between">
+    <h1 class="f2 f1-m mb1 mb0-l pr3">
+      <%= icon(@branch.type, class: "v-mid mr2", width: 22) %><%= @branch.display_name %>
+      <span class="normal">·
+        <a href="<%= human_accessible_repository_url(@project, @branch) %>" target="_blank"><%= icon(@project, class: "mr1", width: "16", data: %{"tippy-content": "Open on repository"}) %></a>
+      </span>
+    </h1>
+    <div>
+      <%= link to: "#{@branch.html_url}/edit_workflow", class: "btn btn-secondary ml2" do %>
+          Edit Workflow
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="bg-washed-gray pa3 br3 ba b--black-075">
+  <div class="f5 mb2">
+    Most recent activity on this <%= branch_type_name(@branch.type) |> String.downcase() %>
+  </div>
+  <div id="workflow-lists">
+    <%= render FrontWeb.BranchView, "_workflows.html", project: @project, workflows: @workflows, branch: @branch, conn: @conn, page: :branch, pagination: @pagination, pollman: @pollman, conflict_info: @conflict_info %>
+  </div>
+</div>

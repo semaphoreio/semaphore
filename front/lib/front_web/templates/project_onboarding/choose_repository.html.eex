@@ -1,0 +1,38 @@
+<div>
+  <h1 class="f2 f1-m mb0">Choose repository</h1>
+  <p class="mb3 mb4-l">Connect your repository to Semaphore</p>
+
+  <div class="mw7 center bg-white shadow-1 pa3 br3">
+    <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_tabs.html", conn: @conn, bitbucket: @bitbucket, repository_integrators: @repository_integrators %>
+
+    <%= cond do %>
+      <% @conn.assigns.integration_type == :github_app && Enum.member?([:NONE], @user.github_scope) -> %>
+        <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_github_app_scope.html", conn: @conn %>
+      <% @conn.assigns.integration_type == :github_oauth_token && Enum.member?([:NONE, :EMAIL], @user.github_scope) -> %>
+        <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_github_scope.html", conn: @conn %>
+      <% @bitbucket && @conn.assigns.integration_type == :bitbucket && Enum.member?([:NONE, :EMAIL], @user.bitbucket_scope) -> %>
+        <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_bitbucket_scope.html", conn: @conn %>
+      <% true -> %>
+        <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_repo_missing_info.html", conn: @conn, organization: @organization, user: @user %>
+
+        <div class="mt3 mb3">
+          <input type="text" class="form-control w-100" placeholder="Filter repositories…" id="x-filter-repositories">
+        </div>
+
+        <div id="new-project-repositories-placeholder" class="tc pv6">
+          <img src="<%= image_source("spinner-2.svg") %>" class="w2 mb1">
+          <p class="f6">Fetching repositories…</p>
+        </div>
+
+        <div id="repositories" data-repositories-url="<%= @repositories_url %>"></div>
+
+        <div id="new-project-repositories-button" class="dn">
+          <%= if @conn.assigns.integration_type == :github_app do %>
+            <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_github_app_give_access.html", organization: @organization %>
+          <% end %>
+        </div>
+
+        <%= render FrontWeb.ProjectOnboardingView, "choose_repository/_templates.html", conn: @conn %>
+      <% end %>
+  </div>
+</div>

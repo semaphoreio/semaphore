@@ -1,0 +1,61 @@
+image: velocity
+imageTag: latest
+
+worker:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.1'
+      memory: 80Mi
+    requests:
+      cpu: '0.01'
+      memory: 20Mi
+
+api:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.1'
+      memory: 80Mi
+    requests:
+      cpu: '0.01'
+      memory: 20Mi
+
+summaryWorker:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.1'
+      memory: 80Mi
+    requests:
+      cpu: '0.01'
+      memory: 20Mi
+
+metricEmitter:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.1'
+      memory: 80Mi
+    requests:
+      cpu: '0.01'
+      memory: 20Mi
+
+metricAggregator:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.1'
+      memory: 80Mi
+    requests:
+      cpu: '0.01'
+      memory: 20Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

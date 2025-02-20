@@ -1,0 +1,13 @@
+{
+  "title": "Multi-platform",
+  "description": "Build and test your project on Linux, MacOS and Docker",
+  "category": "CI patterns",
+  "features": [
+    "Parallel pipeline",
+    "Code checkout"
+  ],
+  "icon": "lang-blank.svg",
+  "template_path": "templates/multi-platform.yml",
+  "workflow_tip": "other",
+  "preview": "https://github.com/semaphoreci/workflows/blob/master/previews/multi-platform.png?raw=true"
+}

@@ -1,0 +1,27 @@
+image: ppl
+imageTag: latest
+imagePullSecrets: []
+
+replicas: 1
+resources:
+  limits:
+    cpu: '0.3'
+    memory: 300Mi
+  requests:
+    cpu: '0.1'
+    memory: 100Mi
+
+db:
+  pplName: ppl_repo
+  pplPoolSize: 3
+  blockName: block_repo
+  blockPoolSize: 3
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

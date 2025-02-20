@@ -1,0 +1,50 @@
+<h2 class="f3 f2-m mb0">Roles</h2>
+<p class="measure">
+  <%= page_description() %>
+</p>
+<div class="w-100-l mb4 pt3 bt b--lighter-gray">
+  <div class="flex items-center justify-between mb2">
+    <div>
+      <div class="flex items-center">
+        <span class="material-symbols-outlined pr2">corporate_fare</span>
+        <div class="b">Organization Roles</div>
+      </div>
+    </div>
+    <%= if allow_role_creation?() do %>
+      <div>
+        <%= render FrontWeb.RolesView, "_new_role_btn.html", conn: @conn, feature_enabled?: @feature_enabled?, scope: "organization" %>
+      </div>
+    <% end %>
+  </div>
+  <span class="gray">
+    <%= roles_action_message() %> roles at the organization level.
+    These roles dictate which actions users can perform within your organization.
+  </span>
+  <%= for role <- organization_roles(@roles) do %>
+    <%= render FrontWeb.RolesView, "_role_item.html", conn: @conn, role: role %>
+  <% end %>
+</div>
+<%= if allow_project_roles?() do %>
+  <div class="w-100-l mb4 pt3 bt b--lighter-gray">
+    <div class="flex items-center justify-between mb2">
+      <div>
+        <div class="flex items-center">
+          <img src="<%= assets_path() %>/images/icn-project.svg"
+              width="24" height="24"
+              alt="project" class="flex-shrink-0 db-l pr2">
+          <div class="b">Project Roles</div>
+        </div>
+      </div>
+      <div>
+        <%= render FrontWeb.RolesView, "_new_role_btn.html", conn: @conn, feature_enabled?: @feature_enabled?, scope: "project" %>
+      </div>
+    </div>
+    <span class="gray">
+      Manage roles available for your projects.
+      These roles dictate the actions users can take within a single project.
+    </span>
+    <%= for role <- project_roles(@roles) do %>
+      <%= render FrontWeb.RolesView, "_role_item.html", conn: @conn, role: role %>
+    <% end %>
+  </div>
+<% end %>

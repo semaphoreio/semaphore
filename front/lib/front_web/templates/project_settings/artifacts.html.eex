@@ -1,0 +1,23 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ArtifactRetentionPolicies = <%= raw Poison.encode!(@artifact_retention_policies) %>
+</script>
+
+<h2 class="f3 f2-m mb0">Artifacts</h2>
+<p class="mb3">Control artifact usage on this project</p>
+
+<%# form managed by the ProjectArtifactsSettings javascript application %>
+
+<%= if @permissions["project.artifacts.view_settings"] do %>
+  <%= form_for @conn, project_settings_path(@conn, :update_artifact_settings, @project.name), [
+    method: :put,
+    id: "project-artifacts-retention-policy-form",
+    "data-read-only": if !@permissions["project.artifacts.modify_settings"] do "true" else "false" end
+  ], fn _f -> %>
+  <% end %>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Artifacts Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

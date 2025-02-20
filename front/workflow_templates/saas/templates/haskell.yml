@@ -1,0 +1,20 @@
+version: v1.0
+name: Haskell
+agent:
+  machine:
+    type: f1-standard-2
+  containers:
+    - name: main
+      image: registry.semaphoreci.com/haskell:8.8
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: cabal test
+          commands:
+            - checkout
+            - cabal update
+            - cabal install --only-dependencies --enable-tests
+            - cabal configure --enable-tests
+            - cabal build
+            - cabal test

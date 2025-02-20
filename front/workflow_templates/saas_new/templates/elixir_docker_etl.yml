@@ -1,0 +1,92 @@
+version: v1.0
+name: "💫 Elixir Insight ETL - CI Pipeline"
+
+agent:
+  machine:
+    type: {{ machine_type }}  # Define the machine type (e.g., e1-standard-2 for cost-efficiency)
+    os_image: {{ os_image }}  # Specify the OS image (e.g., ubuntu2004 for compatibility)
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/elixir:1.15.7'  # Elixir 1.15.7 with Erlang/OTP 26
+    - name: postgres
+      image: 'registry.semaphoreci.com/postgres:17'  # PostgreSQL 17 for database operations
+      
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop execution early for non-main branches to save resources
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on the main branch
+
+global_job_config:
+  env_vars:
+    - name: AWS_DEFAULT_REGION
+      value: your_aws_region  # Specify the AWS region for ECR and other AWS operations
+    - name: DOCKER_REPOSITORY_URI
+      value: your_ecr_container  # Define the Docker repository URI for pushing images
+  prologue:
+    commands:
+      - checkout  # Fetch the latest code from the repository
+      - mix local.rebar --force && mix local.hex --force  # Install Hex and rebar3
+      - cache restore  # Restore cached dependencies for faster builds
+      - mix deps.get  # Fetch project dependencies
+      - cache store  # Cache dependencies for future runs
+
+blocks:
+  - name: "🛠️ Setup"
+    task:
+      jobs:
+        - name: "Compile Code"
+          commands:
+            - mix compile  # Compile the project
+
+  - name: "🔍 Analyze Code"
+    task:
+      jobs:
+        - name: "Run Credo"
+          commands:
+            - mix credo -a  # Perform static code analysis
+        - name: "Check Formatting"
+          commands:
+            - mix format --check-formatted  # Ensure all code is properly formatted
+
+  - name: "🧪 Run Tests"
+    task:
+      jobs:
+        - name: "Run Tests and Generate Coverage"
+          env_vars:
+            - name: DATABASE_URL
+              value: 'ecto://postgres:@0.0.0.0:5432/sema_test'  # Database connection URL
+            - name: MIX_ENV
+              value: test  # Set the environment to test
+          commands:
+            - mix coveralls.lcov  # Run tests and generate lcov coverage report
+            - cache store coverage-$SEMAPHORE_WORKFLOW_ID cover  # Store coverage results
+
+  - name: "📦 Build Docker Image"
+    task:
+      secrets:
+        - name: ecr-push-secrets  # AWS ECR credentials for pushing images
+      prologue:
+        commands:
+          - eval $(aws ecr get-login --no-include-email)  # Authenticate with AWS ECR
+      jobs:
+        - name: "Build and Push Docker Image"
+          commands:
+            - docker build -t ${DOCKER_REPOSITORY_URI}:${SEMAPHORE_GIT_SHA} .  # Build Docker image
+            - docker push ${DOCKER_REPOSITORY_URI}:${SEMAPHORE_GIT_SHA}  # Push image to ECR
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "Generate Test Reports"
+        commands:
+          - test-results gen-pipeline-report  # Generate aggregated test report
+      - name: "Test Coverage Summary"
+        commands:
+          - sudo apt-get install -y lcov  # Install lcov tool
+          - cache restore coverage-$SEMAPHORE_WORKFLOW_ID  # Restore coverage data
+          - lcov -l cover/lcov.info  # Display coverage summary

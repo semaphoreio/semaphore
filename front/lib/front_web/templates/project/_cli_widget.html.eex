@@ -1,0 +1,36 @@
+<div id="menuCLI" style="display: none">
+  <div class="pa3">
+    <div class="mb3">
+      <div class="b mb1">Edit project</div>
+      <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem edit project <%= @project.name %>" size="36" readonly>
+    </div>
+    <div class="mb3">
+      <div class="b mb1">Describe project</div>
+      <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem get project <%= @project.name %>" size="36" readonly>
+    </div>
+    <div class="mb3">
+      <div class="b mb1">Debug project (Starts SSH session)</div>
+      <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem debug project <%= @project.name %>" size="36" readonly>
+    </div>
+    <div class="mb3">
+      <div class="b mb1">Delete project (doesn't ask for confirmation)</div>
+      <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem delete project <%= @project.name %>" size="36" readonly>
+    </div>
+
+    <div class="f6">
+    Docs: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/53-sem-reference#working-with-projects">Working with Projects</a> & <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/52-projects-yaml-reference">YAML Reference</a>
+    </div>
+
+    <details class="nb1 pointer bt b--lighter-gray pt2 mt3">
+      <summary class="gray hover-dark-gray truncate">Install <code class="dark-gray">sem</code> CLI & Connect to <code class="dark-gray"><%= @organization.name %></code></summary>
+        <div class="mt2 mb3">
+        <div class="b mb1">Install sem command line tools</div>
+        <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash" size="36" readonly>
+      </div>
+      <div class="mb1">
+        <div class="b mb1">Connect to <%= @organization.name %> organization</div>
+        <input class="x-select-on-click f5 code form-control w-100 mw7" type="text" value="sem connect <%= "#{@organization.username}.#{Application.get_env(:front, :domain)} _YOUR_API_TOKEN_" %>" size="36" readonly>
+      </div>
+    </details>
+  </div>
+</div>

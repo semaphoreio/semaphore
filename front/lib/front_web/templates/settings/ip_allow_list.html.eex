@@ -1,0 +1,28 @@
+<%= if @permissions["organization.ip_allow_list.view"] do %>
+  <div>
+    <h2 class="f3 f2-m mb0">IP Allow List</h2>
+    <p class="mb3 measure">Restrict access to organization assets by configuring a comma-separated list of allowed IPs and CIDRs. Leave it empty to allow access to everyone.</p>
+    <div class="pb3">
+      <%= form_for @conn, settings_path(@conn, :update), fn f -> %>
+        <div class="mb3">
+          <%= text_input f, :redirect_path, value: settings_path(@conn, :ip_allow_list), hidden: true %>
+          <%= textarea f, :ip_allow_list,
+            rows: "10",
+            class: "form-control w-100 w-100-m #{error_on_org_ip_allow_list_class(@errors)}",
+            value: display_ip_allow_list(@organization.ip_allow_list),
+            disabled: !@permissions["organization.ip_allow_list.manage"]
+          %>
+        </div>
+
+        <%= if @permissions["organization.ip_allow_list.manage"] do %>
+          <%= submit "Save changes", class: "btn btn-primary primary", disabled: !@permissions["organization.ip_allow_list.manage"] %>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can't access IP Allow List.<br>Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

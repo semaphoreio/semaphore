@@ -1,0 +1,90 @@
+services:
+  devapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        APP_NAME: looper
+    container_name: devapp
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./home_dir:/home/dev
+      - ../:/home/dev/repo
+
+  ciapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: test
+      args:
+        APP_NAME: looper
+    container_name: ciapp
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    profiles: ["ci"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - "../:/app/repo"
+    working_dir: "/app/repo/looper"
+
+  postgres:
+    container_name: postgres
+    image: "postgres:9.6"
+    ports:
+      - 5432:5432
+    profiles: ["dev", "ci"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3.9.27-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  pgweb:
+    container_name: pgweb
+    image: sosedoff/pgweb:0.14.1
+    restart: always
+    profiles: ["dev"]
+    links: 
+      - postgres:postgres
+    environment:
+      DATABASE_URL: "postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable"
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy

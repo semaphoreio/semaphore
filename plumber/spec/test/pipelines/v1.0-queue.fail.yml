@@ -1,0 +1,15 @@
+version: "v1.0"
+name: Definition with invalid queue property
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+queue:
+  name: production
+  scope: something other than project or organization
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

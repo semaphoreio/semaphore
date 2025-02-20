@@ -1,0 +1,102 @@
+{
+  "action": "deleted",
+  "installation": {
+    "id": 13609976,
+    "account": {
+      "login": "renderedtext",
+      "id": 224711,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjIyNDcxMQ==",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/224711?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/renderedtext",
+      "html_url": "https://github.com/renderedtext",
+      "followers_url": "https://api.github.com/users/renderedtext/followers",
+      "following_url": "https://api.github.com/users/renderedtext/following{/other_user}",
+      "gists_url": "https://api.github.com/users/renderedtext/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/renderedtext/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/renderedtext/subscriptions",
+      "organizations_url": "https://api.github.com/users/renderedtext/orgs",
+      "repos_url": "https://api.github.com/users/renderedtext/repos",
+      "events_url": "https://api.github.com/users/renderedtext/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/renderedtext/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "repository_selection": "selected",
+    "access_tokens_url": "https://api.github.com/app/installations/13609976/access_tokens",
+    "repositories_url": "https://api.github.com/installation/repositories",
+    "html_url": "https://github.com/organizations/renderedtext/settings/installations/13609976",
+    "app_id": 15806,
+    "app_slug": "s-2-0-test-gh-app",
+    "target_id": 224711,
+    "target_type": "Organization",
+    "permissions": {
+      "checks": "write",
+      "members": "read",
+      "contents": "write",
+      "metadata": "read",
+      "statuses": "write",
+      "pull_requests": "read",
+      "administration": "write",
+      "repository_hooks": "write",
+      "organization_hooks": "write"
+    },
+    "events": [
+      "create",
+      "delete",
+      "member",
+      "membership",
+      "organization",
+      "pull_request",
+      "push",
+      "repository",
+      "team",
+      "team_add"
+    ],
+    "created_at": "2020-12-18T12:23:29.000Z",
+    "updated_at": "2020-12-18T12:23:30.000Z",
+    "single_file_name": null,
+    "has_multiple_single_files": false,
+    "single_file_paths": [
+
+    ],
+    "suspended_by": null,
+    "suspended_at": null
+  },
+  "repositories": [
+    {
+      "id": 137368312,
+      "node_id": "MDEwOlJlcG9zaXRvcnkxMzczNjgzMTI=",
+      "name": "guard",
+      "full_name": "renderedtext/guard",
+      "private": true
+    },
+    {
+      "id": 217099396,
+      "node_id": "MDEwOlJlcG9zaXRvcnkyMTcwOTkzOTY=",
+      "name": "alles",
+      "full_name": "semaphoreio/semaphore",
+      "private": true
+    }
+  ],
+  "sender": {
+    "login": "radwo",
+    "id": 184065,
+    "node_id": "MDQ6VXNlcjE4NDA2NQ==",
+    "avatar_url": "https://avatars2.githubusercontent.com/u/184065?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/radwo",
+    "html_url": "https://github.com/radwo",
+    "followers_url": "https://api.github.com/users/radwo/followers",
+    "following_url": "https://api.github.com/users/radwo/following{/other_user}",
+    "gists_url": "https://api.github.com/users/radwo/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/radwo/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/radwo/subscriptions",
+    "organizations_url": "https://api.github.com/users/radwo/orgs",
+    "repos_url": "https://api.github.com/users/radwo/repos",
+    "events_url": "https://api.github.com/users/radwo/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/radwo/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}

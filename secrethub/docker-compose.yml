@@ -1,0 +1,74 @@
+version: '3.6'
+
+services:
+
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/secrethub/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+
+    command: "mix run --no-halt"
+    ports:
+      - "50051:50051"
+    tty: true
+    volumes:
+      - .:/app
+
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+      - sidecar_encryptor:sidecar_encryptor
+
+    environment:
+      BASE_DOMAIN: "localhost"
+      OPENID_KEYS_PATH: "priv/openid_keys_in_tests"
+      ENCRYPTOR_URL: "sidecar_encryptor:50052"
+      IN_DOCKER: "true"
+      POSTGRES_DB_NAME: "secrethub"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: "5"
+      INTERNAL_API_URL_RBAC: "127.0.0.1:50051"
+      INTERNAL_API_URL_FEATURE: "127.0.0.1:50051"
+      INTERNAL_API_URL_PROJECT: "127.0.0.1:50051"
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "8083:15672"
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+
+  sidecar_encryptor:
+    build:
+      context: ../encryptor
+      dockerfile: Dockerfile
+      cache_from:
+        - "${REGISTRY_HOST:-local}/encryptor/${BRANCH:-master}:${IMAGE_TAG:-prod}"
+      args:
+        - APP_NAME=encryptor
+    expose:
+      - "50052"
+    environment:
+      START_API: "yes"
+      GRPC_API_PORT: "50052"
+      ENCRYPTOR_TYPE: "no-op"
+
+volumes:
+  postgres-data:
+    driver: local

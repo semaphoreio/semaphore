@@ -1,0 +1,5 @@
+<%= if @form.errors[@field] do %>
+    <div class="f5 b mv1 red">
+        <%= @name %> <%= translate_error(@form.errors[@field]) %>
+    </div>
+<% end %>

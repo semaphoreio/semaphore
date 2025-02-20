@@ -1,0 +1,32 @@
+image: periodic-scheduler
+imageTag: latest
+
+db:
+  poolSize: 2
+
+#
+# This is a REQUIRED argument.
+# The application will not work without it.
+# The secret used here must have the following keys defined:
+# - mounthPath
+#
+featureFlags:
+  mountPath: "/app/features.yml"
+
+replicas: 1
+resources:
+  limits:
+    cpu: 200m
+    memory: 300Mi
+  requests:
+    cpu: 50m
+    memory: 150Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

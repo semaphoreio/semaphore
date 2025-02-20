@@ -1,0 +1,19 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: ""
+          commands:
+            - echo "Job name can not be explicitly set to empty string"
+  - name: Block 2
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

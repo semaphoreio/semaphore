@@ -1,0 +1,646 @@
+{
+  "ref": "refs/heads/vcr-upgrade",
+  "after": "97114836a47ff614e70e863df819f908877ee1c9",
+  "before": "29e0ea3158c9b75d801beda48784b71c5a686a2c",
+  "created": false,
+  "deleted": false,
+  "forced": true,
+  "compare": "https://github.com/renderedtext/semaphore/compare/29e0ea3158c9...97114836a47f",
+  "commits": [
+    {
+      "id": "d6debcde0b270f74d90c99563897b2a8dffeec19",
+      "distinct": true,
+      "message": "Upgrade VCR to 2.5, begin with migration of cassettes and solving Resque recording.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/d6debcde0b270f74d90c99563897b2a8dffeec19",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+        "fixtures/cassette_library/cucumber_tags/build_vcr.yml"
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "Gemfile.lock",
+        "Rakefile",
+        "app/controllers/projects_controller.rb",
+        "config/environments/test.rb",
+        "features/build.feature",
+        "features/step_definitions/build_steps.rb",
+        "features/support/vcr.rb",
+        "fixtures/cassette_library/cucumber_tags/fastspring_cancel_subscription.yml",
+        "fixtures/cassette_library/cucumber_tags/fastspring_change_subscription.yml"
+      ]
+    },
+    {
+      "id": "5a4166fdc82b8d3a1bd26fac227f9b2b0df2a4c8",
+      "distinct": true,
+      "message": "admin_build_management.feature doesn't need a VCR tag.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/5a4166fdc82b8d3a1bd26fac227f9b2b0df2a4c8",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/admin/admin_build_management.feature"
+      ]
+    },
+    {
+      "id": "f2ef909ccc6d37239d60e4f9a88c7d99921b6ebb",
+      "distinct": true,
+      "message": "Record cassettes once.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/f2ef909ccc6d37239d60e4f9a88c7d99921b6ebb",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "config/environments/test.rb"
+      ]
+    },
+    {
+      "id": "1b1c5f2ef80a1ee05fad31a5bb63f6011acb057e",
+      "distinct": true,
+      "message": "projects.feature don't need a VCR tags.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/1b1c5f2ef80a1ee05fad31a5bb63f6011acb057e",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/projects.feature",
+        "features/step_definitions/project_steps.rb"
+      ]
+    },
+    {
+      "id": "b1982cf53f23e42533bce32168a6edc7944f1bd1",
+      "distinct": true,
+      "message": "Update tags and cassette in project_settings.feature.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/b1982cf53f23e42533bce32168a6edc7944f1bd1",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+        "fixtures/cassette_library/cucumber_tags/delete_project_vcr.yml"
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/project_settings.feature",
+        "features/support/vcr.rb"
+      ]
+    },
+    {
+      "id": "2fbcc11fc2a0c605c701a190e267fe58c35386c4",
+      "distinct": true,
+      "message": "connections_heroku.feature using build_vcr cassette.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/2fbcc11fc2a0c605c701a190e267fe58c35386c4",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/connections_heroku.feature"
+      ]
+    },
+    {
+      "id": "728d2da87a2d73a62d44b8783e938a0c8e0dddee",
+      "distinct": true,
+      "message": "Strip tags from connections.feature, re-record unauthorized_access cassette.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/728d2da87a2d73a62d44b8783e938a0c8e0dddee",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/connections.feature",
+        "fixtures/cassette_library/cucumber_tags/github_api_unauthorized_access.yml"
+      ]
+    },
+    {
+      "id": "f873f72356cd0c43d9adc05696859ae46d916f2f",
+      "distinct": true,
+      "message": "Adding new collaborators from GitHub can pass.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/f873f72356cd0c43d9adc05696859ae46d916f2f",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/collaborators.feature",
+        "fixtures/cassette_library/cucumber_tags/github_api_sync_adds_collaborators.yml"
+      ]
+    },
+    {
+      "id": "3481796fbc1868e6e75b32299892d510fd3ef19f",
+      "distinct": true,
+      "message": "account_settings.feature doesn't need VCR tags.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/3481796fbc1868e6e75b32299892d510fd3ef19f",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/account_settings.feature"
+      ]
+    },
+    {
+      "id": "38d39a7f006ef446d49638af8b97611551b54070",
+      "distinct": true,
+      "message": "collaborators.feature tapes updated.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/38d39a7f006ef446d49638af8b97611551b54070",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/collaborators.feature",
+        "fixtures/cassette_library/cucumber_tags/github_api_sync_adds_and_removes_collaborators.yml",
+        "fixtures/cassette_library/cucumber_tags/github_api_sync_removes_collaborators.yml"
+      ]
+    },
+    {
+      "id": "d38e818d0ebf38b1bf8e7bd2a88d7307fe9385e1",
+      "distinct": true,
+      "message": "Strip away VCR tags from a lot scenarios.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/d38e818d0ebf38b1bf8e7bd2a88d7307fe9385e1",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+        "fixtures/cassette_library/cucumber_tags/github_api_user_repositories.yml"
+      ],
+      "modified": [
+        "features/admin/admin_analysis.feature",
+        "features/admin/admin_branches_management.feature",
+        "features/admin/admin_comments.feature",
+        "features/admin/admin_experimental_features.feature",
+        "features/admin/admin_projects_management.feature",
+        "features/admin/admin_servers.feature",
+        "features/admin/admin_setup_command_queue.feature",
+        "features/admin/admin_users_management.feature",
+        "features/authentication.feature",
+        "features/branch.feature",
+        "features/build_failure_tips.feature",
+        "features/project_authorization.feature",
+        "features/support/vcr.rb"
+      ]
+    },
+    {
+      "id": "d04e18976a9469c11ad8659e750202a5ce2b4dda",
+      "distinct": true,
+      "message": "Try to be more green.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/d04e18976a9469c11ad8659e750202a5ce2b4dda",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/admin/admin_build_management.feature",
+        "features/project_settings.feature"
+      ]
+    },
+    {
+      "id": "5f0e593f51afa37a85e8170c27bfc33d3a39f072",
+      "distinct": true,
+      "message": "Update tape for hook creation spec.",
+      "timestamp": "2013-06-13T06:06:02-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/5f0e593f51afa37a85e8170c27bfc33d3a39f072",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "fixtures/cassette_library/HookCreationService/connection_working.yml"
+      ]
+    },
+    {
+      "id": "d7fc5e07587a47436464d2404089089591f140f0",
+      "distinct": true,
+      "message": "Update orgs tape for specs.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/d7fc5e07587a47436464d2404089089591f140f0",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "fixtures/cassette_library/GitHub_User/_organizations_with_teams_and_repos.yml"
+      ]
+    },
+    {
+      "id": "79c70a338a27c8a838ef3d3603cdaaa1f4788618",
+      "distinct": true,
+      "message": "New tapes for hook_spec.rb.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/79c70a338a27c8a838ef3d3603cdaaa1f4788618",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "fixtures/cassette_library/GitHub/GitHub_Repository/GitHub_Repository_Hook/_create.yml",
+        "fixtures/cassette_library/GitHub/GitHub_Repository/GitHub_Repository_Hook/_delete/hook_doesn_t_exist.yml",
+        "fixtures/cassette_library/GitHub/GitHub_Repository/GitHub_Repository_Hook/_delete/hook_exists.yml",
+        "spec/lib/git_hub/repository/hook_spec.rb"
+      ]
+    },
+    {
+      "id": "06604224d507c158f0a4b149b4f56f53d5e82bc9",
+      "distinct": true,
+      "message": "Update remaining spec tapes.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/06604224d507c158f0a4b149b4f56f53d5e82bc9",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "fixtures/cassette_library/CollaboratorList/_copy_from_github/adds_new_collaborators.yml",
+        "fixtures/cassette_library/CollaboratorList/_copy_from_github/initial_copy.yml",
+        "fixtures/cassette_library/CollaboratorList/_copy_from_github/removes_collaborators.yml",
+        "spec/lib/collaborator_list_spec.rb"
+      ]
+    },
+    {
+      "id": "0ec20bfd0b3b9757e3a78531714ea49eaf970741",
+      "distinct": true,
+      "message": "Rewrite admin enqueues build scenario to real UI interaction.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/0ec20bfd0b3b9757e3a78531714ea49eaf970741",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/admin/admin_build_management.feature",
+        "features/step_definitions/admin_build_management_steps.rb"
+      ]
+    },
+    {
+      "id": "a197fa9af2972d7c6e604749d7fb7a7db37d29b5",
+      "distinct": true,
+      "message": "One scenario about private project auth needs @build_vcr.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/a197fa9af2972d7c6e604749d7fb7a7db37d29b5",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/connections.feature",
+        "features/step_definitions/connections_steps.rb"
+      ]
+    },
+    {
+      "id": "2358e0f4d25748a8271424c3259403823c15ac06",
+      "distinct": true,
+      "message": "Only two scenarios in plans.feature need a VCR tag.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/2358e0f4d25748a8271424c3259403823c15ac06",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+        "fixtures/cassette_library/CollaboratorList/_copy_from_github/adds_four_new_collaborators.yml"
+      ],
+      "modified": [
+        "app/jobs/project_list_job.rb",
+        "features/plans.feature",
+        "features/step_definitions/authentication_steps.rb",
+        "features/support/vcr.rb"
+      ]
+    },
+    {
+      "id": "97114836a47ff614e70e863df819f908877ee1c9",
+      "distinct": true,
+      "message": "Allow new episodes for @delete_project_vcr.",
+      "timestamp": "2013-06-13T06:06:03-07:00",
+      "url": "https://github.com/renderedtext/semaphore/commit/97114836a47ff614e70e863df819f908877ee1c9",
+      "author": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "committer": {
+        "name": "Marko Anastasov",
+        "email": "marko@renderedtext.com",
+        "username": "markoa"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        "features/support/vcr.rb"
+      ]
+    }
+  ],
+  "head_commit": {
+    "id": "97114836a47ff614e70e863df819f908877ee1c9",
+    "distinct": true,
+    "message": "Allow new episodes for @delete_project_vcr.",
+    "timestamp": "2013-06-13T06:06:03-07:00",
+    "url": "https://github.com/renderedtext/semaphore/commit/97114836a47ff614e70e863df819f908877ee1c9",
+    "author": {
+      "name": "Marko Anastasov",
+      "email": "marko@renderedtext.com",
+      "username": "markoa"
+    },
+    "committer": {
+      "name": "Marko Anastasov",
+      "email": "marko@renderedtext.com",
+      "username": "markoa"
+    },
+    "added": [
+
+    ],
+    "removed": [
+
+    ],
+    "modified": [
+      "features/support/vcr.rb"
+    ]
+  },
+  "repository": {
+    "id": 1846541,
+    "name": "semaphore",
+    "url": "https://github.com/renderedtext/semaphore",
+    "html_url": "https://github.com/renderedtext/semaphore",
+    "description": "Semaphore App",
+    "homepage": "https://semaphoreapp.com",
+    "watchers": 2,
+    "stargazers": 2,
+    "forks": 0,
+    "fork": false,
+    "size": 3008,
+    "owner": {
+      "name": "renderedtext",
+      "email": null
+    },
+    "private": true,
+    "open_issues": 0,
+    "has_issues": false,
+    "has_downloads": true,
+    "has_wiki": false,
+    "language": "Ruby",
+    "created_at": 1307187715,
+    "pushed_at": 1371128770,
+    "master_branch": "development",
+    "organization": "renderedtext"
+  },
+  "pusher": {
+    "name": "Marko Anastasov",
+    "email": "marko@renderedtext.com"
+  },
+  "sender": {
+    "login": "markoa",
+    "id": 8651,
+    "node_id": "MDQ6VXNlcjg2NTE=",
+    "avatar_url": "https://avatars1.githubusercontent.com/u/8651?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/markoa",
+    "html_url": "https://github.com/markoa",
+    "followers_url": "https://api.github.com/users/markoa/followers",
+    "following_url": "https://api.github.com/users/markoa/following{/other_user}",
+    "gists_url": "https://api.github.com/users/markoa/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/markoa/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/markoa/subscriptions",
+    "organizations_url": "https://api.github.com/users/markoa/orgs",
+    "repos_url": "https://api.github.com/users/markoa/repos",
+    "events_url": "https://api.github.com/users/markoa/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/markoa/received_events",
+    "type": "User",
+    "site_admin": false
+  }
+}

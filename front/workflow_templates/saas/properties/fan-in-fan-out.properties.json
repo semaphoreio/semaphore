@@ -1,0 +1,13 @@
+{
+  "title": "Fan-in / Fan-out",
+  "description": "Use Fan-in / Fan-out CI pattern",
+  "category": "CI patterns",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Fan-in / Fan-out skeleton pipeline"
+  ],
+  "icon": "lang-blank.svg",
+  "template_path": "templates/fan-in-fan-out.yml",
+  "preview": "https://github.com/semaphoreci/workflows/blob/master/previews/fan-in-fan-out.png?raw=true",
+  "workflow_tip": "other"
+}

@@ -1,0 +1,77 @@
+<%= if @permissions["project.access.view"] do %>
+  <h2 class="f3 f2-m mb0">Permissions</h2>
+  <p class="mb3">Control settings for starting debug jobs and attaching to running jobs</p>
+
+  <%= form_for @changeset, project_settings_path(@conn, :update_debug_sessions, @project.name), [method: :put], fn f -> %>
+    <div class="mb3">
+      <div id="debug-session-settings" class="f5 f4-m">
+        <div class="flex items-center">
+          <%= radio_button f, :custom_permissions, false, disabled: !@permissions["project.access.manage"], data: [action: "disableDebugSessions"] %>
+          <%= label f, :custom_permissions, "Debug sessions are not allowed", class: "ml2", for: "project_custom_permissions_false" %>
+        </div>
+        <div class="flex items-center">
+          <%= radio_button f, :custom_permissions, true, disabled: !@permissions["project.access.manage"], data: [action: "useCustomSettings"] %>
+          <%= label f, :custom_permissions, "Customize the settings for this project", class: "ml2", for: "project_custom_permissions_true" %>
+        </div>
+
+        <div id="debug-session-options" class="ml3 mt2 pa3 bg-washed-gray br3 ba b--black-075">
+          <p class="f5 b mb1">Debug sessions</p>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_default_branch, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_default_branch, "Debugging is allowed on the default (master) branch", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_non_default_branch, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_non_default_branch, "Debugging is allowed on non-default (non-master) branches", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_pr, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_pr, "Debugging is allowed on pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_forked_pr, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_forked_pr, "Debugging is allowed on forked pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_tag, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_tag, "Debugging is allowed on tags", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_debug_empty_session, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_debug_empty_session, "Collaborators can start empty debug sessions", class: "ml2" %>
+          </div>
+
+          <p class="f5 b mb1 mt3">Attach to running jobs</p>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_attach_default_branch, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_attach_default_branch, "Attaching is allowed on the default (master) branch", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_attach_non_default_branch, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_attach_non_default_branch, "Attaching is allowed on non-default (non-master) branches", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_attach_pr, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_attach_pr, "Attaching is allowed on pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_attach_forked_pr, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_attach_forked_pr, "Attaching is allowed on forked pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
+            <%= checkbox f, :allow_attach_tag, disabled: !@permissions["project.access.manage"] %>
+            <%= label f, :allow_attach_tag, "Attaching is allowed on tags", class: "ml2" %>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <%= submit "Save changes", disabled: !@permissions["project.access.manage"], class: "btn btn-primary mr2" %>
+  <% end %>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Permission Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

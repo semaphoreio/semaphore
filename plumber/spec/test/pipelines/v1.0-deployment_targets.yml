@@ -1,0 +1,21 @@
+version: "v1.0"
+name: Auto promotion test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: B1
+    task:
+      jobs:
+        - commands:
+            - echo 123
+
+promotions:
+  - name: Ship to production
+    pipeline_file: prod.yml
+    deployment_target: Production
+  - name: Ship to staging
+    pipeline_file: stg.yml
+    deployment_target: Staging

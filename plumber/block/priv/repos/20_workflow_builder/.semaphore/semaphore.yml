@@ -1,0 +1,27 @@
+version: "v1.0"
+name: Initial failing Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: block1
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo foo
+            - echo bar
+        - name: job2
+          commands:
+            - failing command
+  - name: block2
+    task:
+      jobs:
+        - name: job1
+          commands:
+            - echo foo
+            - echo bar
+promotions:
+  - name: Extension ppl
+    pipeline_file: "/foo/bar/test.yml"

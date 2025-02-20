@@ -1,0 +1,36 @@
+<%= if @permissions["organization.general_settings.manage"] do %>
+  <h2 class="f00 mb1">🌎</h2>
+  <h3 class="f2 mb1">Change the URL</h3>
+  <div>
+    If you continue:
+
+    <ul class="mb3">
+      <li>CLI connections will stop working</li>
+      <li>Members will have to reconnect to use the CLI again</li>
+      <li>This may take a couple of minutes to complete</li>
+    </ul>
+  </div>
+  <div>
+    <%= form_for @conn, settings_path(@conn, :update), fn f -> %>
+      <div class="input-group">
+        <%= text_input f, :redirect_path, value: settings_path(@conn, :change_url), hidden: true %>
+        <%= text_input f, :username, class: "form-control tr #{error_on_org_username_class(@errors)}", value: @organization.username, required: true %>
+        <input type="text" class="form-control w-40 w-auto-ns" value=".<%= Application.fetch_env!(:front, :domain) %>" disabled>
+      </div>
+      <%= if error_on_org_username(@errors) do %>
+        <div class="mv1 red"><%= error_on_org_username(@errors) %></div>
+      <% end %>
+
+      <div class="mt3 pt3 bt b--lighter-gray">
+        <%= submit "Change URL", class: "btn btn-primary mr2" %>
+        <a href="javascript:history.back()" class="btn btn-secondary">Nevermind</a>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Organization Settings.<br>
+      Ask organization owner or any of the admins to give you access.</p>
+  </div>
+<% end %>

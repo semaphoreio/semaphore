@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%= render "_head.html", conn: @conn %>
+  <body class="">
+    <div id="global-page-header" class="header flex items-center justify-between ph2 ph3-ns pv2">
+      <a href="<%= me_url(@conn) %>" class="link flex items-center flex-shrink-0">
+        <img src="<%= assets_path() %>/images/semaphore-logo-sign-black.svg" alt="logo" width="26">
+        <img src="<%= assets_path() %>/images/semaphore-logo-type.svg" alt="semaphore" width="106" style="margin-left: 6px; padding-top: 3px" class="dn di-m">
+      </a>
+      <div>
+        <span class="dn di-m">You’re in your </span>Semaphore account HQ · <%= link("Exit", to: me_url(@conn)) %>
+      </div>
+    </div>
+
+    <div class="main" style="padding-top: 49px">
+      <div id="main-content" class="bg-white shadow-1 pa3 pa4-m">
+        <%= Map.get(assigns, :nested_layout) || @inner_content %>
+
+        <%= if notice = get_flash(@conn, :notice) do %>
+          <%= render FrontWeb.SharedView, "_action_notification.html", notice: notice, conn: @conn %>
+        <% end %>
+
+        <%= if alert = get_flash(@conn, :alert) do %>
+          <%= render FrontWeb.SharedView, "_action_alert.html", alert: alert, conn: @conn %>
+        <% end %>
+      </div>
+    </div>
+
+    <%= render FrontWeb.LayoutView, "_scripts.html", conn: @conn %>
+  </body>
+</html>

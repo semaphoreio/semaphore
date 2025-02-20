@@ -1,0 +1,7 @@
+{"event":"job_started","timestamp":1720124471}
+{"event":"cmd_started","timestamp":1720124472,"directive":"make testbreak-after"}
+{"event":"cmd_output","timestamp":1720124472,"output":"/home/semaphore/.toolbox/system-metrics-collector: 35: echo: echo: I/O error\n"}
+{"event":"cmd_output","timestamp":1720124473,"output":"/home/semaphore/.toolb{"event":"cmd_output","timestamp":1720124528,"output":"  \u001b[36mINFO\u001b[0m[4191] Collected diags bundle:\r\n  ==== Begin collecting diagnostics. ====\r\n  Collec"}
+{"event":"cmd_output","timestamp":1720124528,"output":"ting kubernetes version...\r\n  Collect kubernetes Client and Server version\r\n  Collect Calico bgpco"}
+{"event":"cmd_finished","timestamp":1720124528,"directive":"make testbreak-after","exit_code":0,"started_at":1582029099,"finished_at":1582029103}
+{"event":"job_finished","timestamp":1720124471,"result":"failed"}

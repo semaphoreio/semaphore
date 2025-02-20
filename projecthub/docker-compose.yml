@@ -1,0 +1,77 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: projecthub
+    image: "${IMAGE:-projecthub-app}:${IMAGE_TAG:-latest}"
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/projecthub/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+
+    command: "mix run --no-halt"
+    ports:
+      - "50051"
+    tty: true
+    volumes:
+      - .:/app
+      - mix-deps:/app/deps
+      - mix-build:/app/_build
+      - ./out:/app/out
+
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      IN_DOCKER: "true"
+      POSTGRES_DB_NAME: "projecthub"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: "db"
+      POSTGRES_DB_POOL_SIZE: "5"
+      START_INTERNAL_API: "true"
+      AMQP_URL: "amqp://rabbitmq:5672"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+    driver: local
+
+  mix-deps:
+  mix-build:

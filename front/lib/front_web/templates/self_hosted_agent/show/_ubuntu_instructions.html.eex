@@ -1,0 +1,33 @@
+<div id="ubuntu-instructions">
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">1. Prepare your machine</h3>
+    <p class="mb3">Paste the following lines in your console, one by one.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+sudo mkdir -p /opt/semaphore/agent
+sudo chown $USER:$USER /opt/semaphore/agent/
+cd /opt/semaphore/agent
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">2. Download the agent</h3>
+    <p class="mb3">Paste the following lines in your console, one by one.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+curl -L https://github.com/semaphoreci/agent/releases/download/<%= latest_agent_version() %>/agent_Linux_x86_64.tar.gz -o agent.tar.gz
+tar -xf agent.tar.gz
+</pre>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">3. Save the access token</h3>
+    <p class="mb3"><span class="serif">⚠️</span> For your own security, we’ll show you the token only once.</p>
+<pre class="self-hosted-agent-access-token f6 bg-washed-yellow pa3 ba b--black-075" style="display: none"><%= @token %></pre>
+    <p class="m0"><button class="self-hosted-agent-access-token-reveal btn btn-small btn-secondary">Reveal</button></p>
+  </div>
+  <div class="ph3-l mb4">
+    <h3 class="f4 mb0">4. Install the agent</h3>
+    <p class="mb3">The script will prompt you for your organization name and for the access token provided in the previous step. After that, it will install the toolbox and create a systemd service for the agent.</p>
+<pre class="f6 bg-washed-yellow mb0 ph3 pv2 ba b--black-075 br3">
+sudo ./install.sh
+</pre>
+    <p class="mt3">If you did everything correctly, you'll see your agent running here.</p>
+  </div>
+</div>
