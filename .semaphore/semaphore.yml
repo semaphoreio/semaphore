@@ -1,5 +1,5 @@
 version: v1.0
-name: Alles
+name: Semaphore
 agent:
   machine:
     type: e2-standard-2
