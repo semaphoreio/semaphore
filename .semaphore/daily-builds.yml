@@ -3262,6 +3262,7 @@ blocks:
             - make check.ruby.code
         - name: "\U0001F6E1️ Check dependencies"
           commands:
+            - sem-version ruby 3.3
             - make check.ruby.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
