@@ -1,0 +1,18 @@
+version: "v1.0"
+name: Block filters
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1
+    filters:
+    - label: "db/skip-ci"
+      action: skip
+    - label_pattern: "db/"
+      action: execute
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo "Block executed"

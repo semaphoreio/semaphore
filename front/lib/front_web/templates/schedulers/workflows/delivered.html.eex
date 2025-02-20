@@ -1,0 +1,15 @@
+<div class="flex flex-column items-start">
+  <div class="flex items-center">
+    <span class="material-symbols-outlined f6"><%= git_ref_icon(@workflow.hook) %></span>
+    <%= link @workflow.hook_name, to: branch_path(@conn, :show, @workflow.branch_id),
+                                class: "ml1 db link underline" %>
+    <span class="mh1">·</span>
+    <span class="material-symbols-outlined f6">commit</span>
+    <%= link String.slice(@workflow.hook.head_commit_sha, 0..6), to: commit_url(@workflow.hook),
+                            class: "ml1 link underline" %>
+    <span class="mh1">·</span>
+    <%= link @workflow.name, class: "db link underline",
+                                to: workflow_path(@conn, :show, @workflow.id) %>
+  </div>
+  <div class="mt1"><%= raw FrontWeb.PipelineView.tree_view(@conn, @workflow) %></div>
+</div>

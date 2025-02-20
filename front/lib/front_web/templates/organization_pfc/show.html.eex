@@ -1,0 +1,70 @@
+<h2 class="f3 f2-m mb0">Initialization jobs</h2>
+<p class="mb3 measure">
+  Initialization jobs are a special kind of CI jobs that can run before the pipeline starts.
+  They are used to provide monorepo support and run pre-flight checks.
+</p>
+<div id="init_job_defaults" class="pv3 bt b--lighter-gray">
+  <h2 class="mb0 b f3">Agent configuration</h2>
+  <p>
+    You can modify machine type and OS image used by these jobs to keep full control over them.
+    You can select from both cloud agents and self-hosted agents.
+  </p>
+  <%= if @permissions["organization.pre_flight_checks.view"] do %>
+    <%= render FrontWeb.OrganizationPFCView, "_init_job_defaults.html",
+        conn: @conn,
+        permissions: @permissions,
+        cloud_agents:  @cloud_agents,
+        self_hosted_agents: @self_hosted_agents,
+        init_job_defaults: @init_job_defaults,
+        organization_id: @organization.id %>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">
+        Sorry, you can’t access Initialization job agent configuration.<br>
+        Ask organization owner or any of the admins to give you access permission.
+      </p>
+    </div>
+  <% end %>
+</div>
+<%= if FeatureProvider.feature_visible?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+  <div id="organization_pfc" class="pv3 bt b--lighter-gray">
+    <h2 class="mb0 b f3">Pre-flight checks</h2>
+    <p class="mb3 measure">
+      Define commands and used secrets to configure custom security measures before running the pipeline.
+      What you define here will be run before any pipeline in all projects across this organization.
+    </p>
+    <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+      <%= if @permissions["organization.pre_flight_checks.view"] do %>
+        <%= render FrontWeb.OrganizationPFCView, "_edit_form.html",
+            conn: @conn,
+            permissions: @permissions,
+            secrets: @secrets,
+            changeset: @changeset,
+            organization_id: @organization.id
+            %>
+        <%= if not is_nil(@changeset.data.updated_at) do  %>
+          <%= render FrontWeb.OrganizationPFCView, "_delete_form.html",
+                  conn: @conn,
+                  permissions: @permissions,
+                  changeset: @changeset %>
+        <% end %>
+      <% else %>
+        <div class="pv6 tc">
+          <div class="f00">🗝</div>
+          <p class="f6 measure-narrow center mv3">
+            Sorry, you can’t access Pre-flight checks.<br>
+            Ask organization owner or any of the admins to give you access permission.
+          </p>
+        </div>
+      <% end %>
+    <% else %>
+      <div class="pv6 tc">
+        <div class="f00">🗝</div>
+        <p class="f6 measure-narrow center mv3">
+          Sorry, your organization doesn't have Pre-flight checks enabled.<br>
+        </p>
+      </div>
+    <% end %>
+  </div>
+<% end %>

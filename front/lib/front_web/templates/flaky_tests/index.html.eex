@@ -1,0 +1,6 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.FlakyTestsConfig = <%= raw json_config(@conn, @project) %>
+</script>
+
+<div id="flaky-tests-app">
+</div>

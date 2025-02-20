@@ -1,0 +1,17 @@
+image: keycloak
+imageTag: latest
+imagePullSecrets: []
+replicas: 1
+cacheOwnersCount: 1
+cacheOwnersAuthSessionsCount: 1
+
+resources:
+  limits:
+    cpu: 1
+    memory: 1Gi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+db:
+  poolSize: 10

@@ -1,0 +1,45 @@
+image: self_hosted_hub
+imageTag: latest
+imagePullSecrets: []
+
+publicApi:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: 100m
+      memory: 100Mi
+    requests:
+      cpu: 25m
+      memory: 25Mi
+
+internalApi:
+  replicas: 1
+  dbPoolSize: 1
+  resources:
+    limits:
+      cpu: '0.05'
+      memory: 50Mi
+    requests:
+      cpu: '0.01'
+      memory: 25Mi
+
+agentCleaner:
+  replicas: 1
+  dbPoolSize: 1
+  resources:
+    limits:
+      cpu: '0.05'
+      memory: 50Mi
+    requests:
+      cpu: '0.01'
+      memory: 25Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

@@ -1,0 +1,102 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: "{{ .Chart.Name }}-init-org-job"
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      name:
+      labels:
+        app: {{ .Chart.Name }}-init-org-job
+        product: semaphoreci
+    spec:
+      serviceAccountName: {{ .Chart.Name }}-init-org
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: true
+      restartPolicy: Never
+      containers:
+        - name: "{{ .Chart.Name }}-init-org-job"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          command:
+            - /app/build/bootstrapper
+          args:
+            - init-org
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+            - configMapRef:
+                name: {{ .Values.global.domain.configMapName }}
+            - secretRef:
+                name: {{ .Values.global.rootUser.secretName }}
+{{- if ne .Values.global.githubApp.secretName "" }}
+            - secretRef:
+                name: {{ .Values.global.githubApp.secretName }}
+{{- end }}
+{{- if ne .Values.global.bitbucketApp.secretName "" }}
+            - secretRef:
+                name: {{ .Values.global.bitbucketApp.secretName }}
+{{- end }}
+{{- if ne .Values.global.gitlabApp.secretName "" }}
+            - secretRef:
+                name: {{ .Values.global.gitlabApp.secretName }}
+{{- end }}
+          env:
+{{- if .Values.global.organization.defaultAgentType.enabled }}
+            - name: DEFAULT_AGENT_TYPE_ENABLED
+              value: "true"
+            - name: DEFAULT_AGENT_TYPE_SECRET_NAME
+              value: {{ .Values.global.organization.defaultAgentType.secretName }}
+            - name: DEFAULT_AGENT_TYPE_NAME
+              value: {{ .Values.global.organization.defaultAgentType.name }}
+{{- end }}
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: ORGANIZATION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.organization.secretName }}
+                  key: name
+            - name: CONFIGURE_INSTALLATION_DEFAULTS
+              value: "true"
+            - name: TELEMETRY_ENDPOINT
+              value: {{ .Values.global.telemetry.endpoint }}
+            - name: KUBE_VERSION
+              value: {{ .Capabilities.KubeVersion.Version }}
+            - name: ROOT_USER_SECRET_NAME
+              value: {{ .Values.global.rootUser.secretName }}
+{{- if ne .Values.global.githubApp.secretName "" }}
+            - name: CONFIGURE_GITHUB_APP
+              value: "true"
+{{- end }}
+{{- if ne .Values.global.bitbucketApp.secretName "" }}
+            - name: CONFIGURE_BITBUCKET_APP
+              value: "true"
+{{- end }}
+{{- if ne .Values.global.gitlabApp.secretName "" }}
+            - name: CONFIGURE_GITLAB_APP
+              value: "true"
+{{- end }}
+{{- if .Values.resources }}
+          resources:
+{{ toYaml .Values.resources | indent 13 }}
+{{- end }}

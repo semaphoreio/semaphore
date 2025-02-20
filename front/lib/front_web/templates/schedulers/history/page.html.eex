@@ -1,0 +1,22 @@
+<%= if Enum.empty?(@page.triggers) do %>
+  <div class="pa3 pv2">
+    <div class="justify-between tc pa3">
+      <span class="material-symbols-outlined md-36">hourglass_empty</span>
+      <div class="flex justify-around">
+        <p class="gray measure">
+          We didn't find any workflows matching your criteria.
+        </p>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <%= content_tag :div, data: if(@pollman, do: [poll: Enum.to_list(@pollman)], else: []) do %>
+    <%= for trigger <- @page.triggers do %>
+      <div class="overflow-hidden">
+        <div class="pa3 bt b--black-075">
+          <%= render FrontWeb.SchedulersView, "_trigger.html", conn: @conn, trigger: trigger %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

@@ -1,0 +1,7 @@
+{
+  "reporterEnabled": "spec, mocha-junit-reporter",
+  "mochaJunitReporterReporterOptions": {
+    "useFullSuiteTitle": true,
+    "mochaFile": "../out/test-js-junit-report.xml"
+  }
+}

@@ -1,0 +1,73 @@
+inherit_from: .rubocop_todo.yml
+
+require:
+  - rubocop-rails
+  - rubocop-factory_bot
+  - rubocop-rspec
+  - rubocop-performance
+
+AllCops:
+  TargetRubyVersion: 3.0
+  Exclude:
+    - "bin/**/*"
+    - "db/**/*"
+    - "script/**/*"  # deployment scripts, not for application use
+    - "k8s/**/*"     # deployment scripts, not for application use
+    - "node_modules/**/*"
+    - "vendor/**/*"
+    - "lib/thrift_models/*"
+    - "lib/semaphore/pipelines/pipeline_pb.rb" # generated protobuf file
+    - "lib/semaphore/failure_reason.rb"        # squigly heredocs aren't supported in RuboCop
+    - "protobuffer/generated/**/*"  # automatic generated proto files
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/StringLiteralsInInterpolation:
+  EnforcedStyle: double_quotes
+
+Style/NumericLiterals:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/SymbolArray:
+  Enabled: false
+
+Style/EmptyMethod:
+  Enabled: false
+
+Style/HashSyntax:
+  EnforcedStyle: hash_rockets
+
+Layout/EmptyLinesAroundBlockBody:
+  Exclude:
+    - !ruby/regexp /_spec.rb$/
+
+Naming/PredicateName:
+  Exclude:
+    - features/support/**/*
+
+Style/CollectionMethods:
+  StyleGuide: "https://github.com/bbatsov/ruby-style-guide#map-find-select-reduce-size"
+  Enabled: true
+
+Style/FrozenStringLiteralComment:
+  Enabled: false
+
+Metrics/AbcSize:
+  Exclude:
+    - features/support/**/*
+
+Style/TrivialAccessors:
+  Exclude:
+    - app/helpers/application_helper.rb
+
+Metrics/CyclomaticComplexity:
+  Exclude:
+    - features/support/paths.rb
+
+Style/ClassVars:
+  Exclude:
+    - lib/devise/models/two_step_auth_recoverable.rb

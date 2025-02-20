@@ -1,0 +1,6 @@
+apiVersion: v2
+name: velocity-hub
+description: A Helm chart for deploying Semaphore velocity-hub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

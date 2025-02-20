@@ -1,0 +1,26 @@
+<div class="mv1">
+  <div
+    workflow-tree-item
+    data-pipeline-id="<%= @pipeline.id %>"
+    data-pipeline-status-url="<%= pipeline_path(@conn, :status, @workflow.id, @pipeline.id) %>"
+    data-pipeline-path-url="<%= pipeline_path(@conn, :path, @workflow.id, @pipeline.id, nonce: @conn.assigns[:script_src_nonce]) %>"
+    class="inline-flex items-center pointer hover-bg-row-highlight <%= if @selected_pipeline_id != @pipeline.id, do: "hide-child" %>">
+    <%= raw FrontWeb.PipelineView.pipeline_status_large(@pipeline) %>
+    <%= raw @tree_connector %>
+    <div><%= @pipeline.name %></div>
+    <span class="gray mh1">&middot;</span>
+    <%= render(FrontWeb.TestSummaryView, "summary.html", conn: @conn, pipeline: @pipeline) %>
+    <%= render(FrontWeb.PipelineView, "_env_vars.html", pipeline: @pipeline) %>
+    <%= render(FrontWeb.PipelineView, "_time_counter.html", pipeline: @pipeline) %>
+    <span class="gray mh1">&middot;</span>
+    <span class="gray">
+      <%= raw FrontWeb.PipelineView.format_triggerer(@conn, @workflow, @pipeline) %>
+      <time-ago datetime="<%= format_date(@pipeline.timeline.created_at) %>"></time-ago>
+    </span>
+    <%= if @conn.assigns.permissions["project.job.stop"] && FrontWeb.PipelineView.pipeline_stoppable?(@pipeline) && !FrontWeb.PipelineView.anonymous?(@conn) do %>
+      <span class="gray mh2">&middot;</span>
+      <%= link "Stop Pipeline", to: pipeline_stop_path(@conn, :stop, @workflow.id, @pipeline.id), class: "btn btn-secondary btn-tiny", pipeline_stop_button: "true" %>
+    <% end %>
+    <span class="child ml2">←</span>
+  </div>
+</div>

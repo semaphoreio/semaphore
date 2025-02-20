@@ -1,0 +1,14 @@
+{
+  "title": "Android",
+  "description": "Build your Android application",
+  "category": "Android",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Build with Gradle"
+  ],
+  "icon": "lang-android.svg",
+  "tips_path": "tips/other.html",
+  "template_path": "templates/android.yml",
+  "pinned": true
+}

@@ -1,0 +1,742 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: getting-started
+  namespace: {{ .Release.Namespace }}
+data:
+  getting-started.yml: |-
+    # SECTION 1
+    - name: Run your first workflow
+      depends_on: []
+      id: run-your-first-workflow
+      duration: 10m
+      description: |
+        Now that your organization is set up, it's time to create your first project and run a workflow. Discover how simple automation can be.
+      tasks:
+        - id: connect-repositories
+          name: Connect your repositories
+          event_id: git.connect
+          description: |
+            <h2 class="f2 ph3 mb0">Git Integration</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Git integration enables Semaphore to store workflow configurations in your repository and automatically trigger builds when changes are detected.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Connect your Git repositories to Semaphore:</p>
+                    <ul class="mb2">
+                        <li>Navigate to the <a href="/settings/git_integrations">Git Integration page</a> in your organization settings</li>
+                        <li>Select your Git provider</li>
+                        <li>Follow the instructions to create the integration</li>
+                        <li>Verify the connection by checking repository availability</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Start with a single repository to test the integration, then expand access as needed. You can always modify permissions later.</p>
+                </div>
+
+                <div class="bg-washed-red pa3 ba b--black-075 mb3">
+                    <p class="mb0"><span class="b">Important:</span> Repository connection is required to use Semaphore. You must complete this step before creating projects or running workflows.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/getting-started/git-setup">Docs: Git Integration Setup ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/git-repositories">Docs: Managing Git Access ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: create-project
+          name: Create a project
+          event_id: project.create
+          depends_on:
+            - connect-repositories
+          description: |
+            <h2 class="f2 ph3 mb0">Semaphore Projects</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">A project creates a direct link between your Git repository and Semaphore, enabling automated testing, building, and deployment of your applications through customizable workflows.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Create your first project by following these steps:</p>
+                    <ul class="mb2">
+                        <li>Look for the <span class="b">"+ Create new"</span> button in the top right corner of your dashboard</li>
+                        <li>Connect your Git repository (or fork one of our demo projects to get started quickly)</li>
+                        <li>Grant necessary repository access permissions to establish the connection</li>
+                        <li>Choose a workflow template or create a custom one for your initial setup</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Your initial workflow configuration will be automatically committed to a new <span class="i">setup-semaphore</span> branch in your repository.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/getting-started/tour/hello-world">Docs: Hello World ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/projects">Docs: Projects ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: run-green-workflow
+          name: Run a green workflow
+          event_id: workflow.run
+          depends_on:
+            - create-project
+          description: |
+            <h2 class="f2 ph3 mb0">Running Your First Workflow</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">A workflow is a series of steps to build, test, release, or deploy your application. Semaphore automatically runs the tasks defined in your workflow file <span class="bg-washed-yellow ph2 ba b--black-075 br3">.semaphore/semaphore.yml</span> whenever you create a new commit, giving you immediate feedback on your changes.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">The content of your workflow depends on your project's needs. For your first workflow, start with something simple like running a linter on your code. This will help you understand the basics before creating more complex pipelines.</p>
+                    <ul class="mb2">
+                        <li>Open your newly created project</li>
+                        <li>Click the <span class="b">"Edit Workflow"</span> button in the top right corner</li>
+                        <li>Use the workflow editor to create jobs and blocks, or edit the YAML file directly in your repository</li>
+                        <li>Add the <span class="bg-washed-yellow ph2 ba b--black-075 br3">checkout</span> command to your jobs to access your code</li>
+                        <li>Commit your changes and watch your workflow run</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Jobs are the fundamental building blocks of workflows. Understanding how they work will help you build more complex pipelines later.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/getting-started/tour/hello-world#workflow-editor">Docs: Working with pipelines ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/workflows">Docs: Workflows ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/jobs">Docs: Jobs ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+    # SECTION 2
+    - name: Learn how it works
+      depends_on:
+        - run-your-first-workflow
+      id: learn-how-it-works
+      duration: 20m
+      description: |
+        Now that you've created your first workflow, learn how to configure it for your team's needs. This section covers workflow triggers, pipeline structure, environments, and working with monorepos.
+      tasks:
+        - id: setup-environment
+          name: Configure Job Environments
+          event_id: environment.setup
+          description: |
+            <h2 class="f2 ph3 mb0">Setting Up Job Environments</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Semaphore jobs run on self-hosted agents. During installation, we've set up initial agents in your Kubernetes cluster to help you get started quickly. You'll learn how to create your own agents in later sections.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Explore how to configure your job environments:</p>
+                    <ul class="mb2">
+                        <li>Open your pipeline YAML and examine the <span class="bg-washed-yellow ph2 ba b--black-075 br3">containers</span> section</li>
+                        <li>Try running your jobs with different Docker images</li>
+                        <li>Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">prologue</span> in your pipeline or individual jobs to install additional tools and services</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use pipeline-level <span class="bg-washed-yellow ph2 ba b--black-075 br3">prologue</span> for common setup steps and job-level <span class="bg-washed-yellow ph2 ba b--black-075 br3">prologue</span> for specific requirements.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/pipelines#docker-environments">Docs: Docker Environments ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/pipelines#prologue">Docs: Pipeline Prologue ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/jobs#prologue">Docs: Job Prologue ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-workflow-triggers
+          name: Setup workflow triggers
+          event_id: workflow.triggers
+          depends_on:
+            - setup-environment
+          description: |
+            <h2 class="f2 ph3 mb0">Workflow Triggers</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Control when and how your workflows run by configuring triggers. Semaphore uses repository webhooks to detect changes and can run workflows based on different events like new commits, pull requests, or tags - allowing you to match your CI/CD process to your team's development workflow.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Configure your workflow triggers to match your development practices:</p>
+                    <ul class="mb2">
+                        <li>Open your project settings</li>
+                        <li>Scroll to the <span class="bg-washed-yellow ph2 ba b--black-075 br3">What to build</span> section</li>
+                        <li>Choose your trigger settings:
+                            <ul>
+                                <li>Branch-based builds for trunk-based development</li>
+                                <li>Pull request builds for feature branch workflows</li>
+                                <li>Tag-based builds for releases</li>
+                            </ul>
+                        </li>
+                        <li>Customize branch filters to focus on relevant changes</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Match your trigger strategy to your version control practices - use branch builds for trunk-based development or PR-based builds for long-running feature branches.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/workflows#workflow-triggers">Docs: Workflow Triggers ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+          permissions_required:
+            - project.general_settings.manage
+        - id: build-complex-pipeline
+          name: Building complex pipelines
+          event_id: workflow.pipeline
+          depends_on:
+            - setup-workflow-triggers
+          description: |
+            <h2 class="f2 ph3 mb0">Complex Pipeline Setup</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Organize your workflow into blocks of jobs that run in a specific order. Define dependencies between blocks, set conditions for their execution, and run jobs in parallel to speed up your pipeline.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Practice these pipeline features in your workflow:</p>
+                    <ul class="mb2">
+                        <li>Create multiple blocks and set up dependencies between them</li>
+                        <li>Add <span class="bg-washed-yellow ph2 ba b--black-075 br3">run</span> and <span class="bg-washed-yellow ph2 ba b--black-075 br3">skip</span> with <span class="bg-washed-yellow ph2 ba b--black-075 br3">when</span> conditions to control block execution</li>
+                        <li>Split a block into parallel jobs</li>
+                        <li>Add common setup steps with <span class="bg-washed-yellow ph2 ba b--black-075 br3">prologue</span> and cleanup with <span class="bg-washed-yellow ph2 ba b--black-075 br3">epilogue</span></li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use block dependencies to ensure tests pass before deployment starts.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/jobs#jobs-blocks">Docs: Jobs, blocks and pipelines ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/jobs#block-settings">Docs: Block settings ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/pipeline-yaml">Docs: Pipeline YAML ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-monorepo
+          name: Monorepo workflows
+          event_id: workflow.monorepo
+          depends_on:
+            - build-complex-pipeline
+          description: |
+            <h2 class="f2 ph3 mb0">Monorepo Configuration</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Run specific parts of your workflow based on which files changed in your monorepo. This helps you avoid running unnecessary jobs and speeds up your build process.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Set up conditional block execution in your monorepo:</p>
+                    <ul class="mb2">
+                        <li>Create multiple blocks in your pipeline</li>
+                        <li>Add <span class="bg-washed-yellow ph2 ba b--black-075 br3">change_in</span> conditions to each block</li>
+                        <li>Specify the folders that should trigger each block</li>
+                        <li>Test by making changes in different folders</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Group related files in folders to make <span class="bg-washed-yellow ph2 ba b--black-075 br3">change_in</span> conditions more effective.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/essentials/building-monorepo-projects">Docs: Monorepo Projects ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/conditions-reference#change_in">Docs: change_in Reference ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/examples/monorepo-project-workflow">Docs: Example Setup ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+    # SECTION 3
+    - name: Optimize your workflow
+      depends_on:
+        - learn-how-it-works
+      id: optimize-your-workflow
+      duration: 45m
+      description: |
+        Streamline your development process with advanced workflow optimizations. Learn essential techniques to save time and resources.
+      tasks:
+        - id: setup-caching
+          name: Setup Caching
+          event_id: cache.setup
+          description: |
+            <h2 class="f2 ph3 mb0">Cache Management</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Speed up your builds by caching project dependencies. Semaphore's cache tool provides fast storage for files your project needs but aren't in your repository, making subsequent builds faster by reusing previously downloaded dependencies.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Set up dependency caching in your workflow:</p>
+                    <ul class="mb2">
+                        <li>Add <span class="bg-washed-yellow ph2 ba b--black-075 br3">cache restore</span> at the start of your jobs</li>
+                        <li>Put <span class="bg-washed-yellow ph2 ba b--black-075 br3">cache store</span> at the end to save new dependencies</li>
+                        <li>Run your jobs multiple times to see the cache in action</li>
+                        <li>Compare build times with and without cache</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Always include dependency installation commands even when using cache. This ensures your jobs still work when the cache isn't available - they'll just take longer to complete.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/optimization/cache">Docs: Caching Dependencies ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/toolbox#cache">Docs: Cache Command Reference ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-auto-cancel
+          name: Setup <span class="bg-washed-yellow ph2 ba b--black-075 br3">auto-cancel</span> strategy
+          event_id: workflow.auto-cancel
+          depends_on:
+            - setup-caching
+          description: |
+            <h2 class="f2 ph3 mb0">Auto-Cancel Strategy</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">By default, Semaphore runs workflows for every commit in order (FIFO). With an <span class="bg-washed-yellow ph2 ba b--black-075 br3">auto-cancel</span> strategy, you can automatically stop older, queued workflows when new commits are pushed to the same branch or PR, saving time and resources.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Test the auto-cancel strategy in your workflow:</p>
+                    <ul class="mb2">
+                        <li>Edit your pipeline configuration</li>
+                        <li>Add the <span class="bg-washed-yellow ph2 ba b--black-075 br3">auto-cancel</span> strategy</li>
+                        <li>Try adding a <span class="bg-washed-yellow ph2 ba b--black-075 br3">when</span> condition to control when cancellation occurs</li>
+                        <li>Test it by:
+                            <ul>
+                                <li>Creating several commits quickly on the same branch</li>
+                                <li>Observing which workflows are cancelled</li>
+                                <li>Comparing behavior with and without auto-cancel</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Auto-cancel is especially useful in feature branches where only the latest commit's status matters.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/reference/pipeline-yaml#auto-cancel">Docs: Auto-Cancel Strategy ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/pipeline-yaml#running-in-auto-cancel">Docs: Configuration Reference ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-fail-fast
+          name: Try <span class="bg-washed-yellow ph2 ba b--black-075 br3">fail-fast</span> and <span class="bg-washed-yellow ph2 ba b--black-075 br3">execution_time_limit</span>
+          event_id: workflow.optimization
+          depends_on:
+            - setup-auto-cancel
+          description: |
+            <h2 class="f2 ph3 mb0">Pipeline Fail Conditions</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Control how your pipeline behaves when failures occur. Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">fail-fast</span> to stop other jobs when a failure is detected, and <span class="bg-washed-yellow ph2 ba b--black-075 br3">execution_time_limit</span> to prevent jobs from running too long.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Try both features in your workflow:</p>
+                    <ul class="mb2">
+                        <li>Set up <span class="bg-washed-yellow ph2 ba b--black-075 br3">fail-fast</span> and test both options:
+                            <ul>
+                                <li>Cancel pending jobs</li>
+                                <li>Stop running jobs</li>
+                            </ul>
+                        </li>
+                        <li>Add <span class="bg-washed-yellow ph2 ba b--black-075 br3">execution_time_limit</span>:
+                            <ul>
+                                <li>Set a short time limit on a block</li>
+                                <li>Set a time limit for the entire pipeline</li>
+                                <li>Test how jobs behave when limits are exceeded</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use fail-fast when running expensive jobs that depend on earlier steps passing. This saves resources by stopping early on failures.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/pipelines#fail-fast">Docs: Fail-Fast Configuration ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/pipelines#time-limit">Docs: Time Limits ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+    # SECTION 4
+    - name: Explore Advanced Features
+      depends_on:
+        - optimize-your-workflow
+      id: explore-advanced-features
+      duration: 45m
+      description: |
+        Learn how to manage secrets, store artifacts, and debug jobs in your workflows. These features are essential for handling sensitive data, troubleshooting pipeline issues, and maintaining build outputs.
+      tasks:
+        - id: create-use-secret
+          name: Create and use a Secret
+          event_id: secret.create
+          description: |
+            <h2 class="f2 ph3 mb0">Managing Secrets</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Secrets provide secure storage for sensitive data like API keys, passwords, and SSH keys. They're encrypted when created and only decrypted when needed in jobs. Once stored, secret values are never displayed again.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Try both organization and project-level secrets:</p>
+                    <ul class="mb2">
+                        <li>Create an organization secret:
+                            <ul class="mb0">
+                                <li>Go to <a href="/secrets">Organization Secrets</a> page</li>
+                                <li>Create a new secret with sensitive data</li>
+                                <li>Use the secret in your workflow jobs</li>
+                            </ul>
+                        </li>
+                        <li>Create a project secret:
+                            <ul class="mb0">
+                                <li>Open project Settings</li>
+                                <li>Navigate to Secrets section</li>
+                                <li>Create and use a project-specific secret</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use organization secrets for shared credentials and project secrets for project-specific values.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/secrets">Docs: Using Secrets ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/secret-yaml">Docs: Secrets YAML Configuration ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: save-artifact
+          name: Save an Artifact
+          event_id: artifact.save
+          depends_on:
+            - create-use-secret
+          description: |
+            <h2 class="f2 ph3 mb0">Artifact Storage</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Artifacts provide persistent storage for files and folders. Use them to share build outputs between jobs or store deliverables for later use.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Explore artifact functionality:</p>
+                    <ul class="mb2">
+                        <li>Create and upload artifacts:
+                            <ul class="mb0">
+                                <li>Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">artifact push</span> in your jobs</li>
+                                <li>Try different storage levels (job/workflow/project)</li>
+                            </ul>
+                        </li>
+                        <li>View your artifacts:
+                            <ul class="mb0">
+                                <li>Check the Artifacts tab in job details</li>
+                                <li>Find artifacts in workflow overview</li>
+                                <li>Browse project-level artifacts</li>
+                            </ul>
+                        </li>
+                        <li>Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">artifact pull</span> to retrieve files in other jobs</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use project-level artifacts to store release deliverables that you want to keep long-term.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/artifacts">Docs: Using Artifacts ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/toolbox#artifact">Docs: Artifact Commands ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: ssh-debug
+          name: SSH into your jobs to debug
+          event_id: workflow.debug
+          depends_on:
+            - save-artifact
+          description: |
+            <h2 class="f2 ph3 mb0">SSH Debugging</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Debug your CI jobs by connecting directly to the environment. Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">sem debug</span> to investigate completed jobs or <span class="bg-washed-yellow ph2 ba b--black-075 br3">sem attach</span> to connect to currently running ones.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Try both debugging methods:</p>
+                    <ul class="mb2">
+                        <li>For a completed job:
+                            <ul>
+                                <li>Open the job's page</li>
+                                <li>Click the <span class="b">"SSH Debug"</span> button in the top right</li>
+                                <li>Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">sem debug</span> with the provided command</li>
+                            </ul>
+                        </li>
+                        <li>For a running job:
+                            <ul>
+                                <li>Open the active job's page</li>
+                                <li>Find the <span class="b">"SSH Debug"</span> button</li>
+                                <li>Connect using <span class="bg-washed-yellow ph2 ba b--black-075 br3">sem attach</span></li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use SSH debugging to test commands and explore the environment before updating your workflow configuration.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/getting-started/tour/continuous-integration#ssh">Debugging with SSH ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/semaphore-cli">Docs: Sem CLI Tool ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+    # SECTION 5
+    # SECTION 5
+    - name: Final touches
+      depends_on:
+        - explore-advanced-features
+      id: final-touches
+      duration: 60m
+      description: |
+        In this section, you'll learn final tips and tricks for further optimizing your CI/CD experience. These features will help you fine-tune your workflows and get better insights into your builds.
+      tasks:
+        - id: setup-test-reports
+          name: Setup Test Reports
+          event_id: test.reports
+          description: |
+            <h2 class="f2 ph3 mb0">Test Reports Integration</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">The Test Reports dashboard provides a comprehensive view of your test results across all pipelines. Track failures, analyze patterns, and get insights into your test suite's performance all in one place.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Set up test reporting in your workflow:</p>
+                    <ul class="mb2">
+                        <li>Publish test results:
+                            <ul class="mb0">
+                                <li>Configure your tests to output <span class="bg-washed-yellow ph2 ba b--black-075 br3">JUnit XML format</span></li>
+                                <li>Use <span class="bg-washed-yellow ph2 ba b--black-075 br3">test-results</span> CLI to publish <span class="bg-washed-yellow ph2 ba b--black-075 br3">results.xml</span></li>
+                                <li>Check the Test Reports tab in job details</li>
+                            </ul>
+                        </li>
+                        <li>Create workflow-level reports:
+                            <ul class="mb0">
+                                <li>Add an <span class="bg-washed-yellow ph2 ba b--black-075 br3">after_pipeline</span> job</li>
+                                <li>Merge individual job reports into a workflow report</li>
+                                <li>View combined results in workflow's Test Reports tab</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use workflow-level Test Reports to get a complete overview of all test results, even when tests are split across multiple jobs.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/tests/test-reports">Docs: Test Reports ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/toolbox#test-results">Docs: test-results CLI ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-task
+          name: Setup a Task
+          event_id: task.create
+          depends_on:
+            - setup-test-reports
+          description: |
+            <h2 class="f2 ph3 mb0">Tasks</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Tasks let you run pipelines on a schedule or on-demand, independent of your regular CI workflow. They're perfect for resource-intensive operations, periodic maintenance, or security scans that don't need to run on every commit.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Create and run tasks:</p>
+                    <ul class="mb2">
+                        <li>Set up your first task:
+                            <ul class="mb0">
+                                <li>Open the Tasks tab in your project</li>
+                                <li>Create a new task with parameters</li>
+                                <li>Select the pipeline to run</li>
+                            </ul>
+                        </li>
+                        <li>Try different execution methods:
+                            <ul class="mb0">
+                                <li>Run the task manually</li>
+                                <li>Create a scheduled task</li>
+                                <li>Test different parameter combinations</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use scheduled tasks for operations like nightly builds, database cleanup, or periodic security scans.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/tasks">Docs: Tasks ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/reference/api#tasks">Docs: Tasks API reference ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+        - id: setup-own-agents
+          name: Setup your own agents
+          event_id: agent.self-hosted
+          depends_on:
+            - setup-task
+          description: |
+            <h2 class="f2 ph3 mb0">Self-Hosted Agents</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Self-hosted agents allow you to run jobs on your own infrastructure while still using Semaphore's orchestration. Mix these with Semaphore's cloud machines to create the perfect environment for your needs.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Set up and use your own agents:</p>
+                    <ul class="mb2">
+                        <li>Visit the <a href="/self_hosted_agents">Self-hosted Agents</a> page</li>
+                        <li>Create a new agent type for your machines</li>
+                        <li>Connect your agents using provided instructions</li>
+                        <li>Update your workflows to use self-hosted agents</li>
+                        <li>Run and monitor jobs on your infrastructure</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Use self-hosted agents for specialized hardware requirements or when you need to access internal resources.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/self-hosted">Docs: Self-Hosted Agents ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/self-hosted-installs">Docs: Install Agents ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/self-hosted-configure">Docs: Configure Agents ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+          features_required:
+            - self_hosted_agents
+        - id: invite-people
+          name: Invite people
+          event_id: team.invite
+          depends_on:
+            - setup-own-agents
+          description: |
+            <h2 class="f2 ph3 mb0">Invite your team</h2>
+            <div class="f5 pa3">
+                <p class="b mb2">What is this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb0">Semaphore is all about collaboration. Invite your team members so they can access your organization's projects, monitor builds, and manage deployments - all while maintaining the same access permissions they have in GitHub.</p>
+                </div>
+
+                <p class="b mb2">How can I complete this?</p>
+                <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
+                    <p class="mb2">Semaphore provides two levels of access - organization and project level.</p>
+                    <p class="mb2">To get started:</p>
+                    <ul class="mb2">
+                        <li>Navigate to the <a href="/people/sync">add people page</a> in your organization settings</li>
+                        <li>Invite team members using their GitHub username</li>
+                        <li>Or find them in the list of repository collaborators below</li>
+                        <li>Share your organization's URL with the invited members</li>
+                    </ul>
+                    <p class="mb0"><span class="b mr1">💡 Pro tip:</span>Project access is automatically synchronized with GitHub repository permissions - if a team member has repository access, they'll automatically get access to the corresponding Semaphore project once they join your organization.</p>
+                </div>
+
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="b mb0">Need more info?</p>
+                        <ul class="list pl0">
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/organizations#people">Docs: Organizations (Managing users) ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/rbac">Docs: Role Based Access Control ↗</a></li>
+                            <li><a href="https://docs.semaphoreci.com/using-semaphore/projects#people">Docs: Project permissions ↗</a></li>
+                        </ul>
+                    </div>
+                    <div id="complete-action"></div>
+                </div>
+            </div>
+          permissions_required:
+            - organization.people.invite

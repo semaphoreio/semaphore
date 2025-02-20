@@ -1,0 +1,20 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Tasks.Parameters = <%= raw injectable(@scheduler.parameters) %>;
+</script>
+
+<%= if @show_description? do %>
+  <div class="ml2 measure">
+    Configure optional parameters to be passed as environment variables to the starter pipeline.
+    Read in more detail: <a href="https://docs.semaphoreci.com/essentials/schedule-a-workflow-run/">Docs: Task Parameters</a>.
+  </div>
+<% end %>
+
+<div>
+  <div class="gray mv2" data-target="parameters"></div>
+  <div class="mb4">
+    <%= manage_error_message(:schedulers, @validation_errors, :parameters) %>
+    <a data-action="addNewParameter" href="#" class="f6 gray">
+      + Add Parameter
+    </a>
+  </div>
+</div>

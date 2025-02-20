@@ -1,0 +1,50 @@
+version: v1.0
+name: Clojure
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: "Setup"
+    task:
+      prologue:
+        commands:
+          - checkout
+          - cache restore lein-deps-$(checksum project.clj)
+          - mv home/semaphore/.m2 ~/.m2 2>/dev/null || true
+          - cache restore lein-$(checksum `which lein`)
+          - mv home/semaphore/.lein ~/.lein 2>/dev/null || true
+      jobs:
+        - name: Dependencies
+          commands:
+            - lein with-profile +dev,+test,+uberjar deps
+            - cache store lein-deps-$(checksum project.clj) ~/.m2
+            - cache store lein-$(checksum `which lein`) ~/.lein
+  - name: "Tests"
+    task:
+      prologue:
+        commands:
+          - checkout
+          - cache restore lein-deps-$(checksum project.clj)
+          - mv home/semaphore/.m2 ~/.m2
+          - cache restore lein-$(checksum `which lein`)
+          - mv home/semaphore/.lein ~/.lein 2>/dev/null || true
+      jobs:
+        - name: Clojure tests
+          commands:
+            - lein test
+  - name: "Build"
+    task:
+      prologue:
+        commands:
+          - checkout
+          - cache restore lein-deps-$(checksum project.clj)
+          - mv home/semaphore/.m2 ~/.m2
+          - cache restore lein-$(checksum `which lein`)
+          - mv home/semaphore/.lein ~/.lein 2>/dev/null || true
+      jobs:
+        - name: Uberjar build
+          commands:
+            - lein uberjar
+            - cache delete uberjar-latest
+            - cache store uberjar-latest target/uberjar/guestbook.jar

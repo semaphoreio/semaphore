@@ -1,0 +1,43 @@
+<%= form_for @changeset, organization_pfc_path(@conn, :put_pre_flight_checks), [method: :put], fn f -> %>
+    <style>
+        .ts-control, .ts-control input, .ts-dropdown { font-size: 1rem; }
+        .ts-control .item[aria-disabled=true] { background-color: #ff0000; }
+        .ts-dropdown div[aria-disabled=true] { display: none; }
+        #organization_pfc_secrets > option:disabled { display: none; }
+    </style>
+    <div class="mb4">
+        <%= label f, :commands, "Commands", class: "db b mb2" %>
+        <div class="input-textarea">
+            <%= textarea f, :commands, value: Enum.join(input_value(f, :commands), "\n"),
+                disabled: !@permissions["organization.pre_flight_checks.manage"],
+                placeholder: "Commands...",
+                class: "form-control w-100 code", wrap: "off", rows: "4" %>
+        </div>
+
+        <%= if f.errors[:commands] do %>
+            <div class="f5 b mv1 red">
+                <%= translate_error(f.errors[:commands]) %>
+            </div>
+        <% end %>
+    </div>
+
+    <div class="mb4">
+        <%= label f, :secrets, "Secrets (optional)", class: "db b mb2" %>
+        <div class="mv3">
+            <%= multiple_select f, :secrets, secret_options(@changeset, @secrets),
+                disabled: !@permissions["organization.pre_flight_checks.manage"],
+                placeholder: "Secrets...",
+                class: "w-100" %>
+
+        </div>
+        <%= if f.errors[:secrets] do %>
+            <div class="f5 b mv1 red">
+                <%= translate_error(f.errors[:secrets]) %>
+            </div>
+        <% end %>
+    </div>
+
+    <%= if @permissions["organization.pre_flight_checks.manage"] do %>
+        <%= submit "Save changes", id: "organization_pfc_submit", class: "btn btn-primary primary" %>
+    <% end %>
+<% end %>

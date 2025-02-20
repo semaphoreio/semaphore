@@ -1,0 +1,6 @@
+apiVersion: v2
+name: public-api
+description: A Helm chart for deploying Semaphore public-api v2 application
+type: application
+version: "@chartVersion@"
+appVersion: ""

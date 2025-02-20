@@ -1,0 +1,40 @@
+[
+  {
+    "request": {
+      "body": "",
+      "headers": [],
+      "method": "get",
+      "options": [],
+      "request_body": "",
+      "url": "https://api.github.com/users/unknown331123"
+    },
+    "response": {
+      "binary": false,
+      "body": "{\"message\":\"Not Found\",\"documentation_url\":\"https://docs.github.com/rest/reference/users#get-a-user\"}",
+      "headers": {
+        "Server": "GitHub.com",
+        "Date": "Wed, 16 Mar 2022 11:09:22 GMT",
+        "Content-Type": "application/json; charset=utf-8",
+        "X-GitHub-Media-Type": "github.v3; format=json",
+        "Access-Control-Expose-Headers": "ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, X-GitHub-SSO, X-GitHub-Request-Id, Deprecation, Sunset",
+        "Access-Control-Allow-Origin": "*",
+        "Strict-Transport-Security": "max-age=31536000; includeSubdomains; preload",
+        "X-Frame-Options": "deny",
+        "X-Content-Type-Options": "nosniff",
+        "X-XSS-Protection": "0",
+        "Referrer-Policy": "origin-when-cross-origin, strict-origin-when-cross-origin",
+        "Content-Security-Policy": "default-src 'none'",
+        "Vary": "Accept-Encoding, Accept, X-Requested-With",
+        "X-RateLimit-Limit": "60",
+        "X-RateLimit-Remaining": "42",
+        "X-RateLimit-Reset": "1647430108",
+        "X-RateLimit-Resource": "core",
+        "X-RateLimit-Used": "18",
+        "Content-Length": "101",
+        "X-GitHub-Request-Id": "EDF2:8B14:119A528:11F7804:6231C570"
+      },
+      "status_code": 404,
+      "type": "ok"
+    }
+  }
+]

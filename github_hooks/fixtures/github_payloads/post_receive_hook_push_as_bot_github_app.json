@@ -1,0 +1,208 @@
+{
+  "ref": "refs/heads/df/focus-cmd-commit-test",
+  "before": "b1b4f8a8702e808728760a1bf28d3fc361612a73",
+  "after": "82bd8cf75e1be034b1ce50e803978000b171fb28",
+  "repository": {
+    "id": 135440816,
+    "node_id": "MDEwOlJlcG9zaXRvcnkxMzU0NDA4MTY=",
+    "name": "front",
+    "full_name": "renderedtext/front",
+    "private": true,
+    "owner": {
+      "name": "renderedtext",
+      "email": null,
+      "login": "renderedtext",
+      "id": 224711,
+      "node_id": "MDEyOk9yZ2FuaXphdGlvbjIyNDcxMQ==",
+      "avatar_url": "https://avatars.githubusercontent.com/u/224711?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/renderedtext",
+      "html_url": "https://github.com/renderedtext",
+      "followers_url": "https://api.github.com/users/renderedtext/followers",
+      "following_url": "https://api.github.com/users/renderedtext/following{/other_user}",
+      "gists_url": "https://api.github.com/users/renderedtext/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/renderedtext/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/renderedtext/subscriptions",
+      "organizations_url": "https://api.github.com/users/renderedtext/orgs",
+      "repos_url": "https://api.github.com/users/renderedtext/repos",
+      "events_url": "https://api.github.com/users/renderedtext/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/renderedtext/received_events",
+      "type": "Organization",
+      "site_admin": false
+    },
+    "html_url": "https://github.com/renderedtext/front",
+    "description": "UI for Semaphore 2.0",
+    "fork": false,
+    "url": "https://github.com/renderedtext/front",
+    "forks_url": "https://api.github.com/repos/renderedtext/front/forks",
+    "keys_url": "https://api.github.com/repos/renderedtext/front/keys{/key_id}",
+    "collaborators_url": "https://api.github.com/repos/renderedtext/front/collaborators{/collaborator}",
+    "teams_url": "https://api.github.com/repos/renderedtext/front/teams",
+    "hooks_url": "https://api.github.com/repos/renderedtext/front/hooks",
+    "issue_events_url": "https://api.github.com/repos/renderedtext/front/issues/events{/number}",
+    "events_url": "https://api.github.com/repos/renderedtext/front/events",
+    "assignees_url": "https://api.github.com/repos/renderedtext/front/assignees{/user}",
+    "branches_url": "https://api.github.com/repos/renderedtext/front/branches{/branch}",
+    "tags_url": "https://api.github.com/repos/renderedtext/front/tags",
+    "blobs_url": "https://api.github.com/repos/renderedtext/front/git/blobs{/sha}",
+    "git_tags_url": "https://api.github.com/repos/renderedtext/front/git/tags{/sha}",
+    "git_refs_url": "https://api.github.com/repos/renderedtext/front/git/refs{/sha}",
+    "trees_url": "https://api.github.com/repos/renderedtext/front/git/trees{/sha}",
+    "statuses_url": "https://api.github.com/repos/renderedtext/front/statuses/{sha}",
+    "languages_url": "https://api.github.com/repos/renderedtext/front/languages",
+    "stargazers_url": "https://api.github.com/repos/renderedtext/front/stargazers",
+    "contributors_url": "https://api.github.com/repos/renderedtext/front/contributors",
+    "subscribers_url": "https://api.github.com/repos/renderedtext/front/subscribers",
+    "subscription_url": "https://api.github.com/repos/renderedtext/front/subscription",
+    "commits_url": "https://api.github.com/repos/renderedtext/front/commits{/sha}",
+    "git_commits_url": "https://api.github.com/repos/renderedtext/front/git/commits{/sha}",
+    "comments_url": "https://api.github.com/repos/renderedtext/front/comments{/number}",
+    "issue_comment_url": "https://api.github.com/repos/renderedtext/front/issues/comments{/number}",
+    "contents_url": "https://api.github.com/repos/renderedtext/front/contents/{+path}",
+    "compare_url": "https://api.github.com/repos/renderedtext/front/compare/{base}...{head}",
+    "merges_url": "https://api.github.com/repos/renderedtext/front/merges",
+    "archive_url": "https://api.github.com/repos/renderedtext/front/{archive_format}{/ref}",
+    "downloads_url": "https://api.github.com/repos/renderedtext/front/downloads",
+    "issues_url": "https://api.github.com/repos/renderedtext/front/issues{/number}",
+    "pulls_url": "https://api.github.com/repos/renderedtext/front/pulls{/number}",
+    "milestones_url": "https://api.github.com/repos/renderedtext/front/milestones{/number}",
+    "notifications_url": "https://api.github.com/repos/renderedtext/front/notifications{?since,all,participating}",
+    "labels_url": "https://api.github.com/repos/renderedtext/front/labels{/name}",
+    "releases_url": "https://api.github.com/repos/renderedtext/front/releases{/id}",
+    "deployments_url": "https://api.github.com/repos/renderedtext/front/deployments",
+    "created_at": 1527683988,
+    "updated_at": "2021-04-21T07:50:43Z",
+    "pushed_at": 1618996509,
+    "git_url": "git://github.com/renderedtext/front.git",
+    "ssh_url": "git@github.com:renderedtext/front.git",
+    "clone_url": "https://github.com/renderedtext/front.git",
+    "svn_url": "https://github.com/renderedtext/front",
+    "homepage": "https://semaphore.semaphoreci.com/projects/c394d20b-b3c6-4c90-b743-a9a65fa95a78",
+    "size": 12097,
+    "stargazers_count": 0,
+    "watchers_count": 0,
+    "language": "Elixir",
+    "has_issues": true,
+    "has_projects": true,
+    "has_downloads": true,
+    "has_wiki": true,
+    "has_pages": false,
+    "forks_count": 3,
+    "mirror_url": null,
+    "archived": false,
+    "disabled": false,
+    "open_issues_count": 15,
+    "license": null,
+    "forks": 3,
+    "open_issues": 15,
+    "watchers": 0,
+    "default_branch": "master",
+    "stargazers": 0,
+    "master_branch": "master",
+    "organization": "renderedtext"
+  },
+  "pusher": {
+    "name": "semaphoreci-test[bot]",
+    "email": null
+  },
+  "organization": {
+    "login": "renderedtext",
+    "id": 224711,
+    "node_id": "MDEyOk9yZ2FuaXphdGlvbjIyNDcxMQ==",
+    "url": "https://api.github.com/orgs/renderedtext",
+    "repos_url": "https://api.github.com/orgs/renderedtext/repos",
+    "events_url": "https://api.github.com/orgs/renderedtext/events",
+    "hooks_url": "https://api.github.com/orgs/renderedtext/hooks",
+    "issues_url": "https://api.github.com/orgs/renderedtext/issues",
+    "members_url": "https://api.github.com/orgs/renderedtext/members{/member}",
+    "public_members_url": "https://api.github.com/orgs/renderedtext/public_members{/member}",
+    "avatar_url": "https://avatars.githubusercontent.com/u/224711?v=4",
+    "description": "Makers of @semaphoreci"
+  },
+  "sender": {
+    "login": "semaphoreci-test[bot]",
+    "id": 30660198,
+    "node_id": "MDM6Qm90MzA2NjAxOTg=",
+    "avatar_url": "https://avatars.githubusercontent.com/in/4187?v=4",
+    "gravatar_id": "",
+    "url": "https://api.github.com/users/semaphoreci%5Bbot%5D",
+    "html_url": "https://github.com/apps/semaphoreci",
+    "followers_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/followers",
+    "following_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/following{/other_user}",
+    "gists_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/gists{/gist_id}",
+    "starred_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/starred{/owner}{/repo}",
+    "subscriptions_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/subscriptions",
+    "organizations_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/orgs",
+    "repos_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/repos",
+    "events_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/events{/privacy}",
+    "received_events_url": "https://api.github.com/users/semaphoreci%5Bbot%5D/received_events",
+    "type": "Bot",
+    "site_admin": false
+  },
+  "installation": {
+    "id": 13675798,
+    "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uMTM2NzU3OTg="
+  },
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "base_ref": null,
+  "compare": "https://github.com/renderedtext/front/compare/b1b4f8a8702e...82bd8cf75e1b",
+  "commits": [
+    {
+      "id": "82bd8cf75e1be034b1ce50e803978000b171fb28",
+      "tree_id": "e032601f459c61c076577a06b7194a515bc2d331",
+      "distinct": true,
+      "message": "Just a test",
+      "timestamp": "2021-04-21T09:15:06Z",
+      "url": "https://github.com/renderedtext/front/commit/82bd8cf75e1be034b1ce50e803978000b171fb28",
+      "author": {
+        "name": "Darko Fabijan",
+        "email": "darko.fabijan@gmail.com",
+        "username": "darkofabijan"
+      },
+      "committer": {
+        "name": "Darko Fabijan",
+        "email": "darko.fabijan@gmail.com",
+        "username": "darkofabijan"
+      },
+      "added": [
+
+      ],
+      "removed": [
+
+      ],
+      "modified": [
+        ".semaphore/semaphore.yml"
+      ]
+    }
+  ],
+  "head_commit": {
+    "id": "82bd8cf75e1be034b1ce50e803978000b171fb28",
+    "tree_id": "e032601f459c61c076577a06b7194a515bc2d331",
+    "distinct": true,
+    "message": "Just a test",
+    "timestamp": "2021-04-21T09:15:06Z",
+    "url": "https://github.com/renderedtext/front/commit/82bd8cf75e1be034b1ce50e803978000b171fb28",
+    "author": {
+      "name": "Darko Fabijan",
+      "email": "darko.fabijan@gmail.com",
+      "username": "darkofabijan"
+    },
+    "committer": {
+      "name": "Darko Fabijan",
+      "email": "darko.fabijan@gmail.com",
+      "username": "darkofabijan"
+    },
+    "added": [
+
+    ],
+    "removed": [
+
+    ],
+    "modified": [
+      ".semaphore/semaphore.yml"
+    ]
+  },
+  "subdomain": "hooks"
+}

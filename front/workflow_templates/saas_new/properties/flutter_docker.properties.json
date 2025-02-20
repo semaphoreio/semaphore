@@ -1,0 +1,12 @@
+{
+  "title": "Flutter",
+  "description": "Run tests and build your Flutter app in Docker with quality checks and dependency analysis. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>pub</span></div>",
+  "short_description": "Run your Flutter suite",
+  "group": "ci",
+  "language": "Dart",
+  "environment": "docker",
+  "use_case": "ci_pipeline",
+  "icon": "lang-flutter.svg",
+  "template_path": "templates/flutter_saas.yml",
+  "workflow_tip": "other"
+}

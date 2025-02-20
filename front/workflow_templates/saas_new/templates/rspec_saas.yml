@@ -1,0 +1,121 @@
+version: v1.0
+name: "💎 Ruby CI Pipeline"
+
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+fail_fast:
+  stop:
+    when: branch != 'master'  # Stop execution early for non-master branches
+auto_cancel:
+  running:
+    when: branch != 'master'  # Auto-cancel running pipelines on non-master branches
+  queued:
+    when: branch = 'master'  # Auto-cancel queued pipelines for master branch
+
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Fetch the source code
+      - sem-service start postgres 17  # Start PostgreSQL 17 service
+      - sem-service start redis 7  # Start Redis 7 service
+      - sem-version ruby 3.2.2  # Use Ruby version 3.2.2
+      - sem-version node 20.11.0  # Use Node.js version 20.11.0
+      - cache restore  # Restore cached dependencies
+      - yarn install --frozen-lockfile  # Install JavaScript dependencies for Webpacker
+      - bundle install --deployment --path vendor/bundle  # Install Ruby gems
+
+blocks:
+  - name: "🛠 Setup and Cache"
+    task:
+      jobs:
+        - name: Install Dependencies
+          commands:
+            - cache store  # Store dependencies in cache for later reuse
+    dependencies: []
+
+  - name: "📦 Webpacker Setup"
+    task:
+      jobs:
+        - name: Precompile Webpacker Assets
+          commands:
+            - bundle exec rake webpacker:compile  # Compile Webpacker assets for tests
+    dependencies:
+      - "🛠 Setup and Cache"
+
+  - name: "🔍 Lint Code"
+    task:
+      jobs:
+        - name: Lint JavaScript and CSS
+          commands:
+            - yarn run eslint .  # Run ESLint for JavaScript code
+            - yarn run stylelint "**/*.scss"  # Run Stylelint for SCSS files
+    dependencies:
+      - "📦 Webpacker Setup"
+
+  - name: "🧹 Run RuboCop"
+    task:
+      jobs:
+        - name: bundle exec rubocop
+          commands:
+            - bundle exec rubocop  # Lint and enforce Ruby coding standards
+    dependencies:
+      - "🛠 Setup and Cache"
+
+  - name: "🛡️ Run Brakeman"
+    task:
+      jobs:
+        - name: bundle exec brakeman --force
+          commands:
+            - bundle exec brakeman --force  # Perform security checks
+    dependencies:
+      - "🛠 Setup and Cache"
+
+  - name: "🔍 Run Bundler Audit"
+    task:
+      jobs:
+        - name: bundle exec bundle-audit check --update
+          commands:
+            - bundle exec bundle-audit check --update  # Check for known vulnerabilities in dependencies
+    dependencies:
+      - "🛠 Setup and Cache"
+
+  - name: "🚦 Test Suite"
+    task:
+      env_vars:
+        - name: RAILS_ENV
+          value: test  # Set environment to test
+        - name: PGHOST
+          value: 127.0.0.1  # PostgreSQL host
+        - name: PGUSER
+          value: postgres  # PostgreSQL user
+        - name: KNAPSACK_TEST_FILE_PATTERN
+          value: 'spec/**{,/*/**}/*_spec.rb'  # Define test file pattern for RSpec
+        - name: KNAPSACK_REPORT_PATH
+          value: knapsack_rspec_rails_report.json  # Set path for Knapsack report
+      jobs:
+        - name: "🟢 RSpec Tests"
+          parallelism: 5  # Run tests in parallel across 5 jobs
+          commands:
+            - 'bundle exec rake db:setup'  # Prepare the test database
+            - 'CI_NODE_TOTAL=$SEMAPHORE_JOB_COUNT CI_NODE_INDEX=$((SEMAPHORE_JOB_INDEX-1)) bundle exec rake "knapsack:rspec[-t ~manual -t ~v4 --format RspecJunitFormatter --out report.xml --format documentation]"'  # Run RSpec tests with Knapsack
+      secrets:
+        - name: KNAPSACK_PRO_TEST_SUITE_TOKEN_RSPEC  # Secure token for Knapsack Pro
+      epilogue:
+        always:
+          commands:
+            - '[[ -f report.xml ]] && test-results publish report.xml'  # Publish test results if available
+    dependencies:
+      - "🔍 Run Bundler Audit"
+      - "🛡️ Run Brakeman"
+      - "🧹 Run RuboCop"
+      - "📦 Webpacker Setup"
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "Merge Reports 📊"
+        commands:
+          - test-results gen-pipeline-report  # Generate a summary of the test results

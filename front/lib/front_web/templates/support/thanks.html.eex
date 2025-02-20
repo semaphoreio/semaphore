@@ -1,0 +1,13 @@
+<div class="mw7 center mt5-m ph5-m">
+  <div class="flex-m items-start">
+    <div class="flex-shrink-0">
+      <img src=<%= image_source("ill-guy-thumbup.svg") %> alt="guy showing thumb up">
+    </div>
+    <div class="pl4-m">
+      <h1 class="f2 f1-l lh-title mb2">Thanks for contacting us, <%= name(@user) %>!</h1>
+      <p class="measure mb2">Someone from our team will email you soon at <strong><%= @user.email %></strong>.</p>
+      <p class="measure mb3">While waiting, check <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/" target="_blank" rel="noopener">Semaphore Docs</a>.</p>
+      <p class="measure mb0 bt bw1 pv2"><strong>Support Business Hours:</strong><br><%= support_work_hours() %></p>
+    </div>
+  </div>
+</div>

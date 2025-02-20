@@ -1,0 +1,73 @@
+version: '3.6'
+services:
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-loghub2}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: dev
+    depends_on:
+      - redis
+      - rabbitmq
+      - gcs
+      - 's3'
+    tty: true
+    environment:
+      BASE_DOMAIN: testing.com
+      START_INTERNAL_API: "yes"
+      START_PUBLIC_API: "yes"
+      START_ARCHIVATOR: "yes"
+      PUBLIC_API_HOST: "0.0.0.0"
+      PUBLIC_API_PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ""
+      REDIS_PASSWORD: ""
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+      LOGS_STORAGE_BACKEND: gcs
+      GCS_URL: http://gcs:4443/
+      GCS_BUCKET: job-logs
+      LOGHUB2_PRIVATE_KEY: very-important-and-secret-key
+      METRICS_NAMESPACE: ""
+      LOGS_STORAGE_S3_URL: http://s3:9000
+      AWS_REGION: "local"
+      S3_BUCKET_NAME: "semaphore-cache"
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin"
+    ports:
+      - "8080:8080"
+      - "50051:50051"
+    command: "/app/build/server"
+    container_name: 'loghub2'
+    volumes:
+      - go-pkg-cache:/go
+      - .:/app
+      - /tmp:/tmp
+  redis:
+    image: redis:6.2.4-alpine
+    container_name: 'redis'
+  rabbitmq:
+    image: rabbitmq:3.8.17-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
+  s3:
+    image: minio/minio:RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+    container_name: 's3'
+    ports:
+      - 9000:9000
+    entrypoint: sh
+    command: -c 'mkdir -p /tmp/s3-data/semaphore-cache && minio server /tmp/s3-data'
+  gcs:
+    image: fsouza/fake-gcs-server
+    container_name: 'gcs'
+    volumes:
+      - ${PWD}/data:/data
+    ports:
+      - 4443:4443
+    command: -backend memory -scheme http -port 4443 -public-host gcs:4443 -external-url http://gcs:4443
+volumes:
+  go-pkg-cache:
+    driver: local

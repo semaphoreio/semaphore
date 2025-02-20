@@ -1,0 +1,93 @@
+<style>
+.project-jumpto {
+  position: relative;
+}
+.project-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.project-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.project-jumpto .jumpto-results {
+  position: absolute;
+  top: 31px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 207px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.project-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.project-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+
+.project-jumpto .jumpto-results a[aria-selected="true"],
+.project-jumpto .jumpto-results a[aria-selected="true"]:hover,
+.project-jumpto .jumpto-results a:focus,
+.project-jumpto .jumpto-results a:active {
+    background-color: #00a569;
+    color: #fff;
+}
+</style>
+
+<div class="flex item-start items-center-m mb3">
+  <div class="flex-auto">
+    <div id="chooseSelect" class="flex-m items-center">
+      <select data-key="type" class="db form-control mb3 mb0-m mr3">
+        <optgroup label="Show everything">
+          <option value="" <%= if @type == "", do: "selected" %>>Branches, PRs and Tags</option>
+        </optgroup>
+        <optgroup label="Filter per type">
+          <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
+          <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
+          <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+      </select>
+      <select data-key="requester" class="db form-control mb3 mb0-m mr3">
+        <option value="false" <%= if @requester == false, do: "selected" %>>by Everyone</option>
+        <option value="true" <%= if @requester == true, do: "selected" %>>by Me</option>
+      </select>
+      <div class="project-jumpto">
+        <input type="text" class="form-control" placeholder="Search…">
+        <div class="jumpto-results"></div>
+      </div>
+    </div>
+  </div>
+
+  <%= if @permissions["project.workflow.manage"] do %>
+    <div class="flex-shrink-0 ml3">
+      <div class="ph3 pv1 o-50 hover-o-80 pointer js-dropdown-menu-trigger" data-template="projectMenu">
+        <img src="<%= assets_path() %>/images/icn-threedot.svg">
+      </div>
+
+      <div id="projectMenu" style="display: none;">
+        <div class="pa1">
+          <a href="<%= project_path(@conn, :blocked, @project.name) %>" class="link db dark-gray hover-bg-green hover-white ph3 pv2 br2">
+            <div class="b">Add branch</div>
+            <div class="f6">
+              Build branches blocked by whitelist
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

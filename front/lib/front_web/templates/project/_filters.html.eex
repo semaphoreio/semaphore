@@ -1,0 +1,19 @@
+<div id="filter-checkboxes" class="filters flex items-center f5 pb3 bb b--lighter-gray">
+  <div class="filter-checkbox flex items-center">
+    <input type="checkbox" id="filter-branches" checked="" data-filter="branch">
+    <label for="filter-branches">Branches</label>
+    <svg height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m5 7h4c1.1045695 0 2-.8954305 2-2v-.26756439c-.5978014-.34580942-1-.99215325-1-1.73243561 0-1.1045695.8954305-2 2-2s2 .8954305 2 2c0 .74028236-.4021986 1.38662619-1 1.73243561v.26756439c0 2.209139-1.790861 4-4 4h-4v2.2675644c.59780137.3458094 1 .9921532 1 1.7324356 0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2c0-.7402824.40219863-1.3866262 1-1.7324356v-6.53512879c-.59780137-.34580942-1-.99215325-1-1.73243561 0-1.1045695.8954305-2 2-2s2 .8954305 2 2c0 .74028236-.40219863 1.38662619-1 1.73243561z" fill-rule="evenodd"></path></svg>
+  </div>
+  <!--
+  <div class="filter-checkbox flex items-center">
+    <input type="checkbox" id="filter-pullrequests" data-filter="pr">
+    <label for="filter-pullrequests">P<span class="dn di-ns">ull </span>R<span class="dn di-ns">equest</span>s</label>
+    <svg height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m9 2h1.440918c1.9631226 0 3.559082 1.59234154 3.559082 3.54929647v5.71826793c.5978014.3458094 1 .9921532 1 1.7324356 0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2c0-.7402824.4021986-1.3866262 1-1.7324356v-5.71826793c0-.85136808-.6995141-1.54929647-1.559082-1.54929647h-1.440918v2l-3-3 3-3zm-7 2.73243561c-.59780137-.34580942-1-.99215325-1-1.73243561 0-1.1045695.8954305-2 2-2s2 .8954305 2 2c0 .74028236-.40219863 1.38662619-1 1.73243561v6.53512879c.59780137.3458094 1 .9921532 1 1.7324356 0 1.1045695-.8954305 2-2 2s-2-.8954305-2-2c0-.7402824.40219863-1.3866262 1-1.7324356z"></path></svg>
+  </div>
+  -->
+  <div class="filter-checkbox flex items-center">
+    <input type="checkbox" id="filter-tags" data-filter="tag">
+    <label for="filter-tags">Tags</label>
+    <svg height="16" viewBox="0 0 16 16" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m1.24134968 1.93585709 11.73208142.00415939 3.9034634 2.99603158v4l-3.9034634 3.00396844-11.73208142-.0041594zm11.73208142 6.00415939c.5522848 0 1-.44771525 1-1s-.4477152-1-1-1c-.5522847 0-1 .44771525-1 1s.4477153 1 1 1z" fill-rule="evenodd" transform="matrix(.70710678 -.70710678 .70710678 .70710678 -2.252507 8.437841)"></path></svg>
+  </div>
+</div>

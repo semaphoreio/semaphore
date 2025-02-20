@@ -1,0 +1,19 @@
+version: "v1.0"
+name: Conditional epilogue failing test - mixed old and new format
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1
+    task:
+      epilogue:
+        commands:
+          - echo Old epilogue format
+        on_pass:
+          commands:
+            - echo New conditional epilogue format
+      jobs:
+        - name: job1
+          commands:
+            - echo 123

@@ -1,0 +1,24 @@
+<%= if @page.total_pages > 1 do %>
+    <% visible_pages = neighbor_pages(@page) %>
+    <div class="flex justify-center mv3">
+        <div class="flex items-center">
+            <%= if not Enum.member?(visible_pages, 1) do %>
+                <%= page_link(@path, 1, @page.number) %>
+            <% end %>
+            <%= if not Enum.member?(visible_pages, 2) do %>
+                <span class="ph2">…</span>
+            <% end %>
+
+            <%= for page_no <- neighbor_pages(@page) do %>
+                <%= page_link(@path, page_no, @page.number) %>
+            <% end %>
+
+            <%= if not Enum.member?(visible_pages, @page.total_pages - 1) do %>
+                <span class="ph2">…</span>
+            <% end %>
+            <%= if not Enum.member?(visible_pages, @page.total_pages) do %>
+                <%= page_link(@path, @page.total_pages, @page.number) %>
+            <% end %>
+        </div>
+    </div>
+<% end %>

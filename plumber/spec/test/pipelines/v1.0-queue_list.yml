@@ -1,0 +1,17 @@
+version: "v1.0"
+name: Definition with valid queue property
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+queue:
+  -  when: "branch = 'master'"
+     processing: serialized
+  -  when: true
+     processing: parallel
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

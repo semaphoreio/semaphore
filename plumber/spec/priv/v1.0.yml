@@ -1,0 +1,502 @@
+$schema: http://json-schema.org/draft-04/schema#
+version: v1.0
+title: Semaphore pipeline definition file specification
+type: object
+properties:
+  version:
+    type: string
+  name:
+    type: string
+  agent:
+    $ref: "#/definitions/agent"
+  blocks:
+    type: array
+    minItems: 1
+    maxItems: 300
+    items:
+      $ref: "#/definitions/block"
+  after_pipeline:
+    $ref: "#/definitions/after_pipeline"
+  promotions:
+    $ref: "#/definitions/promotions"
+  execution_time_limit:
+    $ref: "#/definitions/execution_time_limit"
+  global_job_config:
+    $ref: "#/definitions/global_job_config"
+  fail_fast:
+    $ref: "#/definitions/fail_fast"
+  auto_cancel:
+    $ref: "#/definitions/auto_cancel"
+  queue:
+    $ref: "#/definitions/queue"
+additionalProperties: false
+required: [version, agent, blocks]
+
+definitions:
+  promotions:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        pipeline_file:
+          type: string
+        deployment_target:
+          type: string
+          minLength: 1
+        auto_promote_on:
+          type: array
+          items:
+            $ref: "#/definitions/auto_promote_condition"
+        auto_promote:
+          $ref: "#/definitions/when_condition"
+        parameters:
+          type: object
+          properties:
+            env_vars:
+              type: array
+              items:
+                $ref: "#/definitions/parameter_env_var"
+          additionalProperties: false
+          required: [env_vars]
+      additionalProperties: false
+      required: [name, pipeline_file]
+  after_pipeline:
+    type: object
+    properties:
+      task:
+        $ref: "#/definitions/task"
+      task_file:
+        type: string
+    additionalProperties: false
+    oneOf:
+      - required: [task]
+      - required: [task_file]
+  auto_promote_condition:
+    type: object
+    properties:
+      result:
+        type: string
+      result_reason:
+        type: string
+      branch:
+        type: array
+        items:
+          type: string
+      labels:
+        type: array
+        items:
+          type: string
+      label_patterns:
+        type: array
+        items:
+          type: string
+    additionalProperties: false
+    required: [result]
+    not:
+      anyOf:
+        - required: [branch, labels]
+        - required: [branch, label_patterns]
+        - required: [labels, label_patterns]
+  parameter_env_var:
+    type: object
+    properties:
+      name:
+        type: string
+      options:
+        type: array
+        items:
+          type: string
+      required:
+        type: boolean
+      default_value:
+        type: string
+      description:
+        type: string
+    additionalProperties: false
+    required: [name]
+  block:
+    type: object
+    properties:
+      name:
+        type: string
+        minLength: 1
+      dependencies:
+        type: array
+        items:
+          type: string
+      execution_time_limit:
+        $ref: "#/definitions/execution_time_limit"
+      filters:
+        $ref: "#/definitions/filters"
+      skip:
+        $ref: "#/definitions/skip"
+      run:
+        $ref: "#/definitions/when_condition"
+      task:
+        $ref: "#/definitions/task"
+      task_file:
+        type: string
+    additionalProperties: false
+    not:
+      anyOf:
+      - required: [filters, skip]
+      - required: [filters, run]
+      - required: [run, skip]
+    oneOf:
+      - required: [task]
+      - required: [task_file]
+  task:
+    type: object
+    properties:
+      jobs:
+        type: array
+        minItems: 1
+        maxItems: 50
+        items:
+          type: object
+          $ref: "#/definitions/job"
+      agent:
+        $ref: "#/definitions/agent"
+      boosters:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/booster"
+      prologue:
+        $ref: "#/definitions/cmd_type"
+      secrets:
+        $ref: "#/definitions/secrets"
+      env_vars:
+        $ref: "#/definitions/env_vars"
+      epilogue:
+        $ref: "#/definitions/epilogue"
+      fail_fast:
+        $ref: "#/definitions/fail_fast"
+    additionalProperties: false
+    anyOf:
+      - required: [jobs]
+      - required: [boosters]
+  cmd_type:
+    type: object
+    properties:
+      commands:
+        type: array
+        items:
+          type: string
+      commands_file:
+        type: string
+    additionalProperties: false
+    oneOf:
+      - required: [commands]
+      - required: [commands_file]
+  job:
+    type: object
+    properties:
+      name:
+        type: string
+        minLength: 1
+      commands:
+        type: array
+        items:
+          type: string
+      commands_file:
+        type: string
+      priority:
+        $ref: "#/definitions/priority"
+      parallelism:
+        oneOf:
+          - type: integer
+            minimum: 1
+          - type: string
+      matrix:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/build_matrix"
+      env_vars:
+        $ref: "#/definitions/env_vars"
+      execution_time_limit:
+        $ref: "#/definitions/execution_time_limit"
+    additionalProperties: false
+    not:
+      anyOf:
+      - required: [matrix, parallelism]
+    oneOf:
+      - required: [commands]
+      - required: [commands_file]
+  booster:
+    type: object
+    properties:
+      name:
+        type: string
+      type:
+        enum: [rspec, cucumber]
+      job_count:
+        type: integer
+    additionalProperties: false
+    anyOf:
+      - required: [type, job_count]
+  secrets:
+    type: array
+    items:
+      type: object
+      $ref: "#/definitions/secret"
+  secret:
+    type: object
+    properties:
+      name:
+        type: string
+      env_var_names:
+        type: array
+        items:
+          type: string
+      config_file_paths:
+        type: array
+        items:
+          type: string
+    additionalProperties: false
+    required: [name]
+  env_vars:
+    type: array
+    items:
+      type: object
+      $ref: "#/definitions/env_var"
+  env_var:
+    type: object
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    additionalProperties: false
+    required: [name, value]
+  build_matrix:
+    type: object
+    properties:
+      env_var:
+        type: string
+        minLength: 1
+      values:
+        oneOf:
+          - type: array
+            minItems: 1
+            items:
+              type: string
+          - type: string
+    additionalProperties: false
+    required: [env_var, values]
+  agent:
+    type: object
+    properties:
+      containers:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/container"
+      image_pull_secrets:
+        type: array
+        items:
+          type: object
+          $ref: "#/definitions/image_pull_secret"
+      machine:
+        type: object
+        properties:
+          type:
+            type: string
+            minLength: 1
+          os_image:
+            type: string
+        additionalProperties: false
+        required: [type]
+    additionalProperties: false
+    required: [machine]
+  container:
+    type: object
+    properties:
+      name:
+        type: string
+      image:
+        type: string
+      command:
+        type: string
+      entrypoint:
+        type: string
+      user:
+        type: string
+      env_vars:
+        $ref: "#/definitions/env_vars"
+      secrets:
+        $ref: "#/definitions/secrets"
+    additionalProperties: false
+    required: [name, image]
+  image_pull_secret:
+    type: object
+    properties:
+      name:
+        type: string
+    additionalProperties: false
+    required: [name]
+  queue:
+    oneOf:
+      - $ref: "#/definitions/queue_map"
+      - type: array
+        minItems: 1
+        items:
+          $ref: "#/definitions/queue_map"
+  queue_map:
+    type: object
+    properties:
+      name:
+        type: string
+        minLength: 1
+      scope:
+        type: string
+        enum: [project, organization]
+      processing:
+        type: string
+        enum: [serialized, parallel]
+      when:
+        oneOf:
+          - type: string
+            minLength: 1
+          - type: boolean
+    additionalProperties: false
+    anyOf:
+      - required: [name]
+      - required: [processing]
+  auto_cancel:
+    type: object
+    properties:
+      queued:
+        $ref: "#/definitions/when_condition"
+      running:
+        $ref: "#/definitions/when_condition"
+    additionalProperties: false
+    anyOf:
+      - required: [queued]
+      - required: [running]
+  # Fail-fast behavior:
+  # - NONE (default behavior)
+  #   - All blocks whose direct dependencies passed will be scheduled.
+  #   - All blocks whose direct dependencies failed will be canceled.
+  #   - No blocks will be stopped because of failed dependencies.
+  # - CANCEL
+  #   When any block fails =>
+  #   - Cancel all blocks that are not in running or done state.
+  #   - Let all running blocks finish.
+  # - STOP
+  #   When any block fails =>
+  #   - Stop all blocks that are not done.
+  fail_fast:
+    type: object
+    properties:
+      cancel:
+        $ref: "#/definitions/when_condition"
+      stop:
+        $ref: "#/definitions/when_condition"
+    additionalProperties: false
+    anyOf:
+      - required: [stop]
+      - required: [cancel]
+  execution_time_limit:
+    type: object
+    properties:
+      minutes:
+        type: integer
+        minimum: 1
+      hours:
+        type: integer
+        minimum: 1
+    additionalProperties: false
+    oneOf:
+      - required: [minutes]
+      - required: [hours]
+  global_job_config:
+    type: object
+    properties:
+      prologue:
+        $ref: "#/definitions/cmd_type"
+      secrets:
+        $ref: "#/definitions/secrets"
+      env_vars:
+        $ref: "#/definitions/env_vars"
+      epilogue:
+        $ref: "#/definitions/epilogue"
+      priority:
+        $ref: "#/definitions/priority"
+    additionalProperties: false
+    anyOf:
+      - required: [prologue]
+      - required: [secrets]
+      - required: [env_vars]
+      - required: [epilogue]
+      - required: [priority]
+  filters:
+    type: array
+    items:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+        label_pattern:
+          type: string
+          minLength: 1
+        action:
+          type: string
+          enum: [skip, execute]
+      additionalProperties: false
+      oneOf:
+        - required: [label]
+        - required: [label_pattern]
+  priority:
+    type: array
+    items:
+      type: object
+      properties:
+        value:
+          type: integer
+          minimum: 0
+          maximum: 100
+        when:
+          oneOf:
+            - type: string
+              minLength: 1
+            - type: boolean
+      additionalProperties: false
+      required: [value, when]
+  skip:
+    $ref: "#/definitions/when_condition"
+  when_condition:
+    type: object
+    properties:
+      when:
+        oneOf:
+          - type: string
+            minLength: 1
+          - type: boolean
+    additionalProperties: false
+    required: [when]
+  epilogue:
+    type: object
+    oneOf:
+      - $ref: "#/definitions/conditional_epilogue"
+        # For backwards compatibility, will be transformed into 'always' commands
+      - $ref: "#/definitions/cmd_type"
+  conditional_epilogue:
+    properties:
+      always:
+        $ref: "#/definitions/cmd_type"
+      on_pass:
+        $ref: "#/definitions/cmd_type"
+      on_fail:
+        $ref: "#/definitions/cmd_type"
+    additionalProperties: false
+    anyOf:
+      - required: [always]
+      - required: [on_pass]
+      - required: [on_fail]

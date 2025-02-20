@@ -1,0 +1,16 @@
+<div style="display: none;">
+  <div id="agentName">
+    <div class="f5 pa3">
+      <div class="mb1">
+        <div class="b mb1">Agent name</div>
+        <input
+          class="x-select-on-click form-control w-100"
+          type="text"
+          value="{{VALUE}}"
+          readonly
+          />
+        <div class="mt2">This job was assigned to a self-hosted agent.</div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,12 @@
+{{- $domainName := .Values.global.domain.name | required ".Values.global.domain.name is required." -}}
+{{- $ip := .Values.global.domain.ip -}}
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.global.domain.configMapName }}
+data:
+  BASE_DOMAIN: {{ $domainName }}
+  HOOKS_HOST: hooks.{{ $domainName }}
+  INGRESS_IP: "{{ $ip }}"
+  CORS_ORIGINS: https://*.{{ $domainName }}

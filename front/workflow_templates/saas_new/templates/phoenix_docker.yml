@@ -1,0 +1,150 @@
+# This is a Semaphore configuration file for Phoenix projects using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+version: v1.0  # Semaphore configuration version
+name: "🔥 Phoenix CI Pipeline"  # Pipeline display name
+
+# Define the machine type, OS image, and containers
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/elixir:1.15'  # Elixir 1.15 container
+    - name: postgres
+      image: registry.semaphoreci.com/postgres:17  # PostgreSQL 17 for database operations
+    - name: redis
+      image: registry.semaphoreci.com/redis:7.0  # Redis 7.0 for caching
+
+# Configure when to stop the pipeline early
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+# Commands to run before each job
+global_job_config:
+  prologue:
+    commands:
+      - checkout                    # Get the code from repository
+      - mix local.hex --force      # Install Hex package manager
+      - mix local.rebar --force    # Install rebar3 build tool
+      - mix deps.get              # Install dependencies
+      - cache restore             # Restore cached dependencies
+
+# Pipeline blocks represent groups of jobs that can run in parallel
+blocks:
+  # Block for setting up dependencies and caching
+  - name: "🛠️ Setup and Cache"
+    dependencies: []
+    task:
+      jobs:
+        - name: "📦 Install Dependencies"
+          commands:
+            - mix deps.compile  # Compile dependencies
+            - mix compile      # Compile project
+            - npm ci --prefix assets  # Install Node.js dependencies
+            - cache store      # Cache dependencies for future runs
+
+  # Block for asset compilation
+  - name: "🎨 Assets"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "🖌️ Compile Assets"
+          commands:
+            - npm run deploy --prefix assets  # Build and digest assets
+            - mix phx.digest                 # Digest and compress static files
+
+  # Block for code quality checks
+  - name: "🔍 Code Quality"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "✨ Lint and Format"
+          commands:
+            - mix format --check-formatted  # Check code formatting
+            - mix credo --strict           # Run static code analysis
+            - cd assets && npm run lint    # Check JavaScript code
+
+  # Block for security checks
+  - name: "🔐 Security Checks"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "🛡️ Security Scan"
+          commands:
+            - mix deps.audit            # Check Elixir dependencies
+            - mix sobelow --config      # Run security-focused static analysis
+            - cd assets && npm audit    # Check Node.js dependencies
+
+  # Block for type checking
+  - name: "📊 Dialyzer"
+    dependencies: ["🛠️ Setup and Cache"]
+    task:
+      jobs:
+        - name: "🔎 Type Checking"
+          commands:
+            - mix dialyzer  # Run static type checking
+
+  # Block for running tests
+  - name: "🧪 Test Suite"
+    dependencies: ["🛠️ Setup and Cache", "🎨 Assets"]
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DATABASE_URL
+          value: postgresql://postgres@postgres:5432/app_test  # Use container hostname
+        - name: REDIS_URL
+          value: redis://redis:6379      # Use container hostname
+      jobs:
+        - name: "🟢 ExUnit Tests"
+          parallelism: 4  # Run tests in parallel
+          commands:
+            - mix ecto.create     # Create test database
+            - mix ecto.migrate    # Run database migrations
+            - mix test --cover    # Run tests with coverage
+
+  # Block for browser tests
+  - name: "🌐 Browser Tests"
+    dependencies: ["🧪 Test Suite"]
+    task:
+      jobs:
+        - name: "🎭 Wallaby Tests"
+          commands:
+            - mix wallaby.install  # Install browser testing dependencies
+            - mix test --only browser:true  # Run browser tests
+
+  # Block for deployment checks
+  - name: "🚀 Deploy Checks"
+    dependencies: ["🧪 Test Suite"]
+    task:
+      jobs:
+        - name: "🔄 Migration Safety"
+          commands:
+            - mix ecto.migrations   # Check pending migrations
+            - mix phx.routes       # Check route definitions
+        - name: "📦 Release Build"
+          commands:
+            - MIX_ENV=prod mix release --dry-run  # Test release building
+
+  # Block for Docker image
+  - name: "🐳 Docker"
+    dependencies: ["🚀 Deploy Checks"]
+    task:
+      secrets:
+        - name: dockerhub-credentials
+      jobs:
+        - name: "📦 Build and Push"
+          commands:
+            - echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+            - docker build -t "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}" .
+            - docker push "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}"

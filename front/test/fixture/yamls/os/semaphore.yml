@@ -1,0 +1,58 @@
+#
+# Fixture used to set up fake response from Repohub.
+#
+# See: test/support/fake_services.ex
+#
+
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+  containers:
+    - name: main
+      image: ubuntu1804
+      env_vars:
+        - name: A
+          value: B
+
+blocks:
+  - name: "</script><base href='localhost:3000' />"
+    dependencies: []
+    task:
+      jobs:
+      - name: Lint
+        commands:
+          - checkout
+          - make lint
+
+  - name: "Build, Test & Push"
+    dependencies: ["Lint"]
+    task:
+      secrets:
+        - name: s2prod-gce
+      jobs:
+      - name: Tests
+        commands:
+          - echo $GCE_CREDS | base64 --decode > gce-creds.json
+          - checkout
+          - make configure.gcloud
+          - make build
+          - make test.setup
+          - make test
+          - make push
+
+  - name: "Publish"
+    dependencies: ["Lint"]
+    task:
+      secrets:
+        - name: s2prod-gce
+      jobs:
+      - name: Publish
+        commands:
+          - publishing
+          - make build
+          - make test.setup
+          - make test
+          - make push

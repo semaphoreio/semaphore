@@ -1,0 +1,15 @@
+%{
+  "artificery": {:hex, :artificery, "0.4.3", "0bc4260f988dcb9dda4b23f9fc3c6c8b99a6220a331534fdf5bf2fd0d4333b02", [:mix], [], "hexpm", "12e95333a30e20884e937abdbefa3e7f5e05609c2ba8cf37b33f000b9ffc0504"},
+  "cowboy": {:hex, :cowboy, "2.5.0", "4ef3ae066ee10fe01ea3272edc8f024347a0d3eb95f6fbb9aed556dacbfc1337", [:rebar3], [{:cowlib, "~> 2.6.0", [hex: :cowlib, repo: "hexpm", optional: false]}, {:ranch, "~> 1.6.2", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm", "07763d253314bd76017157e3a33e2cd32c1500e0ecf7ceb4e80aa09d2939aa30"},
+  "cowlib": {:hex, :cowlib, "2.6.0", "8aa629f81a0fc189f261dc98a42243fa842625feea3c7ec56c48f4ccdb55490f", [:rebar3], [], "hexpm", "45a1a08e05e4c66f2af665295955e337d52c2d33b1f1cf24d353cadeddf34992"},
+  "grpc": {:hex, :grpc, "0.3.1", "bba240631f1a262db865d9bc620b3e3abc0acfab27a922ad47727d057a734ab3", [:mix], [{:cowboy, "~> 2.5", [hex: :cowboy, repo: "hexpm", optional: false]}, {:gun, "~> 1.2", [hex: :gun, repo: "hexpm", optional: false]}, {:protobuf, "~> 0.5", [hex: :protobuf, repo: "hexpm", optional: false]}], "hexpm", "69903c415ac0907362dd88aa81bf56d90974e8bc78ce7ad188aa7916637b2647"},
+  "grpc_health_check": {:git, "https://github.com/renderedtext/grpc_health_check.git", "c46573090dc98c1b6377b27bc9a99cdc6a701121", []},
+  "gun": {:hex, :gun, "1.3.0", "18e5d269649c987af95aec309f68a27ffc3930531dd227a6eaa0884d6684286e", [:rebar3], [{:cowlib, "~> 2.6.0", [hex: :cowlib, repo: "hexpm", optional: false]}], "hexpm", "279d089773be9886fc2ed0d0c25663cc36b8755356dfd27d63c206ab20b8329a"},
+  "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "30c69704d583bda8cffb324b8936ffd3680e6ae4", []},
+  "protobuf": {:hex, :protobuf, "0.5.4", "2e1b8eec211aff034ad8a14e3674220b0158bfb9a3c7128ac9d2a1ed1b3724d3", [:mix], [], "hexpm", "994348a4592408bc99c132603b0fdb686a2b5df0321a8eb1a582ec2bd3495886"},
+  "ranch": {:hex, :ranch, "1.6.2", "6db93c78f411ee033dbb18ba8234c5574883acb9a75af0fb90a9b82ea46afa00", [:rebar3], [], "hexpm", "0b65d1de7f1ebe96feb57803c8d698f7776b663ba10b6dcff34527e4a4f8ff43"},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "d525765198d9ba05ee547397e6e21aedfa623a7d", []},
+  "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
+  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "db1a91b55110140213e0b5fd37afb15dc4ede2bc", []},
+  "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
+}

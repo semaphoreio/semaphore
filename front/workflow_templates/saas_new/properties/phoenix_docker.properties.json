@@ -1,0 +1,12 @@
+{
+  "title": "Elixir - Phoenix",
+  "description": "Run tests and build Docker images for your Phoenix app with PostgreSQL and Redis support. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Redis</span></div>",
+  "short_description": "Containerized CI/CD pipeline for Phoenix web applications",
+  "group": "ci",
+  "language": "Elixir",
+  "environment": "docker",
+  "use_case": "Web Application",
+  "icon": "lang-elixir.svg",
+  "template_path": "templates/phoenix_docker.yml",
+  "workflow_tip": "other"
+}

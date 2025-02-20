@@ -1,0 +1,27 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="bg-white shadow-1 br3 pa3 pa4-l">
+    <h3 class="f3 f2-m mb1">Disconnect <%= @agent_name %>?</h3>
+    <p class="b red mv3">This cannot be undone!</p>
+    <div>
+      If you continue:
+
+      <ul class="mb4 mt2">
+        <li>This agent will be shutdown</li>
+        <li>Any jobs running in it will be stopped</li>
+      </ul>
+
+      <div class="mw6">
+        <div class="mt3">
+          <%= form_for @conn, self_hosted_agent_disable_agent_path(@conn, :disable_agent, @agent_type, @agent_name), [method: :post], fn _ -> %>
+            <div>
+              <%= submit "Disconnect", class: "btn btn-danger mr2" %>
+              <%= link "Nevermind",
+                  to: self_hosted_agent_path(@conn, :show, @agent_type),
+                  class: "btn btn-secondary" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

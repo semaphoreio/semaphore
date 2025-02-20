@@ -1,0 +1,70 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: zebra
+    image: "${IMAGE:-zebra}:${IMAGE_TAG:-latest}"
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-zebra}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - MIX_ENV=dev
+      ssh:
+        - default
+
+    command: "mix phx.server"
+    ports:
+      - "4000:4000"
+    tty: true
+    volumes:
+      - ${DUMMY_MOUNT:-.:/app}
+
+    depends_on:
+      - db
+      - rabbitmq
+
+    environment:
+      IN_DOCKER: "true"
+      AMQP_URL: amqp://rabbitmq:5672
+      POSTGRES_DB_NAME: "zebra"
+      POSTGRES_DB_USER: "postgres"
+      POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
+      POSTGRES_DB_HOST: db
+      POSTGRES_DB_POOL_SIZE: "5"
+      START_JOB_REQUEST_FACTORY: "false"
+      START_DISPATCHER_WORKER: "false"
+      START_TASK_FINISHER_WORKER: "false"
+      START_JOB_STARTED_CALLBACK_WORKER: "false"
+      START_JOB_FINISHED_CALLBACK_WORKER: "false"
+      START_JOB_TEARDOWN_CALLBACK_WORKER: "false"
+      START_MONITOR: "false"
+      START_PUBLIC_JOB_API: "true"
+      START_INTERNAL_JOB_API: "true"
+      START_GRPC_HEALTH_CHECK: "true"
+      START_INTERNAL_TASK_API: "true"
+      JOB_CALLBACK_BROKER_URL: "s2-callback.semaphoretest.xyz"
+      ZEBRA_CALLBACK_TOKEN_KEYS: testing
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+
+volumes:
+  postgres-data:
+    driver: local
+
+  redis-data:
+    driver: local

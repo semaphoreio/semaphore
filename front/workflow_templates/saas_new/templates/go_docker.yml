@@ -1,0 +1,117 @@
+# This is a Semaphore configuration file for Go projects using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+version: v1.0  # Semaphore configuration version
+name: "🐹 Go CI Pipeline"  # Pipeline display name
+
+# Define the machine type, OS image, and containers
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/golang:1.21'  # Go 1.21 container
+
+# Configure when to stop the pipeline early
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines on non-main branches
+  queued:
+    when: branch = 'main'   # Cancel queued pipelines on main branch
+
+# Commands to run before each job
+global_job_config:
+  prologue:
+    commands:
+      - checkout                    # Get the code from repository
+      - cache restore             # Restore cached dependencies      
+      - go mod download            # Download dependencies
+      - go install gotest.tools/gotestsum@latest  # Install gotestsum for enhanced test output
+
+# Pipeline blocks represent groups of jobs that can run in parallel
+blocks:
+  # Block for setting up dependencies and caching
+  - name: "🛠 Setup and Cache"
+    dependencies: []
+    task:
+      jobs:
+        - name: Install Dependencies
+          commands:
+            - go install golang.org/x/lint/golint@latest
+            - go install honnef.co/go/tools/cmd/staticcheck@latest
+            - cache store  # Cache dependencies for future runs
+
+  # Block for code quality checks
+  - name: "🔍 Code Quality"
+    dependencies: ["🛠 Setup and Cache"]
+    task:
+      jobs:
+        - name: Lint and Vet
+          commands:
+            - golint ./...                  # Run linter
+            - go vet ./...                  # Run static analysis
+            - staticcheck ./...             # Run advanced static analysis
+            - go fmt ./...                  # Format code
+
+  # Block for security checks
+  - name: "🔐 Security Checks"
+    dependencies: ["🛠 Setup and Cache"]
+    task:
+      jobs:
+        - name: Security Scan
+          commands:
+            - go install golang.org/x/vuln/cmd/govulncheck@latest  # Install security scanner
+            - govulncheck ./...             # Check for vulnerabilities
+
+  # Block for running tests
+  - name: "🧪 Tests"
+    dependencies: ["🔍 Code Quality", "🔐 Security Checks"]
+    task:
+      env_vars:
+        - name: GO_TEST_REPORT
+          value: "test-results.xml"  # Define the test report output path
+      jobs:
+        - name: "🟢 Go Test"
+          parallelism: 4  # Run tests across 4 parallel jobs for efficiency
+          commands:
+            - gotestsum --junitfile=$GO_TEST_REPORT -- -coverprofile=coverage.txt -covermode=atomic ./...  # Run tests with coverage and generate JUnit report
+            - go tool cover -func=coverage.txt  # Display coverage report
+      epilogue:
+        always:
+          commands:
+            - test-results publish $GO_TEST_REPORT  # Publish test results to Semaphore
+
+  - name: "📦 Build"
+    dependencies: ["🧪 Tests"]
+    task:
+      jobs:
+        - name: "Build Binary"
+          commands:
+            - GOOS=linux GOARCH=amd64 go build -o app
+            - artifact push workflow app  # Store binary as workflow artifact
+
+  - name: "🐳 Docker"
+    dependencies: ["📦 Build"]
+    task:
+      secrets:
+        - name: dockerhub
+      jobs:
+        - name: "Build and Push"
+          commands:
+            - artifact pull workflow app  # Get the binary from previous step
+            - echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+            - docker build -t your-image:$SEMAPHORE_WORKFLOW_ID .
+            - docker push your-image:$SEMAPHORE_WORKFLOW_ID
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "Merge Reports 📊"
+        commands:
+          - test-results gen-pipeline-report  # Generate a summary report of test results

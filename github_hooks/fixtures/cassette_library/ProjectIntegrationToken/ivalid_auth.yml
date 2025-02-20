@@ -1,0 +1,59 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.github.com/app/installations/13545123/access_tokens
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Awesome-Octocat-App
+      Authorization:
+      - Bearer eyJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2MjA5MTgwMTcsImV4cCI6MTYyMDkxODYxNywiaXNzIjo5MDcwOX0.EmFiWyzMLXfq3aqklPOK44rcMRqx9swEUakoOvKaxdvEAZOOVjqLkHd0pm6lNgU709i9P-vHinIO9wBelAMd4TySymR55u3IKh-TwoshbD4ZQq8mmeahbSzFlil7_vxQ1uZD5HgQHNn_QQ5rfuIR6nJWYJUucKuuSHAJs8UlGqGZ9m4sr1YlaaV3U1q19JBVl7ojyFXE5SfLsj-w0HlnvYF0MMltq1IS1KhH9MUXATWvMxSICkx5XtnU6myjYql60qaS57vmN2zGUCuzoDZ-gQu7u7CmbqJsGC6P4hMz6vmOktCqdNQYiNYXOGb_K8NJ6VOSiRVh_et37EHtKE1vjg
+      Accept:
+      - application/vnd.github.v3+json
+  response:
+    status:
+      code: 404
+      message: Not Found
+    headers:
+      Server:
+      - GitHub.com
+      Date:
+      - Thu, 13 May 2021 15:00:18 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '86'
+      X-Github-Media-Type:
+      - github.v3; format=json
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Resource, X-RateLimit-Reset, X-OAuth-Scopes,
+        X-Accepted-OAuth-Scopes, X-Poll-Interval, X-GitHub-Media-Type, Deprecation,
+        Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - '0'
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      Vary:
+      - Accept-Encoding, Accept, X-Requested-With
+      X-Github-Request-Id:
+      - F946:B277:23F4754:24AA59F:609D3F01
+    body:
+      encoding: UTF-8
+      string: '{"message":"Integration not found","documentation_url":"https://docs.github.com/rest"}'
+    http_version:
+  recorded_at: Thu, 13 May 2021 15:00:18 GMT
+recorded_with: VCR 4.0.0

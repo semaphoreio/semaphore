@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": true,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "jsx": "react-native",
+    "jsxFactory": "h",
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "target": "es2018",
+    "paths": {
+      "react": [
+        "./node_modules/preact/compat/"
+      ],
+      "react-dom": [
+        "./node_modules/preact/compat/"
+      ],
+      "react/jsx-runtime": ["./node_modules/preact/jsx-runtime"],
+      "react-dom/*": ["./node_modules/preact/compat/*"]
+    },
+    "typeRoots": [
+      "./node_modules/@types",
+      "./js/custom_types"
+    ]
+  },
+  // This is necessary for now. Otherwise eslint will complain about the js configuration files format.
+  "include": [
+    "js/**/*",
+  ],
+  "exclude": [
+    "node_modules",
+  ]
+}

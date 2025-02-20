@@ -1,0 +1,82 @@
+---
+http_interactions:
+- request:
+    method: get
+    uri: https://api.github.com/user/repos?per_page=100
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/vnd.github.moondragon+json
+      User-Agent:
+      - Octokit Ruby Gem 3.8.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - token 8e03eda81d0c6b20561c038ba48bd68fc7c1d26b
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Server:
+      - GitHub.com
+      Date:
+      - Wed, 15 Apr 2015 07:54:34 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Status:
+      - 200 OK
+      X-Ratelimit-Limit:
+      - '5000'
+      X-Ratelimit-Remaining:
+      - '4999'
+      X-Ratelimit-Reset:
+      - '1429088074'
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Etag:
+      - W/"c78e9506e74b1c5e1e36cff677ed3d29"
+      X-Oauth-Scopes:
+      - gist, public_repo, user
+      X-Accepted-Oauth-Scopes:
+      - ''
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding
+      X-Github-Media-Type:
+      - github.moondragon; format=json
+      X-Xss-Protection:
+      - 1; mode=block
+      X-Frame-Options:
+      - deny
+      Content-Security-Policy:
+      - default-src 'none'
+      Access-Control-Allow-Credentials:
+      - 'true'
+      Access-Control-Expose-Headers:
+      - ETag, Link, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset,
+        X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Poll-Interval
+      Access-Control-Allow-Origin:
+      - "*"
+      X-Github-Request-Id:
+      - BC023DBA:4D8B:6941A98:552E193A
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Content-Type-Options:
+      - nosniff
+      X-Served-By:
+      - 8a5c38021a5cd7cef7b8f49a296fee40
+    body:
+      encoding: UTF-8
+      string: '[{"id":25857659,"name":"base-app","full_name":"marvinwills/base-app","owner":{"login":"marvinwills","id":9428420,"avatar_url":"https://avatars.githubusercontent.com/u/9428420?v=3","gravatar_id":"","url":"https://api.github.com/users/marvinwills","html_url":"https://github.com/marvinwills","followers_url":"https://api.github.com/users/marvinwills/followers","following_url":"https://api.github.com/users/marvinwills/following{/other_user}","gists_url":"https://api.github.com/users/marvinwills/gists{/gist_id}","starred_url":"https://api.github.com/users/marvinwills/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/marvinwills/subscriptions","organizations_url":"https://api.github.com/users/marvinwills/orgs","repos_url":"https://api.github.com/users/marvinwills/repos","events_url":"https://api.github.com/users/marvinwills/events{/privacy}","received_events_url":"https://api.github.com/users/marvinwills/received_events","type":"User","site_admin":false},"private":false,"html_url":"https://github.com/marvinwills/base-app","description":"An
+        app to help jumpstart a new Rails 4 app. Features Ruby 2.0, PostgreSQL, jQuery,
+        RSpec, Cucumber, user and admin system built with Devise, Facebook login.","fork":true,"url":"https://api.github.com/repos/marvinwills/base-app","forks_url":"https://api.github.com/repos/marvinwills/base-app/forks","keys_url":"https://api.github.com/repos/marvinwills/base-app/keys{/key_id}","collaborators_url":"https://api.github.com/repos/marvinwills/base-app/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/marvinwills/base-app/teams","hooks_url":"https://api.github.com/repos/marvinwills/base-app/hooks","issue_events_url":"https://api.github.com/repos/marvinwills/base-app/issues/events{/number}","events_url":"https://api.github.com/repos/marvinwills/base-app/events","assignees_url":"https://api.github.com/repos/marvinwills/base-app/assignees{/user}","branches_url":"https://api.github.com/repos/marvinwills/base-app/branches{/branch}","tags_url":"https://api.github.com/repos/marvinwills/base-app/tags","blobs_url":"https://api.github.com/repos/marvinwills/base-app/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/marvinwills/base-app/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/marvinwills/base-app/git/refs{/sha}","trees_url":"https://api.github.com/repos/marvinwills/base-app/git/trees{/sha}","statuses_url":"https://api.github.com/repos/marvinwills/base-app/statuses/{sha}","languages_url":"https://api.github.com/repos/marvinwills/base-app/languages","stargazers_url":"https://api.github.com/repos/marvinwills/base-app/stargazers","contributors_url":"https://api.github.com/repos/marvinwills/base-app/contributors","subscribers_url":"https://api.github.com/repos/marvinwills/base-app/subscribers","subscription_url":"https://api.github.com/repos/marvinwills/base-app/subscription","commits_url":"https://api.github.com/repos/marvinwills/base-app/commits{/sha}","git_commits_url":"https://api.github.com/repos/marvinwills/base-app/git/commits{/sha}","comments_url":"https://api.github.com/repos/marvinwills/base-app/comments{/number}","issue_comment_url":"https://api.github.com/repos/marvinwills/base-app/issues/comments{/number}","contents_url":"https://api.github.com/repos/marvinwills/base-app/contents/{+path}","compare_url":"https://api.github.com/repos/marvinwills/base-app/compare/{base}...{head}","merges_url":"https://api.github.com/repos/marvinwills/base-app/merges","archive_url":"https://api.github.com/repos/marvinwills/base-app/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/marvinwills/base-app/downloads","issues_url":"https://api.github.com/repos/marvinwills/base-app/issues{/number}","pulls_url":"https://api.github.com/repos/marvinwills/base-app/pulls{/number}","milestones_url":"https://api.github.com/repos/marvinwills/base-app/milestones{/number}","notifications_url":"https://api.github.com/repos/marvinwills/base-app/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/marvinwills/base-app/labels{/name}","releases_url":"https://api.github.com/repos/marvinwills/base-app/releases{/id}","created_at":"2014-10-28T07:23:55Z","updated_at":"2014-09-16T09:39:44Z","pushed_at":"2014-08-20T11:24:10Z","git_url":"git://github.com/marvinwills/base-app.git","ssh_url":"git@github.com:marvinwills/base-app.git","clone_url":"https://github.com/marvinwills/base-app.git","svn_url":"https://github.com/marvinwills/base-app","homepage":"http://rt-baseapp.herokuapp.com/","size":842,"stargazers_count":0,"watchers_count":0,"language":null,"has_issues":false,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":0,"mirror_url":null,"open_issues_count":0,"forks":0,"open_issues":0,"watchers":0,"default_branch":"master","master_branch":"master","permissions":{"admin":true,"push":true,"pull":true}},{"id":33656196,"name":"warpdrive","full_name":"willscorp/warpdrive","owner":{"login":"willscorp","id":11867443,"avatar_url":"https://avatars.githubusercontent.com/u/11867443?v=3","gravatar_id":"","url":"https://api.github.com/users/willscorp","html_url":"https://github.com/willscorp","followers_url":"https://api.github.com/users/willscorp/followers","following_url":"https://api.github.com/users/willscorp/following{/other_user}","gists_url":"https://api.github.com/users/willscorp/gists{/gist_id}","starred_url":"https://api.github.com/users/willscorp/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/willscorp/subscriptions","organizations_url":"https://api.github.com/users/willscorp/orgs","repos_url":"https://api.github.com/users/willscorp/repos","events_url":"https://api.github.com/users/willscorp/events{/privacy}","received_events_url":"https://api.github.com/users/willscorp/received_events","type":"Organization","site_admin":false},"private":false,"html_url":"https://github.com/willscorp/warpdrive","description":"","fork":false,"url":"https://api.github.com/repos/willscorp/warpdrive","forks_url":"https://api.github.com/repos/willscorp/warpdrive/forks","keys_url":"https://api.github.com/repos/willscorp/warpdrive/keys{/key_id}","collaborators_url":"https://api.github.com/repos/willscorp/warpdrive/collaborators{/collaborator}","teams_url":"https://api.github.com/repos/willscorp/warpdrive/teams","hooks_url":"https://api.github.com/repos/willscorp/warpdrive/hooks","issue_events_url":"https://api.github.com/repos/willscorp/warpdrive/issues/events{/number}","events_url":"https://api.github.com/repos/willscorp/warpdrive/events","assignees_url":"https://api.github.com/repos/willscorp/warpdrive/assignees{/user}","branches_url":"https://api.github.com/repos/willscorp/warpdrive/branches{/branch}","tags_url":"https://api.github.com/repos/willscorp/warpdrive/tags","blobs_url":"https://api.github.com/repos/willscorp/warpdrive/git/blobs{/sha}","git_tags_url":"https://api.github.com/repos/willscorp/warpdrive/git/tags{/sha}","git_refs_url":"https://api.github.com/repos/willscorp/warpdrive/git/refs{/sha}","trees_url":"https://api.github.com/repos/willscorp/warpdrive/git/trees{/sha}","statuses_url":"https://api.github.com/repos/willscorp/warpdrive/statuses/{sha}","languages_url":"https://api.github.com/repos/willscorp/warpdrive/languages","stargazers_url":"https://api.github.com/repos/willscorp/warpdrive/stargazers","contributors_url":"https://api.github.com/repos/willscorp/warpdrive/contributors","subscribers_url":"https://api.github.com/repos/willscorp/warpdrive/subscribers","subscription_url":"https://api.github.com/repos/willscorp/warpdrive/subscription","commits_url":"https://api.github.com/repos/willscorp/warpdrive/commits{/sha}","git_commits_url":"https://api.github.com/repos/willscorp/warpdrive/git/commits{/sha}","comments_url":"https://api.github.com/repos/willscorp/warpdrive/comments{/number}","issue_comment_url":"https://api.github.com/repos/willscorp/warpdrive/issues/comments{/number}","contents_url":"https://api.github.com/repos/willscorp/warpdrive/contents/{+path}","compare_url":"https://api.github.com/repos/willscorp/warpdrive/compare/{base}...{head}","merges_url":"https://api.github.com/repos/willscorp/warpdrive/merges","archive_url":"https://api.github.com/repos/willscorp/warpdrive/{archive_format}{/ref}","downloads_url":"https://api.github.com/repos/willscorp/warpdrive/downloads","issues_url":"https://api.github.com/repos/willscorp/warpdrive/issues{/number}","pulls_url":"https://api.github.com/repos/willscorp/warpdrive/pulls{/number}","milestones_url":"https://api.github.com/repos/willscorp/warpdrive/milestones{/number}","notifications_url":"https://api.github.com/repos/willscorp/warpdrive/notifications{?since,all,participating}","labels_url":"https://api.github.com/repos/willscorp/warpdrive/labels{/name}","releases_url":"https://api.github.com/repos/willscorp/warpdrive/releases{/id}","created_at":"2015-04-09T08:00:00Z","updated_at":"2015-04-09T08:00:00Z","pushed_at":"2015-04-09T08:00:00Z","git_url":"git://github.com/willscorp/warpdrive.git","ssh_url":"git@github.com:willscorp/warpdrive.git","clone_url":"https://github.com/willscorp/warpdrive.git","svn_url":"https://github.com/willscorp/warpdrive","homepage":null,"size":0,"stargazers_count":0,"watchers_count":0,"language":null,"has_issues":true,"has_downloads":true,"has_wiki":true,"has_pages":false,"forks_count":0,"mirror_url":null,"open_issues_count":0,"forks":0,"open_issues":0,"watchers":0,"default_branch":"master","master_branch":"master","permissions":{"admin":true,"push":true,"pull":true}}]'
+    http_version: 
+  recorded_at: Wed, 15 Apr 2015 07:54:34 GMT
+recorded_with: VCR 2.9.3

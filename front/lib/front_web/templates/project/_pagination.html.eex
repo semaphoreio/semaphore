@@ -1,0 +1,25 @@
+<div class="pagination flex justify-between pt3 bt b--lighter-gray" style="display: none;">
+  <div class="button-group">
+    <button class="btn btn-secondary btn-small prev-button" data-action="Previous">
+      Previous
+    </button>
+
+    <button class="btn btn-secondary btn-small next-button" data-action="Next">
+      Next
+    </button>
+  </div>
+
+  <div class="f5 flex items-center">
+    <div class="mr2">Page</div>
+
+    <select class="form-control form-control-small" data-action="PageChange">
+      <option value="1" selected="selected">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+
+    <div class="ml2">of <span class="total">1</span></div>
+  </div>
+</div>

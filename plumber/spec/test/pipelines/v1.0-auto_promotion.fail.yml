@@ -1,0 +1,25 @@
+version: "v1.0"
+name: Auto promotion failing test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: B1
+    task:
+      jobs:
+        - commands:
+            - echo 123
+
+promotions:
+  - name: Foo promotion
+    pipeline_file: foo.yml
+    auto_promote_on:
+      - result: failed
+        labels:
+          - b3
+          - b4
+        label_patterns:
+          - dev-
+          - ".*"

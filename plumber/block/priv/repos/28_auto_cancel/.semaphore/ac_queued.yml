@@ -1,0 +1,14 @@
+version: "v1.0"
+name: Auto-cancel queued pileines
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+auto_cancel:
+  queued:
+    when: branch = 'master'
+blocks:
+  - task:
+      jobs:
+        - commands:
+            - sleep 7

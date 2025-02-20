@@ -1,0 +1,19 @@
+<%= if @pagination.visible do %>
+<div class="flex justify-center mv3">
+    <%= if @pagination.newest do %>
+      <div>
+        Back to <a data-action="LoadPage" data-token="" data-direction="next" href="#">Newest</a>
+        <span class="ml1 mr2">·</span>
+      </div>
+    <% end %>
+    <div class="button-group">
+      <button class="btn btn-secondary" <%= if @pagination.previous == nil, do: "disabled" %> data-action="LoadPage" data-token="<%= @pagination.previous %>" data-direction="previous">
+        Newer
+      </button>
+
+      <button class="btn btn-secondary" <%= if @pagination.next == nil, do: "disabled" %> data-action="LoadPage" data-token="<%= @pagination.next %>" data-direction="next">
+        Older
+      </button>
+    </div>
+  </div>
+<% end %>

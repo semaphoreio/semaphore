@@ -1,0 +1,48 @@
+<% agent_envs = agent_envs(@cloud_agents, @self_hosted_agents, @organization_id) %>
+<%= if map_size(agent_envs) == 0 do %>
+    <div class="shadow-1 bg-washed-yellow pa3">
+        <p class="mb0">
+            No agent types available. You can create new agent types <a href="/self_hosted_agents">here</a>.
+        </p>
+    </div>
+<% else %>
+    <%= form_for @init_job_defaults, organization_pfc_path(@conn, :put_init_job_defaults), [method: :put], fn form -> %>
+        <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+            window.InjectedDataByBackend.PreFlightChecks = {};
+            window.InjectedDataByBackend.PreFlightChecks.AgentEnvs = <%= raw Poison.encode!(agent_envs, escape: :html_safe) %>
+        </script>
+        <div class="mb3">
+            <label class="db b mb1" for="agent_config_env_type">Environment type</label>
+            <select id="agent_config_env_type" class="form-control w-100 w-75-m">
+                <%= options_for_select env_type_options(@cloud_agents, @self_hosted_agents, @organization_id),
+                        selected_env_type(@init_job_defaults, @cloud_agents, @self_hosted_agents, @organization_id) %>
+            </select>
+        </div>
+        <div class="mb3">
+            <%= label form, :machine_type, "Machine type", class: "db b mb1" %>
+            <%= select form, :machine_type, machine_type_options(@init_job_defaults, @cloud_agents, @self_hosted_agents, @organization_id),
+                disabled: !@permissions["organization.pre_flight_checks.manage"],
+                class: "form-control w-100 w-75-m"                     %>
+            <%= if form.errors[:machine_type]  do %>
+                <div class="f5 b mv1 red">
+                    <%= translate_error(form.errors[:machine_type]) %>
+                </div>
+            <% end %>
+        </div>
+        <div class="mb3">
+            <%= label form, :os_image, "OS image", class: "db b mb1" %>
+            <%= select form, :os_image, os_image_options(@init_job_defaults, @cloud_agents, @self_hosted_agents, @organization_id),
+                disabled: !@permissions["organization.pre_flight_checks.manage"],
+                class: "form-control w-100 w-75-m" %>
+            <%= if form.errors[:os_image]  do %>
+                <div class="f5 b mv1 red">
+                    <%= translate_error(form.errors[:os_image]) %>
+                </div>
+            <% end %>
+        </div>
+
+        <%= if @permissions["organization.pre_flight_checks.manage"] do %>
+            <%= submit "Save changes", id: "agent_config_submit", class: "btn btn-primary primary mt3" %>
+        <% end %>
+    <% end %>
+<% end %>

@@ -1,0 +1,28 @@
+version: v1.0
+name: Sequential
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Build
+    task:
+      jobs:
+        - name: build
+          commands:
+            - checkout
+            - ls
+  - name: Test
+    task:
+      jobs:
+        - name: test
+          commands:
+            - checkout
+            - ls
+  - name: Release
+    task:
+      jobs:
+        - name: release
+          commands:
+            - checkout
+            - ls

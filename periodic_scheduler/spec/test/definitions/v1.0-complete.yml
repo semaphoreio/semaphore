@@ -1,0 +1,10 @@
+apiVersion: v1.0
+kind: Schedule
+metadata:
+  name: foo name
+  id: some-uuid
+spec:
+  project: my first
+  branch: master
+  at: "* * * "
+  pipeline_file: .semaphore/cron.yml

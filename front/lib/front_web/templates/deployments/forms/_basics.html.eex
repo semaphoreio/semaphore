@@ -1,0 +1,61 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Deployments.Basics = {
+        name: "<%= from_form(@form, :name) %>",
+        description: "<%= from_form(@form, :description) %>",
+        url: "<%= from_form(@form, :url) %>"
+    };
+</script>
+
+<%= if @show_description? do %>
+    <div class="ml2 measure">
+        Provide information that will allow your team to identify and understand
+        the rules that apply while deploying to this target.
+    </div>
+<% end %>
+
+<div class="ml2 mv4" data-validation="name">
+    <%= label @form, :name, class: "db b mb2" do %>
+        Name of the target
+    <% end %>
+    <%= hidden_input @form, :id %>
+    <%= hidden_input @form, :unique_token %>
+    <%= text_input @form, :name, class: "form-control w-100 w-50-m",
+        "data-validation-input": "name", placeholder: "e.g. staging" %>
+    <p class="f6 mt1 mb0 nb1">Use alphabetic characters, numbers, underscores and dashes</p>
+    <div class="f5 b mv1 red" data-validation-message="name"></div>
+</div>
+
+<div class="ml2 mv4" data-validation="description">
+    <%= label @form, :description, class: "db b mb2" do %>
+        Description <span class="gray normal">(optional)</span>
+    <% end %>
+    <%= text_input @form, :description, class: "form-control w-100 w-50-m",
+        "data-validation-input": "description",
+        placeholder: "e.g. place where we test our product before releasing to production" %>
+    <div class="f5 b mv1 red" data-validation-message="description"></div>
+</div>
+
+<div class="ml2 mv4" data-validation="url">
+    <%= label @form, :url, class: "db b mb2" do %>
+        URL <span class="gray normal">(optional)</span>
+    <% end %>
+    <%= text_input @form, :url, class: "form-control w-100 w-50-m",
+        "data-validation-input": "url", placeholder: "e.g. https://staging.example.com" %>
+    <div class="f5 b mv1 red" data-validation-message="url"></div>
+</div>
+
+<div class="ml2 mv4">
+    <%= label @form, :bookmark_parameters, class: "db b mb2" do %>
+        Bookmark parameters <span class="gray normal">(optional)</span>
+    <% end %>
+    <p class="f6 mt1 mb0 nb1">
+        If you use parameterized promotions, you can select up to three of parameters <br />
+        and use them as bookmarks of deployments.<br />
+        You can later filter by those bookmarks when browsing Deployment History.
+    </p>
+    <div class="flex flex-row mt2 w-100 w-50-m">
+        <%= text_input @form, :bookmark_parameter1, class: "form-control w-100 w-50-m mr2", placeholder: "Parameter #1" %>
+        <%= text_input @form, :bookmark_parameter2, class: "form-control w-100 w-50-m mr2", placeholder: "Parameter #2" %>
+        <%= text_input @form, :bookmark_parameter3, class: "form-control w-100 w-50-m mr2", placeholder: "Parameter #3" %>
+    </div>
+</div>

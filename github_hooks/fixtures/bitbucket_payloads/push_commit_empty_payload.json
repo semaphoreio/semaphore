@@ -1,0 +1,345 @@
+{
+  "id": "MmFjZjhlZDAtODViNS00OGM2LWI3ODktMzEwZmRjM2JmYzllLDM1Yjg5MTQ2LWZlM2MtNDNhZS04NmU3LTMyMmViZGE5YmQxZSw3MzA0YjdmOS03NDgyLTQ2ZDQtOWI5NS0zY2Q1YTZlZjJlNmY=",
+  "push": {
+    "changes": [
+      {
+        "new": {
+          "name": "master",
+          "type": "branch",
+          "links": {
+            "html": {
+              "href": "https://bitbucket.org/semaphoreci/foo/branch/master"
+            },
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/refs/branches/master"
+            },
+            "commits": {
+              "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commits/master"
+            }
+          },
+          "target": {
+            "date": "2021-10-04T10:15:57+00:00",
+            "hash": "4fe4180681a5603b58961541d9020bfa68a38a7f",
+            "type": "commit",
+            "links": {
+              "html": {
+                "href": "https://bitbucket.org/semaphoreci/foo/commits/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              },
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              }
+            },
+            "author": {
+              "raw": "@skipi u003cmkutryj@renderedtext.comu003e",
+              "type": "author",
+              "user": {
+                "type": "user",
+                "uuid": "{01b41c8b-0410-4488-a813-e82b8803c846}",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D/"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/users/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D"
+                  },
+                  "avatar": {
+                    "href": "https://secure.gravatar.com/avatar/729c6c6354d64e689159524fe7106f5b?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMK-1.png"
+                  }
+                },
+                "nickname": "Mikołaj Kutryj",
+                "account_id": "61166912a590570069ed37d7",
+                "display_name": "Mikołaj Kutryj"
+              }
+            },
+            "message": "Mon Oct  4 10:15:57 UTC 2021 - pushn",
+            "parents": [
+              {
+                "hash": "3e33408cb14ace049f9f5799caef3afeaeff4b40",
+                "type": "commit",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/semaphoreci/foo/commits/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+                  }
+                }
+              }
+            ],
+            "summary": {
+              "raw": "Mon Oct  4 10:15:57 UTC 2021 - pushn",
+              "html": "u003cpu003eMon Oct  4 10:15:57 UTC 2021 - pushu003c/pu003e",
+              "type": "rendered",
+              "markup": "markdown"
+            },
+            "rendered": {},
+            "properties": {}
+          },
+          "merge_strategies": [
+            "merge_commit",
+            "squash",
+            "fast_forward"
+          ],
+          "default_merge_strategy": "merge_commit"
+        },
+        "old": {
+          "name": "master",
+          "type": "branch",
+          "links": {
+            "html": {
+              "href": "https://bitbucket.org/semaphoreci/foo/branch/master"
+            },
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/refs/branches/master"
+            },
+            "commits": {
+              "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commits/master"
+            }
+          },
+          "target": {
+            "date": "2021-10-04T10:10:54+00:00",
+            "hash": "3e33408cb14ace049f9f5799caef3afeaeff4b40",
+            "type": "commit",
+            "links": {
+              "html": {
+                "href": "https://bitbucket.org/semaphoreci/foo/commits/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+              },
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+              }
+            },
+            "author": {
+              "raw": "@skipi u003cmkutryj@renderedtext.comu003e",
+              "type": "author",
+              "user": {
+                "type": "user",
+                "uuid": "{01b41c8b-0410-4488-a813-e82b8803c846}",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D/"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/users/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D"
+                  },
+                  "avatar": {
+                    "href": "https://secure.gravatar.com/avatar/729c6c6354d64e689159524fe7106f5b?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMK-1.png"
+                  }
+                },
+                "nickname": "Mikołaj Kutryj",
+                "account_id": "61166912a590570069ed37d7",
+                "display_name": "Mikołaj Kutryj"
+              }
+            },
+            "message": "Mon Oct  4 10:10:54 UTC 2021 - pushn",
+            "parents": [
+              {
+                "hash": "9af13d823efcbd9774412812685eca8fef7fefc5",
+                "type": "commit",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/semaphoreci/foo/commits/9af13d823efcbd9774412812685eca8fef7fefc5"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/9af13d823efcbd9774412812685eca8fef7fefc5"
+                  }
+                }
+              }
+            ],
+            "summary": {
+              "raw": "Mon Oct  4 10:10:54 UTC 2021 - pushn",
+              "html": "u003cpu003eMon Oct  4 10:10:54 UTC 2021 - pushu003c/pu003e",
+              "type": "rendered",
+              "markup": "markdown"
+            },
+            "rendered": {},
+            "properties": {}
+          },
+          "merge_strategies": [
+            "merge_commit",
+            "squash",
+            "fast_forward"
+          ],
+          "default_merge_strategy": "merge_commit"
+        },
+        "links": {
+          "diff": {
+            "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/diff/4fe4180681a5603b58961541d9020bfa68a38a7f..3e33408cb14ace049f9f5799caef3afeaeff4b40"
+          },
+          "html": {
+            "href": "https://bitbucket.org/semaphoreci/foo/branches/compare/4fe4180681a5603b58961541d9020bfa68a38a7f..3e33408cb14ace049f9f5799caef3afeaeff4b40"
+          },
+          "commits": {
+            "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commits?include=4fe4180681a5603b58961541d9020bfa68a38a7fu0026exclude=3e33408cb14ace049f9f5799caef3afeaeff4b40"
+          }
+        },
+        "closed": false,
+        "forced": false,
+        "commits": [
+          {
+            "date": "2021-10-04T10:15:57+00:00",
+            "hash": "4fe4180681a5603b58961541d9020bfa68a38a7f",
+            "type": "commit",
+            "links": {
+              "diff": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/diff/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              },
+              "html": {
+                "href": "https://bitbucket.org/semaphoreci/foo/commits/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              },
+              "self": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              },
+              "patch": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/patch/4fe4180681a5603b58961541d9020bfa68a38a7f"
+              },
+              "approve": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/4fe4180681a5603b58961541d9020bfa68a38a7f/approve"
+              },
+              "comments": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/4fe4180681a5603b58961541d9020bfa68a38a7f/comments"
+              },
+              "statuses": {
+                "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/4fe4180681a5603b58961541d9020bfa68a38a7f/statuses"
+              }
+            },
+            "author": {
+              "raw": "@skipi u003cmkutryj@renderedtext.comu003e",
+              "type": "author",
+              "user": {
+                "type": "user",
+                "uuid": "{01b41c8b-0410-4488-a813-e82b8803c846}",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D/"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/users/%7B01b41c8b-0410-4488-a813-e82b8803c846%7D"
+                  },
+                  "avatar": {
+                    "href": "https://secure.gravatar.com/avatar/729c6c6354d64e689159524fe7106f5b?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMK-1.png"
+                  }
+                },
+                "nickname": "Mikołaj Kutryj",
+                "account_id": "61166912a590570069ed37d7",
+                "display_name": "Mikołaj Kutryj"
+              }
+            },
+            "message": "Mon Oct  4 10:15:57 UTC 2021 - pushn",
+            "parents": [
+              {
+                "hash": "3e33408cb14ace049f9f5799caef3afeaeff4b40",
+                "type": "commit",
+                "links": {
+                  "html": {
+                    "href": "https://bitbucket.org/semaphoreci/foo/commits/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+                  },
+                  "self": {
+                    "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo/commit/3e33408cb14ace049f9f5799caef3afeaeff4b40"
+                  }
+                }
+              }
+            ],
+            "summary": {
+              "raw": "Mon Oct  4 10:15:57 UTC 2021 - pushn",
+              "html": "u003cpu003eMon Oct  4 10:15:57 UTC 2021 - pushu003c/pu003e",
+              "type": "rendered",
+              "markup": "markdown"
+            },
+            "rendered": {},
+            "properties": {}
+          }
+        ],
+        "created": false,
+        "truncated": false
+      }
+    ]
+  },
+  "actor": {
+    "type": "team",
+    "uuid": "{35e6e36c-5957-4285-9ae8-099861310274}",
+    "links": {
+      "html": {
+        "href": "https://bitbucket.org/%7B35e6e36c-5957-4285-9ae8-099861310274%7D/"
+      },
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/workspaces/%7B35e6e36c-5957-4285-9ae8-099861310274%7D"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/account/semaphoreci/avatar/"
+      }
+    },
+    "username": "semaphoreci",
+    "display_name": "SemaphoreCI"
+  },
+  "repository": {
+    "scm": "git",
+    "name": "foo",
+    "type": "repository",
+    "uuid": "{87d577f7-77a9-4a49-91f8-7c01ab03b4a9}",
+    "links": {
+      "html": {
+        "href": "https://bitbucket.org/semaphoreci/foo"
+      },
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/repositories/semaphoreci/foo"
+      },
+      "avatar": {
+        "href": "https://bytebucket.org/ravatar/%7B87d577f7-77a9-4a49-91f8-7c01ab03b4a9%7D?ts=default"
+      }
+    },
+    "owner": {
+      "type": "team",
+      "uuid": "{35e6e36c-5957-4285-9ae8-099861310274}",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.org/%7B35e6e36c-5957-4285-9ae8-099861310274%7D/"
+        },
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/workspaces/%7B35e6e36c-5957-4285-9ae8-099861310274%7D"
+        },
+        "avatar": {
+          "href": "https://bitbucket.org/account/semaphoreci/avatar/"
+        }
+      },
+      "username": "semaphoreci",
+      "display_name": "SemaphoreCI"
+    },
+    "project": {
+      "key": "PROJ",
+      "name": "Untitled project",
+      "type": "project",
+      "uuid": "{0d39da72-9ffc-4b1a-81a4-dc818c680d0a}",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.org/semaphoreci/workspace/projects/PROJ"
+        },
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/workspaces/semaphoreci/projects/PROJ"
+        },
+        "avatar": {
+          "href": "https://bitbucket.org/account/user/semaphoreci/projects/PROJ/avatar/32?ts=1449202815"
+        }
+      }
+    },
+    "website": null,
+    "full_name": "semaphoreci/foo",
+    "workspace": {
+      "name": "SemaphoreCI",
+      "slug": "semaphoreci",
+      "type": "workspace",
+      "uuid": "{35e6e36c-5957-4285-9ae8-099861310274}",
+      "links": {
+        "html": {
+          "href": "https://bitbucket.org/semaphoreci/"
+        },
+        "self": {
+          "href": "https://api.bitbucket.org/2.0/workspaces/semaphoreci"
+        },
+        "avatar": {
+          "href": "https://bitbucket.org/workspaces/semaphoreci/avatar/?ts=1543627739"
+        }
+      }
+    },
+    "is_private": false
+  }
+}

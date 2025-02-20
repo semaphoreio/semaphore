@@ -1,0 +1,7 @@
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.OrganizationOnboardingConfig = {
+    createOrganizationURL: "<%= organization_onboarding_path(@conn, :create) %>",
+  }
+</script>
+<div id="organization-onboarding-app"></div>

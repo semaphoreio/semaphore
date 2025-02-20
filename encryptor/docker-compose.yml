@@ -1,0 +1,19 @@
+version: '3.6'
+services:
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-encryptor}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: dev
+    tty: true
+    environment:
+      START_API: "yes"
+      GRPC_API_PORT: 8080
+    volumes:
+      - go-pkg-cache:/go
+      - .:/app
+volumes:
+  go-pkg-cache:
+    driver: local

@@ -1,0 +1,11 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.CheckURL = "<%= @check_url %>"
+</script>
+
+<h1 class="f2 f1-m mb0">Initializing setup…</h1>
+<p class="mb3 mb4-l">
+  This could take up to a minute depending on the size of the project
+</p>
+
+<div id="project-onboarding-initializing-message">
+</div>

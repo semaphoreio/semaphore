@@ -1,0 +1,30 @@
+services:
+  app:
+    container_name: badges
+    image: ${IMAGE:-badges}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/badges/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+
+    ports:
+      - "4000:4000"
+
+    tty: true
+    restart: always
+    command: ["bash", "-c", "elixir --name app@127.0.0.1 -S mix run --no-halt"]
+
+    environment:
+      IN_DOCKER: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+
+    volumes:
+      - .:/app

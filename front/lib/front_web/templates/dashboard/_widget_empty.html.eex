@@ -1,0 +1,4 @@
+<div class="tc mv5">
+  <img src="<%= assets_path() %>/images/ill-mountaineers-mono.png" width="360">
+  <div class="f5 gray mw6 center mt3 ph4">Push to the repository to see your work running here, or <%= link "Create new project", to: "/new_project" %></div>
+</div>

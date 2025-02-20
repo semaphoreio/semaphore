@@ -1,0 +1,35 @@
+<%= if Map.has_key?(@job, :state) do %>
+  <%= link to: "/jobs/#{@job.id}", data: job_data(@job, @conn), class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray", style: "font-weight: normal;" do %>
+    <div class="flex items-center pr3">
+      <%= case {@job.state, @job.result} do %>
+        <% {:ENQUEUED, _} -> %>
+          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-enqueued</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#fd7e14" r="8"/><g fill="#fff"><rect height="4" rx="1" width="2" x="3" y="5"/><rect height="4" rx="1" width="2" x="7" y="6"/><rect height="4" rx="1" width="2" x="11" y="7"/></g></g></svg>
+        <% {:FINISHED, :PASSED} -> %>
+          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-passed</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#00a569" r="8"/><path d="M7.456 8.577L6.273 7.45a1 1 0 00-1.38 1.448l1.917 1.826a1 1 0 001.423-.044l3.386-3.652a1 1 0 00-1.466-1.36z" fill="#fff" fill-rule="nonzero"/></g></svg>
+        <% {:FINISHED, :FAILED} -> %>
+          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-failed</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#e53935" r="8"/><g fill="#fff" fill-rule="nonzero"><path d="M5.293 6.707l4 4a1 1 0 101.414-1.414l-4-4a1 1 0 00-1.414 1.414z"/><path d="M5.293 9.293l4-4a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414-1.414z"/></g></g></svg>
+        <% {:FINISHED, :STOPPED} -> %>
+          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-stopped</title><g fill="none" fill-rule="evenodd"><circle cx="8.011" cy="8" fill="#667979" r="8"/><path d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z" fill="#fff" fill-rule="nonzero"/></g></svg>
+        <% {:RUNNING, _} -> %>
+          <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-running</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#1570ff" r="8"/><g fill="#fff"><circle cx="5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="11" cy="8" r="1"/></g></g></svg>
+      <% end %>
+      <%= @job.name %>
+    </div>
+
+    <span
+      timer <%= if @job.state == :RUNNING, do: "run" %>
+      class="f5 code <%= FrontWeb.PipelineView.job_status_color(@job) %>"
+      seconds="<%= job_total_time(@job) %>">
+      <%= job_total_time(@job) |> Front.DurationFormatter.format() %>
+    </span>
+  <% end %>
+<% else %>
+  <div style="font-weight: normal;" class="link dark-gray flex items-center justify-between pv1 nh2 ph2 bt b--black-15 hover-bg-washed-gray">
+    <div class="flex items-center pr3">
+      <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-not-started</title><path d="M8 0c4.418 0 8 3.59 8 8 0 4.418-3.59 8-8 8-4.418 0-8-3.59-8-8 0-4.418 3.59-8 8-8zM2 8c0 3.308 2.69 6 6 6 3.308 0 6-2.69 6-6 0-3.308-2.69-6-6-6-3.308 0-6 2.69-6 6z" fill="#b4c0c0"/></svg>
+
+      <%= @job.name %>
+    </div>
+    <span class="f5 code gray">--:--</span>
+  </div>
+<% end %>

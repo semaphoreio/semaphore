@@ -1,0 +1,12 @@
+<%= if (@widget.workflows) |> Enum.empty? do %>
+  <%= render FrontWeb.DashboardView, "_widget_empty.html", widget: @widget %>
+<% else %>
+  <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @widget.workflows, pagination: @widget.pagination, page: :dashboard %>
+<% end %>
+<%= render FrontWeb.DashboardView, "partials/_pagination.html" %>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+if (typeof WorkflowList !== 'undefined') {
+  WorkflowList.init();
+}
+</script>

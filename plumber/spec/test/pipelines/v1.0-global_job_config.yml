@@ -1,0 +1,19 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+global_job_config:
+  prologue:
+    commands:
+      - chenckout
+  env_vars:
+    - name: TEST_ENV_VAR
+      value: test_value
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - echo $TEST_ENV_VAR

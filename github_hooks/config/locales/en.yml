@@ -1,0 +1,34 @@
+# Sample localization file for English. Add more files in this directory for other locales.
+# See http://github.com/svenfuchs/rails-i18n/tree/master/rails%2Flocale for starting points.
+
+en:
+  activerecord:
+    attributes:
+      server:
+        private_ssh_key_raw: "Private SSH key"
+        url: "Server URL"
+      user:
+        password_confirmation: "Password"
+      team:
+        access_level: "Permission"
+    errors:
+      models:
+        user:
+          attributes:
+            password_confirmation:
+              confirmation: "doesn't match confirmation"
+  time:
+    formats:
+      long_date: "%A, %b %d %Y"
+      short_date: "%B %d, %Y"
+      short_date_short_month: "%b %d %Y"
+      short_date_witout_year: "%b %d"
+      date_with_time: "%A, %b %d %Y at %H:%M"
+      short_date_with_time: "%b %d / %H:%M:%S"
+      short_time: "%I:%M"
+      long_time: "%I:%M:%S %p"
+      test_time: "%M:%S"
+      at_time: "%b %e %Y at %H:%M"
+      short_day_and_month: "%a, %b %d"
+      short_month_and_day_of_the_month: "%b %d"
+      day_of_the_month: "%d"

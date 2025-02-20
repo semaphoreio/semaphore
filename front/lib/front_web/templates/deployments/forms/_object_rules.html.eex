@@ -1,0 +1,79 @@
+<%= if @show_description? do %>
+    <div class="ml2 measure">
+        Limit from which branches, tags, or pull-requests can your team deploy.
+    </div>
+<% end %>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Deployments.Objects = {
+        branches: <%= raw injectable(from_form(@form, :branches)) %>,
+        tags: <%= raw injectable(from_form(@form, :tags)) %>,
+        branchMode: "<%= from_form(@form, :branch_mode) %>",
+        tagMode: "<%= from_form(@form, :tag_mode) %>",
+    };
+</script>
+<div class="ml2 mv4">
+    <%= label @form, :branch_mode, "Branches", class: "db b mb2" %>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :branch_mode, "all" %>
+        <%= label @form, :branch_mode_all, "All", class: "ml2" %>
+    </div>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :branch_mode, "whitelisted" %>
+        <%= label @form, :branch_mode_whitelisted, "Whitelisted only", class: "ml2" %>
+    </div>
+
+    <div class="bl b--light-gray mv2 pv2 ml2 pl3" data-component="branch-details">
+        <div data-component="branch-items"></div>
+        <div class="mt2">
+            <a href="#" data-action="branch-item-add" class="gray underline">+ Add more</a>
+        </div>
+    </div>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :branch_mode, "none" %>
+        <%= label @form, :branch_mode_none, "None", class: "ml2" %>
+    </div>
+</div>
+
+<div class="ml2 mv4">
+    <%= label @form, :tag_mode, "Tags", class: "db b mb2" %>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :tag_mode, "all" %>
+        <%= label @form, :tag_mode_all, "All", class: "ml2" %>
+    </div>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :tag_mode, "whitelisted" %>
+        <%= label @form, :tag_mode_whitelisted, "Whitelisted only", class: "ml2" %>
+    </div>
+
+    <div class="bl b--light-gray mv2 pv2 ml2 pl3" data-component="tag-details">
+        <div data-component="tag-items"></div>
+        <div class="mt2">
+            <a href="#" data-action="tag-item-add" class="gray underline">+ Add more</a>
+        </div>
+    </div>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :tag_mode, "none" %>
+        <%= label @form, :tag_mode_none, "None", class: "ml2" %>
+    </div>
+</div>
+
+
+<div class="ml2 mv4">
+    <%= label @form, :pr_mode, "Pull requests", class: "db b mb2" %>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :pr_mode, "all" %>
+        <%= label @form, :pr_mode_all, "All", class: "ml2" %>
+    </div>
+
+    <div class="flex items-center">
+        <%= radio_button @form, :pr_mode, "none" %>
+        <%= label @form, :pr_mode_none, "None", class: "ml2" %>
+    </div>
+</div>

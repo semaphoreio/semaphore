@@ -1,0 +1,58 @@
+<%= if @permissions["organization.general_settings.view"] do %>
+  <div>
+    <h2 class="f3 f2-m mb0">General</h2>
+    <p class="mb3 measure">Set up organization basics</p>
+    <div class="pb3">
+      <%= form_for @conn, settings_path(@conn, :update), fn f -> %>
+        <div class="mb3">
+          <%= text_input f, :redirect_path, value: settings_path(@conn, :show), hidden: true %>
+          <%= label f, :name, "Name", class: "db b mb1" %>
+          <%= text_input f, :name, class: "form-control w-100 w-50-m #{error_on_org_name_class(@errors)}", 
+            placeholder: "Enter Name…", value: @organization.name, disabled: !@permissions["organization.general_settings.manage"]
+          %>
+        </div>
+        <p class="f5 b mb1">Workflow restrictions</p>
+        <div class="mb1">
+          <%= checkbox f, :deny_member_workflows, disabled: !@permissions["organization.general_settings.manage"], checked: @organization.deny_member_workflows %>
+          <%= label f, :deny_member_workflows, "Do not run workflows for project members", class: "ml2" %>
+        </div>
+        <div class="mb3">
+          <%= checkbox f, :deny_non_member_workflows, disabled: !@permissions["organization.general_settings.manage"], checked: @organization.deny_non_member_workflows %>
+          <%= label f, :deny_non_member_workflows, "Do not run workflows for non-project members", class: "ml2" %>
+        </div>
+        <%= if @permissions["organization.general_settings.manage"] do %>
+          <%= submit "Save changes", class: "btn btn-primary primary" %>
+        <% end %>
+      <% end %>
+    </div>
+    <div class="pv3 bt b--lighter-gray">
+      <div class="db b">URL address</div>
+      <div class="mb3">
+        <%= link "https://#{@organization.username}.#{Application.fetch_env!(:front, :domain)}", to: dashboard_path(@conn, :index) %>
+      </div>
+      <%= if @permissions["organization.general_settings.manage"] do %>
+        <p class="measure mb2">Organization URL is unique and changing it will break the CLI connection for all its members. Proceed with caution.</p>
+        <div>
+          <%= link "Change URL…", to: settings_path(@conn, :change_url), class: "btn btn-secondary" %>
+        </div>
+      <% end %>
+    </div>
+    <%= if FeatureProvider.feature_enabled?(:multiple_organizations, @conn.assigns[:organization_id]) do %>
+      <%= if @permissions["organization.delete"] do %>
+        <div class="pt3 bt b--lighter-gray">
+          <div class="b">Delete Organization</div>
+          <p class="mb2">No longer need this organization? Proceed with caution.</p>
+          <div>
+            <%= link "Delete Organization…", to: settings_path(@conn, :confirm_delete), class: "btn btn-secondary" %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Organization Settings.<br>
+      Ask organization owner or any of the admins to give you access.</p>
+  </div>
+<% end %>

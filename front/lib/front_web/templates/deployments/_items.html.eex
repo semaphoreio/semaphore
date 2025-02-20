@@ -1,0 +1,14 @@
+<style>
+    #deployments-container { display: grid; gap: 16px;}
+    #deployments-container[aria-label="list-view"] { grid-template-columns: repeat(1, 1fr); }
+    #deployments-container[aria-label="grid-view"] { grid-template-columns: repeat(2, 1fr); }
+</style>
+<div class="flex flex-row-reverse mb3"></div>
+<div id="deployments-container" class="nb3 pb3 nb4-l" aria-label="list-view">
+    <%= for target <- @targets do %>
+        <%= render FrontWeb.DeploymentsView, "_item.html",
+                    conn: @conn,
+                    project: @project,
+                    target: target %>
+    <% end %>
+</div>

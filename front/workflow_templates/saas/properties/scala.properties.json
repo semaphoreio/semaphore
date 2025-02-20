@@ -1,0 +1,13 @@
+{
+  "title": "Scala",
+  "description": "Test your Scala project",
+  "category": "Other",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "sbt test"
+  ],
+  "icon": "lang-scala.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/scala.yml"
+}

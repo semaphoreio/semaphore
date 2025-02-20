@@ -1,0 +1,8 @@
+#jobs:
+  - name: job1
+    commands:
+    - echo job1
+    - echo bar
+  - name: job2
+    commands:
+    - echo foo

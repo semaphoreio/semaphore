@@ -1,0 +1,17 @@
+<div id="filter_by_role_btn" selected_role_id="" class="pointer flex items-center btn-secondary btn ml3" data-template="roleSelector" aria-expanded="false">
+  <span class="material-symbols-outlined mr1">filter_list</span>
+  <span id="selected_role_name">Role</span>
+  <span class="material-symbols-outlined">expand_more</span>
+</div>
+
+<div id="roleSelector" class="dn">
+  <%= for role <- @roles do %>
+    <div role_id="<%= role.id %>" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0"><%= role.name %></p>
+        <p class="f6 gray mb0 measure"><%= role.description %></p>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,9 @@
+version: "v1.0"
+name: Single command job
+
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

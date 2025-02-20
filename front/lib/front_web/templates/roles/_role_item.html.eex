@@ -1,0 +1,18 @@
+<div class="bg-white shadow-1 ph3 pv2 mv3 br3">
+  <div class="flex items-center justify-between mb2">
+    <span class="b"><%= @role.name %></span>
+    <div>
+      <span class="f6 normal ml1 ph1 br2 bg-gray white pointer">
+        <%= number_of_permissions(@role.rbac_permissions) %>
+      </span>
+      <%= if not @role.readonly and @conn.assigns.permissions["organization.custom_roles.manage"] do %>
+        <%= link "edit", to: roles_path(@conn, :edit, @role.id),
+                class: "material-symbols-outlined f5 b btn pointer pa1 btn-secondary ml3" %>
+      <% else %>
+        <%= link "visibility", to: roles_path(@conn, :show, @role.id),
+            class: "material-symbols-outlined f5 b btn pointer pa1 btn-secondary ml3" %>
+      <% end %>
+    </div>
+  </div>
+  <div class="f6 gray flex items-center"><%= @role.description %></div>
+</div>

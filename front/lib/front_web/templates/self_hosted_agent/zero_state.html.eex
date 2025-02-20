@@ -1,0 +1,8 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <%= render FrontWeb.SelfHostedAgentView, "index/_description.html" %>
+
+    <div class="pv6 tc">
+        <div class="f00">🗝</div>
+        <p class="f6 measure-narrow center mv3">Sorry, your organization does not have access to self-hosted agents.</p>
+    </div>
+</div>

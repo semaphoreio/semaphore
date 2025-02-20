@@ -1,0 +1,73 @@
+<%= render_layout "project.html", assigns do %>
+  <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <p class="mb4 measure">Project Settings.</p>
+    <div class="flex-l">
+      <div class="w6-l flex-shrink-0 pr4-l pb3">
+        <div class="lh-title bb bn-l b--black-10 pb3">
+          <%= if @conn.request_path in [project_settings_path(@conn, :general, @project.name), project_settings_path(@conn, :confirm_delete, @project.name)] do %>
+            <%= link "General", to: project_settings_path(@conn, :general, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "General", to: project_settings_path(@conn, :general, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ project_settings_path(@conn, :repository, @project.name) do %>
+            <%= link "Repository", to: project_settings_path(@conn, :repository, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Repository", to: project_settings_path(@conn, :repository, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ secrets_path(@conn, :index, @project.name) do %>
+            <%= link "Secrets", to: secrets_path(@conn, :index, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Secrets", to: secrets_path(@conn, :index, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ project_settings_path(@conn, :notifications, @project.name) do %>
+            <%= link "Notifications", to: project_settings_path(@conn, :notifications, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Notifications", to: project_settings_path(@conn, :notifications, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if @conn.request_path =~ project_settings_path(@conn, :workflow, @project.name) do %>
+            <%= link "Workflow", to: project_settings_path(@conn, :workflow, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+          <% else %>
+            <%= link "Workflow", to: project_settings_path(@conn, :workflow, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:badges, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ project_settings_path(@conn, :badge, @project.name) do %>
+              <%= link "Badge", to: project_settings_path(@conn, :badge, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Badge", to: project_settings_path(@conn, :badge, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:artifacts, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ project_settings_path(@conn, :artifacts, @project.name) do %>
+              <%= link "Artifacts", to: project_settings_path(@conn, :artifacts, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Artifacts", to: project_settings_path(@conn, :artifacts, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ project_pfc_path(@conn, :show, @project.name) do %>
+              <%= link "Pre-flight checks", to: project_pfc_path(@conn, :show, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Pre-flight checks", to: project_pfc_path(@conn, :show, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+          <%= if FeatureProvider.feature_enabled?(:restrict_job_ssh_access, @conn.assigns[:organization_id]) do %>
+            <%= if @conn.request_path =~ project_settings_path(@conn, :permissions, @project.name) do %>
+              <%= link "Permissions", to: project_settings_path(@conn, :permissions, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
+            <% else %>
+              <%= link "Permissions", to: project_settings_path(@conn, :permissions, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+      <%= if @conn.request_path =~ secrets_path(@conn, :index, @project.name) do %>
+                  <%= Map.get(assigns, :nested_layout) || @inner_content %>
+      <% else %>
+        <div class="w-100-l pa3 pa4-l bg-white shadow-1 br3" style="min-height: 400px">
+          <div class="mw6 center">
+            <%= Map.get(assigns, :nested_layout) || @inner_content %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

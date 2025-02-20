@@ -1,0 +1,74 @@
+source "https://rubygems.org"
+git_source(:github) { |repo_name| "https://github.com/#{repo_name}.git" }
+
+gem "bundler", ">= 1.8.4"
+
+gem "pg", "~> 1.1"
+gem "rails", "~> 8.0.0"
+gem "sprockets-rails"
+
+gem "excon", "~> 0.81.0"
+gem "app"
+gem "bunny"
+gem "faraday", "~> 1.3.0"
+gem "faraday_middleware" # used for json
+gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-803086765
+gem "grpc", "~> 1.57.0"
+gem "httparty", "~> 0.21.0"
+gem "httpclient"
+gem "json"
+gem "kaminari", "~> 1.2.2"
+gem "lograge"
+gem "octokit"
+gem "retryable"
+gem "sidekiq", "< 8"
+gem "sidekiq-scheduler"
+gem "puma"
+gem "xmlrpc" # Prior to ruby 2.4 this was bundled with ruby. Required by active-support.
+gem "jwt"
+
+gem "sentry-ruby"
+gem "sentry-rails"
+gem "sentry-sidekiq"
+
+gem "sprockets", "< 4"
+gem "nokogiri", "~> 1.16.5"
+
+gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "d3fa4f44b4565dac5fa98df03d1124c68aee304c"
+gem "rt-logman", :require => "logman"
+gem "rt-tackle", :require => "tackle"
+
+group :development do
+  gem "spring", "~> 4.1"
+  gem "spring-commands-rspec"
+end
+
+group :test, :development do
+  gem "awesome_print"
+  gem "bullet"
+  gem 'pry-byebug', '~> 3.10', '>= 3.10.1'
+  gem "database_cleaner"
+  gem "factory_bot_rails", "< 5"
+  gem "rspec-benchmark"
+  gem "rspec-its"
+  gem "rspec-rails", "~> 6.0"
+  gem "rubocop"
+  gem "rubocop-rails"
+  gem "rubocop-rspec"
+  gem 'rubocop-performance'
+  gem 'rubocop-factory_bot', require: false
+  gem "thin"
+  gem "timecop"
+  gem "grpc-tools"
+  gem "dotenv", "~> 3.0"
+end
+
+group :test do
+  gem "selenium-webdriver", "~> 2.53"
+  gem "shoulda", "~> 4.0"
+  gem "shoulda-matchers"
+  gem "show_me_the_cookies"
+  gem "vcr"
+  gem "webmock"
+  gem "rspec_junit_formatter"
+end

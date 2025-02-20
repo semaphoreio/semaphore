@@ -1,0 +1,17 @@
+version: "v1.0"
+name: Test pipeline 1
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+execution_time_limit:
+  minutes: 150
+
+blocks:
+  - name: B1
+    execution_time_limit:
+      minutes: 120
+    task:
+      jobs:
+        - commands:
+            - sleep 20

@@ -1,0 +1,39 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" type="text/javascript">!function(e,t,n){function a(){var e=t.getElementsByTagName("script")[0],n=t.createElement("script");n.type="text/javascript",n.async=!0,n.src="https://beacon-v2.helpscout.net",e.parentNode.insertBefore(n,e)}if(e.Beacon=n=function(t,n,a){e.Beacon.readyQueue.push({method:t,options:n,data:a})},n.readyQueue=[],"complete"===t.readyState)return a();e.attachEvent?e.attachEvent("onload",a):e.addEventListener("load",a,!1)}(window,document,window.Beacon||function(){});</script>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" type="text/javascript">window.Beacon('init', 'faf1b5cd-03a3-40b6-931c-2b431fd211f4')</script>
+
+<%= if @conn.assigns[:user] && @conn.assigns[:organization_id] do %>
+  <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    if(window.Beacon) {
+      window.Beacon('identify', {
+        name: "<%= @conn.assigns[:user].name %>",
+        email: "<%= @conn.assigns[:user].email %>",
+        'semaphore_id': "<%= @conn.assigns[:user].id %>",
+        'semaphore_org_id': "<%= @conn.assigns[:organization_id] %>"
+      })
+    }
+  </script>
+<% end %>
+
+<%#
+  Due to the CSP policies and how the chat beacon works, we need to "fix" the `onclick` bindings.
+  Embedded scripts require a `nonce` attribute set on the script tag. The HTML content we get from the Billing API
+  contains script tags without nonce tags; hence, the browser will not execute them. We're also disallowing the `onclick` and other attribute event handlers.
+  As we're already loading the Beacon script, the only thing we need to do is to remove an `onclick` binding from the chat button and create a new one.
+
+  This is a hacky way to do it, but it works.
+%>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  function toggleChatWindow() {
+    window.Beacon("navigate", "/ask/chat/");
+    window.Beacon("toggle");
+  }
+
+  function rebindChatOpen(triggerElement) {
+    if(triggerElement) {
+      triggerElement.removeAttribute('onclick');
+      triggerElement.addEventListener('click', toggleChatWindow);
+    }
+  }
+
+  rebindChatOpen(document.querySelectorAll("[onclick='openChatWindow()']")[0]);
+</script>

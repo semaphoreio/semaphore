@@ -1,0 +1,57 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.FoldLines = false
+</script>
+
+<div class="flex-l justify-between bb b--lighter-gray nt3-m pb3 pb2-l">
+  <div class="mb2">
+    <div>
+      <strong>Project:</strong>
+      <%= link @project.name, to: project_path(@conn, :show, @project.name) %>
+    </div>
+    <div>
+      <strong>Branch:</strong>
+      <%= link @hook.name, to: Front.Decorators.Header.Workflow.safe(fn -> branch_path(@conn, :show, @branch.id) end) %>
+    </div>
+  </div>
+</div>
+
+<div class="pv2 relative">
+  <div class="flex justify-between pt1">
+    <h1 class="f2 f1-m lh-title mv1 pr3 word-wrap">
+      <img src="<%= assets_path() %>/images/icn-commit.svg" alt="commit" width="22" class="v-mid mr1 nt1">
+    <%= commit_message(@hook) %>
+    </h1>
+  </div>
+
+  <p class="f4 mb3">
+  Commit: <%= link "#{commit_sha(@hook)} ↗", to: commit_url(@hook), target: "_blank" %><%= commit_author_string(@hook) %>
+  </p>
+
+  <div class="tabs mb3">
+    <%= link raw(~s'
+          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5A3.5 3.5 0 014.5 1h7A3.5 3.5 0 0115 4.5v7a3.5 3.5 0 01-3.5 3.5h-7A3.5 3.5 0 011 11.5v-7zm3.5-2.1a2.1 2.1 0 00-1.99 1.431h3.592a2.192 2.192 0 010 4.385H2.4V11.5a2.1 2.1 0 002.1 2.1h7a2.1 2.1 0 001.985-1.416H9.898a2.192 2.192 0 010-4.384H13.6V4.5a2.1 2.1 0 00-2.1-2.1h-7zm9.1 6.8H9.898a.792.792 0 100 1.584H13.6V9.2zM2.4 6.816V5.23h3.702a.792.792 0 110 1.585H2.4z"/></svg>
+          Workflow
+        '),
+        to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id),
+        class: Front.Decorators.Header.Workflow.tab_class(@conn, workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id)) %>
+    <%= link raw(~s'
+          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.322 2.408A2.1 2.1 0 002.4 4.5v7a2.1 2.1 0 002.1 2.1h7a2.1 2.1 0 002.1-2.1v-7a2.1 2.1 0 00-1.922-2.092A2.099 2.099 0 019.602 4.2H6.398a2.099 2.099 0 01-2.076-1.792zM11.388 1h.112A3.5 3.5 0 0115 4.5v7a3.5 3.5 0 01-3.5 3.5h-7A3.5 3.5 0 011 11.5v-7A3.5 3.5 0 014.5 1h.112A2.097 2.097 0 016.398.003h3.204c.755 0 1.416.399 1.786.997zM5.7 2.102c0-.386.313-.699.698-.699h3.204a.698.698 0 010 1.397H6.398a.698.698 0 01-.698-.698zM4.7 6.8a.7.7 0 100 1.4h6.6a.7.7 0 100-1.4H4.7zm0 3.016a.7.7 0 100 1.4h6.6a.7.7 0 100-1.4H4.7z"></path></svg>
+          #{Front.Decorators.Header.Workflow.summary(@conn)}
+        '),
+        to: test_results_path(@conn, :pipeline_summary, @workflow.id),
+        class: Front.Decorators.Header.Workflow.tab_class(@conn, test_results_path(@conn, :pipeline_summary, @workflow.id)) %>
+  </div>
+
+  <div
+      data-poll-background
+      data-poll-state="poll"
+      data-poll-href="<%= "/workflows/#{@workflow.id}/status" %>"
+      data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+      data-poll-param-pipeline_id="<%= @selected_pipeline_id %>"
+      class="flex items-center pv1 gray">
+    <img class="mr2" width="22" height="22" src=<%= image_source("spinner-2.svg") %> />
+    Fetching pipelines...
+  </div>
+</div>
+
+<%= render "_workflow.html", conn: @conn, workflow_id: @workflow.id, selected_pipeline_id: @selected_pipeline_id, permissions: @permissions%>

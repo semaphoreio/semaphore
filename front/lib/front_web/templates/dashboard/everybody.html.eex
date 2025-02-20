@@ -1,0 +1,18 @@
+<div id="workflow-lists" class="flex-l">
+  <div class="flex-auto">
+    <div class="mb3 mb4-m">
+      <div class="flex items-center justify-between mb1">
+        <p class="mb0">Hi, <%= @user.name %>.</p>
+        <div id="toggleProjects" class="dn db-l f6 lh-title gray hover-dark-gray ba ph3 pv1 br-pill pointer">Toggle sidebar</div>
+      </div>
+      <h1 class="f2 f1-m lh-title mb1">Here's what's going on</h1>
+      <p class="measure mb4">Yours and all other’s latest work in all projects</p>
+    </div>
+
+    <div id="workflow-list" class="mt4">
+      <div class="mb3"><strong>Everyone's latest work</strong> (<a href="me">Show mine</a>)</div>
+      <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, page: :dashboard %>
+    </div>
+  </div>
+  <%= render FrontWeb.DashboardView, "partials/_projects.html", projects: @projects, starred_projects: @starred_projects %>
+</div>

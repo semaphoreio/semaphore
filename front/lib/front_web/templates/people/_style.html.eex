@@ -1,0 +1,43 @@
+<style>
+  .spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+  }
+
+  .selected{
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+
+  .selected .measure {
+    color: white;
+  }
+
+  .not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+  
+  .not-selected .measure {
+    color: black;
+  }
+
+  .not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+  }
+</style>

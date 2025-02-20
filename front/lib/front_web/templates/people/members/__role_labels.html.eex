@@ -1,0 +1,3 @@
+<%= @role_bindings |> Enum.map(fn (role_binding) ->  %>
+  <%= construct_role_label(role_binding) %>
+<% end) %>

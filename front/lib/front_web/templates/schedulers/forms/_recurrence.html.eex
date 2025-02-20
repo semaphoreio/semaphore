@@ -1,0 +1,46 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Tasks.Recurrence = {
+        recurring: <%= @scheduler.recurring %>,
+        at: "<%= @scheduler.at %>"
+    };
+</script>
+
+<%= if @show_description? do %>
+  <div class="ml2 measure">
+    Choose a schedule if you want this task to run periodically, or leave it unscheduled if you prefer to run it manually only.
+  </div>
+<% end %>
+
+<div class="flex items-center">
+  <%= radio_button @form, :recurring, "true", checked: @scheduler.recurring,
+      'data-action': "changeRecurring", 'data-element': "recurringInput" %>
+  <%= label @form, :recurring_true, "Scheduled", class: "ml2 mr4" %>
+  <%= radio_button @form, :recurring, "false", checked: !@scheduler.recurring,
+      'data-action': "changeRecurring", 'data-element': "recurringInput" %>
+  <%= label @form, :recurring_false, "Unscheduled", class: "ml2 mr4" %>
+</div>
+<div class="ml2 mv2" data-validation="cronExpression">
+  <div class="code pre f7 nb2 truncate">
+ ┌───────────── minute (0 - 59)
+ │  ┌───────────── hour (0 - 23)
+ │  │  ┌───────────── day of the month (1 - 31)
+ │  │  │  ┌───────────── month (1 - 12)
+ │  │  │  │  ┌───────────── day of the week (0 - 6) (Sunday to Saturday)
+ │  │  │  │  │
+ │  │  │  │  │
+ │  │  │  │  │
+ *  *  *  *  *
+  </div>
+  <%= text_input @form, :at, name: "at", value: @scheduler.at,
+      'data-validation-input': "cronExpression",
+      class: manage_field_class(:schedulers, @validation_errors, :at),
+      placeholder: "Enter crontab value…", autocomplete: "off",
+      data: [element: "cronInput", action: "changeCronExpression"] %>
+  <div class="f5 b mv1 red" data-validation-message="cronExpression"></div>
+  <p class="f6 mb1">
+    Use standard Crontab syntax. We recommend using
+    <a href="https://crontab.guru/" target="_blank" rel="noopener">Crontab Guru</a>.
+  </p>
+  <p class="f6 mv1">Translates to: <span cron-when expression="<%= standardize_expression(@scheduler.at) %>" class="b mb1"></span></p>
+  <p class="f6">Next scheduled for: <span cron-next expression="<%= standardize_expression(@scheduler.at) %>"></p>
+</div>

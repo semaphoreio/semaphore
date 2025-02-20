@@ -1,0 +1,105 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.Tasks = {};
+  window.InjectedDataByBackend.Tasks.Page = "run";
+  window.InjectedDataByBackend.Tasks.CanLoad = <%= @permissions["project.scheduler.view"] %>
+
+  window.InjectedDataByBackend.Tasks.Branch = "<%= @form_params.branch %>";
+  window.InjectedDataByBackend.Tasks.PipelineFile = "<%= @form_params.pipeline_file %>";
+  window.InjectedDataByBackend.Tasks.Parameters = <%= raw injectable(@form_params.parameters) %>;
+</script>
+<%= if @permissions["project.scheduler.manage"] do %>
+  <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <div class="nb3 nb4-l pb4">
+      <div class="w-100-l pa3 pa4-l bg-white shadow-1 br3">
+        <div class="mw6 center">
+          <div>
+            <h2 class="f3 f2-m mb0">Manually run task</h2>
+            <p class="mb3">
+              You're about to start the workflow manually.
+              Ensure that the branch, pipeline, and any additional parameters are correctly set up.
+              Double-check everything to avoid any issues.
+            </p>
+            <div class="bg-washed-yellow ba b--black-15 ph3 pv2 mb4 br3">
+              <div class="pb2">
+                <div class="flex items-center">
+                  <span class="material-symbols-outlined mr2"><%= task_icon(@scheduler) %></span>
+                  <div class="f5 f4-m">
+                    <%= link @scheduler.name, to: schedulers_path(@conn, :show, @project.name, @scheduler.id) %>
+                  </div>
+                </div>
+              </div>
+              <%= if @scheduler.description != "" do %>
+                <p class="f6 measure-wide pt2 mb0 bt b--black-15"><%= @scheduler.description %></p>
+              <% end %>
+            </div>
+            <%= form_for :run, schedulers_path(@conn, :trigger_just_run, @project.id, @scheduler.id), [method: :post], fn f -> %>
+            <div class="mb3">
+              <h3 class="b lh-title">What will run?</h3>
+              <div class="mb4">
+                <div class="mb1"><%= label f, :branch, class: "f6 gray" do %>Branch<% end %></div>
+                <div class="flex flex-column" data-validation="branch">
+                  <%= text_input f, :branch, name: "branch", value: @form_params.branch,
+                        class: "form-control w-100 #{error_css_class(@validation_errors, :branch)}", autocomplete: "off",
+                        'data-validation-input': "branch", placeholder: "Enter a branch…" %>
+                  <div class="f5 b mv1 red" data-validation-message="branch"></div>
+                </div>
+                <div class="mb1 mt3"><%= label f, :pipeline_file, class: "f6 gray" do %>Pipeline<% end %></div>
+                <div class="flex flex-column" data-validation="pipelineFile">
+                  <%= text_input f, :pipeline_file, name: "pipeline_file", value: @form_params.pipeline_file,
+                        class: "form-control w-100 #{error_css_class(@validation_errors, :pipeline_file)}",
+                        'data-validation-input': "pipelineFile", placeholder: "e.g. .semaphore/semaphore.yml" %>
+                  <div class="f5 b mv1 red" data-validation-message="pipelineFile"></div>
+                </div>
+              </div>
+              <%= if not Enum.empty?(@form_params.parameters) do %>
+                <h3 class="b lh-title bb b--black-075 pb3">Parameters</h3>
+                <%= for ff <- inputs_for(f, :parameters, [as: :parameters, default: @form_params.parameters]) do %>
+                  <div class="mb1 mt3" data-validation="<%= ff.data.name %>">
+                    <div class="mb3 flex items-center">
+                      <%= label ff, :name, class: "db f4 gray" do %><%= ff.data.name %><% end %>
+                      <%= hidden_input ff, :name, value: ff.data.name %>
+                      <%= if not Enum.empty?(ff.data.options) do %>
+                        <%= select ff, :value, ff.data.options, selected: ff.data.value,
+                            'data-validation-input': ff.data.name,
+                            class: "db form-control mb3 mb0-m ml3 w-100",
+                            prompt: "Choose #{ff.data.name} value" %>
+                      <% else %>
+                        <%= text_input ff, :value, value: ff.data.value,
+                            'data-validation-input': ff.data.name,
+                            class: "form-control w-100 ml3",
+                            placeholder: "Enter value" %>
+                      <% end %>
+                    </div>
+                    <div class="f5 b mv1 red" data-validation-message="<%= ff.data.name %>"></div>
+                    <%= if ff.data.required do %>
+                      <div class="f6 red">Required</div>
+                    <% else %>
+                      <div class="f6 gray">Optional</div>
+                    <% end %>
+                    <%= if ff.data.description do %>
+                      <p class="f6 w-100 mb3 pb2 bb b--black-075"><%= ff.data.description %></p>
+                    <% end %>
+                  </div>
+                <% end %>
+              <% end %>
+            </div>
+            <div class="flex items-center justify-between">
+              <%= link "Cancel", to: schedulers_path(@conn, :index, @project.name), class: "btn btn-secondary" %>
+              <%= submit type: "button", class: "btn btn-primary flex items-center justify-between", 'data-action': "submit-form" do %>
+                Run<span class="material-symbols-outlined ml2">play_circle</span>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+      Sorry, you can’t manually run Tasks.<br>
+      Ask organization owner or any of the admins to give you access permission.
+    </p>
+  </div>
+<% end %>

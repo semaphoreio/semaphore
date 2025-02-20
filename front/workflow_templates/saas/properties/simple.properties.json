@@ -1,0 +1,10 @@
+{
+  "title": "Single job",
+  "description": "Run commands on one machine",
+  "category": "CI patterns",
+  "features": ["Ubuntu 20.04 bash environment", "Code checkout", "Single job"],
+  "icon": "lang-blank.svg",
+  "template_path": "templates/simple.yml",
+  "workflow_tip": "single_job",
+  "pinned": true
+}

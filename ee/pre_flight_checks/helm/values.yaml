@@ -1,0 +1,21 @@
+---
+image: pre-flight-checks-hub
+imageTag: latest
+
+replicas: 1
+resources:
+  requests:
+    cpu: '25m'
+    memory: 150Mi
+  limits:
+    cpu: '0.2'
+    memory: 300Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

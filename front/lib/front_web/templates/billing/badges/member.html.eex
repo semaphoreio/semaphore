@@ -1,0 +1,7 @@
+<div class="fixed bottom-0 left-0 z-5">
+  <div class="flex">
+    <span class="<%= @content.class %>">
+      <%= @content.text %>
+    </span>
+  </div>
+</div>

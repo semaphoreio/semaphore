@@ -1,0 +1,7 @@
+<%= if @widget.type == "list_workflows" do %>
+  <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @widget.data.workflows, pagination: @widget.data.pagination, pollman: @widget.data.pollman, page: :dashboard %>
+<% end %>
+
+<%= if @widget.type == "list_pipelines" do %>
+  <%= render FrontWeb.DashboardView, "partials/_pipelines.html", conn: @conn, workflows: @widget.data.workflows, pagination: @widget.data.pagination, pollman: @widget.data.pollman, page: :dashboard %>
+<% end %>

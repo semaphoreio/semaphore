@@ -1,0 +1,26 @@
+image: notifications
+imageTag: latest
+imagePullSecrets: []
+
+replicas: 1
+logging: info
+
+db:
+  poolSize: 2
+
+resources:
+  limits:
+    cpu: '0.2'
+    memory: 300Mi
+  requests:
+    cpu: 10m
+    memory: 150Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

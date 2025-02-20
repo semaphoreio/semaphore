@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ .Values.global.redis.secretName }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    product: semaphoreci
+data:
+  host: {{ .Values.global.redis.host | b64enc }}
+  port: {{ .Values.global.redis.port | b64enc }}
+  username: {{ .Values.global.redis.username | b64enc | quote }}
+  password: {{ .Values.global.redis.password | b64enc | quote }}
+{{- if .Values.global.redis.local.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    product: semaphoreci
+spec:
+  serviceName: "redis"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+        product: semaphoreci
+    spec:
+      priorityClassName: high-priority
+      containers:
+      - name: redis
+        image: redis:{{ .Values.global.redis.local.version }}
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+  volumeClaimTemplates:
+  - metadata:
+      name: redis-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: {{ .Values.global.redis.local.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    product: semaphoreci
+spec:
+  type: ClusterIP
+  ports:
+  - port: 6379
+    targetPort: 6379
+  selector:
+    app: redis
+{{- end }}

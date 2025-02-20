@@ -1,0 +1,6 @@
+apiVersion: v2
+name: loghub2
+description: A Helm chart for deploying Semaphore loghub2 application
+type: application
+version: "@chartVersion@"
+appVersion: ""

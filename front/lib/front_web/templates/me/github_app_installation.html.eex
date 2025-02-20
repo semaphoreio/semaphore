@@ -1,0 +1,11 @@
+<p class="mb3 pb2">Hey <%= name(@user) %>! How’s it going? <br> Select one of your organizations to continue:</p>
+
+<div class="flex flex-wrap mv3 nr3">
+  <%= Enum.map(@organizations, fn organization -> %>
+    <%= link to: github_choose_repository_org_url(@conn, organization), class: "link w5 h4 truncate dark-gray bg-white shadow-1 pa3 mr3 mr4-m mb3 mb4-m shadow-hover br3" do %>
+      <img src="<%= organization.avatar_url %>" class="db br-100 mb2">
+      <div class="f3 b truncate"><%= organization.name %></div>
+      <div class="gray truncate"><%= org_url(organization) %></div>
+    <% end %>
+  <% end) %>
+</div>

@@ -1,0 +1,10 @@
+{
+  "title": "pytest",
+  "description": "Test your Python project",
+  "category": "Python",
+  "features": ["Ubuntu 20.04 bash environment", "Code checkout", "pytest"],
+  "icon": "lang-python.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/python-app.yml",
+  "pinned": true
+}

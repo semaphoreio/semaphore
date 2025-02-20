@@ -1,0 +1,12 @@
+<div class="flex items-center justify-between">
+  <%= render FrontWeb.SchedulersView, "_workflow.html",
+        conn: @conn, workflow: @trigger.workflow %>
+  <div class="flex items-center">
+    <div class="ml2 ml3-m ml0-l mr3-l tr-l f6">
+      <%= time_ago(@trigger.triggered_at) %>
+      <br>
+      by <%= @trigger.triggerer_name %>
+    </div>
+    <img src="<%= @trigger.triggerer_avatar_url %>" width="32" height="32" class="db br-100 ba b--black-50"/>
+  </div>
+</div>

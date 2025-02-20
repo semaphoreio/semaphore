@@ -1,0 +1,15 @@
+version: "v1.0"
+name: basic test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - task:
+      jobs:
+        - name: Duplicate
+          commands:
+            - echo foo
+        - name: Duplicate
+          commands:
+            - echo bar

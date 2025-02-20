@@ -1,0 +1,45 @@
+<div style="display: none;">
+  <div id="jobCLI">
+    <div class="f5 pa3">
+      <div class="mb3">
+        <div class="b mb1">Download logs</div>
+        <input
+          class="x-select-on-click form-control w-100"
+          type="text"
+          value="sem logs {{VALUE}}"
+          readonly
+          />
+      </div>
+
+      <div class="mb3">
+        <div class="b mb1">Stop job</div>
+        <input
+          class="x-select-on-click form-control w-100"
+          type="text"
+          value="sem stop job {{VALUE}}"
+          readonly
+          />
+      </div>
+      <div class="mb3">
+        <div class="b mb1">Forward port</div>
+        <input
+          class="x-select-on-click form-control w-100"
+          type="text"
+          value="sem port-forward {{VALUE}} 8000 8080"
+          readonly
+          />
+      </div>
+      <div>
+        <div class="b mb1">Describe job</div>
+        <input
+          class="x-select-on-click form-control w-100"
+          type="text"
+          value="sem get job {{VALUE}}"
+          readonly
+          />
+      </div>
+
+      <%= render FrontWeb.SharedView, "_connect_cli_instructions.html", organization: @organization %>
+    </div>
+  </div>
+</div>

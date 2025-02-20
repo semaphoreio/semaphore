@@ -1,0 +1,36 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+auto_cancel:
+  queued:
+    when: branch = 'master'
+blocks:
+  - name: Testing
+    skip:
+      when: false
+    task:
+      jobs:
+        - commands:
+            - echo "testing"
+  - name: Testing 2
+    skip:
+      when: "branch != 'feature-a'"
+    task:
+      jobs:
+        - commands:
+            - echo "testing 2"
+  - name: Deployment - skip on dev branches
+    skip:
+      when: "(branch =~ '^dev' and branch != 'dev-execute-dpl') or tag =~ '^v0\.'"
+    task:
+      jobs:
+        - commands:
+            - echo 123
+promotions:
+  - name: Foo promotion
+    pipeline_file: foo.yml
+    auto_promote:
+      when: "result = 'failed' and result_reason = 'test' and branch = 'master'"

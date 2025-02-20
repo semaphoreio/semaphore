@@ -1,0 +1,23 @@
+<div class="pollman-container nb3"
+     data-poll-state="<%= @pollman.state %>"
+     data-poll-href="<%= @pollman.href %>"
+     <%= Enum.map(@pollman.params, fn {name, value} -> %>
+       data-poll-param-<%= name %>="<%= value %>"
+     <% end) %>
+     >
+
+<%= if @conflict_info do %>
+  <%= render FrontWeb.BranchView, "_conflict_info.html", project: @project, branch: @branch %>
+<% end %>
+
+<div class="mt3">
+  <%= if Enum.empty?(@workflows) do %>
+    <%= render FrontWeb.DashboardView, "partials/_empty_state.html", conn: @conn, page: @page %>
+  <% else %>
+    <%= @workflows |> Enum.map(fn(workflow) -> %>
+      <%= render FrontWeb.DashboardView, "partials/_workflow.html", conn: @conn, page: @page, workflow: workflow %>
+    <% end) %>
+
+    <%= render FrontWeb.DashboardView, "partials/_pagination.html", pagination: @pagination %>
+  <% end %>
+</div>

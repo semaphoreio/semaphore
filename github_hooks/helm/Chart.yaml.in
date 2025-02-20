@@ -1,0 +1,6 @@
+apiVersion: v2
+name: github_hooks
+description: A Helm chart for deploying Github Hooks application
+type: application
+version: "@chartVersion@"
+appVersion: ""

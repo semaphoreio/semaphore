@@ -1,0 +1,3 @@
+#!/bin/bash
+
+iex --sname remote --cookie ppl_api --remsh ppl_api@$(hostname)

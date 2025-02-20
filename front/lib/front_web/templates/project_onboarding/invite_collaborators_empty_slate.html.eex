@@ -1,0 +1,22 @@
+<div class="mb3 mb4-l">
+  <div class="flex-m justify-between mb0 mb4-m">
+    <div class="mb3 mb0-m">
+      <h1 class="f3 f2-l mb0">Add People</h1>
+      <p class="measure mb0">These people have access to the project repository. Grant them access on Semaphore as well.</p>
+    </div>
+  </div>
+  <div class="pv5 tc">
+    <img src="<%= image_source("ill-girl-showing-continue.svg") %>" alt="girl pointing to the left">
+
+      <p class="f6 measure center mt3 mb4">
+        Looks like everybody is already in! Or you are alone here?
+
+        When you invite more collaborators on repository, Semaphore will sync automatically.<br>
+        Do this later, right now you’re good to go!
+      </p>
+
+    <div>
+      <a href="<%= @next_page_href %>" class="btn btn-primary">Continue to workflow setup</a>
+    </div>
+  </div>
+</div>

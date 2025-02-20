@@ -1,0 +1,22 @@
+<%= link " ← Roles", to: roles_path(@conn, :index), class: "gray link f6 mb2 dib" %>
+<div class="pv3 bt b--lighter-gray">
+  <h2 class="mb0 b f3"><%= @title %></h2>
+  <%= form_for @changeset, @form_path, [method: @form_method], fn form -> %>
+  <%= render FrontWeb.RolesView, "_role_form.html", conn: @conn, form: form,
+                  readonly: @readonly, roles: @roles, permissions: @permissions %>
+  <%= if not @readonly do %>
+      <div class="flex justify-between mt4">
+        <div class="flex">
+          <%= submit "Save changes", class: "btn btn-primary mr3", type: "submit" %>
+          <%= link "Cancel", to: roles_path(@conn, :index), class: "btn btn-secondary" %>
+        </div>
+        <%= if not is_nil(@role_id) do %>
+          <div class="flex">
+            <%= link "Delete role", class: "btn btn-danger", to: roles_path(@conn, :delete, @role_id),
+                      method: :delete, data: [confirm: "Are you sure you want to remove the role?"] %>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  <% end %>
+</div>

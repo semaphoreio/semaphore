@@ -1,0 +1,26 @@
+<%= if @pipeline.compile_task.present? do %>
+  <div class="mt1 pb1" data-init-header="">
+    <div class="gray flex items-center justify-between nb2">
+      <%= cond do %>
+        <% @pipeline.compile_task.done? -> %>
+          <% link_color = if @pipeline.compile_task.failed?, do: "red", else: "gray" %>
+
+          <div class="pr1">Initialization (<%= link "See Log", to: @pipeline.compile_task.job_log_path, class: link_color %>)</div>
+
+        <% @pipeline.compile_task.running? -> %>
+          <div class="pr1">Initializing (<%= link "See Log", to: @pipeline.compile_task.job_log_path, class: "gray" %>)</div>
+
+        <% true -> %>
+          <div class="pr1">Initializing </div>
+      <% end %>
+
+      <div style="width: 100%;" class="gray bb bl-0 br-0 bt-0 b--dotted b--black-30 mt2"></div>
+
+      <% timer_state = if @pipeline.compile_task.running?, do: "run" %>
+      <% timer_seconds = FrontWeb.SharedView.total_seconds(@pipeline.compile_task.started_at, @pipeline.compile_task.done_at) %>
+      <% timer_time = FrontWeb.SharedView.total_time(@pipeline.compile_task.started_at, @pipeline.compile_task.done_at) %>
+
+      <div timer <%= timer_state %> seconds="<%= timer_seconds %>" class="f5 code pl1"><%= timer_time %></div>
+    </div>
+  </div>
+<% end %>

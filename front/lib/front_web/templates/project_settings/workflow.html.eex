@@ -1,0 +1,16 @@
+<%= if @permissions["project.workflow.manage"] do %>
+  <h2 class="f3 f2-m mb0">Workflow</h2>
+  <p class="mb3">Edit pipelines and set up deployment.</p>
+  <div class="mb6">
+    <%= link "Edit Workflow", to: project_path(@conn, :edit_workflow, @project.name), class: "btn btn-primary" %>
+    <p class="gray mv3">
+    <img src="<%= assets_path() %>/images/icn-info-15.svg" class="v-mid mr1" style="transform: translateY(-.1em);">
+    We’ll take you to the workflow builder.</p>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t modify workflows.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

@@ -1,0 +1,48 @@
+version: v1.0
+name: Fan-in / Fan-out
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Build
+    dependencies: []
+    task:
+      jobs:
+        - name: build
+          commands:
+            - checkout
+  - name: Unit tests
+    dependencies:
+      - Build
+    task:
+      jobs:
+        - name: test
+          commands:
+            - checkout
+  - name: Integration tests
+    dependencies:
+      - Build
+    task:
+      jobs:
+        - name: test
+          commands:
+            - checkout
+  - name: e2e tests
+    dependencies:
+      - Build
+    task:
+      jobs:
+        - name: test
+          commands:
+            - checkout
+  - name: Release
+    dependencies:
+      - Integration tests
+      - Unit tests
+      - e2e tests
+    task:
+      jobs:
+        - name: release
+          commands:
+            - checkout

@@ -1,0 +1,25 @@
+<%= unless Enum.empty?(@page.triggers) do %>
+  <div class="flex justify-center mv3">
+    <%= if @page.cursor_after do %>
+      <div>
+        Back to <%= link "Newest", to: schedulers_path(@conn, :show, @project.name, @scheduler.id,
+                    filters: @page_args[:filters]) %>
+        <span class="ml1 mr2">·</span>
+      </div>
+    <% end %>
+    <div class="button-group">
+      <%= if @page.cursor_after do %>
+        <%= link "Newer", class: "btn btn-secondary", to: schedulers_path(@conn, :show, @project.name, @scheduler.id,
+                        direction: :AFTER, timestamp: @page.cursor_after, filters: @page_args[:filters]) %>
+      <% else %>
+        <button class="btn btn-secondary" disabled="disabled">Newer</button>
+      <% end %>
+      <%= if @page.cursor_before do %>
+        <%= link "Older", class: "btn btn-secondary", to: schedulers_path(@conn, :show, @project.name, @scheduler.id,
+                        direction: :BEFORE, timestamp: @page.cursor_before, filters: @page_args[:filters]) %>
+      <% else %>
+        <button class="btn btn-secondary" disabled="disabled">Older</button>
+      <% end %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,9 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+        Sorry, you can’t access Billing dashboard.<br>
+        Ask project owner or any of the admins to give you access permission.
+    </p>
+  </div>
+</div>

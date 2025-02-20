@@ -1,0 +1,107 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.FilterOptions = <%= raw Poison.encode!([]) %>;
+    window.InjectedDataByBackend.BranchUrl = "<%= project_path(@conn, :filtered_branches, @project.name, with_archived: true) %>";
+    window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>";
+</script>
+<style>
+    .branch-jumpto {
+        position: relative;
+    }
+    .branch-jumpto input {
+        position:relative;
+        z-index:2;
+    }
+    .branch-jumpto input:focus {
+        outline: none;
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+    }
+    .branch-jumpto .jumpto-results {
+        position: absolute;
+        left: 1px;
+        font-size: 15px;
+        background-color: #fff;
+        width: 11rem;
+        border-radius: 5px;
+        box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+        max-height: 300px;
+        overflow: auto;
+        z-index: 1;
+    }
+    .branch-jumpto .jumpto-results .autocomplete-result {
+        display: flex;
+        align-items: center;
+        padding: 3px 8px;
+        color: #2e3637;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .branch-jumpto .jumpto-results .autocomplete-result:hover {
+        background-color: #cef1c8;
+    }
+    .branch-jumpto .jumpto-results .autocomplete-result img {
+        flex-shrink: 0;
+    }
+
+    .branch-jumpto .jumpto-results span[aria-selected="true"],
+    .branch-jumpto .jumpto-results span[aria-selected="true"]:hover,
+    .branch-jumpto .jumpto-results span:focus,
+    .branch-jumpto .jumpto-results span:active {
+        background-color: #00a569;
+        color: #fff;
+    }
+</style>
+
+<div class="flex flex-column item-start mb1">
+    <div class="flex flex-wrap items-center mh4 mv1">
+        <div class="flex items-center mv1">
+            <select data-key="git_ref_type" class="db form-control mr2">
+                <%= options_for_select [
+                        "Show everything": [[key: "Branches, PRs and Tags", value: ""]],
+                        "Filter per type": [
+                            [key: "Branches only", value: "branch"],
+                            [key: "Tags only", value: "tag"],
+                            [key: "Pull Requests only", value: "pr"],
+                        ]
+                    ], @page_args[:filters].git_ref_type %>
+            </select>
+            <select data-key="triggered_by" class="db form-control mr2">
+                <%= options_for_select([
+                        "By everyone": "",
+                    "By me": @conn.assigns.user_id],
+                    @page_args[:filters].triggered_by) %>
+            </select>
+            <div class="branch-jumpto">
+                <input type="text" class="form-control mr2" placeholder="Find by branch name…"
+                        data-key="git_ref_label" value="<%= @page_args[:filters].git_ref_label %>">
+                <input type="hidden" class="form-control" placeholder="Find…">
+                <div class="jumpto-results"></div>
+            </div>
+        </div>
+        <%= if has_promotion_parameters?(@target) do %>
+            <div class="flex items-center mv1">
+                <span class="mr3 i">Promotion parameters:</span>
+
+                <%= if @target.parameter_name_1 != "" do %>
+                    <div class="parameter-jumpto">
+                        <input type="text" class="form-control mr2" placeholder="<%= @target.parameter_name_1 %>"
+                                data-key="parameter1" value="<%= @page_args[:filters].parameter1 %>">
+                    </div>
+                <% end %>
+                <%= if @target.parameter_name_2 != "" do %>
+                    <div class="parameter-jumpto">
+                        <input type="text" class="form-control mr2" placeholder="<%= @target.parameter_name_2 %>"
+                                data-key="parameter2" value="<%= @page_args[:filters].parameter2 %>">
+                    </div>
+                <% end %>
+                <%= if @target.parameter_name_3 != "" do %>
+                    <div class="parameter-jumpto">
+                        <input type="text" class="form-control mr2" placeholder="<%= @target.parameter_name_3 %>"
+                                data-key="parameter3" value="<%= @page_args[:filters].parameter3 %>">
+                    </div>
+                <% end %>
+            </div>
+        <% end %>
+    </div>
+</div>

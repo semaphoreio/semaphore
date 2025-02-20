@@ -1,0 +1,12 @@
+{
+  "title": "Elixir - Phoenix",
+  "description": "Run tests and quality checks for your Phoenix app with ExUnit and browser testing via Wallaby. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>ExUnit</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Wallaby</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Credo</span></div>",
+  "short_description": "Full-featured CI/CD pipeline for Phoenix web applications",
+  "group": "ci",
+  "language": "Elixir",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-elixir.svg",
+  "template_path": "templates/phoenix_saas.yml",
+  "workflow_tip": "other"
+}

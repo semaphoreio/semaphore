@@ -1,0 +1,67 @@
+<%= if Enum.empty?(@artifacts) do %>
+
+  <div class="tc pv6">
+    <img src="<%= assets_path() %>/images/ill-plant.svg" width="46" height="92" alt="plant" class="mb1">
+    <h4 class="f4 mt2 mb0">Nothing stored in Artifacts</h4>
+    <p class="f6 measure-narrow center mb3">Use Artifacts to save final deliverables, screenshots, logs and other useful data. Learn more in <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/essentials/artifacts/">Docs: Artifacts</a></p>
+  </div>
+
+<% else %>
+
+  <div class="flex justify-between pb2 bb b--lighter-gray">
+    <div class="b">
+      Files<%= Enum.map(@artifact_navbar_components, fn c -> " / #{c.name}" end) %>
+    </div>
+  </div>
+
+  <%= if Enum.any?(@artifact_navbar_components) do %>
+    <div class="pv2 bb b--lighter-gray">
+      <%= cond do %>
+        <% (length @artifact_navbar_components) > 1 -> %>
+          <% parent_folder = Enum.at(@artifact_navbar_components, -2) %>
+          <%= link "..", to: artifacts_path(@conn, :"#{@source_kind}", @source_id, path: parent_folder.path) %>
+        <% (length @artifact_navbar_components) == 1-> %>
+          <%= link "..", to: artifacts_path(@conn, :"#{@source_kind}", @source_id) %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <%= Enum.map(@artifacts, fn artifact -> %>
+    <div class="flex justify-between pv2 bb b--lighter-gray">
+        <div class="flex items-center">
+          <%= if artifact.is_directory do %>
+            <%= icon("icn-folder", class: "mr2") %>
+            <%= link "/#{artifact.resource_name}",
+                to: artifacts_path(@conn, :"#{@source_kind}", @source_id, path: artifact.path),
+                class: "word-wrap pr3" %>
+          <% else %>
+            <%= icon("icn-file", class: "mr2") %>
+            <%= link artifact.resource_name,
+                to: artifacts_path(@conn, :"#{@source_kind}_download", @source_id, artifact.path),
+                class: "word-wrap pr3",
+                target: "_blank" %>
+          <% end %>
+        </div>
+        <div>
+          <%= if @permissions["project.artifacts.delete"] do %>
+            <%= link to: artifacts_path(@conn, :"#{@source_kind}_destroy", @source_id, artifact.path),
+                method: :delete,
+                class: "btn btn-secondary btn-tiny",
+                data: [confirm: "Delete this forever?"] do %>
+                Delete…
+            <% end %>
+          <% end %>
+        </div>
+    </div>
+  <% end) %>
+
+  <%= if @permissions["project.artifacts.delete"] do %>
+    <div class="f6 tr pt3 nb1">
+      You can also
+      <%= link "Delete Everything", to: artifacts_path(@conn, :"#{@source_kind}_destroy", @source_id, @page_path),
+                method: :delete,
+                data: [confirm: "This will delete everything in this directory. Are you sure?"] %>
+                at once
+    </div>
+  <% end %>
+<% end %>

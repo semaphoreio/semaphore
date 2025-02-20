@@ -1,0 +1,21 @@
+---
+image: hooks_receiver
+imageTag: latest
+
+replicas: 1
+resources:
+  requests:
+    cpu: 50m
+    memory: 150Mi
+  limits:
+    cpu: 300m
+    memory: 250Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

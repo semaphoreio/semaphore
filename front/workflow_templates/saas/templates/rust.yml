@@ -1,0 +1,17 @@
+version: v1.0
+name: Rust
+agent:
+  machine:
+    type: f1-standard-2
+  containers:
+    - name: main
+      image: registry.semaphoreci.com/rust:1.47
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: cargo test
+          commands:
+            - checkout
+            - cargo build --verbose
+            - cargo test --verbose

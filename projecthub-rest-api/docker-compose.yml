@@ -1,0 +1,21 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: projecthub-rest-api
+    image: "${IMAGE:-projecthub-rest-api}:${IMAGE_TAG:-latest}"
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-projecthub-rest-api}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+
+    command: "mix phx.server"
+    ports:
+      - "4000:4000"
+    tty: true
+    volumes:
+      - .:/app

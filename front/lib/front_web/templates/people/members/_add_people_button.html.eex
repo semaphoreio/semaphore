@@ -1,0 +1,13 @@
+<%= if show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
+  <div>
+    <%= if @org_scope? do %>
+      <div id="add-people" data-config="<%= Poison.encode!(add_people_config(@conn)) %>"></div>
+    <% else %>
+      <div class="flex-m">
+        <div>
+          <button id="add_people_to_project" class="btn btn-primary flex items-center"><span class="material-symbols-outlined mr2">person_add</span>Add people</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>

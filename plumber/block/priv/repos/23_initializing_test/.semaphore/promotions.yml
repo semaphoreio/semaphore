@@ -1,0 +1,17 @@
+version: "v1.0"
+name: Test pipeline 1
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: B1
+    task:
+      jobs:
+        - commands:
+            - sleep 20
+
+promotions:
+  - name: Foo promotion
+    pipeline_file: foo.yml

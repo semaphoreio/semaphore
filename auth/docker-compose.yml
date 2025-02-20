@@ -1,0 +1,36 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: auth
+    image: ${IMAGE:-auth-app}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-auth}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - MIX_ENV=dev
+      ssh:
+        - default
+    ports:
+      - "4000"
+    tty: true
+
+    environment:
+      IN_DOCKER: "true"
+      CI: $CI
+      MIX_ENV: ${MIX_ENV:-dev}
+      LOG_LEVEL: "debug"
+      SSH_AUTH_SOCK: /ssh-agent
+      LOAD_BALANCER_IP: "127.0.0.1"
+      BASE_DOMAIN: "semaphoretest.test"
+      COOKIE_NAME: "_s2_something_"
+      INTERNAL_API_URL_AUTHENTICATION: localhost:50051
+      INTERNAL_API_URL_ORGANIZATION: localhost:50051
+      INTERNAL_API_URL_RBAC: localhost:50051
+      INTERNAL_API_URL_FEATURE: localhost:50051
+
+    volumes:
+      - .:/app

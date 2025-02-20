@@ -1,0 +1,533 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: badges-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /badges/
+  rewrite: ""
+  service: badges.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: project-page-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: '*'
+  prefix: /
+  rewrite: ""
+  service: project-page.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: 5xx
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: project-create-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix_regex: true
+  prefix: ^\/projects$
+  method: POST
+  rewrite: ""
+  service: project-create.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: 5xx
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: workflow-page-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /workflows/
+  rewrite: ""
+  service: workflow-page.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: 5xx
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: job-page-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /jobs/
+  rewrite: ""
+  service: job-page.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: 5xx
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /oauth
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-oidc
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /oidc
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-blocked
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /blocked
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-login
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /login
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-logout
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /logout
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-signup
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /signup
+  rewrite: ""
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-instance-config
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /github_app_manifest
+  rewrite: ""
+  service: guard-instance-config.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-id-http-api-root-redirect
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  bypass_auth: true
+  prefix: /
+  rewrite: "" 
+  service: guard-id-http-api.{{ .Release.Namespace }}:80
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-okta-saml-http-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /okta/auth
+  rewrite: ""
+  service: guard-okta-saml-http-api.{{ .Release.Namespace }}:4001
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: guard-okta-scim-http-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /okta/scim/
+  rewrite: ""
+  service: guard-okta-scim-http-api.{{ .Release.Namespace }}:4002
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: hooks-receiver-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /hooks/
+  rewrite: "/"
+  service: hooks-receiver.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: gateway-error
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: keycloak-realms
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /realms
+  rewrite: ""
+  service: keycloak.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: keycloak-resources
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^id\\..*"
+  host_regex: true
+  prefix: /resources
+  rewrite: ""
+  service: keycloak.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: connect-failure
+      num_retries: 3
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: loghub2-public-api-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1/logs/
+  rewrite: ""
+  service: loghub2-public-api.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: hooks-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  host: "^hooks\\..*"
+  host_regex: true
+  prefix: /github
+  rewrite: ""
+  service: github-hooks.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  envoy_override:
+    retry_policy:
+      retry_on: gateway-error
+      num_retries: 4
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: public-api-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v2/
+  rewrite: "/"
+  service: public-api.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000    # increase timeout to 30s from default 3s
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/pipelines
+  rewrite: "/pipelines"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-deployment-targets-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/deployment_targets
+  rewrite: "/deployment_targets"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-yaml-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/yaml
+  rewrite: "/yaml"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-workflow-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/plumber-workflows
+  rewrite: "/workflows"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-promotions-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/promotions
+  rewrite: "/promotions"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-schedules-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/schedules
+  rewrite: "/schedules"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-tasks-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/tasks
+  rewrite: "/tasks"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-self-hosted-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/self_hosted_agent_types
+  rewrite: "/self_hosted_agent_types"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-agents-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/agents
+  rewrite: "/agents"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-troubleshoot-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/troubleshoot
+  rewrite: "/troubleshoot"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-artifacts-retention-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/artifacts_retention_policies
+  rewrite: "/artifacts_retention_policies"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: plumber-public-logs-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/logs
+  rewrite: "/logs"
+  service: plumber-public.{{ .Release.Namespace }}:4004
+  timeout_ms: 5000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: projecthub-public-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/projects
+  rewrite: ""
+  service: projecthub-public.{{ .Release.Namespace }}:4000
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: public-api-gateway-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: ^\/api\/(v1alpha\/(workflows|dashboards|jobs|notifications)|v1beta\/secrets|v1\/(artifacts|(projects\/[a-zA-Z0-9_-]+\/secrets))).*$
+  prefix_regex: true
+  rewrite: ""
+  service: public-api-gateway.{{ .Release.Namespace }}:80
+  timeout_ms: 30000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: secrethub-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1alpha/secrets
+  rewrite: ""
+  service: secrethub-http.{{ .Release.Namespace }}:4000
+  precedence: 100
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: self-hosted-hub-public-api-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /api/v1/self_hosted_agents/
+  rewrite: ""
+  service: self-hosted-hub-public-api.{{ .Release.Namespace }}:8000
+  timeout_ms: 30000
+  precedence: 100

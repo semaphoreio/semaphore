@@ -1,0 +1,56 @@
+services:
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile.dev
+      args:
+        APP_NAME: pre-flight-checks-hub
+    container_name: app
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      AMQP_URL: "amqp://rabbitmq:5672"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./home_dir:/home/dev
+      - ../:/home/dev/repo
+
+  postgres:
+    container_name: postgres
+    image: "postgres:9.6"
+    ports:
+      - 5432:5432
+    profiles: ["dev", "ci"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    profiles: ["dev", "ci"]
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
+  
+  

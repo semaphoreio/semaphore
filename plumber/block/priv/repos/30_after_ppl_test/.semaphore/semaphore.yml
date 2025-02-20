@@ -1,0 +1,33 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+after_pipeline:
+  task:
+    jobs:
+      - name: Hello
+        commands:
+          - echo Hello
+      - commands:
+          - echo World
+      - name: With parallelism
+        parallelism: 4
+        commands:
+          - echo Job $SEMAPHORE_JOB_INDEX out of $SEMAPHORE_JOB_COUNT
+      - name: With matrix
+        matrix:
+          - env_var: FOOS
+            values: ["foo#1", "foo#2", "foo#3"]
+          - env_var: BARS
+            values: ["bar#1", "bar#2"]
+        commands:
+          - echo $FOOS $BARS
+
+blocks:
+  - task:
+      jobs:
+        - commands:
+            - echo Running job

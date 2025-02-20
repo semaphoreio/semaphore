@@ -1,0 +1,16 @@
+version: "v1.0"
+name: Empty matrix values list
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo 123
+          matrix:
+            - env_var: ENV_VAR_NAME
+              values: "%{{ parameters.MATRIX_VALUES | splitList \",\" }}"

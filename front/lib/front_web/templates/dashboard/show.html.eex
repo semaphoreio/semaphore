@@ -1,0 +1,55 @@
+<div class="mb3 nt2 pb3 bb b--lighter-gray">
+  <div class="flex justify-between">
+    <div>
+      <p class="f5 gray nt1 mb1">Dashboard</p>
+      <h1 class="f2 f1-m lh-title mb1">
+        <%= @dashboard.title %>
+        <span starred="<%= @starred? %>"
+              data-favorite-id="<%= @dashboard.id %>"
+              data-favorite-kind="dashboard"
+              class="f4 pointer dib v-mid <%= FrontWeb.LayoutView.star_class(@starred?) %>"
+              style="margin-left: 2px; transform: translateY(-.1em);"
+              data-tippy-content="<%= star_tippy_content(@starred?) %>"
+              data-tippy-swap-content="<%= star_tippy_content(!@starred?) %>">★
+        </span>
+      </h1>
+    </div>
+    <div>
+      <div class="btn btn-secondary date-picker-trigger" data-template="datePicker">
+        <span class="mr3"><%= @date_picker.label %></span> <img src="<%= assets_path() %>/images/icn-updown.svg">
+      </div>
+
+      <div id="datePicker" hidden>
+        <div class="pa2">
+          <%= @date_picker.options |> Enum.map(fn {range, label} -> %>
+            <div class="pointer pv1 ph2 hover-bg-green hover-white br2 x-dashboard-date-picker" data-range-from="<%= range.first %>" data-range-to="<%= range.last %>"><%= label %></div>
+          <% end) %>
+        </div>
+        <div class="mh3 pv3 bt b--black-10">
+          <p class="f5 mb2">Or pick a custom range (From – To)</p>
+          <div class="flex items-center">
+            <div class="mb3">
+              <input type="text" value="<%= @date_picker.range.first %>" readonly="true" id="pikadayInputStart" class="form-control" placeholder="Start date…" style="width: 120px">
+              <span class="mh1">–</span>
+              <input type="text" value="<%= @date_picker.range.last %>" readonly="true" id="pikadayInputEnd" class="form-control" placeholder="End date…" style="width: 120px">
+            </div>
+          </div>
+          <div>
+            <a href="#" class="btn btn-primary mr1 x-dashboard-custom-range-set">Set range</a>
+            <a href="#" class="btn btn-secondary x-dashboard-custom-range-cancel">Nevermind</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="workflow-lists">
+  <%= @widgets |> Enum.map(fn(widget) -> %>
+    <div class="bg-washed-gray pa3 br3 ba b--black-075 mb3">
+      <h2 class="f4 mb3"><%= widget.name %></h2>
+
+      <%= render FrontWeb.DashboardView, "_widget.html", widget: widget, dashboard: @dashboard, conn: @conn %>
+    </div>
+  <% end) %>
+</div>

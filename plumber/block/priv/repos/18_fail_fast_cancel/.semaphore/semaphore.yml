@@ -1,0 +1,35 @@
+version: v1.0
+name: Fast-failing test
+agent:
+  machine:
+    type: foo
+    os_image: bar
+fail_fast:
+  cancel:
+    when: true
+blocks:
+  - name: A
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo A, sleep 5]
+  - name: B
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo B, sleep 5]
+  - name: C
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo C, sleep 2, failing command]
+  - name: D
+    dependencies: [A]
+    task:
+      jobs:
+        - commands: [echo D]
+  - name: E
+    dependencies: [C, B, D]
+    task:
+      jobs:
+        - commands: [echo E]

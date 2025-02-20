@@ -1,0 +1,11 @@
+<h1 class="f3 f2-m mb0">Disconnecting Okta from Semaphore</h1>
+
+<div class="pv3 bt b--lighter-gray">
+  <p>If you disconnect Okta ALL of the members that have been provisioned via Okta will be removed from the organization.</p>
+  <p style="color: red;">Are you sure you want to do that?</p>
+
+  <p>This operation might take up to a minute to complete, depending on how many users have been provisioned.
+  You can check back on the <b>people</b> page to see if the members were removed from the organization.</p>
+
+  <%= link "Delete Okta Integration…", to: organization_okta_path(@conn, :disconnect, @integration_id), class: "btn btn-secondary", method: :post %>
+</div>

@@ -1,0 +1,6 @@
+{
+  "events": [
+    { "event": "job_started", "timestamp": 1628189998 },
+    { "event": "job_finished", "result": "failed", "timestamp": 1628189998 }
+  ]
+}

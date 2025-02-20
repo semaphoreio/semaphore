@@ -1,0 +1,20 @@
+apiVersion: getambassador.io/v3alpha1
+kind: AuthService
+metadata:
+  name: authentication
+  namespace: {{ .Release.Namespace }}
+spec:
+  proto: http
+  auth_service: "auth.{{ .Release.Namespace }}:4000"
+  path_prefix: "/exauth"
+  timeout_ms: 5000
+  status_on_error:
+    code: 403
+  allowed_request_headers:
+  - "x-canary-mode"
+  allowed_authorization_headers:
+  - "x-semaphore-org-id"
+  - "x-semaphore-org-username"
+  - "x-semaphore-user-id"
+  - "x-semaphore-user-anonymous"
+  - "set-cookie"

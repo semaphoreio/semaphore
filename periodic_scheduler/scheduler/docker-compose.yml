@@ -1,0 +1,91 @@
+services:
+  app:
+    build: 
+      context: ../
+      dockerfile: scheduler/Dockerfile
+      target: dev
+      args:
+        APP_NAME: periodic-scheduler
+        MIX_ENV: dev
+      ssh:
+        - default
+    container_name: app
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      SSH_AUTH_SOCK: ${SSH_AUTH_SOCK}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app:delegated
+    working_dir: "/app"
+
+  ciapp:
+    container_name: ciapp
+    image: elixir:1.14-otp-24
+    environment:
+      DB_HOSTNAME: postgres
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      RABBITMQ_URL: "amqp://rabbitmq:5672"
+      SSH_AUTH_SOCK: ${SSH_AUTH_SOCK}
+    depends_on:
+      postgres:
+        condition: service_healthy      
+      rabbitmq:
+        condition: service_healthy
+    profiles: ["ci"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - "../:/app/repo"
+      - "./home_dir:/root"
+      - "${SSH_AUTH_SOCK}:/${SSH_AUTH_SOCK}"
+    working_dir: "/app/repo/scheduler"
+
+  prodapp:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: prodapp
+    profiles: ["prod"]
+    stdin_open: true
+    tty: true
+
+  postgres:
+    container_name: postgres
+    image: "postgres:9.6"
+    ports:
+      - 5432:5432
+    profiles: ["dev", "ci"]
+    environment:
+      POSTGRES_PASSWORD: postgres
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3-management
+    ports:
+      - 5672:5672
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    profiles: ["dev", "ci"]
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5

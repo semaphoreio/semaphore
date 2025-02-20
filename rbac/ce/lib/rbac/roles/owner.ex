@@ -1,0 +1,57 @@
+defmodule Rbac.Roles.Owner do
+  def role do
+    %{
+      id: "ca5b2b01-79f7-4838-8b7b-2ebb5b7e7b5b",
+      name: "Owner",
+      description:
+        "Owners have access to all functionalities within the organization and any of its projects. They cannot be removed from the organization.",
+      permissions: [
+        "organization.activity_monitor.view",
+        "organization.change_owner",
+        "organization.custom_roles.view",
+        "organization.dashboards.manage",
+        "organization.dashboards.view",
+        "organization.delete",
+        "organization.general_settings.manage",
+        "organization.general_settings.view",
+        "organization.instance_git_integration.manage",
+        "organization.notifications.manage",
+        "organization.notifications.view",
+        "organization.people.invite",
+        "organization.people.manage",
+        "organization.people.view",
+        "organization.pre_flight_checks.manage",
+        "organization.pre_flight_checks.view",
+        "organization.projects.create",
+        "organization.secrets.manage",
+        "organization.secrets.view",
+        "organization.self_hosted_agents.manage",
+        "organization.self_hosted_agents.view",
+        "organization.view",
+        "project.access.manage",
+        "project.access.view",
+        "project.artifacts.delete",
+        "project.artifacts.modify_settings",
+        "project.artifacts.view",
+        "project.artifacts.view_settings",
+        "project.delete",
+        "project.general_settings.manage",
+        "project.general_settings.view",
+        "project.job.attach",
+        "project.job.rerun",
+        "project.job.stop",
+        "project.notifications.manage",
+        "project.notifications.view",
+        "project.repository_info.manage",
+        "project.repository_info.view",
+        "project.scheduler.manage",
+        "project.scheduler.run_manually",
+        "project.scheduler.view",
+        "project.secrets.manage",
+        "project.secrets.view",
+        "project.view",
+        "project.workflow.manage"
+      ]
+    }
+  end
+end

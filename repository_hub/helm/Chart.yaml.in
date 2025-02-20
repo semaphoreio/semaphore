@@ -1,0 +1,6 @@
+apiVersion: v2
+name: repository_hub
+description: A Helm chart for deploying Semaphore repository_hub application
+type: application
+version: "@chartVersion@"
+appVersion: ""

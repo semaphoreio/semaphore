@@ -1,0 +1,94 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <%= render FrontWeb.AuditView, "streaming/_navigation.html", conn: @conn %>
+
+<%= if @provider == :S3 do %>
+    <%= form_for @changeset, @action, [method: :post], fn f -> %>
+        <div class="mb3 bg-white shadow-1 br3 pa4">
+
+        <div class="mb4">
+            <label class="db b mb0">Stream destination</label>
+            <p class="mb3">Where to stream audit logs?</p>
+
+            <div class="f5 f4-m">
+                <div class="flex items-center">
+                    <%= radio_button(f, :host, "s3.amazonaws.com", id: "awss3", checked: input_value(f, :host) in ["", "s3.amazonaws.com"], disabled: !@permissions["organization.audit_logs.manage"]) %>
+                    <label class="ml2" for="awss3">AWS S3</label>
+                </div>
+
+                <div class="flex items-center">
+                    <%= radio_button(f, :host, "storage.googleapis.com", id: "gcs", checked: input_value(f, :host) == "storage.googleapis.com", disabled: !@permissions["organization.audit_logs.manage"]) %>
+                    <label class="ml2" for="gcs">Google Cloud Storage</label>
+                </div>
+            </div>
+
+            <div class="bt b--black-075 mt3 pt3" id="region-options">
+                <label for="s3[bucket]" class="db b mb0">Region</label>
+                <p class="mb3">In which region is your bucket?</p>
+
+                <%= if f.errors[:region] do %>
+                    <div class="f5 b mv1 red">
+                        Bucket name <%= translate_error(f.errors[:region]) %>
+                    </div>
+                <% end %>
+                <%= text_input(f, :region, placeholder: "us-east-1", class: "form-control w-50 mr2", value: input_value(f, :region), disabled: !@permissions["organization.audit_logs.manage"]) %>
+            </div>
+
+
+            <div class="bt b--black-075 mt3 pt3">
+                <label for="s3[bucket]" class="db b mb0">Bucket</label>
+                <p class="mb3">The audit logs will upload daily CVS files to the root of this bucket</p>
+
+                <%= if f.errors[:bucket] do %>
+                    <div class="f5 b mv1 red">
+                        Bucket name <%= translate_error(f.errors[:bucket]) %>
+                    </div>
+                <% end %>
+                <%= text_input(f, :bucket, placeholder: "ex. semaphore-audit-logs", class: "form-control w-50 mr2", value: input_value(f, :bucket), disabled: !@permissions["organization.audit_logs.manage"]) %>
+            </div>
+
+            <div class="bt b--black-075 mt3 pt3">
+
+                <label class="db b mb0">Access Credentials</label>
+                <p class="mb3">Semaphore needs credentials with write acess to upload the logs</p>
+                <%= if Front.on_prem?() do %>
+                 <div class="ml1 mv2">
+                    <div class="flex items-center mt2">
+                        <%= checkbox(f, :instance_role) %>
+                        <%= label(f, :instance_role, "Use instance role credentials", class: "ml2") %>
+                    </div>
+                    <div class="flex items-center mt2" id="audit-instance-role-warning">
+                        <span class="b red">Warning: <span class="black">If you enable this option, Semaphore will use the instance role credentials to upload the logs. This is the most secure option, but it requires that all the instances have an IAM role with the write access to the bucket.</span></span>
+                    </div>
+                </div>
+                <% end %>
+                <div class="w-50 flex" id="audit-user-credentials">
+                    <div class="w-50 mr3">
+                        <%= if f.errors[:key_id] do %>
+                            <div class="f5 b mv1 red">
+                                Key ID <%= translate_error(f.errors[:key_id]) %>
+                            </div>
+                        <% end %>
+                        <%= text_input(f, :key_id, placeholder: "Key ID", class: "form-control w-100", value: "", disabled: !@permissions["organization.audit_logs.manage"]) %>
+                    </div>
+
+                    <div class="w-50">
+                        <%= if f.errors[:key_secret] do %>
+                            <div class="f5 b mv1 red">
+                                Key Secret <%= translate_error(f.errors[:key_secret]) %>
+                            </div>
+                        <% end %>
+                        <%= text_input(f, :key_secret, placeholder: "Key Secret", class: "form-control w-100", value: "", disabled: !@permissions["organization.audit_logs.manage"]) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <%= if @permissions["organization.audit_logs.manage"] do %>
+            <%= submit "Looks good. Start streaming" , class: "btn btn-primary primary mr2", id: "audit_stream_config_submit" %>
+        <% end %>
+
+        <%= link "Cancel", to: audit_path(@conn, :index), class: "btn btn-secondary" %>
+        </div>
+    <% end %>
+<% end %>
+</div>

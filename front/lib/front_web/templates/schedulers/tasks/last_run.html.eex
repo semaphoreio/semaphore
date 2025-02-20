@@ -1,0 +1,22 @@
+<%= content_tag :div, class: "overflow-hidden",
+      data: [poll: [href: schedulers_path(@conn, :latest, @project.name, @scheduler_id), state: "poll"]] do %>
+  <div class="pa3 bt b--black-075">
+    <div class="flex items-center justify-between">
+      <span class="ttu f6">Last run</span>
+    </div>
+    <%= if @trigger do %>
+      <%= render FrontWeb.SchedulersView, "_trigger.html", conn: @conn, trigger: @trigger %>
+    <% else %>
+      <div class="flex items-center justify-between tc pa3">
+        <div class="flex items-center justify-around">
+          <span class="material-symbols-outlined md-24 mr3">hourglass_top</span>
+          <p class="gray measure mb0">
+            Waiting for your first task execution.
+          </p>
+        </div>
+        <%= link "Run Now", class: "btn btn-primary",
+                to: schedulers_path(@conn, :form_just_run, @project.name, @scheduler_id) %>
+      </div>
+    <% end %>
+  </div>
+<% end %>

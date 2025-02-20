@@ -1,0 +1,28 @@
+version: "v1.0"
+name: Run and skip testing
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Testing
+    run:
+      when: "branch = 'master' or true"
+    task:
+      jobs:
+        - commands:
+            - echo "testing"
+  - name: Failig block 1 - should be skipped
+    run:
+      when: false
+    task:
+      jobs:
+        - commands:
+            - exit 127
+  - name: Failig block 2 - should be skipped
+    skip:
+      when: "true"
+    task:
+      jobs:
+        - commands:
+            - exit 127

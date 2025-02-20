@@ -1,0 +1,38 @@
+$schema: http://json-schema.org/draft-04/schema#
+version: v1.0
+title: Semaphore pipeline definition file specification
+type: object
+properties:
+  project:
+    type: string
+  branch:
+    type: string
+  at:
+    type: string
+  pipeline_file:
+    type: string
+  paused:
+    type: boolean
+  recurring:
+    type: boolean
+  parameters:
+    type: array
+    items: 
+      type: object
+      properties:
+        name:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        required:
+          type: boolean
+        default_value:
+          type: string
+        description:
+          type: string
+      additionalProperties: false
+      required: [name, required]
+additionalProperties: false
+required: [project, recurring]

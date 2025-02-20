@@ -1,0 +1,26 @@
+<%= if @permissions["organization.notifications.view"] do %>
+<div>
+  <h2 class="f3 f2-m mb0">Notifications</h2>
+  <p class="mb3 measure">Fire a notification with pipeline status</p>
+
+  <%= if @permissions["organization.notifications.manage"] do %>
+    <div class="mb4">
+      <%= link "New Notification", to: notifications_path(@conn, :new), class: "btn btn-primary" %>
+    </div>
+  <% end %>
+
+  <%= if Enum.any?(@notifications) do %>
+    <%= render FrontWeb.NotificationsView, "_notifications.html", conn: @conn, notifications: @notifications, permissions: @permissions %>
+  <% else %>
+    <div class="pv6 tc">
+      <img src=<%= image_source("slack-mark-mono.svg") %> alt="slack logo" class="w3">
+      <p class="f6 gray mv3">No notifications configured</p>
+    </div>
+  <% end %>
+</div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Organization Notifications.<br>Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>

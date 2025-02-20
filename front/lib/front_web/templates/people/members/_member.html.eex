@@ -1,0 +1,36 @@
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+      <%= construct_member_avatar(@member) %>
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %></span>
+          <%= render "members/__role_labels.html", role_bindings: @member.subject_role_bindings %>
+        </div>
+        <%= render "members/__metadata.html", member: @member %>
+      </div>
+    </div>
+
+    <% member_role_names = Enum.map(@member.subject_role_bindings, &(&1.role.name)) %>
+    <%= if show_people_management_buttons?(@conn, @org_scope?, @permissions)
+      && "Owner" not in member_role_names do %>
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+          <%= unless !@org_scope? && Front.ce_roles?() do %>
+            <%= if Front.ce_roles?() do %>
+              <div class="app-edit-person" data-config="<%= Poison.encode!(edit_person_config(@conn, @member, @roles, @permissions)) %>"></div>
+            <% else %>
+              <%= render "members/__change_role_btn.html", member: @member, roles: @roles, permissions: @permissions %>
+            <% end %>
+          <% end %>
+          <%= render "members/__modify_group_button.html", render?: (@is_group? and @org_scope?), group: @member %>
+
+          <%= unless !@org_scope? && Front.ce_roles?() && "Member" not in member_role_names do %>
+            <%= render "members/__remove_member_btn.html", member: @member %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

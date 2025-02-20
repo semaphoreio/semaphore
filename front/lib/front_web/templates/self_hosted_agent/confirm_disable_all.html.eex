@@ -1,0 +1,28 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="bg-white shadow-1 br3 pa3 pa4-l">
+    <h3 class="f3 f2-m mb1">Disable agents for <%= @agent_type.name %>?</h3>
+    <p class="red mt2 mb3">Proceed carefully, this cannot be undone!</p>
+    <div class="mw6">
+      <div class="mt3">
+        <%= form_for @conn, self_hosted_agent_disable_all_agents_path(@conn, :disable_all_agents, @agent_type.name), [method: :post], fn f -> %>
+          <div class="flex items-center">
+            <%= radio_button f, :only_idle_agents, true, checked: true %>
+            <%= label f, :only_idle_agents, "Disable all idle agents", class: "ml2", for: "only_idle_agents_true" %>
+          </div>
+          <div class="flex items-center">
+            <%= radio_button f, :only_idle_agents, false %>
+            <%= label f, :only_idle_agents, class: "ml2", for: "only_idle_agents_false" do %>
+              Disable all <span class="gray">(some of them might be running jobs)</span>
+            <% end %>
+          </div>
+          <div class="mw6 mt3">
+            <%= submit "Disable agents", class: "btn btn-danger mr2" %>
+            <%= link "Nevermind",
+                to: self_hosted_agent_path(@conn, :show, @agent_type.name),
+                class: "btn btn-secondary" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,17 @@
+<% alias Front.WorkflowPage.Errors.StructuredError %>
+
+<div class="mw6">
+  <div class="f6 code ws-normal bg-white pa2 br2 shadow-1">
+    <div class="mb2">
+      Invalid <a href="https://docs.<%= Application.get_env(:front, :domain) %>/reference/conditions-reference" target="_blank">when</a> expression detected.
+    </div>
+
+    Location: <%= StructuredError.path(@err) %><br>
+    Error: <%= @err["message"] %>
+  </div>
+
+  <div class="f6 measure ws-normal pt2">
+    Please check your YAML configuration for errors and try again. See the
+    documentation at <a href="https://docs.<%= Application.get_env(:front, :domain) %>/reference/pipeline-yaml" target="_blank" rel="noopener">Semaphore YAML reference</a>.
+  </div>
+</div>

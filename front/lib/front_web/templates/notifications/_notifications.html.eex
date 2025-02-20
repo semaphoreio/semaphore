@@ -1,0 +1,48 @@
+<%= Enum.map(@notifications, fn notification -> %>
+  <div class="bg-white shadow-1 br3 pa3 mv3">
+        <div class="f4 f3-m b mb2"><%= notification.metadata.name %></div>
+
+        <div class="overflow-auto nowrap">
+          <%= Enum.map(notification.spec.rules, fn rule -> %>
+            <div class="mv3">
+              <div class="f6 fw5 black-50 mb1"><%= rule.name %></div>
+                <table class="collapse mb0">
+                    <tr class="v-top">
+                      <td class="pr3">From&nbsp;Projects</td>
+                      <td><%= rule.filter.projects |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
+                      <td class="pr3">Branches</td>
+                      <td><%= rule.filter.branches |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
+                      <td class="pr3">Pipelines</td>
+                      <td><%= rule.filter.pipelines |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
+                      <td class="pr3">Results</td>
+                      <td><%= rule.filter.results |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
+                      <td class="pr3">To&nbsp;Slack&nbsp;Channels</td>
+                      <td><%= rule.notify.slack.channels |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
+                      <td class="pr3">Webhook</td>
+                      <td><%= if(rule.notify.webhook == nil, do: "", else: rule.notify.webhook.endpoint) %></td>
+                    </tr>
+                </table>
+            </div>
+          <% end) %>
+        </div>
+        <%= if @permissions["organization.notifications.manage"] do %>
+          <div class="button-group mt3">
+            <%= link "Edit", to: notifications_path(@conn, :edit, notification.metadata.id), class: "btn btn-secondary btn-small" %>
+            <%= link "Delete…", to: notifications_path(@conn, :destroy, notification.metadata.id),
+method: :delete,
+class: "btn btn-secondary btn-small",
+data: [confirm: "You're about to delete this Notification forever. Are you sure?"] %>
+          </div>
+        <% end %>
+  </div>
+<% end) %>

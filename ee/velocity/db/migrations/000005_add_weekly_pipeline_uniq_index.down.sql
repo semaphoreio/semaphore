@@ -1,0 +1,1 @@
+drop index if exists weekly_pipeline_metrics_uindex;

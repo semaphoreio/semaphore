@@ -1,0 +1,30 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  timeout:     5000
+  port: 5432
+
+production:
+  <<: *default
+  database:    <%= ENV['POSTGRES_DB_NAME'] %>
+  username:    <%= ENV['POSTGRES_DB_USER'] %>
+  password:    <%= ENV['POSTGRES_DB_PASSWORD'] %>
+  host:        <%= ENV['POSTGRES_DB_HOST'] %>
+  pool:        <%= ENV['POSTGRES_DB_POOL_SIZE'] %>
+  sslmode:     <%= ENV['POSTGRES_DB_SSL'] == "true" ? "require" : "disable" %>
+
+development:
+  <<: *default
+  database:    <%= ENV['POSTGRES_DB_NAME'] %>
+  username:    <%= ENV['POSTGRES_DB_USER'] %>
+  password:    <%= ENV['POSTGRES_DB_PASSWORD'] %>
+  host:        <%= ENV['POSTGRES_DB_HOST'] %>
+  pool:        <%= ENV['POSTGRES_DB_POOL_SIZE'] %>
+
+test:
+  <<: *default
+  database:    <%= ENV['POSTGRES_DB_NAME'] %>
+  username:    <%= ENV['POSTGRES_DB_USER'] %>
+  password:    <%= ENV['POSTGRES_DB_PASSWORD'] %>
+  host:        <%= ENV['POSTGRES_DB_HOST'] %>
+  pool:        <%= ENV['POSTGRES_DB_POOL_SIZE'] %>

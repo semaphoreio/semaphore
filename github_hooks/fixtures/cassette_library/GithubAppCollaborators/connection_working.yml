@@ -1,0 +1,139 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: https://api.github.com/app/installations/13612966/access_tokens
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      User-Agent:
+      - Awesome-Octocat-App
+      Authorization:
+      - Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE2MDg1NjYyODUsImV4cCI6MTYwODU2Njg4NSwiaXNzIjoiMTU4MDYifQ.DsS7MGWraxh_EvjRmmpJF_fAZd4O84Y0gazTLJv0QqwdHnQRh1aY-C8gNqyZFoxQnfjzLIW1QkaP8KCYCS3C3Ynxwcbq0xKifUOmrXmmQgqY2vXouqMW5eJXkzqG6aH4wWCH4e1Pj_CIxxuBa7uFGBACjnaQwH6utEFI3nlQyRo6HGJ7Oyy9xdmV3kJ88FXWmr08EVS24JFL01EAS5fyvYiSzwuAsFLw4DFz_AGiRuPhlRmHgz7oPLwknYiyzg7KT4V1Y1lABD-9WALFR9DM48MHybdhZ6exCx6f0y_26QUCyAkyjTQS7y2h_PsbJUcpZox1P-URDb-eYWflFcqRYA
+      Accept:
+      - application/vnd.github.v3+json
+  response:
+    status:
+      code: 201
+      message: Created
+    headers:
+      Date:
+      - Mon, 21 Dec 2020 15:58:05 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Content-Length:
+      - '335'
+      Server:
+      - GitHub.com
+      Status:
+      - 201 Created
+      Cache-Control:
+      - public, max-age=60, s-maxage=60
+      Vary:
+      - Accept, Accept-Encoding, Accept, X-Requested-With, Accept-Encoding
+      Etag:
+      - '"f3151ca05b932eb4b705211a979c839411f7c9396ad3a895863aed2d1c417ab5"'
+      X-Github-Media-Type:
+      - github.v3; format=json
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes,
+        X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - 1; mode=block
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      X-Github-Request-Id:
+      - E2F6:1F92:5F4D717:6D987BD:5FE0C60D
+    body:
+      encoding: UTF-8
+      string: '{"token":"v1.4e13edd5f5257bfb32e60222c6c784ac3dbaf1cf","expires_at":"2020-12-21T16:58:05Z","permissions":{"members":"read","organization_hooks":"write","administration":"write","checks":"write","contents":"write","metadata":"read","pull_requests":"read","repository_hooks":"write","statuses":"write"},"repository_selection":"selected"}'
+    http_version:
+  recorded_at: Mon, 21 Dec 2020 15:58:05 GMT
+- request:
+    method: get
+    uri: https://api.github.com/repos/renderedtext/guard/collaborators?per_page=100
+    body:
+      encoding: US-ASCII
+      string: ''
+    headers:
+      Accept:
+      - application/vnd.github.moondragon+json
+      User-Agent:
+      - Octokit Ruby Gem 4.7.0
+      Content-Type:
+      - application/json
+      Authorization:
+      - token v1.4e13edd5f5257bfb32e60222c6c784ac3dbaf1cf
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Date:
+      - Mon, 21 Dec 2020 15:58:06 GMT
+      Content-Type:
+      - application/json; charset=utf-8
+      Transfer-Encoding:
+      - chunked
+      Server:
+      - GitHub.com
+      Status:
+      - 200 OK
+      Cache-Control:
+      - private, max-age=60, s-maxage=60
+      Vary:
+      - Accept, Authorization, Cookie, X-GitHub-OTP
+      - Accept-Encoding
+      - Accept-Encoding, Accept, X-Requested-With
+      Etag:
+      - W/"3e381e9284420879aa49d9b03d9b5503e53f6918627b3cd54b807757b9d9ab6e"
+      X-Github-Media-Type:
+      - github.v3; param=moondragon; format=json
+      X-Ratelimit-Limit:
+      - '5250'
+      X-Ratelimit-Remaining:
+      - '5249'
+      X-Ratelimit-Reset:
+      - '1608569886'
+      X-Ratelimit-Used:
+      - '1'
+      Access-Control-Expose-Headers:
+      - ETag, Link, Location, Retry-After, X-GitHub-OTP, X-RateLimit-Limit, X-RateLimit-Remaining,
+        X-RateLimit-Used, X-RateLimit-Reset, X-OAuth-Scopes, X-Accepted-OAuth-Scopes,
+        X-Poll-Interval, X-GitHub-Media-Type, Deprecation, Sunset
+      Access-Control-Allow-Origin:
+      - "*"
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains; preload
+      X-Frame-Options:
+      - deny
+      X-Content-Type-Options:
+      - nosniff
+      X-Xss-Protection:
+      - 1; mode=block
+      Referrer-Policy:
+      - origin-when-cross-origin, strict-origin-when-cross-origin
+      Content-Security-Policy:
+      - default-src 'none'
+      X-Github-Request-Id:
+      - E2F7:1F93:B6DEB11:D273E33:5FE0C60D
+    body:
+      encoding: ASCII-8BIT
+      string: '[{"login":"markoa2","id":8652,"node_id":"MDQ6VXNlcjg2NT2=","avatar_url":"https://avatars1.githubusercontent.com/u/8652?v=4","gravatar_id":"","url":"https://api.github.com/users/markoa2","html_url":"https://github.com/markoa2","followers_url":"https://api.github.com/users/markoa2/followers","following_url":"https://api.github.com/users/markoa2/following{/other_user}","gists_url":"https://api.github.com/users/markoa2/gists{/gist_id}","starred_url":"https://api.github.com/users/markoa2/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/markoa2/subscriptions","organizations_url":"https://api.github.com/users/markoa2/orgs","repos_url":"https://api.github.com/users/markoa2/repos","events_url":"https://api.github.com/users/markoa2/events{/privacy}","received_events_url":"https://api.github.com/users/markoa2/received_events","type":"User","site_admin":false,"permissions":{"admin":true,"push":true,"pull":true}},{"login":"markoa","id":8651,"node_id":"MDQ6VXNlcjg2NTE=","avatar_url":"https://avatars1.githubusercontent.com/u/8651?v=4","gravatar_id":"","url":"https://api.github.com/users/markoa","html_url":"https://github.com/markoa","followers_url":"https://api.github.com/users/markoa/followers","following_url":"https://api.github.com/users/markoa/following{/other_user}","gists_url":"https://api.github.com/users/markoa/gists{/gist_id}","starred_url":"https://api.github.com/users/markoa/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/markoa/subscriptions","organizations_url":"https://api.github.com/users/markoa/orgs","repos_url":"https://api.github.com/users/markoa/repos","events_url":"https://api.github.com/users/markoa/events{/privacy}","received_events_url":"https://api.github.com/users/markoa/received_events","type":"User","site_admin":false,"permissions":{"admin":false,"push":true,"pull":true}},{"login":"darkofabijan","id":20469,"node_id":"MDQ6VXNlcjIwNDY5","avatar_url":"https://avatars3.githubusercontent.com/u/20469?v=4","gravatar_id":"","url":"https://api.github.com/users/darkofabijan","html_url":"https://github.com/darkofabijan","followers_url":"https://api.github.com/users/darkofabijan/followers","following_url":"https://api.github.com/users/darkofabijan/following{/other_user}","gists_url":"https://api.github.com/users/darkofabijan/gists{/gist_id}","starred_url":"https://api.github.com/users/darkofabijan/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/darkofabijan/subscriptions","organizations_url":"https://api.github.com/users/darkofabijan/orgs","repos_url":"https://api.github.com/users/darkofabijan/repos","events_url":"https://api.github.com/users/darkofabijan/events{/privacy}","received_events_url":"https://api.github.com/users/darkofabijan/received_events","type":"User","site_admin":false,"permissions":{"admin":false,"push":false,"pull":true}},{"login":"radwo","id":184065,"node_id":"MDQ6VXNlcjE4NDA2NQ==","avatar_url":"https://avatars2.githubusercontent.com/u/184065?v=4","gravatar_id":"","url":"https://api.github.com/users/radwo","html_url":"https://github.com/radwo","followers_url":"https://api.github.com/users/radwo/followers","following_url":"https://api.github.com/users/radwo/following{/other_user}","gists_url":"https://api.github.com/users/radwo/gists{/gist_id}","starred_url":"https://api.github.com/users/radwo/starred{/owner}{/repo}","subscriptions_url":"https://api.github.com/users/radwo/subscriptions","organizations_url":"https://api.github.com/users/radwo/orgs","repos_url":"https://api.github.com/users/radwo/repos","events_url":"https://api.github.com/users/radwo/events{/privacy}","received_events_url":"https://api.github.com/users/radwo/received_events","type":"User","site_admin":false,"permissions":{"admin":true,"push":true,"pull":true}}]'
+    http_version:
+  recorded_at: Mon, 21 Dec 2020 15:58:06 GMT
+recorded_with: VCR 4.0.0

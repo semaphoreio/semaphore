@@ -1,0 +1,6 @@
+<div class="bl b--light-gray ml3 pl3">
+    <h3 class="f3 pb2 mb2"><%= @title %></h3>
+    <%= render FrontWeb.SchedulersView, @template, conn: @conn,
+        form: @form, scheduler: @scheduler, validation_errors: @validation_errors,
+        project_name: @project_name, show_description?: false %>
+</div>

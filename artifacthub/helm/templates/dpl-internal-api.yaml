@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-internal-grpc-api"
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: "{{ .Chart.Name }}-internal-grpc-api"
+  ports:
+    - name: public-grpc-api
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Chart.Name }}-internal-grpc-api"
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}-internal-grpc-api"
+  replicas: {{ .Values.internalApi.replicas }}
+  template:
+    metadata:
+      name: "{{ .Chart.Name }}-internal-grpc-api"
+      labels:
+        app: "{{ .Chart.Name }}-internal-grpc-api"
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: "{{ .Chart.Name }}-internal-grpc-api"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: grpc-port
+              containerPort: 50052
+          envFrom:
+            - secretRef:
+                name: {{ .Values.global.artifacts.secretName }}
+          env:
+            {{- include "env.db.go" . | indent 12 }}
+            - name: START_PUBLIC_API
+              value: "yes"
+            - name: LOG_LEVEL
+              value: "INFO"
+            - name: OIB_OTHER_MIMES
+              value: ".md:text/plain,.txt:text/plain; charset=utf-8"
+            - name: OPEN_IN_BROWSER
+              value: "image/jpeg,image/png,text/html; charset=utf-8,image/svg+xml"
+            - name: START_INTERNAL_API
+              value: "yes"
+            - name: CORS_ORIGINS
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: CORS_ORIGINS
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: APPLICATION_NAME
+              value: "{{ .Chart.Name }}-internal-api"
+            - name: JWT_HMAC_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.jwt.name" . }}
+                  key: artifacts
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.internalApi.resources }}
+          resources:
+{{ toYaml .Values.internalApi.resources | indent 13 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}

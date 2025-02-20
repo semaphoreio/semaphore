@@ -1,0 +1,34 @@
+<div class="shadow-1 bg-white pa3 mv3 br3">
+  <p class="mb3">Follow the instructions and you should see the agent running here shortly.</p>
+  <div class="flex ph3-l mb4">
+    <div class="self-hosted-instructions-button mr3 ba bw1 tc ph3 pt3 pb2 br3 pointer" data-for="ubuntu-instructions">
+      <img src="<%= assets_path() %>/images/icn-os-ubuntu.svg" class="db center">
+      <p class="f7 mt2 mb0">Ubuntu 18.04</p>
+    </div>
+    <div class="self-hosted-instructions-button mr3 ba bw1 tc ph3 pt3 pb2 br3 pointer b--black-10 hover-b--dark-gray" data-for="debian-instructions">
+      <img src="<%= assets_path() %>/images/icn-os-debian.svg" class="db center">
+      <p class="f7 mt2 mb0">Debian</p>
+    </div>
+    <div class="self-hosted-instructions-button mr3 ba bw1 tc ph3 pt3 pb2 br3 pointer b--black-10 hover-b--dark-gray" data-for="generic-linux-instructions">
+      <img src="<%= assets_path() %>/images/icn-os-linux.svg" class="db center">
+      <p class="f7 mt2 mb0">Linux</p>
+    </div>
+    <div class="self-hosted-instructions-button mr3 ba bw1 tc ph3 pt3 pb2 br3 pointer b--black-10 hover-b--dark-gray" data-for="macos-instructions">
+      <img src="<%= assets_path() %>/images/icn-os-mac.svg" class="db center">
+      <p class="f7 mt2 mb0">MacOS</p>
+    </div>
+    <div class="self-hosted-instructions-button mr3 ba bw1 tc ph3 pt3 pb2 br3 pointer b--black-10 hover-b--dark-gray" data-for="aws-instructions">
+      <img src="<%= assets_path() %>/images/icn-os-aws.svg" class="db center">
+      <p class="f7 mt2 mb0">AWS</p>
+    </div>
+  </div>
+
+  <div>
+    <%= render FrontWeb.SelfHostedAgentView, "show/_ubuntu_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <%= render FrontWeb.SelfHostedAgentView, "show/_debian_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <%= render FrontWeb.SelfHostedAgentView, "show/_generic_linux_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <%= render FrontWeb.SelfHostedAgentView, "show/_macos_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <%= render FrontWeb.SelfHostedAgentView, "show/_aws_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+  </div>
+
+</div>

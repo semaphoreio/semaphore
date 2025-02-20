@@ -1,0 +1,23 @@
+<div class="pa3 flex justify-between bb b--black-20">
+  <div class="flex-l justify-between">
+    <span class="material-symbols-outlined">calendar_month</span>
+    <p class="mb0 b ml1"><%= @scheduler.name %></p>
+  </div>
+  <div class="flex items-center justify-between">
+    <div class="button-group">
+      <%= if @permissions["project.scheduler.manage"] do %>
+        <%= link "Edit", to: schedulers_path(@conn, :edit, @project.name, @scheduler.id), class: "btn btn-secondary" %>
+        <%= link "Delete", to: schedulers_path(@conn, :destroy, @project.name, @scheduler.id), method: :delete, class: "btn btn-secondary",
+                   data: [confirm: "You're about to delete this Task forever. Are you sure?"]  %>
+      <% else %>
+        <button class="btn btn-secondary" disabled>Edit</button>
+        <button class="btn btn-secondary" disabled>Delete</button>
+      <% end %>
+    </div>
+    <%= if @permissions["project.scheduler.manage"] do %>
+      <%= link "Run Now", to: schedulers_path(@conn, :form_just_run, @project.name, @scheduler.id), class: "btn btn-primary ml3 btn-small" %>
+    <% else %>
+      <button class="btn btn-primary ml3 btn-small" disabled>Run Now</button>
+    <% end %>
+  </div>
+</div>

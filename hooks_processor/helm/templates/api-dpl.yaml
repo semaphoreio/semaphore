@@ -1,0 +1,94 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $baseName }}-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ $baseName }}-api
+  replicas: {{ .Values.api.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: {{ $baseName }}-api
+      labels:
+        app: {{ $baseName }}-api
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: {{ $baseName }}-api
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+          - containerPort: 50050
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+          {{- include "env.db.elixir" . | indent 10 }}
+          - name: LOG_LEVEL
+            value: "info"
+          - name: MIX_ENV
+            value: prod
+
+          - name: POSTGRES_DB_SSL
+            value: {{ .Values.global.database.ssl | quote }}
+          - name: POSTGRES_DB_NAME
+            value: front
+          - name: POSTGRES_DB_POOL_SIZE
+            value: {{ .Values.api.dbPoolSize | quote }}
+
+          - name: START_HOOK_API
+            value: "true"
+          - name: START_HOOK_WORKERS
+            value: "false"
+
+          - name: AMQP_URL
+            valueFrom: { secretKeyRef: { name: {{ .Values.global.rabbitmq.secretName }}, key: amqp-url }}
+
+{{- if .Values.api.resources }}
+          resources:
+{{ toYaml .Values.api.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 12 }}
+{{- end }}
+{{- end }}

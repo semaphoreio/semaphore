@@ -1,0 +1,39 @@
+<div class="tc mv5 mv6-ns">
+  <img src="<%= assets_path() %>/images/ill-curious-girl.svg">
+
+  <%= case @page do %>
+    <% :dashboard -> %>
+      <h4 class="f4 mt2 mb0">Pretty quiet in here, huh?</h4>
+      <p class="mb0 measure center">
+        Push to the repository to trigger a workflow. <br class="dn di-ns"> Or
+        <%= link "start a new project", to: project_onboarding_path(@conn, :index), class: "dark-gray" %>
+        to connect another repository.
+      </p>
+
+    <% :project -> %>
+      <%= if public_page?(@conn) do %>
+        <h4 class="f4 mt2 mb0">It’s pretty quiet in here</h4>
+        <p class="mb0 measure center">
+        New commits to the repo will appear here
+        </p>
+      <% else %>
+        <h4 class="f4 mt2 mb0">Anything to add?</h4>
+        <p class="mb0 measure center">
+        Push to this repository and you should see your workflow running here shortly after.
+        </p>
+      <% end %>
+
+    <% :branch -> %>
+      <%= if public_page?(@conn) do %>
+        <h4 class="f4 mt2 mb0">It’s pretty quiet in here</h4>
+        <p class="mb0 measure center">
+        New commits to the repo will appear here
+        </p>
+      <% else %>
+        <h4 class="f4 mt2 mb0">That’s uncommon, but it happens…</h4>
+        <p class="mb0 measure center">
+        Commit to this branch, push to the repository and you should see your workflow running here shortly after.
+        </p>
+      <% end %>
+  <% end %>
+</div>

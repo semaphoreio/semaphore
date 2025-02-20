@@ -1,0 +1,17 @@
+version: "v1.0"
+name: Basic GH repo test in non-default-branch
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - task:
+      jobs:
+        - name: First job
+          commands:
+            - echo Command in non-default-branch
+  - task:
+      jobs:
+        - name: Second job
+          commands:
+            - echo Command from second block

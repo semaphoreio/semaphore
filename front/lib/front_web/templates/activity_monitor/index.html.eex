@@ -1,0 +1,37 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["organization.activity_monitor.view"] do %>
+    <p class="mb4">Everything currently running across all projects,<br>
+    and occupancy per machine type.</p>
+
+    <p class="b mb2">Global limits</p>
+    <div id="activity-monitor-max-parallelization" class="flex flex-wrap mb3 nh2">
+    </div>
+
+    <%= if FeatureProvider.feature_enabled?(:expose_cloud_agent_types, @conn.assigns[:organization_id]) do %>
+      <p class="b mb2">Cloud machine quotas</p>
+      <div id="activity-monitor-gauges" class="flex flex-wrap mb3 nh2">
+      </div>
+    <% end %>
+
+    <%= if FeatureProvider.feature_enabled?(:self_hosted_agents, @conn.assigns[:organization_id]) do %>
+      <p id="activity-monitor-self-hosted-gauges-title" class="b mb2">Self-hosted quotas</p>
+      <div id="activity-monitor-self-hosted-gauges" class="flex flex-wrap mb3 nh2">
+      </div>
+    <% end %>
+
+    <div id="activity-monitor-items" class="nt3 nb3">
+    </div>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">Sorry, you can’t access Activity Monitor.<br>
+        Ask organization owner or any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ActivityMonitor = {}
+  window.InjectedDataByBackend.ActivityMonitor.Data = <%= raw Poison.encode!(@activity, escape: :html_safe) %>
+  window.InjectedDataByBackend.ActivityMonitor.RefreshDataURL = <%= raw Poison.encode!(activity_monitor_path(@conn, :activity_data)) %>
+</script>

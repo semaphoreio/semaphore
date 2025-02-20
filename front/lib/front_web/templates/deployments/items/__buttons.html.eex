@@ -1,0 +1,18 @@
+<%= if FrontWeb.PipelineView.pipeline_stoppable?(@deployment.pipeline) do %>
+    <%= form_for :stop_pipeline, pipeline_stop_path(@conn, :stop, @deployment.pipeline.workflow_id, @deployment.pipeline_id), fn _form -> %>
+        <%= submit "Stop pipeline", class: "btn btn-secondary btn-tiny ml2", "data-action": "stop-deployment" %>
+    <% end %>
+<% else %>
+    <%= if @deployment.can_rerun? && @deployment.pipeline && @deployment.pipeline.state == :DONE do %>
+        <%= form_for :parameters, target_path(@conn, :trigger,
+                @deployment.pipeline.workflow_id,
+                @deployment.pipeline_id,
+                @deployment.switch_id,
+                @deployment.target_name), fn form -> %>
+            <%= for env_var <- @deployment.env_vars do %>
+                <%= hidden_input form, env_var[:name], value: env_var[:value] %>
+            <% end %>
+            <%= submit "Rerun", class: "btn btn-secondary btn-tiny ml2", "data-action": "rerun-deployment" %>
+        <% end %>
+    <% end %>
+<% end %>

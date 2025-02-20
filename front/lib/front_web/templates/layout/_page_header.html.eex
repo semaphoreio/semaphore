@@ -1,0 +1,295 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.JumpTo = {}
+  window.InjectedDataByBackend.JumpTo.Starred = <%= raw Poison.encode!(@layout_model.starred_items) %>;
+  window.InjectedDataByBackend.JumpTo.Projects = <%= raw Poison.encode!(@layout_model.unstarred_projects) %>;
+  window.InjectedDataByBackend.JumpTo.Dashboards = <%= raw Poison.encode!(@layout_model.unstarred_dashboards) %>;
+  <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+    <%= if FrontWeb.BillingView.with_plan_overlay?(@conn) do %>
+      window.InjectedDataByBackend.InitialPlan = <%= raw FrontWeb.BillingView.initial_plan_config(@conn) %>
+    <% end %>
+  <% end %>
+</script>
+<style>
+  .projects-menu-results {
+    overflow: auto;
+    background: /* Shadow covers */
+    linear-gradient(white 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(rgba(255, 255, 255, 0), white 70%) 0 100%, /* Shadows */
+    radial-gradient(farthest-side at 50% 0, #e5eaea, rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 50% 100%, #e5eaea, rgba(0, 0, 0, 0)) 0 100%;
+    background-repeat: no-repeat;
+    background-color: white;
+    background-size: 100% 20px;
+    /* Opera doesn't support this in the shorthand */
+    background-attachment: local, local, scroll, scroll;
+  }
+</style>
+<%= if tos_violation_suspension?(@layout_model.suspensions) do %>
+  <div class="fixed bottom-0 left-0 z-5">
+    <a href="<%= support_path(@conn, :new) %>" class="db link white f6 lh-title ph2 ph3-ns pv1 pointer bg-red hover-bg-dark-red">
+      Our abuse detector has flagged your organization. All processing is blocked. If you think this is a mistake, please contact support.
+    </a>
+  </div>
+<% else %>
+  <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+    <%= FrontWeb.BillingView.badge(@conn) %>
+  <% end %>
+<% end %>
+<div class="header" id="global-page-header">
+  <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
+    <div class="flex items-center">
+      <a href="/" class="link flex items-center flex-shrink-0 pv1 pr1 dark-gray  hover-bg-washed-brown ph2 br3 nh1">
+        <img src="<%= assets_path() %>/images/semaphore-logo-sign-black.svg" alt="logo" width="26" height="17">
+        <span class="dn db-m b pl2">Home</span>
+      </a>
+      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @conn.assigns[:organization_id]) do %>
+        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
+          <a href="<%= agents_index_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+            <img src="<%= assets_path() %>/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
+            <span class="dn di-ns">Agents</span>
+          </a>
+        </div>
+      <% end %>
+      <div class="bl b--black-15 pl2 pl3-ns ml2 ml3-ns">
+        <div class="b pointer flex items-center hover-bg-washed-brown ph2 br3 nh1 pv1 js-projects-menu-trigger" data-template="projectsMenu" data-hotkey="/">
+          <img src="<%= assets_path() %>/images/icn-project-nav.svg" alt="list" width="16" height="16" class="dn di-ns mr2">
+          Projects
+        </div>
+      </div>
+      <div id="projectsMenu" style="display: none;">
+        <div class="project-menu pl3 pt3">
+          <div id="jump-to-input-container" class="bg-white pr3">
+            <input id="jump-to-input" type="text" class="form-control w-100" placeholder="Jump to…">
+          </div>
+          <div class="projects-menu-results pb3 pr3" style="max-height: calc(100vh - 160px);">
+            <p class="f7 gray mt2 mb0 tc">Hit "/" to trigger from keyboard</p>
+            <div id="jump-to-results">
+            </div>
+          </div>
+        </div>
+      </div>
+      <%= if @layout_model.permissions["organization.projects.create"] do %>
+        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
+          <%= if FeatureProvider.feature_enabled?(:new_project_onboarding, @conn.assigns[:organization_id]) do %>
+            <a href="<%= project_onboarding_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+              <img src="<%= assets_path() %>/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
+              <span class="dn di-ns">Create new</span>
+            </a>
+          <% else %>
+            <a href="<%= project_onboarding_path(@conn, :new) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+              <img src="<%= assets_path() %>/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
+              <span class="dn di-ns">Create new</span>
+            </a>
+          <% end %>
+        </div>
+
+      <% else %>
+        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
+          <span class="dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1" data-tippy-content="Sorry, you can’t add new projects. Ask organization owner or any of the admins to give you access permission.">
+            <img src="<%= assets_path() %>/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
+            <span class="dn di-ns">Create new</span>
+          </span>
+        </div>
+
+      <% end %>
+    </div>
+    <div class="flex items-center flex-shrink-0">
+      <%= if FeatureProvider.feature_enabled?(:feedback, @conn.assigns[:organization_id]) do %>
+        <!-- Feedback Menu -->
+        <div class="dn db-m">
+          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="feedbackMenu">
+            <%= icon("icn-smiley", class: "db o-80", width: "24", height: "24") %>
+            <span class="dn db-m ml2 b">Feedback</span>
+          </div>
+        </div>
+      <% end %>
+      <%= if FeatureProvider.feature_enabled?(:help, @conn.assigns[:organization_id]) do %>
+        <!-- Help Menu -->
+        <div class="ph1 ph2-ns mr2-ns br-ns b--black-10">
+          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
+            <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
+            <span class="dn db-m ml2 b">Help</span>
+          </div>
+        </div>
+      <% end %>
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="profileMenu">
+        <img src="<%= @layout_model.user.avatar_url %>" alt="<%= @layout_model.user.name %>" class="f7 db br-100 ba b--black-50" width="24" height="24">
+      </div>
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="orgMenu">
+        <img src="<%= @layout_model.current_organization.avatar_url %>" width="24" height="24" class="db br-100 ba">
+      </div>
+    </div>
+  </div>
+</div>
+<div style="display: none;">
+  <!-- Header Feedback Menu -->
+  <div id="feedbackMenu">
+    <div class="ph2 pv1">
+      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Share Feedback</div>
+      <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
+              href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
+              subject: "Feedback",
+              body: Enum.join([
+                "By: #{@layout_model.user.name}",
+                "From: #{@layout_model.current_organization.name}",
+                "========================================",
+                "",
+                "Share your feedback here…"
+              ], "\n")
+            }) |> String.replace("+", "%20") %>">
+        <div class="b">Submit an idea</div>
+        <p class="f6 o-80 mb0">Share your improvement proposal</p>
+      </a>
+      <%= if !FeatureProvider.feature_enabled?(:zendesk_support, @conn.assigns[:organization_id]) do %>
+        <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
+                href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
+                subject: "Feedback",
+                body: Enum.join([
+                  "By: #{@layout_model.user.name}",
+                  "From: #{@layout_model.current_organization.name}",
+                  "========================================",
+                  "",
+                  "Share your feedback here…"
+                ], "\n")
+              }) |> String.replace("+", "%20") %>">
+          <div class="b">Report a Bug</div>
+          <p class="f6 o-80 mb0">Tell us if something’s off</p>
+        </a>
+      <% end %>
+    </div>
+  </div>
+  <!-- Header Help menu  -->
+  <div id="helpMenu">
+    <div class="ph2 pv1">
+      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Help Center</div>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+            options: [target: "_blank", rel: "noopener"],
+            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}",
+            card_title: "Docs",
+            card_description: "Semaphore 2.0 documentation",
+            tooltip: false %>
+      <%= contact_support_card(@conn, @layout_model) %>
+      <%= support_requests_card(@conn, @layout_model) %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+            options: [target: "_blank", rel: "noopener"],
+            card_url: "https://status.#{Application.fetch_env!(:front, :domain)}",
+            card_title: "Status",
+            card_description: "Live system health",
+            tooltip: false %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+            options: [target: "_blank", rel: "noopener"],
+            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/semaphore-changelog/",
+            card_title: "Changelog",
+            card_description: "Most recent product updates",
+            tooltip: false %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+            options: [target: "_blank", rel: "noopener"],
+            card_url: "https://#{Application.fetch_env!(:front, :docs_domain)}/reference/sem-command-line-tool/",
+            card_title: "sem CLI Reference",
+            card_description: "Command line goodies",
+            tooltip: false %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+            options: [target: "_blank", rel: "noopener"],
+            card_url: "https://twitter.com/semaphoreci",
+            card_title: "Twitter",
+            card_description: "Follow us @semaphoreci",
+            tooltip: false %>
+    </div>
+  </div>
+  <!-- Header Profile menu -->
+  <div id="profileMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Logged in as</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40"><%= @layout_model.user.name %></div>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+             card_url: people_path(@conn, :show, @layout_model.user.id),
+             card_title: "Profile Settings",
+             card_description: "Account, Repo access, API token",
+             tooltip: false %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+             card_url: logout_url(@conn),
+             card_title: "Log Out",
+             card_description: "Bye, bye!",
+             tooltip: false %>
+    </div>
+  </div>
+  <!-- Header Org menu -->
+  <div id="orgMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Current Organization</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40"><%= @layout_model.current_organization.name %></div>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+             card_url: project_path(@conn, :index),
+             card_title: "Projects",
+             card_description: "All projects in this organization",
+             tooltip: false %>
+      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @layout_model.current_organization.id) do %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+               card_url: agents_index_path(@conn, :index),
+               card_title: "Agents",
+               card_description: "Everything currently running across all projects",
+               tooltip: false %>
+      <% else %>
+        <%= if FeatureProvider.feature_enabled?(:activity_monitor, @layout_model.current_organization.id) do %>
+          <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+                card_url: activity_monitor_path(@conn, :index),
+                card_title: "Activity Monitor",
+                card_description: "Everything currently running across all projects",
+                tooltip: false %>
+        <% end %>
+        <%= if FeatureProvider.feature_visible?(:self_hosted_agents, @layout_model.current_organization.id) do %>
+          <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+                 card_url: self_hosted_agent_path(@conn, :index),
+                 card_title: "Self-Hosted Agents",
+                 card_description: "Currently running agents and agent types",
+                 tooltip: false %>
+        <% end %>
+      <% end %>
+      <%= if FeatureProvider.feature_enabled?(:audit_logs, @layout_model.current_organization.id) do %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+               card_url: audit_path(@conn, :index),
+               card_title: "Audit Logs",
+               card_description: "List of all events",
+               tooltip: false %>
+      <% end %>
+      <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+             card_url: settings_path(@conn, :show),
+             card_title: "Settings",
+             card_description: "Basics, Secrets and Notifications",
+             tooltip: false %>
+      <%= if FrontWeb.DashboardView.get_started_enabled?(@conn) do %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+               card_url: get_started_index_path(@conn, :index, []),
+               card_title: "Get started",
+               card_description: "Your guide to Semaphore",
+               tooltip: false %>
+      <% end %>
+      <div class="bt b--white-40 pv2 mt3">
+        <div class="dib f5 mb0 fl bg-green white-80 ph2 lh-solid nt3">Restricted admin area</div>
+        <%= billing_card(@conn, @layout_model) %>
+        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+               card_url: people_path(@conn, :organization),
+               card_title: "People",
+               card_description: "Manage Collaborators",
+               tooltip: false %>
+      <%= if FeatureProvider.feature_enabled?(:multiple_organizations, @layout_model.current_organization.id) do %>
+        <div class="bb b--white-40"></div>
+        <%= if length(@layout_model.organizations) > 1 do %>
+          <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+                card_url: FrontWeb.LayoutView.me_url(@conn),
+                card_title: "Organizations",
+                card_description: "#{length(@layout_model.organizations)} organizations you belong to",
+                tooltip: false %>
+          <% end %>
+        <%= if FrontWeb.BillingView.can_create_organization?(@conn) do %>
+          <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
+                card_url: "#{FrontWeb.LayoutView.me_url(@conn)}/new",
+                card_title: "+ Create new",
+                card_description: "Create new organization",
+                tooltip: false %>
+        <% end %>
+      <% end %>
+      </div>
+    </div>
+  </div>
+</div>

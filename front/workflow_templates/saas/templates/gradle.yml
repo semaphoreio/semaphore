@@ -1,0 +1,15 @@
+version: v1.0
+name: Java
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Gradle
+    task:
+      jobs:
+        - name: Build
+          commands:
+            - sem-version java 1.8
+            - checkout
+            - ./gradlew build

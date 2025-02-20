@@ -1,0 +1,34 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+# It can be defined for all jobs in global_job_config field or for specifc job
+# where job value if present  overrides the value from global_job_config.
+# It is evaluated and applied only in job execution.
+global_job_config:
+  priority:
+    # The value of first item that has when condition evaluated as true will be used
+    # If nothing is matched, the default value will be used..
+    - value: 100
+      when: "branch = 'master'"
+    - value: 75
+      when: "tag =~ '.*'"
+    - value: 30
+      when: true
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: job1
+          priority:
+            - value: 80
+              when: "branch = 'master'"
+            - value: 40
+              when: true
+          commands:
+            - echo Single command job
+        - name: job2
+          commands:
+            - echo Single command job

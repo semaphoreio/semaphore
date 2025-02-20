@@ -1,0 +1,58 @@
+<div id="forkExplanation" class="nh3 nh4-m nt3 nt4-m ph3 ph4-m pv3 mb3 mb4-m bg-washed-yellow bb b--black-15">
+  <div class="flex justify-between">
+    <div class="pr4">
+      <p class="mb0"><strong>Ta-daa!</strong> You’ve successfully forked the example to <a href="<%= human_accessible_repository_url(@project) %>"><%= "#{@project.repo_owner}/#{@project.repo_name}" %></a> and hooked it with Semaphore!</p>
+      <p class="mb3">Click on any job to see its output or edit workflow to customize the commands next.</p>
+
+      <details id="semaphore-concepts" class="mb2">
+        <summary class="f5 fw5 bg-green white ph2 br3 pointer dib">Explain me Semaphore in 30s</summary>
+        <div>
+          <section class="pt3 pt4-m" id="pipelines-blocks-jobs">
+            <h2 class="f3 f2-m mb3">Pipelines, Blocks & Jobs</h2>
+            <p class="measure-narrow">The basic building block is a pipeline:</p>
+            <div class="nl2">
+              <img src="<%= image_source("tour-pipeline-simple.png") %>" width="550" height="223" alt="simple Semaphore pipeline">
+            </div>
+            <p class="measure-narrow mv3">Pipelines are made of sequential blocks. Each block may contain a single job, or multiple parallel jobs.</p>
+            <p class="measure-narrow">For more advanced use cases, pipelines may also run in parallel and depend on each other.</p>
+            <div class="nl2 mb3 nt5">
+              <img src="<%= image_source("tour-pipeline-complex.png") %>" width="718" height="680" alt="complex Semaphore pipeline">
+            </div>
+          </section>
+
+          <section id="promotions">
+            <h2 class="f3 f2-m mb3">Promotions</h2>
+            <p class="measure-narrow">Model your continuous delivery process by connecting pipelines with promotions.</p>
+            <div class="nl4 mb3">
+              <img src="<%= image_source("tour-promotion.png") %>" width="670" height="220" alt="Semaphore promotion">
+            </div>
+            <p class="measure">Promotions can be triggered manually or automatically on certain conditions, like pipeline result, Git branch or tag.</p>
+          </section>
+
+          <section class="pt3 pt4-m" id="workflow-builder">
+            <h2 class="f3 f2-m mb3">Workflow Builder</h2>
+            <p class="measure-narrow">Semaphore configuration lives in YAML files in the <code class="f4 bg-white ph1 br2 shadow-1">.semaphore</code> directory of your Git repository.</p>
+            <p class="measure">Writing YAML from scratch is hard, so Semaphore has a visual Workflow Builder so that you can easily create and edit configuration files for your project:</p>
+
+            <div class="nl1 mt4 mb3">
+              <img src="<%= image_source("tour-editor.png") %>" width="718" height="576" alt="Semaphore workflow builder">
+            </div>
+          </section>
+
+          <h2 class="f3 f2-m mb1">There! What’s next?</h2>
+
+          <p class="measure mb3">Playing with this dummy project is the quickest way to get familiar with Semaphore. If you feel confident, go hook your real repositories. But before you do:</p>
+          <ul class="measure mb4">
+            <li class="mv1">Push more commits to <a href="<%= human_accessible_repository_url(@project) %>"><%= "#{@project.repo_owner}/#{@project.repo_name}" %></a> to trigger new builds in this project</li>
+            <li class="mv1">Edit workflow with Workflow Builder to adjust the build configuration. Break all you want, that’s how you learn!</li>
+            <li class="mv1">When stuck, peek into <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>" target="_blank" rel="noopener">Semaphore Docs</a> for tips</li>
+          </ul>
+          <button class="btn btn-secondary btn-small" data-action="hideForkExplanation">I’m ready, close this tutorial</button>
+        </div>
+      </details>
+    </div>
+    <div class="f2 fw2 lh-solid nt1 nr2">
+      <a href="#" class="link pa2 black-50 hover-black" data-action="closeForkExplanation">×</a>
+    </div>
+  </div>
+</div>

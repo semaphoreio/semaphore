@@ -1,0 +1,18 @@
+{
+  "title": "Phoenix",
+  "description": "Test your Phoenix application",
+  "category": "Elixir",
+  "features": [
+    "Ubuntu 20.04 environment",
+    "Code checkout",
+    "Start PostgreSQL 11",
+    "Elixir version set to 1.9.1",
+    "Install and cache hex packages",
+    "Create and migrate database",
+    "Run test suite"
+  ],
+  "icon": "lang-phoenix.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/phoenix.yml",
+  "pinned": true
+}

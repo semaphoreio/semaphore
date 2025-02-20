@@ -1,0 +1,9 @@
+version: "v1.0"
+name: basic test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+
++build:
+  jobs:

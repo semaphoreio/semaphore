@@ -1,0 +1,30 @@
+services:
+  devapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        APP_NAME: gofer_client
+    container_name: devapp
+    profiles: ["dev"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./home_dir:/home/dev
+      - ../:/home/dev/repo
+
+  ciapp:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      target: test
+      args:
+        APP_NAME: gofer_client
+    container_name: ciapp
+    profiles: ["ci"]
+    stdin_open: true
+    tty: true
+    volumes:
+      - "../:/app/repo"
+    working_dir: "/app/repo/gofer_client"

@@ -1,0 +1,86 @@
+version: '3.6'
+
+services:
+
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-artifacthub}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: dev
+
+    tty: true
+    command: /bin/bash
+
+    environment:
+      AMQP_URL: "amqp://rabbitmq:5672"
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_NAME: "artifacthub"
+      DB_USERNAME: "postgres"
+      APPLICATION_NAME: "artifacthub"
+      DB_PASSWORD: "the-cake-is-a-lie"
+      DB_DEBUG_LOGS: "true"
+      STORAGE_EMULATOR_HOST: "http://gcs:4443"
+      ARTIFACT_STORAGE_S3_URL: http://s3:9000
+      ARTIFACT_STORAGE_BACKEND: "s3"
+      AWS_REGION: "local"
+      ARTIFACT_STORAGE_S3_BUCKET: "semaphore-artifacts"
+      AWS_ACCESS_KEY_ID: "minioadmin"
+      AWS_SECRET_ACCESS_KEY: "minioadmin"
+
+    links:
+      - db:db
+      - rabbitmq:rabbitmq
+      - gcs:gcs
+      - s3:s3
+
+    volumes:
+      - go-pkg-cache:/go
+      - .:/app
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    volumes:
+      - "rabbitmq-data:/data"
+
+  gcs:
+    image: fsouza/fake-gcs-server
+    container_name: 'gcs'
+    volumes:
+      - gcs-data:/data
+    ports:
+      - 4443:4443
+    command: -backend memory -scheme http -port 4443 -public-host gcs:4443 -external-url http://gcs:4443
+
+  s3:
+    image: minio/minio:RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
+    container_name: 's3'
+    ports:
+      - 9000:9000
+    entrypoint: sh
+    command: -c 'mkdir -p /tmp/s3-data/semaphore-artifacts && minio server /tmp/s3-data'
+volumes:
+  go-pkg-cache:
+    driver: local
+
+  db-data:
+    driver: local
+
+  rabbitmq-data:
+    driver: local
+
+  gcs-data:
+    driver: local

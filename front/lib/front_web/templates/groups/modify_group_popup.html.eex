@@ -1,0 +1,122 @@
+<style>
+.group-members-jumpto {
+  position: relative;
+}
+.group-members-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.group-members-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.group-members-jumpto .jumpto-results {
+  position: absolute;
+  top: 31px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 207px;
+  width: 100%;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+.group-members-jumpto .jumpto-results span[aria-selected="true"],
+.group-members-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.group-members-jumpto .jumpto-results span:focus,
+.group-members-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+#scrollable-div::-webkit-scrollbar {
+    width: 12px; 
+}
+.scrollable-div{
+  max-height: 200px;
+  overflow-y: auto;
+}
+.selected{
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+}
+.not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+}
+.not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+}
+</style>
+
+<div class="overlay" id="groups_modal_overlay" style="display: none;">
+  <div class="bg-white popup w-40 br3 pa3 tl" style="min-width: 500px;">
+
+    <h3 class="mb0">Group name</h3>
+    <input id="name_input" type="text" placeholder="E.g. Administrators" class="form-control w-100 mr2 mv2" >
+
+    <div id="group_description_block">
+      <h3 class="mb0">Group description</h3>
+      <input id="description_input" type="text" placeholder="E.g. Employees with access to all functionalities and projects" class="form-control w-100 mr2 mv2" >
+    </div>
+
+    <div id="fetching_non_members">
+      <h3 class="mb0">Group members</h3>
+      <div class="flex items-center mv2 justify-between">
+          <div class="group-members-jumpto w-100 filters-group flex">
+            <input type="hidden">
+            <input type="text" placeholder="Search members to add" class="form-control w-100 mr2" >
+            <div class="jumpto-results"></div>
+          </div>
+      </div>
+
+      <div id="group-users" class="scrollable-div">
+        <%# This div is managed by the add_to_project.js %>
+      </div>
+    </div>
+
+    <div class="flex justify-center mt3">
+      <button id="save_changes_btn" disabled="true" class="pointer flex items-center btn-primary btn">
+        <span class="material-symbols-outlined mr1">done</span>
+        <span>Save changes</span>
+      </button>
+      <button id="cancel_btn" class="pointer flex items-center btn-secondary btn ml3">
+        <span class="material-symbols-outlined mr1">cancel</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+</div>

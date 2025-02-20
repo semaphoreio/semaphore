@@ -1,0 +1,19 @@
+<div id="changes-alert" class="fixed left-0 right-0 bottom-0 w-100 z-9999 slide-from-bottom">
+  <div class="mw6 center bg-white mb4 shadow-2 bl bw3 b--red br2">
+    <div class="flex items-start justify-between">
+      <p class="f4 measure mb0 ph3 pv2">
+        <%= @alert %>
+      </p>
+      <a href="#" id="hide-alert" class="db link f3 dark-gray pv2 ph3 nr1 o-50 hover-o-100 lh-title">×</a>
+    </div>
+  </div>
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  const e = document.getElementById("hide-alert");
+  e.onclick = function(event) {
+    event.preventDefault();
+    const elem = document.getElementById("changes-alert");
+    elem.style.display = "none";
+  }
+</script>

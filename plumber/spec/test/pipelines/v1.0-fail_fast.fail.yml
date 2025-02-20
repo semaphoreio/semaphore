@@ -1,0 +1,14 @@
+version: "v1.0"
+name: Definition with invalid fail_fast property
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+fail_fast:
+  when: "missing stop or cancel above this"
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:
+            - echo Single command job

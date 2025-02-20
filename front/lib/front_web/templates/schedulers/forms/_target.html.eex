@@ -1,0 +1,38 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.Tasks.Target = {
+        branch: "<%= @scheduler.branch %>",
+        pipeline_file: "<%= @scheduler.pipeline_file %>"
+    };
+</script>
+
+<%= if @show_description? do %>
+    <div class="ml2 measure">
+        Provide a set of environment variables and files that will allow
+        your pipeline to connect to this target. The information you provide here
+        will be encrypted and available only in the pipelines which deploy to
+        this target.
+    </div>
+<% end %>
+
+<div class="ml2 mt2 mb4" data-validation="branch">
+    <%= label @form, :branch, class: "db b mb2" do %>
+        Branch <span class="gray normal">(overridable)</span>
+    <% end %>
+    <%= hidden_input @form, :id %>
+    <%= hidden_input @form, :unique_token %>
+    <%= text_input @form, :branch, value: @scheduler.branch, class: "form-control w-100 w-50-m",
+        "data-validation-input": "branch", placeholder: "e.g. master" %>
+    <p class="f6 mt1 mb0 nb1">Please ensure that selected branch exists in the repository.</p>
+    <div class="f5 b mv1 red" data-validation-message="branch"></div>
+</div>
+
+<div class="ml2 mt2 mb4" data-validation="pipelineFile">
+    <%= label @form, :pipeline_file, class: "db b mb2" do %>
+        Pipeline file <span class="gray normal">(overridable)</span>
+    <% end %>
+    <%= text_input @form, :pipeline_file, value: @scheduler.pipeline_file,
+        class: "form-control w-100 w-50-m", "data-validation-input": "pipelineFile",
+        placeholder: "e.g. .semaphore/semaphore.yml" %>
+    <p class="f6 mt1 mb0 nb1">Location of the .yml file to run. Make sure it’s on the branch set above.</p>
+    <div class="f5 b mv1 red" data-validation-message="pipelineFile"></div>
+</div>

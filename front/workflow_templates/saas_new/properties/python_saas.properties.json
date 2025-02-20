@@ -1,0 +1,12 @@
+{
+  "title": "Python",
+  "description": "Run quality checks and parallel tests for your Python app using Poetry for dependency management and pytest for testing. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Python</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Poetry</span><span class='f6 normal mr1 ph1 br2 bg-green white'>pytest</span></div>",
+  "short_description": "Run your Python suite",
+  "group": "ci",
+  "language": "Python",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-python.svg",
+  "template_path": "templates/python_saas.yml",
+  "workflow_tip": "other"
+}

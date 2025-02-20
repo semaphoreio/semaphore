@@ -1,0 +1,70 @@
+image: zebra
+imageTag: latest
+imagePullSecrets: []
+
+db:
+  name: front
+
+internalApi:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+publicApi:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+dbWorker:
+  replicas: 1
+  dbPoolSize: 5
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+messageWorker:
+  replicas: 1
+  dbPoolSize: 4
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+selfHostedDispatcher:
+  replicas: 1
+  dbPoolSize: 3
+  resources:
+    limits:
+      cpu: '0.5'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

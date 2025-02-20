@@ -1,0 +1,22 @@
+<div class="mb4">
+  <%= new_agent_type_button(@conn, false) %>
+</div>
+
+<div class="flex flex-wrap nh3 nb3">
+  <%= Enum.map(@agent_types, fn agent_type -> %>
+    <%= link to: self_hosted_agent_path(@conn, :show, agent_type.name), class: "link db dark-gray bg-white shadow-1 shadow-hover pa3 w5 h4 br3 ma3" do %>
+
+      <img src="<%= assets_path() %>/images/icn-self-hosted.svg" class="db mb2">
+      <div class="f3 b"><%= agent_type.name %></div>
+
+      <%= cond do %>
+      <% agent_type.total_agent_count > 1 ->%>
+        <div class="mb0 green"><%= agent_type.total_agent_count %> running agents</div>
+      <% agent_type.total_agent_count == 1 -> %>
+        <div class="mb0 green">1 running agent</div>
+      <% true -> %>
+        <div class="mb0">No running agents</div>
+      <% end %>
+    <% end %>
+  <% end) %>
+</div>

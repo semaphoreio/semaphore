@@ -1,0 +1,68 @@
+{
+  "ref": "refs/heads/post-funding-capture",
+  "after": "daceaa9bb8ce39f9aac8041869d99aee1c0aa3ec",
+  "before": "0000000000000000000000000000000000000000",
+  "created": true,
+  "deleted": false,
+  "forced": true,
+  "base_ref": "refs/heads/master",
+  "compare": "https://github.com/terriblelabs/dragon-launcher/compare/post-funding-capture",
+  "commits": [
+
+  ],
+  "head_commit": {
+    "id": "daceaa9bb8ce39f9aac8041869d99aee1c0aa3ec",
+    "distinct": true,
+    "message": "Don't show backed projects on user profile unless\nuser has actually backed any.",
+    "timestamp": "2013-06-17T13:41:18-07:00",
+    "url": "https://github.com/terriblelabs/dragon-launcher/commit/daceaa9bb8ce39f9aac8041869d99aee1c0aa3ec",
+    "author": {
+      "name": "Thomas Mayfield",
+      "email": "Thomas.Mayfield@gmail.com",
+      "username": "thegreatape"
+    },
+    "committer": {
+      "name": "Thomas Mayfield",
+      "email": "Thomas.Mayfield@gmail.com",
+      "username": "thegreatape"
+    },
+    "added": [
+
+    ],
+    "removed": [
+
+    ],
+    "modified": [
+      "app/views/users/show.html.haml"
+    ]
+  },
+  "repository": {
+    "id": 10005537,
+    "name": "dragon-launcher",
+    "url": "https://github.com/terriblelabs/dragon-launcher",
+    "description": "",
+    "watchers": 0,
+    "stargazers": 0,
+    "forks": 0,
+    "fork": false,
+    "size": 3140,
+    "owner": {
+      "name": "terriblelabs",
+      "email": null
+    },
+    "private": true,
+    "open_issues": 0,
+    "has_issues": true,
+    "has_downloads": true,
+    "has_wiki": true,
+    "language": "Ruby",
+    "created_at": 1368307895,
+    "pushed_at": 1371562483,
+    "master_branch": "master",
+    "organization": "terriblelabs"
+  },
+  "pusher": {
+    "name": "alxjrvs",
+    "email": "alxjrvs@gmail.com"
+  }
+}

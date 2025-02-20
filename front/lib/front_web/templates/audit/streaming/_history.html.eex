@@ -1,0 +1,39 @@
+<details class="">
+  <summary class="pointer b">Stream History (<%= length(@stream_log) %> events)</summary>
+
+  <div class="shadow-1 mt3 br3 pa3 bg-white">
+    <div class="flex b mt2 pa2 ph3">
+      <div class="w-50">File Name</div>
+      <div class="w-10">Size</div>
+      <div class="w-10">Time</div>
+      <div class="w-30 tr">Result</div>
+    </div>
+
+    <%= Enum.map(@stream_log, fn e -> %>
+      <div class="flex bt b--black-075 pa2 ph3">
+        <div class="w-50"><%= e.file_name %></div>
+        <div class="w-10"><%= audit_file_size(e.file_size) %></div>
+
+        <div class="w-10">
+          <relative-time
+              datetime="<%= DateTime.from_unix!(e.timestamp.seconds) %>"
+              month="short"
+              day="numeric"
+              year="numeric"
+              hour="numeric"
+              minute="numeric"
+              second="numeric"
+              ></relative-time>
+        </div>
+
+        <div class="w-30 tr">
+          <%= if e.error_message != "" do %>
+            <span class="red">Error: <%= e.error_message %> </span>
+          <% else %>
+            <span class="green">Success</span>
+          <% end %>
+        </div>
+      </div>
+    <% end) %>
+  </div>
+</details>

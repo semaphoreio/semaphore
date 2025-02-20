@@ -1,0 +1,108 @@
+<div class="mw8 center pv4-l">
+  <div class="flex-l">
+    <div class="w-40-l pa4-l">
+      <h1 class="f2 f1-l lh-title mb2">Hey, <%= name(@user) %>!<br> How can we help you?</h1>
+      <p class="measure mb4-l">
+      We’re doing our best to respond as soon as possible,
+      usually within one working day.
+      </p>
+      <img src=<%= image_source("ill-couple-in-office.svg") %> alt="couple in the office">
+    </div>
+
+    <div class="w-60-l pa4-l">
+        <div class="bg-lightest-blue br3 br--top pa3 bb b--black-15">
+          <input type="search" id="searchBox" class="form-control w-100" placeholder="Search the Docs…" autofocus>
+        </div>
+
+      <%= form_for @conn, support_path(@conn, :submit), [method: :post, class: "bg-lightest-blue pa3 br3 br--bottom", multipart: true], fn f -> %>
+
+        <div class="mb3">
+          <label class="f4 b db mb1" for="topic">Topic  <span class="f7 fw5 bg-green white ph1 br1 ml1">Required</span></label>
+          <%= select f, :topic, topics_list(@plan),
+              class: manage_field_class(:support, @changeset, :topic) %>
+          <%= manage_error_message(:support, @changeset, :topic) %>
+        </div>
+        <%= if free_plan?(@plan) do %>
+          <%= if @able_to_manage_billing do %>
+              <p class="f6 mt1">Support for Free plan is limited.<br>
+                Get personalized support from Semaphore engineers
+                → <%= link "Upgrade", to: @billing_url %></p>
+            <% else %>
+              <p class="f6 mt1">Support for Free plan is limited. Tell your organization owner to upgrade and get personalized support from Semaphore engineers!
+              </p>
+            <% end %>
+        <% end %>
+
+        <div class="mv3">
+          <label class="f4 b db mb1">
+            Subject  <span class="f7 fw5 bg-green white ph1 br1 ml1">Required</span>
+          </label>
+          <%= text_input f, :subject,
+              name: "subject",
+              value: @support_request.subject,
+              class: manage_field_class(:support, @changeset, :subject),
+              placeholder: "What’s on your mind?" %>
+          <%= manage_error_message(:support, @changeset, :subject) %>
+        </div>
+
+        <div class="mv3">
+          <label class="f4 b db mb1">
+            Description  <span class="f7 fw5 bg-green white ph1 br1 ml1">Required</span>
+          </label>
+          <%= textarea f, :body,
+              name: "body",
+              value: @support_request.body,
+              rows: "6",
+              class: manage_field_class(:support, @changeset, :body),
+              placeholder: "Tell us more…" %>
+          <%= manage_error_message(:support, @changeset, :body) %>
+        </div>
+
+        <%= if not free_plan?(@plan) do %>
+          <div class="mv3">
+            <label class="f6 db mb1">
+              This exact workflow is bugging me (Optional)
+            </label>
+            <%= text_input f, :provided_link,
+                name: "provided_link",
+                value: @support_request.provided_link,
+                class: "form-control w-100",
+                placeholder: "Paste URL" %>
+          </div>
+        <% end %>
+
+        <div class="mv3">
+          <%= label f, :attachment, "Attach Screenshot (5 MB max, JPG or PNG)", class: "f6 db mb1" %>
+
+          <%= file_input f, :attachment, class: manage_attachment_class(@changeset), accept: "image/*"%>
+          <%= manage_error_message(:support, @changeset, :attachment) %>
+        </div>
+
+        <div class="mv3">
+          <div class="flex items-center">
+            <%= checkbox f, :urgent, name: "urgent" %>
+            <%= label f, :urgent, "This issue is blocking me · 🔥 Check in case of emergency", class: "f6 ml2" %>
+          </div>
+        </div>
+
+        <%= submit "Send Message", class: "btn btn-primary" %>
+        </div>
+      <% end %>
+
+    </div>
+  </div>
+
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" type="text/javascript" src="https://cdn.sitesearch360.com/sitesearch360-v12.mjs"></script>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>" type="text/javascript">
+  var ss360Config = {
+    siteId: 'id.semaphoreci.com',
+    searchBox: {selector: '#searchBox'},
+    results: {
+      searchQueryParamName: 'q',
+      linksOpenNewTab: true,
+      embedConfig: {contentBlock: '.md-content'}
+    }
+  };
+</script>

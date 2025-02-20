@@ -1,0 +1,22 @@
+<div class="pv3 bt b--lighter-gray">
+  <h2 class="mb0 b f3"> <%= extract_contact_type(@contact_changeset) %></h2>
+  <p class="mv2 measure"> <%= extract_contact_type_description(@contact_changeset) %></p>
+
+  <%= form_for @contact_changeset, organization_contacts_path(@conn, :modify), [method: :post], fn f -> %>
+    <%= hidden_input f, :org_id, value: input_value(f, :org_id) %>
+    <%= hidden_input f, :contact_type, value: input_value(f, :contact_type) %>
+
+    <%= label f, :name, "Full Name", class: "db b mv2" %>
+    <%= text_input f, :name, class: "form-control w-100", placeholder: "Enter name...", value: input_value(f, :name), disabled: !@permissions["organization.general_settings.manage"]%>
+
+    <%= label f, :email, " Work Email Address", class: "db b mv2" %>
+    <%= text_input f, :email, class: "form-control w-100", placeholder: "Enter contact email...", value: input_value(f, :email), disabled: !@permissions["organization.general_settings.manage"] %>
+
+    <%= label f, :phone, "Phone Number", class: "db b mv2" %>
+    <%= text_input f, :phone, class: "form-control w-100", placeholder: "Enter contact phone", value: input_value(f, :phone), disabled: !@permissions["organization.general_settings.manage"] %>
+
+    <div class="flex mt4">
+        <%= submit "Save Changes", class: "btn btn-primary", disabled: !@permissions["organization.general_settings.manage"] %>
+    </div>
+  <% end %>
+</div>

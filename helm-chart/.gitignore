@@ -1,0 +1,5 @@
+*.tgz
+*.lock
+charts/
+Chart.yaml
+values.yaml

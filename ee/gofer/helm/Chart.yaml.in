@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gofer
+description: A Helm chart for deploying Semaphore gofer application
+type: application
+version: "@chartVersion@"
+appVersion: ""

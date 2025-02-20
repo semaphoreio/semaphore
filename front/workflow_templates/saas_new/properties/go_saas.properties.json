@@ -1,0 +1,12 @@
+{
+  "title": "Go",
+  "description": "Run quality checks and parallel tests for your Go app using gotestsum for enhanced test reporting. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>gotestsum</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>JUnit</span></div>",
+  "short_description": "Run your Go suite",
+  "group": "ci",
+  "language": "Go",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-go.svg",
+  "template_path": "templates/go_saas.yml",
+  "workflow_tip": "other"
+}

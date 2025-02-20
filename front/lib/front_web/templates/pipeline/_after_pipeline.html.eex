@@ -1,0 +1,45 @@
+<%= if @pipeline.after_task.present? do %>
+  <div class="pa3">
+    <div class="mb3 flex items-center justify-between nt1">
+      <div class="gray pr1">After pipeline jobs</div>
+    </div>
+    <div class="v-top bg-white shadow-1 ph2 br2 f5">
+      <%= for {job, idx} <- Enum.with_index(@pipeline.after_task.jobs) do %>
+        <%= if job.id do %>
+          <%= link to: job_path(@conn, :show, job.id), style: "font-weight: normal;", class: "link dark-gray flex items-center justify-between pv1 nh2 ph2 b--black-15 hover-bg-washed-gray #{if idx != 0, do: "bt" }" do %>
+            <div class="flex items-center pr3">
+              <%= cond do %>
+                <% job.passed? -> %>
+                <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-passed</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#00a569" r="8"/><path d="M7.456 8.577L6.273 7.45a1 1 0 00-1.38 1.448l1.917 1.826a1 1 0 001.423-.044l3.386-3.652a1 1 0 00-1.466-1.36z" fill="#fff" fill-rule="nonzero"/></g></svg>
+                <% job.failed? -> %>
+                <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-failed</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#e53935" r="8"/><g fill="#fff" fill-rule="nonzero"><path d="M5.293 6.707l4 4a1 1 0 101.414-1.414l-4-4a1 1 0 00-1.414 1.414z"/><path d="M5.293 9.293l4-4a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414-1.414z"/></g></g></svg>
+                <% job.stopped? -> %>
+                <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-stopped</title><g fill="none" fill-rule="evenodd"><circle cx="8.011" cy="8" fill="#667979" r="8"/><path d="M5.994 9l4.023.023a1 1 0 00.011-2L6.006 7a1 1 0 00-.012 2z" fill="#fff" fill-rule="nonzero"/></g></svg>
+                <% job.running? -> %>
+                <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-running</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#1570ff" r="8"/><g fill="#fff"><circle cx="5" cy="8" r="1"/><circle cx="8" cy="8" r="1"/><circle cx="11" cy="8" r="1"/></g></g></svg>
+                <% true -> %>
+                <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-enqueued</title><g fill="none" fill-rule="evenodd"><circle cx="8" cy="8" fill="#fd7e14" r="8"/><g fill="#fff"><rect height="4" rx="1" width="2" x="3" y="5"/><rect height="4" rx="1" width="2" x="7" y="6"/><rect height="4" rx="1" width="2" x="11" y="7"/></g></g></svg>
+              <% end %>
+              <%= job.name %>
+            </div>
+            <span class="f5 code gray">
+              <% timer_state = if job.running?, do: "run" %>
+              <% timer_seconds = FrontWeb.SharedView.total_seconds(job.started_at, job.done_at) %>
+              <% timer_time = FrontWeb.SharedView.total_time(job.started_at, job.done_at) %>
+              <% timer_color = FrontWeb.SharedView.timer_color(job) %>
+              <div timer <%= timer_state %> seconds="<%= timer_seconds %>" class="f5 code <%= timer_color %> pl1"><%= timer_time %></div>
+            </span>
+          <% end %>
+        <% else %>
+          <div style="font-weight: normal;" class="link dark-gray flex items-center justify-between pv1 nh2 ph2 b--black-15 hover-bg-washed-gray <%= if idx != 0, do: "bt" %>">
+            <div class="flex items-center pr3">
+              <svg class="mr2" height="16" width="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><title>icn-not-started</title><path d="M8 0c4.418 0 8 3.59 8 8 0 4.418-3.59 8-8 8-4.418 0-8-3.59-8-8 0-4.418 3.59-8 8-8zM2 8c0 3.308 2.69 6 6 6 3.308 0 6-2.69 6-6 0-3.308-2.69-6-6-6-3.308 0-6 2.69-6 6z" fill="#b4c0c0"/></svg>
+              <%= job.name %>
+            </div>
+            <span class="f5 code gray">--:--</span>
+          </div>
+        <% end %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

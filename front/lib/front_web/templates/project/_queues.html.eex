@@ -1,0 +1,5 @@
+<div class="pollman-container pv2 pa0-l mv3" data-poll-href="/projects/<%= @project.id %>/queues">
+  <%= @queues |> Enum.map(fn(queue) -> %>
+    <%= render FrontWeb.ProjectView, "show/_queue.html", project: @project, queue: queue %>
+  <% end) %>
+</div>

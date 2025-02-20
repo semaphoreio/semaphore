@@ -1,0 +1,23 @@
+version: "v1.0"
+name: Block filters
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1
+    skip:
+      when: "branch =~ 'skip-ci$'"
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo "Block executed"
+  - name: Block 2
+    skip:
+      when: true
+    task:
+      jobs:
+        - name: job
+          commands:
+            - echo "Block should never be executed"

@@ -1,0 +1,26 @@
+<div
+  pipeline="<%= @pipeline.id %>"
+  data-poll-href="<%= "/workflows/#{@workflow.id}/pipelines/#{@pipeline.id}" %>"
+  data-poll-state="<%= pipeline_poll_initialized_state(@pipeline) %>"
+  data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+  class="dib v-top"
+  style='<%= unless @pipeline.id == @workflow.root_pipeline_id, do: "margin-top: 25px; scroll-margin-top: 55px;" %> min-width: 270px;'>
+  <div class="dib v-top bg-washed-gray br3 mr3 ba b--black-075 <%= if with_after_task(@pipeline) or with_switch(@pipeline), do: "wf-pipeline-has-switch" %>">
+    <div pipeline-fixed-size-container=<%= @pipeline.id %>>
+      <%= render FrontWeb.PipelineView, "_pipeline.html", conn: @conn, workflow: @workflow, pipeline: @pipeline %>
+    </div>
+  </div>
+  <%= if with_after_task(@pipeline) or with_switch(@pipeline) do %>
+    <div class="dib v-top bg-washed-gray br3 ba b--black-075" style="min-width:220px; margin-right: 21px;">
+      <%= if with_after_task(@pipeline) do %>
+        <%= render FrontWeb.PipelineView, "_after_pipeline.html", conn: @conn, pipeline: @pipeline %>
+      <% end %>
+      <%= if with_after_task(@pipeline) and with_switch(@pipeline) do %>
+        <div class="bt b--black-075"></div>
+      <% end %>
+      <%= if with_switch(@pipeline) do %>
+        <%= render FrontWeb.PipelineView, "_switch.html", conn: @conn, workflow: @workflow, pipeline: @pipeline, switch: @pipeline.switch, selected_trigger_event_id: @selected_trigger_event_id, can_promote?: @can_promote? %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%= render FrontWeb.LayoutView, "_head.html", conn: @conn %>
+
+  <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.onload = function(){
+      document.forms['jwt_form'].submit()
+    }
+  </script>
+
+  <%= form_for @conn, @url, [id: "jwt_form"], fn f -> %>
+    <%= hidden_input f, :jwt, value: @jwt %>
+  <% end %>
+</html>

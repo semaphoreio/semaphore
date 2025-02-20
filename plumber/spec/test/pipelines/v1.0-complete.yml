@@ -1,0 +1,72 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+fail_fast:
+  stop:
+    when: "branch != master"
+blocks:
+  - name: Block 1
+    task:
+      prologue:
+        commands:
+          - echo asd
+      epilogue:
+        commands:
+          - echo "epilogue"
+      secrets:
+        - name: aws_keys1
+          env_var_names:
+            - HOST
+            - SHELL
+            - "123"
+          config_file_paths:
+            - ~/.ssh/id_rsa
+            - "12345"
+        - name: k8s_secrets # This will import all env_vars and all config_files
+      env_vars:
+        - name: ENV_VAR_NAME
+          value: env_var_value
+        - name: FOO
+          value: "12"
+      jobs:
+        - name: job1
+          env_vars:
+            - name: ENV_VAR_NAME
+              value: "value"
+          commands_file: commands/job1.cmd
+          matrix:
+            - env_var: ELIXIR
+              values: ["1.3", "1.4", "1.5"]
+            - env_var: ERLANG
+              values: ["19", "20"]
+        - name: job2
+          env_vars:
+            - name: ENV_VAR_NAME
+              value: "value"
+          commands:
+            - docker-compose up
+      boosters:
+        - name: family_of_boosted_jobs_2
+          type: cucumber
+          job_count: 3
+  - name: Block 2
+    task:
+      jobs:
+        - name: job2
+          commands:
+          - echo foo
+  - name: Block 3
+    task_file: block3task.yml
+promotions:
+  - name: prod
+    pipeline_file: ./deploy_prod.yml
+  - name: stg1
+    pipeline_file: ./deploy_stg1.yml
+    auto_promote_on:
+      - result: passed
+        branch:
+          - master
+          - dev.

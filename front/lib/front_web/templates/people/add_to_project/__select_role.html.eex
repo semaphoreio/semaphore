@@ -1,0 +1,19 @@
+<div id="select_role">
+  <h3 class="mb0 mt3">Select Role</h3>
+  <p class="f4 mb0">Select the role that will be assigned:</p>
+  <% contributor_id = Enum.find(@roles, &(&1.name=="Contributor")) |> Map.get(:id)%>
+  <div selected-role-id=<%= contributor_id %> class="shadow-1 mv3 br3 scrollable-div">
+    <%= for role <- @roles do %>
+      <div id=<%= role.id%> name="role_div" class=<%= if role.name =="Contributor", do: "selected", else: "not-selected"%>>
+      <%= if role.name =="Contributor" do %>
+        <span class="material-symbols-outlined mr1">done</span>
+      <% else %>
+        <span class="material-symbols-outlined mr1">&nbsp;</span>
+      <% end %>
+        <div>
+          <p class="b f5 mb0"><%= role.name %></p>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

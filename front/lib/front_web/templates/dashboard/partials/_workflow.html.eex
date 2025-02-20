@@ -1,0 +1,136 @@
+<%= case @page do %>
+  <% :branch -> %>
+    <div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+      <div class="flex-l pv1">
+        <div class="w-75-l pr4-l mb2 mb1-l">
+          <div class="flex">
+            <div class="flex-shrink-0 mr2 dn db-l">
+              <%= icon("icn-commit", class: "mt1") %>
+            </div>
+            <div class="flex-auto">
+              <div>
+                <%= if not is_nil(@workflow.hook) do %>
+                  <%= link @workflow.name, to: @workflow.url, class: "word-wrap" %>
+                <% else %>
+                  <span class="word-wrap"><%= @workflow.name %></span>
+                <% end %>
+              </div>
+              <div class="f5 overflow-auto nowrap pv1">
+                <div>
+                  <%= raw FrontWeb.PipelineView.tree_view(@conn, @workflow) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="w-25-l">
+          <div class="flex flex-row-reverse-l items-center">
+            <img width=32px src="<%= @workflow.author_avatar_url %>" class="db br-100 ba b--black-50">
+            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">
+              <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>">
+                <%= Timex.format!(@workflow.created_at, "{Mshort} {D}, {YYYY}") %>
+              </time-ago>
+              <br>
+              by <%= @workflow.author_name %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% :project -> %>
+    <div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+      <div class="flex items-center bb b--black-10 pb2 mb2">
+        <%= icon(@workflow.type, width: "16", height: "16", class: "flex-shrink-0 mr2 dn db-l") %>
+        <%= if not is_nil(@workflow.hook) do %>
+          <%= link workflow_widget_title(@workflow), to: @workflow.hook_url, class: "link dark-gray word-wrap underline-hover b" %>
+        <% else %>
+          <span class="link dark-gray word-wrap underline-hover b"><%= workflow_widget_title(@workflow) %></span>
+        <% end %>
+      </div>
+      <div class="flex-l pv1">
+        <div class="w-75-l pr4-l mb2 mb1-l">
+          <div class="flex">
+            <div class="flex-shrink-0 mr2 dn db-l">
+              <%= icon("icn-commit", width: "16", height: "16", class: "mt1") %>
+            </div>
+            <div class="flex-auto">
+              <div>
+                <%= if not is_nil(@workflow.hook) do %>
+                  <%= link @workflow.name, to: @workflow.url, class: "word-wrap" %>
+                <% else %>
+                  <span class="word-wrap"><%= @workflow.name %></span>
+                <% end %>
+              </div>
+              <div class="f5 overflow-auto nowrap pv1">
+                <div>
+                  <%= raw FrontWeb.PipelineView.tree_view(@conn, @workflow) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="w-25-l">
+          <div class="flex flex-row-reverse-l items-center">
+            <img width=32px src="<%= @workflow.author_avatar_url %>" class="db br-100 ba b--black-50">
+            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">
+              <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>">
+                <%= Timex.format!(@workflow.created_at, "{Mshort} {D}, {YYYY}") %>
+              </time-ago>
+              <br>
+              by <%= @workflow.author_name %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% :dashboard -> %>
+    <div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+      <div class="flex items-center bb b--black-10 pb2 mb2">
+        <%= icon(@workflow.type, width: "16", height: "16", class: "flex-shrink-0 mr2 dn db-l") %>
+        <div>
+          <%= if not is_nil(@workflow.hook) do %>
+            <%= link workflow_widget_title(@workflow), to: @workflow.hook_url, class: "link dark-gray word-wrap underline-hover b" %>
+          <% else %>
+            <span class="link dark-gray word-wrap underline-hover b"><%= workflow_widget_title(@workflow) %></span>
+          <% end %>
+          <span>from project</span>
+          <%= link @workflow.project_name, to: @workflow.project_url %>
+        </div>
+      </div>
+      <div class="flex-l pv1">
+        <div class="w-75-l pr4-l mb2 mb1-l">
+          <div class="flex">
+            <div class="flex-shrink-0 mr2 dn db-l">
+              <%= icon("icn-commit", class: "mt1") %>
+            </div>
+            <div class="flex-auto">
+              <div>
+                <%= if not is_nil(@workflow.hook) do %>
+                  <%= link @workflow.name, to: @workflow.url, class: "word-wrap" %>
+                <% else %>
+                  <span class="word-wrap"><%= @workflow.name %></span>
+                <% end %>
+              </div>
+              <div class="f5 overflow-auto nowrap pv1">
+                <div>
+                  <%= raw FrontWeb.PipelineView.tree_view(@conn, @workflow) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="w-25-l">
+          <div class="flex flex-row-reverse-l items-center">
+            <img width=32px src="<%= @workflow.author_avatar_url %>" class="db br-100 ba b--black-50">
+            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">
+              <time-ago datetime="<%= Timex.format!(@workflow.created_at, "%FT%T%:z", :strftime) %>">
+                <%= Timex.format!(@workflow.created_at, "{Mshort} {D}, {YYYY}") %>
+              </time-ago>
+              <br>
+              by <%= @workflow.author_name %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+<% end %>

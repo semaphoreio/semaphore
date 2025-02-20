@@ -1,0 +1,4 @@
+<p class="mb3 pb1 measure-wide">
+  Host your own agents and customize the environment used to run
+  jobs in your Semaphore workflows. Read more in <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/self-hosted-agents-overview" target="_blank">Docs: Self-Hosted Agents</a>
+</p>

@@ -1,0 +1,101 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $baseName }}-agent-cleaner
+spec:
+  selector:
+    matchLabels:
+      app: {{ $baseName }}-agent-cleaner
+  replicas: {{ .Values.agentCleaner.replicas }}
+  template:
+    metadata:
+      name: {{ $baseName }}-agent-cleaner
+      labels:
+        app: {{ $baseName }}-agent-cleaner
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+      initContainers:
+{{ include "initContainers.waitForPostgres" . | indent 8 }}
+      containers:
+        - name: {{ $baseName }}-agent-cleaner
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/home/front/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            {{- include "env.db.go" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/home/front/app/features.yml"
+            - name: START_AGENT_CLEANER
+              value: "yes"
+            - name: START_METRICS_COLLECTOR
+              value: "yes"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: DB_NAME
+              value: self-hosted-hub
+            - name: DB_POOL_SIZE
+              value: {{ .Values.agentCleaner.dbPoolSize | quote }}
+            - name: APPLICATION_NAME
+              value: "self-hosted-cleaner"
+            - name: ON_PREM
+              value: "true"
+
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.agentCleaner.resources }}
+          resources:
+{{ toYaml .Values.agentCleaner.resources | indent 13 }}
+{{- end }}
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,5 @@
+<%= if @render? do %>
+  <button class="btn btn-secondary" name="modify-group-btn" group_id="<%= @group.id %>">
+    Modify group
+  </button>
+<% end %>

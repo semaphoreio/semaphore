@@ -1,0 +1,53 @@
+version: '3.6'
+services:
+  app:
+    build:
+      context: .
+      cache_from:
+        - "${IMAGE:-repohub}:${IMAGE_TAG:-latest}"
+      dockerfile: Dockerfile
+      target: dev
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: repos
+      DB_USERNAME: postgres
+      DB_PASSWORD: the-cake-is-a-lie
+      REPOHUB_TEST_GH_APP_PRIVATE_KEY: ${REPOHUB_TEST_GH_APP_PRIVATE_KEY}
+      REPOHUB_TEST_GH_TOKEN: ${REPOHUB_TEST_GH_TOKEN}
+      REPOHUB_TEST_BB_TOKEN: ${REPOHUB_TEST_BB_TOKEN}
+      REPOHUB_TEST_GITLAB_TOKEN: ${REPOHUB_TEST_GITLAB_TOKEN}
+      INTERNAL_API_URL_PROJECT: 127.0.0.1:8888
+      INTERNAL_API_URL_USER: 127.0.0.1:8888
+      INTERNAL_API_URL_REPOSITORY_INTEGRATOR: 127.0.0.1:8888
+
+    links:
+      - db
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - .:/app
+      - /tmp:/tmp
+      - repo-data:/var/repos
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  repo-data:
+    driver: local
+
+  postgres-data:
+    driver: local

@@ -1,0 +1,5 @@
+<%= if @pagination.total_pages>1 do %>
+<div id="pagination_btn_container" class="flex justify-center mv3">
+    <button id="load_more_btn" class="btn btn-secondary w4 mr3" >Load More</button>
+</div>
+<% end %>

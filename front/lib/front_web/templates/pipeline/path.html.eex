@@ -1,0 +1,15 @@
+<div pipeline-container="<%= @pipeline.id %>" class="dib v-top flex-shrink-0" href="<%= pipeline_path(@conn, :show, @workflow.id, @pipeline.id) %>">
+  <%= render FrontWeb.PipelineView, "show.html", conn: @conn, workflow: @workflow, pipeline: @pipeline, selected_trigger_event_id: child_pipeline_id(@pipeline), can_promote?: @can_promote?, selected_pipeline_id: @selected_pipeline_id %>
+</div>
+<div successors ancestor="<%= @pipeline.id %>" class="dib v-top successors">
+  <%= if @pipeline.switch && @pipeline.switch.pipeline do %>
+    <%= render FrontWeb.PipelineView, "path.html", conn: @conn, workflow: @workflow, pipeline: @pipeline.switch.pipeline, selected_trigger_event_id: child_pipeline_id(@pipeline.switch.pipeline), can_promote?: @can_promote?, selected_pipeline_id: @selected_pipeline_id %>
+  <% end %>
+</div>
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  InteractivePipelineTree.adjustSuccessorsTopMargins();
+  var pipeline = document.querySelector(`[pipeline-only-div='<%= @selected_pipeline_id %>']`)
+  if(pipeline) {
+    pipeline.className += " flash-element";
+  }
+</script>

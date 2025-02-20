@@ -1,0 +1,130 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.FetchNonMembersUrl = "<%= raw people_path(@conn, :fetch_project_non_members, @conn.assigns.project.name) %>"
+</script>
+
+<style>
+.project-jumpto {
+  position: relative;
+}
+.project-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.project-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.project-jumpto .jumpto-results {
+  position: absolute;
+  top: 31px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 207px;
+  width: 100%;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.project-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.project-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+
+.project-jumpto .jumpto-results span[aria-selected="true"],
+.project-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.project-jumpto .jumpto-results span:focus,
+.project-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+
+#scrollable-div::-webkit-scrollbar {
+    width: 12px;
+}
+
+.scrollable-div{
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.selected{
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+}
+
+.not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+}
+
+.not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+}
+</style>
+
+<div class="overlay" id="modal_overlay" style="display: none;">
+  <div class="bg-white popup w-40 br3 pa3 tl" style="min-width: 500px;">
+    <h3 class="mb0">Add New Users</h3>
+    <p class="measure-wide mb0">Ensure that the user is a part of your organization before trying to add them to the project. Go to <%= link "organization/people", to: people_path(@conn, :organization) %> to invite users to the organization.</p>
+
+    <div class="flex items-center mv3 justify-between">
+        <div class="project-jumpto w-100 filters-group flex">
+          <input type="hidden">
+          <input
+            type="text"
+            placeholder="<%= if Front.ce_roles?(), do: "Search users to add to project", else: "Search users and groups to add to project" %>"
+            class="form-control w-100 mr2" >
+          <div class="jumpto-results"></div>
+        </div>
+    </div>
+
+    <div id="users" class="scrollable-div">
+      <%# This div is managed by the add_to_project.js %>
+    </div>
+
+    <%= if !Front.ce_roles?() do %>
+      <%= render "add_to_project/__select_role.html", conn: @conn, roles: @roles%>
+    <% end %>
+
+    <div class="flex justify-center">
+      <button id="add_members_btn" disabled="true" class="pointer flex items-center btn-primary btn">
+        <span class="material-symbols-outlined mr1">person_add</span>
+        <span>Add Selected</span>
+      </button>
+      <button id="cancel_btn" class="pointer flex items-center btn-secondary btn ml3">
+        <span class="material-symbols-outlined mr1">cancel</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+version: "v1.0"
+name: Parallelism test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - task:
+      jobs:
+        - name: Job 1
+          parallelism: 4
+          commands:
+            - echo foo

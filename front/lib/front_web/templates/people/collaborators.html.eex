@@ -1,0 +1,134 @@
+<div id="loaded-gh-collaborators">
+  <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+    window.InjectedDataByBackend.GithubCollaborators = {};
+    window.InjectedDataByBackend.GithubCollaborators.LoadPath = "<%= people_path(@conn, :sync, layout: false) %>";
+    window.InjectedDataByBackend.GithubCollaborators.RefreshPath = "<%= people_path(@conn, :refresh) %>";
+  </script>
+
+
+  <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <%= if FeatureProvider.feature_enabled?(:email_members, @conn.assigns[:organization_id]) || Front.ce_roles?() do %>
+      <div class="mb2 bb b--lighter-gray">
+        <div class="mb3 mb0-m">
+          <p class="measure mb2">Add member to Organization</p>
+          <%= form_for @conn, people_path(@conn, :create_member), [class: "flex items-center pb2"], fn f -> %>
+            <%= email_input f, :email, class: "form-control mr3", required: true, placeholder: "Email…" %>
+            <%= text_input f, :name, class: "form-control mr3", required: false, placeholder: "Optional Username…" %>
+            <%= submit "Add Member", class: "btn btn-secondary" %>
+          <% end %>
+        </div>
+
+        <%= if @password != "" do %>
+          <div class="ph3-l mb4">
+            <h3 class="f4 mb0">Temporary Password</h3>
+            <p class="mb3"><span class="serif">⚠️</span> For security reasons, we’ll show you the password only once. You can regenerate password on Member's page.</p>
+            <pre class="people-password f6 bg-washed-yellow pa3 ba b--black-075" style="display: none"><%= @password %></pre>
+            <p class="m0"><button class="people-password-reveal btn btn-small btn-secondary">Reveal</button></p>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+
+    <%= if !Front.ce_roles?() do %>
+      <%= if FeatureProvider.feature_enabled?(:gitlab, @conn.assigns[:organization_id]) do %>
+      <div class="flex-m justify-between mb0 bb b--lighter-gray">
+        <div class="mb3 mb0-m">
+          <p class="measure mb2">
+          Invite members using GitLab username
+          </p>
+          <%= form_for @conn, people_path(@conn, :create), [class: "flex items-center pb2"], fn f -> %>
+            <%= text_input f, :gitlab_handle, class: "form-control mr3", required: true, placeholder: "GitLab username—" %>
+            <%= submit "Invite", class: "btn btn-secondary" %>
+            <%= if @error do %>
+              <div class="f5 red"><%= @error %></div>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+      <% end %>
+      <div class="flex-m justify-between mb0 mt2 bb b--lighter-gray">
+        <div class="mb3 mb0-m">
+          <p class="measure mb2">
+          Invite members using GitHub username
+          </p>
+          <%= form_for @conn, people_path(@conn, :create), [class: "flex items-center pb2"], fn f -> %>
+            <%= text_input f, :github_handle, class: "form-control mr3", required: true, placeholder: "GitHub username—" %>
+            <%= submit "Invite", class: "btn btn-secondary" %>
+            <%= if @error do %>
+              <div class="f5 red"><%= @error %></div>
+            <% end %>
+          <% end %>
+          <p>Or add them from the collaborators list below</p>
+        </div>
+
+        <div class="flex-shrink-0 pl3-m mb3 mb0-m tr-m">
+          <button class="btn btn-secondary" refresh-gh-collaborators>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <%= if Enum.any?(@collaborators) do %>
+
+        <div class="pt3 pb5">
+          <%= form_for @conn, people_path(@conn, :create), [id: "add-member-form"], fn f -> %>
+            <%= text_input f, :redirect_to, hidden: true, required: true, value: @redirect_path %>
+            <div class="flex-m flex-row-reverse-m justify-between mb2">
+              <p class="f6 gray mb1 mb0-m">
+              Optionally, notify by email. Leave empty to add without notification.
+              </p>
+              <div class="f6" id="people-potential-members-selects">
+                <%= submit "Add selected (0)", class: "btn btn-primary mr2", id: "people-potential-members-submit" %>
+                <a class="gray underline pointer" data-action="selectAll">Select All</a> ·
+                <a class="gray underline pointer" data-action="selectNone">Select None</a>
+              </div>
+            </div>
+
+            <div id="people-potential-members-list">
+              <%= @collaborators |> Enum.map(fn(collaborator) -> %>
+                <div class="flex items-center-ns bg-white shadow-1 mv3 ph3 pv2 br3" gh-collaborator>
+                  <div class="flex-auto">
+                    <div class="flex-ns items-center">
+                      <div class="w-50-ns">
+                        <div class="flex items-center o-50" faded>
+                          <input type="checkbox" value="<%= Base.url_encode64(collaborator.repository_provider.login) %>" class="mr3" name="people[]">
+
+                          <img src="<%= collaborator.avatar_url %>" class="w2 h2 br-100 mr3 ba b--black-50">
+                          <div>
+                            <div class="b"><%= collaborator.display_name %></div>
+                            <div class="f5 gray">@<%= collaborator.repository_provider.login %></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="w-50-ns pv2 pv0-ns">
+                        <input type="hidden" name="<%= Base.url_encode64(collaborator.repository_provider.login) %>[username]" value="<%= collaborator.repository_provider.login %>">
+                        <input type="hidden" name="<%= Base.url_encode64(collaborator.repository_provider.login) %>[uid]" value="<%= collaborator.repository_provider.uid %>">
+                        <input type="hidden" name="<%= Base.url_encode64(collaborator.repository_provider.login) %>[provider]" value="<%= map_repository_provider_key(collaborator.repository_provider.type) %>">
+                        <input type="email"  name="<%= Base.url_encode64(collaborator.repository_provider.login) %>[invite_email]" class="form-control w-100" placeholder="Enter email…" value="" disabled>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              <% end) %>
+            </div>
+
+          <% end %>
+        </div>
+
+      <% else %>
+
+        <div class="pv5 tc">
+          <img src="<%= assets_path() %>/images/ill-girl-showing-continue.svg" alt="girl pointing to the left" class="mb2">
+          <p class="f6 gray mt3 mb0">
+          Looks like everybody is already on Semaphore!<br>
+          Hit 'Refresh' if you think someone is missing<br>
+          or<br>
+          invite more collaborators to repositories.
+          </p>
+        </div>
+
+      <% end %>
+    <% end %>
+  </div>
+</div>

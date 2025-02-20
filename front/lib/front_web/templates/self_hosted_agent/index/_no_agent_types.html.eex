@@ -1,0 +1,9 @@
+<div class="mb4">
+  <%= new_agent_type_button(@conn, true) %>
+</div>
+
+<div class="tc pt5 pb6">
+  <img src="<%= assets_path() %>/images/profile-bot-mono.svg" alt="robot" class="w3">
+  <h4 class="f4 mt2 mb1">No agent types yet</h4>
+  <p class="f6 mb0 measure center">Create some to see them listed here</p>
+</div>

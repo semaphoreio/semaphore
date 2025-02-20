@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.global.authentication.configMapName }}
+  namespace: {{ .Release.Namespace }}
+data:
+  ROOT_LOGIN: "false"
+  ROOT_LOGIN_METHODS: ""
+  DEFAULT_LOGIN_METHOD: oidc
+  KEYCLOAK_LOGIN_PAGE: "true"
+  KC_ROOT_URL: {{ printf "https://id.%s" .Values.global.domain.name }}
+  KC_LOCAL_URL: http://keycloak
+  KC_REALM: semaphore
+  OIDC_CLIENT_ID: semaphore
+  OIDC_MANAGE_CLIENT_ID: semaphore-user-management
+  SESSION_COOKIE_NAME: _semaphoreci_2_0_sxmoon_session
+  ENABLE_TEMPORARY_PASSWORDS: "true"

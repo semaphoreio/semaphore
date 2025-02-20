@@ -1,0 +1,79 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["organization.self_hosted_agents.view"] do %>
+    <p class="mb3 pb1 measure-wide">
+      <%= link "← Back to all agent types", to: self_hosted_agent_path(@conn, :index), class: "gray" %>
+    </p>
+
+    <%= if @instructions == "token_reset" && @token != nil do %>
+      <%= render FrontWeb.SelfHostedAgentView, "show/_token_reset.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <% end %>
+
+    <div class="flex items-center justify-between mb2">
+      <div class="flex items-center">
+        <img src="<%= assets_path() %>/images/icn-self-hosted.svg" class="db mr2">
+        <h1 class="f3 f2-m mb0"><%= @agent_type.name %></h1>
+      </div>
+      <%= if @permissions["organization.self_hosted_agents.manage"] do %>
+        <div class="flex items-center">
+          <%= link "Edit…", to: self_hosted_agent_edit_path(@conn, :edit, @agent_type.name), class: "btn btn-secondary mr2" %>
+          <%= link "Reset token…", to: self_hosted_agent_confirm_reset_token_path(@conn, :confirm_reset_token, @agent_type.name), class: "btn btn-secondary mr2" %>
+          <%= link "Disable all…", to: self_hosted_agent_confirm_disable_all_path(@conn, :confirm_disable_all, @agent_type.name), class: "btn btn-secondary mr2" %>
+          <%= if @agents == [] do %>
+            <%= link "Delete…", to: self_hosted_agent_confirm_delete_path(@conn, :confirm_delete, @agent_type.name), id: "delete-agent-type", class: "btn btn-secondary" %>
+          <% else %>
+            <%= link "Delete…", to: "", id: "delete-agent-type", class: "btn btn-secondary disabled", "data-tippy-content": "Only available for agent types with no running agents" %>
+          <% end %>
+        </div>
+      <% end %>
+    </div>
+
+    <% number_of_agents = @agent_type.total_agent_count %>
+    <h2 class="f4 normal gray mb3">
+      <span id="self-hosted-agents-count">
+        <%= cond do %>
+        <% number_of_agents > 1 ->%>
+          <span class="green"><%= number_of_agents %> running agents</span>
+        <% number_of_agents == 1 -> %>
+          <span class="green">1 running agent</span>
+        <% true -> %>
+          <span>No running agents</span>
+        <% end %>
+      </span>
+      ·
+      <a href="https://docs.semaphoreci.com/ci-cd-environment/install-self-hosted-agent" class="gray" target="_blank">How to start an agent?</a>
+    </h2>
+
+    <div class="mv2 mh3">
+      <b>Agent name origin</b>: <%= agent_name_origin(@agent_type) %>
+    </div>
+    <div class="mt2 mb4 mh3">
+      <b>Agent name release</b>: <%= agent_release_info(@agent_type) %>
+    </div>
+
+    <%= render FrontWeb.SelfHostedAgentView, "show/_agents.html", agent_type: @agent_type, agents: @agents, conn: @conn, permissions: @permissions %>
+
+    <div class="flex justify-center mv3 agent-pagination" <%= if @next_page_url == "" && @agent_type.total_agent_count <= length(@agents), do: "style=display:none;" %>>
+      <button class="btn btn-link first" disabled>Back to first page</button>
+      <button class="btn btn-secondary next">Next page</button>
+    </div>
+
+    <%= if @instructions == "installation" && @token != nil do %>
+      <%= render FrontWeb.SelfHostedAgentView, "show/_instructions.html", agent_type: @agent_type, agents: @agents, token: @token, conn: @conn %>
+    <% end %>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">Sorry, you can’t access Self Hosted Agents.<br>
+        Ask organization owner or any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.SelfHostedAgents = {}
+  window.InjectedDataByBackend.SelfHostedAgents.CanManage = '<%= @permissions["organization.self_hosted_agents.manage"] %>'
+  window.InjectedDataByBackend.SelfHostedAgents.AgentTypeName = "<%= @agent_type.name %>"
+  window.InjectedDataByBackend.SelfHostedAgents.FirstPageUrl = "<%= @first_page_url %>"
+  window.InjectedDataByBackend.SelfHostedAgents.NextPageUrl = "<%= @next_page_url %>"
+  window.InjectedDataByBackend.SelfHostedAgents.LatestAgentVersion = "<%= latest_agent_version() %>"
+</script>

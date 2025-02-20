@@ -1,0 +1,201 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "job-page"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "job-page"
+  ports:
+    - name: http
+      port: 80
+      targetPort: 4000
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "job-page"
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: "job-page"
+  replicas: {{ .Values.jobPage.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: "job-page"
+      labels:
+        app: "job-page"
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: front-features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+        - name: front-getting-started-volume
+          configMap:
+            defaultMode: 0644
+            name: getting-started
+            items:
+            - key: getting-started.yml
+              path: getting-started.yml
+      initContainers:
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
+      priorityClassName: medium-priority
+      containers:
+        - name: "job-page"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          ports:
+            - name: http-port
+              containerPort: 4000
+          volumeMounts:
+            - name: front-features-volume
+              mountPath: {{ .Values.featureFlags.mountPath | quote }}
+              readOnly: true
+              subPath: features.yml
+            - name: front-getting-started-volume
+              mountPath: {{ .Values.gettingStarted.mountPath | quote }}
+              readOnly: true
+              subPath: getting-started.yml
+          envFrom:
+          - configMapRef:
+             name: {{ .Values.global.internalApi.configMapName }}
+          - secretRef:
+              name: {{ include "secrets.authentication.name" . }}
+          env:
+            - name: PORT
+              value: "4000"
+            - name: USE_RBAC_API
+              value: "true"
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: "SESSION_SECRET_KEY_BASE" }}
+            - name: SESSION_SIGNING_SALT
+              valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: "TOKEN_HASHING_SALT" }}
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+            - name: METRICS_SERVICE
+              value: "front"
+            - name: ON_PREM
+              value: "true"
+            - name: FEATURE_YAML_PATH
+              value: {{ .Values.featureFlags.mountPath | quote }}
+            - name: GETTING_STARTED_YAML_PATH
+              value: {{ .Values.gettingStarted.mountPath | quote }}
+            - name: WORKFLOW_TEMPLATES_YAMLS_PATH
+              value: {{ .Values.workflowTemplates.mountPath | quote }}
+            - name: "SKIP_VELOCITY"
+              value: "true"
+            - name: "HIDE_PROMOTIONS"
+              value: "true"
+            - name: "CE_ROLES"
+              value: "true"
+            - name: "SINGLE_TENANT"
+              value: "true"
+            - name: COOKIE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.authentication.configMapName }}
+                  key: SESSION_COOKIE_NAME
+            - name: CACHE_PREFIX
+              value: "front/"
+            - name: CACHE_POOL_SIZE
+              value: {{ .Values.redis.poolSize | quote }}
+            - name: CACHE_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: host
+            - name: CACHE_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: port
+            - name: BRANCH_GRPC_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_BRANCH
+
+          startupProbe:
+            httpGet:
+              path: /is_alive
+              port: http-port
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /is_alive
+              port: http-port
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /is_alive
+              port: http-port
+            periodSeconds: 2
+            failureThreshold: 5
+
+{{- if .Values.jobPage.resources }}
+          resources:
+{{ toYaml .Values.jobPage.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}

@@ -1,0 +1,5 @@
+<div class="fixed bottom-0 left-0 z-5">
+  <div class="flex">
+    <%= link @content.text, to: "#{billing_index_path(@conn, :index, [])}plans", class: @content.class, target: "_blank"  %>
+  </div>
+</div>

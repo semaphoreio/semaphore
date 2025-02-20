@@ -1,0 +1,22 @@
+
+<%
+  classes = ~w(link db white mv1 pv1 ph2 br2 hover-dark-gray)
+  classes = if @tooltip, do: ["css-tooltip" | classes], else: classes
+  classes =
+    if get_in(assigns, [:options, :disabled]) do
+      classes ++ ~w(bg-light-gray hover-bg-lightest-gray)
+    else
+      classes ++ ~w(hover-bg-lightest-green)
+    end
+
+  default_options = [to: @card_url, class: Enum.join(classes, " ")]
+  options = Keyword.merge(default_options, Map.get(assigns, :options, []))
+%>
+
+<%= link options do %>
+  <div class="b"><%= @card_title %></div>
+  <p class="f6 o-80 mb0"><%= @card_description %></p>
+  <%= if @tooltip do %>
+    <span class="css-tooltip-text"><%= @tooltip %></span>
+  <% end %>
+<% end %>

@@ -1,0 +1,2 @@
+defmodule Notifications do
+end

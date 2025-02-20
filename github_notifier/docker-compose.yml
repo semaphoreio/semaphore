@@ -1,0 +1,46 @@
+services:
+  app:
+    image: ${IMAGE:-github_notifier}:${TAG:-latest}
+    build:
+      context: .
+      cache_from:
+        - "${REGISTRY_HOST:-local}/github_notifier/${BRANCH:-master}:${IMAGE_TAG:-test}"
+      dockerfile: Dockerfile
+      target: ${DOCKER_BUILD_TARGET:-dev}
+      args:
+        - BUILD_ENV=test
+      ssh:
+        - default
+    ports:
+      - "50051:50051"
+
+    tty: true
+    links:
+      - rabbitmq:rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+    restart: always
+    command: ["bash", "-c", "elixir --name app@127.0.0.1 -S mix run --no-halt"]
+
+    environment:
+      START_API: "true"
+      START_CONSUMERS: "true"
+      IN_DOCKER: "true"
+      CI: $CI
+      AMQP_URL: "amqp://rabbitmq:5672"
+
+    volumes:
+      - .:/app
+
+  rabbitmq:
+    image: rabbitmq:3.11.18-management
+    environment:
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5

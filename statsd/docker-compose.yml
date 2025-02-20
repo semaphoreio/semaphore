@@ -1,0 +1,20 @@
+version: '3.6'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      cache_from:
+        - "${IMAGE:-statsd}:${IMAGE_TAG:-latest}"
+      target: runner
+    command: "sh"
+    ports:
+      - "8125:8125/udp"
+    tty: true
+    environment:
+      - FLUSH_INTERVAL=${FLUSH_INTERVAL:-60000}
+      - GRAPHITE_HOST=${GRAPHITE_HOST:-metric.renderedtext.com}
+      - PREFIX=${PREFIX}
+    volumes:
+      - .:/app

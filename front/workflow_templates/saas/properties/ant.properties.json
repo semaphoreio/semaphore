@@ -1,0 +1,13 @@
+{
+  "title": "Ant",
+  "description": "Build your Java project with Ant",
+  "category": "Java",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Build and test with Ant"
+  ],
+  "icon": "lang-ant.svg",
+  "template_path": "templates/ant.yml",
+  "workflow_tip": "other"
+}

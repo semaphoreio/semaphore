@@ -1,0 +1,37 @@
+---
+image: projecthub-grpc
+imageTag: latest
+imagePullSecrets: []
+
+db:
+  name: front
+
+workers:
+  dbPoolSize: 1
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.2'
+      memory: 300Mi
+    requests:
+      cpu: 20m
+      memory: 100Mi
+api:
+  dbPoolSize: 1
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.3'
+      memory: 300Mi
+    requests:
+      cpu: '0.1'
+      memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

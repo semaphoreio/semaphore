@@ -1,0 +1,78 @@
+<%= if @show_description? do %>
+    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+        <div class="ml2 measure">
+            Introduce limits on who can trigger a deployment to this target.
+            For example, limit deployments to production to the devops team.
+        </div>
+    <% else %>
+        <div class="ml2 measure">
+            Any user with project access is able to deploy with deployment targets.
+        </div>
+    <% end %>
+<% end %>
+
+<%= if FeatureProvider.feature_enabled?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+    <div class="ml2 mv4">
+        <div class="flex items-center">
+            <%= radio_button @form, :user_access, "any" %>
+            <%= label @form, :user_access_any, "Everyone can deploy to the target", class: "ml2" %>
+        </div>
+
+        <div class="flex items-center">
+            <%= radio_button @form, :user_access, "some" %>
+            <%= label @form, :user_access_some, "Allow only particular users to deploy", class: "ml2" %>
+        </div>
+
+        <div class="bl b--light-gray pv2 ml2 pl3 dn" data-component="user-access-details">
+            <div class="ml1 mv2">
+                <%= label @form, :roles, class: "db b" %>
+                <p class="measure f6 gray">Role you need to have to deploy to this target</p>
+                <%= multiple_select @form, :roles, options(@resources, :roles),
+                    'data-component': "roles-select", class: "form-control w-100 w-50-m" %>
+            </div>
+
+            <div class="ml1 mv2">
+                <%= label @form, :people, class: "db b" %>
+                <p class="measure f6 gray">Allow individual people or groups to deploy regardless of their role</p>
+                <%= multiple_select @form, :members, options(@resources, :members),
+                    'data-component': "people-select", class: "form-control w-100 w-50-m" %>
+            </div>
+
+            <div class="ml1 mv2">
+                <label class="db b" for="auto_promotions">Auto-promotions</label>
+                <div class="flex items-center mt2">
+                    <%= checkbox @form, :auto_promotions %>
+                    <%= label @form, :auto_promotions, "Allow automatic promotions from target", class: "ml2" %>
+                </div>
+            </div>
+        </div>
+    </div>
+<% else %>
+    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+        <div class="ml2 mv4">
+            <div class="flex items-center">
+                <%= radio_button @form, :user_access, "any", checked: true, disabled: true, style: "background-color: inherit; box-shadow: none;" %>
+                <%= label @form, :user_access_any, "Everyone can deploy to the Deployment Target", class: "ml2 gray" %>
+            </div>
+
+            <div class="flex items-center">
+                <input type="radio" disabled="disabled" style="background-color: inherit; box-shadow: none;">
+                <%= label @form, :user_access_none, "Allow only particular users to deploy", class: "ml2 gray" %>
+            </div>
+
+            <div class="bl b--light-gray pv2 ml2 pl3" data-component="user-access-details">
+                <div class="ml2 measure">
+                    Advanced user access control for Deployment Targets is available only to
+                    Scaleup plan customers. Please contact our Support for more information.
+                </div>
+            </div>
+        </div>
+    <% else %>
+        <div class="ml2 mv4">
+            <div class="flex items-center">
+                <%= radio_button @form, :user_access, "any", checked: true, disabled: true, style: "background-color: inherit; box-shadow: none;" %>
+                <%= label @form, :user_access_any, "Everyone can deploy to the Deployment Target", class: "ml2 gray" %>
+            </div>
+        </div>
+    <% end %>
+<% end %>

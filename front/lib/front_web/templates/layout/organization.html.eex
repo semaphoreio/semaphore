@@ -1,0 +1,61 @@
+<%= render_layout "app.html", assigns do %>
+  <div class="fixed right-0 left-0 z-5" style="top: 48px">
+    <div class="pv2 bg-gray bg-pattern-wave white ph3 ph4-l mb4">
+      <div>Organization HQ</div>
+    </div>
+  </div>
+  <div class="mb3 mt4">
+    <div class="flex-l justify-between">
+      <div class="mb3 mb0-l pr4-m">
+        <h1 class="f2 f1-m lh-title mb1"><%= @layout_model.current_organization.name %></h1>
+        <p class="mb0 measure-wide">Overview and manage organization</p>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs">
+    <%= link to: project_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, project_path(@conn, :index)) do %>
+      <%= icon("icn-project-nav", alt: "projects", width: 16, height: 16, class: "mr2") %>
+      <span>Projects</span>
+    <% end %>
+    <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @layout_model.current_organization.id) do %>
+      <%= link to: agents_index_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, agents_index_path(@conn, :index)) do %>
+        <%= icon("icn-self-hosted", alt: "agents", width: 16, height: 16, class: "mr2") %>
+        <span>Agents</span>
+      <% end %>
+    <% else %>
+      <%= if FeatureProvider.feature_enabled?(:activity_monitor, @layout_model.current_organization.id) do %>
+        <%= link to: activity_monitor_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, activity_monitor_path(@conn, :index)) do %>
+          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM9 2.937L5.516 8.96h1.968L7 12.875l3.484-5.884h-2L9 2.938z" /></svg>
+          <span>Activity Monitor</span>
+        <% end %>
+      <% end %>
+      <%= if FeatureProvider.feature_visible?(:self_hosted_agents, @conn.assigns[:organization_id]) do %>
+        <%= link to: self_hosted_agent_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, self_hosted_agent_path(@conn, :index)) do %>
+          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.7 2.4a2.3 2.3 0 00-2.3 2.3v6.6a2.3 2.3 0 002.3 2.3h6.6a2.3 2.3 0 002.3-2.3V4.7a2.3 2.3 0 00-2.3-2.3H4.7zM1 4.7A3.7 3.7 0 014.7 1h6.6A3.7 3.7 0 0115 4.7v6.6a3.7 3.7 0 01-3.7 3.7H4.7A3.7 3.7 0 011 11.3V4.7zm4.7.7a.3.3 0 00-.3.3v4.6a.3.3 0 00.3.3h4.6a.3.3 0 00.3-.3V5.7a.3.3 0 00-.3-.3H5.7zM4 5.7A1.7 1.7 0 015.7 4h4.6A1.7 1.7 0 0112 5.7v4.6a1.7 1.7 0 01-1.7 1.7H5.7A1.7 1.7 0 014 10.3V5.7zm2.797 3.197v-1.8a.3.3 0 01.3-.3h1.8a.3.3 0 01.3.3v1.8a.3.3 0 01-.3.3h-1.8a.3.3 0 01-.3-.3z" fill="#203335"/></svg>
+          <span>Self-Hosted Agents</span>
+        <% end %>
+      <% end %>
+    <% end %>
+    <%= if FeatureProvider.feature_enabled?(:audit_logs, @layout_model.current_organization.id) do %>
+      <%= link to: audit_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, audit_path(@conn, :index)) do %>
+        <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.26 7.312h1.5v1.5h-1.5v-1.5zm0 3.016h1.5v1.5h-1.5v-1.5zm4.504-3.015h-1.5v1.5h1.5v-1.5zm-1.5 3.015h1.5v1.5h-1.5v-1.5zm4.476-3.015h-1.5v1.5h1.5v-1.5zM5.76 4.35h-1.5v1.5h1.5v-1.5zm1.504 0h1.5v1.5h-1.5v-1.5zm2.976 0h1.5v1.5h-1.5v-1.5z"/></svg>
+        <span>Audit Logs</span>
+      <% end %>
+    <% end %>
+    <%= link to: people_path(@conn, :organization), class: Front.Decorators.Header.Organization.tab_class(@conn, people_path(@conn, :organization)) do %>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5C1 3.57174 1.36875 2.6815 2.02513 2.02513C2.6815 1.36875 3.57174 1 4.5 1H11.5C12.4283 1 13.3185 1.36875 13.9749 2.02513C14.6313 2.6815 15 3.57174 15 4.5V11.5C15 12.4283 14.6313 13.3185 13.9749 13.9749C13.3185 14.6313 12.4283 15 11.5 15H4.5C3.57174 15 2.6815 14.6313 2.02513 13.9749C1.36875 13.3185 1 12.4283 1 11.5V4.5ZM4.5 2.4C3.94305 2.4 3.4089 2.62125 3.01508 3.01508C2.62125 3.4089 2.4 3.94305 2.4 4.5V11.5C2.4 12.057 2.62125 12.5911 3.01508 12.9849C3.29338 13.2632 3.64176 13.4554 4.01874 13.5441V12.6562C4.01874 11.1651 5.22757 9.95625 6.71874 9.95625H9.31249C10.8037 9.95625 12.0125 11.1651 12.0125 12.6562V13.5365C12.3775 13.4447 12.7143 13.2555 12.9849 12.9849C13.3788 12.5911 13.6 12.057 13.6 11.5V4.5C13.6 3.94305 13.3788 3.4089 12.9849 3.01508C12.5911 2.62125 12.057 2.4 11.5 2.4H4.5ZM10.6125 13.6V12.6562C10.6125 11.9383 10.0305 11.3562 9.31249 11.3562H6.71874C6.00077 11.3562 5.41874 11.9383 5.41874 12.6562V13.6H10.6125ZM7.99999 5.16875C7.32516 5.16875 6.77811 5.7158 6.77811 6.39062C6.77811 7.06545 7.32516 7.6125 7.99999 7.6125C8.67481 7.6125 9.22186 7.06545 9.22186 6.39062C9.22186 5.7158 8.67481 5.16875 7.99999 5.16875ZM5.37811 6.39062C5.37811 4.9426 6.55197 3.76875 7.99999 3.76875C9.44801 3.76875 10.6219 4.9426 10.6219 6.39062C10.6219 7.83865 9.44801 9.0125 7.99999 9.0125C6.55197 9.0125 5.37811 7.83865 5.37811 6.39062Z"/></svg>
+        <span>People</span>
+    <% end %>
+    <%= link to: settings_path(@conn, :show), class: Front.Decorators.Header.Organization.tab_class(@conn, settings_path(@conn, :show)) do %>
+      <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.996a.1.1 0 00-.099.086l-.25 1.784L6.733 4a4.193 4.193 0 00-1.554.9l-.327.299-1.68-.69a.1.1 0 00-.124.043l-.502.87a.1.1 0 00.026.128L4 6.667l-.093.43a4.216 4.216 0 00-.005 1.788l.093.43-1.438 1.112a.1.1 0 00-.026.129l.502.869a.1.1 0 00.124.043l1.68-.68.326.3c.445.41.979.726 1.568.913l.42.134.25 1.783a.1.1 0 00.099.086h1.003a.1.1 0 00.099-.087l.24-1.777.424-.133a4.192 4.192 0 001.575-.91l.326-.298 1.652.669a.1.1 0 00.124-.043l.502-.869a.1.1 0 00-.026-.13L12.013 9.34l.095-.433a4.217 4.217 0 00-.004-1.831l-.097-.433 1.4-1.093a.1.1 0 00.026-.129l-.502-.869a.1.1 0 00-.125-.042l-1.65.677-.328-.297a4.192 4.192 0 00-1.56-.896l-.425-.133-.24-1.778a.1.1 0 00-.1-.087H7.502zm-1.485-.108A1.5 1.5 0 017.501.596h1.003a1.5 1.5 0 011.486 1.3l.124.916c.472.192.912.446 1.309.752l.852-.35a1.5 1.5 0 011.868.638l.502.87a1.5 1.5 0 01-.376 1.932l-.718.56a5.63 5.63 0 01.004 1.548l.721.557a1.5 1.5 0 01.382 1.937l-.502.869a1.5 1.5 0 01-1.861.64l-.852-.344a5.59 5.59 0 01-1.329.768l-.124.915a1.5 1.5 0 01-1.486 1.3H7.5a1.5 1.5 0 01-1.486-1.292l-.13-.93a5.597 5.597 0 01-1.325-.771l-.877.354a1.5 1.5 0 01-1.861-.64l-.502-.869a1.5 1.5 0 01.382-1.937l.756-.584a5.645 5.645 0 01.003-1.494l-.752-.587a1.5 1.5 0 01-.376-1.933l.502-.869a1.5 1.5 0 011.868-.637l.877.36a5.593 5.593 0 011.305-.755l.13-.932zM7.989 6.7a1.3 1.3 0 100 2.6 1.3 1.3 0 000-2.6zM5.29 8a2.7 2.7 0 115.4 0 2.7 2.7 0 01-5.4 0z"/></svg>
+      <span>Settings</span>
+    <% end %>
+    <%= if FeatureProvider.feature_enabled?(:new_billing, @conn.assigns[:organization_id]) do %>
+      <%= link to: billing_index_path(@conn, :index, []), class: Front.Decorators.Header.Organization.tab_class(@conn, billing_index_path(@conn, :index, [])) do %>
+      <span class="material-symbols-outlined mr2" style="font-size: 22px;">credit_card</span>
+      <span>Plans & Billing</span>
+      <% end %>
+    <% end %>
+  </nav>
+  <%= Map.get(assigns, :nested_layout) || @inner_content %>
+<% end %>

@@ -1,0 +1,52 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+window.InjectedDataByBackend.nextPageHref = "<%= @next_page_href %>"
+</script>
+<div>
+  <div class="flex-m justify-between mb0 mb4-m">
+    <div class="mb3 mb0-m">
+      <h1 class="f3 f2-l mb0">Add People</h1>
+      <p class="measure mb0">These people have access to the project repository. Grant them access on Semaphore as well.</p>
+    </div>
+  </div>
+
+  <div class="bg-white shadow-1 pa3 br3 mw7 center">
+    <div class="f6 mb3">
+      <p class="mb2 measure">
+        Select people to add to the project. Optionally, notify by email.<br>
+        Leave empty to add them without the email notification.
+      </p>
+      <div>
+        <a id="select-all-link" href="#" class="gray">Select All</a> · <a id="select-none-link" href="#" class="gray">Select None</a>
+      </div>
+    </div>
+
+    <%= Enum.map(@collaborators, fn collaborator -> %>
+      <div class="flex items-center-ns pv2 bt b--black-10 hover-bg-row-highlight">
+        <div>
+          <input name="<%= collaborator.display_name %>" checked type="checkbox" data-uuid="<%= collaborator.repository_provider.uid %>" data-username="<%= collaborator.repository_provider.login %>" data-provider="<%= map_repository_provider_key(collaborator.repository_provider.type) %>" data-email="" class="mr3">
+        </div>
+        <div class="flex-auto">
+          <div class="flex-ns items-center">
+            <div class="w-50-ns">
+              <div class="flex items-center">
+                <img src="<%= collaborator.avatar_url %>" class="w2 h2 br-100 mr3 ba b--black-50">
+                <div>
+                  <div class="b"><%= collaborator.display_name %></div>
+                </div>
+              </div>
+            </div>
+            <div class="w-50-ns pv2 pv0-ns">
+              <input type="email" data-uuid="<%= collaborator.repository_provider.uid %>" class="form-control w-100" placeholder="Enter email…" value=""/>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end) %>
+
+    <div class="pt3 bt b--lighter-gray">
+      <button id="invite-people-submit" type="submit" class="btn btn-primary" data-action-url="<%= project_onboarding_path(@conn, :send_invitations, @project.name) %>">Add selected</button>
+      <span class="mh1">or</span>
+      <%= link "Skip for now", to: @next_page_href %>
+    </div>
+  </div>
+</div>

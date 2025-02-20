@@ -1,0 +1,22 @@
+version: v1.0
+name: Test MyApp
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+
+blocks:
+  - name: Test
+    task:
+      jobs:
+        - name: Test
+          commands:
+            - checkout
+            - cache restore
+            - composer install
+            - cache store
+            - cp .env.example .env
+            - php artisan key:generate
+            - mkdir -p database
+            - touch database/database.sqlite
+            - ./vendor/bin/phpunit

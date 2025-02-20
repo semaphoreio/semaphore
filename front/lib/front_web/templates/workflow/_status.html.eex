@@ -1,0 +1,9 @@
+<div
+    id="workflow-tree-container"
+    class="overflow-auto nowrap lh-solid pb3"
+    data-poll-state="poll"
+    data-poll-param-pipeline_id="<%= @selected_pipeline_id %>"
+    data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+    data-poll-href="<%= "/workflows/#{@workflow.id}/status" %>">
+  <%= FrontWeb.PipelineView.interactive_tree_view(@pipelines, workflow: @workflow, conn: @conn, selected_pipeline_id: @selected_pipeline_id) %>
+</div>

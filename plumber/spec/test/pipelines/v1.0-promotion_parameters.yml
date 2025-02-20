@@ -1,0 +1,72 @@
+version: "v1.0"
+name: Promotion with parameters
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+
+blocks:
+  - name: B1
+    task:
+      jobs:
+        - commands:
+            - echo 123
+
+promotions:
+  - name: Example 1
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # Both env_vars are required in order for promotion to trigger
+        - name: SERVER_IP
+          description: IP address of the server
+        - name: SERVER_HOSTNAME
+  - name: Example 2
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # SERVER_IP is not required
+        - name: SERVER_IP
+          description: IP address of the server
+          required: false
+  - name: Example 3
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # If SERVER_IP is not provided (e.g. on auto-promotion), it will be set to default_value
+        - name: SERVER_IP
+          description: IP address of the server
+          default_value: 127.0.0.1
+  - name: Example 4
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # One of given options for SERVER_IP needs to be provided in order for promotion to trigger
+        - name: SERVER_IP
+          description: IP address of the server
+          options:
+            - "192.158.23.23"
+            - "192.158.23.23"
+  - name: Example 5
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # SERVER_IP is not required, but if it is provided, it has to be one of given options
+        - name: SERVER_IP
+          description: IP address of the server
+          required: false
+          options:
+            - "192.158.23.23"
+            - "192.158.23.23"
+  - name: Example 6
+    pipeline_file: foo.yml
+    parameters:
+      env_vars:
+        # If SERVER_IP is not provided (e.g. on auto-promotion), it will be set to default_value
+        # If it is provided, it has to be either default_value or one of given options
+        - name: SERVER_IP
+          description: IP address of the server
+          default_value: 127.0.0.1
+          options:
+            - "192.158.23.23"
+            - "192.158.23.23"

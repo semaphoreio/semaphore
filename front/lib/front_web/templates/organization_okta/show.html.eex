@@ -1,0 +1,13 @@
+<%= if FeatureProvider.feature_enabled?(:rbac__saml, @conn.assigns[:organization_id]) do %>
+  <%= if @permissions["organization.okta.view"] do %>
+    <%= if @integration do %>
+      <%= render FrontWeb.OrganizationOktaView, "show/_integration.html", conn: @conn, permissions: @permissions, integration: @integration, no_of_okta_members: @no_of_okta_members %>
+    <% else %>
+      <%= render FrontWeb.OrganizationOktaView, "show/_zero_state.html", conn: @conn, permissions: @permissions%>
+    <% end %>
+  <% else %>
+    <%= render FrontWeb.OrganizationOktaView, "show/_no_access.html" %>
+  <% end %>
+<% else %>
+  <%= render FrontWeb.OrganizationOktaView, "show/_not_enabled.html" %>
+<% end %>

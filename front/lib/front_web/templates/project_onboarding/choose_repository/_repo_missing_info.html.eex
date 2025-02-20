@@ -1,0 +1,22 @@
+<div class="flex-m justify-between">
+  <div class="f5 gray mb0 mt3">
+    <%= if @conn.assigns.integration_type == :github_oauth_token do %>
+      <div>Connect the repository through your <a class="gray" href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/account-management/connecting-github-and-semaphore/#connecting-a-repository-via-a-personal-access-token">GitHub personal access token</a>.</div>
+      <div>Missing repos? Check if Semaphore has <a class="gray" href="https://github.com/settings/connections/applications/328c742132e5407abd7d">organization access on GitHub</a>.</div>
+      <%= if !@organization.open_source && @user.github_scope == :PUBLIC do %>
+        <div class="f7">
+          Looking for your private repositories? –
+          <%= link("Grant access on GitHub", to: github_update_scope_path(@conn, :github, [access_level: :private]), method: :post, class: "gray") %>.
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= if @conn.assigns.integration_type == :bitbucket do %>
+      <div>Connect the repository through your <a class="gray" href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/account-management/connecting-bitbucket-and-semaphore/#connecting-your-bitbucket-account-and-semaphore">Bitbucket personal access token</a>.</div>
+    <% end %>
+
+    <%= if @conn.assigns.integration_type == :github_app do %>
+      <div>Connect the repository through <a class="gray" href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/account-management/connecting-github-and-semaphore/#connecting-a-repository-via-github-app">GitHub App installation</a>.</div>
+    <% end %>
+  </div>
+</div>

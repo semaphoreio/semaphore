@@ -1,0 +1,70 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["organization.audit_logs.view"] do %>
+    <div class="flex-m items-center justify-between mb3">
+      <div>
+        <p class="measure-wide mb2 mb0-m">List of all user generated events in the organization.</p>
+        <p>Read more in <a href=<%= "https://#{Application.fetch_env!(:front, :docs_domain)}/security/audit-logs" %>>Docs: Audit Logs</a></p>
+      </div>
+
+      <div class="button-group">
+          <%= link "Export as CSV", to: audit_path(@conn, :csv), class: "btn btn-secondary"%>
+
+          <%= if FeatureProvider.feature_enabled?(:audit_streaming, @conn.assigns[:organization_id]) do %>
+            <%= link "Configure Streaming", to: audit_path(@conn, :show), class: "btn btn-secondary" %>
+          <% end %>
+      </div>
+    </div>
+    <div class="mb3 pv2 bg-white shadow-1 ph3 br3 ">
+      <%= @events |> Enum.with_index() |> Enum.map(fn {event, index} -> %>
+          <div class="flex pa2 justify-between <%= if index != 0, do: "bt b--black-075" %>">
+            <div>
+            <%= if event.resource == :SelfHostedAgent and event.agent[:agent_type_name] != nil do %>
+              <div class="b"><%= event.agent.agent_type_name %> &mdash; <%= event.resource%>.<%= event.operation %></div>
+              <div>IP: <%= event.agent.ip_address %>, Hostname: <%= event.agent.hostname %></div>
+              <div>OS: <%= event.agent.os %>, Version:  <%= event.agent.version %>, Architecture: <%= event.agent.architecture %></div>
+            <% else %>
+              <div class="b"><%= event.username %> &mdash; <%= event.resource%>.<%= event.operation %></div>
+              <%= if event.has_project do %>
+                <div>Project: <%= link event.project.name, to: project_path(@conn, :show, event.project.name) %></div>
+              <% end %>
+              <%= if event.has_workflow do %>
+                <div>Branch: <%= link event.workflow.branch_name, to: branch_path(@conn, :show, event.workflow.branch_id) %></div>
+                <div>Workflow: <%= link event.workflow.hook.commit_message, to: workflow_path(@conn, :show, event.workflow.id) %></div>
+                <%= if event.has_pipeline do %>
+                  <div>Pipeline: <%= link event.pipeline.name, to: workflow_path(@conn, :show, event.workflow.id, pipeline_id: event.pipeline.id)  %></div>
+                <% end %>
+              <% end %>
+            <% end %>
+            <div><%= event.description %></div>
+            </div>
+            <div class="tr">
+              <relative-time datetime="<%= DateTime.from_unix!(event.timestamp) %>" month="short" day="numeric" year="numeric" hour="numeric" minute="numeric" second="numeric" ></relative-time>
+              <div><span><%= event.medium %> &middot; <%= event.ip_address %></span></div>
+            </div>
+          </div>
+      <% end) %>
+    </div>
+    <div class="flex-m mt3 justify-center">
+      <div class="flex justify-between mb2 mb0-m">
+        <div class="button-group">
+          <%= if @pagination.previous == "" do %>
+            <a class="btn btn-secondary btn-small disabled">Previous</a>
+          <% else %>
+            <%= link "Previous", to: audit_path(@conn, :index, page_token: @pagination.previous, direction: "previous", page_size: @pagination.page_size), class: "btn btn-secondary btn-small" %>
+          <% end %>
+          <%= if @pagination.next == "" do %>
+            <a class="btn btn-secondary btn-small disabled">Next</a>
+          <% else %>
+            <%= link "Next", to: audit_path(@conn, :index, page_token: @pagination.next, direction: "next", page_size: @pagination.page_size), class: "btn btn-secondary btn-small" %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">Sorry, you can’t access Audit Logs.<br>
+        Ask organization owner or any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>

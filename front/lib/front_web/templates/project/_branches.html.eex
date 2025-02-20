@@ -1,0 +1,28 @@
+<div data-poll-state="poll" data-poll-href="/projects/<%= @project.id %>/branches">
+  <%= @branches |> Enum.map(fn(branch) -> %>
+    <div class="mt3">
+      <div class="flex-m bg-white br2 shadow-1">
+        <div class="flex-shrink-0 w3 pa3">
+          <img src="<%= branch.workflow.author_avatar_url %>" class="db w2 br-100">
+        </div>
+        <div class="flex-auto ph3 ph0-m pv3-m">
+          <div class="mb1">
+            <a href="<%= branch.html_url %>" class="link f4 b dark-gray underline-hover word-wrap"><%= branch.name %></a>
+          </div>
+          <div class="f5 mb1">
+            <span class="<%= branch_state_inline_class(branch.pipeline) %>"><%= status_text(branch.pipeline) %>: </span>
+            <a href="/workflows/<%= branch.workflow.id %>" class="link dark-gray underline-hover word-wrap"><%= branch.workflow.commit_message %></a>
+          </div>
+          <div class="f6 gray">
+            <%= branch.workflow.author_name %> · <time-ago datetime="<%= Timex.format!(branch.workflow.created_at, "%FT%T%:z", :strftime) %>">
+              <%= Timex.format!(branch.workflow.created_at, "{Mshort} {D}, {YYYY}") %>
+            </time-ago>
+          </div>
+        </div>
+        <div class="pa3 flex items-center justify-between">
+          <%= raw status_badge(branch.pipeline) %>
+        </div>
+      </div>
+    </div>
+  <% end) %>
+</div>

@@ -1,0 +1,13 @@
+{
+  "title": "Rust",
+  "description": "Test Rust project with cargo",
+  "category": "Other",
+  "features": [
+    "Docker environment with Rust 1.47.0",
+    "Code checkout",
+    "cargo test"
+  ],
+  "icon": "lang-rust.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/rust.yml"
+}

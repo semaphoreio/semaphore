@@ -1,0 +1,20 @@
+<div class="mr3 pr3 br b--lighter-gray flex-shrink-0">
+  <%= link to: "/test_results/jobs/#{@job.id}?project=#{@job.project_id}",
+      class: "btn btn-secondary btn-small" do %>
+      <%= if @stats do %>
+        &nbsp;Test Results:
+        <%= if @stats.failed == 0 do %>
+          <span class="green">All <%= @stats.passed %> passed</span>
+        <% else %>
+          <span class="red"><%= @stats.failed %> failed</span>
+          ·
+          <span class="green"><%= @stats.passed %> passed</span>
+          ·
+          <span class="gray"><%= @stats.skipped %> skipped</span>
+        <% end %>
+      <% else %>
+        &nbsp;Test Results
+      <% end %>
+  <% end %>
+</div>
+

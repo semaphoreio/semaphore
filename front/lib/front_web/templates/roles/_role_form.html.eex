@@ -1,0 +1,71 @@
+<style>
+    div:has(> #role_role_mapping:not(:checked)) ~ div[data-element="role_mapping_dropdown"] { display: none; }
+    div:has(> #role_role_mapping:checked) ~ div[data-element="role_mapping_dropdown"] { display: block; }
+</style>
+
+<div>
+<%= hidden_input @form, :id %>
+<%= hidden_input @form, :scope %>
+
+<div class="ml2 mv4">
+  <%= label @form, :name, class: "db b mb2" do %>
+    Name
+  <% end %>
+  <%= text_input @form, :name, disabled: @readonly, class: "form-control w-100", placeholder: "Name of a role" %>
+
+  <%= if @form.errors[:name] do %>
+    <div class="f5 b mv1 red"><%= translate_error(@form.errors[:name]) %></div>
+  <% end %>
+</div>
+
+<div class="ml2 mv4">
+  <%= label @form, :description, class: "db b mb2" do %>
+    Description
+  <% end %>
+  <%= textarea @form, :description, disabled: @readonly,
+                rows: "4", class: "form-control w-100",
+                placeholder: "Short description of a role" %>
+</div>
+
+<div class="ml2 mv4">
+  <div class="flex justify-between items-center">
+    <%= label @form, :permissions, class: "db b mb2" do %>
+      Permissions
+    <% end %>
+    <input type="text" class="form-control w-50 w5-l" placeholder="Search…" data-action="filterPermissions">
+  </div>
+
+  <%= inputs_for @form, :permissions, fn pform -> %>
+    <div class="flex flex-column items-start pb2"
+         data-element="permission"
+         data-label="<%= permission_name(pform) %>">
+      <div class="flex-row">
+        <%= hidden_input pform, :name %>
+        <%= hidden_input pform, :description %>
+        <%= permission_checkbox pform, @readonly %>
+        <%= label pform, :granted, permission_name(pform), class: "ml1" %>
+      </div>
+      <span class="f6 gray db"><%= permission_desc(pform) %></span>
+    </div>
+  <% end %>
+</div>
+
+<%= if to_string(@form.data.scope) == "organization" && !Front.ce_roles?() do %>
+    <div class="ml2 mv4">
+        <%= label @form, :role_mapping, class: "db b" do %>
+            Project access
+        <% end %>
+        <span class="f6 mb2">Should users with this role have access to all the projects in the organization?</span>
+
+        <div class="flex items-center">
+            <%= checkbox @form, :role_mapping, disabled: @readonly %>
+            <%= label @form, :role_mapping, "Give access to all the projects", class: "ml2" %>
+        </div>
+
+        <div class="pb2" data-element="role_mapping_dropdown">
+            <span class="f6 mb2 nb1">Select the role that will be assigned on all the projects?</span>
+            <%= select @form, :maps_to, role_mapping_options(@roles), disabled: @readonly, class: "form-control w-75" %>
+        </div>
+    </div>
+<% end %>
+</div>

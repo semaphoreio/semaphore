@@ -1,0 +1,5 @@
+<%= if @pipeline.jobs_are_waiting? do %>
+  <div class="f6 mv3 ph2 pv1 bg-washed-yellow ba b--black-15 br2">
+    Waiting for quota → See <%= link "all activity", to: activity_monitor_path(@conn, :index) %>
+  </div>
+<% end %>

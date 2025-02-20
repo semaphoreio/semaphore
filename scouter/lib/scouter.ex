@@ -1,0 +1,2 @@
+defmodule Scouter do
+end

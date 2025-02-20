@@ -1,0 +1,185 @@
+<%= if @permissions["organization.general_settings.view"] do %>
+<h2 class="f3 f2-m mb0">OIDC Token Configuration</h2>
+<p class="measure">
+    Configure the claims that will be included in the OIDC token for your organization. <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/reference/openid" class="" target="_blank" rel="noopener">Docs: OIDC Token Configuration</a></p>
+</p>
+
+<%= if @jwt_config do %>
+        <%= if @permissions["organization.general_settings.manage"] do %>
+            <%= form_for @conn, organization_jwt_config_path(@conn, :update), fn f -> %>
+                <!-- AWS Tags Configuration -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">AWS Tags</h2>
+                    <p class="mb2 measure">Configure AWS resource tags to be included in your OIDC token.</p>
+
+                    <div class="mt2">
+                        <%= if @aws_tags_claim do %>
+                            <label class="flex items-center">
+                                <%= checkbox f, :"claims[#{@aws_tags_claim.name}][is_active]", checked: @aws_tags_claim.is_active, class: "checkbox" %>
+                                <div class="ml2">
+                                    Include AWS Tags
+                                    <span class="f6 normal ml1 ph1 br2 bg-blue white">AWS tag</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= @aws_tags_claim.description %></p>
+                        <% end %>
+                    </div>
+                </div>
+
+                <!-- Required Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">Required Claims</h2>
+                    <p class="mb2 measure">Required claims are essential pieces of information that will always be included in your OIDC token.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, & &1.is_mandatory) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <%= checkbox f, :"claims[#{claim.name}][is_active]", checked: true, disabled: true, class: "checkbox" %>
+                                <%= hidden_input f, :"claims[#{claim.name}][is_active]", value: true %>
+                                <div class="ml2">
+                                    <%= claim.name %>
+                                    <span class="f6 normal ml1 ph1 br2 bg-red white">Required</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+
+                <!-- AWS Tag Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">AWS Tag Claims</h2>
+                    <p class="mb2 measure">Configure which claims will be added as tags to AWS resources.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, & &1.is_aws_tag && !&1.is_mandatory) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <%= checkbox f, :"claims[#{claim.name}][is_active]", checked: claim.is_active, class: "checkbox" %>
+                                <div class="ml2">
+                                    <%= claim.name %>
+                                    <span class="f6 normal ml1 ph1 br2 bg-blue white">AWS tag</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+
+                <!-- Additional Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">Additional Claims</h2>
+                    <p class="mb2 measure">Optional claims that can be included in your OIDC token.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, fn claim ->
+                        !claim.is_mandatory && !claim.is_aws_tag && claim.name != "https://aws.amazon.com/tags"
+                    end) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <%= checkbox f, :"claims[#{claim.name}][is_active]", checked: claim.is_active, class: "checkbox" %>
+                                <div class="ml2"><%= claim.name %></div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+
+                <!-- Save Button -->
+                <div class="pv3 bt b--lighter-gray">
+                    <div class="flex items-center">
+                        <%= submit "Save Changes", class: "btn btn-primary mr3" %>
+                        <%= link "Cancel", to: organization_jwt_config_path(@conn, :show), class: "btn btn-secondary" %>
+                    </div>
+                </div>
+            <% end %>
+        <% else %>
+            <div class="pa3 bg-light-yellow ba b--gold br2">
+                <p class="ma0">You have view-only access to OIDC token configuration. Contact your organization administrator for management permissions.</p>
+            </div>
+            <div class="pa3 bg-white ba b--light-gray br2">
+                <!-- AWS Tags Configuration -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">AWS Tags</h2>
+                    <p class="mb2 measure">Configure AWS resource tags to be included in your OIDC token.</p>
+
+                    <div class="mt2">
+                        <%= if @aws_tags_claim do %>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="checkbox" <%= if @aws_tags_claim.is_active, do: "checked" %> disabled>
+                                <div class="ml2">
+                                    Include AWS Tags
+                                    <span class="f6 normal ml1 ph1 br2 bg-blue white">AWS tag</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= @aws_tags_claim.description %></p>
+                        <% end %>
+                    </div>
+                </div>
+
+                <!-- Required Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">Required Claims</h2>
+                        <p class="mb2 measure">Required claims are essential pieces of information that will always be included in your OIDC token.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, & &1.is_mandatory) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="checkbox" checked disabled>
+                                <div class="ml2">
+                                    <%= claim.name %>
+                                    <span class="f6 normal ml1 ph1 br2 bg-red white">Required</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+
+                <!-- AWS Tag Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">AWS Tag Claims</h2>
+                    <p class="mb2 measure">Configure which claims will be added as tags to AWS resources.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, & &1.is_aws_tag && !&1.is_mandatory) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="checkbox" <%= if claim.is_active, do: "checked" %> disabled>
+                                <div class="ml2">
+                                    <%= claim.name %>
+                                    <span class="f6 normal ml1 ph1 br2 bg-blue white">AWS tag</span>
+                                </div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+
+                <!-- Additional Claims -->
+                <div class="pv3 bt b--lighter-gray">
+                    <h2 class="mb0 b f3">Additional Claims</h2>
+                    <p class="mb2 measure">Optional claims that can be included in your OIDC token.</p>
+
+                    <%= for claim <- Enum.filter(@jwt_config.claims, fn claim ->
+                        !claim.is_mandatory && !claim.is_aws_tag && claim.name != "https://aws.amazon.com/tags"
+                    end) do %>
+                        <div class="mt2">
+                            <label class="flex items-center">
+                                <input type="checkbox" class="checkbox" <%= if claim.is_active, do: "checked" %> disabled>
+                                <div class="ml2"><%= claim.name %></div>
+                            </label>
+                            <p class="gray mb0 mt1"><%= claim.description %></p>
+                        </div>
+                    <% end %>
+                </div>
+            </div>
+        <% end %>
+    <% else %>
+        <div class="pa3 bg-light-yellow ba b--gold br2">
+            <p class="ma0">No OIDC token configuration found. Please configure your claims.</p>
+        </div>
+    <% end %>
+<% else %>
+<div class="pv6 tc">
+    <div class="f00">🔑</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can't access OIDC Token Configuration.<br>Ask organization owner or any of the admins to give you access permission.</p>
+</div>
+<% end %>

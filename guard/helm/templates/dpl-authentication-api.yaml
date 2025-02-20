@@ -1,0 +1,205 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Chart.Name }}-authentication-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}-authentication-api"
+  replicas: {{ .Values.authenticationApi.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: "{{ .Chart.Name }}-authentication-api"
+      labels:
+        app: "{{ .Chart.Name }}-authentication-api"
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: roles-volume
+          configMap:
+            defaultMode: 0644
+            name: roles
+            items:
+            - key: roles.yaml
+              path: roles.yaml
+        - name: permissions-volume
+          configMap:
+            defaultMode: 0644
+            name: permissions
+            items:
+            - key: permissions.yaml
+              path: permissions.yaml
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      priorityClassName: medium-priority
+      containers:
+        - name: "{{ .Chart.Name }}-authentication-api"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: grpc
+              containerPort: 50051
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+            - configMapRef:
+                name: {{ .Values.global.authentication.configMapName }}
+            - secretRef:
+                name: {{ include "secrets.authentication.name" . }}
+          env:
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
+            - name: GRPC_API
+              value: "true"
+            - name: START_GPRC_GUARD_API
+              value: "false"
+            - name: START_GRPC_AUTH_API
+              value: "true"
+            - name: START_GPRC_HEALTH_CHECK
+              value: "true"
+            - name: RABBIT_CONSUMER
+              value: "false"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: guard
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.authenticationApi.dbPoolSize | quote }}
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: OIDC_DISCOVERY_URL
+              value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
+            - name: OIDC_MANAGE_URL
+              value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+            - name: LOG_LEVEL
+              value: {{ .Values.authenticationApi.logging.level | quote }}
+            - name: ENCRYPTOR_URL
+              value: "localhost:50052"
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+{{- if .Values.authenticationApi.resources }}
+          resources:
+{{ toYaml .Values.authenticationApi.resources | indent 12 }}
+{{- end }}
+
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
+        - name: {{ .Chart.Name }}-auth-api-encryptor
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.sidecarEncryptor.image }}:{{ .Values.global.sidecarEncryptor.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50052
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: START_API
+              value: "yes"
+            - name: GRPC_API_PORT
+              value: "50052"
+            - name: ENCRYPTOR_AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.encryption.name" . }}
+                  key: key
+          startupProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+{{- if .Values.sidecarEncryptor.resources }}
+          resources:
+{{ toYaml .Values.sidecarEncryptor.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}

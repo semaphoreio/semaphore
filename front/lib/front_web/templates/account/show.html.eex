@@ -1,0 +1,144 @@
+<div class="bg-washed-gray pa3 br3 ba b--black-075">
+  <div class="tc pt3-m">
+    <img src="<%= @user.avatar_url %>" alt="name lastname" width="64px" height="64px" class="br-100 ba b--black-50">
+    <h1 class="f2 f0-m lh-title mt2 mb1"><%= @user.name %></h1>
+  </div>
+
+  <div class="pt4">
+    <div class="bg-white mw6 center shadow-1 pa3 pa4-l mb4-l br3">
+      <%= form_for @conn, account_path(@conn, :update), [class: "mw6"], fn f -> %>
+        <div class="mb3">
+          <%= label f, :name , "Screen name", class: "f4 db b mb2" %>
+          <%= text_input f, :name, class: "form-control w-100", placeholder: @user.name, required: true %>
+          <%= manage_error_message(:account_settings, @errors, :name) %>
+        </div>
+        <%= submit "Save changes", class: "btn btn-primary pointer" %>
+      <% end %>
+
+      <div class="mt4 pv3 bt b--lighter-gray">
+        <div class="f4 b mb3">Repository access</div>
+        <div class="dib ba b--lighter-gray br2 w-100">
+          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <div class="pa2 bb b--lighter-gray">
+          <% else %>
+          <div class="pa2">
+          <% end %>
+            <span class="b">GitHub</span> ·
+            <%= case {@user.github_scope, @user.github_login} do %>
+              <% {:NONE, nil} -> %>
+                <span class="red">Not Connected</span>
+                <%= unless Front.on_prem?() do %>
+                <div>
+                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                </div>
+                <% else %>
+                <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                <% end %>
+              <% {:NONE, _} -> %>
+                <span class="red">Not Connected</span>
+                  ·
+                <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
+                <%= unless Front.on_prem?() do %>
+                <div>
+                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                </div>
+                <% end %>
+              <% {:EMAIL, _} -> %>
+                <span class="green">Connected</span>
+                  ·
+                <span class="gray">email only</span>
+                  ·
+                <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
+                <%= unless Front.on_prem?() do %>
+                <div>
+                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                </div>
+                  <% end %>
+              <% {:PUBLIC, _} -> %>
+                <span class="green">Connected</span>
+                  ·
+                <span class="gray">public repositories</span>
+                  ·
+                <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
+                <%= unless Front.on_prem?() do %>
+                <div>
+                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                </div>
+                <% end %>
+              <% {:PRIVATE, _} -> %>
+                <span class="green">Connected</span>
+                  ·
+                <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
+            <% end %>
+          </div>
+          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <div class="pa2">
+            <span class="b">Bitbucket</span> ·
+            <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
+              <% {:NONE, nil} -> %>
+                <span class="red">Not Connected</span>
+                <div>
+                  <%= link "Grant access…", to: account_path(@conn, :update_repo_scope, "bitbucket"), method: :post %>
+                </div>
+              <% {:NONE, _} -> %>
+                <span class="red">Not Connected</span>
+                ·
+                <span><a href="https://bitbucket.org/<%= @user.bitbucket_login %>" target="_blank">@<%= @user.bitbucket_login %></a></span>
+                <div>
+                  <%= link "Grant access…", to: account_path(@conn, :update_repo_scope, "bitbucket"), method: :post %>
+                </div>
+              <% {:PRIVATE, _} -> %>
+                <span class="green">Connected</span>
+                ·
+                <span><a href="https://bitbucket.org/<%= @user.bitbucket_login %>" target="_blank">@<%= @user.bitbucket_login %></a></span>
+            <% end %>
+          </div>
+          <%= if not Application.get_env(:front, :hide_gitlab_me_page) do %>
+          <div class="pa2 bt b--lighter-gray">
+            <span class="b">GitLab</span> ·
+            <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
+              <% {:NONE, nil} -> %>
+                <span class="red">Not Connected</span>
+                <div>
+                  <%= link "Grant access…", to: account_path(@conn, :update_repo_scope, "gitlab"), method: :post %>
+                </div>
+              <% {:NONE, _} -> %>
+                <span class="red">Not Connected</span>
+                ·
+                <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
+                <div>
+                  <%= link "Grant access…", to: account_path(@conn, :update_repo_scope, "gitlab"), method: :post %>
+                </div>
+              <% {:PRIVATE, _} -> %>
+                <span class="green">Connected</span>
+                ·
+                <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
+            <% end %>
+          </div>
+          <% end %>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="mt3 pv3 bt b--lighter-gray">
+        <h2 class="f4 mb2">API Token</h2>
+
+        <div class="mw6 flex mb3">
+        <%= if @conn.assigns[:token] do %>
+            <input readonly id="token" type="text" class="x-select-on-click form-control w-100 mr2" value="<%= @token %>">
+        <% else %>
+            <input id="token" type="password" class="x-select-on-click form-control w-100 mr2" value="dummy_text">
+        <% end %>
+        </div>
+
+        <div>
+          <%= link "Regenerate API Token…", to: account_path(@conn, :reset_token), method: :post, class: "btn btn-primary", data: [confirm: "This will delete your current API token and create a new one. Continue?"] %>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>

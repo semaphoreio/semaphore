@@ -1,0 +1,45 @@
+.DS_Store
+*.swp
+.bundle
+db/*.sqlite3
+log/*.log*
+tmp
+out/
+tmp/**/*
+config/*_database.yml
+config/*_config.yml
+config/*_addon-manifest.json
+config/*_public.pem
+config/semaphore-development.pill
+public/.DS_Store
+vendor/bundle
+.sass-cache
+addon-manifest.json
+tags
+.byebug_history
+.devcontainer
+junit.xml
+.irb_history
+.vscode-server/
+
+.env.local
+.env.*.local
+
+# Gemnasium gem configuration file
+config/gemnasium.yml
+
+# Precompiled assets
+public/assets
+
+# npm stuff
+/node_modules
+npm-debug.log
+/public/packs
+/public/packs-test
+/app/javascript/coverage
+
+# nix related
+.direnv/
+.envrc
+nix/
+shell.nix

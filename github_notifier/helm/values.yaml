@@ -1,0 +1,34 @@
+---
+image: github_notifier
+imageTag: latest
+
+consumer:
+  replicas: 1
+  logs:
+    level: info
+  resources:
+    limits:
+      cpu: '0.2'
+      memory: 300Mi
+    requests:
+      cpu: '0.03'
+      memory: 100Mi
+
+api:
+  replicas: 1
+  resources:
+    limits:
+      cpu: '0.3'
+      memory: 300Mi
+    requests:
+      cpu: '0.03'
+      memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

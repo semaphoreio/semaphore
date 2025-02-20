@@ -1,0 +1,32 @@
+version: v1.0
+name: Free topology pipeline - valid
+agent:
+  machine:
+    type: foo
+    os_image: bar
+blocks:
+  - name: A
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo foo, sleep 3]
+  - name: B
+    dependencies: [A, D]
+    task:
+      jobs:
+        - commands: [echo bar, sleep 3]
+  - name: C
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo baz, sleep 3]
+  - name: D
+    dependencies: []
+    task:
+      jobs:
+        - commands: [echo D, sleep 3]
+  - name: E
+    dependencies: [B]
+    task:
+      jobs:
+        - commands: [echo E, sleep 3]

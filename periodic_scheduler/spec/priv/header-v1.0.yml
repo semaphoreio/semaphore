@@ -1,0 +1,24 @@
+$schema: http://json-schema.org/draft-04/schema#
+version: v1.0
+title: Periodic scheduler definition file specification
+type: object
+properties:
+  apiVersion:
+    type: string
+  kind:
+    type: string
+  metadata:
+    type: object
+    properties:
+      name:
+        type: string
+      id:
+        type: string
+      description:
+        type: string
+    additionalProperties: false
+    required: [name]
+  spec:
+    type: object
+additionalProperties: false
+required: [apiVersion, kind, metadata, spec]

@@ -1,0 +1,12 @@
+<div class="pa3 pv2 bg-white">
+    <div class="flex items-center justify-between tc pa3">
+        <div class="flex items-center justify-around">
+            <span class="material-symbols-outlined md-24 mr3">rocket</span>
+            <p class="gray measure mb0">
+                Waiting for your first deployment. <br>
+                Connect this target to a pipeline and start shipping.
+            </p>
+        </div>
+        <%= link "Edit Workflow", to: project_path(@conn, :edit_workflow, @project.name), class: "btn btn-primary" %>
+    </div>
+</div>

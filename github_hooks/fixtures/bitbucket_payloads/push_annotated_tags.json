@@ -1,0 +1,184 @@
+{
+"push": {
+  "changes": [
+    {
+      "forced": false,
+      "old": null,
+      "links": {
+        "commits": {
+          "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project/commits?include=a142ea5ce41c954305f375a04f670ea096c54f75"
+        }
+      },
+      "created": true,
+      "truncated": false,
+      "closed": false,
+      "new": {
+        "name": "v1.4",
+        "links": {
+          "commits": {
+            "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project/commits/v1.4"
+          },
+          "self": {
+            "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project/refs/tags/v1.4"
+          },
+          "html": {
+            "href": "https://bitbucket.org/milana_stojadinov/elixir-project/commits/tag/v1.4"
+          }
+        },
+        "tagger": {},
+        "date": "2021-06-11T15:25:03+00:00",
+        "message": "Annotated tag\n",
+        "type": "tag",
+        "target": {
+          "rendered": {},
+          "hash": "a142ea5ce41c954305f375a04f670ea096c54f75",
+          "links": {
+            "self": {
+              "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project/commit/a142ea5ce41c954305f375a04f670ea096c54f75"
+            },
+            "html": {
+              "href": "https://bitbucket.org/milana_stojadinov/elixir-project/commits/a142ea5ce41c954305f375a04f670ea096c54f75"
+            }
+          },
+          "author": {
+            "raw": "Milana Stojadinov <milana.stojadinov@gmail.com>",
+            "type": "author",
+            "user": {
+              "display_name": "Milana Stojadinov",
+              "uuid": "{53c5afd4-936e-4ded-9b8a-398f527a33c9}",
+              "links": {
+                "self": {
+                  "href": "https://api.bitbucket.org/2.0/users/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D"
+                },
+                "html": {
+                  "href": "https://bitbucket.org/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D/"
+                },
+                "avatar": {
+                  "href": "https://secure.gravatar.com/avatar/c4d18a26a4adb99ab6a4c674112158f5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMS-6.png"
+                }
+              },
+              "type": "user",
+              "nickname": "milana_stojadinov",
+              "account_id": "557058:a19b3000-9205-4825-983a-e223af783fd9"
+            }
+          },
+          "summary": {
+            "raw": "remove lines\n",
+            "markup": "markdown",
+            "html": "<p>remove lines</p>",
+            "type": "rendered"
+          },
+          "parents": [
+            {
+              "hash": "ce3a8c7f0565b07943ff2212cd2475953d32b428",
+              "type": "commit",
+              "links": {
+                "self": {
+                  "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project/commit/ce3a8c7f0565b07943ff2212cd2475953d32b428"
+                },
+                "html": {
+                  "href": "https://bitbucket.org/milana_stojadinov/elixir-project/commits/ce3a8c7f0565b07943ff2212cd2475953d32b428"
+                }
+              }
+            }
+          ],
+          "date": "2021-06-11T14:59:08+00:00",
+          "message": "remove lines\n",
+          "type": "commit",
+          "properties": {}
+        }
+      }
+    }
+  ]
+},
+"actor": {
+  "display_name": "Milana Stojadinov",
+  "uuid": "{53c5afd4-936e-4ded-9b8a-398f527a33c9}",
+  "links": {
+    "self": {
+      "href": "https://api.bitbucket.org/2.0/users/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D"
+    },
+    "html": {
+      "href": "https://bitbucket.org/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D/"
+    },
+    "avatar": {
+      "href": "https://secure.gravatar.com/avatar/c4d18a26a4adb99ab6a4c674112158f5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMS-6.png"
+    }
+  },
+  "type": "user",
+  "nickname": "milana_stojadinov",
+  "account_id": "557058:a19b3000-9205-4825-983a-e223af783fd9"
+},
+"repository": {
+  "scm": "git",
+  "website": "",
+  "uuid": "{730ede8d-c0de-4f85-aef1-133881a9624f}",
+  "links": {
+    "self": {
+      "href": "https://api.bitbucket.org/2.0/repositories/milana_stojadinov/elixir-project"
+    },
+    "html": {
+      "href": "https://bitbucket.org/milana_stojadinov/elixir-project"
+    },
+    "avatar": {
+      "href": "https://bytebucket.org/ravatar/%7B730ede8d-c0de-4f85-aef1-133881a9624f%7D?ts=default"
+    }
+  },
+  "project": {
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/workspaces/milana_stojadinov/projects/WEB"
+      },
+      "html": {
+        "href": "https://bitbucket.org/milana_stojadinov/workspace/projects/WEB"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/account/user/milana_stojadinov/projects/WEB/avatar/32?ts=1623417282"
+      }
+    },
+    "type": "project",
+    "name": "webhooks-test",
+    "key": "WEB",
+    "uuid": "{1e6187d8-23a6-47fe-9a3d-328fbf61f572}"
+  },
+  "full_name": "milana_stojadinov/elixir-project",
+  "owner": {
+    "display_name": "Milana Stojadinov",
+    "uuid": "{53c5afd4-936e-4ded-9b8a-398f527a33c9}",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/users/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D"
+      },
+      "html": {
+        "href": "https://bitbucket.org/%7B53c5afd4-936e-4ded-9b8a-398f527a33c9%7D/"
+      },
+      "avatar": {
+        "href": "https://secure.gravatar.com/avatar/c4d18a26a4adb99ab6a4c674112158f5?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMS-6.png"
+      }
+    },
+    "type": "user",
+    "nickname": "milana_stojadinov",
+    "account_id": "557058:a19b3000-9205-4825-983a-e223af783fd9"
+  },
+  "workspace": {
+    "slug": "milana_stojadinov",
+    "type": "workspace",
+    "name": "Milana Stojadinov",
+    "links": {
+      "self": {
+        "href": "https://api.bitbucket.org/2.0/workspaces/milana_stojadinov"
+      },
+      "html": {
+        "href": "https://bitbucket.org/milana_stojadinov/"
+      },
+      "avatar": {
+        "href": "https://bitbucket.org/workspaces/milana_stojadinov/avatar/?ts=1543639881"
+      }
+    },
+    "uuid": "{53c5afd4-936e-4ded-9b8a-398f527a33c9}"
+  },
+  "type": "repository",
+  "is_private": true,
+  "name": "elixir-project"
+}
+}

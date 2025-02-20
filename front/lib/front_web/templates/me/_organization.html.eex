@@ -1,0 +1,4 @@
+<%= link to: "https://#{@organization.username}.#{Application.get_env(:front, :domain)}", class: "flex items-center mb2" do %>
+  <%= img_tag(@organization.avatar_url, size: "32x32") %>
+  <div class="ml2"><%= @organization.username %></div>
+<% end %>

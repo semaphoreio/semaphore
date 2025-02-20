@@ -1,0 +1,23 @@
+<div class="flex items-center justify-between nt1">
+  <div class="flex items-center justify-between">
+    <img src="<%= assets_path() %>/images/<%= pipeline_status_icon_name(@pipeline.state, @pipeline.result) %>.svg" class="mr2">
+
+    <%= cond do %>
+      <% Front.WorkflowPage.Errors.has_errors?(@pipeline) -> %>
+        <span class="b">We couldn't run your pipeline&hellip;</span>
+
+      <% @pipeline.state == :INITIALIZING -> %>
+        <span class="b">Preparing pipeline&hellip;</span>
+
+      <% true -> %>
+        <span class="b"><%= @pipeline.name %></span>
+    <% end %>
+  </div>
+
+  <% timer_state = if @pipeline.state == :RUNNING, do: "run" %>
+  <% timer_seconds = FrontWeb.SharedView.total_seconds(@pipeline.timeline.running_at, @pipeline.timeline.done_at) %>
+  <% timer_color = pipeline_status_color(@pipeline.state, @pipeline.result) %>
+  <% timer_time = FrontWeb.SharedView.total_time(@pipeline.timeline.running_at, @pipeline.timeline.done_at) %>
+
+  <span timer <%= timer_state %> seconds="<%= timer_seconds %>" style="padding-top: 1px" class="ml4 f5 code <%= timer_color %>"><%= timer_time %></span>
+</div>

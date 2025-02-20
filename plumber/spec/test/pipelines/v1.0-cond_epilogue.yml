@@ -1,0 +1,34 @@
+version: "v1.0"
+name: Conditional epilogue test
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+global_job_config:
+  epilogue:
+    always:
+      commands:
+        - checkout
+blocks:
+  - name: Block 1
+    task:
+      epilogue:
+        on_pass:
+          commands:
+            - echo Test passed
+        on_fail:
+          commands:
+            - echo Test failed
+      jobs:
+        - name: job1
+          commands:
+            - echo 123
+  - name: Block 2
+    task:
+      epilogue:
+        commands:
+          - echo 'Backward compatible'
+      jobs:
+        - name: job1
+          commands:
+            - echo 123

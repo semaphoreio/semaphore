@@ -1,0 +1,85 @@
+version: v1.0
+name: "🐍 Django CI Pipeline (Docker)"
+
+agent:
+  machine:
+    type: {{ machine_type }}  # Standard machine type suitable for Docker-based pipelines
+
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/python:3.8-node-browsers'  # Docker container with Python 3.8 and Node.js for browser tests
+    - name: mysql
+      image: 'registry.semaphoreci.com/mysql:8.0'  # Docker container with MySQL
+      env_vars:
+        - name: MYSQL_ROOT_PASSWORD
+          value: root
+
+fail_fast:
+  stop:
+    when: branch != 'master'  # Stop execution early for non-master branches
+auto_cancel:
+  running:
+    when: branch != 'master'  # Auto-cancel running pipelines on non-master branches
+  queued:
+    when: branch = 'master'  # Auto-cancel queued pipelines for master branch
+    
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Fetch the latest code from the repository
+      - pip install -r requirements.txt --cache-dir .pip_cache  # Install project dependencies
+      - cache restore  # Restore cached dependencies
+
+blocks:
+  - name: "🛠️ Install Dependencies"
+    dependencies: []  # No dependencies; runs at the start
+    task:
+      jobs:
+        - name: "📦 Install Python Dependencies"
+          commands:
+            - apt-get update && apt-get install -y python3-dev  # Install Python development tools
+            - apt-get install -y default-libmysqlclient-dev  # Install MySQL client development libraries
+            - pip download --cache-dir .pip_cache -r requirements.txt  # Download Python dependencies
+            - cache store  # Cache the downloaded dependencies
+
+  - name: "🔍 Run Code Analysis"
+    dependencies: []  # Independent block; runs in parallel with other tasks
+    task:
+      jobs:
+        - name: "🛡️ Pylint Analysis"
+          commands:
+            - git ls-files | grep -v 'migrations' | grep -v 'settings.py' | grep -v 'manage.py' | grep -E '.py$' | xargs pylint -E --load-plugins=pylint_django  # Run Pylint with Django plugin
+
+  - name: "🧪 Run Unit Tests"
+    dependencies:
+      - "🛠️ Install Dependencies"  # Ensure dependencies are installed
+    task:
+      jobs:
+        - name: "🔎 Test Models"
+          commands:
+            - python manage.py test tasks.tests.test_models  # Run model-specific tests
+        - name: "🔎 Test Views"
+          commands:
+            - python manage.py test tasks.tests.test_views  # Run view-specific tests
+
+  - name: "🌐 Run Browser Tests"
+    dependencies:
+      - "🧪 Run Unit Tests"  # Ensure unit tests pass first
+    task:
+      env_vars:
+        - name: DB_NAME
+          value: pydjango  # Database name for testing
+      jobs:
+        - name: "🎭 Browser Tests"
+          commands:
+            - mysql --host=mysql -uroot -proot -e "create database $DB_NAME"  # Create test database in MySQL container
+            - 'nohup python manage.py runserver 0.0.0.0:8000 &'  # Start Django server for browser tests
+            - python manage.py test tasks.tests.test_browser  # Run browser-specific tests
+
+  - name: "🔐 Run Security Tests"
+    dependencies: []  # Runs independently in parallel
+    task:
+      jobs:
+        - name: "✅ Deployment Checklist"
+          commands:
+            - python manage.py check --deploy --fail-level ERROR  # Run Django deployment checklist

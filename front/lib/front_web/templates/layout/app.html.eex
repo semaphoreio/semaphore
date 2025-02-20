@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <%= render "_head.html", conn: @conn %>
+  <body class="bg-lightest-brown">
+    <%= if @conn.assigns[:signup] do %>
+      <%= render FrontWeb.SharedView, "_gtag.html", conn: @conn %>
+    <% end %>
+    <%= if @conn.assigns[:layout_model] do %>
+      <%= render FrontWeb.LayoutView, "_page_header.html", conn: @conn, layout_model: @conn.assigns.layout_model %>
+    <% else %>
+      <%= render FrontWeb.LayoutView, "_anonymous_page_header.html", conn: @conn %>
+    <% end %>
+    <div class="main" style="padding-top: 48px">
+      <div id="main-content" class="bg-white pa3 pa4-m">
+        <%= if Map.get(assigns, :breadcrumbs) do %>
+          <div class="dn db-m">
+            <div id="magicBreadcrumb" class="fixed left-0 right-0 top-0 z-5" style="transition: all .1s ease-out; margin-top: 16px; opacity: 0;">
+              <div class="bg-dark-gray light-gray ph3 ph4 pv2 lh-title w-100" style="box-shadow: 0 2px 6px rgba(0,0,0,.15);">
+                <%= for b <- @breadcrumbs do %>
+                  <%= if b.last do %>
+                    <span><%= b.name %></span>
+                  <% else %>
+                    <span><%= link b.name, to: b.url, class: "link lightest-gray hover-light-gray" %></span>
+                    <span class="ph2">›</span>
+                  <% end %>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <%= if @conn.assigns[:authorization] == :member and not is_nil(@conn.assigns[:project]) and @conn.assigns.project.repo_connected == false do %>
+          <div class="bg-lightest-red bb b--black-15 ph3 ph4-m pv2 nh3 nh4-m nt4 mb4">
+            <p class="mb0">Semaphore no longer has access to this repository. Please review <%= link "Repository settings", to: project_settings_path(@conn, :repository, @conn.assigns.project.name)  %> to unblock your pipelines.</p>
+          </div>
+        <% end %>
+        <%= Map.get(assigns, :nested_layout) || @inner_content %>
+        <%= render FrontWeb.LayoutView, "_overlay.html", conn: @conn %>
+        <%= if notice = get_flash(@conn, :notice) || @conn.assigns[:notice] do %>
+          <%= render FrontWeb.SharedView, "_action_notification.html", notice: notice, conn: @conn %>
+        <% end %>
+        <%= if alert = get_flash(@conn, :alert) || @conn.assigns[:alert] do %>
+          <%= render FrontWeb.SharedView, "_action_alert.html", alert: alert, conn: @conn %>
+        <% end %>
+      </div>
+    </div>
+
+    <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+      <%= if FrontWeb.BillingView.with_plan_overlay?(@conn) do %>
+        <div class="overlay" id="trial-overlay" style="display: block;">
+        </div>
+      <% end %>
+    <% end %>
+
+    <%= render FrontWeb.LayoutView, "_notice.html" %>
+    <%= render FrontWeb.LayoutView, "_scripts.html", conn: @conn %>
+    <%= if Application.get_env(:front, :environment) != :test do %>
+      <%= render FrontWeb.LayoutView, "_beacon.html", conn: @conn %>
+    <% end %>
+    <!-- enabled only for semaphore org members on the semaphore org pages-->
+    <%= if show_backend_badge?() do %>
+      <%= render(FrontWeb.LayoutView, "_performance_badge.html", conn: @conn) %>
+    <% end %>
+    <% {livechat_enabled?, key} = livechat_enabled?(@conn) %>
+    <%= if livechat_enabled? do %>
+      <script nonce="<%= @conn.assigns[:script_src_nonce] %>" id="ze-snippet" src="https://static.zdassets.com/ekr/snippet.js?key=<%= key %>"></script>
+    <% end %>
+  </body>
+</html>

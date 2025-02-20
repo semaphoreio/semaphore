@@ -1,0 +1,40 @@
+<%= if @can_delete do %>
+  <h2 class="f00 mb1">☠️</h2>
+  <h3 class="f3 f2-m mb1">Delete Organization?</h3>
+  <p class="b red mv3">This cannot be undone!</p>
+  <div>
+    if you continue:
+
+    <ul class="mb3">
+      <li>people who have access to projects in this organization won’t see them anymore</li>
+      <li>if paid organization, we’ll charge what you spend until this moment and stop charging you</li>
+    </ul>
+  </div>
+  <div class="mw6">
+    <%= form_for @conn, settings_path(@conn, :destroy), [method: :delete], fn f -> %>
+      <div class="mv3">
+        <%= label f, :delete_account, "Please type 'delete' to confirm", class: "db b mb1" %>
+        <%= text_input f, :delete_account, required: true, class: "form-control w-100 #{error_on_delete_account_class(@errors)}" %>
+        <%= if error_on_delete_account(@errors) do %>
+          <div class="mv1 red"><%= error_on_delete_account(@errors) %></div>
+        <% end %>
+      </div>
+
+      <div class="mt4">
+        <%= submit "Delete Organization",
+            class: "btn btn-danger w-100 w-auto-ns mb2 mb0-ns mr2", data: [confirm: "You're about to delete the organization forever. Are you sure?"]%>
+        <%= link "I changed my mind, take me back", to: settings_path(@conn, :show), class: "btn btn-secondary w-100 w-auto-ns" %>
+      </div>
+    <% end %>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t delete the Organization.<br>
+      Ask organization owner or any of the admins to give you access.</p>
+  </div>
+<% end %>
+
+<%= if @alert do %>
+  <%= render FrontWeb.SharedView, "_action_alert.html", alert: @alert, conn: @conn %>
+<% end %>

@@ -1,0 +1,15 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.jsonArtifactsURL = "<%= raw @json_artifacts_url %>";
+  window.InjectedDataByBackend.encodedEmail = "<%= encoded_email(@organization, @user) %>";
+  window.InjectedDataByBackend.scope = "pipeline";
+
+  // Pipeline tree dropdown configuration
+  window.InjectedDataByBackend.workflowSummaryUrl = "<%= raw @summary_url %>";
+  window.InjectedDataByBackend.pollURL = "<%= workflow_path(@conn, :status, @workflow.id) %>";
+  window.InjectedDataByBackend.pipelineId = "<%= @selected_pipeline_id %>";
+  window.InjectedDataByBackend.pipelineStatus = "<%= raw FrontWeb.PipelineView.pipeline_status_large(@pipeline) %>";
+  window.InjectedDataByBackend.pipelineName = "<%= @pipeline.name %>"
+</script>
+
+<div id="test-results" class="no-ligatures">
+</div>

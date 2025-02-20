@@ -1,0 +1,13 @@
+<div id="workflow-editor-nav" class="bb b--lighter-gray nt3-m pb2">
+	<div class="flex-m justify-between mb2">
+		<div class="pr3 mb2 mb0-m">
+			<div><strong>Project:</strong> <%= link @project.name, to: project_path(@conn, :show, @project.name) %></div>
+      <div><strong><%= branch_type_name(@hook.type) %>:</strong> <%= link @hook.name, to: branch_path(@conn, :show, @workflow.branch_id) %><span class="f6"> (<%= link "Change…", to: project_path(@conn, :edit_workflow, @project.name), class: "dark-gray" %>)</span></div>
+		</div>
+
+    <div class="flex items-start flex-shrink-0 pt1">
+      <a data-action=editorDismiss href='#' class="btn btn-secondary mr3">Dismiss and Exit</a>
+      <a data-action=toggleCommitDialog href="#" class="btn btn-primary">Run the workflow <img src="<%= assets_path() %>/images/icn-down-white.svg" class="v-mid"></a>
+    </div>
+	</div>
+</div>

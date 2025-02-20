@@ -1,0 +1,13 @@
+{
+  "title": "Gradle",
+  "description": "Build your project with Gradle",
+  "category": "Java",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Build with Gradle"
+  ],
+  "icon": "lang-gradle.svg",
+  "template_path": "templates/gradle.yml",
+  "workflow_tip": "other"
+}

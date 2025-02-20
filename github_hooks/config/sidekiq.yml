@@ -1,0 +1,15 @@
+development:
+  :concurrency: 1
+staging:
+  :concurrency: 2
+production:
+  :concurrency: 20
+:queues:
+  - job_pipeline
+  - github_app
+:scheduler:
+  :schedule:
+    GithubApiRateLimitMetric:
+      queue: github_app
+      cron: '*/5 * * * *'
+      class: "RecurringTasks::GithubApiRateLimitMetric"

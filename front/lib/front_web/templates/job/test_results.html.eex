@@ -1,0 +1,55 @@
+<div class="bb b--lighter-gray nt3-m pb2">
+  <div class="mb2">
+    <div>
+      <strong>Project:</strong>
+      <%= link @project.name, to: project_path(@conn, :show, @project.name) %>
+      · Manage <%= link "Settings", to: project_settings_path(@conn, :general, @project.name) %>
+    </div>
+    <div>
+      <strong>Branch:</strong>
+      <%= link @hook.name, to: branch_path(@conn, :show, @workflow.branch_id) %>
+    </div>
+    <div>
+      <strong>Workflow:</strong>
+      <%= link @workflow_name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @workflow.root_pipeline_id) %> (<%= link "#{commit_sha(@hook)} ↗", to: commit_url(@hook), target: "_blank" %>)
+      / <%= link @pipeline.name, to: workflow_path(@conn, :show, @workflow.id, pipeline_id: @pipeline.id) %>
+      / <%= @block.name %>
+      / <%= link @job.name, to: job_path(@conn, :show, @job.id) %>
+      / Test Results
+      <span class="gray">· by <%= @hook.repo_host_username %>,
+        <time-ago datetime="<%= @workflow.created_at |> Timex.format!("%FT%T%:z", :strftime) %>">
+          <%= @workflow.created_at |> Timex.format!("{Mshort} {D}, {YYYY}") %>
+        </time-ago>
+      </span>
+    </div>
+  </div>
+</div>
+
+<div class="pb3">
+  <div class="flex items-center-ns justify-between mb3 pt2">
+    <h1 class="f3 f2-m lh-title mt1-m mb0 pr3 truncate-m">Test results summary</h1>
+  </div>
+</div>
+
+<div>
+  <div>
+    <table id="test-result-summary">
+      <tr>
+        <th class="tl normal gray pr4">Framework</th>
+        <th class="tl normal gray pr4">Tests</th>
+        <th class="tl normal gray pr4">Passed</th>
+        <th class="tl normal gray pr4">Skipped</th>
+        <th class="tl normal gray pr4">Failed</th>
+        <th class="tl normal gray pr4">Errors</th>
+        <th class="tl normal gray pr4">Flaky</th>
+        <th class="tl normal gray pr4">Time</th>
+      </tr>
+    </table>
+  </div>
+</div>
+<div id="details">
+</div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.artifactsUrl = "<%= raw @artifacts_url %>";
+</script>

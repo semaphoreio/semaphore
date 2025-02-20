@@ -1,0 +1,21 @@
+---
+image: badges
+imageTag: latest
+replicas: 1
+
+resources:
+  limits:
+    cpu: '0.2'
+    memory: 200Mi
+  requests:
+    cpu: '0.025'
+    memory: 100Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

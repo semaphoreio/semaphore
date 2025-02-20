@@ -1,0 +1,25 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Listener
+metadata:
+  name: lb-listener
+  namespace: {{ .Release.Namespace }}
+spec:
+  port: 8080
+  protocol: HTTP
+  securityModel: XFP
+  l7Depth: 1
+  hostBinding:
+    namespace:
+      from: SELF
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Host
+metadata:
+  name: star-host
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  requestPolicy:
+    insecure:
+      action: Redirect
+      additionalPort: 8080

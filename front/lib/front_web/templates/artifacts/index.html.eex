@@ -1,0 +1,33 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["project.artifacts.view"] do %>
+    <div class="flex justify-between">
+      <div>
+        <p class="measure mb3">Export and store important project files in here.<br class="dn di-ns"> Read more in <a href="https://docs.semaphoreci.com/essentials/artifacts/">Docs: Artifacts</a></p>
+      </div>
+
+      <div>
+      <%= if @permissions["project.artifacts.modify_settings"] do %>
+        <%= link "Configure Retention Policy", to: project_settings_path(@conn, :artifacts, @project.name), class: "btn btn-secondary" %>
+      <% end %>
+      </div>
+    </div>
+
+    <div class="bg-white shadow-1 br3 pa3 pa4-l">
+      <%= render FrontWeb.ArtifactsView, "_folder.html",
+        conn: @conn,
+        artifacts: @artifacts,
+        artifact_navbar_components: @artifact_navbar_components,
+        page_path: @page_path,
+        source_kind: @source_kind,
+        source_id: @source_id,
+        permissions: @permissions
+      %>
+    </div>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">Sorry, you can’t view Artifacts.<br>
+        Ask organization owner or any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>

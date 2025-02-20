@@ -1,0 +1,29 @@
+version: "v1.0"
+name: Valid example with all limits
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+execution_time_limit:
+    hours: 42
+blocks:
+  - name: Block 1
+    execution_time_limit:
+      minutes: 30
+    task:
+      jobs:
+        - execution_time_limit:
+            minutes: 20
+          commands:
+            - echo foo
+        - commands:
+            - echo bar
+  - name: Block 2
+    task:
+      jobs:
+        - execution_time_limit:
+            hours: 26
+          commands:
+            - echo foo
+        - commands:
+            - echo bar

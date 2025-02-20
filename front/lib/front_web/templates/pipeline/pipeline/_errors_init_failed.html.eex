@@ -1,0 +1,18 @@
+<div class="mw6 f6">
+  <div class="f6 measure ws-normal">
+    Initialization failed. See logs for more details.  </div>
+
+  <div class="pt2">
+    <strong>Possible causes</strong>
+
+    <ol class="pl3 mb0">
+      <li>You have force-pushed additional commits to this branch.</li>
+      <li>Semaphore is not authorized to clone your repository.</li>
+      <li>The pipeline YAML has an invalid configuration.</li>
+    </ol>
+  </div>
+
+  <div class="f6 measure ws-normal pt2">
+    See the <a href="https://docs.<%= Application.get_env(:front, :domain) %>/reference/pipeline-yaml" target="_blank" rel="noopener">YAML reference</a> for details, or if you are stuck contact us on <a href="/support" target="_blank">support</a>.
+  </div>
+</div>

@@ -1,0 +1,15 @@
+version: "v1.0"
+name: Failing - block limit longer than pipeline limit
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+execution_time_limit:
+    minutes: 120
+blocks:
+  - execution_time_limit:
+      minutes: 160
+    task:
+      jobs:
+        - commands:
+            - echo foo

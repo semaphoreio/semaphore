@@ -1,0 +1,24 @@
+<% alias Front.WorkflowPage.Errors.StructuredError %>
+
+<div class="mw6">
+  <div class="measure ws-normal">
+    Unknown branch referenced in <a href="https://docs.<%= Application.get_env(:front, :domain) %>/reference/conditions-reference#change-in" target="_blank">change_in</a> expression.
+  </div>
+
+  <div class="f6 code ws-normal bg-white pa2 br2 shadow-1 mt2 mb2">
+    Location: <%= StructuredError.path(@err) %><br>
+    Error: <%= @err["message"] %>
+  </div>
+
+  <div class="measure ws-normal">
+    By default, change_in compares your changes to the HEAD of the
+    master branch. If this repository uses a different default branch,
+    for example the 'main', set it up with:
+
+    <div class="f6 code ws-normal bg-white pa2 br2 shadow-1 mt2 mb2">
+      change_in([paths...], {default_branch: 'main'})
+    </div>
+
+    See the documentation at <a href="https://docs.<%= Application.get_env(:front, :domain) %>/reference/conditions-reference#change-in" target="_blank" rel="noopener">Docs: Conditions Reference</a>.
+  </div>
+</div>

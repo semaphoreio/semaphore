@@ -1,0 +1,21 @@
+<div
+  pipeline-only-div="<%= @pipeline.id %>"
+  data-poll-href="<%= "/workflows/#{@workflow.id}/pipelines/#{@pipeline.id}/poll" %>"
+  data-poll-state="<%= pipeline_poll_state(@pipeline) %>"
+  data-poll-param-nonce="<%= @conn.assigns[:script_src_nonce] %>"
+  style="min-width: 270px;"
+  class="pa3 br2">
+  <div class="mb3">
+    <%= render FrontWeb.PipelineView, "pipeline/_header.html", pipeline: @pipeline %>
+    <%= render FrontWeb.PipelineView, "pipeline/_initializing.html", pipeline: @pipeline %>
+  </div>
+  <%= cond do %>
+    <% Front.WorkflowPage.Errors.has_errors?(@pipeline) -> %>
+      <%= render FrontWeb.PipelineView, "pipeline/_error.html", pipeline: @pipeline, conn: @conn %>
+    <% @pipeline.state == :INITIALIZING -> %>
+      <%= render FrontWeb.PipelineView, "pipeline/_waiting_for_diagram.html" %>
+    <% true -> %>
+      <%= render FrontWeb.PipelineView, "pipeline/_waiting_for_quota.html", pipeline: @pipeline, conn: @conn %>
+      <%= render FrontWeb.PipelineView, "pipeline/_diagram.html", pipeline: @pipeline, conn: @conn %>
+  <% end %>
+</div>

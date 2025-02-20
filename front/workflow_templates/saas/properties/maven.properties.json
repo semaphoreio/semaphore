@@ -1,0 +1,14 @@
+{
+  "title": "Maven",
+  "description": "Build Java project with Maven",
+  "category": "Java",
+  "features": [
+    "Ubuntu 20.04 bash environment",
+    "Code checkout",
+    "Java version set to 1.8",
+    "Build with Maven"
+  ],
+  "icon": "lang-maven.svg",
+  "workflow_tip": "other",
+  "template_path": "templates/maven.yml"
+}

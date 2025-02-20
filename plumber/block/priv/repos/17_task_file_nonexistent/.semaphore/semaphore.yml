@@ -1,0 +1,9 @@
+version: v1.0
+name: Task_file does not exist
+agent:
+  machine:
+    type: foo
+    os_image: bar
+blocks:
+  - name: Block
+    task_file: non-existent.yml

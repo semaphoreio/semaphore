@@ -1,0 +1,12 @@
+{
+  "title": "Simple SaaS",
+  "description": "Get started with a basic CI pipeline that includes testing and deployment stages. Perfect for simple projects. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-gray white'>Basic</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Testing</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Deploy</span></div>",
+  "short_description": "Basic CI/CD pipeline for quick starts",
+  "group": "blank",
+  "language": "Any",
+  "environment": "linux",
+  "use_case": "ci_pipeline",
+  "icon": "lang-blank.svg",
+  "template_path": "templates/simple_saas.yml",
+  "workflow_tip": "other"
+}

@@ -1,0 +1,41 @@
+<div class="pa3 bg-white shadow-1 br3">
+  <%= form_for @conn, me_path(@conn, :create), fn f -> %>
+    <div class="mb3">
+    <%= label f, :name, "Organization Name", class: "label" %>
+    <%= text_input f, :name, class: "form-control w-100", placeholder: "e.g. Olive Tree", required: true, value: (if @organization, do: @organization["name"]) %>
+    <p class="f5 mt1 mb0">You can change this later.</p>
+    <%= if name_missing?(@error_messages) do %>
+      <p class="f5 mb1 red"><%= List.first(@error_messages["name"]) %></p>
+  <% end %>
+  </div>
+
+  <div class="mb3">
+    <div class="flex items-center justify-between mb1">
+      <%= label f, :username, "Organization ID", class: "b" %>
+      <%= if username_already_taken?(@error_messages) do %>
+        <div class="flex items-center f5">
+        <span class="red"><%= List.first(@error_messages["username"]) %></span>
+      </div>
+    <% end %>
+    </div>
+    <div class="flex flex-row-reverse">
+      <div class="flex items-center bt bb br b--light-gray br2 br--right bg-lightest-gray ph2">.<%= Application.fetch_env!(:front, :domain) %></div>
+      <%= text_input f, :username, class: "form-control flex-auto br--left tr", placeholder: "olive-tree", required: true, value: (if @organization, do: @organization["username"]), pattern: "^(?!-)[a-z0-9\-]{3,}$" %>
+    </div>
+    <p class="f5 mt1 mb0">ID is organization’s unique URL and <strong>cannot be changed later</strong>.</p>
+    <p class="f5 mb1">Min. 3 characters, only lowercase letters (a-z), numbers (0-9) and dash (-), no spaces.</p>
+    <%= if other_username_error?(@error_messages) do %>
+      <p class="f5 mb1 red"><%= List.first(@error_messages["username"]) %></p>
+  <% end %>
+  </div>
+
+  <div class="mt3 mb2">
+    <!-- Keep button disabled until name of the organization is filled + available ID is found  -->
+    <%= submit "Create Organization", class: "btn btn-primary" %>
+  </div>
+<% end %>
+
+  <div class="nh3 nb3">
+    <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-welcome.png" %> class="db br2 br--bottom">
+  </div>
+</div>

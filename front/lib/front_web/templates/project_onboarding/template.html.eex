@@ -1,0 +1,116 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ProjectName = "<%= @project.name %>"
+  window.InjectedDataByBackend.Templates = <%= raw @templates |> List.flatten |> Poison.encode! %>
+  window.InjectedDataByBackend.DefaultTemplateTitle = "Single job"
+  window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
+</script>
+
+<!-- YAML highlighting for template configuration -->
+<style>
+.hljs-string {
+  color: #032f62;
+}
+
+.hljs-attr {
+  color: #22863a;
+}
+
+.hljs-bullet {
+  color: #555;
+}
+</style>
+
+<div>
+  <h1 class="f2 f1-m mb0">Choose a starter workflow</h1>
+  <p class="measure mb4">
+    Use one of the templates to get to the green build quickly or customize it first if you feel confident.
+  </p>
+
+  <div class="bg-white shadow-1 ph3 ph0-m pt3 pt0-m br3">
+    <div class="flex-m">
+      <div class="w6-m flex-shrink-0 f6 mb3 mb0-m pt3-m ph3-m br-m b--black-10 bb bb-0-m">
+        <div class="mb3">
+          <input id="template-filter" type="search" class="form-control form-control-small w-100" placeholder="e.g. Rails, PHP, Swift…">
+        </div>
+        <div id="workflow-template-sidebar" class="h5 h6-m overflow-auto b--black-10">
+          <p style="display: none;" id="template-not-found" class='mt3 gray'>Can't find what you need? Start simple with single job.</p>
+          <div workflow-template-limiter class="relative f7 gray pb2 mt2 mb3 bb b--black-10">
+            <span class="absolute bg-white pr2">Popular</span>
+          </div>
+          <%= Enum.map(@templates |> Enum.at(0), fn template -> %>
+            <div
+              workflow-template
+              <%= if template["title"] == "Single job", do: "fallback" %>
+              id='<%= template["title"] %>'
+              class="flex items-center pa2 hover-bg-washed-gray br3 pointer"
+              data-title='<%= template["title"] %>'
+              data-description='<%= template["description"] %>'
+              data-path='<%= template["template_path"] %>'
+              data-workflow-tip='<%= template["workflow_tip"] %>'>
+              <img src="<%= assets_path() %>/images/<%= template["icon"] %>" width="28">
+              <div class="flex-auto pl3">
+                <h3 class="f5 mb0">
+                  <%= template["title"] %>
+                  <span class="fr light-gray f7">★</span>
+                </h3>
+                <p class="mb0 gray truncate"><%= template["description"] %></p>
+              </div>
+            </div>
+          <% end) %>
+          <div workflow-template-limiter class="relative f7 gray pb2 mt2 mb3 bb b--black-10">
+            <span class="absolute bg-white pr2">A–Z</span>
+          </div>
+          <%= Enum.map(@templates |> Enum.at(1), fn template -> %>
+            <div
+              workflow-template
+              <%= if template["title"] == "Single job", do: "fallback" %>
+              id='<%= template["title"] %>'
+              class="flex items-center pa2 hover-bg-washed-gray br3 pointer"
+              data-title='<%= template["title"] %>'
+              data-description='<%= template["description"] %>'
+              data-path='<%= template["template_path"] %>'>
+              <img src="<%= assets_path() %>/images/<%= template["icon"] %>" width="28">
+              <div class="flex-auto pl3">
+                <h3 class="f5 mb0"><%= template["title"] %></h3>
+                <p class="mb0 gray truncate"><%= template["description"] %></p>
+              </div>
+            </div>
+          <% end) %>
+        </div>
+      </div>
+      <div class="w-100-m relative">
+        <div class="overflow-auto h6-m">
+          <div class="pa3-m pa4-l">
+            <div class="flex items-start justify-between">
+              <div>
+                <h2 id="chosen-template-title" class="f2 mb3 mb2-l">Test a Rails project</h2>
+                <p id="chosen-template-description" class="measure mb3">Decription of the workflow recipe</p>
+              </div>
+
+              <div>
+                <img id="chosen-template-icon" width="28" class="mb2">
+              </div>
+            </div>
+            <p class="mb2">Included in this flow:</p>
+            <ul id="chosen-template-features" class="mb4">
+            </ul>
+            <div class="mv3">
+              <%= Enum.map(@templates |> List.flatten, fn template -> %>
+                <img class="mb3" style="display: none;border-radius: 0.25rem;" workflow-preview templateTitle='<%= template["title"] %>' src='<%= template["preview"] %>'\>
+              <% end) %>
+            </div>
+            <details class="pt3 mt3 bt b--black-10" open>
+              <summary class="f5 gray mb3 pointer">YAML configuration</summary>
+              <pre id="chosen-template-yaml" class="yaml f6 dark-gray mb0 pre code w-100 overflow-x-auto nowrap">
+              </pre>
+            </details>
+          </div>
+        </div>
+        <div class="absolute-m bottom-0 left-0 right-0 ph3 ph4-l pv3 bg-white bt b--black-10">
+          <%= link "Looks good, start", to: "", class: "btn btn-primary", run_workflow: true %>
+          <span class="mh1">or</span><%= link "Customize", to: project_onboarding_path(@conn, :workflow_builder, @conn.params["name_or_id"]), class: "mt3 mb1", customize_template: true %> it in the Workflow Builder
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

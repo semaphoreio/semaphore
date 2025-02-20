@@ -1,0 +1,39 @@
+<%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+  <%= if @conn.assigns.permissions["project.pre_flight_checks.view"] do %>
+    <div>
+      <h2 class="f3 f2-m mb0">Pre-flight checks</h2>
+      <p class="mb3 measure">
+        Define commands and used secrets to configure custom security measures before running the pipeline.
+        What you define here will be run before any pipeline in this project.
+      </p>
+      <%= render FrontWeb.ProjectPFCView, "_edit_form.html",
+          conn: @conn,
+          project: @project,
+          secrets: @secrets,
+          cloud_agents: @cloud_agents,
+          self_hosted_agents: @self_hosted_agents,
+          organization_id: @conn.assigns[:organization_id],
+          changeset: @changeset %>
+      <%= if not is_nil(@changeset.data.updated_at) do  %>
+        <%= render FrontWeb.ProjectPFCView, "_delete_form.html",
+                conn: @conn,
+                project: @project %>
+      <% end %>
+    </div>
+  <% else %>
+    <div class="pv6 tc">
+      <div class="f00">🗝</div>
+      <p class="f6 measure-narrow center mv3">
+        Sorry, you can’t access Pre-flight checks.<br>
+        Ask project owner or any of the admins to give you access permission.
+      </p>
+    </div>
+  <% end %>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">
+      Sorry, your organization doesn't have Pre-flight checks enabled.<br>
+    </p>
+  </div>
+<% end %>

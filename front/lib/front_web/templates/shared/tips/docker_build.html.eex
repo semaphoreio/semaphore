@@ -1,0 +1,49 @@
+<details>
+  <summary class="f4 f3-m fw6 pointer">How to push images to a registry?</summary>
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">1. Create a Secret</h4>
+        <p class="mb0">Secrets are global and can be shared between projects. <a href="/secrets/new" target="_blank" rel="noopener">Create a Secret</a> to store your registry credentials.</p>
+      </div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-1.svg") %>" alt="Create global secret">
+      </div>
+    </div>
+  </div>
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">2. Attach Secret to your Job</h4>
+        <p class="mb0">Mount your registry credentials in the Job. <br><br>You can set up the secret for DockerHub, ECR, GCR or any other docker registry.</div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-2.svg") %>" alt="Attach secret to workflow">
+      </div>
+    </div>
+  </div>
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-40-ns pa2">
+        <h4 class="f5 mb0">3. Push to the registry</h4>
+        <p class="">Authenticate docker then push the new image tag to the registry.</p>
+      </div>
+      <div class="flex-ns w-60-ns pa2">
+        <div class="w-40-ns pa2 flex-shrink-0">
+          <img src="<%= image_source("edit-workflow-popup.svg") %>" alt="Edit Workflow">
+        </div>
+        <div class="w-60-ns bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Build & Push
+            </div>
+            <div class="ph2 pv1 overflow-auto nowrap">
+              docker login<br>
+              docker push tag
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>

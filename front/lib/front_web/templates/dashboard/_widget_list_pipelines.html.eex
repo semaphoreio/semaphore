@@ -1,0 +1,40 @@
+<%= if (@widget.pipelines) |> Enum.empty? do %>
+  <%= render FrontWeb.DashboardView, "_widget_empty.html", widget: @widget %>
+<% else %>
+  <%= @widget.pipelines |> Enum.map(fn(pipeline) -> %>
+    <div class="<%= workflow_bg_class(pipeline) %> pa3 br2 mv2">
+      <div class="flex-m flex-row-reverse justify-between bb b--black-10 pb2">
+        <div class="mb2 mb0-m">
+          <%= raw status_badge(pipeline) %>
+        </div>
+        <div class="flex items-start-m pr3">
+          <img src="<%= Application.get_env(:front, :assets_path) %>/images/icn-promote.svg" class="dn db-m mr2">
+          <div>
+            <a href="<%= pipeline.html_url %>" class="link dark-gray underline-hover b mb0 mr2"><%= pipeline.commit_message %></a>
+            <a href="<%= pipeline.github_commit_url %>" class="link code f6 ph1 dark-gray ba br2"><%= pipeline.short_commit_id %></a>
+          </div>
+        </div>
+      </div>
+      <div class="flex-l items-start justify-between pt2">
+        <div class="flex items-start f6 bb bn-l b--black-10 pr3 pb2 mb2 pb0-l mb0-l">
+          <img src="<%= pipeline.author_avatar_url %>" width="16" class="dn di-m w1 br-100 mr2">
+          <div>
+            <span><%= pipeline.author_name %></span>
+            <span class="mh1">·</span>
+            <a href="/projects/<%= pipeline.project_name %>" class="link dark-gray underline-hover word-wrap"><%= pipeline.project_name %></a>
+            <span class="mh1">▸</span>
+            <a href="/branches/<%= pipeline.branch_id %>" class="link dark-gray underline-hover word-wrap"><%= pipeline.branch_name %></a>
+            <span class="mh1">▸</span>
+            <a href="<%= pipeline.html_url %>" class="link dark-gray underline-hover word-wrap"><%= pipeline.pipeline_name %></a>
+          </div>
+        </div>
+        <div class="f6 nowrap tr-l">
+          <time-ago datetime="<%= Timex.format!(pipeline.created_at, "%FT%T%:z", :strftime) %>">
+            <%= Timex.format!(pipeline.created_at, "{Mshort} {D}, {YYYY}") %>
+          </time-ago>
+        </div>
+      </div>
+    </div>
+  <% end) %>
+<% end %>
+<%= render FrontWeb.SharedView, "_pagination.html", pagination: @widget.pagination %>

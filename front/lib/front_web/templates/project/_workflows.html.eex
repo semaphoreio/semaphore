@@ -1,0 +1,14 @@
+<div class="pollman-container nb3" data-poll-param-page="<%= @pagination.page %>" data-poll-param-filters="<%= @conn.assigns.filters %>" data-poll-state="<%= poll_state(@pagination) %>" data-poll-href="/projects/<%= @project.id %>/workflows">
+  <%= if @branches |> Enum.empty? do %>
+    <div class="tc pv6">
+      <div class="w2 center mb2">
+        <%= raw empty_list_icon(@conn.assigns.filters) %>
+      </div>
+      <%= raw empty_list_copy(@conn.assigns.filters, @project, @conn) %>
+    </div>
+  <% else %>
+    <%= @branches |> Enum.map(fn(branch) -> %>
+      <%= render FrontWeb.ProjectView, "show/_branch.html", project: @project, branch: branch %>
+    <% end) %>
+  <% end %>
+</div>

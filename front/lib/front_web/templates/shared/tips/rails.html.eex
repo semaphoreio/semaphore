@@ -1,0 +1,163 @@
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Set up the Ruby version</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Go to the Workflow Builder and set up the Ruby version you need inside each Job with <a class="default-tip" title="Follow the link and read more about sem-version CLI tool we built for you." href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/sem-version-managing-language-versions-on-linux/" target="_blank" rel="noopener">sem-version</a> built-in tool.
+    </p>
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Run RSpec suite
+            </div>
+            <div class="ph2 pv1 overflow-auto nowrap">
+              sem-version ruby 2.5 <span class="gray"># Copy this command</span><br>
+              bundle exec rspec
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="mt3">Make sure to place sem-version command inside each Job.</p>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Spin up MySQL</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Spin up the MySQL version you need using the <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/sem-service-managing-databases-and-services-on-linux/" target="_blank" rel="noopener" class="default-tip" title="Follow the link to learn more about sem-service CLI tool">sem-service</a> built-in tool.
+    </p>
+
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Run RSpec suite
+            </div>
+            <div class="ph2 pv1 overflow-auto nowrap">
+              sem-service start mysql 8 <span class="gray"># Copy this command</span><br>
+              bundle exec rspec
+            </div>
+          </div>
+          <label class="db f7 mb1 mt1 b">Environment Variables</label>
+          <div class="input-group flex-auto">
+            <input readonly type="text" class="w-50 form-control form-control-small code" placeholder="Name" value="DB_URL">
+            <input readonly type="text" class="w-50 form-control form-control-small code" placeholder="Value" value="mysql2://username:password@localhost/database_name">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Spin up Postgres</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Spin up the Postgres version you need using the <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/sem-service-managing-databases-and-services-on-linux/" target="_blank" rel="noopener" class="default-tip" title="Follow the link to learn more about sem-service CLI tool">sem-service</a> built-in tool.
+    </p>
+
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Run RSpec suite
+            </div>
+            <div class="ph2 pv1 overflow-auto nowrap">
+              sem-service start postgres 11 <span class="gray"># Copy this command</span><br>
+              bundle exec rspec
+            </div>
+          </div>
+          <label class="db f7 mb1 mt1 b">Environment Variables</label>
+          <div class="input-group flex-auto">
+            <input readonly type="text" class="w-50 form-control form-control-small code" placeholder="Name" value="DB_URL">
+            <input readonly type="text" class="w-50 form-control form-control-small code" placeholder="Value" value="postgresql://postgres:@0.0.0.0:5432/myapp_test">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Spin up Redis</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Spin up the Redis instance using the <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/ci-cd-environment/sem-service-managing-databases-and-services-on-linux/" target="_blank" rel="noopener" class="default-tip" title="Follow the link to learn more about sem-service CLI tool">sem-service</a> built-in tool.
+    </p>
+
+    <div class="flex">
+      <div class="flex-shrink-0 mr3">
+        <img src="<%= image_source("edit-workflow-popup.svg") %>">
+      </div>
+      <div class="flex-auto">
+        <div class="bg-black-05 pa2 br3">
+          <label class="db f7 mb1 b nt1">Jobs</label>
+          <div class="f7 code bg-white br2 ba b--black-30">
+            <div class="bb b--black-30 ph2 pv1">
+              Run RSpec suite
+            </div>
+            <div class="ph2 pv1 overflow-auto nowrap">
+              sem-service start redis <span class="gray"># Copy this command</span><br>
+              sudo apt install redis-tools -y <span class="gray"># Copy this command if you need redis-cli in your environment</span><br>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</details>
+
+<details>
+  <summary class="f4 f3-m fw6 pointer">Use Secrets for your credentials</summary>
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">1. Create a Secret</h4>
+        <p class="mb0">Secrets are global and can be shared between the projects. Go to <a href="/secrets/new" target="_blank" rel="noopener">create a Secret</a>.</p>
+      </div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-1.svg") %>" alt="Create global secret">
+      </div>
+    </div>
+  </div>
+
+  <div class="f5 mt3">
+    <div class="flex-ns nh2">
+      <div class="w-50-ns pa2">
+        <h4 class="f5 mb0">2. Attach to a Workflow</h4>
+        <p class="mb0">Navigate to a project, edit the workflow and attach the secret.</p>
+      </div>
+      <div class="w-50-ns pa2">
+        <img src="<%= image_source("secrets-scheme-popup-2.svg") %>" alt="Attach secret to workflow">
+      </div>
+    </div>
+  </div>
+</details>
+<details>
+  <summary class="f4 f3-m fw6 mb1 pointer">Publish XML test results</summary>
+  <div class="f5 mb3">
+    <p class="mb3">
+      Semaphore can consume XML test results and prepare reports
+      for your pipelines. Follow the instructions on the
+      <%= link "Tests", to: test_results_path(@conn, :pipeline_summary, @workflow.id), target: "_blank", rel: "noopener" %>
+      tab.
+    </p>
+  </div>
+</details>

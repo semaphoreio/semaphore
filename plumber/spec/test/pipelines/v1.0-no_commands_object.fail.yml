@@ -1,0 +1,12 @@
+version: "v1.0"
+name: First Semaphore pipeline definition
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+
+blocks:
+  - task:
+      jobs:
+        - name: job1
+          commands:

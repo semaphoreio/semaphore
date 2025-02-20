@@ -1,0 +1,5 @@
+<div id="get-started-app"></div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.GetStartedConfig = <%= raw json_config(@conn, @learn) %>;
+</script>

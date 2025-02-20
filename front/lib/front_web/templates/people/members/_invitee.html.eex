@@ -1,0 +1,17 @@
+<div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+  <div id="invitee" class="flex items-center justify-between">
+    <div class="flex items-center">
+
+      <img src="<%= @invitee.avatar_url %>" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="b"><%= @invitee.display_name %></div>
+        <div class="f6 gray"> Not joined yet</div>
+      </div>
+    </div>
+
+    <div class="flex-m">
+      <%= link "×", to: remove_member_path(@conn, :destroy, @invitee.id), method: :delete, class: "btn btn-secondary ml3", data: [confirm: "This will remove this person from organization on Semaphore and therefore revoke their access from all projects in this organization. This won’t remove them from repository. Are you sure?"] %>
+    </div>
+  </div>
+</div>

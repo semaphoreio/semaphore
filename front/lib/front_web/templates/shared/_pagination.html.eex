@@ -1,0 +1,35 @@
+<%= unless (@pagination.on_first_page && @pagination.on_last_page) || @pagination.no_pages  do %>
+  <div class="flex items-center justify-center mt3 pollman-links">
+    <!-- Link to previous page if this is not the first page -->
+
+    <%= if @pagination.has_hidden_first_page do %>
+      <%= link "First", to: @pagination.first_page_path, class: "link gray hover-dark-gray", data: [page: @pagination.first_page] %>
+      <div class="mh1">·</div>
+    <% end %>
+    <%= unless @pagination.on_first_page do %>
+      <%= link "Previous", to: @pagination.previous_page_path, class: "link gray hover-dark-gray", data: [page: @pagination.previous_page] %>
+      <div class="mh1">·</div>
+    <% end %>
+
+    <!-- Generate page links -->
+
+    <%= @pagination.links |> Enum.map(fn (link) -> %>
+      <%= if link.active do %>
+        <%= link link.title, to: link.page_path, class: "b ph1 link dark-gray", data: [page: link.page] %>
+      <% else %>
+        <%= link link.title, to: link.page_path, class: "ph1 link gray hover-dark-gray", data: [page: link.page] %>
+      <% end %>
+    <% end) %>
+
+    <!-- Link to next page if this is not the last page -->
+
+    <%= unless @pagination.on_last_page do %>
+      <div class="mh1">·</div>
+      <%= link "Next", to: @pagination.next_page_path, class: "link gray hover-dark-gray", data: [page: @pagination.next_page] %>
+    <% end %>
+    <%= if @pagination.has_hidden_last_page do %>
+      <div class="mh1">·</div>
+      <%= link "Last", to: @pagination.last_page_path, class: "link gray hover-dark-gray", data: [page: @pagination.last_page] %>
+    <% end %>
+  </div>
+<% end %>

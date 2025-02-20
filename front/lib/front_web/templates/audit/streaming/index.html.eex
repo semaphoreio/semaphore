@@ -1,0 +1,14 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if FeatureProvider.feature_enabled?(:audit_logs, @conn.assigns[:organization_id]) do %>
+    <%= if @permissions["organization.audit_logs.view"] do %>
+      <%= render FrontWeb.AuditView, "streaming/_navigation.html", conn: @conn %>
+      <%= render FrontWeb.AuditView, "streaming/_info.html",
+            conn: @conn, permissions: @permissions, meta: @stream.meta, setup: @stream.stream %>
+      <%= render FrontWeb.AuditView, "streaming/_history.html", conn: @conn, stream_log: @stream_log.logs %>
+    <% else %>
+      <%= render FrontWeb.AuditView, "_no_permission.html" %>
+    <% end %>
+  <% else %>
+    <%= render FrontWeb.AuditView, "_not_enabled.html" %>
+  <% end %>
+</div>

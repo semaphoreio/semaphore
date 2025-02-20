@@ -1,0 +1,6 @@
+apiVersion: v2
+name: badges
+description: A Helm chart for deploying Semaphore badges application
+type: application
+version: "@chartVersion@"
+appVersion: ""

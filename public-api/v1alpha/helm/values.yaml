@@ -1,0 +1,24 @@
+image: plumber-public
+imageTag: latest
+imagePullSecrets: []
+
+replicas: 1
+logging: debug
+forceIpCheck: true
+
+resources:
+  requests:
+    cpu: 125m
+    memory: 100Mi
+  limits:
+    cpu: 250m
+    memory: 200Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"

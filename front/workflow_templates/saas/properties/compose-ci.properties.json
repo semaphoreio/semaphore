@@ -1,0 +1,14 @@
+{
+  "title": "Run in Docker",
+  "description": "Run commands in your custom pre-built Docker container",
+  "features": [
+    "Custom environment with public or private Docker image",
+    "Docker image can be pulled from any registry e.g. DockerHub, ECR, GCP or any other",
+    "Compose style CI with main container connected to the database container by name",
+    "Hello World from main container with code checkout"
+  ],
+  "icon": "lang-docker.svg",
+  "template_path": "templates/compose-ci.yml",
+  "workflow_tip": "other",
+  "pinned": true
+}

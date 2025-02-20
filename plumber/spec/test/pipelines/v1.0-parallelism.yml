@@ -1,0 +1,21 @@
+version: "v1.0"
+name: Example with parallelism
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1604-minimal
+blocks:
+  - name: Block 1 - parallelism and matrix in different jobs
+    task:
+      jobs:
+        - name: job1
+          commands_file: commands/job1.cmd
+          matrix:
+            - env_var: ELIXIR
+              values: ["1.3", "1.4", "1.5"]
+            - env_var: ERLANG
+              values: ["19", "20"]
+        - name: job2
+          parallelism: 4
+          commands:
+            - echo Do something in parallel

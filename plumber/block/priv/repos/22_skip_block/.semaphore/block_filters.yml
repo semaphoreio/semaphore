@@ -1,0 +1,22 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Testing
+    task:
+      jobs:
+        - commands:
+            - echo "testing"
+  - name: Deployment - skip on dev branches
+    filters:
+    - label: "dev-execute-dpl"
+      action: execute
+    - label_pattern: "dev"
+      action: skip
+    task:
+      jobs:
+        - commands:
+            - exit 127

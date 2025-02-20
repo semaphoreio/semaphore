@@ -1,0 +1,56 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <div class="mb3">
+    <img src="<%= @user.avatar_url %>" class="w3 br-100 mb2">
+    <%= if @conn.assigns.user_id != @user.id do %>
+      <h2 class="f3 f2-l mb0">What to do with <%= @user.name %>’s projects?</h2>
+      <p class="measure mb0">There are projects owned by this member that you should either transfer to yourself or remove, before you can remove them completely from Semaphore. You can also transfer projects to someone else by going to project settings.</p>
+    <% else %>
+      <h2 class="f3 f2-l mb0">What to do with your projects?</h2>
+      <p class="measure mb0">There are projects owned by you that you should remove, before you can remove them completely from Semaphore. You can also transfer projects to someone else by going to project settings.</p>
+    <% end %>
+  </div>
+  <div class="offboarding bg-white shadow-1 mv3 ph3 pt3 br3">
+    <%= Enum.map(@projects, fn project -> %>
+      <div class="flex-m items-center justify-between bb b--lighter-gray pv2 hover-bg-row-highlight">
+        <div data-offboarding="pending" class="inline-flex f4 f3-m b mb1 mb0-m">
+          <a class="link db dark-gray underline-hover" href="<%= project_path(@conn, :show, project.name) %>"><%= project.name %></a>
+          <%= link raw(icon("icn-settings-15", alt: "cog", class: "v-mid", width: "16")), to: project_settings_path(@conn, :general, project.name), class: "hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1" %>
+        </div>
+
+        <div data-offboarding="offboard">
+          <%= if @conn.assigns.user_id != @user.id do %>
+            <button data-action="transfer-project" class="btn btn-secondary">Transfer to me</button>
+            <span class="mh1">or</span>
+          <% end %>
+          <button data-action="remove-project" class="btn btn-secondary">Remove project</button>
+        </div>
+
+        <div data-offboarding="are-you-sure-transfer" style='display: none'>
+          <span class="ph2">Are you sure?</span>
+          <button data-action="offboarding-nevermind" class="btn btn-secondary">Nevermind</button>
+          <span class="mh1">or</span>
+          <button data-action="offboarding-transfer" data-endpoint="<%= offboarding_path(@conn, :transfer, project.name) %>" class="btn btn-primary">Transfer</button>
+        </div>
+
+        <div data-offboarding="are-you-sure-remove" style='display: none'>
+          <span class="ph2">Are you sure?</span>
+          <button data-action="offboarding-remove" data-endpoint="<%= offboarding_path(@conn, :remove, project.name) %>" class="btn btn-danger">Remove</button>
+          <span class="mh1">or</span>
+          <button data-action="offboarding-nevermind" class="btn btn-secondary">Nevermind</button>
+        </div>
+
+        <div data-offboarding="transferring" style='display: none'>
+          <button class="btn btn-secondary btn-working">Transferring</button>
+        </div>
+        <div data-offboarding="removing" style='display: none'>
+          <button class="btn btn-secondary btn-working">Removing</button>
+        </div>
+      </div>
+    <% end) %>
+
+    <div class="mt4 pb3">
+      <%= button "Remove from Semaphore", disabled: true, to: people_path(@conn, :destroy, @user.id), method: :delete, class: "btn btn-danger mr2", data: [action: "remove-user", confirm_msg: "This will remove this person from organization on Semaphore and therefore revoke their access from all projects in this organization. This won’t remove them from repository. Are you sure?"] %>
+      <a href="<%= people_path(@conn, :organization) %>" class="btn btn-secondary">Nevermind</a>
+    </div>
+  </div>
+</div>

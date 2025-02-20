@@ -1,0 +1,22 @@
+<div class="pollman-container nb3"
+     data-poll-state="<%= @pollman.state %>"
+     data-poll-href="<%= @pollman.href %>"
+     <%= if @conn.assigns[:from] != "" && @conn.assigns[:to] != "" do %>
+       data-poll-param-from="<%= @conn.assigns[:from] %>"
+       data-poll-param-to="<%= @conn.assigns[:to] %>"
+     <% end %>
+     <%= Enum.map(@pollman.params, fn {name, value} -> %>
+       data-poll-param-<%= name %>="<%= value %>"
+     <% end) %>
+     >
+
+  <%= if Enum.empty?(@workflows) do %>
+    <%= render FrontWeb.DashboardView, "partials/_empty_state.html", conn: @conn, page: @page %>
+  <% else %>
+    <%= @workflows |> Enum.map(fn(workflow) -> %>
+      <%= render FrontWeb.DashboardView, "partials/_workflow.html", conn: @conn, page: @page, workflow: workflow %>
+    <% end) %>
+
+    <%= render FrontWeb.DashboardView, "partials/_pagination.html", pagination: @pagination %>
+  <% end %>
+</div>

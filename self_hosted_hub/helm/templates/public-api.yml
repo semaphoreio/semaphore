@@ -1,0 +1,171 @@
+{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ $baseName }}-public-api"
+spec:
+  type: NodePort
+  selector:
+    app: "{{ $baseName }}-public-api"
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $baseName }}-public-api
+spec:
+  selector:
+    matchLabels:
+      app: {{ $baseName }}-public-api
+  replicas: {{ .Values.publicApi.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: {{ $baseName }}-public-api
+      labels:
+        app: {{ $baseName }}-public-api
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: {{ $baseName }}-public-api
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: http-port
+              containerPort: 8000
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/home/front/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          env:
+            {{- include "env.db.go" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/home/front/app/features.yml"
+            - name: START_PUBLIC_API
+              value: "yes"
+            - name: PUBLIC_API_HOST
+              value: "0.0.0.0"
+            - name: PUBLIC_API_PORT
+              value: "8000"
+
+            - name: ZEBRA_INTERNAL_GRPC_API_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_JOB
+            - name: LOGHUB2_INTERNAL_GRPC_API_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_LOGHUB2
+            - name: ORGANIZATION_API_GRPC_API_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_ORGANIZATION
+
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: DB_NAME
+              value: self-hosted-hub
+            - name: DB_POOL_SIZE
+              value: {{ .Values.publicApi.dbPoolSize | quote }}
+            - name: APPLICATION_NAME
+              value: "self-host-public-api"
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: ON_PREM
+              value: "true"
+
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+          startupProbe:
+            httpGet:
+              path: /
+              port: http-port
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http-port
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http-port
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.publicApi.resources }}
+          resources:
+{{ toYaml .Values.publicApi.resources | indent 13 }}
+{{- end }}
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          resources:
+            limits:
+              cpu: "20m"
+              memory: "50Mi"
+            requests:
+              cpu: "5m"
+              memory: "25Mi"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}

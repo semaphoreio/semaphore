@@ -1,0 +1,148 @@
+{{- $chartName := regexReplaceAll "_" .Chart.Name "-" }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ $chartName }}-repo-proxy-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.repoProxyApi.replicas }}
+  selector:
+    matchLabels:
+      app: "{{ $chartName }}-repo-proxy-api"
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: "{{ $chartName }}-repo-proxy-api"
+      labels:
+        app: "{{ $chartName }}-repo-proxy-api"
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: "{{ $chartName }}-repo-proxy-api"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          command: ["bash", "-c"]
+          args: ["bundle exec rails db:create db:migrate && bundle exec rake app:grpc:repo_proxy_api"]
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: internal-api-urls
+          env:
+            - name: RACK_ENV
+              value: production
+            - name: RAILS_ENV
+              value: production
+
+            - name: SECRET_KEY_BASE
+              valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: SESSION_SECRET_KEY_BASE } }
+
+            - name: BASE_DOMAIN
+              valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }
+
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: DB_POOL_SIZE
+              value: {{ .Values.repoProxyApi.dbPoolSize | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: PGAPPNAME
+              value: sidekiq
+
+            - name: AMQP_URL
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.rabbitmq.secretName }}, key: amqp-url }}
+
+            - name: REDIS_HOST
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: host }}
+            - name: REDIS_PORT
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: port }}
+            - name: REDIS_USERNAME
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: username }}
+            - name: REDIS_SIDEKIQ_PASSWORD
+              valueFrom: { secretKeyRef: { name: {{ .Values.global.redis.secretName }}, key: password }}
+            - name: REDIS_SIDEKIQ_URL
+              value: "redis://$(REDIS_USERNAME)@$(REDIS_HOST):$(REDIS_PORT)"
+
+{{- if .Values.grpcPoolSize }}
+            - name: GRPC_WORKERS
+              value: {{ .Values.grpcPoolSize | quote }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+
+{{- if .Values.repoProxyApi.resources }}
+          resources:
+{{ toYaml .Values.repoProxyApi.resources | indent 12 }}
+{{- end }}
+
+          startupProbe:
+            exec:
+              command:
+              - bash
+              - "-c"
+              - bundle exec script/grpc-is-alive 'RepoProxy API' 0.0.0.0:50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command:
+              - bash
+              - "-c"
+              - bundle exec script/grpc-is-alive 'RepoProxy API' 0.0.0.0:50051
+            periodSeconds: 5
+            timeoutSeconds: 3
+          livenessProbe:
+            exec:
+              command:
+              - bash
+              - "-c"
+              - bundle exec script/grpc-is-alive 'RepoProxy API' 0.0.0.0:50051
+            initialDelaySeconds: 240
+            periodSeconds: 10
+            timeoutSeconds: 3
+
+{{- if .Values.global.statsd.enabled }}
+        - name: "{{ $chartName }}-statsd"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}

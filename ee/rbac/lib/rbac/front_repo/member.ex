@@ -1,0 +1,29 @@
+defmodule Rbac.FrontRepo.Member do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key {:id, :binary_id, autogenerate: true}
+
+  schema "members" do
+    field(:github_uid, :string)
+    field(:github_username, :string)
+    field(:repo_host, :string)
+    field(:organization_id, :binary_id)
+    field(:invite_email, :string)
+
+    timestamps(inserted_at: :created_at, updated_at: :updated_at, type: :utc_datetime)
+  end
+
+  def changeset(member, params) do
+    member
+    |> cast(params, [
+      :github_uid,
+      :github_username,
+      :repo_host,
+      :organization_id,
+      :invite_email
+    ])
+    |> validate_required([:github_uid, :github_username, :repo_host, :organization_id])
+    |> unique_constraint(:github_uid, name: :members_organization_repo_host_uid_index)
+  end
+end

@@ -1,0 +1,65 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.Fork = {};
+  window.InjectedDataByBackend.Fork.DefaultProvider = <%= raw Poison.encode!(@provider) %>;
+</script>
+<div>
+  <h1 class="f1 mb0">Let’s set up a project!</h1>
+  <p class="mb4">Start from scratch or fork one of our examples</p>
+  <div class="bg-lightest-blue mb4 pa3 pa4-m br3">
+    <div class="flex-l nh3">
+      <div class="w-20-l flex-shrink-0 ph3 tc-l">
+        <img src="<%= image_source("ill-thumbup-girl.svg") %>" height="105">
+        <p class="f6 fw5 mb2">“I know what I’m doing!”</p>
+      </div>
+      <div class="w-80-l ph3">
+        <h2 class="f3 mb0">Start a real project</h2>
+        <p class="mb3 pb1">Hook up your repository with Semaphore</p>
+        <div>
+          <%= link "Choose repository", to: @choose_repository_path, class: "btn btn-primary" %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-lightest-purple mb4 pa3 pa4-m br3">
+    <div class="flex-l nh3">
+      <div class="w-20-l flex-shrink-0 ph3 tc-l">
+        <img src="<%= image_source("ill-curious-girl.svg") %>" height="108">
+        <p class="f6 fw5 mb2">“I’d rather run <br class="dn di-l">a quick example this time”</p>
+      </div>
+      <div class="w-80-l ph3">
+        <h2 class="f3 mb0">Try a quick experiment</h2>
+        <%= @providers |> Enum.map(fn provider -> %>
+          <p class="mb4 measure <%= if provider != @provider, do: "dn" %>" data-provider="<%= provider %>">Fork &amp; Run will copy a working example to your <%= provider_name(provider) %>, connect Semaphore and trigger the first build in under a minute.</p>
+        <% end) %>
+        <div class="flex f7 fw5 mb3 pb2 <%= if Enum.count(@providers) == 1, do: "dn" %>">
+          <%= @providers |> Enum.map(fn provider -> %>
+            <div class="ph2 pv1 mh1 br-pill bg-white purple hover-bg-purple hover-white pointer" data-tab="<%= provider %>"><%= provider_name(provider) %></div>
+          <% end) %>
+        </div>
+
+        <div class="flex flex-wrap na3 mw8">
+          <%= @repositories |> Enum.map(fn repository -> %>
+            <div class="repository w-50-m pa3">
+              <div class="bg-white shadow-1 pa3 br3">
+                <div class="pl2">
+                  <div class="b mb1"><%= repository.title %> <img src="<%= image_source(repository.icon.name) %>" class="<%= repository.icon.class %>" width="<%= repository.icon.width %>"> </div>
+                  <div class="f4 measure-narrow gray"><%= repository.description %></div>
+                  <%= @providers |> Enum.map(fn provider -> %>
+                    <div class="flex items-center justify-between mt2 <%= if provider != @provider, do: "dn" %>" data-provider="<%= provider %>">
+                      <div class="flex items-center">
+                        <img src="<%= image_source("icn-fork.svg") %>" class="db o-70 mr1">
+                        <%= link repository.name, to: repository.urls[String.to_atom(provider)], target: "_blank", class: "link db f5 gray code underline-hover" %>
+                      </div>
+                      <%= link "Fork & Run", to: project_fork_path(@conn, :fork, provider, repository.name), class: "btn btn-secondary", method: :post, data: [action: "forkAndRun"] %>
+                    </div>
+                  <% end) %>
+                </div>
+              </div>
+            </div>
+          <% end) %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+<%= render "_style.html" %>
+
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+  <%= if @permissions["organization.people.view"] do %>
+    <img src="<%= assets_path() %>/images/spinner-2.svg" width="100" height="100" class="spinner" style="display: none;">
+
+    <div class="flex-m items-start justify-between mb0 mb4-m">
+      <div class="mb3 mb0-m">
+        <p class="mb0">See different <a href="https://docs.semaphoreci.com/account-management/permission-levels/" target="_blank" rel="noopener">Permission levels</a> in the Docs.</p>
+        <p class="mb0">How to <a href="https://docs.semaphoreci.com/account-management/organizations/#transferring-ownership-of-an-organization" target="_blank" rel="noopener">Transfer the ownership</a>?</p>
+      </div>
+      <%= link to: roles_path(@conn, :index), class: "pointer flex items-center btn-secondary btn nowrap" do %>
+        <span class="material-symbols-outlined mr1">open_in_new</span>
+        <span><%= roles_action_message() %> Roles</span>
+      <% end %>
+    </div>
+
+    <div class="w-100 flex">
+        <%= render "_search_bar.html", conn: @conn, org_id: @org_id, search_endpoint: people_path(@conn, :render_members) %>
+        <%= render "_role_filter.html", conn: @conn, roles: @roles%>
+    </div>
+
+    <%= render "members/members_list.html", org_id: @org_id, groups: @groups, members: @members, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
+    <%= render "_pagination.html", pagination: @pagination%>
+
+    <%= if not Front.on_prem?() do %>
+    <div id="invitees">
+      <%= @invitations |> Enum.map(fn (invitee) -> %>
+        <%= render "members/_invitee.html", invitee: invitee, conn: @conn %>
+      <% end) %>
+    </div>
+    <% end %>
+  <% else %>
+    <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access the People page.<br>
+      Ask any of the admins to give you access permission.</p>
+    </div>
+  <% end %>
+</div>

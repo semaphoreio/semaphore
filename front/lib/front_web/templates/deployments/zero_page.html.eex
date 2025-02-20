@@ -1,0 +1,18 @@
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+    <div class="flex justify-between items-start">
+        <div>
+            <p class="mb0 b">Deployment Targets</p>
+            <p class="mb3 measure">
+            Connect your servers and model the interaction between your continious delivery pipeline and your deployment environments.<br />
+            Read in more details: <a href="https://docs.semaphoreci.com/">Docs: Deployment Targets</a>.
+            </p>
+        </div>
+    </div>
+
+    <div class="pv6 tc">
+        <div class="f00">🗝</div>
+        <p class="f6 measure-narrow center mv3">
+            Sorry, your organization does not have access to Deployment Targets.
+        </p>
+    </div>
+</div>

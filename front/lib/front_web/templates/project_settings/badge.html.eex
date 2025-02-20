@@ -1,0 +1,119 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.OrganizationDomain = "<%= @organization_url %>";
+  window.InjectedDataByBackend.ProjectName = "<%= @project.name %>";
+  window.InjectedDataByBackend.ProjectId = "<%= @project.id %>";
+  window.InjectedDataByBackend.Public = "<%= @project.public %>";
+
+  window.InjectedDataByBackend.BranchUrl = "<%= raw project_path(@conn, :filtered_branches, @project.name, with_archived: false, types: ["branch"]) %>";
+</script>
+<style>
+.project-jumpto {
+  position: relative;
+}
+.project-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.project-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.project-jumpto .jumpto-results {
+  position: absolute;
+  top: 62px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 510px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.project-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.project-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.project-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+
+.project-jumpto .jumpto-results span[aria-selected="true"],
+.project-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.project-jumpto .jumpto-results span:focus,
+.project-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+</style>
+
+<%= if @permissions["project.general_settings.view"] do %>
+  <h2 class="f3 f2-m mb0">Badge</h2>
+  <p class="mb3 measure">Use badges in your project's README file or any web page to display your project's current build status.</p>
+
+  <div class="mb3 pb3 bb b--lighter-gray project-jumpto" id="branches-selects">
+    <label for="badge-branch" class="db b mb2">Display status for branch</label>
+              <%= text_input :branch, :name,
+  value: "master",
+  placeholder: "Find…",
+  autocomplete: "off",
+  disabled: !@permissions["project.general_settings.manage"],
+  class: "form-control", data: "badge", id: "badge-branch" %>
+  <div class="jumpto-results"></div>
+  </div>
+
+  <div class="mb3 pb3 bb b--lighter-gray" data="badge">
+    <label for="badge-style" class="db b mb2">Badge Style</label>
+    <div class="flex items-center">
+      <input type="radio" id="badge-style-shields" name="badge-style" checked value="shields" <%= if !@permissions["project.general_settings.manage"], do: "disabled" %>>
+      <label for="badge-style-shields" class="flex items-center ml1">
+        <img src="<%= assets_path() %>/images/badge-shields.svg" class="mh2">
+        Shields badge
+      </label>
+    </div>
+    <div class="flex items-center">
+      <input type="radio" id="badge-style-custom" name="badge-style" value="semaphore" <%= if !@permissions["project.general_settings.manage"], do: "disabled" %>>
+      <label for="badge-style-custom" class="flex items-center ml1">
+        <img src="<%= assets_path() %>/images/badge-custom.svg" class="mh2">
+        Semaphore custom badge
+      </label>
+    </div>
+  </div>
+
+  <div class="mb3 pb3 bb b--lighter-gray" data="badge">
+    <label for="badge-format" class="db b mb2">Preferred file format</label>
+    <div>
+      <input type="radio" id="badge-format-md" name="badge-format" checked value="markdown" <%= if !@permissions["project.general_settings.manage"], do: "disabled" %>>
+      <label for="badge-format-md">Markdown</label>
+    </div>
+    <div>
+      <input type="radio" id="badge-format-html" name="badge-format" value="html" <%= if !@permissions["project.general_settings.manage"], do: "disabled" %>>
+      <label for="badge-format-html">HTML</label>
+    </div>
+    <div>
+      <input type="radio" id="badge-format-svg" name="badge-format" value="svg" <%= if !@permissions["project.general_settings.manage"], do: "disabled" %>>
+      <label for="badge-format-svg">SVG</label>
+    </div>
+  </div>
+
+  <div class="bg-washed-yellow ba b--black-15 pa3 br3">
+    <label for="badge-code" class="db b mb2">Copy this code to your README</label>
+    <textarea id="badge-code" class="x-select-on-click form-control w-100" rows="3" readonly></textarea>
+  </div>
+<% else %>
+  <div class="pv6 tc">
+    <div class="f00">🗝</div>
+    <p class="f6 measure-narrow center mv3">Sorry, you can’t access Project Settings.<br>
+      Ask organization owner or any of the admins to give you access permission.</p>
+  </div>
+<% end %>
