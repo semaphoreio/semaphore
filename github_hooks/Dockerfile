@@ -86,7 +86,6 @@ COPY --chown=nobody:root config config
 COPY --chown=nobody:root db db
 COPY --chown=nobody:root lib lib
 COPY --chown=nobody:root protobuffer protobuffer
-COPY --chown=nobody:root tmp tmp
 COPY --chown=nobody:root config.ru config.ru
 COPY --chown=nobody:root Rakefile Rakefile
 COPY --chown=nobody:root sidekiq.ru sidekiq.ru
