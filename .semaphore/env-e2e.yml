@@ -1,0 +1,40 @@
+version: v1.0
+name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2004
+global_job_config:
+  secrets:
+    - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+    - name: e2e-test-gitlab-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+  prologue:
+    commands:
+      - checkout && cd e2e
+      - make gcloud.auth
+      - source scripts/test-setup.sh
+  epilogue:
+    always:
+      commands:
+        - "if [ -f out/results.xml ]; then test-results --name \"${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}\" publish out/results.xml; fi"
+after_pipeline:
+  task:
+    jobs:
+      - name: Submit Reports
+        commands:
+          - test-results gen-pipeline-report
+blocks:
+  - name: E2E Tests
+    task:
+      jobs:
+        - name: E2E tests - API
+          commands:
+            - sem-version elixir 1.14
+            - export TEST_RESULTS_NAME="E2E API Tests"
+            - make test
+        - name: E2E tests - UI
+          commands:
+            - sudo apt update && sudo apt install -y chromium-browser
+            - sem-version elixir 1.14
+            - export TEST_RESULTS_NAME="E2E UI Tests"
+            - make test.ui

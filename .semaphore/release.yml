@@ -1,0 +1,19 @@
+version: v1.0
+name: Release
+agent:
+  machine:
+    type: e2-standard-2
+    os_image: ubuntu2004
+blocks:
+  - name: "Release"
+    dependencies: []
+    task:
+      jobs:
+        - name: "Create GitHub release"
+          commands:
+            - checkout
+            - make cosign.install
+            - make configure.sign
+            - make ghcr.configure
+            - make ghcr.helm.configure
+            - ./release.sh
