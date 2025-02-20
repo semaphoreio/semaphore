@@ -1,0 +1,4128 @@
+version: v1.0
+name: Alles
+agent:
+  machine:
+    type: e2-standard-2
+    os_image: ubuntu2004
+global_job_config:
+  secrets:
+    - name: semreg-semaphoredev-credentials
+    - name: semaphoreci-dockerhub
+  env_vars:
+    # makes buildkit logs more suitable for CI environment
+    - name: BUILDKIT_PROGRESS
+      value: "plain"
+    # https://github.com/aquasecurity/trivy/discussions/7668#discussioncomment-10884984
+    # workaround for trivy TOOMANYREQUESTS issues
+    - name: TRIVY_DB_REPOSITORY
+      value: "public.ecr.aws/aquasecurity/trivy-db,aquasec/trivy-db,ghcr.io/aquasecurity/trivy-db"
+    - name: TRIVY_JAVA_DB_REPOSITORY
+      value: "public.ecr.aws/aquasecurity/trivy-java-db,aquasec/trivy-java-db,ghcr.io/aquasecurity/trivy-java-db"
+
+  prologue:
+    commands:
+      - echo $DOCKER_PASSWORD | docker login --username "$DOCKER_USERNAME" --password-stdin || echo "Docker login failed, but continuing the build process." && true
+      - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST || echo "Semaphore Registry login failed, but continuing the build process." && true
+      - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      - sem-version ruby 3.0
+  epilogue:
+    always:
+      commands:
+        # Trivyfs security scan
+        - 'if [ -f docker-scan-junit.xml ];            then test-results --name "Docker scan"         --suite-prefix "[$SERVICE_NAME]"  publish docker-scan-junit.xml; fi'
+        - 'if [ -f junit.xml ];                        then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit.xml; fi'
+        - 'if [ -f results.xml ];                      then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish results.xml; fi'
+        - 'if [ -f out/results.xml ];                  then test-results --name "${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}"               publish out/results.xml; fi'
+        - 'if [ -f test-results.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish test-results.xml; fi'
+        - 'if [ -f junit-report.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit-report.xml; fi'
+        - 'if [ -f assets/results.xml ];               then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish assets/results.xml; fi'
+        - 'if [ -f out/lint-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/lint-js-junit-report.xml; fi'
+        - 'if [ -f out/compile-ts-junit-report.xml ];  then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/compile-ts-junit-report.xml; fi'
+        - 'if [ -f out/test-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-js-junit-report.xml; fi'
+        - 'if [ -f out/test-ex-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-ex-junit-report.xml; fi'
+after_pipeline:
+  task:
+    jobs:
+      - name: Submit Reports
+        commands:
+          - test-results gen-pipeline-report
+auto_cancel:
+  running:
+    when: "branch != 'master'"
+blocks:
+  # Audit
+  - name: "Audit: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/audit
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Audit: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/audit
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Audit: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Audit: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Audit"
+      prologue:
+        commands:
+          - checkout && cd ee/audit
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Audit: \U0001F9EA QA"
+    dependencies: ["Audit: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/audit
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Audit Tests"
+            - make test.ex
+          parallelism: 2
+  # Artifacthub
+  - name: "ArtifactHub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd artifacthub
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "ArtifactHub: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "ArtifactHub"
+      prologue:
+        commands:
+          - checkout && cd artifacthub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "ArtifactHub: \U0001F9EA QA"
+    dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd artifacthub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # Auth
+  - name: "Auth: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd auth
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Auth: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd auth
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Auth: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Auth: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Auth"
+      prologue:
+        commands:
+          - checkout && cd auth
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Auth: \U0001F9EA QA"
+    dependencies: ["Auth: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd auth
+          - cache restore auth-$(checksum mix.lock),auth-$SEMAPHORE_GIT_BRANCH,auth
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Badge
+  - name: "Badge: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd badge
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Badge: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd badge
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Badge: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Badge: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Badge"
+      prologue:
+        commands:
+          - checkout && cd badge
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Badge: \U0001F9EA QA"
+    dependencies: ["Badge: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd badge
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Badge Tests"
+            - make test.ex
+          parallelism: 2
+  # Branch-hub
+  - name: "BranchHub: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd branch_hub
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "BranchHub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd branch_hub
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "BranchHub: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["BranchHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "BranchHub"
+      prologue:
+        commands:
+          - checkout && cd branch_hub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - sem-version ruby 3.0
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "BranchHub: \U0001F9EA QA"
+    dependencies: ["BranchHub: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd branch_hub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Dashboardhub
+  - name: "Dashboardhub: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd dashboardhub
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Dashboardhub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd dashboardhub
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "Dashboardhub: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Dashboardhub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "DashboardHub"
+      prologue:
+        commands:
+          - checkout && cd dashboardhub
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - sem-version ruby 3.0
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make check.docker
+  - name: "Dashboardhub: \U0001F9EA QA"
+    dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd dashboardhub
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make pull
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Front
+  - name: "Front: \U0001F5BC️ Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e1-standard-4
+          os_image: ubuntu2004
+      secrets:
+        - name: feature-provider-token
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      jobs:
+        - name: Build test image
+          commands:
+            - make build
+            - make push
+  - name: "Front: \U0001F9EA QA"
+    dependencies:
+      - "Front: \U0001F5BC️ Provision Test Image"
+    run:
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make build
+      jobs:
+        - name: Elixir Tests
+          commands:
+            - make test.ex TEST_FLAGS='--exclude browser:true --exclude comunity_edition:true'
+        - name: Javascript Tests
+          commands:
+            - make test.js
+        - name: Browser Tests
+          commands:
+            - make test.ex TEST_FILE='test/browser/**/*.exs test/browser/*.exs'
+          parallelism: 5
+  - name: "Front: \U0001F6E1️ Deployment Preconditions"
+    dependencies:
+      - "Front: \U0001F5BC️ Provision Test Image"
+    run:
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      jobs:
+        - name: Javascript
+          commands:
+            - make pull
+            - make coverage.js
+        - name: Typescript - compilation
+          env_vars:
+            - name: REPORT_NAME
+              value: Typescript compilation
+          commands:
+            - make pull
+            - make compile.ts
+        - name: Elixir code check
+          commands:
+            - make deps.check
+            - make format.ex
+            - make lint.ex
+        - name: JavaScript Lint
+          commands:
+            - make lint.js
+        - name: Deprecations
+          commands:
+            - bash linters/deprecated_factories.sh
+            - bash linters/fun_registry.sh
+            - bash linters/todos_count.sh
+  - name: "Front: \U0001F5BC️ Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e1-standard-4
+          os_image: ubuntu2004
+      secrets:
+        - name: feature-provider-token
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      env_vars:
+        - name: MIX_ENV
+          value: prod
+      jobs:
+        - name: Build prod image
+          commands:
+            - make build
+            - make push
+  - name: "Front: \U0001F6E1️ Security checks"
+    dependencies:
+      - "Front: \U0001F5BC️ Provision Prod Image"
+    run:
+      when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      env_vars:
+        - name: MIX_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Front"
+      jobs:
+        - name: JS - dependencies
+          commands:
+            - make check.js.deps APP_DIRECTORY=assets
+        - name: JS - code
+          commands:
+            - export PATH=$PATH:/home/semaphore/.local/bin
+            - make check.js.code APP_DIRECTORY=assets
+        - name: Elixir - dependencies
+          commands:
+            - make check.ex.deps CHECK_DEPS_OPTS='--ignore-packages phoenix'
+        - name: Elixir - code
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
+        - name: Docker resources
+          commands:
+            - make build
+            - make check.docker CHECK_DOCKER_OPTS='--ignore-policy security-ignore-policy.rego'
+  # Guard
+  - name: "Guard: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd guard
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Guard: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd guard
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Guard: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Guard: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Guard"
+      prologue:
+        commands:
+          - checkout && cd guard
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Guard: \U0001F9EA QA"
+    dependencies: ["Guard: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd guard
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Guard Tests"
+            - make test.ex
+          parallelism: 2
+  # HooksReceiver
+  - name: "HooksReceiver: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_receiver
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "HooksReceiver: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_receiver
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "HooksReceiver: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["HooksReceiver: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "HooksReceiver"
+      prologue:
+        commands:
+          - checkout && cd hooks_receiver
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ HooksReceiver Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ HooksReceiver Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ HooksReceiver Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "HooksReceiver: \U0001F9EA QA"
+    dependencies: ["HooksReceiver: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_receiver
+          - make build
+      jobs:
+        - name: "\U0001F9EA HooksReceiver Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA HooksReceiver Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA HooksReceiver Test"
+          commands:
+            - export TEST_RESULTS_NAME="HooksReceiver Tests"
+            - make test.ex
+  # HooksProcessor
+  - name: "\U0001F4CB HooksProcessor Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_processor
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "\U0001F4CB HooksProcessor Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_processor
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "\U0001F6E1️ HooksProcessor Deployment Preconditions"
+    dependencies: ["\U0001F4CB HooksProcessor Provision Prod Image"]
+    run:
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "HooksProcessor"
+      prologue:
+        commands:
+          - checkout && cd hooks_processor
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "\U0001F9EA HooksProcessor QA"
+    dependencies: ["\U0001F4CB HooksProcessor Provision Test Image"]
+    run:
+      when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd hooks_processor
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="HooksProcessor Tests"
+            - make test.ex
+          parallelism: 2
+  # Gofer
+  - name: "Gofer: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd ee/gofer
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "Gofer: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/gofer
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Gofer: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Gofer: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd ee/gofer
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - sem-version ruby 2.7
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Scan dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F433 Check docker security"
+          commands:
+            - make build
+            - make check.docker
+        - name: "\U0001F4D6 Static code analysis"
+          commands:
+            - make check.ex.code
+  - name: "Gofer: Tests"
+    dependencies: ["Gofer: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Gofer"
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/gofer
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Gofer Tests"
+            - make test.ex
+          parallelism: 2
+  # GithubNotifier
+  - name: "GithubNotifier: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd github_notifier
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "GithubNotifier: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd github_notifier
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "GithubNotifier: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["GithubNotifier: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "GithubNotifier"
+      prologue:
+        commands:
+          - checkout && cd github_notifier
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "GithubNotifier: \U0001F9EA QA"
+    dependencies: ["GithubNotifier: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd github_notifier
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="GithubNotifier Tests"
+            - make test.ex
+  # Plumber
+  - name: "Looper: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/looper
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Looper: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Looper"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/looper
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "Looper: QA"
+    dependencies: ["Looper: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/looper
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Looper Tests"
+            - make test.ex
+          parallelism: 2
+  - name: "JobMatrix: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/job_matrix
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "JobMatrix: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "JobMatrix"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/job_matrix
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "JobMatrix: QA"
+    dependencies: ["JobMatrix: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/job_matrix
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        #- name: "\U0001F9EA Credo"
+        #  commands:
+        #    - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="JobMatrix Tests"
+            - make test.ex
+          parallelism: 2
+  - name: "DefinitionValidator: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/definition_validator
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "DefinitionValidator: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "DefinitionValidator"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/definition_validator
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "DefinitionValidator: QA"
+    dependencies: ["DefinitionValidator: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/definition_validator
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        #- name: "\U0001F9EA Credo"
+        #  commands:
+        #    - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="DefinitionValidator Tests"
+            - make test.ex
+  - name: "TaskApiMock: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/task_api_referent
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "TaskApiMock: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/task_api_referent
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "TaskApiMock: Deployment Preconditions"
+    dependencies: ["TaskApiMock: Provision Prod Image"]
+    run:
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "TaskApiMock"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/task_api_referent
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "TaskApiMock: QA"
+    dependencies: ["TaskApiMock: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/task_api_referent', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/task_api_referent
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        #- name: "\U0001F9EA Credo"
+        #  commands:
+        #    - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="TaskApiMock Tests"
+            - make test.ex
+  - name: "Spec: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/spec
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Spec: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Spec"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/spec
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "Spec: QA"
+    dependencies: ["Spec: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/spec
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        #- name: "\U0001F9EA Credo"
+        #  commands:
+        #    - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Spec Tests"
+            - make test.ex
+  - name: "GoferClient: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/gofer_client
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "GoferClient: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "GoferClient"
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/gofer_client
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "GoferClient: QA"
+    dependencies: ["GoferClient: Provision Test Image"]
+    run:
+      when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/gofer_client
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        #- name: "\U0001F9EA Credo"
+        #  commands:
+        #    - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="GoferClient Tests"
+            - make test.ex
+  - name: "Blocks: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Blocks"
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/block
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Blocks: \U0001F6E1️ Deployment Preconditions"
+    dependencies: []
+    run:
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd plumber/block
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+  - name: "Blocks: \U0001F9EA QA"
+    dependencies: ["Blocks: Provision Test Image"]
+    run:
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/block
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Plumber Tests"
+            - make test.ex
+          parallelism: 2
+  - name: "Blocks: Integration QA"
+    dependencies:
+      ["Blocks: Provision Test Image", "TaskApiMock: Provision Prod Image"]
+    run:
+      when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/block
+          - make build
+      jobs:
+        - name: "\U0001F9EA Integration Test"
+          commands:
+            - export TEST_RESULTS_NAME="Blocks Integration Tests"
+            - make task_api.run
+            - TEST_FLAGS="--only integration" make test.ex
+          parallelism: 2
+  - name: "RepoProxyRef: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/repo_proxy_ref
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "Ppl: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Ppl"
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/ppl
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Ppl: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/ppl
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make build
+            - make push
+  - name: "Ppl: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Ppl: Provision Prod Image"]
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/ppl
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Ppl: QA"
+    dependencies: ["Ppl: Provision Test Image"]
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/ppl
+          - make build
+      jobs:
+        #- name: "\U0001F9EA Lint"
+        #  commands:
+        #    - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Plumber Tests"
+            - make test.ex
+          parallelism: 2
+  - name: "Ppl: Integration QA"
+    dependencies:
+      [
+        "Ppl: Provision Test Image",
+        "RepoProxyRef: Provision Prod Image",
+        "TaskApiMock: Provision Prod Image",
+      ]
+    run:
+      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd plumber/ppl
+          - make build
+      jobs:
+        - name: "\U0001F9EA Integration Test"
+          commands:
+            - export TEST_RESULTS_NAME="Plumber Integration Tests"
+            - make repo_proxy.run
+            - make task_api.run
+            - TEST_FLAGS="--only integration" make test.ex
+          parallelism: 4
+  # Pre-flight Checks
+  - name: "Pre-flight Checks: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/pre_flight_checks
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Pre-flight Checks: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/pre_flight_checks
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Pre-flight Checks: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Pre-flight Checks: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "PreFlightChecks"
+      prologue:
+        commands:
+          - checkout && cd ee/pre_flight_checks
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Pre-flight Checks: \U0001F9EA QA"
+    dependencies: ["Pre-flight Checks: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/pre_flight_checks
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Pre-flight Checks Tests"
+            - make test.ex
+          parallelism: 2
+  # Projecthub
+  - name: "ProjectHub: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd projecthub
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "ProjectHub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd projecthub
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "ProjectHub: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["ProjectHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "ProjectHub"
+      prologue:
+        commands:
+          - checkout && cd projecthub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "ProjectHub: \U0001F9EA QA"
+    dependencies: ["ProjectHub: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd projecthub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Projecthub-rest-api
+  - name: "ProjectHub REST API: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd projecthub-rest-api
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "ProjectHub REST API: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd projecthub-rest-api
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "ProjectHub REST API: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["ProjectHub REST API: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "ProjectHub REST API"
+      prologue:
+        commands:
+          - checkout && cd projecthub-rest-api
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "ProjectHub REST API: \U0001F9EA QA"
+    dependencies: ["ProjectHub REST API: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd projecthub-rest-api
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Public-api-gateway
+  - name: "public-api-gateway: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd public-api-gateway
+      jobs:
+        - name: "\U0001F5BC Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "public-api-gateway: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "public-api-gateway"
+      prologue:
+        commands:
+          - checkout && cd public-api-gateway
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1 Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1 Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1 Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "public-api-gateway: \U0001F9EA QA"
+    dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd public-api-gateway
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # Repohub
+  - name: "Repohub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd repohub
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Repohub: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Repohub"
+      prologue:
+        commands:
+          - checkout && cd repohub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Repohub: \U0001F9EA QA"
+    dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: repohub-integration
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd repohub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test.go
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # RBAC CE
+  - name: "RBAC CE: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd rbac/ce
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "RBAC CE: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd rbac/ce
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "RBAC CE: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["RBAC CE: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "RBAC CE"
+      prologue:
+        commands:
+          - checkout && cd rbac/ce
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "RBAC CE: \U0001F9EA QA"
+    dependencies: ["RBAC CE: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd rbac/ce
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="RBAC CE Tests"
+            - make test.ex
+          parallelism: 2
+  # RBAC EE
+  - name: "RBAC EE: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/rbac
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "RBAC EE: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/rbac
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "RBAC EE: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["RBAC EE: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "RBAC EE"
+      prologue:
+        commands:
+          - checkout && cd ee/rbac
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "RBAC EE: \U0001F9EA QA"
+    dependencies: ["RBAC EE: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/rbac
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="RBAC EE Tests"
+            - make test.ex
+          parallelism: 2
+  # RepositoryHub
+  - name: "\U0001F4CB RepositoryHub Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: feature-provider-token
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd repository_hub
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "\U0001F4CB RepositoryHub Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: feature-provider-token
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd repository_hub
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "\U0001F4CB RepositoryHub Deployment Preconditions"
+    dependencies: ["\U0001F4CB RepositoryHub Provision Prod Image"]
+    run:
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "RepositoryHub"
+      prologue:
+        commands:
+          - checkout && cd repository_hub
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "\U0001F9EA RepositoryHub QA"
+    dependencies: ["\U0001F4CB RepositoryHub Provision Test Image"]
+    run:
+      when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd repository_hub
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make pull
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Loghub2
+  - name: "Loghub2: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd loghub2
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Loghub2: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Loghub2"
+      prologue:
+        commands:
+          - checkout && cd loghub2
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Loghub2: \U0001F9EA QA"
+    dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd loghub2
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # Encryptor
+  - name: "Encryptor: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd encryptor
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Encryptor: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Encryptor"
+      prologue:
+        commands:
+          - checkout && cd encryptor
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Encryptor: \U0001F9EA QA"
+    dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd encryptor
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # Bootstrapper
+  - name: "Bootstrapper: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd bootstrapper
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Bootstrapper: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Bootstrapper"
+      prologue:
+        commands:
+          - checkout && cd bootstrapper
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Bootstrapper: \U0001F9EA QA"
+    dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd bootstrapper
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+
+  # Self Hosted Hub
+  - name: "Self-Hosted-Hub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd self_hosted_hub
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Self-Hosted-Hub: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Self-Hosted-Hub"
+      prologue:
+        commands:
+          - checkout && cd self_hosted_hub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Self-Hosted-Hub: \U0001F9EA QA"
+    dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd self_hosted_hub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+  # Secrethub
+  - name: "Secrethub: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd secrethub
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Secrethub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd secrethub
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Secrethub: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Secrethub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "SecretHub"
+      prologue:
+        commands:
+          - checkout && cd secrethub
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker CHECK_DOCKER_OPTS='--skip-files "deps/grpc/Dockerfile,deps/sys2app/Dockerfile"'
+  - name: "Secrethub: \U0001F9EA QA"
+    dependencies: ["Secrethub: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd secrethub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # Notifications
+  - name: "Notifications: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd notifications
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Notifications: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd notifications
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Notifications: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Notifications: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Notifications"
+      prologue:
+        commands:
+          - checkout && cd notifications
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Notifications: \U0001F9EA QA"
+    dependencies: ["Notifications: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd notifications
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Notifications Tests"
+            - make test.ex
+          parallelism: 2
+  # Public-api-v1alpha (plumber-public)
+  - name: "APIv1alpha: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd public-api/v1alpha
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "APIv1alpha: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd public-api/v1alpha
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "APIv1alpha: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["APIv1alpha: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "SecretHub"
+      prologue:
+        commands:
+          - checkout && cd public-api/v1alpha
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "APIv1alpha: \U0001F9EA QA"
+    dependencies: ["APIv1alpha: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd public-api/v1alpha
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.ex
+  # APIv2
+  - name: "APIv2: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd public-api/v2
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "APIv2: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd public-api/v2
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "APIv2: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["APIv2: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "APIv2"
+      prologue:
+        commands:
+          - checkout && cd public-api/v2
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - sem-version ruby 3.3
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "APIv2: \U0001F9EA QA"
+    dependencies: ["APIv2: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd public-api/v2
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="APIv2 Tests"
+            - make test
+          parallelism: 2
+  # Periodic scheduler
+  - name: "Periodic scheduler: Security checks"
+    dependencies: []
+    run:
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "PeriodicScheduler"
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd periodic_scheduler/scheduler
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
+          - ssh-add ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
+      jobs:
+        - name: Check dependencies
+          commands:
+            - make check.ex.deps
+        - name: Check docker resources
+          commands:
+            - make check.docker
+        - name: Check code
+          commands:
+            - make check.ex.code
+  - name: "Periodic scheduler: Tests"
+    dependencies: []
+    run:
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      secrets:
+        - name: feature-provider-token
+      prologue:
+        commands:
+          - checkout && cd periodic_scheduler/scheduler
+          - cache restore periodic_scheduler-$(checksum mix.lock),periodic_scheduler-$SEMAPHORE_GIT_BRANCH,periodic_scheduler
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      epilogue:
+        always:
+          commands:
+            - cache store periodic_scheduler-$(checksum mix.lock),periodic_scheduler-$SEMAPHORE_GIT_BRANCH,periodic_scheduler deps
+      jobs:
+        - name: "Lint code"
+          commands:
+            - make lint.ex
+        - name: "Run tests"
+          commands:
+            - make test.ex
+  - name: "Test Spec and Definition validator"
+    dependencies: []
+    run:
+      when: "change_in('/periodic_scheduler', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      jobs:
+        - name: Spec tests
+          commands:
+            - checkout && cd periodic_scheduler/spec
+            - make test USER=root
+        - name: "Definition validator: lint && unit tests"
+          commands:
+            - checkout && cd periodic_scheduler/definition_validator
+            - make lint-root
+            - make unit.test
+  # Github Hooks
+  - name: "Github Hooks: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: RAILS_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd github_hooks
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Github Hooks: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: RAILS_ENV
+          value: "production"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd github_hooks
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Github Hooks: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Github Hooks: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: RAILS_ENV
+          value: "production"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Github Hooks"
+      prologue:
+        commands:
+          - checkout && cd github_hooks
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ruby.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ruby.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Github Hooks: \U0001F9EA QA"
+    dependencies: ["Github Hooks: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: RAILS_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd github_hooks
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ruby
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Monolith Tests"
+            - make test.ruby
+  # Statsd
+  - name: "statsd: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd statsd
+          - cache restore
+      jobs:
+        - name: "Build"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "statsd: \U0001F6E1️ Security Checks"
+    dependencies: ["statsd: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Statsd"
+      prologue:
+        commands:
+          - checkout && cd statsd
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+          - sem-version ruby 2.7
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - export PATH=$PATH:/home/semaphore/.local/bin
+            - make check.js.code
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.js.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'
+  # Velocity
+  - name: "Velocity: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd ee/velocity
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Velocity: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Velocity"
+      prologue:
+        commands:
+          - checkout && cd ee/velocity
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Velocity: \U0001F9EA QA"
+    dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd ee/velocity
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+  # Zebra
+  - name: "Zebra: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd zebra
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Zebra: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd zebra
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Zebra: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Zebra: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Zebra"
+      prologue:
+        commands:
+          - checkout && cd zebra
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps CHECK_DEPS_OPTS='--ignore-packages phoenix,phoenix_html'
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Zebra: \U0001F9EA QA"
+    dependencies: ["Zebra: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: feature-provider-token
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd zebra
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Zebra Tests"
+            - make test.ex
+  - name: "Keycloak setup - lint, build"
+    dependencies: []
+    run:
+      when: "change_in('/keycloak/setup', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Keycloak setup"
+        - name: APP_ENV
+          value: prod
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd keycloak/setup
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: Validate
+          commands:
+            - make validate
+        - name: Lint
+          commands:
+            - make lint
+        - name: Check docker image
+          commands:
+            - make build
+            - make check.docker
+        - name: Build
+          commands:
+            - make build
+  - name: "Keycloak image - lint, build"
+    dependencies: []
+    run:
+      when: "change_in('/keycloak/image', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: SERVICE_NAME
+          value: "Keycloak"
+        - name: APP_ENV
+          value: prod
+      secrets:
+        - name: security-toolbox-shared-read-access
+      prologue:
+        commands:
+          - checkout && cd keycloak/image
+          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
+          - sudo chmod 600 ~/.ssh/id_rsa
+      jobs:
+        - name: Check docker image
+          commands:
+            - make build
+            - make check.docker
+        - name: Build
+          commands:
+            - make build
+  - name: "Scouter: \U0001F4CB Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd scouter
+      jobs:
+        - name: "\U0001F5BC️ Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Scouter: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd scouter
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Scouter: \U0001F6E1️ Deployment Preconditions"
+    dependencies: ["Scouter: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: security-toolbox-shared-read-access
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Scouter"
+      prologue:
+        commands:
+          - checkout && cd scouter
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Scouter: \U0001F9EA QA"
+    dependencies: ["Scouter: \U0001F4CB Provision Test Image"]
+    run:
+      when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd scouter
+          - make build
+      jobs:
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make format.ex
+        - name: "\U0001F9EA Credo"
+          commands:
+            - make lint.ex
+        - name: "\U0001F9EA Test"
+          commands:
+            - export TEST_RESULTS_NAME="Scouter Tests"
+            - make test.ex
+promotions:
+  - name: Push Image - Production
+    pipeline_file: push-image.yml
+    deployment_target: Production
+    parameters:
+      env_vars:
+        - name: SERVICE
+          required: true
+          options:
+            - "APIv1alpha"
+            - "APIv2"
+            - "ArtifactHub"
+            - "Audit"
+            - "Badge"
+            - "BranchHub"
+            - "Dashboardhub"
+            - "Encryptor"
+            - "Front"
+            - "GithubNotifier"
+            - "Gofer"
+            - "Guard"
+            - "HooksProcessor"
+            - "HooksReceiver"
+            - "Keycloak image"
+            - "Keycloak setup"
+            - "Loghub2"
+            - "Monolith"
+            - "Notifications"
+            - "PeriodicScheduler"
+            - "Plumber"
+            - "PreFlightChecks"
+            - "ProjectHub REST API"
+            - "ProjectHub"
+            - "PublicApiGateway"
+            - "RBAC CE"
+            - "RBAC EE"
+            - "Repohub"
+            - "RepositoryHub"
+            - "Scouter"
+            - "SecretHub"
+            - "Self Hosted Hub"
+            - "Statsd"
+            - "Velocity"
+            - "Zebra"
+  - name: Push Image
+    pipeline_file: push-image.yml
+    deployment_target: PreProduction
+    parameters:
+      env_vars:
+        - name: SERVICE
+          required: true
+          options:
+            - "APIv1alpha"
+            - "APIv2"
+            - "ArtifactHub"
+            - "Audit"
+            - "Badge"
+            - "BranchHub"
+            - "Dashboardhub"
+            - "Encryptor"
+            - "Front"
+            - "GithubHooks"
+            - "GithubNotifier"
+            - "Gofer"
+            - "Guard"
+            - "HooksProcessor"
+            - "HooksReceiver"
+            - "Keycloak image"
+            - "Keycloak setup"
+            - "Loghub2"
+            - "Notifications"
+            - "PeriodicScheduler"
+            - "Plumber"
+            - "PreFlightChecks"
+            - "ProjectHub REST API"
+            - "ProjectHub"
+            - "PublicApiGateway"
+            - "RBAC CE"
+            - "RBAC EE"
+            - "Repohub"
+            - "RepositoryHub"
+            - "Scouter"
+            - "SecretHub"
+            - "Self Hosted Hub"
+            - "Statsd"
+            - "Velocity"
+            - "Zebra"
+  - name: Generate Helm Chart
+    pipeline_file: generate-helm-chart.yml
+    deployment_target: github-packages
+  - name: SSL Certificate - Generate
+    pipeline_file: certificate-generate.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+  - name: SSL Certificate - Delete
+    pipeline_file: certificate-delete.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+  - name: Cloud Environment - Destroy
+    pipeline_file: env-destroy.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+        - name: CLOUD_TEST_ENVIRONMENT_TYPE
+          required: true
+          options:
+            - gke
+            - single-vm
+  - name: Cloud Environment - E2E
+    pipeline_file: env-e2e.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+        - name: CLOUD_TEST_ENVIRONMENT_TYPE
+          required: true
+          options:
+            - gke
+            - single-vm

@@ -1,0 +1,25 @@
+version: v1.0
+name: Destroy ${{parameters.CLOUD_TEST_ENV_PREFIX}}
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2004
+global_job_config:
+  prologue:
+    commands:
+      - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
+blocks:
+  - name: Destroy
+    task:
+      jobs:
+        - name: terraform destroy
+          commands:
+            - artifact pull project "environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tar.gz" -d terraform.tar.gz
+            # We dont know the name of the folder inside terraform.tar.gz, so that is why we cd to the newest one
+            - tar -xzf terraform.tar.gz && cd "$(ls -td */ | head -1)"
+            # This will be present only in the case of single-vm deployments
+            - artifact pull project "environments/${CLOUD_TEST_ENV_PREFIX}/private-ssh-key.pub" -d /tmp/ssh-key.pub || true
+            - make auth
+            - terraform init
+            - make terraform.destroy
+            - artifact yank project "environments/${CLOUD_TEST_ENV_PREFIX}"

@@ -1,0 +1,25 @@
+#
+# The permissions to destroy environments are located
+# in the deployment target, so we need to use a dummy
+# initial pipeline that auto promotes to the actual one
+# that will destroy everything.
+#
+version: v1.0
+name: Cloud Environment - Destroy All - Initial Pipeline
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2004
+blocks:
+  - name: Initial
+    task:
+      jobs:
+        - name: Initial job
+          commands:
+            - echo hello
+promotions:
+  - name: Cloud Environment - Destroy All
+    pipeline_file: env-destroy-all.yml
+    deployment_target: provision-test-env
+    auto_promote:
+      when: "branch = 'master'"

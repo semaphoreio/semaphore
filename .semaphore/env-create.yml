@@ -1,0 +1,108 @@
+version: v1.0
+name: Cloud environment - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2004
+global_job_config:
+  env_vars:
+    - name: BASE_DOMAIN
+      value: "test.sonprem.com"
+    - name: ROLE_ARN
+      value: "arn:aws:iam::451765615567:role/sem-install-dns-update-role"
+  prologue:
+    commands:
+      - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
+      - checkout && cd ephemeral_environment
+      - '[ -d "terraform/${CLOUD_TEST_ENVIRONMENT_TYPE}" ] && cd "terraform/${CLOUD_TEST_ENVIRONMENT_TYPE}" || (echo "There is no terraform/${CLOUD_TEST_ENVIRONMENT_TYPE} folder for the selected cloud environment type" && exit 1)'
+blocks:
+  - name: Create environment
+    dependencies: []
+    task:
+      jobs:
+        - name: terraform apply
+          commands:
+            - make auth
+            - terraform init
+            - make terraform.prepare
+            - make terraform.plan
+            - make terraform.apply
+      epilogue:
+        always:
+          commands:
+            - artifact push project terraform.tfstate -d environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tfstate --force
+            - cd .. && tar -czvf terraform.tar.gz ${CLOUD_TEST_ENVIRONMENT_TYPE}
+            - artifact push project terraform.tar.gz -d "environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tar.gz" --force
+  - name: Install
+    dependencies: ["Create environment"]
+    task:
+      jobs:
+        - name: 'Install Helm chart'
+          commands:
+            - make auth
+            - terraform init
+            - make helm.install
+      secrets:
+        - name: container-registry-writer
+        - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+        - name: e2e-test-gitlab-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+  - name: Update DNS
+    dependencies: ["Create environment"]
+    task:
+      jobs:
+        - name: Point DNS to new cluster
+          commands:
+            - export SESSION_NAME="semaphore-job-${SEMAPHORE_JOB_ID}"
+            - eval $(aws sts assume-role-with-web-identity --role-arn $ROLE_ARN --role-session-name $SESSION_NAME --web-identity-token $SEMAPHORE_OIDC_TOKEN --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" | jq -r '"export AWS_ACCESS_KEY_ID=\(.[0]) AWS_SECRET_ACCESS_KEY=\(.[1]) AWS_SESSION_TOKEN=\(.[2])"')
+            - artifact pull project environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tfstate -d terraform.tfstate
+            - terraform init
+            - export IP=$(terraform output external_ip_address)
+            - make dns.update
+      env_vars:
+        - name: ZONE_ID
+          value: "Z05198331K5V9MQ90PUK2"
+promotions:
+  - name: Destroy
+    pipeline_file: env-destroy.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+        - name: CLOUD_TEST_ENVIRONMENT_TYPE
+          required: true
+          options:
+            - gke
+            - single-vm
+  - name: E2E
+    pipeline_file: env-e2e.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+        - name: CLOUD_TEST_ENVIRONMENT_TYPE
+          required: true
+          options:
+            - gke
+            - single-vm

@@ -1,0 +1,114 @@
+version: v1.0
+name: Generate Helm Chart
+agent:
+  machine:
+    type: e2-standard-2
+    os_image: ubuntu2004
+blocks:
+  - name: Build images
+    task:
+      secrets:
+        - name: semreg-semaphoredev-credentials
+        - name: feature-provider-token
+      env_vars:
+        - name: RAILS_ENV
+          value: "production"
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      jobs:
+        - name: Build and push images
+          matrix:
+            - env_var: APPLICATION
+              values:
+                - "APIv1alpha"
+                - "APIv2"
+                - "ArtifactHub"
+                - "Auth"
+                - "Badge"
+                - "BranchHub"
+                - "Dashboardhub"
+                - "Encryptor"
+                - "Front"
+                - "GithubNotifier"
+                - "Gofer"
+                - "Guard"
+                - "PublicApiGateway"
+                - "HooksProcessor"
+                - "HooksReceiver"
+                - "Self Hosted Hub"
+                - "Keycloak image"
+                - "Keycloak setup"
+                - "Bootstrapper"
+                - "PeriodicScheduler"
+                - "Loghub2"
+                - "GithubHooks"
+                - "Notifications"
+                - "Plumber"
+                - "PreFlightChecks"
+                - "ProjectHub"
+                - "ProjectHub REST API"
+                - "RBAC CE"
+                - "Repohub"
+                - "RepositoryHub"
+                - "Scouter"
+                - "SecretHub"
+                - "Self Hosted Hub"
+                - "Statsd"
+                - "Velocity"
+                - "Zebra"
+          commands:
+            - checkout
+            - git fetch --unshallow --tags
+            - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST || echo "Semaphore Registry login failed, but continuing the build process." && true
+            - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+            - sudo chmod 600 ~/.ssh/feature_provider_rsa
+            - ssh-add ~/.ssh/feature_provider_rsa
+            - export APP_NAME=$(jq -r --arg application "$APPLICATION" '.services[$application][]["app"]' .semaphore/services.json)
+            - cd $(jq -r --arg application "$APPLICATION" '.services[$application][]["path"]' .semaphore/services.json)
+            - make build
+            - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make configure.sign; fi'
+            - make ghcr.configure
+            - make ghcr.push
+            - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make ghcr.sign; fi'
+
+  - name: "Create Helm chart"
+    task:
+      jobs:
+        - name: Create helm chart artifact
+          commands:
+            - checkout
+            - git fetch --unshallow --tags
+            - cd helm-chart
+            - make helm.create
+            - export CHART_PATH=$(find . -name *.tgz)
+            - artifact push workflow $CHART_PATH --force
+            - sem-context put chart_package_name=$(basename $CHART_PATH) --force
+
+promotions:
+  - name: Release
+    pipeline_file: release.yml
+    deployment_target: github-packages
+  - name: Cloud Environment
+    pipeline_file: env-create.yml
+    deployment_target: provision-test-env
+    parameters:
+      env_vars:
+        - name: CLOUD_TEST_ENV_PREFIX
+          required: true
+          options:
+            - ahasanbasic
+            - dbecirovic
+            - dkolundzija
+            - lpinheiro
+            - master
+            - mkutryj
+            - pforesti
+            - radwo
+            - vmaksimovic
+        - name: CLOUD_TEST_ENVIRONMENT_TYPE
+          required: true
+          options:
+            - gke
+            - single-vm

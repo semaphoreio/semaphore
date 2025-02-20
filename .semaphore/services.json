@@ -1,0 +1,227 @@
+{
+  "services": {
+    "Audit": [
+      {
+        "path": "ee/audit",
+        "component": "audit"
+      }
+    ],
+    "Auth": [
+      {
+        "path": "auth",
+        "component": "auth"
+      }
+    ],
+    "APIv1alpha": [
+      {
+        "path": "public-api/v1alpha",
+        "component": "plumber-public"
+      }
+    ],
+    "APIv2": [
+      {
+        "path": "public-api/v2",
+        "component": "public-api"
+      }
+    ],
+    "ArtifactHub": [
+      {
+        "path": "artifacthub",
+        "component": "artifacthub"
+      }
+    ],
+    "Badge": [
+      {
+        "path": "badge",
+        "component": "badges"
+      }
+    ],
+    "BranchHub": [
+      {
+        "path": "branch_hub",
+        "component": "branch_hub"
+      }
+    ],
+    "Dashboardhub": [
+      {
+        "path": "dashboardhub",
+        "component": "dashboardhub"
+      }
+    ],
+    "Encryptor": [
+      {
+        "path": "encryptor",
+        "component": ""
+      }
+    ],
+    "Statsd": [
+      {
+        "path": "statsd",
+        "component": ""
+      }
+    ],
+    "Front": [
+      {
+        "path": "front",
+        "component": "front",
+        "app": "front"
+      }
+    ],
+    "GithubNotifier": [
+      {
+        "path": "github_notifier",
+        "component": "github-notifier"
+      }
+    ],
+    "Guard": [
+      {
+        "path": "guard",
+        "component": "guard"
+      }
+    ],
+    "Gofer": [
+      {
+        "path": "ee/gofer",
+        "component": "gofer"
+      }
+    ],
+    "HooksProcessor": [
+      {
+        "path": "hooks_processor",
+        "component": "hooks-processor"
+      }
+    ],
+    "HooksReceiver": [
+      {
+        "path": "hooks_receiver",
+        "component": "hooks-receiver"
+      }
+    ],
+    "Keycloak image": [
+      {
+        "path": "keycloak/image",
+        "component": "keycloak"
+      }
+    ],
+    "Keycloak setup": [
+      {
+        "path": "keycloak/setup",
+        "component": "keycloak-setup"
+      }
+    ],
+    "Bootstrapper":    [
+      {
+        "path": "bootstrapper",
+        "component": "bootstrapper"
+      }
+    ],
+    "Scouter": [
+      {
+        "path": "scouter",
+        "component": "scouter"
+      }
+    ],
+    "SecretHub": [
+      {
+        "path": "secrethub",
+        "component": "secrethub"
+      }
+    ],
+    "Self Hosted Hub": [
+      {
+        "path": "self_hosted_hub",
+        "component": "self-hosted-hub"
+      }
+    ],
+    "Loghub2": [
+      {
+        "path": "loghub2",
+        "component": "loghub2"
+      }
+    ],
+    "Zebra": [
+      {
+        "path": "zebra",
+        "component": "zebra"
+      }
+    ],
+    "PeriodicScheduler": [
+      {
+        "path": "periodic_scheduler/scheduler",
+        "component": "periodic-scheduler"
+      }
+    ],
+    "PreFlightChecks": [
+      {
+        "path": "ee/pre_flight_checks",
+        "component": "pre-flight-checks-hub"
+      }
+    ],
+    "ProjectHub": [
+      {
+        "path": "projecthub",
+        "component": "projecthub"
+      }
+    ],
+    "ProjectHub REST API": [
+      {
+        "path": "projecthub-rest-api",
+        "component": "projecthub-public"
+      }
+    ],
+    "RBAC CE": [
+      {
+        "path": "rbac/ce",
+        "component": "rbac"
+      }
+    ],
+    "RBAC EE": [
+      {
+        "path": "ee/rbac",
+        "component": "rbac"
+      }
+    ],
+    "Repohub": [
+      {
+        "path": "repohub",
+        "component": "repohub"
+      }
+    ],
+    "RepositoryHub": [
+      {
+        "path": "repository_hub",
+        "component": "repository_hub"
+      }
+    ],
+    "Plumber": [
+      {
+        "path": "plumber/ppl",
+        "component": "plumber"
+      }
+    ],
+    "GithubHooks": [
+      {
+        "path": "github_hooks",
+        "component": "github_hooks"
+      }
+    ],
+    "Notifications": [
+      {
+        "path": "notifications",
+        "component": "notifications"
+      }
+    ],
+    "PublicApiGateway": [
+      {
+        "path": "public-api-gateway",
+        "component": "public-api-gateway"
+      }
+    ],
+    "Velocity": [
+      {
+        "path": "ee/velocity",
+        "component": "velocity-hub"
+      }
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+version: v1.0
+name: Generate Certificate - ${{parameters.CLOUD_TEST_ENV_PREFIX}}
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2004
+blocks:
+  - name: Generate Certificate
+    dependencies: []
+    task:
+      env_vars:
+        - name: BASE_DOMAIN
+          value: "test.sonprem.com"
+        - name: ROLE_ARN
+          value: "arn:aws:iam::451765615567:role/sem-install-dns-update-role"
+      jobs:
+        - name: Generate Certificate
+          commands:
+            - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
+            - export SESSION_NAME="semaphore-job-${SEMAPHORE_JOB_ID}"
+            - checkout && cd ephemeral_environment
+            - eval $(aws sts assume-role-with-web-identity --role-arn $ROLE_ARN --role-session-name $SESSION_NAME --web-identity-token $SEMAPHORE_OIDC_TOKEN --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" | jq -r '"export AWS_ACCESS_KEY_ID=\(.[0]) AWS_SECRET_ACCESS_KEY=\(.[1]) AWS_SESSION_TOKEN=\(.[2])"')
+            - git clone https://github.com/acmesh-official/acme.sh.git
+            - cd acme.sh
+            - ./acme.sh --install --force
+            - export CERT_DIR="certs/${CLOUD_TEST_ENV_PREFIX}"
+            - mkdir -p "./$CERT_DIR"
+            - artifact pull project "${CERT_DIR}" -d ./${CERT_DIR} || true
+            - echo $DOMAIN
+            - |
+              if [ ! -f "./$CERT_DIR/${CLOUD_TEST_ENV_PREFIX}.cer" ]; then
+                echo "Certificate not found. Issuing a new certificate for ${DOMAIN}."
+                ./acme.sh --issue --dns dns_aws -d "${DOMAIN}" -d "*.${DOMAIN}" --server letsencrypt \
+                  --cert-file "./$CERT_DIR/${CLOUD_TEST_ENV_PREFIX}.cer" \
+                  --key-file "./$CERT_DIR/${CLOUD_TEST_ENV_PREFIX}.key" \
+                  --fullchain-file "./$CERT_DIR/${CLOUD_TEST_ENV_PREFIX}.fullchain.cer" \
+                  --ca-file "./$CERT_DIR/${CLOUD_TEST_ENV_PREFIX}.ca.cer"
+                artifact push project "./${CERT_DIR}" -d ${CERT_DIR} --force
+              else
+                echo "Certificate already exists for ${DOMAIN}. Skipping issuance."
+              fi
