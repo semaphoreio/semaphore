@@ -532,6 +532,7 @@ spec:
   timeout_ms: 30000
   precedence: 100
 {{- if .Values.global.artifacts.local.enabled }}
+---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -551,6 +552,7 @@ spec:
       num_retries: 3
 {{- end }}
 {{- if .Values.global.cache.local.enabled }}
+---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -570,6 +572,7 @@ spec:
       num_retries: 3
 {{- end }}
 {{- if .Values.global.logs.local.enabled }}
+---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
