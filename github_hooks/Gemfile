@@ -34,7 +34,7 @@ gem "sentry-sidekiq"
 gem "sprockets", "< 4"
 gem "nokogiri", "~> 1.16.5"
 
-gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "d3fa4f44b4565dac5fa98df03d1124c68aee304c"
+gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman"
 gem "rt-logman", :require => "logman"
 gem "rt-tackle", :require => "tackle"
 
