@@ -99,7 +99,7 @@ global:
     password: "semaphore"
     local:
       enabled: true
-      version: RELEASE.2025-02-18T16-25-55Z
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
       size: 3Gi
 
   cache:
@@ -107,7 +107,7 @@ global:
     password: "semaphore"
     local:
       enabled: true
-      version: RELEASE.2025-02-18T16-25-55Z
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
       size: 3Gi
 
   logs:
@@ -116,7 +116,7 @@ global:
     password: "semaphore"
     local:
       enabled: true
-      version: RELEASE.2025-02-18T16-25-55Z
+      version: RELEASE.2021-04-22T15-44-28Z.hotfix.56647434e
       size: 3Gi
 
   # If secretName is empty, the secrets will be auto-generated.

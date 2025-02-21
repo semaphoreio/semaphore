@@ -20,11 +20,6 @@ metadata:
   labels:
     app: minio-logs
     product: semaphoreci
-{{- if eq .Values.ingress.className "gce" }}
-  annotations:
-    cloud.google.com/backend-config: '{"ports": {"9000":"minio-logs-backend-config"}}'
-    cloud.google.com/neg: '{"ingress": true}'
-{{- end }}
 spec:
   type: ClusterIP
   ports:
@@ -87,26 +82,4 @@ spec:
       resources:
         requests:
           storage: {{ .Values.global.logs.local.size }}
----
-{{- if .Values.ingress.enabled }}
-{{- if eq .Values.ingress.className "gce" }}
-apiVersion: cloud.google.com/v1
-kind: BackendConfig
-metadata:
-  name: minio-logs-backend-config
-  namespace: {{ .Release.Namespace }}
-spec:
-  timeoutSec: 30
-  connectionDraining:
-    drainingTimeoutSec: 30
-  logging:
-    enable: true
-  healthCheck:
-    checkIntervalSec: 10
-    timeoutSec: 10
-    port: 9000
-    type: HTTP
-    requestPath: /minio/health/live
-{{- end }}
-{{- end }}
 {{- end }}

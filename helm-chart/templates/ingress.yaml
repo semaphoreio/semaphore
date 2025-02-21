@@ -48,36 +48,6 @@ spec:
       port:
         number: 8080
   rules:
-  - host: "artifacts.{{ $domainName }}"
-    http:
-      paths:
-      - backend:
-          service:
-            name: minio-artifacts
-            port:
-              number: 9000
-        path: /
-        pathType: Prefix
-  - host: "cache.{{ $domainName }}"
-    http:
-      paths:
-      - backend:
-          service:
-            name: minio-cache
-            port:
-              number: 9000
-        path: /
-        pathType: Prefix
-  - host: "logs.{{ $domainName }}"
-    http:
-      paths:
-      - backend:
-          service:
-            name: minio-logs
-            port:
-              number: 9000
-        path: /
-        pathType: Prefix
   - host: "*.{{ $domainName }}"
     http:
       paths:
