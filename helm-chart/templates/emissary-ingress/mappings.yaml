@@ -536,13 +536,13 @@ apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
   name: minio-artifacts-mapping
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 spec:
   host: "^artifacts\\..*"
   host_regex: true
   prefix: /
   rewrite: ""
-  service: minio-artifacts.default:9000
+  service: minio-artifacts.{{ .Release.Namespace }}:9000
   timeout_ms: 30000
   bypass_auth: true
   envoy_override:
@@ -555,13 +555,13 @@ apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
   name: minio-cache-mapping
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 spec:
   host: "^cache\\..*"
   host_regex: true
   prefix: /
   rewrite: ""
-  service: minio-cache.default:9000
+  service: minio-cache.{{ .Release.Namespace }}:9000
   timeout_ms: 30000
   bypass_auth: true
   envoy_override:
@@ -574,13 +574,13 @@ apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
   name: minio-logs-mapping
-  namespace: default
+  namespace: {{ .Release.Namespace }}
 spec:
   host: "^logs\\..*"
   host_regex: true
   prefix: /
   rewrite: ""
-  service: minio-logs.default:9000
+  service: minio-logs.{{ .Release.Namespace }}:9000
   timeout_ms: 30000
   bypass_auth: true
   envoy_override:
