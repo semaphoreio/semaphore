@@ -32,7 +32,7 @@ gem "sentry-rails"
 gem "sentry-sidekiq"
 
 gem "sprockets", "< 4"
-gem "nokogiri", "~> 1.16.5"
+gem "nokogiri", "~> 1.18.3"
 
 gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman"
 gem "rt-logman", :require => "logman"
