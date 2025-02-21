@@ -41,7 +41,7 @@ defmodule HooksProcessor.MixProject do
       {:junit_formatter, "~> 3.1", only: [:test]},
       # head because support for JSON is not yet released
       {:sentry, github: "getsentry/sentry-elixir", ref: "f375551f32f35674f9baab470d0e571466b07055"},
-      {:sentry_grpc, github: "radwo/sentry_grpc", branch: "grpc08"}
+      {:sentry_grpc, github: "renderedtext/sentry_grpc", branch: "grpc08"}
     ]
   end
 end
