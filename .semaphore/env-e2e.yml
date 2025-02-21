@@ -1,5 +1,5 @@
 version: v1.0
-name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+name: E2E Tests
 agent:
   machine:
     type: f1-standard-2
@@ -14,3 +14,8 @@ blocks:
         - name: E2E tests - UI
           commands:
             - echo 1
+
+promotions:
+  - name: Destroy Eph env
+    pipeline_file: env-create.yml
+    deployment_target: provision-test-env

@@ -5,10 +5,32 @@ agent:
     type: e2-standard-2
     os_image: ubuntu2004
 blocks:
-  - name: "Create Helm chart"
+  - name: "Generate certificates"
+    dependencies: []
     task:
       jobs:
-        - name: Spin up infrastructure
+        - name: "Generate cert"
+          commands:
+            - echo 1
+  - name: "Spin up test environment"
+    dependencies: ["Generate certificates"]
+    task:
+      jobs:
+        - name: Terraform apply
+          commands:
+            - echo 1
+  - name: "Install Semaphore app"
+    dependencies: ["Spin up test environment"]
+    task:
+      jobs:
+        - name: Helm install
+          commands:
+            - echo 1
+  - name: "Setup DNS"
+    dependencies: ["Spin up test environment"]
+    task:
+      jobs:
+        - name: Terraform apply
           commands:
             - echo 1
 
