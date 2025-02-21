@@ -9,6 +9,7 @@ PUBLIC_API_BRANCH ?= master
 PROTOC_TAG=1.12.1-3.17.3-0.7.1
 
 IN_DOCKER?="true"
+TEST?="true"
 POSTGRES_DB_NAME?="guard"
 POSTGRES_DB_USER?="postgres"
 POSTGRES_DB_PASSWORD?="the-cake-is-a-lie"
