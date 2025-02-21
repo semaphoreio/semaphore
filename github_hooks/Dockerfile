@@ -74,6 +74,7 @@ FROM base as runner
 LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 
 WORKDIR /app
+RUN mkdir tmp
 
 HEALTHCHECK NONE
 
