@@ -74,7 +74,6 @@ FROM base as runner
 LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 
 WORKDIR /app
-RUN mkdir tmp
 
 HEALTHCHECK NONE
 
@@ -87,7 +86,6 @@ COPY --chown=nobody:root config config
 COPY --chown=nobody:root db db
 COPY --chown=nobody:root lib lib
 COPY --chown=nobody:root protobuffer protobuffer
-COPY --chown=nobody:root tmp tmp
 COPY --chown=nobody:root config.ru config.ru
 COPY --chown=nobody:root Rakefile Rakefile
 COPY --chown=nobody:root sidekiq.ru sidekiq.ru
@@ -95,6 +93,7 @@ COPY --chown=nobody:root Gemfile Gemfile
 COPY --chown=nobody:root Gemfile.lock Gemfile.lock
 COPY --from=production-builder --chown=nobody:root $BUNDLE_PATH $BUNDLE_PATH
 
+RUN mkdir tmp
 USER nobody
 
 EXPOSE 3000
