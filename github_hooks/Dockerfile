@@ -93,6 +93,12 @@ COPY --chown=nobody:root Gemfile Gemfile
 COPY --chown=nobody:root Gemfile.lock Gemfile.lock
 COPY --from=production-builder --chown=nobody:root $BUNDLE_PATH $BUNDLE_PATH
 
+# Check if tmp exists before copying it
+RUN test -d tmp && cp -r tmp /app/tmp || true
+
+# Ensure tmp exists (if it wasn't copied)
+RUN mkdir -p /app/tmp && chown nobody:root /app/tmp
+
 USER nobody
 
 EXPOSE 3000
