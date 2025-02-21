@@ -77,7 +77,7 @@ SECURITY_TOOLBOX_BRANCH?=master
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-WHITELIST_LICENSE_COMMAND?=""
+CHECK_DEPS_EXTRA_OPTS?=""
 
 #
 # Security checks
@@ -125,7 +125,7 @@ else
 endif
 
 check.ex.deps: check.prepare
-	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(WHITELIST_LICENSE_COMMAND)"
+	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
 
 check.go.deps: check.prepare
 	$(MAKE) check.deps LANGUAGE=go
