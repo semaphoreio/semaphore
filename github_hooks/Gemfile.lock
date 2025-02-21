@@ -1,6 +1,7 @@
 GIT
   remote: https://github.com/renderedtext/watchman.git
   revision: 74530687a232aea678b6738114c82dfc163657cd
+  ref: 74530687a232aea678b6738114c82dfc163657cd
   specs:
     rt-watchman (0.10.0)
       dogstatsd-ruby (~> 5.5.0)
