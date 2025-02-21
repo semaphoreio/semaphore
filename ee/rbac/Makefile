@@ -8,7 +8,7 @@ TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
 RT_PROTOC_IMG_VSN=1.17.3-otp-27-3.20.1-0.13.0
 
-WHITELIST_LICENSE_COMMAND="-w esaml openid_connect"
+WHITELIST_LICENSE_COMMAND=-w esaml,openid_connect
 
 #
 # Environment variables requires for application to run.
