@@ -7,7 +7,7 @@ db:
   name: front
 
 workers:
-  dbPoolSize: 1
+  dbPoolSize: 3
   replicas: 1
   resources:
     limits:
@@ -17,7 +17,7 @@ workers:
       cpu: 20m
       memory: 100Mi
 api:
-  dbPoolSize: 1
+  dbPoolSize: 2
   replicas: 1
   resources:
     limits:
