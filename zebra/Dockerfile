@@ -24,24 +24,25 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 WORKDIR /app
 
-COPY mix.exs .
-COPY mix.lock .
-COPY config config
+COPY zebra/mix.exs .
+COPY zebra/mix.lock .
+COPY zebra/config config
+COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix do deps.get, deps.compile
 
 WORKDIR /app
 
-COPY lib lib
+COPY zebra/lib lib
 
 WORKDIR /app
 
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY priv/legacy_repo/migrations priv/legacy_repo/migrations
-COPY .credo.exs .credo.exs
-COPY test test
+COPY zebra/.formatter.exs .formatter.exs
+COPY zebra/.credo.exs .credo.exs
+COPY zebra/priv/legacy_repo/migrations priv/legacy_repo/migrations
+COPY zebra/.credo.exs .credo.exs
+COPY zebra/test test
 
 RUN mix compile
 

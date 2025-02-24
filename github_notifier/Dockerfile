@@ -24,20 +24,21 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 WORKDIR /app
 
-COPY mix.* ./
-COPY config config
+COPY github_notifier/mix.* ./
+COPY github_notifier/config config
+COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix do deps.get, deps.compile
 
-COPY lib lib
+COPY github_notifier/lib lib
 
 FROM base as dev
 
 RUN apk add --no-cache \
     inotify-tools bash make busybox-extras openssh-keygen gpg openssh-client
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY github_notifier/.formatter.exs .formatter.exs
+COPY github_notifier/.credo.exs .credo.exs
+COPY github_notifier/test test
 
 RUN mix compile
 

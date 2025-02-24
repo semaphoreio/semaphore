@@ -1076,13 +1076,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd github_notifier
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -1096,13 +1092,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd github_notifier
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -3381,8 +3373,6 @@ blocks:
   - name: "Zebra: \U0001F4CB Provision Test Image"
     dependencies: []
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -3391,8 +3381,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd zebra
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -3401,8 +3389,6 @@ blocks:
   - name: "Zebra: \U0001F4CB Provision Prod Image"
     dependencies: []
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3411,8 +3397,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd zebra
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -3424,7 +3408,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3435,8 +3418,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd zebra
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
@@ -3453,8 +3434,6 @@ blocks:
   - name: "Zebra: \U0001F9EA QA"
     dependencies: ["Zebra: \U0001F4CB Provision Test Image"]
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -3463,8 +3442,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd zebra
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"

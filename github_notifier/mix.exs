@@ -39,7 +39,7 @@ defmodule GithubNotifier.MixProject do
       {:cachex, "~> 3.0"},
       {:poison, "~> 3.1"},
       {:protobuf, "~> 0.5.4"},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.1"},
+      {:feature_provider, path: "../feature_provider"},
       {:junit_formatter, "~> 3.3", only: [:test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false}
