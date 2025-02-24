@@ -82,7 +82,7 @@
   "tzdata": {:hex, :tzdata, "1.0.1", "f6027a331af7d837471248e62733c6ebee86a72e57c613aa071ebb1f750fc71a", [:mix], [{:hackney, "~> 1.0", [hex: :hackney, repo: "hexpm", optional: false]}], "hexpm", "cf1345dfbce6acdfd4e23cbb36e96e53d1981bc89181cd0b936f4f398f4c0b78"},
   "unicode_util_compat": {:hex, :unicode_util_compat, "0.7.0", "bc84380c9ab48177092f43ac89e4dfa2c6d62b40b8bd132b1059ecc7232f9a78", [:rebar3], [], "hexpm", "25eee6d67df61960cf6a794239566599b09e17e668d3700247bc498638152521"},
   "unsafe": {:hex, :unsafe, "1.0.1", "a27e1874f72ee49312e0a9ec2e0b27924214a05e3ddac90e91727bc76f8613d8", [:mix], [], "hexpm", "6c7729a2d214806450d29766abc2afaa7a2cbecf415be64f36a6691afebb50e5"},
-  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "c4a58718b9e7c704d877b75550696c352289014e", []},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "34548a46450465b2fc69642d81f3ff282b1aa097", []},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
   "wallaby": {:hex, :wallaby, "0.23.0", "4100a43ad0d2bc60491871ae7556ac17d454ff53815ab87a8b9fea3b00e98cec", [:mix], [{:httpoison, "~> 0.12 or ~> 1.0", [hex: :httpoison, repo: "hexpm", optional: false]}, {:jason, "~> 1.1", [hex: :jason, repo: "hexpm", optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, repo: "hexpm", optional: false]}], "hexpm", "4ee4f3b1860b24982a691c2c97c518e635b4b8bd5aea580c11183442ab05f70c"},
   "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "e813e1a78799e95f2ecd80ad17b95722fd122da5", []},
