@@ -24,7 +24,6 @@ blocks:
     task:
       secrets:
         - name: container-registry-writer
-        - name: feature-provider-token
       env_vars:
         - name: RAILS_ENV
           value: "production"

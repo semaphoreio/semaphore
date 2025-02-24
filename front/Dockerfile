@@ -47,7 +47,7 @@ RUN mix sentry_recompile && mix compile --warnings-as-errors
 # -- node stage
 FROM base AS node
 WORKDIR /node
-COPY front/assets/package.json assets/package-lock.json ./
+COPY front/assets/package.json front/assets/package-lock.json ./
 RUN npm install
 WORKDIR /assets
 COPY front/assets /assets
@@ -118,8 +118,7 @@ USER "${USER}"
 
 # copy release executables
 COPY --from=builder --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/front ./
-
-COPY workflow_templates workflow_templates
+COPY --from=builder --chown="${USER}":"${USER}" /app/workflow_templates workflow_templates
 
 ENTRYPOINT ["bin/front"]
 

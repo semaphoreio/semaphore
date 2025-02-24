@@ -9,7 +9,6 @@ blocks:
     task:
       secrets:
         - name: semreg-semaphoredev-credentials
-        - name: feature-provider-token
       env_vars:
         - name: RAILS_ENV
           value: "production"

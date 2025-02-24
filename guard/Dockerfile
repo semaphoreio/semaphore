@@ -90,10 +90,9 @@ ENV MIX_ENV="prod"
 
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/${APP_NAME} ./
-
-COPY --chown=nobody:root templates templates
-COPY --chown=nobody:root priv/repo/migrations repo/migrations
-COPY --chown=nobody:root priv/instance_config_repo/migrations instance_config_repo/migrations
+COPY --from=builder --chown=nobody:root /app/templates templates
+COPY --from=builder --chown=nobody:root /app/priv/repo/migrations repo/migrations
+COPY --from=builder --chown=nobody:root /app/priv/instance_config_repo/migrations instance_config_repo/migrations
 
 USER nobody
 

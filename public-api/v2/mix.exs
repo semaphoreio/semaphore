@@ -72,7 +72,7 @@ defmodule PublicAPI.Mixfile do
       {:cacheman, github: "renderedtext/ex-cacheman"},
       {:ymlr, "~> 5.0"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.2.3"},
-      {:feature_provider, path: "../../feature_provider"}
+      {:feature_provider, path: "../../feature_provider"},
       {:logger_json, "~> 6.0"},
       {:logger_backends, "~> 1.0.0", only: [:dev]}
     ]

@@ -68,11 +68,9 @@ RUN addgroup -S "${USER}" && adduser -D -S "${USER}" -G "${USER}" && chown -R ${
 # run as user
 USER "${USER}"
 
-# copy release executables
+# copy release executables and migrations
 COPY --from=builder --chown="${USER}":"${USER}" /app/_build/${BUILD_ENV}/rel/secrethub ./
-
-# copy migrations
-COPY priv/repo/migrations priv/repo/migrations
+COPY --from=builder --chown="${USER}":"${USER}" /app/priv/repo/migrations priv/repo/migrations
 
 ENTRYPOINT ["bin/secrethub"]
 
