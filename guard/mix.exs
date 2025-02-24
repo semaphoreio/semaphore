@@ -68,7 +68,8 @@ defmodule Guard.Mixfile do
        git: "https://bitbucket.org/semaphoreci/ueberauth_bitbucket.git",
        ref: "e59638a5671721aa0b5eb02217991a39db993c23"},
       {:ueberauth_gitlab_strategy, "~> 0.4"},
-      {:tesla, "~> 1.11"},
+      {:tesla, "~> 1.11.0"},
+      {:castore, "~> 0.1.22"},
       {:joken, "~> 2.5"},
       {:hackney, "~> 1.20"},
       {:argon2_elixir, "~> 4.0"}
