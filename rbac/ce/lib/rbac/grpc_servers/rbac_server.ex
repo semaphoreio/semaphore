@@ -11,7 +11,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   @default_page_size 20
   @default_page_no 1
 
-  @spec list_roles(RBAC.ListRolesRequest.t(), GRPC.Stream.t()) :: RBAC.ListRolesResponse.t()
+  @spec list_roles(RBAC.ListRolesRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ListRolesResponse.t()
   def list_roles(%RBAC.ListRolesRequest{scope: scope}, _stream) do
     Log.observe("grpc.rbac.list_roles", fn ->
       roles = if scope == :SCOPE_PROJECT, do: [], else: Rbac.Roles.build_grpc_roles()
@@ -20,7 +21,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec list_existing_permissions(RBAC.ListExistingPermissionsRequest.t(), GRPC.Stream.t()) ::
+  @spec list_existing_permissions(RBAC.ListExistingPermissionsRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.ListExistingPermissionsResponse.t()
   def list_existing_permissions(%RBAC.ListExistingPermissionsRequest{scope: scope}, _stream) do
     Log.observe("grpc.rbac.list_existing_permissions", fn ->
@@ -42,7 +43,8 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec assign_role(RBAC.AssignRoleRequest.t(), GRPC.Stream.t()) :: RBAC.AssignRoleResponse.t()
+  @spec assign_role(RBAC.AssignRoleRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.AssignRoleResponse.t()
   def assign_role(
         %RBAC.AssignRoleRequest{role_assignment: role_assignment} = request,
         _stream
@@ -70,7 +72,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec list_user_permissions(RBAC.ListUserPermissionsRequest.t(), GRPC.Stream.t()) ::
+  @spec list_user_permissions(RBAC.ListUserPermissionsRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.ListUserPermissionsResponse.t()
   def list_user_permissions(
         %RBAC.ListUserPermissionsRequest{
@@ -102,7 +104,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec list_accessible_orgs(RBAC.ListAccessibleOrgsRequest.t(), GRPC.Stream.t()) ::
+  @spec list_accessible_orgs(RBAC.ListAccessibleOrgsRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.ListAccessibleOrgsResponse.t()
   def list_accessible_orgs(%RBAC.ListAccessibleOrgsRequest{user_id: user_id}, _stream) do
     Log.observe("grpc.rbac.list_accessible_orgs", fn ->
@@ -113,7 +115,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec list_accessible_projects(RBAC.ListAccessibleProjectsRequest.t(), GRPC.Stream.t()) ::
+  @spec list_accessible_projects(RBAC.ListAccessibleProjectsRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.ListAccessibleProjectsResponse.t()
   def list_accessible_projects(
         %RBAC.ListAccessibleProjectsRequest{user_id: user_id, org_id: org_id},
@@ -139,7 +141,8 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec retract_role(RBAC.RetractRoleRequest.t(), GRPC.Stream.t()) :: RBAC.RetractRoleResponse.t()
+  @spec retract_role(RBAC.RetractRoleRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.RetractRoleResponse.t()
   def retract_role(%RBAC.RetractRoleRequest{role_assignment: role_assignment} = request, _stream) do
     Log.observe("grpc.rbac.retract_role", fn ->
       validate_role_assignment_request!(request)
@@ -164,7 +167,8 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec list_members(RBAC.ListMembersRequest.t(), GRPC.Stream.t()) :: RBAC.ListMembersResponse.t()
+  @spec list_members(RBAC.ListMembersRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ListMembersResponse.t()
   def list_members(%RBAC.ListMembersRequest{member_type: :GROUP}, _stream) do
     %RBAC.ListMembersResponse{
       members: [],
@@ -172,7 +176,8 @@ defmodule Rbac.GrpcServers.RbacServer do
     }
   end
 
-  @spec list_members(RBAC.ListMembersRequest.t(), GRPC.Stream.t()) :: RBAC.ListMembersResponse.t()
+  @spec list_members(RBAC.ListMembersRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ListMembersResponse.t()
   def list_members(%RBAC.ListMembersRequest{page: page} = request, _stream) do
     Log.observe("grpc.rbac.list_members", fn ->
       validate_uuid!(request.org_id)
@@ -190,7 +195,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec count_members(RBAC.CountMembersRequest.t(), GRPC.Stream.t()) ::
+  @spec count_members(RBAC.CountMembersRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.CountMembersResponse.t()
   def count_members(%RBAC.CountMembersRequest{org_id: org_id}, _stream) do
     Log.observe("grpc.rbac.count_members", fn ->
@@ -206,7 +211,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec subjects_have_roles(RBAC.SubjectsHaveRolesRequest.t(), GRPC.Stream.t()) ::
+  @spec subjects_have_roles(RBAC.SubjectsHaveRolesRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.SubjectsHaveRolesResponse.t()
   def subjects_have_roles(
         %RBAC.SubjectsHaveRolesRequest{},
@@ -217,7 +222,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec describe_role(RBAC.DescribeRoleRequest.t(), GRPC.Stream.t()) ::
+  @spec describe_role(RBAC.DescribeRoleRequest.t(), GRPC.Server.Stream.t()) ::
           RBAC.DescribeRoleResponse.t()
   def describe_role(%RBAC.DescribeRoleRequest{role_id: role_id}, _stream) do
     Log.observe("grpc.rbac.describe_role", fn ->
@@ -235,14 +240,16 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
-  @spec destroy_role(RBAC.DestroyRoleRequest.t(), GRPC.Stream.t()) :: RBAC.DestroyRoleResponse.t()
+  @spec destroy_role(RBAC.DestroyRoleRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.DestroyRoleResponse.t()
   def destroy_role(_request, _stream) do
     Log.observe("grpc.rbac.destroy_role", fn ->
       grpc_error!(:unimplemented, "Destroy role is not implemented")
     end)
   end
 
-  @spec modify_role(RBAC.ModifyRoleRequest.t(), GRPC.Stream.t()) :: RBAC.ModifyRoleResponse.t()
+  @spec modify_role(RBAC.ModifyRoleRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ModifyRoleResponse.t()
   def modify_role(_request, _stream) do
     Log.observe("grpc.rbac.modify_role", fn ->
       grpc_error!(:unimplemented, "Modify role is not implemented")
