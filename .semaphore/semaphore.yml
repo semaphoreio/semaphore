@@ -48,7 +48,7 @@ after_pipeline:
           - test-results gen-pipeline-report
 auto_cancel:
   running:
-    when: "branch != 'master'"
+    when: "branch != 'main'"
 blocks:
   # Audit
   - name: "Audit: \U0001F4CB Provision Test Image"

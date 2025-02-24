@@ -13,7 +13,7 @@ endif
 
 export REGISTRY_HOST?=local
 export IMAGE?=$(APP_NAME)/$(BRANCH)
-export MASTER_IMAGE?=$(APP_NAME)/master
+export MAIN_IMAGE?=$(APP_NAME)/main
 
 APP_DIRECTORY=.
 ifeq ($(CI),)
@@ -155,7 +155,7 @@ push:
 
 pull:
 	-docker pull $(REGISTRY_HOST)/$(IMAGE):$(IMAGE_TAG)
-	-docker pull $(REGISTRY_HOST)/$(MASTER_IMAGE):$(IMAGE_TAG)
+	-docker pull $(REGISTRY_HOST)/$(MAIN_IMAGE):$(IMAGE_TAG)
 
 tag:
 	docker tag $(IMAGE):$(IMAGE_TAG) $(NEW_IMAGE):$(NEW_IMAGE_TAG)
@@ -176,7 +176,7 @@ endif
 		--build-arg APP_NAME=$(APP_NAME) \
 		--build-arg BUILD_ENV=$(BUILD_ENV) \
 		--cache-from=$(REGISTRY_HOST)/$(IMAGE):$(IMAGE_TAG) \
-		--cache-from=$(REGISTRY_HOST)/$(MASTER_IMAGE):$(IMAGE_TAG) \
+		--cache-from=$(REGISTRY_HOST)/$(MAIN_IMAGE):$(IMAGE_TAG) \
 		-t $(IMAGE):$(IMAGE_TAG) \
 		$(DOCKER_BUILD_PATH)
 
@@ -241,7 +241,7 @@ pb.clone:
 #
 encryptor.run:
 	cd ../encryptor && \
-		$(MAKE) build IMAGE=encryptor/$(BRANCH) MASTER_IMAGE=encryptor/master BUILD_ENV=prod IMAGE_TAG=prod && \
+		$(MAKE) build IMAGE=encryptor/$(BRANCH) MAIN_IMAGE=encryptor/main BUILD_ENV=prod IMAGE_TAG=prod && \
 		docker run --network host -e START_API=yes -e GRPC_API_PORT=50052 -e ENCRYPTOR_TYPE=no-op -d encryptor/$(BRANCH):prod && \
 		cd -
 
