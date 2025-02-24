@@ -3639,6 +3639,14 @@ blocks:
   - name: feature_provider - tests
     dependencies: []
     task:
+      prologue:
+        commands:
+          - sem-version erlang $ERLANG_VERSION
+          - sem-version elixir $ELIXIR_VERSION
+          - checkout && cd feature_provider
+          - cache restore
+          - make test
+          - cache store
       jobs:
         - name: Erlang 23
           env_vars:
@@ -3647,14 +3655,6 @@ blocks:
           matrix:
             - env_var: ELIXIR_VERSION
               values: ["1.10", "1.11", "1.12", "1.13"]
-          commands:
-            - export
-            - sem-version erlang $ERLANG_VERSION
-            - sem-version elixir $ELIXIR_VERSION
-            - checkout && cd feature_provider
-            - cache restore
-            - make test
-            - cache store
         - name: Erlang 24
           env_vars:
             - name: ERLANG_VERSION
@@ -3662,13 +3662,6 @@ blocks:
           matrix:
             - env_var: ELIXIR_VERSION
               values: ["1.10", "1.11", "1.12", "1.13"]
-          commands:
-            - sem-version erlang $ERLANG_VERSION
-            - sem-version elixir $ELIXIR_VERSION
-            - checkout
-            - cache restore
-            - make test
-            - cache store
         - name: Erlang 25
           env_vars:
             - name: ERLANG_VERSION
@@ -3676,13 +3669,6 @@ blocks:
           matrix:
             - env_var: ELIXIR_VERSION
               values: ["1.10", "1.11", "1.12", "1.13", "1.14"]
-          commands:
-            - sem-version erlang $ERLANG_VERSION
-            - sem-version elixir $ELIXIR_VERSION
-            - checkout
-            - cache restore
-            - make test
-            - cache store
 promotions:
   - name: Push Image - Production
     pipeline_file: push-image.yml
