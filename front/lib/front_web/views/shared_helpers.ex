@@ -458,7 +458,9 @@ defmodule FrontWeb.SharedHelpers do
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
     with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
-    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+
+    organization_restricted? =
+      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     cond do
       not with_zendesk_support? ->
@@ -491,7 +493,10 @@ defmodule FrontWeb.SharedHelpers do
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
     with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
-    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+
+    organization_restricted? =
+      FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+
     on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, param: org_id)
     on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, param: org_id)
 

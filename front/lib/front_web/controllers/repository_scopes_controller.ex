@@ -8,7 +8,9 @@ defmodule FrontWeb.RepositoryScopesController do
   def github_app(conn, _) do
     Watchman.benchmark("scopes.update.duration", fn ->
       choose_repo_path =
-        if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+        if FeatureProvider.feature_enabled?(:new_project_onboarding,
+             param: conn.assigns.organization_id
+           ) do
           github_choose_repository_path(conn, :index)
         else
           github_choose_repository_path(conn, :choose_repository)
@@ -33,7 +35,9 @@ defmodule FrontWeb.RepositoryScopesController do
         end
 
       choose_repo_path =
-        if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+        if FeatureProvider.feature_enabled?(:new_project_onboarding,
+             param: conn.assigns.organization_id
+           ) do
           github_legacy_choose_repository_path(conn, :index)
         else
           github_legacy_choose_repository_path(conn, :choose_repository)
@@ -50,7 +54,9 @@ defmodule FrontWeb.RepositoryScopesController do
   def bitbucket(conn, _) do
     Watchman.benchmark("scopes.update.duration", fn ->
       choose_repo_path =
-        if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+        if FeatureProvider.feature_enabled?(:new_project_onboarding,
+             param: conn.assigns.organization_id
+           ) do
           bitbucket_choose_repository_path(conn, :index)
         else
           bitbucket_choose_repository_path(conn, :choose_repository)
@@ -67,7 +73,9 @@ defmodule FrontWeb.RepositoryScopesController do
   def gitlab(conn, _) do
     Watchman.benchmark("scopes.update.duration", fn ->
       choose_repo_path =
-        if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+        if FeatureProvider.feature_enabled?(:new_project_onboarding,
+             param: conn.assigns.organization_id
+           ) do
           gitlab_choose_repository_path(conn, :index)
         else
           ""

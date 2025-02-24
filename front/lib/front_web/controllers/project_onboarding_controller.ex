@@ -511,7 +511,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     project = conn.assigns.project
 
     fetch_user = Async.run(fn -> Models.User.find(user_id) end)
-    maybe_cloud_agents = Async.run(fn -> FeatureProvider.list_machines(org_id) end)
+    maybe_cloud_agents = Async.run(fn -> FeatureProvider.provide_machines(org_id) end)
     maybe_self_hosted_agents = Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end)
 
     fetch_has_pipeline =
@@ -565,7 +565,9 @@ defmodule FrontWeb.ProjectOnboardingController do
     project = conn.assigns.project
 
     next_screen_url =
-      if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+      if FeatureProvider.feature_enabled?(:new_project_onboarding,
+           param: conn.assigns.organization_id
+         ) do
         project_onboarding_path(conn, :onboarding_index, project.name, [""])
       else
         if Front.on_prem?() do
@@ -580,7 +582,9 @@ defmodule FrontWeb.ProjectOnboardingController do
       end
 
     # move to :READY state automatically from onboarding
-    if not FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+    if not FeatureProvider.feature_enabled?(:new_project_onboarding,
+         param: conn.assigns.organization_id
+       ) do
       if ReadinessCheck.should_make_ready?(project) do
         Front.Models.Project.finish_onboarding(project.id)
       end
@@ -705,7 +709,9 @@ defmodule FrontWeb.ProjectOnboardingController do
 
   # sobelow_skip ["Traversal.FileModule"]
   def commit_starter_template(conn, params) do
-    if FeatureProvider.feature_enabled?(:new_project_onboarding, param: conn.assigns.organization_id) do
+    if FeatureProvider.feature_enabled?(:new_project_onboarding,
+         param: conn.assigns.organization_id
+       ) do
       commit_starter_template_new(conn, params)
     else
       commit_starter_template_old(conn, params)

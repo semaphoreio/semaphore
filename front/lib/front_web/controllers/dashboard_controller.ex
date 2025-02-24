@@ -28,7 +28,9 @@ defmodule FrontWeb.DashboardController do
 
         "organization-health" ->
           enabled? =
-            FeatureProvider.feature_enabled?(:organization_health, param: conn.assigns.organization_id)
+            FeatureProvider.feature_enabled?(:organization_health,
+              param: conn.assigns.organization_id
+            )
 
           if enabled? do
             conn

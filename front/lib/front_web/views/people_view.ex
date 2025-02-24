@@ -40,10 +40,12 @@ defmodule FrontWeb.PeopleView do
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
-      {"email", FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce_roles?()},
+      {"email",
+       FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce_roles?()},
       {"github", !Front.ce_roles?()},
       {"gitlab", FeatureProvider.feature_enabled?(:gitlab, param: org_id) && !Front.ce_roles?()},
-      {"bitbucket", FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce_roles?()}
+      {"bitbucket",
+       FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce_roles?()}
     ]
     |> Enum.map(fn
       {name, true} ->

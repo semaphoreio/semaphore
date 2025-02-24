@@ -40,5 +40,5 @@ config :junit_formatter,
 # Print only warnings and errors during test
 config :logger, level: :warn
 
-config :feature_provider,
-  provider: {Scheduler.FeatureHubProvider, []}
+config :scheduler,
+  feature_provider: {Scheduler.FeatureHubProvider, []}

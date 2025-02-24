@@ -37,7 +37,7 @@ defmodule Front.ActivityMonitor.AgentStats do
   @spec load(String.t()) :: t()
   def load(org_id) do
     agent_types =
-      FeatureProvider.list_machines(org_id)
+      FeatureProvider.provide_machines(org_id)
       |> case do
         {:ok, machines} -> Enum.map(machines, &build_agent_type/1)
         _ -> []

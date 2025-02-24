@@ -154,7 +154,9 @@ defmodule FrontWeb.PipelineController do
 
   defp pipeline_data(conn, params) do
     diagram =
-      if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: conn.assigns.organization_id) do
+      if FeatureProvider.feature_enabled?(:toggle_skipped_blocks,
+           param: conn.assigns.organization_id
+         ) do
         conn.assigns.pipeline
         |> Front.WorkflowPage.Diagram.load()
         |> Front.WorkflowPage.Diagram.SkippedBlocks.fold_dependencies()
