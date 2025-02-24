@@ -48,7 +48,7 @@ defmodule Guard.FrontRepo.OrganizationTest do
     end
 
     test "validates restricted usernames" do
-      restricted_usernames = ["admin", "api", "www", "billing"]
+      restricted_usernames = ["testing", "domain1", "www"]
 
       for username <- restricted_usernames do
         changeset = Organization.changeset(%Organization{}, %{username: username})

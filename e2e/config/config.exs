@@ -36,7 +36,7 @@ config :httpoison,
 
 if System.get_env("START_WALLABY") do
   config :wallaby,
-    screenshot_dir: System.get_env("WALLABY_SCREENSHOTS") || "./out",
+    screenshot_dir: System.get_env("WALLABY_SCREENSHOTS") || "./out/screenshots",
     screenshot_on_failure: true,
     driver: Wallaby.Experimental.Chrome,
     chromedriver: System.get_env("CHROMEDRIVER") || "/usr/bin/chromedriver",

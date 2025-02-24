@@ -54,7 +54,7 @@ defmodule Guard.Mixfile do
       {:plug_rails_cookie_session_store, "~> 2.0"},
       {:yaml_elixir, "~> 2.9"},
       {:mox, "~> 1.0", only: [:dev, :test]},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.1"},
+      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.2"},
       {:ex_marshal,
        github: "renderedtext/ex_marshal", ref: "b729808efefb6c61e53b6de13c79c28e2594e97a"},
       {:unplug, "~> 1.0.0"},
@@ -68,7 +68,8 @@ defmodule Guard.Mixfile do
        git: "https://bitbucket.org/semaphoreci/ueberauth_bitbucket.git",
        ref: "e59638a5671721aa0b5eb02217991a39db993c23"},
       {:ueberauth_gitlab_strategy, "~> 0.4"},
-      {:tesla, "~> 1.11"},
+      {:tesla, "~> 1.11.0"},
+      {:castore, "~> 0.1.22"},
       {:joken, "~> 2.5"},
       {:hackney, "~> 1.20"},
       {:argon2_elixir, "~> 4.0"}
