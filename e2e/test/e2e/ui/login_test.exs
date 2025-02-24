@@ -25,7 +25,7 @@ defmodule E2E.UI.LoginTest do
 
       # Visit login page
       login_url = "https://id.#{base_domain}/login"
-      organization_url = "https://#{organization}.#{base_domain}/"
+      landing_page_url = "https://#{organization}.#{base_domain}/get_started/"
 
       Wallaby.Browser.take_screenshot(session)
 
@@ -52,7 +52,7 @@ defmodule E2E.UI.LoginTest do
       # Take screenshot after login
       Wallaby.Browser.take_screenshot(landing_page)
 
-      assert Wallaby.Browser.current_url(landing_page) == organization_url
+      assert Wallaby.Browser.current_url(landing_page) == landing_page_url
     end
   end
 end
