@@ -9,7 +9,7 @@ RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
 RT_PROTOC_IMG_VSN=1.12.3-3.17.3-0.5.4
 
 #
-# Environment variables requires for application to run.
+# Environment variables requires for application/tests to run.
 #
 SESSION_COOKIE_NAME?="_sxtesting_session"
 SESSION_SECRET_KEY_BASE?="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
@@ -39,6 +39,7 @@ LOG_LEVEL?=info
 ROOT_LOGIN?="true"
 ROOT_LOGIN_METHODS?="github"
 DEFAULT_LOGIN_METHOD?="local"
+RESTRICTED_ORG_USERNAMES?="admin,www,billing,api"
 
 CONTAINER_ENV_VARS= \
   -e SESSION_COOKIE_NAME=$(SESSION_COOKIE_NAME) \
@@ -70,6 +71,7 @@ CONTAINER_ENV_VARS= \
   -e DEFAULT_LOGIN_METHOD=$(DEFAULT_LOGIN_METHOD) \
   -e CI=$(CI) \
   -e MIX_ENV=$(MIX_ENV) \
+	-e RESTRICTED_ORG_USERNAMES=$(RESTRICTED_ORG_USERNAMES) \
   -e LOG_LEVEL=$(LOG_LEVEL)
 
 pb.clone:
