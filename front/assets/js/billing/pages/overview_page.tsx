@@ -4,7 +4,7 @@ import * as stores from "../stores";
 import * as components from "../components";
 import * as types from "../types";
 import $ from "jquery";
-import { StateUpdater, useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
+import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -313,7 +313,7 @@ const EditBudget = ({
   budget,
   setBudget,
 }: {
-  setMode: StateUpdater<PaymentDetailModes>;
+  setMode: Dispatch<StateUpdater<PaymentDetailModes>>;
   budget: types.Spendings.Budget;
   setBudget: (b: types.Spendings.Budget) => void;
 }) => {
@@ -467,7 +467,7 @@ const PaymentDetails = ({
   budget,
   plan,
 }: {
-  setMode: StateUpdater<PaymentDetailModes>;
+  setMode: Dispatch<StateUpdater<PaymentDetailModes>>;
   budget: types.Spendings.Budget;
   plan: types.Spendings.Plan;
 }) => {
@@ -572,7 +572,7 @@ const PrepaidPaymentDetails = ({
   budget,
 }: {
   plan: types.Spendings.Plan;
-  setMode: StateUpdater<PaymentDetailModes>;
+  setMode: Dispatch<StateUpdater<PaymentDetailModes>>;
   budget: types.Spendings.Budget;
 }) => {
   return (

@@ -92,11 +92,11 @@ export const SearchFilter = () => {
           {state.currentFilter &&
                         <toolbox.Tooltip
                           anchor={
-                            <div className={`btn btn-secondary flex items-center ph2 br3 br--right`}
+                            <button className={`btn btn-secondary flex items-center ph2 br3 br--right`}
                               disabled={state.currentFilter && state.currentFilter.value === query}
                               onClick={discardChanges}>
                               <span className="material-symbols-outlined">cancel</span>
-                            </div>
+                            </button>
                           }
                           content={
                             <span>Dismiss changes</span>

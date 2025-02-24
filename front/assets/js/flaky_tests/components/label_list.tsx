@@ -141,8 +141,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
   };
 
   return <Tippy placement="right"
-    allowHTML="true"
-    interactive="true"
+    allowHTML={true}
+    interactive={true}
     theme="light"
     trigger="click"
     visible={visible}

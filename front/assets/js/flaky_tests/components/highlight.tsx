@@ -178,7 +178,7 @@ export const Highlight = (props: HighlightProps) => {
       contentEditable="true"
       onInput={handleInput}
       onKeyPress={handleKeyPress}
-      onfocusout={() => props.onSubmit() }
+      onFocusOut={() => props.onSubmit() }
       ref={contentRef}
       className={`language-query ${props.className}`}
     >

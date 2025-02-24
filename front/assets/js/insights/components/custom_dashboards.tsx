@@ -201,10 +201,10 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
 
         <Tippy
           trigger="click"
-          interactive="true"
+          interactive={true}
           theme="light"
           placement="bottom"
-          allowHTML="true"
+          allowHTML={true}
           visible={visible}
           onClickOutside={hideTippy}
           content={

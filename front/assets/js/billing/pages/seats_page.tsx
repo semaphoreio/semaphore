@@ -209,7 +209,7 @@ const SeatItem = ({ seat, lastItem }: { seat: Seats.Seat, lastItem: boolean, }) 
                 <div style="width: 26px;" className="mr2 tc flex justify-center content-center">
                   <toolbox.Asset path={seat.icon} width={`${seat.iconWidth.toString()}`} height={`${seat.iconHeight.toString()}`}/>
                 </div>
-                <span href="#" className="link db dark-gray">{seat.displayName}</span>
+                <span className="link db dark-gray">{seat.displayName}</span>
               </div>
               <div className="w-40-ns tr-ns tnum">{seat.originName()}</div>
             </div>

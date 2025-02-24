@@ -29,7 +29,7 @@ export const Agent = () => {
   if (!selfHostedAgent) return;
 
   const { state: locationState } = useLocation();
-  const targetId = locationState?.targetId as string;
+  const targetId = (locationState as any)?.targetId as string;
 
   useEffect(() => {
     if (state.type && state.type.totalAgentCount === 0) {

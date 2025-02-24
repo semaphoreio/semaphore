@@ -75,8 +75,8 @@ export const Navigation = ({ createDashboard, state }: Props) => {
               </div>
               <Tippy
                 placement="right"
-                allowHTML="true"
-                interactive="true"
+                allowHTML={true}
+                interactive={true}
                 theme="light"
                 trigger="click"
                 visible={visible}

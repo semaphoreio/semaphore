@@ -1,4 +1,5 @@
 import {
+  Dispatch,
   StateUpdater,
   useContext,
   useEffect,
@@ -18,7 +19,7 @@ import { Notice } from "js/notice";
 
 interface NotificationProps {
   signal: boolean;
-  setSignal: StateUpdater<boolean>;
+  setSignal: Dispatch<StateUpdater<boolean>>;
   whenDone: () => void;
 }
 
@@ -309,7 +310,7 @@ export const Notification = (props: NotificationProps) => {
             type="text"
             className="form-control w-100"
             placeholder="e.g. master,prod-*,.*"
-            value={settings?.branches}
+            value={settings?.branches.join(` `)}
             onInput={onBranchesChange}
           />
           <p className="f6 mt1 mb0 nb1">

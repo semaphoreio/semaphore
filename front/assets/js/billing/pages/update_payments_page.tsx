@@ -35,12 +35,12 @@ export const UpdatePaymentsPage = () => {
                 </span>
               }
               anchor={
-                <a
+                <button
                   className="db btn btn-secondary gray cursor-disabled"
                   disabled
                 >
                   Update payment method
-                </a>
+                </button>
               }
             />
           )}

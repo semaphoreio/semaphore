@@ -117,7 +117,6 @@ export const DashboardItemForm = ({ toggle, saveHandler }: Props) => {
         <div className="mb3" hidden={state.metric.length === 0}>
           <label className="db mb1 f6" htmlFor="notes">Description <span className="normal black-60">(optional)</span></label>
           <textarea id="notes" className="w-100 form-control"
-            type="text"
             rows={5}
             cols={30}
             placeholder="This metric is used to measure..."
