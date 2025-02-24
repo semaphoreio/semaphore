@@ -3004,7 +3004,7 @@ blocks:
       jobs:
         - name: Check dependencies
           commands:
-            - make check.ex.deps
+            - make check.ex.deps CHECK_DEPS_OPTS='-i hackney -w feature_provider,definition_validator'
         - name: Check docker resources
           commands:
             - make check.docker

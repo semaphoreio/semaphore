@@ -511,7 +511,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     project = conn.assigns.project
 
     fetch_user = Async.run(fn -> Models.User.find(user_id) end)
-    maybe_cloud_agents = Async.run(fn -> FeatureProvider.provide_machines(org_id) end)
+    maybe_cloud_agents = Async.run(fn -> FeatureProvider.list_machines(param: org_id) end)
     maybe_self_hosted_agents = Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end)
 
     fetch_has_pipeline =

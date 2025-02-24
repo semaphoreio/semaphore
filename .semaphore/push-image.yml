@@ -34,8 +34,6 @@ blocks:
       jobs:
         - name: "Provision deployment image"
           commands:
-            - sudo chmod 600 ~/.ssh/feature_provider_rsa
-            - ssh-add ~/.ssh/feature_provider_rsa
             - make build
             - 'if [ $SEMAPHORE_GIT_BRANCH = "master" ]; then make configure.sign; fi'
             - make gcloud.configure
