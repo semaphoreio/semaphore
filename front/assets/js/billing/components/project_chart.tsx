@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { Spendings } from "../types";
 import * as components from "../components";
 import * as types from "../types";

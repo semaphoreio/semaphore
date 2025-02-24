@@ -6,11 +6,6 @@ module.exports = {
     browser: true,
     es2018: true,
   },
-  settings: {
-    react: {
-      pragma: "h",
-    },
-  },
   extends: "eslint:recommended",
   globals: {
     Atomics: "readonly",

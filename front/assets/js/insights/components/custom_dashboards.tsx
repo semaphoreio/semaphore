@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContext, useLayoutEffect, useState } from 'preact/hooks';
 import { Dashboard, DashboardItem } from '../types/dashboard';

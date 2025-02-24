@@ -12,7 +12,7 @@ import * as types from "./../types";
 import * as toolbox from "js/toolbox";
 import { Headers } from "../network/request";
 import { WebhookSettings } from "../types/webhook_settings";
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";

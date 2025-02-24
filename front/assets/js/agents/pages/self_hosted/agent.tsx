@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";

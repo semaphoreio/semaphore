@@ -1,4 +1,4 @@
-import { Fragment, h, ComponentChildren } from "preact";
+import { Fragment, ComponentChildren } from "preact";
 import { useContext, useEffect, useReducer } from "preact/hooks";
 import { ReportStore, LoadingStore, NavigationStore, UrlStore, FilterStore } from "../stores";
 import { Report } from "../types/report";

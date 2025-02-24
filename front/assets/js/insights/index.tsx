@@ -1,4 +1,4 @@
-import { render, h } from "preact";
+import { render } from "preact";
 import { App, AppConfig } from "./app";
 
 export default function ({ dom, config }: { dom: HTMLElement, config: AppConfig, }) {

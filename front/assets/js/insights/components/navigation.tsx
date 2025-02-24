@@ -1,4 +1,4 @@
-import { h, VNode } from 'preact';
+import { VNode } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 import { NavLink } from 'react-router-dom';
 import * as stores from '../stores';

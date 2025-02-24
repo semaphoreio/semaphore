@@ -1,5 +1,5 @@
 import Popper, { createPopper } from "@popperjs/core";
-import { h, VNode, Fragment } from "preact";
+import { VNode, Fragment } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { define } from "preactement";

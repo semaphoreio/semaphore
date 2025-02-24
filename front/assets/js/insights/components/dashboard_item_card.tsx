@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { DashboardItem } from '../types/dashboard';
 import { InsightsType, typeByMetric } from '../types/insights_type';
 import * as customCharts from './custom_charts';

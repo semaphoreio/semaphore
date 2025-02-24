@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import Tippy from "@tippyjs/react";
 import { useContext, useRef, useState } from "preact/hooks";
 import * as stores from "../stores";

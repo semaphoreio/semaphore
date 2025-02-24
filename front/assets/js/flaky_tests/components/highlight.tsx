@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { h } from "preact";
+
 import Prism from 'prismjs';
 
 import styled from "styled-components";

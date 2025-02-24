@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useContext, useReducer } from "preact/hooks";
 import * as stores from "./stores";
 import * as types from "./types";

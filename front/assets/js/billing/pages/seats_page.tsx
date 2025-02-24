@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { Seats } from "../types";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";

@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
 import * as components from "../../components";

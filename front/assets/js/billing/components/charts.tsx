@@ -1,4 +1,4 @@
-import { Fragment, VNode, createContext, createRef, h } from "preact";
+import { Fragment, VNode, createContext, createRef } from "preact";
 import * as d3 from "d3";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import _ from "lodash";

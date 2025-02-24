@@ -1,4 +1,4 @@
-import { Fragment, VNode, h } from "preact";
+import { Fragment, VNode } from "preact";
 import { Link, useParams } from "react-router-dom";
 import * as stores from "../stores";
 import * as types from "../types";

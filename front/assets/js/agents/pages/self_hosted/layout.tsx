@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { Outlet, useNavigate, useParams } from "react-router-dom";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";

@@ -1,5 +1,5 @@
 import * as plot from '../plot';
-import { cloneElement, Fragment, h, VNode } from 'preact';
+import { cloneElement, Fragment, VNode } from 'preact';
 import { useContext, useState } from "preact/hooks";
 import { useSearchParams } from "react-router-dom";
 import { DashboardItem } from "../../types/dashboard";

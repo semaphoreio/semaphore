@@ -1,4 +1,3 @@
-import { h } from "preact";
 import { HTMLAttributes } from "preact/compat";
 
 export default function ({

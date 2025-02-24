@@ -1,4 +1,4 @@
-import { Fragment, VNode, h } from "preact";
+import { Fragment, VNode } from "preact";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import * as types from "../types";

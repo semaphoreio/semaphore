@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useEffect, useRef, useState } from "preact/hooks";
 import { select } from 'd3-selection';
 import { curveBasis } from 'd3-shape';
@@ -67,7 +67,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
 
       // Add nodes for each block
       workflowData.blocks.forEach((block: any) => {
-        const jobsList = block.task?.jobs?.map((job: any) => 
+        const jobsList = block.task?.jobs?.map((job: any) =>
           `<div class="normal pv1 bt b--lighter-gray">${String(job.name || job.commands?.[0] || `Job`)}</div>`
         ).join(``) || ``;
 

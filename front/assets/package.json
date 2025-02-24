@@ -9,6 +9,9 @@
     "watch": "mocha --reporter min --watch -watch-files **/*.ts .",
     "coverage": "nyc npm run test"
   },
+  "eslintConfig": {
+    "extends": "preact"
+  },
   "dependencies": {
     "@algolia/autocomplete-core": "^1.12.1",
     "@github/hotkey": "^1.3.0",
@@ -76,7 +79,8 @@
     "clean-css-brunch": "2.10.0",
     "esbuild": "^0.24.2",
     "esbuild-runner": "^2.2.1",
-    "eslint": "^8.20.0",
+    "eslint": "^8.57.1",
+    "eslint-config-preact": "^1.5.0",
     "eslint-plugin-react": "^7.30.1",
     "google-charts": "^2.0.0",
     "jsdom": "^16.7.0",

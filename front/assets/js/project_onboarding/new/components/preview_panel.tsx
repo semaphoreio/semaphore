@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
 import { useState, useContext } from "preact/hooks";
 import Editor from '@monaco-editor/react';

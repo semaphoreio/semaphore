@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useContext } from "preact/hooks";
 import { NavLink, useLocation } from "react-router-dom";
 import * as stores from "../stores";

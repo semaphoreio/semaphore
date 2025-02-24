@@ -1,4 +1,4 @@
-import { h, render } from "preact";
+import { render } from "preact";
 import { CreateApp } from "./create";
 import { WorkflowSetupApp } from "./workflow_setup";
 import { BrowserRouter } from "react-router-dom";

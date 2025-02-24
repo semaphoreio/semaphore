@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useContext } from "preact/hooks";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
@@ -139,7 +139,7 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
           <input type="hidden" name="_csrf_token" value={csrfToken}/>
           <input type="hidden" name="type" value="gitlab"/>
           <input type="hidden" name="redirect_to" value={config.redirectToAfterSetup}/>
-          
+
           <div className="mb3">
             <label className="db mb2">Application ID</label>
             <input

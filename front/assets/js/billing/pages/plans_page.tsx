@@ -1,4 +1,4 @@
-import { Fragment, h, VNode } from "preact";
+import { Fragment, VNode } from "preact";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
 import { Plans } from "../types";

@@ -1,4 +1,4 @@
-import { Component, h } from 'preact';
+import { Component } from 'preact';
 import { MutableRef, useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { AutocompletePropGetters, AutocompleteScopeApi, BaseItem, createAutocomplete } from "@algolia/autocomplete-core";
 

@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useRef } from "preact/hooks";
 
 interface PrivateKeyBoxProps {
@@ -27,7 +27,7 @@ export const PrivateKeyBox = ({ value, editUrl }: PrivateKeyBoxProps) => {
 
         formRef.current.appendChild(csrfInput);
 
-   
+
         const fileInput = document.createElement(`textarea`);
         fileInput.name = `pem`;
         fileInput.style.display = `none`;
