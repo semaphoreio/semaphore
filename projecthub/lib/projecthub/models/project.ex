@@ -73,7 +73,7 @@ defmodule Projecthub.Models.Project do
 
     initial_state =
       cond do
-        FeatureProvider.feature_enabled?(:new_project_onboarding, org.id) ->
+        FeatureProvider.feature_enabled?(:new_project_onboarding, param: org.id) ->
           if skip_onboarding, do: StateMachine.skip_onboarding(), else: StateMachine.initial()
 
         true ->

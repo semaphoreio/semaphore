@@ -293,7 +293,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         |> Audit.add(resource_name: project.name)
         |> Audit.log()
 
-        if FeatureProvider.feature_enabled?(:new_project_onboarding, org_id) do
+        if FeatureProvider.feature_enabled?(:new_project_onboarding, param: org_id) do
           conn
           |> json(%{
             check_url: project_onboarding_path(conn, :is_ready, project.name),
@@ -341,7 +341,7 @@ defmodule FrontWeb.ProjectOnboardingController do
 
       fetch_instance_configs =
         Async.run(fn ->
-          if FeatureProvider.feature_enabled?("instance_git_integration", org_id) do
+          if FeatureProvider.feature_enabled?("instance_git_integration", param: org_id) do
             Logger.debug("Fetching integrations")
 
             integrators =
@@ -511,7 +511,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     project = conn.assigns.project
 
     fetch_user = Async.run(fn -> Models.User.find(user_id) end)
-    maybe_cloud_agents = Async.run(fn -> FeatureProvider.list_machines(org_id) end)
+    maybe_cloud_agents = Async.run(fn -> FeatureProvider.list_machines(param: org_id) end)
     maybe_self_hosted_agents = Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end)
 
     fetch_has_pipeline =
@@ -565,7 +565,9 @@ defmodule FrontWeb.ProjectOnboardingController do
     project = conn.assigns.project
 
     next_screen_url =
-      if FeatureProvider.feature_enabled?(:new_project_onboarding, conn.assigns.organization_id) do
+      if FeatureProvider.feature_enabled?(:new_project_onboarding,
+           param: conn.assigns.organization_id
+         ) do
         project_onboarding_path(conn, :onboarding_index, project.name, [""])
       else
         if Front.on_prem?() do
@@ -580,7 +582,9 @@ defmodule FrontWeb.ProjectOnboardingController do
       end
 
     # move to :READY state automatically from onboarding
-    if not FeatureProvider.feature_enabled?(:new_project_onboarding, conn.assigns.organization_id) do
+    if not FeatureProvider.feature_enabled?(:new_project_onboarding,
+         param: conn.assigns.organization_id
+       ) do
       if ReadinessCheck.should_make_ready?(project) do
         Front.Models.Project.finish_onboarding(project.id)
       end
@@ -661,7 +665,7 @@ defmodule FrontWeb.ProjectOnboardingController do
     }
 
     template_content =
-      if FeatureProvider.feature_enabled?(:new_project_onboarding, org_id) do
+      if FeatureProvider.feature_enabled?(:new_project_onboarding, param: org_id) do
         get_pipeline_from_template(params, org_id)
       else
         if valid_template_path?(params["templatePath"]) do
@@ -676,7 +680,7 @@ defmodule FrontWeb.ProjectOnboardingController do
       end
 
     path =
-      if FeatureProvider.feature_enabled?(:new_project_onboarding, org_id) do
+      if FeatureProvider.feature_enabled?(:new_project_onboarding, param: org_id) do
         Map.get(params, "yaml_path", Models.Project.initial_semaphore_yaml_path())
       else
         Models.Project.initial_semaphore_yaml_path()
@@ -705,7 +709,9 @@ defmodule FrontWeb.ProjectOnboardingController do
 
   # sobelow_skip ["Traversal.FileModule"]
   def commit_starter_template(conn, params) do
-    if FeatureProvider.feature_enabled?(:new_project_onboarding, conn.assigns.organization_id) do
+    if FeatureProvider.feature_enabled?(:new_project_onboarding,
+         param: conn.assigns.organization_id
+       ) do
       commit_starter_template_new(conn, params)
     else
       commit_starter_template_old(conn, params)
@@ -932,5 +938,5 @@ defmodule FrontWeb.ProjectOnboardingController do
   defp check_integration_type_result(conn, false, _),
     do: integration_choose_repository_path(conn, nil)
 
-  defp show_bitbucket?(org_id), do: FeatureProvider.feature_enabled?(:bitbucket, org_id)
+  defp show_bitbucket?(org_id), do: FeatureProvider.feature_enabled?(:bitbucket, param: org_id)
 end

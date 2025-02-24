@@ -20,7 +20,7 @@ defmodule Front.Models.AgentType do
 
   @spec list(org_id :: String.t()) :: {:ok, agent_listing()}
   def list(org_id) do
-    FeatureProvider.list_machines(org_id)
+    FeatureProvider.list_machines(param: org_id)
     |> case do
       {:ok, machines} -> machines
       _ -> []

@@ -1,4 +1,4 @@
-<%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
   <svg
     pipeline="<%= @pipeline.id %>"
     nodes="<%= Poison.encode!(nodes(@pipeline.blocks, @conn)) %>"

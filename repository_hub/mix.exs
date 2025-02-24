@@ -62,7 +62,7 @@ defmodule RepositoryHub.MixProject do
       {:broadway_rabbitmq, "~> 0.7"},
       {:tesla, "~> 1.9"},
       {:gun, "~> 2.0.0", override: true},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.1"}
+      {:feature_provider, path: "../feature_provider"}
     ]
   end
 

@@ -7,8 +7,8 @@ defmodule Auth.Application do
 
   def start(_type, _args) do
     port = Application.fetch_env!(:auth, :http_port)
-
-    FeatureProvider.init()
+    provider = Application.fetch_env!(:auth, :feature_provider)
+    FeatureProvider.init(provider)
 
     Logger.info("Starting applicaiton server on localhost:#{port}")
 

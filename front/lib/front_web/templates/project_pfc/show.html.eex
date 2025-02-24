@@ -1,4 +1,4 @@
-<%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_enabled?(:pre_flight_checks, param: @conn.assigns[:organization_id]) do %>
   <%= if @conn.assigns.permissions["project.pre_flight_checks.view"] do %>
     <div>
       <h2 class="f3 f2-m mb0">Pre-flight checks</h2>

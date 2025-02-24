@@ -14,14 +14,14 @@ defmodule Auth.FeatureHubProvider do
     do: "feature_hub/#{org_id}/#{operation}"
 
   @impl FeatureProvider.Provider
-  def list_features(org_id, _opts \\ []) do
+  def provide_features(org_id, _opts \\ []) do
     Auth.Cache.fetch!(cache_key(org_id, "list_organization_features"), :timer.minutes(5), fn ->
       do_list_features(org_id)
     end)
   end
 
   @impl FeatureProvider.Provider
-  def list_machines(org_id, _opts \\ []) do
+  def provide_machines(org_id, _opts \\ []) do
     Auth.Cache.fetch!(cache_key(org_id, "list_organization_machines"), :timer.minutes(5), fn ->
       do_list_machines(org_id)
     end)

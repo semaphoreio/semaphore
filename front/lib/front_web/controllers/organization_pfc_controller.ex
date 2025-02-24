@@ -207,7 +207,7 @@ defmodule FrontWeb.OrganizationPFCController do
 
   defp fetch_model(organization_id),
     do: fn ->
-      if FeatureProvider.feature_enabled?(:pre_flight_checks, organization_id) do
+      if FeatureProvider.feature_enabled?(:pre_flight_checks, param: organization_id) do
         case OrganizationPFC.describe(organization_id) do
           {:ok, model} -> model
           {:error, %{code: :NOT_FOUND}} -> OrganizationPFC.new()

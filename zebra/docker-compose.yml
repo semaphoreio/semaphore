@@ -5,10 +5,10 @@ services:
     container_name: zebra
     image: "${IMAGE:-zebra}:${IMAGE_TAG:-latest}"
     build:
-      context: .
+      context: ..
       cache_from:
         - "${IMAGE:-zebra}:${IMAGE_TAG:-latest}"
-      dockerfile: Dockerfile
+      dockerfile: zebra/Dockerfile
       target: ${DOCKER_BUILD_TARGET:-dev}
       args:
         - MIX_ENV=dev

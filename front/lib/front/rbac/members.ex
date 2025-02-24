@@ -190,7 +190,7 @@ defmodule Front.RBAC.Members do
   end
 
   defp inject_okta_data(members, org_id) do
-    if FeatureProvider.feature_enabled?(:rbac__saml, org_id) do
+    if FeatureProvider.feature_enabled?(:rbac__saml, param: org_id) do
       case Front.Models.OktaIntegration.get_okta_members(org_id) do
         {:ok, user_ids} ->
           members =

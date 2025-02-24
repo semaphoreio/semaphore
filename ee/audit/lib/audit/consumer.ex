@@ -9,7 +9,7 @@ defmodule Audit.Consumer do
     Watchman.benchmark("consumer.process.duration", fn ->
       event = InternalApi.Audit.Event.decode(message)
 
-      if FeatureProvider.feature_enabled?(:audit_logs, event.org_id) do
+      if FeatureProvider.feature_enabled?(:audit_logs, param: event.org_id) do
         {:ok, _event} = process(event)
       end
     end)

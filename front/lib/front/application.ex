@@ -6,7 +6,10 @@ defmodule Front.Application do
 
   def start(_type, _args) do
     Logger.info("Running application in #{Application.get_env(:front, :environment)} environment")
-    FeatureProvider.init()
+
+    provider = Application.fetch_env!(:front, :feature_provider)
+    FeatureProvider.init(provider)
+
     # Disables too verbose logging from amqp supervisors
     :logger.add_primary_filter(
       :ignore_rabbitmq_progress_reports,

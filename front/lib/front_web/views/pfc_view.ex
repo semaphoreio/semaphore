@@ -42,7 +42,7 @@ defmodule FrontWeb.PFCView do
   end
 
   defp default_env(agent_envs, org_id) do
-    if FeatureProvider.feature_enabled?(:expose_cloud_agent_types, org_id),
+    if FeatureProvider.feature_enabled?(:expose_cloud_agent_types, param: org_id),
       do: Enum.find(["LINUX", "MAC"], &Map.has_key?(agent_envs, &1)),
       else: "SELF_HOSTED"
   end

@@ -965,7 +965,7 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp projects_count_quota_reached?(org) do
-    Project.count_in_org(org.id) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, org.id)
+    Project.count_in_org(org.id) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, param: org.id)
   end
 
   defp serialize(project), do: serialize(project, true)
@@ -980,7 +980,7 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp serialize(project, true) do
-    if FeatureProvider.feature_enabled?(:just_run, project.organization_id),
+    if FeatureProvider.feature_enabled?(:just_run, param: project.organization_id),
       do: serialize_detailed_with_tasks(project),
       else: serialize_detailed_with_schedulers(project)
   end

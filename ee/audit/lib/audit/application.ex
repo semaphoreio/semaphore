@@ -6,7 +6,8 @@ defmodule Audit.Application do
   @grpc_port 50_051
 
   def start(_type, _args) do
-    FeatureProvider.init()
+    provider = Application.fetch_env!(:audit, :feature_provider)
+    FeatureProvider.init(provider)
 
     :logger.add_primary_filter(
       :ignore_rabbitmq_progress_reports,

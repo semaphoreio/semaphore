@@ -17,7 +17,7 @@ defmodule Front.FeatureHubProvider do
     do: "feature_hub/#{@cache_version}/#{org_id}/#{operation}"
 
   @impl FeatureProvider.Provider
-  def list_features(org_id, opts \\ []) do
+  def provide_features(org_id, opts \\ []) do
     use_cache? = Keyword.get(opts, :use_cache, true)
 
     if use_cache? do
@@ -30,7 +30,7 @@ defmodule Front.FeatureHubProvider do
   end
 
   @impl FeatureProvider.Provider
-  def list_machines(org_id, opts \\ []) do
+  def provide_machines(org_id, opts \\ []) do
     use_cache? = Keyword.get(opts, :use_cache, true)
 
     if use_cache? do

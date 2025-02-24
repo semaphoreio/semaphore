@@ -7,7 +7,8 @@ defmodule Projecthub.Application do
   def start(_type, _args) do
     env = Application.fetch_env!(:projecthub, :environment)
     port = Application.fetch_env!(:projecthub, :grpc_port)
-    FeatureProvider.init()
+    provider = Application.fetch_env!(:projecthub, :feature_provider)
+    FeatureProvider.init(provider)
 
     Logger.info("Running application in #{env} environment")
 

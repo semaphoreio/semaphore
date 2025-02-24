@@ -88,7 +88,7 @@ defmodule FrontWeb.ProjectForkController do
         |> init_fork(repository, provider)
       else
         redirect_path =
-          if FeatureProvider.feature_enabled?(:new_project_onboarding, org_id) do
+          if FeatureProvider.feature_enabled?(:new_project_onboarding, param: org_id) do
             project_onboarding_path(conn, :index)
           else
             project_onboarding_path(conn, :new)

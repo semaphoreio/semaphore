@@ -507,7 +507,7 @@ defmodule Auth do
         false
 
       org ->
-        FeatureProvider.feature_enabled?(:can_use_api_token_in_ui, org.id)
+        FeatureProvider.feature_enabled?(:can_use_api_token_in_ui, param: org.id)
     end
   end
 
@@ -570,7 +570,7 @@ defmodule Auth do
   defp validate_ip_and_user_client({:ok, user_data} = auth_resp, conn) do
     org = org_from_host(conn) |> find_org()
 
-    if org != nil && FeatureProvider.feature_enabled?(:enforce_cookie_validation, org.id) do
+    if org != nil && FeatureProvider.feature_enabled?(:enforce_cookie_validation, param: org.id) do
       current_request_user_agent = get_req_header(conn, "user-agent") |> List.first()
 
       case to_charlist(user_data.ip_address) |> :inet.parse_address() do

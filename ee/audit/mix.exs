@@ -40,7 +40,7 @@ defmodule Audit.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:poison, "~> 3.1"},
-      {:watchman, github: "renderedtext/ex-watchman", overide: false},
+      {:watchman, github: "renderedtext/ex-watchman"},
       {:jason, "~> 1.1"},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.8"},
@@ -59,7 +59,7 @@ defmodule Audit.MixProject do
       {:csv, "~> 2.3"},
       {:timex, "~> 3.0"},
       {:cachex, "~> 3.2"},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.1.0"},
+      {:feature_provider, path: "../../feature_provider"},
       {:inet_cidr, "~> 1.0.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:junit_formatter, "~> 3.1", only: [:test]}

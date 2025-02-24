@@ -9,7 +9,7 @@
           <% else %>
             <%= link "General", to: settings_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:instance_git_integration, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:instance_git_integration, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ git_integration_path(@conn, :show, []) do %>
               <%= link "Git integration", to: git_integration_path(@conn, :show, []), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
@@ -31,7 +31,7 @@
           <% else %>
             <%= link "Roles", to: roles_path(@conn, :index), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:ip_allow_list, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:ip_allow_list, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ settings_path(@conn, :ip_allow_list) do %>
               <%= link "IP Allow List", to: settings_path(@conn, :ip_allow_list), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
@@ -43,7 +43,7 @@
           <% else %>
             <%= link "Initialization jobs", to: organization_pfc_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:rbac__saml, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:rbac__saml, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ organization_okta_path(@conn, :show) do %>
               <%= link "Okta Integration", to: organization_okta_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
@@ -57,7 +57,7 @@
             <%= link "Contacts", to: organization_contacts_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
           <% end %>
         <% end %>
-        <%= if FeatureProvider.feature_enabled?(:open_id_connect_filter, @conn.assigns[:organization_id]) do %>
+        <%= if FeatureProvider.feature_enabled?(:open_id_connect_filter, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ organization_jwt_config_path(@conn, :show) do %>
               <%= link "OIDC Token", to: organization_jwt_config_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>

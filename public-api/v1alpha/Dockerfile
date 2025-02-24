@@ -20,22 +20,24 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 RUN mix local.hex --force && mix local.rebar --force
 
-WORKDIR /app
+RUN mkdir api
+WORKDIR /app/api
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
-COPY config config
+COPY public-api/v1alpha/mix.exs public-api/v1alpha/mix.lock ./
+COPY public-api/v1alpha/config config
+COPY feature_provider ../../feature_provider
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mix deps.compile
-COPY lib lib
-COPY priv priv
+COPY public-api/v1alpha/lib lib
+COPY public-api/v1alpha/priv priv
 
 # dev stage
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY public-api/v1alpha/.formatter.exs .formatter.exs
+COPY public-api/v1alpha/.credo.exs .credo.exs
+COPY public-api/v1alpha/test test
 
 RUN mix compile
 
@@ -84,7 +86,7 @@ RUN \
 USER "${USER}"
 
 # copy release executables
-COPY --from=builder --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/pipelines_api ./
+COPY --from=builder --chown="${USER}":"${USER}" /app/api/_build/"${MIX_ENV}"/rel/pipelines_api ./
 
 ENTRYPOINT ["bin/pipelines_api"]
 

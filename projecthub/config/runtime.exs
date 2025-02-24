@@ -45,7 +45,7 @@ feature_provider =
     path -> {FeatureProvider.YamlProvider, [yaml_path: path]}
   end
 
-config :feature_provider, :provider, feature_provider
+config :projecthub, :feature_provider, feature_provider
 
 if config_env() == :prod do
   config :projecthub,

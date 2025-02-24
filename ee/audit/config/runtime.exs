@@ -51,7 +51,7 @@ feature_provider =
     _ -> {Audit.FeatureHubProvider, []}
   end
 
-config :feature_provider, :provider, feature_provider
+config :audit, :feature_provider, feature_provider
 
 if config_env() == :prod do
   config :audit, Audit.CredentialsEncryptor,

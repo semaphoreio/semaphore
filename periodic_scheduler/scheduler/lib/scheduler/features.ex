@@ -19,7 +19,7 @@ defmodule Scheduler.FeatureHubProvider do
     do: "#{@namespace}/#{@cache_version}/#{org_id}/#{operation}"
 
   @impl FeatureProvider.Provider
-  def list_features(org_id, opts) do
+  def provide_features(org_id, opts) do
     ttl = Keyword.get(opts, :ttl, :timer.minutes(15))
     cache_key = cache_key(org_id, "list_organization_features")
 
@@ -50,7 +50,7 @@ defmodule Scheduler.FeatureHubProvider do
   end
 
   @impl FeatureProvider.Provider
-  def list_machines(_org_id, _) do
+  def provide_machines(_org_id, _) do
     {:ok, []}
   end
 

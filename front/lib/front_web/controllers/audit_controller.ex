@@ -525,7 +525,7 @@ defmodule FrontWeb.AuditController do
   defp restrict_access(conn, _) do
     org_id = conn.assigns.organization_id
 
-    if FeatureProvider.feature_enabled?(:audit_logs, org_id) do
+    if FeatureProvider.feature_enabled?(:audit_logs, param: org_id) do
       conn
     else
       render_404(conn)
@@ -535,7 +535,7 @@ defmodule FrontWeb.AuditController do
   defp restrict_streaming_access(conn, _) do
     org_id = conn.assigns.organization_id
 
-    if FeatureProvider.feature_enabled?(:audit_streaming, org_id) do
+    if FeatureProvider.feature_enabled?(:audit_streaming, param: org_id) do
       conn
     else
       render_404(conn)

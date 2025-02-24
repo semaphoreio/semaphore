@@ -135,7 +135,7 @@ defmodule FrontWeb.MeController do
     domain = Application.get_env(:front, :domain)
 
     path =
-      if FeatureProvider.feature_enabled?(:new_project_onboarding, org.id) do
+      if FeatureProvider.feature_enabled?(:new_project_onboarding, param: org.id) do
         github_choose_repository_path(conn, :index)
       else
         github_choose_repository_path(conn, :choose_repository)

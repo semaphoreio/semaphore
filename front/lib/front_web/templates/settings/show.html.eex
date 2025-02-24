@@ -7,7 +7,7 @@
         <div class="mb3">
           <%= text_input f, :redirect_path, value: settings_path(@conn, :show), hidden: true %>
           <%= label f, :name, "Name", class: "db b mb1" %>
-          <%= text_input f, :name, class: "form-control w-100 w-50-m #{error_on_org_name_class(@errors)}", 
+          <%= text_input f, :name, class: "form-control w-100 w-50-m #{error_on_org_name_class(@errors)}",
             placeholder: "Enter Name…", value: @organization.name, disabled: !@permissions["organization.general_settings.manage"]
           %>
         </div>
@@ -37,7 +37,7 @@
         </div>
       <% end %>
     </div>
-    <%= if FeatureProvider.feature_enabled?(:multiple_organizations, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:multiple_organizations, param: @conn.assigns[:organization_id]) do %>
       <%= if @permissions["organization.delete"] do %>
         <div class="pt3 bt b--lighter-gray">
           <div class="b">Delete Organization</div>

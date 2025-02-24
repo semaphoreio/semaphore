@@ -22,18 +22,19 @@ RUN mix local.hex --force && mix local.rebar --force
 WORKDIR /app
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
-COPY config config
+COPY secrethub/mix.exs secrethub/mix.lock ./
+COPY secrethub/config config
+COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mix deps.compile
-COPY lib lib
-COPY priv priv
+COPY secrethub/lib lib
+COPY secrethub/priv priv
 
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY secrethub/.formatter.exs .formatter.exs
+COPY secrethub/.credo.exs .credo.exs
+COPY secrethub/test test
 
 RUN mix sentry_recompile && mix compile
 
@@ -67,11 +68,9 @@ RUN addgroup -S "${USER}" && adduser -D -S "${USER}" -G "${USER}" && chown -R ${
 # run as user
 USER "${USER}"
 
-# copy release executables
+# copy release executables and migrations
 COPY --from=builder --chown="${USER}":"${USER}" /app/_build/${BUILD_ENV}/rel/secrethub ./
-
-# copy migrations
-COPY priv/repo/migrations priv/repo/migrations
+COPY --from=builder --chown="${USER}":"${USER}" /app/priv/repo/migrations priv/repo/migrations
 
 ENTRYPOINT ["bin/secrethub"]
 

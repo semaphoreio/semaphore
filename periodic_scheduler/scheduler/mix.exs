@@ -57,7 +57,7 @@ defmodule Scheduler.Mixfile do
       {:watchman, github: "renderedtext/ex-watchman"},
       {:log_tee, github: "renderedtext/log-tee"},
       {:tackle, github: "renderedtext/ex-tackle"},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.1.0"},
+      {:feature_provider, path: "../../feature_provider"},
       # development dependencies
       {:ex_doc, "~> 0.19", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},

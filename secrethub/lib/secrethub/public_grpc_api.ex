@@ -100,7 +100,7 @@ defmodule Secrethub.PublicGrpcApi do
   def update_secret(req, call) do
     {org_id, user_id} = call |> extract_headers
 
-    updateable? = FeatureProvider.feature_enabled?(:secrets_exposed_content, org_id)
+    updateable? = FeatureProvider.feature_enabled?(:secrets_exposed_content, param: org_id)
 
     id_or_name = req.secret_id_or_name
 
@@ -208,7 +208,7 @@ defmodule Secrethub.PublicGrpcApi do
     alias Semaphore.Secrets.V1beta.Secret
 
     org_config = maybe_serialize_org_config(secret, org_id)
-    render_content = FeatureProvider.feature_enabled?(:secrets_exposed_content, org_id)
+    render_content = FeatureProvider.feature_enabled?(:secrets_exposed_content, param: org_id)
     content = secret.content
 
     Secret.new(
@@ -253,7 +253,7 @@ defmodule Secrethub.PublicGrpcApi do
   defp _serialize_data_content_render(false), do: fn _content -> "" end
 
   defp maybe_serialize_org_config(secret, org_id) do
-    if FeatureProvider.feature_enabled?(:secrets_access_policy, org_id) do
+    if FeatureProvider.feature_enabled?(:secrets_access_policy, param: org_id) do
       serialize_org_config(secret, org_id)
     else
       nil
@@ -272,7 +272,7 @@ defmodule Secrethub.PublicGrpcApi do
   defp filter_on_feature_flag(nil, _org_id), do: nil
 
   defp filter_on_feature_flag(secret, org_id) do
-    if FeatureProvider.feature_enabled?(:secrets_access_policy, org_id) do
+    if FeatureProvider.feature_enabled?(:secrets_access_policy, param: org_id) do
       secret
       |> Map.take(~w(projects_access project_ids debug_access attach_access)a)
     else
