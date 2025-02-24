@@ -164,12 +164,12 @@ defmodule Guard.Store.Organization do
   end
 
   defp all_fields_empty?(%{name: name, email: email, phone: phone}) do
-    is_empty?(name) and is_empty?(email) and is_empty?(phone)
+    empty?(name) and empty?(email) and empty?(phone)
   end
 
-  defp is_empty?(nil), do: true
-  defp is_empty?(""), do: true
-  defp is_empty?(_), do: false
+  defp empty?(nil), do: true
+  defp empty?(""), do: true
+  defp empty?(_), do: false
 
   @doc """
   Modifies organization settings by merging new settings with existing ones.
@@ -179,7 +179,7 @@ defmodule Guard.Store.Organization do
     new_settings =
       (organization.settings || %{})
       |> Map.merge(settings)
-      |> Enum.reject(fn {_key, value} -> is_empty?(value) end)
+      |> Enum.reject(fn {_key, value} -> empty?(value) end)
       |> Map.new()
 
     organization
