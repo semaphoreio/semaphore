@@ -80,7 +80,7 @@ CHECK_DEPS_EXTRA_OPTS?=""
 # On local machines, we execute them inside of a Ruby Docker container.
 #
 SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
-check.code: check.prepare
+check.code:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
@@ -91,16 +91,16 @@ else
 	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
 endif
 
-check.ex.code: check.prepare
+check.ex.code:
 	$(MAKE) check.code LANGUAGE=elixir
 
-check.go.code: check.prepare
+check.go.code:
 	$(MAKE) check.code LANGUAGE=go
 
 check.js.code:
 	$(MAKE) check.code LANGUAGE=js
 
-check.deps: check.prepare
+check.deps:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
@@ -111,16 +111,16 @@ else
 	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
 endif
 
-check.ex.deps: check.prepare
+check.ex.deps:
 	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
 
-check.go.deps: check.prepare
+check.go.deps:
 	$(MAKE) check.deps LANGUAGE=go
 
 check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
-check.docker: check.prepare build
+check.docker:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
