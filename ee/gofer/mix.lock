@@ -16,7 +16,7 @@
   "eternal": {:hex, :eternal, "1.2.2", "d1641c86368de99375b98d183042dd6c2b234262b8d08dfd72b9eeaafc2a1abd", [:mix], [], "hexpm", "2c9fe32b9c3726703ba5e1d43a1d255a4f3f2d8f8f9bc19f094c7cb1a7a9e782"},
   "file_system": {:hex, :file_system, "0.2.10", "fb082005a9cd1711c05b5248710f8826b02d7d1784e7c3451f9c1231d4fc162d", [:mix], [], "hexpm", "41195edbfb562a593726eda3b3e8b103a309b733ad25f3d642ba49696bf715dc"},
   "grpc": {:hex, :grpc, "0.5.0", "a44cb306625a52fa31a2189ce91b40d24e82569568f0cc214c1e1e0faf54f58a", [:mix], [{:cowboy, "~> 2.9", [hex: :cowboy, repo: "hexpm", optional: false]}, {:cowlib, "~> 2.11", [hex: :cowlib, repo: "hexpm", optional: false]}, {:gun, "~> 2.0.1", [hex: :grpc_gun, repo: "hexpm", optional: false]}], "hexpm", "17b98593fdb1a65be7b2722821266627b3f2fba29bbbd7d0945389427c0d0d5f"},
-  "grpc_mock": {:git, "https://github.com/renderedtext/grpc-mock.git", "6e07ae8d1cda90af54f2f886cc47a176a65e8345", []},
+  "grpc_mock": {:git, "https://github.com/renderedtext/grpc-mock.git", "5482b315cff39f5b9b49106ec9ef9ea57a4c6849", []},
   "gun": {:hex, :grpc_gun, "2.0.1", "221b792df3a93e8fead96f697cbaf920120deacced85c6cd3329d2e67f0871f8", [:rebar3], [{:cowlib, "~> 2.11", [hex: :cowlib, repo: "hexpm", optional: false]}], "hexpm", "795a65eb9d0ba16697e6b0e1886009ce024799e43bb42753f0c59b029f592831"},
   "jason": {:hex, :jason, "1.3.0", "fa6b82a934feb176263ad2df0dbd91bf633d4a46ebfdffea0c8ae82953714946", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "53fc1f51255390e0ec7e50f9cb41e751c260d065dcba2bf0d08dc51a4002c2ac"},
   "jumper": {:hex, :jumper, "1.0.1", "3c00542ef1a83532b72269fab9f0f0c82bf23a35e27d278bfd9ed0865cecabff", [:mix], [], "hexpm", "318c59078ac220e966d27af3646026db9b5a5e6703cb2aa3e26bcfaba65b7433"},
