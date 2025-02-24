@@ -33,7 +33,7 @@ COPY ee/audit/config config
 COPY ee/audit/lib lib
 COPY ee/audit/priv/repo/migrations priv/repo/migrations
 COPY feature_provider ../../feature_provider
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 #
 # Dev stage

@@ -27,7 +27,7 @@ WORKDIR /app
 COPY github_notifier/mix.* ./
 COPY github_notifier/config config
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 COPY github_notifier/lib lib
 

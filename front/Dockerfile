@@ -32,7 +32,7 @@ RUN mix local.hex --force \
     && mix local.rebar --force
 COPY front/mix.* ./
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 COPY front/config config
 COPY front/priv priv

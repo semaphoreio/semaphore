@@ -28,7 +28,7 @@ COPY zebra/mix.exs .
 COPY zebra/mix.lock .
 COPY zebra/config config
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 WORKDIR /app
 
