@@ -17,6 +17,8 @@ config :watchman,
   send_only: metric_channel,
   external_backend: metrics_format
 
+config :guard, :restricted_org_usernames, System.get_env("RESTRICTED_ORG_USERNAMES", "")
+
 config :guard, Guard.Repo,
   adapter: Ecto.Adapters.Postgres,
   database: System.get_env("POSTGRES_DB_NAME") || "guard",
