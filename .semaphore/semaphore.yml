@@ -1917,7 +1917,6 @@ blocks:
           - checkout && cd ee/pre_flight_checks
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"

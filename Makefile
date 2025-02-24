@@ -72,6 +72,7 @@ endif
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
 CHECK_DEPS_EXTRA_OPTS?=""
+ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 #
 # Security checks
@@ -83,12 +84,12 @@ SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
 check.code:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
 endif
 
 check.ex.code:
@@ -103,12 +104,12 @@ check.js.code:
 check.deps:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
 endif
 
 check.ex.deps:
@@ -123,13 +124,13 @@ check.js.deps:
 check.docker:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) $(CHECK_DOCKER_OPTS)'
 else
 	# ruby version is set in prologue
-	$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+	$(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
 endif
 
 #
@@ -235,8 +236,6 @@ encryptor.run:
 #
 # Operations for docker images on GCR
 #
-
-ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 configure.sign:
 	echo $${SEMAPHORE_OIDC_TOKEN} > /tmp/oidc_token && \
 	gcloud iam workload-identity-pools create-cred-config projects/$$GCP_PROJECT_ID/locations/global/workloadIdentityPools/$$GCP_OIDC_POOL_ID/providers/$$GCP_OIDC_PROVIDER_ID \
