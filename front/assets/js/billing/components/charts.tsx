@@ -126,7 +126,7 @@ export const Plot = (props: PlotProps) => {
     if(tooltip.focus)
       return;
     const x = d3.pointer(e)[0];
-    let date = plotState.xScale.invert(x + 15) ;
+    let date = plotState.xScale.invert(x + 15);
     date = moment(date).startOf(`day`).toDate();
     if(!moment(date).isSameOrBefore(moment())) {
       return;
@@ -506,7 +506,7 @@ export const StackedBar = (props: ChartProps) => {
 
     const mouseover = function() {
       if(tooltip.focus || hasMetricSelected)
-        return ;
+        return;
       // @ts-expect-error - d3 types are wrong
       const detailName = d3.select(this.parentNode).datum().key as string;
 
@@ -516,7 +516,7 @@ export const StackedBar = (props: ChartProps) => {
 
     const mouseleave = function() {
       if(tooltip.focus || hasMetricSelected)
-        return ;
+        return;
 
       tooltipDispatch({ type: `SET_DETAIL_NAME`, value: null });
     };
