@@ -8,7 +8,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilter do
   @aws_tags_claim "https://aws.amazon.com/tags"
 
   def filter_enabled?(org_id),
-    do: FeatureProvider.feature_enabled?(:open_id_connect_filter, org_id)
+    do: FeatureProvider.feature_enabled?(:open_id_connect_filter, param: org_id)
 
   @doc """
   Filters JWT claims based on organization or project settings.

@@ -56,7 +56,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
   @algo "RS256"
 
   def claims(org_id) do
-    if FeatureProvider.feature_enabled?(:open_id_connect_aws_tags, org_id) do
+    if FeatureProvider.feature_enabled?(:open_id_connect_aws_tags, param: org_id) do
       # This is helpful when using the OIDC token to create a temporary AWS session.
       # See: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_session-tags.html#id_session-tags_adding-assume-role-idp
       @claims ++
@@ -118,7 +118,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
     }
 
     claims =
-      if FeatureProvider.feature_enabled?(:open_id_connect_aws_tags, req.org_id) do
+      if FeatureProvider.feature_enabled?(:open_id_connect_aws_tags, param: req.org_id) do
         common_claims
         |> Map.put(@aws_tags_claim, %{
           "principal_tags" => %{

@@ -68,4 +68,4 @@ feature_provider =
     path -> {FeatureProvider.YamlProvider, [yaml_path: path]}
   end
 
-config :feature_provider, :provider, feature_provider
+config :secrethub, :feature_provider, feature_provider

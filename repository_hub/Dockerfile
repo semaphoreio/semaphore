@@ -27,10 +27,11 @@ RUN mix local.hex --force --if-missing && \
 
 WORKDIR /app
 
-COPY mix.* ./
-COPY config config
-COPY lib lib
-COPY priv priv
+COPY repository_hub/mix.* ./
+COPY repository_hub/config config
+COPY repository_hub/lib lib
+COPY repository_hub/priv priv
+COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix do deps.get, deps.compile
 
 #
@@ -38,9 +39,9 @@ RUN --mount=type=ssh mix do deps.get, deps.compile
 #
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY repository_hub/.formatter.exs .formatter.exs
+COPY repository_hub/.credo.exs .credo.exs
+COPY repository_hub/test test
 
 RUN mix compile
 

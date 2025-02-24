@@ -59,7 +59,7 @@ defmodule Secrethub.Mixfile do
       ### linting
       {:credo, "~> 1.6.5", only: [:dev, :test]},
       {:mock, "~> 0.3.0", only: :test},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.1.0"}
+      {:feature_provider, path: "../feature_provider"}
     ]
   end
 

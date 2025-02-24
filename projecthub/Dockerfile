@@ -30,7 +30,7 @@ RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
 # install mix dependencies
-COPY projecthub/mix.exs mix.lock ./
+COPY projecthub/mix.exs projecthub/mix.lock ./
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mkdir config
 

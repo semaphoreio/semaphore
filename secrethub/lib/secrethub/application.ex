@@ -26,7 +26,9 @@ defmodule Secrethub.Application do
     stub_external_grpc_apis()
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
-    FeatureProvider.init()
+
+    provider = Application.fetch_env!(:secrethub, :feature_provider)
+    FeatureProvider.init(provider)
 
     children = [
       {Secrethub.Repo, []},

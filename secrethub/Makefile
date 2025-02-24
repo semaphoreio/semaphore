@@ -2,6 +2,7 @@ export MIX_ENV?=dev
 
 include ../Makefile
 
+DOCKER_BUILD_PATH=..
 APP_NAME=secrethub
 TMP_REPO_DIR=/tmp/internal_api
 INTERNAL_API_BRANCH ?= master
