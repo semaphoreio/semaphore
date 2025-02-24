@@ -43,7 +43,7 @@
   "ranch_proxy_protocol": {:hex, :ranch_proxy_protocol, "2.1.1", "3c4723327166d2d63c0405f4914e2e471c6de362cc844e9b203af5763e7c9d25", [:rebar3], [{:ranch, "1.6.2", [hex: :ranch, repo: "hexpm", optional: false]}], "hexpm", "5f33c9910c828322b57b6abfeb3ec3e2d541dd339eca74ff00c3c44ac7cb071e"},
   "recon": {:hex, :recon, "2.5.1", "430ffa60685ac1efdfb1fe4c97b8767c92d0d92e6e7c3e8621559ba77598678a", [:mix, :rebar3], [], "hexpm", "5721c6b6d50122d8f68cccac712caa1231f97894bab779eff5ff0f886cb44648"},
   "sentry": {:hex, :sentry, "8.0.6", "c8de1bf0523bc120ec37d596c55260901029ecb0994e7075b0973328779ceef7", [:mix], [{:hackney, "~> 1.8", [hex: :hackney, repo: "hexpm", optional: true]}, {:jason, "~> 1.1", [hex: :jason, repo: "hexpm", optional: true]}, {:plug, "~> 1.6", [hex: :plug, repo: "hexpm", optional: true]}, {:plug_cowboy, "~> 2.3", [hex: :plug_cowboy, repo: "hexpm", optional: true]}], "hexpm", "051a2d0472162f3137787c7c9d6e6e4ef239de9329c8c45b1f1bf1e9379e1883"},
-  "sentry_grpc": {:git, "https://github.com/renderedtext/sentry_grpc.git", "6879a067b22814984591dce62578222d596a0acd", []},
+  "sentry_grpc": {:git, "https://github.com/renderedtext/sentry_grpc.git", "e279d35c2512d3f5cedb7c57602ab45a9854adbd", []},
   "sleeplocks": {:hex, :sleeplocks, "1.1.1", "3d462a0639a6ef36cc75d6038b7393ae537ab394641beb59830a1b8271faeed3", [:rebar3], [], "hexpm", "84ee37aeff4d0d92b290fff986d6a95ac5eedf9b383fadfd1d88e9b84a1c02e1"},
   "ssl_verify_fun": {:hex, :ssl_verify_fun, "1.1.6", "cf344f5692c82d2cd7554f5ec8fd961548d4fd09e7d22f5b62482e5aeaebd4b0", [:make, :mix, :rebar3], [], "hexpm", "bdb0d2471f453c88ff3908e7686f86f9be327d065cc1ec16fa4540197ea04680"},
   "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "403623f9be6919998fea6871f34aa07ff2655c49", []},
