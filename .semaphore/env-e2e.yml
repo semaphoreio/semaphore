@@ -29,12 +29,16 @@ blocks:
       jobs:
         - name: E2E tests - API
           commands:
-            - sem-version elixir 1.14
+            - sem-version elixir 1.18
             - export TEST_RESULTS_NAME="E2E API Tests"
             - make test
         - name: E2E tests - UI
           commands:
             - sudo apt update && sudo apt install -y chromium-browser
-            - sem-version elixir 1.14
+            - sem-version elixir 1.18
             - export TEST_RESULTS_NAME="E2E UI Tests"
             - make test.ui
+      epilogue:
+        on_fail:
+          commands:
+            - artifact push job ./out/screenshots -e 1w
