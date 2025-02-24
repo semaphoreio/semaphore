@@ -418,6 +418,8 @@ defmodule Rbac.GrpcServers.RbacServer do
       %RoleAssignment{} = role ->
         RoleAssignment.delete(role)
 
+        Rbac.Events.publish("role_retracted", subject_id, org_id)
+
       _ ->
         grpc_error!(
           :permission_denied,
@@ -441,6 +443,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     case ProjectAssignment.get_by_user_and_project_id(subject_id, project_id) do
       %ProjectAssignment{} = project_assignment ->
         ProjectAssignment.delete(project_assignment)
+        Rbac.Events.publish("role_retracted", subject_id, org_id, project_id)
 
       _ ->
         :ok
@@ -455,6 +458,7 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
 
     RoleAssignment.create_or_update(%{org_id: org_id, user_id: subject_id, role_id: role_id})
+    Rbac.Events.publish("role_assigned", subject_id, org_id)
   end
 
   defp handle_delete_role_assignment(org_id, subject_id) do
@@ -474,6 +478,8 @@ defmodule Rbac.GrpcServers.RbacServer do
               project_id: project_id,
               user_id: subject_id
             })
+
+            Rbac.Events.publish("role_assigned", subject_id, org_id, project_id)
           end
         end
 
