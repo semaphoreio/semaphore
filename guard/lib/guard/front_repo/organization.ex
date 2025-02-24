@@ -27,28 +27,6 @@ defmodule Guard.FrontRepo.Organization do
   end
 
   @username_regexp ~r/\A(?!-)[a-z0-9\-]{3,}\z/
-  @restricted_usernames MapSet.new(~w(
-    admin me id get cachehub job-callback-broker s2-job-callback-broker
-    hooks migrate api a aphqiwl8oanq38lwc7w6 api-v2-specs beta-object-store
-    billing www cache community1-production communitys1-staging dash docs
-    elk em email gcp-prod-log-mediator gfs grafana imagecloud-production
-    imagecloud-staging insights-receiver internal-api job-proxy
-    job-scheduling-metric log-mediator log1-production log1s1-staging
-    log1s1-test log1s3-staging log2-production log3-production logs
-    logstash method metric-server metrics new-logs nsa object-store
-    pro-community-web pro-ex-job-logs pro-semaphore-api pro-semaphore
-    pro1-semaphore prod-job-callback-broker prod-object-store
-    prod-standalone-pages redis1log-production-private redis1log-production
-    registry roadmap rubygems support status statsd stg1-artifacts
-    stg1-blanket stg1-community-web stg1-ex-job-logs stg1-insights-receiver
-    stg1-insights stg1-job-callback-broker stg1-job-pool stg1-job-runner-pool
-    stg1-log-mediator stg1-nsa stg1-object-store stg1-semaphore-api
-    stg1-semaphore stg1-standalone-pages stg2-job-callback-broker
-    stg2-object-store stg2-semaphore-api stg2-semaphore stg2-standalone-pages
-    stg3-job-callback-broker stg3-semaphore-api stg3-semaphore
-    stg3-standalone-pages stg4-job-callback-broker stg4-semaphore-api
-    stg4-semaphore stg4-standalone-pages stg5-semaphore stg6-semaphore tb
-  ))
 
   @doc false
   def changeset(organization, attrs) do
@@ -96,11 +74,18 @@ defmodule Guard.FrontRepo.Organization do
   defp validate_restricted_username(changeset) do
     username = Ecto.Changeset.get_field(changeset, :username)
 
-    if username && MapSet.member?(@restricted_usernames, username) do
+    if username && MapSet.member?(restricted_org_usernames(), username) do
       Ecto.Changeset.add_error(changeset, :username, "Already taken")
     else
       changeset
     end
+  end
+
+  defp restricted_org_usernames do
+    Application.get_env(:guard, :restricted_org_usernames, "")
+    |> String.split(",")
+    |> Enum.map(&String.trim/1)
+    |> MapSet.new()
   end
 
   defp validate_ip_allow_list(changeset) do

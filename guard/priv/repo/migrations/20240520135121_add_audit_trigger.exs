@@ -64,8 +64,4 @@ defmodule Guard.Repo.Migrations.AddAuditTrigger do
   defp remove_audit_function, do: """
     DROP FUNCTION audit_global_permissions();
   """
-
-  defp remove_uuid_v4_extension, do: """
-    DROP EXTENSION IF EXISTS "uuid-ossp";
-  """
 end
