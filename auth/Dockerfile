@@ -20,21 +20,22 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
 WORKDIR /app
 
-COPY mix.* ./
-COPY config config
+COPY auth/mix.* ./
+COPY auth/config config
 RUN --mount=type=ssh mix deps.get 
 RUN mix deps.compile
 
-COPY lib lib
+COPY auth/lib lib
+COPY feature_provider ../feature_provider
 
 FROM base AS dev
 
 RUN apk add --no-cache \
     inotify-tools bash make busybox gnupg openssh-client
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY auth/.formatter.exs .formatter.exs
+COPY auth/.credo.exs .credo.exs
+COPY auth/test test
 
 RUN mix compile
 
