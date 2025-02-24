@@ -1,7 +1,7 @@
-
+import { h } from "preact";
 import * as toolbox from "js/toolbox";
 import { useState } from "preact/hooks";
-import dedent from "dedent-js";
+import dedent from "dedent";
 
 interface PreCopyProps extends h.JSX.HTMLAttributes {
   content: string;

@@ -1,5 +1,4 @@
-
-
+import { h } from "preact";
 interface CodeProps extends h.JSX.HTMLAttributes {
   content: string;
 }

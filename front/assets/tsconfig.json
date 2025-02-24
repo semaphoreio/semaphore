@@ -1,34 +1,37 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "baseUrl": "./",
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "allowJs": true,
     "removeComments": true,
     "preserveConstEnums": true,
     "esModuleInterop": true,
     "sourceMap": true,
+    "typeRoots": [
+      "./node_modules/@types",
+      "./js/custom_types"
+    ],
+    /* Preact Config */
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "skipLibCheck": true,
-    "baseUrl": "./",
-    "target": "es2018",
     "paths": {
       "react": [
         "./node_modules/preact/compat/"
-      ],
-      "react/jsx-runtime": [
-        "./node_modules/preact/jsx-runtime"
       ],
       "react-dom": [
         "./node_modules/preact/compat/"
       ],
       "react-dom/*": [
         "./node_modules/preact/compat/*"
-      ]
-    },
-    "typeRoots": [
-      "./node_modules/preact/compat/",
-      "./node_modules/@types",
-      "./js/custom_types"
-    ]
+      ],
+      "react/jsx-runtime": [
+        "./node_modules/preact/jsx-runtime"
+      ],
+    }
   },
   // This is necessary for now. Otherwise eslint will complain about the js configuration files format.
   "include": [

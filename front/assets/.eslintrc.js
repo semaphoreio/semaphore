@@ -4,7 +4,7 @@
 module.exports = {
   env: {
     browser: true,
-    es2018: true,
+    es2020: true,
   },
   extends: "eslint:recommended",
   globals: {
@@ -20,13 +20,13 @@ module.exports = {
     mixpanel: "readonly",
   },
   parserOptions: {
-    ecmaVersion: 2018,
+    ecmaVersion: 2020,
     tsconfigRootDir: __dirname,
     sourceType: "module",
   },
   ignorePatterns: ["*.js", "*.json"],
   rules: {},
-  overrides: [
+ overrides: [
     {
       files: ["js/**/*.spec.js"],
       env: {
@@ -101,6 +101,7 @@ module.exports = {
             },
           },
         ],
+        "semi-spacing": ["error", {"before": false, "after": true}],
         "react/jsx-uses-react": "off",
         "react/react-in-jsx-scope": "off",
         "react/display-name": "off",

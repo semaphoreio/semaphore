@@ -497,7 +497,6 @@ export const StackedBar = (props: ChartProps) => {
     const stackGen = d3.stack()
       .keys(keys)
       .value((obj, key: string) => {
-        // @ts-expect-error - d3 types are wrong
         return obj.details[key] as number;
       });
 

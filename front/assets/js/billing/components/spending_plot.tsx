@@ -337,7 +337,6 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
     const stackGen = d3.stack()
       .keys(keys)
       .value((obj, key: string) => {
-        // @ts-expect-error - d3 types are wrong
         return obj.values[key] as number;
       });
 

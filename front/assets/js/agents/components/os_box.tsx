@@ -1,5 +1,5 @@
 import * as toolbox from "js/toolbox";
-import { VNode } from "preact";
+import { VNode, h } from "preact";
 interface OsBoxProps extends h.JSX.HTMLAttributes {
   name: string;
   icon?: string;
