@@ -1,0 +1,14 @@
+version: '3.6'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    command: /bin/sh -c "while sleep 1000; do :; done"
+    tty: true
+    volumes:
+      - .:/app:delegated
+
+    environment:
+      MIX_ENV: "test"
