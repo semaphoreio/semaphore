@@ -242,13 +242,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd auth
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -264,13 +260,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd auth
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:

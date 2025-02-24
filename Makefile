@@ -124,7 +124,7 @@ else
 endif
 
 check.ex.deps: check.prepare
-	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney"
+	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney -w feature_provider"
 
 check.go.deps: check.prepare
 	$(MAKE) check.deps LANGUAGE=go
