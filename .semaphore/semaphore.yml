@@ -3263,7 +3263,7 @@ blocks:
         - name: "\U0001F9EA Test"
           commands:
             - export TEST_RESULTS_NAME="APIv2 Tests"
-            - make test
+            - make test.ex
           parallelism: 2
   # Periodic scheduler
   - name: "Periodic scheduler: Security checks"
@@ -3284,7 +3284,7 @@ blocks:
       jobs:
         - name: Check dependencies
           commands:
-            - make check.ex.deps CHECK_DEPS_OPTS='-i hackney -w feature_provider,definition_validator'
+            - make check.ex.deps
         - name: Check docker resources
           commands:
             - make check.docker

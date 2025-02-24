@@ -3,6 +3,7 @@ export MIX_ENV?=dev
 include ../../Makefile
 
 DOCKER_BUILD_PATH=../..
+OUT_VOLUME=$(PWD)/out:/app/audit/out
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api

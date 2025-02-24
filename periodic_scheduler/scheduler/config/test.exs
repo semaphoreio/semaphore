@@ -31,7 +31,7 @@ config :watchman,
   prefix: "periodic-sch.test"
 
 config :junit_formatter,
-  report_dir: ".",
+  report_dir: "./out",
   report_file: "test-results.xml",
   print_report_file: true,
   include_filename?: true,

@@ -3,6 +3,7 @@ export MIX_ENV ?= dev
 include ../../Makefile
 
 DOCKER_BUILD_PATH=../..
+OUT_VOLUME=$(PWD)/out:/app/scheduler/out
 SHELL := /bin/bash
 
 APP_NAME := periodic-scheduler
@@ -10,6 +11,8 @@ APP_NAME := periodic-scheduler
 INTERNAL_API_TMP_DIR ?= /tmp/internal_api
 INTERNAL_API_BRANCH ?= master
 PROTOC_IMAGE_TAG ?= 1.12.1-3.20.3-0.11.0
+
+CHECK_DEPS_EXTRA_OPTS=-w feature_provider,definition_validator
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)

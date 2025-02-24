@@ -3,6 +3,7 @@ export MIX_ENV?=dev
 include ../../Makefile
 
 DOCKER_BUILD_PATH=../..
+OUT_VOLUME=$(PWD)/out:/app/api/out
 APP_NAME=public_api
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
