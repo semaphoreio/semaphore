@@ -28,7 +28,7 @@ defmodule FrontWeb.DashboardController do
 
         "organization-health" ->
           enabled? =
-            FeatureProvider.feature_enabled?(:organization_health, conn.assigns.organization_id)
+            FeatureProvider.feature_enabled?(:organization_health, param: conn.assigns.organization_id)
 
           if enabled? do
             conn
@@ -60,7 +60,7 @@ defmodule FrontWeb.DashboardController do
     dashboard_selected? = String.length(conn.params["dashboard"] || "") > 0
 
     get_started_enabled? =
-      FeatureProvider.feature_enabled?(:get_started, conn.assigns.organization_id)
+      FeatureProvider.feature_enabled?(:get_started, param: conn.assigns.organization_id)
 
     if get_started_enabled? and not dashboard_selected? do
       learn = Front.Onboarding.Learn.load(conn.assigns.organization_id, conn.assigns.user_id)

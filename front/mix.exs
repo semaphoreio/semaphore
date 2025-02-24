@@ -72,7 +72,7 @@ defmodule Front.Mixfile do
       {:excoveralls, "~> 0.10", only: :test},
       {:stream_data, "~> 0.5", only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.1.2"},
+      {:feature_provider, path: "../feature_provider"},
       # since ex_crypto's maintainer didn't release the version for OTP 24, we're using the git ref
       {:ex_crypto, github: "ntrepid8/ex_crypto", ref: "0997a1aaebe701523c0a9b71d4acec4a1819354e"},
       {:money, "~> 1.12.4"},

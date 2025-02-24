@@ -9,7 +9,9 @@ defmodule Scheduler.Application do
   def start(_type, _args) do
     Application.stop(:watchman)
     Application.ensure_all_started(:watchman)
-    FeatureProvider.init()
+
+    provider = Application.fetch_env!(:scheduler, :feature_provider)
+    FeatureProvider.init(provider)
 
     opts = [strategy: :one_for_one, name: Scheduler.Supervisor]
     get_env() |> children() |> Supervisor.start_link(opts)

@@ -1,6 +1,6 @@
 <div class="relative">
   <div class="absolute flex top-0 right-0 nt3 z-2">
-    <%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: @conn.assigns[:organization_id]) do %>
       <div class="bg-white ph2 nr2 nb2">
         <input type="checkbox" name="showSkippedBlocks" class="dn" />
         <button class="btn btn-secondary" name="toggleSkippedBlocks">

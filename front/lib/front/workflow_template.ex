@@ -5,7 +5,7 @@ defmodule Front.WorkflowTemplate do
   """
 
   def simple(org_id) do
-    new_project_onboarding? = FeatureProvider.feature_enabled?(:new_project_onboarding, org_id)
+    new_project_onboarding? = FeatureProvider.feature_enabled?(:new_project_onboarding, param: org_id)
 
     templates_path =
       if new_project_onboarding? do

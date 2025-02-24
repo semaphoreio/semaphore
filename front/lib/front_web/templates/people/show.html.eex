@@ -17,7 +17,7 @@
       <% end %>
       <% end %>
 
-      <%= if FeatureProvider.feature_enabled?(:email_members, @conn.assigns[:organization_id]) do %>
+      <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) do %>
       <%= if @permissions["organization.people.manage"] do %>
       <div class="mt3 pv3 bt b--lighter-gray">
         <h2 class="f4 mb2">Password</h2>
@@ -105,7 +105,7 @@
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
             <% end %>
           </div>
-          <%= if FeatureProvider.feature_enabled?(:bitbucket, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket, param: @conn.assigns[:organization_id]) do %>
           <div class="pa2">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
@@ -132,7 +132,7 @@
             <% end %>
           </div>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:gitlab, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:gitlab, param: @conn.assigns[:organization_id]) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">GitLab</span> ·
             <%= case {@user.gitlab_scope, @user.gitlab_login} do %>

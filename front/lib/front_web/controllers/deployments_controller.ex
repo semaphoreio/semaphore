@@ -403,8 +403,8 @@ defmodule FrontWeb.DeploymentsController do
     org_id = conn.assigns[:organization_id]
 
     cond do
-      FeatureProvider.feature_enabled?(feature_type, org_id) -> :enabled
-      FeatureProvider.feature_zero_state?(feature_type, org_id) -> :zero_state
+      FeatureProvider.feature_enabled?(feature_type, param: org_id) -> :enabled
+      FeatureProvider.feature_zero_state?(feature_type, param: org_id) -> :zero_state
       true -> :hidden
     end
   end
@@ -443,7 +443,7 @@ defmodule FrontWeb.DeploymentsController do
   end
 
   defp maybe_override_user_access(params, organization_id) do
-    if FeatureProvider.feature_enabled?(:advanced_deployment_targets, organization_id),
+    if FeatureProvider.feature_enabled?(:advanced_deployment_targets, param: organization_id),
       do: params,
       else: Map.put(params, "user_access", "any")
   end

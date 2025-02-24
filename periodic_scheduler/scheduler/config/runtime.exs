@@ -49,8 +49,8 @@ if config_env() == :prod do
       path ->
         {FeatureProvider.YamlProvider, [yaml_path: get_env!.("FEATURE_YAML_PATH")]}
     end
-  config :feature_provider,
-    provider: feature_provider
+  config :scheduler,
+    feature_provider: feature_provider
 
   config :scheduler,
     workflow_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),

@@ -2,7 +2,7 @@
   window.InjectedDataByBackend.RenderMembers = "<%= raw @search_endpoint %>";
 </script>
 
-<%= if FeatureProvider.feature_enabled?(:rbac__groups, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_enabled?(:rbac__groups, param: @conn.assigns[:organization_id]) do %>
   <input type="text" class="form-control gray br3 w-100" name="search_input_field"
     id="search_input_field" placeholder="Search for users and groups" style="color: black;">
 <% else %>

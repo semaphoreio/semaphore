@@ -1,5 +1,5 @@
 <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
-  <%= if FeatureProvider.feature_enabled?(:audit_logs, @conn.assigns[:organization_id]) do %>
+  <%= if FeatureProvider.feature_enabled?(:audit_logs, param: @conn.assigns[:organization_id]) do %>
     <%= if @permissions["organization.audit_logs.view"] do %>
       <%= render FrontWeb.AuditView, "streaming/_navigation.html", conn: @conn %>
       <%= render FrontWeb.AuditView, "streaming/_info.html",

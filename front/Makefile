@@ -2,6 +2,7 @@ export MIX_ENV?=dev
 
 include ../Makefile
 
+DOCKER_BUILD_PATH=..
 APP_NAME?=project_page
 SHELL := /bin/bash
 PROTOC_TAG=1.6.6-3.3.0-0.5.4

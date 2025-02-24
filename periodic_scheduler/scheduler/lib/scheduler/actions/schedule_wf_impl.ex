@@ -38,10 +38,10 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
 
   def schedule_wf(periodic = %{organization_id: org_id}, trigger) do
     cond do
-      FeatureProvider.feature_enabled?(:just_run, org_id) ->
+      FeatureProvider.feature_enabled?(:just_run, param: org_id) ->
         schedule_wf_just_run(periodic, trigger)
 
-      FeatureProvider.feature_enabled?(:scheduler_hook, org_id) ->
+      FeatureProvider.feature_enabled?(:scheduler_hook, param: org_id) ->
         schedule_wf_run_api(periodic, trigger)
 
       true ->

@@ -1,4 +1,4 @@
-<%= if FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns[:organization_id]) do %>
   <div class="inline-flex">
     <span class="material-symbols-outlined mt1 mr2 dt-icon">
       <%= if @target.deployment.allowed?, do: "lock_open", else: "lock" %>

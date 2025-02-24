@@ -677,10 +677,10 @@ defmodule FrontWeb.SelfHostedAgentController do
 
   defp authorize_feature(conn, _opts) do
     cond do
-      FeatureProvider.feature_enabled?(:self_hosted_agents, org_id(conn)) ->
+      FeatureProvider.feature_enabled?(:self_hosted_agents, param: org_id(conn)) ->
         conn
 
-      FeatureProvider.feature_zero_state?(:self_hosted_agents, org_id(conn)) ->
+      FeatureProvider.feature_zero_state?(:self_hosted_agents, param: org_id(conn)) ->
         conn
         |> render("zero_state.html",
           conn: conn,

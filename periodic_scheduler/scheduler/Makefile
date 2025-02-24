@@ -2,7 +2,7 @@ export MIX_ENV ?= dev
 
 include ../../Makefile
 
-DOCKER_BUILD_PATH=..
+DOCKER_BUILD_PATH=../..
 SHELL := /bin/bash
 
 APP_NAME := periodic-scheduler

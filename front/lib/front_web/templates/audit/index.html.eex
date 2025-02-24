@@ -9,7 +9,7 @@
       <div class="button-group">
           <%= link "Export as CSV", to: audit_path(@conn, :csv), class: "btn btn-secondary"%>
 
-          <%= if FeatureProvider.feature_enabled?(:audit_streaming, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:audit_streaming, param: @conn.assigns[:organization_id]) do %>
             <%= link "Configure Streaming", to: audit_path(@conn, :show), class: "btn btn-secondary" %>
           <% end %>
       </div>

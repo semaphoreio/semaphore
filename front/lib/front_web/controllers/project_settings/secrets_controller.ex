@@ -379,7 +379,7 @@ defmodule FrontWeb.ProjectSettings.SecretsController do
 
   defp authorize_feature(conn, _opts) do
     enabled? =
-      FeatureProvider.feature_enabled?(:project_level_secrets, conn.assigns.organization_id)
+      FeatureProvider.feature_enabled?(:project_level_secrets, param: conn.assigns.organization_id)
 
     if enabled?, do: conn, else: render_old_secrets_page(conn)
   end

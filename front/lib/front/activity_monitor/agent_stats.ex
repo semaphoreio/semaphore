@@ -45,7 +45,7 @@ defmodule Front.ActivityMonitor.AgentStats do
 
     self_hosted_agent_types = load_self_hosted_agent_types(org_id)
     max_parallelism = load_max_parallelism(org_id)
-    max_agents = FeatureProvider.feature_quota(:self_hosted_agents, org_id)
+    max_agents = FeatureProvider.feature_quota(:self_hosted_agents, param: org_id)
 
     %AgentStats{
       agent_types: agent_types,
@@ -115,11 +115,11 @@ defmodule Front.ActivityMonitor.AgentStats do
 
   @spec load_max_parallelism(String.t()) :: integer()
   def load_max_parallelism(org_id) do
-    FeatureProvider.feature_quota(:max_paralellism_in_org, org_id)
+    FeatureProvider.feature_quota(:max_paralellism_in_org, param: org_id)
   end
 
   def load_self_hosted_agent_types(org_id) do
-    if FeatureProvider.feature_enabled?(:self_hosted_agents, org_id) do
+    if FeatureProvider.feature_enabled?(:self_hosted_agents, param: org_id) do
       Front.SelfHostedAgents.AgentType.list(org_id)
       |> case do
         {:ok, types} -> Enum.map(types, &build_self_hosted_agent_type/1)

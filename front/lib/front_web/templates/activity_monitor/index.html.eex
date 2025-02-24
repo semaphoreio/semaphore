@@ -7,13 +7,13 @@
     <div id="activity-monitor-max-parallelization" class="flex flex-wrap mb3 nh2">
     </div>
 
-    <%= if FeatureProvider.feature_enabled?(:expose_cloud_agent_types, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:expose_cloud_agent_types, param: @conn.assigns[:organization_id]) do %>
       <p class="b mb2">Cloud machine quotas</p>
       <div id="activity-monitor-gauges" class="flex flex-wrap mb3 nh2">
       </div>
     <% end %>
 
-    <%= if FeatureProvider.feature_enabled?(:self_hosted_agents, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:self_hosted_agents, param: @conn.assigns[:organization_id]) do %>
       <p id="activity-monitor-self-hosted-gauges-title" class="b mb2">Self-hosted quotas</p>
       <div id="activity-monitor-self-hosted-gauges" class="flex flex-wrap mb3 nh2">
       </div>

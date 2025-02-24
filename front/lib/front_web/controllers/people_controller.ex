@@ -722,7 +722,7 @@ defmodule FrontWeb.PeopleController do
   end
 
   defp parse_provider_and_username(params, org_id) do
-    gitlab_enabled = FeatureProvider.feature_enabled?(:gitlab, org_id)
+    gitlab_enabled = FeatureProvider.feature_enabled?(:gitlab, param: org_id)
 
     case params do
       %{"github_handle" => username} when username != nil ->
@@ -1139,5 +1139,5 @@ defmodule FrontWeb.PeopleController do
 
   @spec email_members_supported?(organization_id :: String.t()) :: bool
   defp email_members_supported?(organization_id),
-    do: FeatureProvider.feature_enabled?(:email_members, organization_id)
+    do: FeatureProvider.feature_enabled?(:email_members, param: organization_id)
 end

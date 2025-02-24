@@ -22,7 +22,7 @@ RUN mix local.hex --force && mix local.rebar --force
 WORKDIR /app
 
 # install mix dependencies
-COPY secrethub/mix.exs mix.lock ./
+COPY secrethub/mix.exs secrethub/mix.lock ./
 COPY secrethub/config config
 COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV

@@ -62,7 +62,7 @@ defmodule FrontWeb.BillingView do
         billing_acknowledge_plan_change_path(conn, :acknowledge_plan_change, [])
     }
     |> then(fn params ->
-      if FeatureProvider.feature_enabled?(:project_spendings, conn.assigns.organization_id) or
+      if FeatureProvider.feature_enabled?(:project_spendings, param: conn.assigns.organization_id) or
            Front.Auth.is_billing_admin?(conn.assigns.organization_id, conn.assigns.user_id) do
         project_spendings = %{
           topProjectsUrl: billing_top_projects_path(conn, :top_projects, url_opts),

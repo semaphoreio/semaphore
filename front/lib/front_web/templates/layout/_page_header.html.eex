@@ -3,7 +3,7 @@
   window.InjectedDataByBackend.JumpTo.Starred = <%= raw Poison.encode!(@layout_model.starred_items) %>;
   window.InjectedDataByBackend.JumpTo.Projects = <%= raw Poison.encode!(@layout_model.unstarred_projects) %>;
   window.InjectedDataByBackend.JumpTo.Dashboards = <%= raw Poison.encode!(@layout_model.unstarred_dashboards) %>;
-  <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+  <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
     <%= if FrontWeb.BillingView.with_plan_overlay?(@conn) do %>
       window.InjectedDataByBackend.InitialPlan = <%= raw FrontWeb.BillingView.initial_plan_config(@conn) %>
     <% end %>
@@ -31,7 +31,7 @@
     </a>
   </div>
 <% else %>
-  <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+  <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
     <%= FrontWeb.BillingView.badge(@conn) %>
   <% end %>
 <% end %>
@@ -42,7 +42,7 @@
         <img src="<%= assets_path() %>/images/semaphore-logo-sign-black.svg" alt="logo" width="26" height="17">
         <span class="dn db-m b pl2">Home</span>
       </a>
-      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @conn.assigns[:organization_id]) do %>
+      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, param: @conn.assigns[:organization_id]) do %>
         <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
           <a href="<%= agents_index_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
             <img src="<%= assets_path() %>/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
@@ -70,7 +70,7 @@
       </div>
       <%= if @layout_model.permissions["organization.projects.create"] do %>
         <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
-          <%= if FeatureProvider.feature_enabled?(:new_project_onboarding, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:new_project_onboarding, param: @conn.assigns[:organization_id]) do %>
             <a href="<%= project_onboarding_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
               <img src="<%= assets_path() %>/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
               <span class="dn di-ns">Create new</span>
@@ -94,7 +94,7 @@
       <% end %>
     </div>
     <div class="flex items-center flex-shrink-0">
-      <%= if FeatureProvider.feature_enabled?(:feedback, @conn.assigns[:organization_id]) do %>
+      <%= if FeatureProvider.feature_enabled?(:feedback, param: @conn.assigns[:organization_id]) do %>
         <!-- Feedback Menu -->
         <div class="dn db-m">
           <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="feedbackMenu">
@@ -103,7 +103,7 @@
           </div>
         </div>
       <% end %>
-      <%= if FeatureProvider.feature_enabled?(:help, @conn.assigns[:organization_id]) do %>
+      <%= if FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) do %>
         <!-- Help Menu -->
         <div class="ph1 ph2-ns mr2-ns br-ns b--black-10">
           <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
@@ -140,7 +140,7 @@
         <div class="b">Submit an idea</div>
         <p class="f6 o-80 mb0">Share your improvement proposal</p>
       </a>
-      <%= if !FeatureProvider.feature_enabled?(:zendesk_support, @conn.assigns[:organization_id]) do %>
+      <%= if !FeatureProvider.feature_enabled?(:zendesk_support, param: @conn.assigns[:organization_id]) do %>
         <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
                 href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
                 subject: "Feedback",
@@ -223,21 +223,21 @@
              card_title: "Projects",
              card_description: "All projects in this organization",
              tooltip: false %>
-      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @layout_model.current_organization.id) do %>
+      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, param: @layout_model.current_organization.id) do %>
         <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                card_url: agents_index_path(@conn, :index),
                card_title: "Agents",
                card_description: "Everything currently running across all projects",
                tooltip: false %>
       <% else %>
-        <%= if FeatureProvider.feature_enabled?(:activity_monitor, @layout_model.current_organization.id) do %>
+        <%= if FeatureProvider.feature_enabled?(:activity_monitor, param: @layout_model.current_organization.id) do %>
           <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                 card_url: activity_monitor_path(@conn, :index),
                 card_title: "Activity Monitor",
                 card_description: "Everything currently running across all projects",
                 tooltip: false %>
         <% end %>
-        <%= if FeatureProvider.feature_visible?(:self_hosted_agents, @layout_model.current_organization.id) do %>
+        <%= if FeatureProvider.feature_visible?(:self_hosted_agents, param: @layout_model.current_organization.id) do %>
           <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                  card_url: self_hosted_agent_path(@conn, :index),
                  card_title: "Self-Hosted Agents",
@@ -245,7 +245,7 @@
                  tooltip: false %>
         <% end %>
       <% end %>
-      <%= if FeatureProvider.feature_enabled?(:audit_logs, @layout_model.current_organization.id) do %>
+      <%= if FeatureProvider.feature_enabled?(:audit_logs, param: @layout_model.current_organization.id) do %>
         <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                card_url: audit_path(@conn, :index),
                card_title: "Audit Logs",
@@ -272,7 +272,7 @@
                card_title: "People",
                card_description: "Manage Collaborators",
                tooltip: false %>
-      <%= if FeatureProvider.feature_enabled?(:multiple_organizations, @layout_model.current_organization.id) do %>
+      <%= if FeatureProvider.feature_enabled?(:multiple_organizations, param: @layout_model.current_organization.id) do %>
         <div class="bb b--white-40"></div>
         <%= if length(@layout_model.organizations) > 1 do %>
           <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",

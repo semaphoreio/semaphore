@@ -33,7 +33,7 @@ defmodule FrontWeb.SharedHelpers do
   @spec livechat_enabled?(Conn.t()) :: {boolean, String.t()}
   def livechat_enabled?(conn) do
     feature_enabled? =
-      FeatureProvider.feature_enabled?(:zendesk_live_chat, conn.assigns[:organization_id])
+      FeatureProvider.feature_enabled?(:zendesk_live_chat, param: conn.assigns[:organization_id])
 
     zendesk_snippet_id = Application.get_env(:front, :zendesk_snippet_id, "")
 
@@ -457,8 +457,8 @@ defmodule FrontWeb.SharedHelpers do
     org_id = conn.assigns[:organization_id]
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
-    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, org_id)
-    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, org_id)
+    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
+    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
 
     cond do
       not with_zendesk_support? ->
@@ -490,10 +490,10 @@ defmodule FrontWeb.SharedHelpers do
     org_id = conn.assigns[:organization_id]
     valid_permissions? = layout_model.permissions["organization.contact_support"]
 
-    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, org_id)
-    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, org_id)
-    on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, org_id)
-    on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, org_id)
+    with_zendesk_support? = FeatureProvider.feature_enabled?(:zendesk_support, param: org_id)
+    organization_restricted? = FeatureProvider.feature_enabled?(:restricted_support, param: org_id)
+    on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, param: org_id)
+    on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, param: org_id)
 
     cond do
       not with_zendesk_support? ->
@@ -527,10 +527,10 @@ defmodule FrontWeb.SharedHelpers do
 
   def billing_card(conn, layout_model) do
     new_billing_enabled? =
-      FeatureProvider.feature_enabled?(:new_billing, conn.assigns[:organization_id])
+      FeatureProvider.feature_enabled?(:new_billing, param: conn.assigns[:organization_id])
 
     legacy_billing_enabled? =
-      FeatureProvider.feature_enabled?(:billing, conn.assigns[:organization_id])
+      FeatureProvider.feature_enabled?(:billing, param: conn.assigns[:organization_id])
 
     cond do
       new_billing_enabled? ->
@@ -557,8 +557,8 @@ defmodule FrontWeb.SharedHelpers do
 
   @spec support_card_subtitle(String.t()) :: String.t()
   defp support_card_subtitle(org_id) do
-    on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, org_id)
-    on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, org_id)
+    on_premium_support? = FeatureProvider.feature_enabled?(:premium_support, param: org_id)
+    on_advanced_support? = FeatureProvider.feature_enabled?(:advanced_support, param: org_id)
 
     if on_premium_support? or on_advanced_support? do
       "Report an issue"

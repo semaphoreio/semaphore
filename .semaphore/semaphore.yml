@@ -614,7 +614,6 @@ blocks:
           type: e1-standard-4
           os_image: ubuntu2004
       secrets:
-        - name: feature-provider-token
         - name: semreg-semaphoredev-credentials
       prologue:
         commands:
@@ -622,8 +621,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       env_vars:
         - name: MIX_ENV
           value: test
@@ -713,7 +710,6 @@ blocks:
           type: e1-standard-4
           os_image: ubuntu2004
       secrets:
-        - name: feature-provider-token
         - name: semreg-semaphoredev-credentials
       prologue:
         commands:
@@ -721,8 +717,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       env_vars:
         - name: MIX_ENV
           value: prod
@@ -777,8 +771,6 @@ blocks:
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -787,8 +779,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd guard
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -799,8 +789,6 @@ blocks:
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -809,8 +797,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd guard
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -824,7 +810,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -835,8 +820,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd guard
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
@@ -855,8 +838,6 @@ blocks:
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -865,8 +846,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd guard
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"
@@ -1894,8 +1873,6 @@ blocks:
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -1904,8 +1881,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/pre_flight_checks
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -1916,8 +1891,6 @@ blocks:
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1926,8 +1899,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/pre_flight_checks
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -1941,7 +1912,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1952,8 +1922,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/pre_flight_checks
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
@@ -1972,8 +1940,6 @@ blocks:
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -1982,8 +1948,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/pre_flight_checks
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"
@@ -2008,13 +1972,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd projecthub
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -2030,13 +1990,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd projecthub
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -2108,13 +2064,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd projecthub-rest-api
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -2130,13 +2082,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd projecthub-rest-api
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -2348,8 +2296,6 @@ blocks:
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -2358,8 +2304,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd rbac/ce
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -2370,8 +2314,6 @@ blocks:
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2380,8 +2322,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd rbac/ce
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -2395,7 +2335,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2406,8 +2345,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd rbac/ce
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
@@ -2426,8 +2363,6 @@ blocks:
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -2436,8 +2371,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd rbac/ce
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"
@@ -2457,8 +2390,6 @@ blocks:
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -2467,8 +2398,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/rbac
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -2479,8 +2408,6 @@ blocks:
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2489,8 +2416,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/rbac
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -2504,7 +2429,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2515,8 +2439,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/rbac
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
@@ -2535,8 +2457,6 @@ blocks:
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -2545,8 +2465,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/rbac
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"
@@ -2571,7 +2489,6 @@ blocks:
           type: e2-standard-2
           os_image: ubuntu2004
       secrets:
-        - name: feature-provider-token
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -2584,8 +2501,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -2601,7 +2516,6 @@ blocks:
           type: e2-standard-2
           os_image: ubuntu2004
       secrets:
-        - name: feature-provider-token
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -2614,8 +2528,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -2991,13 +2903,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd secrethub
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -3013,13 +2921,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd secrethub
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -3185,13 +3089,9 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd public-api/v1alpha
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -3207,13 +3107,9 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd public-api/v1alpha
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -3280,8 +3176,6 @@ blocks:
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "test"
@@ -3290,8 +3184,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v2
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
@@ -3302,8 +3194,6 @@ blocks:
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3312,8 +3202,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v2
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: "\U0001F5BC️ Build prod image"
           commands:
@@ -3327,7 +3215,6 @@ blocks:
     task:
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3338,8 +3225,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v2
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 3.3
           - make pull
@@ -3359,8 +3244,6 @@ blocks:
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
           value: test
@@ -3369,8 +3252,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v2
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       jobs:
         - name: "\U0001F9EA Lint"
@@ -3395,12 +3276,11 @@ blocks:
           value: "PeriodicScheduler"
       secrets:
         - name: security-toolbox-shared-read-access
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd periodic_scheduler/scheduler
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
-          - ssh-add ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
+          - sudo chmod 600 ~/.ssh/security-toolbox
+          - ssh-add ~/.ssh/security-toolbox
       jobs:
         - name: Check dependencies
           commands:
@@ -3421,14 +3301,10 @@ blocks:
           value: "test"
         - name: DOCKER_BUILDKIT
           value: "1"
-      secrets:
-        - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd periodic_scheduler/scheduler
           - cache restore periodic_scheduler-$(checksum mix.lock),periodic_scheduler-$SEMAPHORE_GIT_BRANCH,periodic_scheduler
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa
-          - ssh-add ~/.ssh/feature_provider_rsa
           - make build
       epilogue:
         always:

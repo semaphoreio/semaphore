@@ -4,8 +4,8 @@ services:
   app:
     image: ${IMAGE:-front-app}:${IMAGE_TAG:-latest}
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: front/Dockerfile
       target: dev
       args:
         - MIX_ENV=${MIX_ENV:-dev}

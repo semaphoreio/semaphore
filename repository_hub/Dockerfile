@@ -76,6 +76,6 @@ RUN adduser -D default -h /app
 USER default
 
 COPY --from=builder --chown=default /app/_build/prod/rel/repository_hub_service/ .
-COPY --chown=default priv/repo/migrations priv/repo/migrations
+COPY --from=builder --chown=default /app/priv/repo/migrations priv/repo/migrations
 
 CMD ["/app/bin/repository_hub_service", "start"]

@@ -32,7 +32,7 @@ defmodule FrontWeb.Plugs.FeatureEnabled do
     |> Enum.reduce_while(true, fn feature, acc ->
       case acc do
         true ->
-          FeatureProvider.feature_enabled?(feature, organization_id)
+          FeatureProvider.feature_enabled?(feature, param: organization_id)
           |> case do
             true -> {:cont, true}
             false -> {:halt, false}

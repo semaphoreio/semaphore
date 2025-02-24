@@ -40,10 +40,10 @@ defmodule FrontWeb.PeopleView do
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
-      {"email", FeatureProvider.feature_enabled?(:email_members, org_id) || Front.ce_roles?()},
+      {"email", FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce_roles?()},
       {"github", !Front.ce_roles?()},
-      {"gitlab", FeatureProvider.feature_enabled?(:gitlab, org_id) && !Front.ce_roles?()},
-      {"bitbucket", FeatureProvider.feature_enabled?(:bitbucket, org_id) && !Front.ce_roles?()}
+      {"gitlab", FeatureProvider.feature_enabled?(:gitlab, param: org_id) && !Front.ce_roles?()},
+      {"bitbucket", FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce_roles?()}
     ]
     |> Enum.map(fn
       {name, true} ->
@@ -124,7 +124,7 @@ defmodule FrontWeb.PeopleView do
         (!org_scope? && permissions["project.access.manage"])
 
     feature_enabled? =
-      org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, org_id) ||
+      org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, param: org_id) ||
         Front.ce_roles?()
 
     user_has_permissions? and feature_enabled?
@@ -268,10 +268,10 @@ defmodule FrontWeb.PeopleView do
   @spec feature_state(Plug.Conn.t(), atom()) :: String.t()
   def feature_state(conn, feature) do
     cond do
-      FeatureProvider.feature_enabled?(feature, conn.assigns.organization_id) ->
+      FeatureProvider.feature_enabled?(feature, param: conn.assigns.organization_id) ->
         "enabled"
 
-      FeatureProvider.feature_zero_state?(feature, conn.assigns.organization_id) ->
+      FeatureProvider.feature_zero_state?(feature, param: conn.assigns.organization_id) ->
         "zero"
 
       true ->

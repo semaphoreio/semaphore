@@ -1,5 +1,5 @@
 <%= if @show_description? do %>
-    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, param: @conn.assigns[:organization_id]) do %>
         <div class="ml2 measure">
             Introduce limits on who can trigger a deployment to this target.
             For example, limit deployments to production to the devops team.
@@ -11,7 +11,7 @@
     <% end %>
 <% end %>
 
-<%= if FeatureProvider.feature_enabled?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_enabled?(:advanced_deployment_targets, param: @conn.assigns[:organization_id]) do %>
     <div class="ml2 mv4">
         <div class="flex items-center">
             <%= radio_button @form, :user_access, "any" %>
@@ -48,7 +48,7 @@
         </div>
     </div>
 <% else %>
-    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_visible?(:advanced_deployment_targets, param: @conn.assigns[:organization_id]) do %>
         <div class="ml2 mv4">
             <div class="flex items-center">
                 <%= radio_button @form, :user_access, "any", checked: true, disabled: true, style: "background-color: inherit; box-shadow: none;" %>

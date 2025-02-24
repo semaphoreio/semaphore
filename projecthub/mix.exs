@@ -49,7 +49,9 @@ defmodule Projecthub.MixProject do
       {:junit_formatter, "~> 3.3", only: [:test]},
       {:credo, "~> 1.6.1", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:feature_provider, path: "../feature_provider"}
+      {:feature_provider, path: "../feature_provider"},
+      {:yaml_elixir, ">= 2.0.0"},
+      {:cachex, ">= 3.0.0"}
     ]
   end
 

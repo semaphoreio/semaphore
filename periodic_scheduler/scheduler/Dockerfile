@@ -31,34 +31,38 @@ RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
 # install mix dependencies
-COPY spec/mix.exs spec/mix.lock ../spec/
-COPY definition_validator/mix.exs definition_validator/mix.lock ../definition_validator/
-COPY scheduler/mix.exs scheduler/mix.lock ./
+RUN mkdir scheduler
+WORKDIR /app/scheduler
+
+COPY periodic_scheduler/spec/mix.exs periodic_scheduler/spec/mix.lock ../spec/
+COPY periodic_scheduler/definition_validator/mix.exs periodic_scheduler/definition_validator/mix.lock ../definition_validator/
+COPY periodic_scheduler/scheduler/mix.exs scheduler/mix.lock ./
+COPY feature_provider ../../feature_provider
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mkdir config
 
-COPY scheduler/config config/
-COPY spec/config/config.exs ../spec/config/
-COPY definition_validator/config/config.exs ../definition_validator/config/
+COPY periodic_scheduler/scheduler/config config/
+COPY periodic_scheduler/spec/config/config.exs ../spec/config/
+COPY periodic_scheduler/definition_validator/config/config.exs ../definition_validator/config/
 RUN mix deps.compile
 
 # copy the rest of the config files
 #COPY scheduler/config config/
 
-COPY spec/lib ../spec/lib
-COPY spec/priv ../spec/priv
-COPY definition_validator/lib ../definition_validator/lib
-COPY scheduler/lib lib
-COPY scheduler/priv/periodics_repo/migrations priv/periodics_repo/migrations
-COPY scheduler/priv/front_repo/migrations priv/front_repo/migrations
+COPY periodic_scheduler/spec/lib ../spec/lib
+COPY periodic_scheduler/spec/priv ../spec/priv
+COPY periodic_scheduler/definition_validator/lib ../definition_validator/lib
+COPY periodic_scheduler/scheduler/lib lib
+COPY periodic_scheduler/scheduler/priv/periodics_repo/migrations priv/periodics_repo/migrations
+COPY periodic_scheduler/scheduler/priv/front_repo/migrations priv/front_repo/migrations
 
 # --------------------------------------
 
 FROM base AS dev
 
-COPY scheduler/.formatter.exs .formatter.exs
-COPY scheduler/config/.credo.exs .credo.exs
-COPY scheduler/test test
+COPY periodic_scheduler/scheduler/.formatter.exs .formatter.exs
+COPY periodic_scheduler/scheduler/config/.credo.exs .credo.exs
+COPY periodic_scheduler/scheduler/test test
 
 RUN mix compile
 
@@ -110,7 +114,7 @@ ENV LC_ALL=en_US.UTF-8
 WORKDIR "/app"
 RUN chown nobody /app
 
-COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/scheduler ./
+COPY --from=builder --chown=nobody:root /app/scheduler/_build/${MIX_ENV}/rel/scheduler ./
 
 USER nobody
 

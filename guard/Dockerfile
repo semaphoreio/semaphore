@@ -30,7 +30,8 @@ RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
+COPY guard/mix.exs guard/mix.lock ./
+COPY feature_provider ../feature_provider
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mkdir config
 
@@ -39,20 +40,20 @@ RUN mkdir config
 # to be re-compiled.
 RUN mix deps.compile
 # copy the rest of the config files
-COPY config/ config/
+COPY guard/config/ config/
 
 # Compile the release
-COPY lib lib
-COPY templates templates
-COPY priv/repo/migrations priv/repo/migrations
-COPY priv/front_repo/migrations priv/front_repo/migrations
-COPY priv/instance_config_repo/migrations priv/instance_config_repo/migrations
+COPY guard/lib lib
+COPY guard/templates templates
+COPY guard/priv/repo/migrations priv/repo/migrations
+COPY guard/priv/front_repo/migrations priv/front_repo/migrations
+COPY guard/priv/instance_config_repo/migrations priv/instance_config_repo/migrations
 
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY guard/.formatter.exs .formatter.exs
+COPY guard/.credo.exs .credo.exs
+COPY guard/test test
 
 RUN mix compile
 

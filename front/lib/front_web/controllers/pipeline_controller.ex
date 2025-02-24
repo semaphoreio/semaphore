@@ -30,13 +30,13 @@ defmodule FrontWeb.PipelineController do
     toggle_skipped_blocks_enabled? =
       FeatureProvider.feature_enabled?(
         :toggle_skipped_blocks,
-        organization_id
+        param: organization_id
       )
 
     dt_enabled? =
       FeatureProvider.feature_enabled?(
         :deployment_targets,
-        organization_id
+        param: organization_id
       )
 
     opts = [
@@ -154,7 +154,7 @@ defmodule FrontWeb.PipelineController do
 
   defp pipeline_data(conn, params) do
     diagram =
-      if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, conn.assigns.organization_id) do
+      if FeatureProvider.feature_enabled?(:toggle_skipped_blocks, param: conn.assigns.organization_id) do
         conn.assigns.pipeline
         |> Front.WorkflowPage.Diagram.load()
         |> Front.WorkflowPage.Diagram.SkippedBlocks.fold_dependencies()

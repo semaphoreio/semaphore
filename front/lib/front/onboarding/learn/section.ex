@@ -178,7 +178,7 @@ defmodule Front.Onboarding.Learn.Section do
         |> Enum.map(fn task ->
           all_features_enabled? =
             Enum.all?(section.required_features, fn feature ->
-              FeatureProvider.feature_enabled?(feature, organization_id)
+              FeatureProvider.feature_enabled?(feature, param: organization_id)
             end)
 
           if all_features_enabled?,
@@ -190,7 +190,7 @@ defmodule Front.Onboarding.Learn.Section do
 
       all_features_enabled? =
         Enum.all?(section.required_features, fn feature ->
-          FeatureProvider.feature_enabled?(feature, organization_id)
+          FeatureProvider.feature_enabled?(feature, param: organization_id)
         end)
 
       if all_features_enabled?,

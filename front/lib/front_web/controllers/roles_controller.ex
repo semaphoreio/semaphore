@@ -357,8 +357,8 @@ defmodule FrontWeb.RolesController do
     feature_name = :rbac__custom_roles
 
     cond do
-      FeatureProvider.feature_enabled?(feature_name, org_id) -> :enabled
-      FeatureProvider.feature_zero_state?(feature_name, org_id) -> :zero_state
+      FeatureProvider.feature_enabled?(feature_name, param: org_id) -> :enabled
+      FeatureProvider.feature_zero_state?(feature_name, param: org_id) -> :zero_state
       true -> :hidden
     end
   end

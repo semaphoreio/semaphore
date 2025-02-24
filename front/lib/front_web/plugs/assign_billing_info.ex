@@ -9,7 +9,7 @@ defmodule FrontWeb.Plug.AssignBillingInfo do
     # Only assign billing info if the feature is enabled for the organization
     # and there is an organization id
     # The organization id is not available in the me.DOMAIN endpoints
-    if org_id && FeatureProvider.feature_enabled?(:billing, org_id) do
+    if org_id && FeatureProvider.feature_enabled?(:billing, param: org_id) do
       do_call(conn, opts)
     else
       conn
