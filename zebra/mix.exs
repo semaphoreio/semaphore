@@ -55,7 +55,7 @@ defmodule Zebra.Mixfile do
       {:paginator, "~> 1.0.0"},
       {:poison, "~> 3.1"},
       {:joken, "~> 2.6"},
-      {:watchman, github: "renderedtext/ex-watchman", overide: false},
+      {:watchman, github: "renderedtext/ex-watchman"},
       {:util, github: "renderedtext/elixir-util"},
       {:uuid, "~> 1.1"},
       {:statistics, "~> 0.5.0"},

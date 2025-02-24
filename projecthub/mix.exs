@@ -49,7 +49,7 @@ defmodule Projecthub.MixProject do
       {:junit_formatter, "~> 3.3", only: [:test]},
       {:credo, "~> 1.6.1", only: [:dev, :test]},
       {:mix_test_watch, "~> 1.0", only: [:dev, :test], runtime: false},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.1.0"}
+      {:feature_provider, path: "../feature_provider"}
     ]
   end
 

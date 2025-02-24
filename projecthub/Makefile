@@ -2,6 +2,7 @@ export MIX_ENV?=dev
 
 include ../Makefile
 
+DOCKER_BUILD_PATH=..
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)-grpc
 PROTOC_TAG=1.12.1-3.20.3-0.11.0
 TMP_REPO_DIR?=/tmp/internal_api

@@ -30,27 +30,28 @@ RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
+COPY projecthub/mix.exs mix.lock ./
 RUN --mount=type=ssh mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
 # to ensure any relevant config change will trigger the dependencies
 # to be re-compiled.
-COPY config/config.exs config/${MIX_ENV}.exs config/_silent_lager.exs config/
+COPY projecthub/config/config.exs projecthub/config/${MIX_ENV}.exs projecthub/config/_silent_lager.exs config/
+COPY feature_provider ../feature_provider
 RUN mix deps.compile
 # copy the rest of the config files
-COPY config/ config/
+COPY projecthub/config/ config/
 
 # Compile the release
-COPY lib lib
-COPY priv/repo/migrations priv/repo/migrations
+COPY projecthub/lib lib
+COPY projecthub/priv/repo/migrations priv/repo/migrations
 
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY projecthub/.formatter.exs .formatter.exs
+COPY projecthub/.credo.exs .credo.exs
+COPY projecthub/test test
 
 RUN mix compile
 
