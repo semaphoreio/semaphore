@@ -12,7 +12,7 @@ INTERNAL_API_TMP_DIR ?= /tmp/internal_api
 INTERNAL_API_BRANCH ?= master
 PROTOC_IMAGE_TAG ?= 1.12.1-3.20.3-0.11.0
 
-CHECK_DEPS_EXTRA_OPTS=-w feature_provider,definition_validator
+CHECK_DEPS_EXTRA_OPTS=-w feature_provider,util,log_tee,watchman,definition_validator
 
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
