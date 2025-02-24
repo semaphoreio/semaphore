@@ -502,7 +502,7 @@ defmodule Guard.Store.OrganizationTest do
     test "returns error for restricted username" do
       attrs = %{
         name: "Test Organization",
-        username: "admin",
+        username: "domain1",
         creator_id: Ecto.UUID.generate()
       }
 
