@@ -25,12 +25,12 @@ defmodule E2E.UI.LoginTest do
 
       # Visit login page
       login_url = "https://id.#{base_domain}/login"
-      me_url = "https://me.#{base_domain}/"
+      organization_url = "https://#{organization}.#{base_domain}/"
 
       Wallaby.Browser.take_screenshot(session)
 
       # Verify Keycloak login form elements
-      me_page =
+      landing_page =
         session
         |> visit(login_url)
         |> assert_has(Query.css("#kc-form-login"))
@@ -43,19 +43,16 @@ defmodule E2E.UI.LoginTest do
         |> fill_in(Query.text_field("password"), with: root_password)
         |> click(Query.css("#kc-login"))
         |> assert_has(
-          Query.css("p.mb3.pb2",
-            text: "Select one of your organizations to continue:",
+          Query.css("h1.f2.f1-m.lh-title.mb1")
+            text: "Here’s what’s going on",
             timeout: 10_000
           )
         )
 
-      assert Wallaby.Browser.current_url(me_page) == me_url
-
       # Take screenshot after login
-      Wallaby.Browser.take_screenshot(me_page)
+      Wallaby.Browser.take_screenshot(landing_page)
 
-      me_page
-      |> assert_has(Query.text("#{organization}.#{base_domain}"))
+      assert Wallaby.Browser.current_url(landing_page) == organization_url
     end
   end
 end

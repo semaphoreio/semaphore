@@ -41,4 +41,4 @@ blocks:
       epilogue:
         on_fail:
           commands:
-            - artifact push job ./out/screenshots -e 1w
+            - artifact push job ./out/screenshots
