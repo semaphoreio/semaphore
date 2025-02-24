@@ -43,7 +43,7 @@ defmodule E2E.UI.LoginTest do
         |> fill_in(Query.text_field("password"), with: root_password)
         |> click(Query.css("#kc-login"))
         |> assert_has(
-          Query.css("h1.f2.f1-m.lh-title.mb1")
+          Query.css("h1.f2.f1-m.lh-title.mb1",
             text: "Here’s what’s going on",
             timeout: 10_000
           )
