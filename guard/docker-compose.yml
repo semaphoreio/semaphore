@@ -58,6 +58,7 @@ services:
       ROOT_LOGIN: "true"
       ROOT_LOGIN_METHOD: "github"
       DEFAULT_LOGIN_METHOD: "local"
+      RESTRICTED_ORG_USERNAMES: "testing,www,domain1"
       CI: $CI
       MIX_ENV: ${MIX_ENV:-dev}
       LOG_LEVEL: "debug"

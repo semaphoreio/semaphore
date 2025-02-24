@@ -1118,7 +1118,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
     test "returns false for restricted username", %{grpc_channel: channel} do
       request = %Organization.Organization{
         name: "Test Organization",
-        org_username: "admin",
+        org_username: "domain1",
         owner_id: Ecto.UUID.generate(),
         avatar_url: "",
         org_id: "",

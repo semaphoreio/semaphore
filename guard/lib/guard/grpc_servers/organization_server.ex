@@ -352,6 +352,7 @@ defmodule Guard.GrpcServers.OrganizationServer do
 
   @spec is_valid(Organization.Organization.t(), GRPC.Server.Stream.t()) ::
           Organization.IsValidResponse.t()
+  # credo:disable-for-next-line
   def is_valid(request, _) do
     Logger.debug("is_valid request: #{inspect(request)}")
 
