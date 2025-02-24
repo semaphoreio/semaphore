@@ -23,7 +23,7 @@
   "faker": {:hex, :faker, "0.17.0", "671019d0652f63aefd8723b72167ecdb284baf7d47ad3a82a15e9b8a6df5d1fa", [:mix], [], "hexpm", "a7d4ad84a93fd25c5f5303510753789fc2433ff241bf3b4144d3f6f291658a6a"},
   "feature_provider": {:git, "git@github.com:renderedtext/feature_provider", "0b50381db2fe273f8ab147c7a148ec7b36981948", [tag: "v0.1.2"]},
   "file_system": {:hex, :file_system, "0.2.10", "fb082005a9cd1711c05b5248710f8826b02d7d1784e7c3451f9c1231d4fc162d", [:mix], [], "hexpm", "41195edbfb562a593726eda3b3e8b103a309b733ad25f3d642ba49696bf715dc"},
-  "fun_registry": {:git, "https://github.com/renderedtext/fun-registry.git", "1a00bee98ea015034cb3afe22a17a20da7c5d48f", []},
+  "fun_registry": {:git, "https://github.com/renderedtext/fun-registry.git", "5e38666221c419e6423a38dcd648bebcbbcad958", []},
   "gen_stage": {:hex, :gen_stage, "1.2.1", "19d8b5e9a5996d813b8245338a28246307fd8b9c99d1237de199d21efc4c76a1", [:mix], [], "hexpm", "83e8be657fa05b992ffa6ac1e3af6d57aa50aace8f691fcf696ff02f8335b001"},
   "gettext": {:hex, :gettext, "0.17.0", "abe21542c831887a2b16f4c94556db9c421ab301aee417b7c4fbde7fbdbe01ec", [:mix], [], "hexpm", "e0b8598e802676c81e66b061a2148c37c03886b24a3ca86a1f98ed40693b94b3"},
   "grpc": {:hex, :grpc, "0.5.0-beta.1", "7d43f52e138fe261f5b4981f1ada515dfc2e1bfa9dc92c7022e8f41e7e49b571", [:mix], [{:cowboy, "~> 2.7.0", [hex: :cowboy, repo: "hexpm", optional: false]}, {:gun, "~> 2.0.0", [hex: :grpc_gun, repo: "hexpm", optional: false]}, {:protobuf, "~> 0.5", [hex: :protobuf, repo: "hexpm", optional: false]}], "hexpm", "fbbf8872935c295b7575435fe4128372c23c6ded89c2ef8058af3c6167bb3f65"},

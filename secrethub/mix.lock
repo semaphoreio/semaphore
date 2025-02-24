@@ -19,7 +19,7 @@
   "ex_crypto": {:git, "https://github.com/ntrepid8/ex_crypto.git", "0997a1aaebe701523c0a9b71d4acec4a1819354e", []},
   "feature_provider": {:git, "git@github.com:renderedtext/feature_provider", "451821bf65f5f41bf94df2789b84e098be9f93fd", [tag: "v0.1.0"]},
   "file_system": {:hex, :file_system, "0.2.10", "fb082005a9cd1711c05b5248710f8826b02d7d1784e7c3451f9c1231d4fc162d", [:mix], [], "hexpm", "41195edbfb562a593726eda3b3e8b103a309b733ad25f3d642ba49696bf715dc"},
-  "fun_registry": {:git, "https://github.com/renderedtext/fun-registry.git", "1a00bee98ea015034cb3afe22a17a20da7c5d48f", []},
+  "fun_registry": {:git, "https://github.com/renderedtext/fun-registry.git", "5e38666221c419e6423a38dcd648bebcbbcad958", []},
   "gettext": {:hex, :gettext, "0.19.1", "564953fd21f29358e68b91634799d9d26989f8d039d7512622efb3c3b1c97892", [:mix], [], "hexpm", "10c656c0912b8299adba9b061c06947511e3f109ab0d18b44a866a4498e77222"},
   "goldrush": {:hex, :goldrush, "0.1.9", "f06e5d5f1277da5c413e84d5a2924174182fb108dabb39d5ec548b27424cd106", [:rebar3], [], "hexpm", "99cb4128cffcb3227581e5d4d803d5413fa643f4eb96523f77d9e6937d994ceb"},
   "google_protos": {:hex, :google_protos, "0.1.0", "c6b9e12092d17571b093d4156d004494ca143b65dbbcbfc3ffff463ea03467c0", [:mix], [{:protobuf, "~> 0.5", [hex: :protobuf, repo: "hexpm", optional: false]}], "hexpm", "ff5564525f89d2638a4cfa9fb4d31e9ee9d9d7cb937b3e8a95f558440c039e1b"},
