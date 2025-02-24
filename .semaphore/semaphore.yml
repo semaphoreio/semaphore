@@ -3975,7 +3975,7 @@ blocks:
             - export
             - sem-version erlang $ERLANG_VERSION
             - sem-version elixir $ELIXIR_VERSION
-            - checkout
+            - checkout && cd feature_provider
             - cache restore
             - make test
             - cache store
