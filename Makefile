@@ -69,12 +69,6 @@ ifeq ($(CI),)
 	DOCKER_BUILD_PROGRESS=tty
 endif
 
-#
-# Security toolbox variables
-#
-SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
-SECURITY_TOOLBOX_BRANCH?=master
-
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
 CHECK_DEPS_EXTRA_OPTS?=""
@@ -85,18 +79,11 @@ CHECK_DEPS_EXTRA_OPTS?=""
 # On CI environment - we're using sem-version to provide a ruby version.
 # On local machines, we execute them inside of a Ruby Docker container.
 #
-check.prepare:
-	rm -rf $(SECURITY_TOOLBOX_TMP_DIR)
-ifeq ($(CI),)
-	git clone git@github.com:renderedtext/security-toolbox.git $(SECURITY_TOOLBOX_TMP_DIR) && (cd $(SECURITY_TOOLBOX_TMP_DIR) && git checkout $(SECURITY_TOOLBOX_BRANCH) && cd -)
-else
-	GIT_SSH_COMMAND='ssh -i ~/.ssh/security-toolbox -o IdentitiesOnly=yes' git clone git@github.com:renderedtext/security-toolbox.git $(SECURITY_TOOLBOX_TMP_DIR) && (cd $(SECURITY_TOOLBOX_TMP_DIR) && git checkout $(SECURITY_TOOLBOX_BRANCH) && cd -)
-endif
-
+SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
 check.code: check.prepare
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
 else
@@ -116,7 +103,7 @@ check.js.code:
 check.deps: check.prepare
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
 else
@@ -136,7 +123,7 @@ check.js.deps:
 check.docker: check.prepare build
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v ../security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) $(CHECK_DOCKER_OPTS)'

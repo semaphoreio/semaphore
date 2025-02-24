@@ -95,7 +95,6 @@ blocks:
     dependencies: ["Audit: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -109,7 +108,6 @@ blocks:
           - checkout && cd ee/audit
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -171,8 +169,6 @@ blocks:
   - name: "ArtifactHub: \U0001F6E1 Deployment Preconditions"
     dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -183,7 +179,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd artifacthub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -261,8 +256,6 @@ blocks:
   - name: "Auth: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Auth: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -273,7 +266,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd auth
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -346,8 +338,6 @@ blocks:
   - name: "Badge: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Badge: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -358,7 +348,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd badge
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -432,8 +421,6 @@ blocks:
   - name: "BranchHub: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["BranchHub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -444,7 +431,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd branch_hub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 3.0
           - make pull
       jobs:
@@ -525,7 +511,6 @@ blocks:
     dependencies: ["Dashboardhub: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -537,7 +522,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd dashboardhub
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
           - sudo chmod 600 ~/.ssh/id_rsa
           - sem-version ruby 3.0
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
@@ -704,7 +688,6 @@ blocks:
       - "Front: \U0001F5BC️ Provision Prod Image"
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       prologue:
         commands:
@@ -712,8 +695,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       env_vars:
         - name: MIX_ENV
           value: prod
@@ -783,7 +764,6 @@ blocks:
     dependencies: ["Guard: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -797,7 +777,6 @@ blocks:
           - checkout && cd guard
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -874,8 +853,6 @@ blocks:
   - name: "HooksReceiver: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["HooksReceiver: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -886,8 +863,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd hooks_receiver
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ HooksReceiver Check code"
@@ -959,8 +934,6 @@ blocks:
   - name: "\U0001F6E1️ HooksProcessor Deployment Preconditions"
     dependencies: ["\U0001F4CB HooksProcessor Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -971,8 +944,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd hooks_processor
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -1045,12 +1016,9 @@ blocks:
   - name: "Gofer: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Gofer: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd ee/gofer
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 2.7
           - make pull
       jobs:
@@ -1135,8 +1103,6 @@ blocks:
   - name: "GithubNotifier: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["GithubNotifier: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1147,7 +1113,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd github_notifier
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -1206,13 +1171,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "Looper"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/looper
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1266,13 +1227,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "JobMatrix"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/job_matrix
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1326,13 +1283,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "DefinitionValidator"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/definition_validator
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1401,13 +1354,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "TaskApiMock"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/task_api_referent
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1464,13 +1413,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "Spec"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/spec
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1523,13 +1468,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "GoferClient"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/gofer_client
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1581,13 +1522,9 @@ blocks:
   - name: "Blocks: \U0001F6E1️ Deployment Preconditions"
     dependencies: []
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/block
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1691,8 +1628,6 @@ blocks:
   - name: "Ppl: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Ppl: Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1701,8 +1636,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd plumber/ppl
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1804,7 +1737,6 @@ blocks:
     dependencies: ["Pre-flight Checks: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -1904,8 +1836,6 @@ blocks:
   - name: "ProjectHub: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["ProjectHub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1916,7 +1846,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd projecthub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -1996,8 +1925,6 @@ blocks:
   - name: "ProjectHub REST API: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["ProjectHub REST API: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2008,7 +1935,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd projecthub-rest-api
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2064,8 +1990,6 @@ blocks:
   - name: "public-api-gateway: \U0001F6E1 Deployment Preconditions"
     dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2076,7 +2000,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api-gateway
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1 Check code"
@@ -2129,8 +2052,6 @@ blocks:
   - name: "Repohub: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2141,7 +2062,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd repohub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2222,7 +2142,6 @@ blocks:
     dependencies: ["RBAC CE: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -2236,7 +2155,6 @@ blocks:
           - checkout && cd rbac/ce
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2323,7 +2241,6 @@ blocks:
     dependencies: ["RBAC EE: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -2337,7 +2254,6 @@ blocks:
           - checkout && cd ee/rbac
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2444,7 +2360,6 @@ blocks:
           type: e2-standard-2
           os_image: ubuntu2004
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -2456,8 +2371,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd repository_hub
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
@@ -2523,8 +2436,6 @@ blocks:
   - name: "Loghub2: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2535,7 +2446,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd loghub2
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2589,8 +2499,6 @@ blocks:
   - name: "Encryptor: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2601,7 +2509,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd encryptor
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2655,8 +2562,6 @@ blocks:
   - name: "Bootstrapper: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2667,7 +2572,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd bootstrapper
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2720,8 +2624,6 @@ blocks:
   - name: "Self-Hosted-Hub: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2732,7 +2634,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd self_hosted_hub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2810,8 +2711,6 @@ blocks:
   - name: "Secrethub: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Secrethub: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2822,7 +2721,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd secrethub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2894,8 +2792,6 @@ blocks:
   - name: "Notifications: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Notifications: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2906,7 +2802,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd notifications
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2988,8 +2883,6 @@ blocks:
   - name: "APIv1alpha: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["APIv1alpha: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3000,7 +2893,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v1alpha
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3081,7 +2973,6 @@ blocks:
     dependencies: ["APIv2: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -3095,7 +2986,6 @@ blocks:
           - checkout && cd public-api/v2
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 3.3
           - make pull
       jobs:
@@ -3145,13 +3035,12 @@ blocks:
         - name: SERVICE_NAME
           value: "PeriodicScheduler"
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       prologue:
         commands:
           - checkout && cd periodic_scheduler/scheduler
-          - sudo chmod 600 ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
-          - ssh-add ~/.ssh/feature_provider_rsa ~/.ssh/security-toolbox
+          - sudo chmod 600 ~/.ssh/feature_provider_rsa
+          - ssh-add ~/.ssh/feature_provider_rsa
       jobs:
         - name: Check dependencies
           commands:
@@ -3241,8 +3130,6 @@ blocks:
   - name: "Github Hooks: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Github Hooks: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: RAILS_ENV
           value: "production"
@@ -3253,8 +3140,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd github_hooks
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3309,8 +3194,6 @@ blocks:
   - name: "statsd: \U0001F6E1️ Security Checks"
     dependencies: ["statsd: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -3319,8 +3202,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd statsd
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - sem-version ruby 2.7
           - make pull
       jobs:
@@ -3355,8 +3236,6 @@ blocks:
   - name: "Velocity: \U0001F6E1 Deployment Preconditions"
     dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -3367,7 +3246,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/velocity
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3446,7 +3324,6 @@ blocks:
     dependencies: ["Zebra: \U0001F4CB Provision Prod Image"]
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: feature-provider-token
       env_vars:
         - name: MIX_ENV
@@ -3460,7 +3337,6 @@ blocks:
           - checkout && cd zebra
           - sudo chmod 600 ~/.ssh/feature_provider_rsa
           - ssh-add ~/.ssh/feature_provider_rsa
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3508,13 +3384,9 @@ blocks:
           value: "Keycloak setup"
         - name: APP_ENV
           value: prod
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd keycloak/setup
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: Validate
           commands:
@@ -3537,13 +3409,9 @@ blocks:
           value: "Keycloak"
         - name: APP_ENV
           value: prod
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd keycloak/image
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: Check docker image
           commands:
@@ -3588,8 +3456,6 @@ blocks:
   - name: "Scouter: \U0001F6E1️ Deployment Preconditions"
     dependencies: ["Scouter: \U0001F4CB Provision Prod Image"]
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3600,7 +3466,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd scouter
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
