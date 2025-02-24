@@ -51,7 +51,7 @@ defmodule Audit.Streamer.Scheduler do
 
       streamer_configs
       |> Enum.filter(fn config ->
-        FeatureProvider.feature_enabled?(:audit_streaming, config.org_id)
+        FeatureProvider.feature_enabled?(:audit_streaming, param: config.org_id)
       end)
       |> Enum.each(fn config -> lock_and_process(config.org_id) end)
     end
