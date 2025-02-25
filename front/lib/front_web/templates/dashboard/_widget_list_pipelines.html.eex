@@ -8,7 +8,7 @@
           <%= raw status_badge(pipeline) %>
         </div>
         <div class="flex items-start-m pr3">
-          <img src="<%= Application.get_env(:front, :assets_path) %>/images/icn-promote.svg" class="dn db-m mr2">
+          <img src="<%= assets_path() %>/images/icn-promote.svg" class="dn db-m mr2">
           <div>
             <a href="<%= pipeline.html_url %>" class="link dark-gray underline-hover b mb0 mr2"><%= pipeline.commit_message %></a>
             <a href="<%= pipeline.github_commit_url %>" class="link code f6 ph1 dark-gray ba br2"><%= pipeline.short_commit_id %></a>

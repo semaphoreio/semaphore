@@ -403,10 +403,8 @@ defmodule Front.ActivityMonitor do
     )
   end
 
-  @default_user_avatar_url "#{Application.compile_env(:front, :assets_path)}/images/semaphore-logo-sign-black.svg"
-
-  defp get_user_avatar(nil), do: @default_user_avatar_url
-  defp get_user_avatar(user), do: user.avatar_url || @default_user_avatar_url
+  defp get_user_avatar(nil), do: FrontWeb.SharedHelpers.assets_path()
+  defp get_user_avatar(user), do: user.avatar_url || FrontWeb.SharedHelpers.assets_path()
 
   defp get_user_name(nil), do: Application.get_env(:front, :default_user_name)
   defp get_user_name(user), do: user.name || Application.get_env(:front, :default_user_name)

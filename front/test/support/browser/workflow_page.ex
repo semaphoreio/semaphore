@@ -86,7 +86,7 @@ defmodule Support.Browser.WorkflowPage do
   end
 
   defp strip_asset_host(href) do
-    asset_path = Application.get_env(:front, :assets_path)
+    asset_path = FrontWeb.SharedHelpers.assets_path()
 
     String.replace_leading(href, asset_path, "")
   end

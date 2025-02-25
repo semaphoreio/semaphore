@@ -176,7 +176,7 @@ defmodule Front.Models.Scheduler do
     end
 
     def preload_triggerer(trigger = %__MODULE__{}, nil) do
-      avatar_url = "#{Application.get_env(:front, :assets_path)}/images/profile-bot.svg"
+      avatar_url = "#{FrontWeb.SharedHelpers.assets_path()}/images/profile-bot.svg"
 
       %__MODULE__{
         trigger
