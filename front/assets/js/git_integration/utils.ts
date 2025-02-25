@@ -1,4 +1,4 @@
-export const createOrderMap = (orderArray: any[]) =>
+export const createOrderMap = (orderArray: any[]): Record<any, number> =>
   orderArray.reduce((map, type, index) => {
     map[type] = index;
     return map;

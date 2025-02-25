@@ -38,7 +38,7 @@ const Integrations = () => {
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Integrations" boxIcon={gitSvg}>
-           {utils.sortObjectByOrder(config.integrations, integrationsOrderMap, `type`).map(
+          {utils.sortObjectByOrder(config.integrations, integrationsOrderMap, `type`).map(
             (integration, index) => (
               <Card
                 key={`integration-${integration.type}-${index}`}
