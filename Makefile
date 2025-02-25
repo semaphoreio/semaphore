@@ -71,7 +71,7 @@ endif
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-CHECK_DEPS_EXTRA_OPTS?="-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,open_api_spex"
+CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,open_api_spex
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 #
