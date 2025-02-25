@@ -14,8 +14,8 @@ export const HomePage = () => {
       <p className="measure">
         Connect Semaphore application with your repositories.
       </p>
-      <Integrations/>
-      <AddNewIntegration/>
+      <Integrations />
+      <AddNewIntegration />
     </div>
   );
 };
@@ -38,15 +38,15 @@ const Integrations = () => {
           {config.integrations
             .sort((a, b) => integrationsOrder.indexOf(a.type) - integrationsOrder.indexOf(b.type))
             .map((integration, index) => (
-            <Card
-              key={`integration-${integration.type}-${index}`}
-              title={integration.appName}
-              description={integration.description}
-              lastItem={itemsLen === index + 1}
-              connectionStatus={integration.connectionStatus}
-              integrationType={integration.type}
-            />
-          ))}
+              <Card
+                key={`integration-${integration.type}-${index}`}
+                title={integration.appName}
+                description={integration.description}
+                lastItem={itemsLen === index + 1}
+                connectionStatus={integration.connectionStatus}
+                integrationType={integration.type}
+              />
+            ))}
         </Box>
       )}
     </Fragment>
