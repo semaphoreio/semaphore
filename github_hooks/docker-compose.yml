@@ -100,7 +100,7 @@ services:
       context: ../encryptor
       dockerfile: Dockerfile
       cache_from:
-        - "${REGISTRY_HOST:-local}/encryptor/${BRANCH:-master}:${IMAGE_TAG:-prod}"
+        - "${REGISTRY_HOST:-local}/encryptor/${BRANCH:-main}:${IMAGE_TAG:-prod}"
       args:
         - APP_NAME=encryptor
     expose:

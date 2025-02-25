@@ -44,6 +44,6 @@ endif
 
 task_api.run:
 	cd ../task_api_referent && \
-		$(MAKE) build IMAGE=task_api_referent/$(BRANCH) MASTER_IMAGE=task_api_referent/master BUILD_ENV=prod IMAGE_TAG=prod && \
+		$(MAKE) build IMAGE=task_api_referent/$(BRANCH) MAIN_IMAGE=task_api_referent/main BUILD_ENV=prod IMAGE_TAG=prod && \
 		docker run --network host -e GRPC_PORT=50051 -d task_api_referent/$(BRANCH):prod && \
 		cd -

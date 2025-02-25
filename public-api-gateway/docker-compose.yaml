@@ -11,7 +11,7 @@ services:
       ssh:
         - default
       cache_from:
-        - ${MASTER_IMAGE:-public-api-gateway}:${IMAGE_TAG:-latest}
+        - ${MAIN_IMAGE:-public-api-gateway}:${IMAGE_TAG:-latest}
     ports:
       - "8080:8080"
 

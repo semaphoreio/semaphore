@@ -5,8 +5,8 @@
 1. Create release branch:
 
 ```bash
-git checkout master
-git pull origin master
+git checkout main
+git pull origin main
 git checkout -b release/v0.4.x
 git push origin release/v0.4.x
 ```
