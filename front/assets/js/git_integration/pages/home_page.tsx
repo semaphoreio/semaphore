@@ -64,18 +64,20 @@ const AddNewIntegration = () => {
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Connect new" boxIcon={addNewIcon}>
-          {config.newIntegrations.map((integration, index) => (
-            <Card
-              key={index}
-              title={integration.name}
-              description={integration.description}
-              lastItem={itemsLen === index + 1}
-              time={integration.setupTime}
-              integrationType={integration.type}
-              connectButtonUrl={integration.connectUrl}
-              internalSetup={integration.internalSetup}
-            />
-          ))}
+          {utils.sortObjectByOrder(config.newIntegrations, integrationsOrderMap, `type`).map(
+            (integration, index) => (
+              <Card
+                key={`integration-${integration.type}-${index}`}
+                title={integration.name}
+                description={integration.description}
+                lastItem={itemsLen === index + 1}
+                time={integration.setupTime}
+                integrationType={integration.type}
+                connectButtonUrl={integration.connectUrl}
+                internalSetup={integration.internalSetup}
+              />
+            )
+          )}
         </Box>
       )}
     </Fragment>
