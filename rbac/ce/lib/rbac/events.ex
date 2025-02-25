@@ -1,5 +1,8 @@
 defmodule Rbac.Events do
+  require Logger
+
   @exchange_name "rbac_exchange"
+  @allowed_routing_keys ["role_assigned", "role_retracted"]
   # This event is emitted whenever there is some authorization change in the Rbac
   #
   # Mandatory parameters:
@@ -10,38 +13,46 @@ defmodule Rbac.Events do
   # Optional:
   #  - project_id (Provide this parameter when authorization affects only one project)
 
+  @spec publish(
+          routing_key :: String.t(),
+          user_id :: String.t(),
+          org_id :: String.t(),
+          project_id :: String.t()
+        ) :: :ok | :error
   def publish(routing_key, user_id, org_id, project_id \\ "") do
-    with :ok <- validate(routing_key) do
-      date_time = DateTime.utc_now()
+    with :ok <- validate(routing_key),
+         {:ok, channel} <- AMQP.Application.get_channel(:authorization),
+         _ <- Tackle.Exchange.create(channel, @exchange_name),
+         message <- encode_message(org_id, project_id, user_id),
+         :ok <- Tackle.Exchange.publish(channel, @exchange_name, message, routing_key) do
+      :ok
+    else
+      error ->
+        Logger.error("Publishing message failed: #{inspect(error)}")
 
-      event =
-        %InternalApi.Guard.AuthorizationEvent{
-          org_id: org_id,
-          project_id: project_id,
-          user_id: user_id,
-          timestamp: %Google.Protobuf.Timestamp{
-            seconds: date_time |> seconds(),
-            nanos: date_time |> nanos()
-          }
+        :error
+    end
+  end
+
+  defp encode_message(org_id, project_id, user_id) do
+    date_time = DateTime.utc_now()
+
+    event =
+      %InternalApi.Guard.AuthorizationEvent{
+        org_id: org_id,
+        project_id: project_id,
+        user_id: user_id,
+        timestamp: %Google.Protobuf.Timestamp{
+          seconds: date_time |> seconds(),
+          nanos: date_time |> nanos()
         }
+      }
 
-      message = InternalApi.Guard.AuthorizationEvent.encode(event)
-
-      {:ok, channel} = AMQP.Application.get_channel(:authorization)
-      Tackle.Exchange.create(channel, @exchange_name)
-      :ok = Tackle.Exchange.publish(channel, @exchange_name, message, routing_key)
-
-      {:ok, message}
-    end
+    InternalApi.Guard.AuthorizationEvent.encode(event)
   end
 
-  defp validate(routing_key) do
-    case routing_key do
-      "role_assigned" -> :ok
-      "role_retracted" -> :ok
-      _ -> {:error, routing_key}
-    end
-  end
+  defp validate(routing_key),
+    do: if(routing_key in @allowed_routing_keys, do: :ok, else: :error)
 
   defp seconds(date_time) do
     date_time |> DateTime.to_unix(:second)
