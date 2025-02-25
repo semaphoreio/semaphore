@@ -1,0 +1,19 @@
+apiVersion: skaffold/v4beta12
+kind: Config
+metadata:
+  name: semaphore
+deploy:
+  helm:
+    releases:
+      - name: semaphore
+        chartPath: helm-chart
+        valuesFiles:
+          - helm-chart/values.yaml
+        setValues:
+          global.domain.name: "localhost"
+          ingress.className: "traefik"
+          ingress.ssl.type: "custom"
+        version: 0.1.0
+    flags:
+      upgrade: ["--timeout", "30m"]
+      install: ["--timeout", "30m"]
