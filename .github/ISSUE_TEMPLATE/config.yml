@@ -1,12 +1,9 @@
 blank_issues_enabled: false
-contact_links:
 
-name: Community Support
-url: https://github.com/semaphoreio/semaphore/discussions
-about: Ask and answer questions in our community discussions
-name: Documentation
-url: https://docs.semaphoreci.com
-about: Check our documentation for answers to common questions
-name: Feature Request Guidelines
-url: https://github.com/semaphoreci/semaphore/blob/main/CONTRIBUTING.md#feature-requests
-about: Please read our guidelines before submitting a feature request
+contact_links:
+  - name: Documentation
+    url: https://docs.semaphoreci.com
+    about: Check our documentation for answers to common questions
+  - name: Community Support
+    url: https://github.com/semaphoreio/semaphore/discussions
+    about: Ask and answer questions in our community discussions
