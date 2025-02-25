@@ -4,6 +4,8 @@ import { Box, Card } from "../components";
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import { gitSvg, addNewIcon } from "./home_page/icons";
+import { State } from "../stores/config";
+import { Integration } from "../types";
 
 export const HomePage = () => {
   return (
@@ -18,17 +20,26 @@ export const HomePage = () => {
   );
 };
 
+const integrationsOrder = [
+  Integration.IntegrationType.GithubApp,
+  Integration.IntegrationType.GithubOauthToken,
+  Integration.IntegrationType.BitBucket,
+  Integration.IntegrationType.Gitlab,
+];
+
 const Integrations = () => {
-  const config = useContext(stores.Config.Context);
+  const config: State = useContext(stores.Config.Context);
   const itemsLen = config.integrations ? config.integrations.length : 0;
 
   return (
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Integrations" boxIcon={gitSvg}>
-          {config.integrations.map((integration, index) => (
+          {config.integrations
+            .sort((a, b) => integrationsOrder.indexOf(a.type) - integrationsOrder.indexOf(b.type))
+            .map((integration, index) => (
             <Card
-              key={index}
+              key={`integration-${integration.type}-${index}`}
               title={integration.appName}
               description={integration.description}
               lastItem={itemsLen === index + 1}
