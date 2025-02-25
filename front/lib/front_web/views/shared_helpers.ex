@@ -190,10 +190,7 @@ defmodule FrontWeb.SharedHelpers do
     end
   end
 
-  def assets_path do
-    "https://semaphore.sxmoon.com/projects/assets"
-    # Application.get_env(:front, :assets_path)
-  end
+  def assets_path, do: "/projects/assets"
 
   def image_source(name) do
     "#{assets_path()}/images/#{name}"
