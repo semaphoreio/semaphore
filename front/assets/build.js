@@ -62,5 +62,10 @@ if (watch) {
     process.stdin.resume()
   })
 } else {
-  esbuild.build(buildOptions)
+  esbuild.build(buildOptions).then(() => {
+    copyAssets()
+  }).catch(error => {
+    console.error('Build error:', error)
+    process.exit(1)
+  })
 }
