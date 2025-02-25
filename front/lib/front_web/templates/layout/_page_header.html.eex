@@ -94,15 +94,6 @@
       <% end %>
     </div>
     <div class="flex items-center flex-shrink-0">
-      <%= if FeatureProvider.feature_enabled?(:feedback, @conn.assigns[:organization_id]) do %>
-        <!-- Feedback Menu -->
-        <div class="dn db-m">
-          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="feedbackMenu">
-            <%= icon("icn-smiley", class: "db o-80", width: "24", height: "24") %>
-            <span class="dn db-m ml2 b">Feedback</span>
-          </div>
-        </div>
-      <% end %>
       <%= if FeatureProvider.feature_enabled?(:help, @conn.assigns[:organization_id]) do %>
         <!-- Help Menu -->
         <div class="ph1 ph2-ns mr2-ns br-ns b--black-10">
@@ -122,42 +113,6 @@
   </div>
 </div>
 <div style="display: none;">
-  <!-- Header Feedback Menu -->
-  <div id="feedbackMenu">
-    <div class="ph2 pv1">
-      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Share Feedback</div>
-      <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
-              href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
-              subject: "Feedback",
-              body: Enum.join([
-                "By: #{@layout_model.user.name}",
-                "From: #{@layout_model.current_organization.name}",
-                "========================================",
-                "",
-                "Share your feedback here…"
-              ], "\n")
-            }) |> String.replace("+", "%20") %>">
-        <div class="b">Submit an idea</div>
-        <p class="f6 o-80 mb0">Share your improvement proposal</p>
-      </a>
-      <%= if !FeatureProvider.feature_enabled?(:zendesk_support, @conn.assigns[:organization_id]) do %>
-        <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
-                href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
-                subject: "Feedback",
-                body: Enum.join([
-                  "By: #{@layout_model.user.name}",
-                  "From: #{@layout_model.current_organization.name}",
-                  "========================================",
-                  "",
-                  "Share your feedback here…"
-                ], "\n")
-              }) |> String.replace("+", "%20") %>">
-          <div class="b">Report a Bug</div>
-          <p class="f6 o-80 mb0">Tell us if something’s off</p>
-        </a>
-      <% end %>
-    </div>
-  </div>
   <!-- Header Help menu  -->
   <div id="helpMenu">
     <div class="ph2 pv1">
