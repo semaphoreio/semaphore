@@ -2,6 +2,8 @@ export MIX_ENV?=dev
 
 include ../../Makefile
 
+CHECK_DEPS_EXTRA_OPTS=-w proto
+
 DOCKER_BUILD_PATH=..
 EX_CATCH_WARRNINGS_FLAG=
 

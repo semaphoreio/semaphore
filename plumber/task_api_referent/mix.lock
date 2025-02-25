@@ -10,7 +10,7 @@
   "gun": {:hex, :gun, "1.3.0", "18e5d269649c987af95aec309f68a27ffc3930531dd227a6eaa0884d6684286e", [:rebar3], [{:cowlib, "~> 2.6.0", [hex: :cowlib, repo: "hexpm", optional: false]}], "hexpm", "279d089773be9886fc2ed0d0c25663cc36b8755356dfd27d63c206ab20b8329a"},
   "jason": {:hex, :jason, "1.4.1", "af1504e35f629ddcdd6addb3513c3853991f694921b1b9368b0bd32beb9f1b63", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "fbb01ecdfd565b56261302f7e1fcc27c4fb8f32d56eab74db621fc154604a7a1"},
   "junit_formatter": {:hex, :junit_formatter, "3.3.1", "c729befb848f1b9571f317d2fefa648e9d4869befc4b2980daca7c1edc468e40", [:mix], [], "hexpm", "761fc5be4b4c15d8ba91a6dafde0b2c2ae6db9da7b8832a55b5a1deb524da72b"},
-  "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "30c69704d583bda8cffb324b8936ffd3680e6ae4", []},
+  "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "c5f0fc6930af06ad905e6a5ef93a5027a79e016f", []},
   "protobuf": {:hex, :protobuf, "0.5.4", "2e1b8eec211aff034ad8a14e3674220b0158bfb9a3c7128ac9d2a1ed1b3724d3", [:mix], [], "hexpm", "994348a4592408bc99c132603b0fdb686a2b5df0321a8eb1a582ec2bd3495886"},
   "ranch": {:hex, :ranch, "1.6.2", "6db93c78f411ee033dbb18ba8234c5574883acb9a75af0fb90a9b82ea46afa00", [:rebar3], [], "hexpm", "0b65d1de7f1ebe96feb57803c8d698f7776b663ba10b6dcff34527e4a4f8ff43"},
   "sys2app": {:git, "https://github.com/renderedtext/sys2app.git", "9c881c72e26b006fe2e52e8f081595c4c3665cb5", []},
