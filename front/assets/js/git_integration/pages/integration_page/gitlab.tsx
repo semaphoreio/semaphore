@@ -203,12 +203,12 @@ const CopyFields = ({ integration }: { integration: types.Integration.GitlabInte
 
   const sortPermissions = (permissions: string) => {
     const manifestPermissionsOrder = [
-      "api",
-      "read_api",
-      "read_user",
-      "read_repository",
-      "write_repository",
-      "openid",
+      `api`,
+      `read_api`,
+      `read_user`,
+      `read_repository`,
+      `write_repository`,
+      `openid`,
     ];
 
     const currentPermissions = permissions.split(`,`).map(permission => permission.trim());
