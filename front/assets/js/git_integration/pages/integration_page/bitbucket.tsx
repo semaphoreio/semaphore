@@ -45,14 +45,14 @@ export const BitbucketIntegration = ({ integration, csrfToken, orgUsername }: Pr
             <label className="b mr1">Integration Setup</label>
             <div className="mt2">
               <p className="mb3">
-              Start by creating a&nbsp;
+              Start by creating a OAuth consumer:&nbsp;
                 <a
-                  href="https://bitbucket.org/hamir-testing/workspace/settings/api"
+                  href="https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/"
                   target="_blank"
                   rel="noreferrer"
                   className="link blue hover-dark-blue"
                 >
-                Bitbucket OAuth consumer ↗
+                Use OAuth on Bitbucket Cloud ↗
                 </a>
               </p>
             </div>
