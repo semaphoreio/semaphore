@@ -67,6 +67,7 @@ ___
 - 🗺️ [Roadmap](ROADMAP.md) - See what's planned for future releases
 - 🏛️ [Governance](GOVERNANCE.md) - How the project is managed and decisions are made
 - 📋 [Project Board](https://github.com/orgs/semaphoreio/projects/1) - Track development progress on our Kanban board
+- 🔒 [Security](SECURITY.md) - Our security policies and reporting procedures
 ___
 
 ## Contributing
