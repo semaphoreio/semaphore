@@ -7,6 +7,8 @@ EX_CATCH_WARRNINGS_FLAG=
 
 APP_NAME=ppl
 
+CHECK_DEPS_EXTRA_OPTS=-w definition_validator,job_matrix,looper,proto,gofer_client,block
+
 IN_DOCKER?="true"
 POSTGRES_DB_NAME?="ppl_repo"
 POSTGRES_DB_USER?="postgres"

@@ -7,6 +7,8 @@ EX_CATCH_WARRNINGS_FLAG=
 
 APP_NAME=block
 
+CHECK_DEPS_EXTRA_OPTS=-w definition_validator,job_matrix,looper,proto
+
 IN_DOCKER?="true"
 BLOCK_POSTGRES_DB_NAME?="block_repo"
 BLOCK_POSTGRES_DB_USER?="postgres"
