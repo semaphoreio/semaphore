@@ -6,6 +6,7 @@ import * as stores from "../stores";
 import { gitSvg, addNewIcon } from "./home_page/icons";
 import { State } from "../stores/config";
 import { Integration } from "../types";
+import * as utils from "../utils";
 
 export const HomePage = () => {
   return (
@@ -27,6 +28,8 @@ const integrationsOrder = [
   Integration.IntegrationType.Gitlab,
 ];
 
+const integrationsOrderMap = utils.createOrderMap(integrationsOrder);
+
 const Integrations = () => {
   const config: State = useContext(stores.Config.Context);
   const itemsLen = config.integrations ? config.integrations.length : 0;
@@ -35,9 +38,8 @@ const Integrations = () => {
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Integrations" boxIcon={gitSvg}>
-          {config.integrations
-            .sort((a, b) => integrationsOrder.indexOf(a.type) - integrationsOrder.indexOf(b.type))
-            .map((integration, index) => (
+           {utils.sortByOrder(config.integrations.map(i => i.type), integrationsOrderMap).map(
+            (integration, index) => (
               <Card
                 key={`integration-${integration.type}-${index}`}
                 title={integration.appName}
@@ -46,7 +48,8 @@ const Integrations = () => {
                 connectionStatus={integration.connectionStatus}
                 integrationType={integration.type}
               />
-            ))}
+            )
+          )}
         </Box>
       )}
     </Fragment>

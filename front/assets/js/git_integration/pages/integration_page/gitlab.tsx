@@ -5,6 +5,7 @@ import { useState } from "preact/hooks";
 import * as components from "../../components";
 import * as types from "../../types";
 import * as stores from "../../stores";
+import * as utils from "../../utils";
 
 interface Props {
   integration: types.Integration.GitlabIntegration;
@@ -193,6 +194,17 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
   );
 };
 
+const manifestPermissionsOrder = [
+  `api`,
+  `read_api`,
+  `read_user`,
+  `read_repository`,
+  `write_repository`,
+  `openid`,
+];
+
+const permissionsOrderMap = utils.createOrderMap(manifestPermissionsOrder);
+
 const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
   const manifest = integration.manifest as {
     permissions: string;
@@ -202,23 +214,12 @@ const CopyFields = ({ integration }: { integration: types.Integration.GitlabInte
   const redirectUrls = manifest.redirect_urls.split(`,`).map(url => url.trim());
 
   const sortPermissions = (permissions: string) => {
-    const manifestPermissionsOrder = [
-      `api`,
-      `read_api`,
-      `read_user`,
-      `read_repository`,
-      `write_repository`,
-      `openid`,
-    ];
 
     const currentPermissions = permissions.split(`,`).map(permission => permission.trim());
-    const sortedPermissions = currentPermissions.sort((a, b) => {
-      return manifestPermissionsOrder.indexOf(a) - manifestPermissionsOrder.indexOf(b);
-    });
+    const sortedPermissions = utils.sortByOrder(currentPermissions, permissionsOrderMap);
 
     return sortedPermissions.join(`,`);
   };
-
 
   return (
     <Fragment>
