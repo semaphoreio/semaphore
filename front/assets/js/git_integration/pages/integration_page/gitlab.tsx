@@ -214,7 +214,6 @@ const CopyFields = ({ integration }: { integration: types.Integration.GitlabInte
   const redirectUrls = manifest.redirect_urls.split(`,`).map(url => url.trim());
 
   const sortPermissions = (permissions: string) => {
-
     const currentPermissions = permissions.split(`,`).map(permission => permission.trim());
     const sortedPermissions = utils.sortByOrder(currentPermissions, permissionsOrderMap);
 
