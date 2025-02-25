@@ -1,6 +1,12 @@
+# Semaphore - Open Source CI/CD Platform
 [![CI/CD, Semaphore, Continuous Integration](files/hero.png)](https://www.semaphore.io/)
+[![Stars](https://img.shields.io/github/stars/semaphoreio/semaphore)](https://github.com/semaphoreio/semaphore/stargazers)
+[![Discord](https://img.shields.io/discord/1097422014735732746?label=Discord&logo=discord&color=5865F2)](https://discord.gg/FBuUrV24NH)
+[![GitHub Discussions](https://img.shields.io/github/discussions/semaphoreio/semaphore?label=Discussions&logo=github)](https://github.com/semaphoreio/semaphore/discussions)
+[![GitHub Issues](https://img.shields.io/github/issues/semaphoreio/semaphore?label=Issues&logo=github)](https://github.com/semaphoreio/semaphore/issues)
+[![GitHub License](https://img.shields.io/github/license/semaphoreio/semaphore?label=License&logo=github)](https://github.com/semaphoreio/semaphore/blob/main/LICENSE)
 
-# 🚀 Welcome to **Semaphore Open Source** 🎉  
+
 
 ⚠️ **This repository is a placeholder.** The source code for Semaphore will be added here on **February 26th**! 🚀  
 
