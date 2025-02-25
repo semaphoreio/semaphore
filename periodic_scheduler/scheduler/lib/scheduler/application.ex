@@ -24,11 +24,7 @@ defmodule Scheduler.Application do
       {GRPC.Server.Supervisor,
        {[Scheduler.Grpc.Server, Scheduler.Grpc.HealthCheck.Server],
         Application.get_env(:scheduler, :grpc_port, 50_050)}},
-      Scheduler.Workers.ScheduleTaskManager,
-      Supervisor.child_spec(
-        {Cachex, name: Scheduler.FeatureHubProvider},
-        id: :feature_cache
-      )
+      Scheduler.Workers.ScheduleTaskManager
     ]
   end
 
@@ -39,8 +35,22 @@ defmodule Scheduler.Application do
       Scheduler.Workers.QuantumScheduler,
       Scheduler.Workers.Initializer,
       {Scheduler.EventsConsumers.OrgBlocked, []},
-      {Scheduler.EventsConsumers.OrgUnblocked, []}
-    ]
+      {Scheduler.EventsConsumers.OrgUnblocked, []},
+      Supervisor.child_spec(
+        {Cachex, name: Scheduler.FeatureHubProvider},
+        id: :feature_provider_cache
+      )
+    ] ++ feature_provider()
+  end
+
+  def feature_provider do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [
+        Application.fetch_env!(:scheduler, :feature_provider)
+      ]
+    else
+      []
+    end
   end
 
   defp get_env(), do: Application.get_env(:scheduler, :mix_env)

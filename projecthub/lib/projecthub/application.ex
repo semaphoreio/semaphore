@@ -32,6 +32,7 @@ defmodule Projecthub.Application do
         }
       ] ++
         filter_enabled([
+          {provider, System.get_env("FEATURE_YAML_PATH") != nil},
           {{Support.MemoryDb, []}, env != :prod},
           {{Projecthub.Workers.ProjectInit, []}, start_worker?},
           {{GRPC.Server.Supervisor, {Projecthub.Api.Endpoint, port}}, start_server?}

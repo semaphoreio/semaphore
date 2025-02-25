@@ -44,7 +44,7 @@ defmodule Secrethub.Application do
 
     children =
       children ++
-        grpc_services() ++ openid_connect_services() ++ openid_key_manager() ++ workers()
+        grpc_services() ++ openid_connect_services() ++ openid_key_manager() ++ workers() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Secrets.Supervisor]
     Supervisor.start_link(children, opts)
@@ -139,6 +139,14 @@ defmodule Secrethub.Application do
       Logger.info("Starting GRPC APIs (#{inspect(services)}) on port #{grpc_port}")
 
       [{GRPC.Server.Supervisor, {services, grpc_port}}]
+    else
+      []
+    end
+  end
+
+  def feature_provider(provider) do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [provider]
     else
       []
     end

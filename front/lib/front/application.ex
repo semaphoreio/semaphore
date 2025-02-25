@@ -22,7 +22,7 @@ defmodule Front.Application do
         FrontWeb.Endpoint,
         {Task.Supervisor, [name: Front.TaskSupervisor]},
         Front.Tracing.Store
-      ] ++ reactor() ++ cache() ++ telemetry()
+      ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]
 
@@ -79,6 +79,14 @@ defmodule Front.Application do
         Front.Layout.CacheInvalidator,
         Front.WorkflowPage.PipelineStatus.CacheInvalidator
       ]
+    else
+      []
+    end
+  end
+
+  def feature_provider(provider) do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [provider]
     else
       []
     end

@@ -19,11 +19,19 @@ defmodule Auth.Application do
         id: FeatureProvider.Cachex,
         start: {Cachex, :start_link, [:feature_provider_cache, []]}
       }
-    ]
+    ] ++ feature_provider(provider)
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
 
     opts = [strategy: :one_for_one, name: Auth.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  def feature_provider(provider) do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [provider]
+    else
+      []
+    end
   end
 end
