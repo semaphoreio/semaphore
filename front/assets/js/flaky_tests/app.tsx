@@ -1,5 +1,5 @@
 import * as pages from "./pages";
-import { h } from "preact";
+
 import { useEffect } from "preact/hooks";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Userpilot } from "userpilot";

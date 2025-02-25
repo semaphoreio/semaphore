@@ -1,4 +1,4 @@
-import { createContext, Fragment, h, render, VNode } from "preact";
+import { createContext, Fragment, render, VNode } from "preact";
 import { Modal } from "js/toolbox";
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import * as toolbox from "js/toolbox";

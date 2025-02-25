@@ -1,5 +1,5 @@
 import { Status } from "../types";
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { FlakyTestRow } from "./flaky_test_row";
 import { TableHeaders } from "./table_headers";
 import { LoadingIndicator } from "./loading_indicator";

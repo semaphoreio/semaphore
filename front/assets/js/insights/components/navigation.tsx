@@ -1,4 +1,4 @@
-import { h, VNode } from 'preact';
+import { VNode } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 import { NavLink } from 'react-router-dom';
 import * as stores from '../stores';
@@ -75,8 +75,8 @@ export const Navigation = ({ createDashboard, state }: Props) => {
               </div>
               <Tippy
                 placement="right"
-                allowHTML="true"
-                interactive="true"
+                allowHTML={true}
+                interactive={true}
                 theme="light"
                 trigger="click"
                 visible={visible}

@@ -1,4 +1,3 @@
-import { Fragment, h } from "preact";
 import { Spendings } from "../types";
 import * as stores from "../stores";
 import * as components from "../components";
@@ -136,7 +135,7 @@ const Chart = (props: ChartProps) => {
             <components.Charts.DateAxisX/>
             <components.Charts.MoneyScaleY/>
             <components.Charts.TooltipLine/>
-            <Fragment>
+            <>
               {projects.map((project, idx) => {
                 const projectSelected = (project.name == selectedProject) || (selectedProject == ``);
                 return <components.Charts.LineChart
@@ -146,7 +145,7 @@ const Chart = (props: ChartProps) => {
                   style={projectSelected ? `opacity: 1;` : `opacity: 0.2;`}
                 />;
               })}
-            </Fragment>
+            </>
           </components.Charts.Plot>
           <Legend aggregationType={aggregationType} setAggregationType={setAggregationType} projects={projects} selectedProject={selectedProject} setSelectedProject={setSelectedProject}/>
           <Tooltip/>

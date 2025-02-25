@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import * as types from "../types";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
@@ -22,7 +22,7 @@ export const ScopeContent = ({ selectedProvider, user, scopeUrls, userProfileUrl
     (selectedProvider.type === `github_app` && user.github_scope === `NONE`) ||
     (selectedProvider.type === `github_oauth_token` && [`NONE`, `EMAIL`].includes(user.github_scope)) ||
     (selectedProvider.type === `bitbucket` && [`NONE`, `EMAIL`].includes(user.bitbucket_scope)) ||
-    (selectedProvider.type === `gitlab` && [`NONE`, `EMAIL`].includes(user.gitlab_scope)) 
+    (selectedProvider.type === `gitlab` && [`NONE`, `EMAIL`].includes(user.gitlab_scope))
   );
 
   if (!needsScope) return null;
@@ -39,10 +39,10 @@ export const ScopeContent = ({ selectedProvider, user, scopeUrls, userProfileUrl
           <a href={userProfileUrl || `/account/profile`}>here</a>.
         </p>
         {providerScopeUrls.map((scope, index) => (
-          <a 
+          <a
             key={index}
-            href={scope.url} 
-            className="btn btn-secondary inline-flex items-center mr3" 
+            href={scope.url}
+            className="btn btn-secondary inline-flex items-center mr3"
             data-tippy-content={scope.description}
             data-csrf={csrfToken}
             data-method="post"

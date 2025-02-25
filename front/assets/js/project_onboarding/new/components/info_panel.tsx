@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as toolbox from "js/toolbox";
 
 interface InfoPanelProps {

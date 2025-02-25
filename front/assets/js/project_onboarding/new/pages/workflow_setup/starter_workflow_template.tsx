@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
 import { useContext, useState, useMemo, useEffect } from "preact/hooks";
 import { WorkflowSetup } from "../../stores";
@@ -16,8 +16,8 @@ interface TemplateOptionProps {
 }
 
 const TemplateOption = ({ template, onClick, isSelected }: TemplateOptionProps) => (
-  <div 
-    className={`flex items-center pa2 pointer ${isSelected ? `bg-washed-green` : `hover-bg-washed-green`}`} 
+  <div
+    className={`flex items-center pa2 pointer ${isSelected ? `bg-washed-green` : `hover-bg-washed-green`}`}
     onClick={onClick}
   >
     <toolbox.Asset path={`images/${template.icon}`} style={{ width: `28px` }}/>
@@ -44,9 +44,9 @@ const TemplateGroup = ({ group, templates, onTemplateSelect, selectedTemplate }:
         <span className="absolute bg-white pr2">{group.label}</span>
       </div>
       {templates.map(template => (
-        <TemplateOption 
-          key={template.template_path} 
-          template={template} 
+        <TemplateOption
+          key={template.template_path}
+          template={template}
           onClick={() => onTemplateSelect(template)}
           isSelected={selectedTemplate?.template_path === template.template_path}
         />
@@ -100,7 +100,7 @@ export const StarterWorkflowTemplate = () => {
           const lowerTemplateValues = templateValue.map(v => v.toLowerCase());
           return lowerValues.some(value => lowerTemplateValues.includes(value));
         }
-        
+
         // For single values, convert to lowercase and check
         return lowerValues.includes((templateValue as string).toLowerCase());
       });
@@ -203,7 +203,7 @@ export const StarterWorkflowTemplate = () => {
       }
 
       const data = await response.json();
-      
+
       if (data.workflow_url == null) {
         // If workflow is not ready, check again in 1 second
         setTimeout(() => void checkWorkflow(branch, commitSha), 1000);
@@ -237,9 +237,9 @@ export const StarterWorkflowTemplate = () => {
                   </div>
                 </div>
                 <div className="mb3 flex items-center">
-                  <input 
-                    type="search" 
-                    className="form-control w-100" 
+                  <input
+                    type="search"
+                    className="form-control w-100"
                     placeholder="Search..."
                     value={searchQuery}
                     onInput={handleSearchChange}
@@ -248,10 +248,10 @@ export const StarterWorkflowTemplate = () => {
                 </div>
 
                 {allGroups.map(group => (
-                  <TemplateGroup 
-                    key={group.name} 
-                    group={group} 
-                    templates={templatesByGroup[group.name] || []} 
+                  <TemplateGroup
+                    key={group.name}
+                    group={group}
+                    templates={templatesByGroup[group.name] || []}
                     onTemplateSelect={handleTemplateSelect}
                     selectedTemplate={selectedTemplate}
                   />
@@ -264,8 +264,8 @@ export const StarterWorkflowTemplate = () => {
             </div>
           </div>
           <div className="tr">
-            <button 
-              className="btn btn-primary mt3" 
+            <button
+              className="btn btn-primary mt3"
               onClick={() => void handleSubmit() }
               disabled={!selectedTemplate || isLoading}
             >

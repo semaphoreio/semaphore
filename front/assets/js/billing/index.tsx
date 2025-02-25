@@ -1,4 +1,4 @@
-import { h, render } from "preact";
+import { render } from "preact";
 import { App } from "./app";
 import * as stores from "./stores";
 import * as types from "./types";

@@ -1,4 +1,4 @@
-import { Fragment, h, VNode } from "preact";
+import { Fragment, VNode } from "preact";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
 import { Plans } from "../types";
@@ -544,6 +544,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
       {
         plan_type: planType,
       },
+      {},
       (data) => {
         const myErrors = new Map<string, string[]>();
         for (const key in data.errors) {

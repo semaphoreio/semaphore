@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useEffect, useContext, useState, useRef, useMemo } from "preact/hooks";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
@@ -61,7 +61,7 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
       const response = await fetch(url);
       const json: ApiResponse = await response.json();
       const repos = json.repos;
-      
+
       setRepositories(prev => [...prev, ... repos]);
       setNextPageToken(json.next_page_token || null);
 

@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as types from "../types";
 
 interface Props {

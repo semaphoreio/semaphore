@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useContext, useState, useEffect } from "preact/hooks";
 import Tippy from "@tippyjs/react";
 import { WorkflowSetup } from "../stores";
@@ -16,11 +16,11 @@ export const FilterButton = ({ className = ``, onFiltersChange }: FilterButtonPr
   const { state } = useContext(WorkflowSetup.Config.Context);
   const { state: envState } = WorkflowSetup.Environment.useEnvironmentStore();
   const filters = state.templatesSetup?.filters;
-  
+
   const initialEnvironment = (() => {
     const agentType = envState.selectedAgentType?.type;
     if (!agentType) return [];
-    
+
     if (agentType.startsWith(`s1-`)) return [`docker`];
     if (agentType.startsWith(`a`)) return [`macos`];
     return [`linux`];
@@ -41,9 +41,9 @@ export const FilterButton = ({ className = ``, onFiltersChange }: FilterButtonPr
     setSelectedFilters(prev => {
       const newFilters = { ...prev };
       const filterType = filters.find(f => f.label === filterKey);
-      
+
       if (!filterType?.searchField) return prev;
-      
+
       const searchField = filterType.searchField;
 
       if (filterType.type === `radio`) {

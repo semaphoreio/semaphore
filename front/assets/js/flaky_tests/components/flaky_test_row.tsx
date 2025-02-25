@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import * as util from "../../insights/util";
 import { DisruptionHistoryChart } from "./index";
 import { FlakyTestItem } from "../types/flaky_test_item";

@@ -1,6 +1,6 @@
-import { h, FunctionComponent } from "preact";
+import { FunctionComponent } from "preact";
 
-export type OnboardingStep = 
+export type OnboardingStep =
   | `select-type`
   | `setup-project`
   | `select-environment`

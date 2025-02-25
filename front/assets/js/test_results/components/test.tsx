@@ -1,4 +1,4 @@
-import { createRef, Fragment, h } from "preact";
+import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { FilterStore, NavigationStore } from "../stores";
 import { TestCase } from "../types/test_case";

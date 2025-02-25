@@ -1,4 +1,4 @@
-import { h, JSX } from "preact";
+import { JSX } from "preact";
 
 export const LockIcon: () => JSX.Element = () => {
   return (
