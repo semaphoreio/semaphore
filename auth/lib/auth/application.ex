@@ -14,7 +14,11 @@ defmodule Auth.Application do
 
     children = [
       Plug.Cowboy.child_spec(scheme: :http, plug: Auth, options: [port: port]),
-      %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}}
+      %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}},
+      %{
+        id: FeatureProvider.Cachex,
+        start: {Cachex, :start_link, [:feature_provider_cache, []]}
+      }
     ]
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)

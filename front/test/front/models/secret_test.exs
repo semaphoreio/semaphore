@@ -203,6 +203,7 @@ defmodule Front.Models.SecretTest do
         Secret.create("Name", params, org_config, :ORGANIZATION, user.id, org.id)
 
       Cachex.clear!(:auth_cache)
+      Cachex.clear!(:feature_provider_cache)
     end
 
     test "when the response is an error => returns an error response", %{

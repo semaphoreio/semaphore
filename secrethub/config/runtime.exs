@@ -65,7 +65,7 @@ feature_provider =
   System.get_env("FEATURE_YAML_PATH")
   |> case do
     nil -> {Secrethub.FeatureHubProvider, [
-      cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+      cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(10)}
     ]}
     path -> {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
   end

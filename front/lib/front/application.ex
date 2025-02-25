@@ -52,6 +52,7 @@ defmodule Front.Application do
 
     [
       {Cacheman, [:front, front_opts]},
+      Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
 
       # old, deprecated caches. Do not use.
       Supervisor.child_spec({Cachex, :front_cache}, id: :front_cache),
