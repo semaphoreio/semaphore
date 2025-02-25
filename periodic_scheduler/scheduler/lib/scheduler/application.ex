@@ -24,8 +24,12 @@ defmodule Scheduler.Application do
       {GRPC.Server.Supervisor,
        {[Scheduler.Grpc.Server, Scheduler.Grpc.HealthCheck.Server],
         Application.get_env(:scheduler, :grpc_port, 50_050)}},
-      Scheduler.Workers.ScheduleTaskManager
-    ]
+      Scheduler.Workers.ScheduleTaskManager,
+      Supervisor.child_spec(
+        {Cachex, name: Scheduler.FeatureHubProvider},
+        id: :feature_cache
+      )
+    ] ++ feature_provider()
   end
 
   def children(_), do: Enum.concat(children(:test), children_())
@@ -36,11 +40,7 @@ defmodule Scheduler.Application do
       Scheduler.Workers.Initializer,
       {Scheduler.EventsConsumers.OrgBlocked, []},
       {Scheduler.EventsConsumers.OrgUnblocked, []},
-      Supervisor.child_spec(
-        {Cachex, name: Scheduler.FeatureHubProvider},
-        id: :feature_provider_cache
-      )
-    ] ++ feature_provider()
+    ]
   end
 
   def feature_provider do
