@@ -54,6 +54,7 @@ defmodule Block.Mixfile do
       {:mock, "~> 0.3.0", only: :test},
       {:proto, path: "../proto"},
       {:when, github: "renderedtext/when"},
+      {:poison, "~> 3.1.0", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:junit_formatter, "~> 3.3", only: [:test]}
     ]
