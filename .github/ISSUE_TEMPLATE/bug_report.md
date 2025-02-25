@@ -1,33 +1,36 @@
----
-name: Bug Report
-about: Create a report to help us improve
-title: '[BUG] '
-labels: bug
-assignees: ''
----
+name: Bug report
+description: Create a report to help us improve
+labels: ["bug"]
 
-## Bug Description
-<!-- A clear and concise description of the bug -->
+body:
+  - type: markdown
+    attributes:
+      value: Before submitting your issue, please make sure you're using the latest version of Semaphore.
 
-## Steps to Reproduce
-1. 
-2. 
-3. 
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is
+    validations:
+      required: true
 
-## Expected Behavior
-<!-- What you expected to happen -->
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Steps to reproduce the behavior
+      value: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
 
-## Actual Behavior
-<!-- What actually happened -->
-
-## Environment
-- Semaphore Version:
-- OS/Platform:
-- Browser (if applicable):
-- Other relevant software versions:
-
-## Additional Context
-<!-- Add any other context, screenshots, or error messages here -->
-
-## Possible Solution
-<!-- Optional: Suggest a fix or reason for the bug -->
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here. Please add screenshots if applicable.
+    validations:
+      required: false
