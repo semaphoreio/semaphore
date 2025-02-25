@@ -42,14 +42,15 @@ export const GitlabIntegration = ({ integration, csrfToken }: Props) => {
           <div className="mb1">
             <label className="b mr1">Integration Setup</label>
             <div className="mt2">
-              <a
-                href="https://gitlab.com/-/user_settings/applications"
-                target="_blank"
-                rel="noreferrer"
-                className="link blue hover-dark-blue"
-              >
-                Create GitLab App ↗
-              </a>
+              <p className="mb3">Start by creating a new application:&nbsp;
+                <a
+                  href="https://gitlab.com/-/user_settings/applications"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Create GitLab App ↗
+                </a>
+              </p>
             </div>
           </div>
         )}

@@ -42,14 +42,15 @@ export const BitbucketIntegration = ({ integration, csrfToken }: Props) => {
           <div className="mb1">
             <label className="b mr1">Integration Setup</label>
             <div className="mt2">
-              <a
-                href="https://bitbucket.org/account/settings/app-passwords/"
-                target="_blank"
-                rel="noreferrer"
-                className="link blue hover-dark-blue"
-              >
-                Create Bitbucket App ↗
-              </a>
+              <p className="mb3">Start by creating a new application:&nbsp;
+                <a
+                  href="https://bitbucket.org/account/settings/app-passwords/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Create Bitbucket App ↗
+                </a>
+              </p>
             </div>
           </div>
         )}
