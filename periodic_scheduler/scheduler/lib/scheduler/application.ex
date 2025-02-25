@@ -39,7 +39,7 @@ defmodule Scheduler.Application do
       Scheduler.Workers.QuantumScheduler,
       Scheduler.Workers.Initializer,
       {Scheduler.EventsConsumers.OrgBlocked, []},
-      {Scheduler.EventsConsumers.OrgUnblocked, []},
+      {Scheduler.EventsConsumers.OrgUnblocked, []}
     ]
   end
 
