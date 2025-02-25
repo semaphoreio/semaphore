@@ -24,7 +24,8 @@ defmodule Audit.Application do
       {{GRPC.Server.Supervisor, grpc_options}, enabled?("START_GRPC_API")},
       {{Audit.Streamer.Scheduler, []}, enabled?("START_STREAMER")},
       {{Cachex, [name: Audit.Cache]}, true},
-      {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache), true}
+      {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
+       true}
     ]
 
     children = filter_enabled_children(children)

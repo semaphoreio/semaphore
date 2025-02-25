@@ -2886,6 +2886,7 @@ blocks:
             - make check.ex.deps
         - name: Check docker resources
           commands:
+            - make build
             - make check.docker
         - name: Check code
           commands:

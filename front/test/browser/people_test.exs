@@ -12,6 +12,7 @@ defmodule Front.Browser.PeopleTest do
     ce_roles = Application.get_env(:front, :ce_roles)
     Application.put_env(:front, :ce_roles, false)
 
+
     on_exit(fn -> Application.put_env(:front, :ce_roles, ce_roles) end)
     :ok
   end
@@ -102,6 +103,7 @@ defmodule Front.Browser.PeopleTest do
 
     test "when flag isn't enable, dont show remove button", ctx do
       Support.Stubs.Feature.disable_feature(ctx.stubs.org.id, :rbac__project_roles)
+      Cachex.clear!(:feature_provider_cache)
 
       {:ok, session} = Wallaby.start_session()
 
