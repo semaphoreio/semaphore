@@ -195,12 +195,12 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
 };
 
 const manifestPermissionsOrder = [
-  `api`,
-  `read_api`,
-  `read_user`,
-  `read_repository`,
-  `write_repository`,
-  `openid`,
+  `api:true`,
+  `read_api:true`,
+  `read_user:true`,
+  `read_repository:true`,
+  `write_repository:true`,
+  `openid:true`,
 ];
 
 const permissionsOrderMap = utils.createOrderMap(manifestPermissionsOrder);
