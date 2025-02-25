@@ -11,10 +11,10 @@ defmodule Front.GithubApp do
 
   def get(field) do
     with {:ok, gh_app} when not is_nil(gh_app) <- Cachex.get(:front_cache, @cache_key),
-      field when not is_nil(field) <- gh_app.fields[field] do
-        field
-      else
-        _ -> get_from_api(field)
+         field when not is_nil(field) <- gh_app.fields[field] do
+      field
+    else
+      _ -> get_from_api(field)
     end
   end
 
