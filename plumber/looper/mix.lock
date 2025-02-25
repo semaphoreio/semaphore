@@ -22,7 +22,7 @@
   "jsx": {:hex, :jsx, "3.1.0", "d12516baa0bb23a59bb35dccaf02a1bd08243fcbb9efe24f2d9d056ccff71268", [:rebar3], [], "hexpm", "0c5cc8fdc11b53cc25cf65ac6705ad39e54ecc56d1c22e4adb8f5a53fb9427f3"},
   "junit_formatter": {:hex, :junit_formatter, "3.3.1", "c729befb848f1b9571f317d2fefa648e9d4869befc4b2980daca7c1edc468e40", [:mix], [], "hexpm", "761fc5be4b4c15d8ba91a6dafde0b2c2ae6db9da7b8832a55b5a1deb524da72b"},
   "lager": {:hex, :lager, "3.6.10", "6172b43ab720ac33914ccd0aeb21fdbdf88213847707d4b91e6af57b2ae5c4d2", [:rebar3], [{:goldrush, "0.1.9", [hex: :goldrush, repo: "hexpm", optional: false]}], "hexpm", "5d10499461826b79c5abee18bb594b3949cbdf76d9d9fd7e66d0a558137c21c9"},
-  "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "30c69704d583bda8cffb324b8936ffd3680e6ae4", []},
+  "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "c5f0fc6930af06ad905e6a5ef93a5027a79e016f", []},
   "meck": {:hex, :meck, "0.9.2", "85ccbab053f1db86c7ca240e9fc718170ee5bda03810a6292b5306bf31bae5f5", [:rebar3], [], "hexpm", "81344f561357dc40a8344afa53767c32669153355b626ea9fcbc8da6b3045826"},
   "metrics": {:hex, :metrics, "1.0.1", "25f094dea2cda98213cecc3aeff09e940299d950904393b2a29d191c346a8486", [], [], "hexpm"},
   "mime": {:hex, :mime, "1.1.0", "01c1d6f4083d8aa5c7b8c246ade95139620ef8effb009edde934e0ec3b28090a", [], [], "hexpm"},
