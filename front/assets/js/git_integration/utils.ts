@@ -4,5 +4,8 @@ export const createOrderMap = (orderArray: any[]) =>
     return map;
   }, {});
 
-export const sortByOrder = (items: any[], orderMap: Record<any, number>) =>
+export const sortByOrder = <T>(items: T[], orderMap: Record<any, number>) =>
   [...items].sort((a, b) => (orderMap[a] ?? Infinity) - (orderMap[b] ?? Infinity));
+
+export const sortObjectByOrder = <T>(items: T[], orderMap: Record<any, number>, key: string) =>
+  [...items].sort((a, b) => (orderMap[a[key]] ?? Infinity) - (orderMap[b[key]] ?? Infinity));
