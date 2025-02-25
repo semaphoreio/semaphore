@@ -45,3 +45,5 @@ assets/.nyc_output
 out/
 cover/
 lcov*
+
+docker-compose.override.yml
