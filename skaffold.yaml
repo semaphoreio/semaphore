@@ -2,6 +2,10 @@ apiVersion: skaffold/v4beta12
 kind: Config
 metadata:
   name: semaphore
+build:
+  artifacts:
+    - image: ghcr.io/semaphoreio/auth
+      context: auth
 deploy:
   helm:
     releases:
@@ -15,5 +19,5 @@ deploy:
           ingress.ssl.type: "custom"
         version: 0.1.0
     flags:
-      upgrade: ["--timeout", "30m"]
-      install: ["--timeout", "30m"]
+      upgrade: ["--timeout", "120m"]
+      install: ["--timeout", "120m"]
