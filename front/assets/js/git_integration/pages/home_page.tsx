@@ -14,8 +14,8 @@ export const HomePage = () => {
       <p className="measure">
         Connect Semaphore application with your repositories.
       </p>
-      <Integrations />
-      <AddNewIntegration />
+      <Integrations/>
+      <AddNewIntegration/>
     </div>
   );
 };
