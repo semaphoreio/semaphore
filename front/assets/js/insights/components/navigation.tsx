@@ -95,8 +95,7 @@ export const Navigation = ({ createDashboard, state }: Props) => {
                   </form>
                 }>
                 <span className="link dark-gray pa2 ph3 pointer br3 mt1" onClick={visible ? hide : show}>
-                  <img src="https://storage.googleapis.com/semaphore-design/release-55dc031/images/icn-plus-nav.svg"
-                    alt="list" className="mr1" width="16" height="16"/>
+                  <img src="/projects/assets/images/icn-plus-nav.svg" alt="list" className="mr1" width="16" height="16"/>
                 </span>
               </Tippy>
 
