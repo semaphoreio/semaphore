@@ -107,11 +107,12 @@ defmodule FrontWeb.GitIntegrationController do
         :ok ->
           Logger.info("Integration updated successfully.")
 
-          redirect_to = if blank?(redirect_to) do
-            git_integration_path(conn, :show, [type])
-          else
-            redirect_to
-          end
+          redirect_to =
+            if blank?(redirect_to) do
+              git_integration_path(conn, :show, [type])
+            else
+              redirect_to
+            end
 
           conn
           |> put_flash(:notice, "Integration updated successfully.")
