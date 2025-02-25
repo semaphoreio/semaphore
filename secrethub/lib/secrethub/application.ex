@@ -44,7 +44,9 @@ defmodule Secrethub.Application do
 
     children =
       children ++
-        grpc_services() ++ openid_connect_services() ++ openid_key_manager() ++ workers() ++ feature_provider(provider)
+        grpc_services() ++
+        openid_connect_services() ++
+        openid_key_manager() ++ workers() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Secrets.Supervisor]
     Supervisor.start_link(children, opts)

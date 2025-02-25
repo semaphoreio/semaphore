@@ -12,14 +12,15 @@ defmodule Auth.Application do
 
     Logger.info("Starting applicaiton server on localhost:#{port}")
 
-    children = [
-      Plug.Cowboy.child_spec(scheme: :http, plug: Auth, options: [port: port]),
-      %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}},
-      %{
-        id: FeatureProvider.Cachex,
-        start: {Cachex, :start_link, [:feature_provider_cache, []]}
-      }
-    ] ++ feature_provider(provider)
+    children =
+      [
+        Plug.Cowboy.child_spec(scheme: :http, plug: Auth, options: [port: port]),
+        %{id: Cachex, start: {Cachex, :start_link, [:grpc_api_cache, []]}},
+        %{
+          id: FeatureProvider.Cachex,
+          start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        }
+      ] ++ feature_provider(provider)
 
     {:ok, _} = Logger.add_backend(Sentry.LoggerBackend)
 
