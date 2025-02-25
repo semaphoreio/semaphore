@@ -38,7 +38,7 @@ COPY periodic_scheduler/spec/mix.exs periodic_scheduler/spec/mix.lock ../spec/
 COPY periodic_scheduler/definition_validator/mix.exs periodic_scheduler/definition_validator/mix.lock ../definition_validator/
 COPY periodic_scheduler/scheduler/mix.exs periodic_scheduler/scheduler/mix.lock ./
 COPY feature_provider ../../feature_provider
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 COPY periodic_scheduler/scheduler/config config/

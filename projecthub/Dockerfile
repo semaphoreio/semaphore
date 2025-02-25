@@ -31,7 +31,7 @@ RUN mix local.hex --force --if-missing && \
 
 # install mix dependencies
 COPY projecthub/mix.exs projecthub/mix.lock ./
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies

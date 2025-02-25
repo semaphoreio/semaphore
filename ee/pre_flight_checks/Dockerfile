@@ -31,7 +31,7 @@ WORKDIR /app
 COPY mix.exs .
 COPY mix.lock .
 COPY config config
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 COPY lib lib
 COPY priv/ecto_repo/migrations priv/ecto_repo/migrations

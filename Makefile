@@ -77,7 +77,7 @@ SECURITY_TOOLBOX_BRANCH?=master
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee
+CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,open_api_spex
 
 #
 # Security checks
@@ -170,7 +170,6 @@ ifneq ($(MIX_ENV),)
 endif
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
-		--ssh default \
 		--progress $(DOCKER_BUILD_PROGRESS) \
 		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
 		--build-arg APP_NAME=$(APP_NAME) \

@@ -32,7 +32,7 @@ COPY repository_hub/config config
 COPY repository_hub/lib lib
 COPY repository_hub/priv priv
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mix do deps.get, deps.compile
 
 #
 # Dev stage

@@ -25,8 +25,7 @@ WORKDIR /app
 COPY secrethub/mix.exs secrethub/mix.lock ./
 COPY secrethub/config config
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
-RUN mix deps.compile
+RUN mix deps.get --only $MIX_ENV && mix deps.compile
 COPY secrethub/lib lib
 COPY secrethub/priv priv
 

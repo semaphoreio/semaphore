@@ -27,7 +27,7 @@ WORKDIR /app/api
 COPY public-api/v1alpha/mix.exs public-api/v1alpha/mix.lock ./
 COPY public-api/v1alpha/config config
 COPY feature_provider ../../feature_provider
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV
 RUN mix deps.compile
 COPY public-api/v1alpha/lib lib
 COPY public-api/v1alpha/priv priv

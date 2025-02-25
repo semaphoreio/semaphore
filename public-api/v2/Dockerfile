@@ -33,7 +33,7 @@ RUN mix local.hex --force --if-missing && \
 # install mix dependencies
 COPY public-api/v2/mix.exs public-api/v2/mix.lock ./
 COPY feature_provider ../../feature_provider
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies

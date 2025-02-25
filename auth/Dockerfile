@@ -23,8 +23,7 @@ WORKDIR /app
 COPY auth/mix.* ./
 COPY auth/config config
 COPY feature_provider ../feature_provider
-RUN --mount=type=ssh mix deps.get
-RUN mix deps.compile
+RUN mix do deps.get, deps.compile
 
 COPY auth/lib lib
 
