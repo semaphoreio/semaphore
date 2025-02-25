@@ -12,7 +12,6 @@ defmodule Front.Browser.PeopleTest do
     ce_roles = Application.get_env(:front, :ce_roles)
     Application.put_env(:front, :ce_roles, false)
 
-
     on_exit(fn -> Application.put_env(:front, :ce_roles, ce_roles) end)
     :ok
   end
