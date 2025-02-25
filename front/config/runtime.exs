@@ -134,7 +134,7 @@ config :front, :on_prem?, on_prem?
 if on_prem? do
   config :front,
     feature_provider:
-      {FeatureProvider.YamlProvider, [yaml_path: System.get_env("FEATURE_YAML_PATH")]}
+      {FeatureProvider.YamlProvider, [yaml_path: System.get_env("FEATURE_YAML_PATH", agent_name: :feature_provider_agent)]}
 
   config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
 else
