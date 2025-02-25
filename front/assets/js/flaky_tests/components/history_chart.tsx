@@ -1,4 +1,4 @@
-import { Fragment, createRef, h } from "preact";
+import { Fragment, createRef } from "preact";
 import bb, { bar } from "billboard.js";
 import 'billboard.js/dist/billboard.min.css';
 import { HistoryItem } from "../types/flaky_test_item";

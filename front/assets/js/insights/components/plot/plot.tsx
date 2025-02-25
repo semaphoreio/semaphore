@@ -1,4 +1,4 @@
-import { cloneElement, createRef, Fragment, h, VNode } from "preact";
+import { cloneElement, createRef, Fragment, VNode } from "preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import _ from "lodash";
 

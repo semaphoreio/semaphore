@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContext, useLayoutEffect, useState } from 'preact/hooks';
 import { Dashboard, DashboardItem } from '../types/dashboard';
@@ -201,10 +200,10 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
 
         <Tippy
           trigger="click"
-          interactive="true"
+          interactive={true}
           theme="light"
           placement="bottom"
-          allowHTML="true"
+          allowHTML={true}
           visible={visible}
           onClickOutside={hideTippy}
           content={

@@ -1,4 +1,4 @@
-import { render, h, ComponentChildren } from "preact";
+import { render, ComponentChildren } from "preact";
 import { useReducer } from "preact/hooks";
 import { ReportStore, FilterStore, NavigationStore, UrlStore } from "./stores";
 import { TestResults } from "./components/test_results";

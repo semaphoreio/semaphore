@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as stores from "../stores";
 import * as types from "../types";
 import * as components from "../components";

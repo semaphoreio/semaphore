@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { h } from "preact";
+
 import Prism from 'prismjs';
 
 import styled from "styled-components";
@@ -178,7 +178,7 @@ export const Highlight = (props: HighlightProps) => {
       contentEditable="true"
       onInput={handleInput}
       onKeyPress={handleKeyPress}
-      onfocusout={() => props.onSubmit() }
+      onFocusOut={() => props.onSubmit() }
       ref={contentRef}
       className={`language-query ${props.className}`}
     >

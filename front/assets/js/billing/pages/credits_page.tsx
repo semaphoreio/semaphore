@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import * as stores from "../stores";
 import * as components from "../components";
 import * as types from "../types";

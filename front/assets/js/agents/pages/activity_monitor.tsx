@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";

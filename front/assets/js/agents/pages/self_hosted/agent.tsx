@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
@@ -29,7 +29,7 @@ export const Agent = () => {
   if (!selfHostedAgent) return;
 
   const { state: locationState } = useLocation();
-  const targetId = locationState?.targetId as string;
+  const targetId = (locationState as any)?.targetId as string;
 
   useEffect(() => {
     if (state.type && state.type.totalAgentCount === 0) {

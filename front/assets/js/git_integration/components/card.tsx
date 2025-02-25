@@ -1,4 +1,4 @@
-import { h, JSX } from "preact";
+import { JSX } from "preact";
 import * as types from "../types";
 import { NavLink } from "react-router-dom";
 import { IntegrationStarter } from "./integration_starter";

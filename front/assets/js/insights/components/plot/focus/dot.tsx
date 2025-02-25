@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { FocusInterface } from "./type";
 
 interface Props extends FocusInterface{

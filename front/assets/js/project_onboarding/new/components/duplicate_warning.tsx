@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 
 interface DuplicateWarningProps {
   connectedProjects: Array<{
@@ -21,7 +21,7 @@ export const DuplicateWarning = ({ connectedProjects, onDuplicateClick }: Duplic
       </ul>
 
       <p className="mb3 pt2 bt b--black-10">
-        In case you want to make a duplicate project, go ahead and can set up this repo again. 
+        In case you want to make a duplicate project, go ahead and can set up this repo again.
         Every time you push to the repo, Semaphore will run all connected projects.
       </p>
       <button onClick={onDuplicateClick} className="btn btn-secondary">

@@ -1,5 +1,5 @@
 /* eslint-disable quotes */
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { Box, Card } from "../components";
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";

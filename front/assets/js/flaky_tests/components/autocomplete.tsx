@@ -1,5 +1,5 @@
 
-import { Fragment, VNode, createRef, h } from "preact";
+import { Fragment, VNode, createRef } from "preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import styled, { css } from "styled-components";
 
@@ -46,7 +46,7 @@ const List = styled.ul<{ $height: number, $width: number, }>`
   }
 `;
 
-const SearchInput = styled.input`
+const SearchInput = styled.input<{ $active?: boolean, }>`
   z-index: 99;
   ${(props) => {
     switch (props.$active) {
@@ -116,7 +116,7 @@ export const Autocomplete = (props: AutocompleteProps) => {
   return (
     <Fragment>
       <div ref={ref} className="" style="position: relative;">
-        <SearchInput ref={inputRef} value={searchString} onInput={onInput} $active={active} type="text" className="form-control form-control-tiny" placeholder="search" onfocusin={onFocus} onfocusout={onFocus}/>
+        <SearchInput ref={inputRef} value={searchString} onInput={onInput} $active={active} type="text" className="form-control form-control-tiny" placeholder="search" onFocusIn={onFocus} onFocusOut={onFocus}/>
         {active && <List $height={height} $width={width}>
           {items.map((item, idx) =>
             <li className="f6" onClick={(e) => {e.preventDefault(); props.onChange(item.value); }} key={idx}>

@@ -1,4 +1,4 @@
-import { createRef, Fragment, h } from "preact";
+import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useState } from "preact/hooks";
 import * as stores from "../stores";
 import * as types from "../types";

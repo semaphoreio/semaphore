@@ -1,4 +1,3 @@
-import { h } from "preact";
 import $ from "jquery";
 const assetPath = $(`meta[name='assets-path']`).attr(`content`);
 

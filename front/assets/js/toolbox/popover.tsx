@@ -1,6 +1,6 @@
 import Popper, { createPopper } from "@popperjs/core";
 import { isFunction } from "lodash";
-import { h,VNode, Fragment } from "preact";
+import { VNode, Fragment } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { define } from 'preactement';
 import { Placement } from "tippy.js";

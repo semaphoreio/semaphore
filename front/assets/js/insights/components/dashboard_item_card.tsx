@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { DashboardItem } from '../types/dashboard';
 import { InsightsType, typeByMetric } from '../types/insights_type';
 import * as customCharts from './custom_charts';
@@ -76,10 +75,10 @@ export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler,
 
           <Tippy
             trigger="click"
-            interactive="true"
+            interactive={true}
             theme="light"
             placement="bottom"
-            allowHTML="true"
+            allowHTML={true}
             visible={visible}
             onClickOutside={hideTippy}
             content={
@@ -93,7 +92,6 @@ export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler,
                   <textarea id="notes"
                     style="max-width: 282px;"
                     className="x-select-on-click form-control mb1 w-100"
-                    type="text"
                     rows={5}
                     placeholder="This metric is used to measure..."
                     value={item.notes}
@@ -144,4 +142,3 @@ function confirmDeletion(deleteHandler: (id: string) => void, id: string) {
     deleteHandler(id);
   }
 }
-

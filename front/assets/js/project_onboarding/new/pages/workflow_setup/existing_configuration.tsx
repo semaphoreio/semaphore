@@ -1,5 +1,5 @@
 /* eslint-disable quotes */
-import { h } from "preact";
+
 import * as stores from "../../stores";
 import * as components from "../../components";
 import { useContext } from "preact/hooks";
@@ -25,15 +25,15 @@ export const ExistingConfiguration = () => {
       });
 
       const data = await response.json();
-      
+
       if (data.redirect_to) {
         window.location.href = data.redirect_to;
       } else {
         Notice.error('Error during skip onboarding: Invalid response from server');
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error 
-        ? error.message 
+      const errorMessage = error instanceof Error
+        ? error.message
         : 'Unknown error occurred';
 
       Notice.error('Error during skip onboarding: ' + errorMessage);
@@ -50,9 +50,9 @@ export const ExistingConfiguration = () => {
     <div className="pt3 pb5">
       <div className="relative mw8 center">
         <div className="flex-l">
-          <components.InfoPanel 
+          <components.InfoPanel
             svgPath="images/ill-girl-looking-down.svg"
-            title="Connect repository" 
+            title="Connect repository"
             subtitle="Configure repository access and integration settings."
             additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."/>
 
@@ -63,12 +63,12 @@ export const ExistingConfiguration = () => {
               <p className="mb0 pt2 bt b--black-10">Looks like you already have <code className="f6 ba ph1 br2">.yml</code> configuration in this project.</p>
               <p className="mb0">What would you like to do?</p>
               <ul className="mb3">
-       
+
               </ul>
               <div>
                 <div className="mv3">
-                  <a 
-                    href="#" 
+                  <a
+                    href="#"
                     onClick={(e) => { e.preventDefault(); void handleUseExisting(); }}
                     className="db f4 mb1"
                   >
@@ -78,14 +78,14 @@ export const ExistingConfiguration = () => {
             We&apos;ll take you directly to the project, but don&apos;t forget to push to repository to see your work running there.
                   </p>
                 </div>
-        
+
                 <div className="f6 w2 h2 flex items-center justify-center ba br-100">
           or
                 </div>
-        
+
                 <div className="mv3">
-                  <a 
-                    href="#" 
+                  <a
+                    href="#"
                     onClick={(e) => { e.preventDefault(); handleCreateNew(); }}
                     className="db f4 mb1"
                   >
@@ -96,7 +96,7 @@ export const ExistingConfiguration = () => {
                   </p>
                 </div>
               </div>
-            </div> 
+            </div>
           </div>
         </div>
       </div>

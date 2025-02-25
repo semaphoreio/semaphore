@@ -1,4 +1,4 @@
-import { Component, h } from "preact";
+import { Component } from "preact";
 import Popper, { createPopper } from "@popperjs/core";
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { UrlStore } from "../stores";
