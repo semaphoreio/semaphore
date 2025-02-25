@@ -1,6 +1,3 @@
-import { h } from 'preact';
-
-
 export const empty_custom_dashboard = (toggleForm: any) => (
   <div>
     <div className="tc bg-white shadow-1 br3" id="custom-zero">

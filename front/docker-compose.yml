@@ -12,7 +12,7 @@ services:
       ssh:
         - default
       cache_from:
-        - ${MASTER_IMAGE:-front-app}:${IMAGE_TAG:-latest}
+        - ${MAIN_IMAGE:-front-app}:${IMAGE_TAG:-latest}
     ports:
       - "4000:4000"
 

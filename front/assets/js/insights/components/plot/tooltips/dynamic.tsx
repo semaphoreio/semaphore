@@ -1,7 +1,5 @@
 import * as types from '../../../types';
 import * as util from '../../../util';
-import { h } from 'preact';
-
 
 interface Props {
   activeMetric?: types.PipelinePerformance.DynamicMetric;

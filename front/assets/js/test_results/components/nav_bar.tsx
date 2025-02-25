@@ -1,4 +1,3 @@
-import { h } from "preact";
 import { Report } from "../types/report";
 import { Summary } from "../types/summary";
 import { Duration } from "./duration";

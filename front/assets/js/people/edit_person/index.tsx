@@ -1,4 +1,4 @@
-import { Fragment, h, render, createContext } from "preact";
+import { Fragment, render, createContext } from "preact";
 import { useContext, useState } from "preact/hooks";
 
 import * as toolbox from "js/toolbox";

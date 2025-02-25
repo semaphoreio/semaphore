@@ -1,4 +1,4 @@
-import { createRef, h } from "preact";
+import { createRef } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { ReportStore, FilterStore, NavigationStore } from "../stores";
 import { Filters } from "./filters";

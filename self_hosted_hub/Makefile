@@ -4,8 +4,6 @@ APP_NAME=self_hosted_hub
 APP_ENV=prod
 INTERNAL_API_BRANCH ?= master
 TMP_REPO_DIR ?= /tmp/internal_api
-SECURITY_TOOLBOX_BRANCH ?= master
-SECURITY_TOOLBOX_TMP_DIR ?= /tmp/security-toolbox
 
 test.setup:
 	docker-compose build

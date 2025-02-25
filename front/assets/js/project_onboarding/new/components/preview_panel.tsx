@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
 import { useState, useContext } from "preact/hooks";
 import Editor from '@monaco-editor/react';
@@ -40,18 +40,18 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
       /type: \{\{ machine_type \}\}/g,
       `type: ${selectedAgentType.type}`
     );
-    
+
     // Replace os_image template value
     const osImage = selectedAgentType.available_os_images?.length ? selectedAgentType.available_os_images[0] : `''`;
 
     content = content.replace(/\{\{ os_image \}\}/g, osImage);
-    
+
     return content;
   };
 
   const handleSubmit = (e: Event, includeTemplate = true) => {
     e.preventDefault();
-    
+
     if (!selectedAgentType || !state.workflowBuilderUrl) return;
     if (includeTemplate && !template) return;
 
@@ -67,7 +67,6 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
 
     const fields = {
       machine_type: selectedAgentType.type,
-      self_hosted_type: selectedAgentType.isSelfHosted,
       yaml_path: yamlPath,
       ...(includeTemplate && template ? {
         template_title: template.title,
@@ -102,8 +101,8 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
 
       <div className="flex items-center justify-between mb2" style="margin-top: -1rem; position: relative; z-index: 1;">
         <div className="flex button-group ml-auto">
-          <button 
-            className={`btn btn-small material-symbols-outlined f5 b ${activeTab === `visual` ? `btn-primary` : `btn-secondary`}`} 
+          <button
+            className={`btn btn-small material-symbols-outlined f5 b ${activeTab === `visual` ? `btn-primary` : `btn-secondary`}`}
             onClick={() => handleTabClick(`visual`)}
           >
             visibility
@@ -113,7 +112,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
             content="Check the code in the YAML view"
             trigger="mouseenter"
             visible={activeTab === `visual` && !hasVisitedYaml}>
-            <button 
+            <button
               className={`btn btn-small material-symbols-outlined f5 b ${activeTab === `yaml` ? `btn-primary` : `btn-secondary`}`}
               onClick={() => handleTabClick(`yaml`)}
             >
@@ -131,7 +130,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
           <a href="#" onClick={(e) => handleSubmit(e)} className="mt3 mb1">Customize</a> this workflow, or <a href="#" onClick={(e) => handleSubmit(e, false)} className="mt3 mb1">Design from scratch</a>
         </p>
       </div>
-              
+
       <div className={`tab-content pv3 shadow-1 ${activeTab !== `yaml` ? `dn` : ``}`} style="height: 50vh; margin-top: -2rem;">
         <Editor
           height="100%"

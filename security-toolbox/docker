@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+# rubocop:disable all
+
+require 'optparse'
+require_relative "policies/policy"
+Dir["#{__dir__}/policies/docker/*.rb"].each { |f| require_relative f }
+
+args = {}
+OptionParser.new do |parser|
+  parser.on("-i", "--image IMAGE", "Docker image to scan") do |image|
+    args[:image] = image
+  end
+
+  parser.on("-k", "--skip-files SKIP_FILES", "Comma-separated list of files to skip") do |skip_files|
+    args[:skip_files] = skip_files
+  end
+
+  parser.on("-x", "--skip-dirs SKIP_DIRS", "Comma-separated list of directories to skip") do |skip_dirs|
+    args[:skip_dirs] = skip_dirs
+  end
+
+  parser.on("-s", "--severity SEVERITY", "Severity levels to filter when scanning docker image") do |severity|
+    args[:severity] = severity
+  end
+
+  parser.on("-p", "--ignore-policy IGNORE_POLICY_PATH", "Ignore policy to use when scanning docker image") do |ignore_policy|
+    args[:ignore_policy] = ignore_policy
+  end
+
+  parser.on("-d", "--dependencies", "Install dependencies") do
+    args[:install_dependencies] = true
+  end
+end.parse!
+
+policy_file = "docker-ignore-policy.rego"
+if File.exist?(policy_file) and args[:ignore_policy].nil?
+  args[:ignore_policy] = policy_file
+end
+
+Policy.run_all(args, [
+  Policy::TrivyConfig,
+  Policy::TrivyImage,
+  Policy::TrivyJunitOutput,
+  Policy::TrivyTableOutput
+])

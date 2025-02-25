@@ -1,4 +1,4 @@
-import { Fragment, h, VNode } from "preact";
+import { Fragment, VNode } from "preact";
 import * as Loading from "../stores/loading";
 import { Asset } from "js/toolbox";
 

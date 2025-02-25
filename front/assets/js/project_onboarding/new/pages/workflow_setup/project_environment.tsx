@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import * as components from "../../components";
 import * as toolbox from "js/toolbox";
 import * as stores from "../../stores";
@@ -25,8 +25,8 @@ const AgentCard = ({ agent, isCloud, isSelected, onClick }: AgentCardProps) => {
         style={isSelected ? `box-shadow: 0 0 0 3px #00359f; border-radius: 3px;` : ``}
       >
         <div className="flex items-center">
-          <toolbox.Asset 
-            path={isCloud ? `images/icn-cloud.svg` : `images/icn-self-hosted.svg`} 
+          <toolbox.Asset
+            path={isCloud ? `images/icn-cloud.svg` : `images/icn-self-hosted.svg`}
             className="db mr2"
             style="width: 26px; height:26px;"/>
           <span className="f4 b truncate">{agent.type}</span>
@@ -43,10 +43,10 @@ export const Projectenvironment = () => {
 
   const handleAgentSelect = useCallback((agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType) => {
     const isCloudAgent = `available_os_images` in agent;
-    
-    setSelectedAgentType({ 
-      type: agent.type, 
-      available_os_images: isCloudAgent ? agent.available_os_images : undefined 
+
+    setSelectedAgentType({
+      type: agent.type,
+      available_os_images: isCloudAgent ? agent.available_os_images : undefined
     });
   }, [setSelectedAgentType]);
 
@@ -80,9 +80,9 @@ export const Projectenvironment = () => {
     <div className="pt3 pb5">
       <div className="relative mw8 center">
         <div className="flex-l">
-          <components.InfoPanel 
-            svgPath="images/ill-girl-finger-up.svg" 
-            title="Select agent" subtitle="Choose the execution environment for your pipeline jobs." 
+          <components.InfoPanel
+            svgPath="images/ill-girl-finger-up.svg"
+            title="Select agent" subtitle="Choose the execution environment for your pipeline jobs."
             additionalInfo="Agents determine where your pipeline jobs run. Select a machine type that matches your project's requirements."/>
           <div className="flex-auto w-two-thirds">
             <div className="pb3 mb3 bb b--black-10">

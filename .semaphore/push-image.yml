@@ -35,7 +35,7 @@ blocks:
         - name: "Provision deployment image"
           commands:
             - make build
-            - 'if [ $SEMAPHORE_GIT_BRANCH = "master" ]; then make configure.sign; fi'
+            - 'if [ $SEMAPHORE_GIT_BRANCH = "main" ]; then make configure.sign; fi'
             - make gcloud.configure
             - make gcloud.push
-            - 'if [ $SEMAPHORE_GIT_BRANCH = "master" ]; then make gcloud.sign; fi'
+            - 'if [ $SEMAPHORE_GIT_BRANCH = "main" ]; then make gcloud.sign; fi'

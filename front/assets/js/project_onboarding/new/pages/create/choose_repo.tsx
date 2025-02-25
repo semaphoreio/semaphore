@@ -1,5 +1,5 @@
 /* eslint-disable quotes */
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import { useContext, useEffect } from "preact/hooks";
 import * as stores from "../../stores";
 import * as components from "../../components";
@@ -58,9 +58,9 @@ const ChooseRepoContent = () => {
   return (
     <div className="flex-l">
       {/* <!-- LEFT SIDE --> */}
-      <components.InfoPanel 
+      <components.InfoPanel
         svgPath="images/ill-girl-looking-down.svg"
-        title="Connect repository" 
+        title="Connect repository"
         subtitle="Configure repository access and integration settings."
         additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."/>
       {/* <!-- RIGHT SIDE --> */}

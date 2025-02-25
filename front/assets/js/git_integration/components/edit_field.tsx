@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useState } from "preact/hooks";
 import * as types from "../types";
 import { LockIcon } from "./lock_icon";

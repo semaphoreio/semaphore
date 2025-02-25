@@ -1,6 +1,6 @@
 import { render } from "preact";
 import { App } from "./app";
-import { h } from "preact";
+
 import * as stores from "./stores";
 import { BrowserRouter } from "react-router-dom";
 

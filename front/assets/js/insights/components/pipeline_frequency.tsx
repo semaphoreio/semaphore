@@ -1,4 +1,3 @@
-import { h } from 'preact';
 import { useContext, useLayoutEffect, useReducer } from 'preact/hooks';
 import { Config } from '../app';
 import moment from "moment";

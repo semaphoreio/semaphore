@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import { useContext } from "preact/hooks";
@@ -35,12 +35,12 @@ export const UpdatePaymentsPage = () => {
                 </span>
               }
               anchor={
-                <a
+                <button
                   className="db btn btn-secondary gray cursor-disabled"
                   disabled
                 >
                   Update payment method
-                </a>
+                </button>
               }
             />
           )}
