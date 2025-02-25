@@ -8,7 +8,6 @@
   
 [![Build Status](https://semaphore.semaphoreci.com/badges/semaphore/branches/main.svg?key=e8fbbbbc-ba9f-43cd-8438-e55c61ca6308)](https://semaphore.semaphoreci.com/projects/semaphore)
 [![Stars](https://img.shields.io/github/stars/semaphoreio/semaphore)](https://github.com/semaphoreio/semaphore/stargazers)
-[![GitHub License](https://img.shields.io/github/license/semaphoreio/semaphore?label=License&logo=github)](https://github.com/semaphoreio/semaphore/blob/main/LICENSE)
 [![Discord](https://img.shields.io/discord/1097422014735732746?label=Discord&logo=discord&color=5865F2&style=social)](https://discord.gg/FBuUrV24NH)
 [![Twitter Follow](https://img.shields.io/twitter/follow/semaphoreci?style=social)](https://twitter.com/semaphoreci)
 
