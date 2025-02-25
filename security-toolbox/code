@@ -1,0 +1,48 @@
+#!/usr/bin/env ruby
+# rubocop:disable all
+
+require 'optparse'
+require_relative "policies/policy"
+
+args = {}
+OptionParser.new do |parser|
+  parser.on("-l", "--language LANGUAGE", "Language used in the project") do |language|
+    args[:language] = language
+  end
+
+  parser.on("-i", "--ignores IGNORES", "Rules to ignore") do |ignores|
+    args[:ignores] = ignores
+  end
+
+  parser.on("-d", "--dependencies", "Install dependencies") do
+    args[:install_dependencies] = true
+  end
+
+  parser.on("-c", "--config-options OPTIONS", "Command line arguments for scanning tool") do |config|
+    args[:config] = config
+  end
+end.parse!
+
+if !args[:language]
+  puts "You need to specify a language, using the '--language' option."
+  exit 1
+end
+
+case args[:language]
+when "go"
+  require_relative "#{__dir__}/policies/code/gosec"
+  require_relative "#{__dir__}/policies/code/go_version"
+  Policy.run_all(args, [Policy::Gosec, Policy::GoVersion])
+when "js"
+  require_relative "#{__dir__}/policies/code/njsscan"
+  Policy.run_all(args, [Policy::NjsScan])
+when "elixir"
+  require_relative "#{__dir__}/policies/code/sobelow"
+  Policy.run_all(args, [Policy::Sobelow])
+when "ruby"
+  require_relative "#{__dir__}/policies/code/brakeman"
+  Policy.run_all(args, [Policy::Brakeman])
+else
+  puts "Unsupported language '#{args[:language]}'."
+  exit 1
+end

@@ -69,15 +69,10 @@ ifeq ($(CI),)
 	DOCKER_BUILD_PROGRESS=tty
 endif
 
-#
-# Security toolbox variables
-#
-SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
-SECURITY_TOOLBOX_BRANCH?=master
-
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
 CHECK_DEPS_EXTRA_OPTS?=""
+ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 #
 # Security checks
@@ -85,64 +80,57 @@ CHECK_DEPS_EXTRA_OPTS?=""
 # On CI environment - we're using sem-version to provide a ruby version.
 # On local machines, we execute them inside of a Ruby Docker container.
 #
-check.prepare:
-	rm -rf $(SECURITY_TOOLBOX_TMP_DIR)
-ifeq ($(CI),)
-	git clone git@github.com:renderedtext/security-toolbox.git $(SECURITY_TOOLBOX_TMP_DIR) && (cd $(SECURITY_TOOLBOX_TMP_DIR) && git checkout $(SECURITY_TOOLBOX_BRANCH) && cd -)
-else
-	GIT_SSH_COMMAND='ssh -i ~/.ssh/security-toolbox -o IdentitiesOnly=yes' git clone git@github.com:renderedtext/security-toolbox.git $(SECURITY_TOOLBOX_TMP_DIR) && (cd $(SECURITY_TOOLBOX_TMP_DIR) && git checkout $(SECURITY_TOOLBOX_BRANCH) && cd -)
-endif
-
-check.code: check.prepare
+SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
+check.code:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
 endif
 
-check.ex.code: check.prepare
+check.ex.code:
 	$(MAKE) check.code LANGUAGE=elixir
 
-check.go.code: check.prepare
+check.go.code:
 	$(MAKE) check.code LANGUAGE=go
 
 check.js.code:
 	$(MAKE) check.code LANGUAGE=js
 
-check.deps: check.prepare
+check.deps:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
 endif
 
-check.ex.deps: check.prepare
+check.ex.deps:
 	$(MAKE) check.deps LANGUAGE=elixir CHECK_DEPS_OPTS="-i hackney $(CHECK_DEPS_EXTRA_OPTS)"
 
-check.go.deps: check.prepare
+check.go.deps:
 	$(MAKE) check.deps LANGUAGE=go
 
 check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
-check.docker: check.prepare build
+check.docker:
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
-		-v $(SECURITY_TOOLBOX_TMP_DIR):$(SECURITY_TOOLBOX_TMP_DIR) \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) $(CHECK_DOCKER_OPTS)'
 else
 	# ruby version is set in prologue
-	$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+	$(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
 endif
 
 #
@@ -248,8 +236,6 @@ encryptor.run:
 #
 # Operations for docker images on GCR
 #
-
-ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 configure.sign:
 	echo $${SEMAPHORE_OIDC_TOKEN} > /tmp/oidc_token && \
 	gcloud iam workload-identity-pools create-cred-config projects/$$GCP_PROJECT_ID/locations/global/workloadIdentityPools/$$GCP_OIDC_POOL_ID/providers/$$GCP_OIDC_PROVIDER_ID \
