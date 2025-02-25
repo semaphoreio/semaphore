@@ -1,3 +1,5 @@
+[![CI/CD, Semaphore, Continuous Integration](files/hero.png)](https://www.semaphore.io/)
+
 # 🚀 Welcome to **Semaphore Open Source** 🎉  
 
 ⚠️ **This repository is a placeholder.** The source code for Semaphore will be added here on **February 26th**! 🚀  
