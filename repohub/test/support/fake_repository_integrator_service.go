@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
+	jwt "github.com/golang-jwt/jwt/v5"
 
 	ia "github.com/semaphoreio/semaphore/repohub/pkg/internal_api/repository_integrator"
 )
