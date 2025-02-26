@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+# rubocop:disable all
+
+require 'optparse'
+require_relative "policies/policy"
+
+args = {}
+OptionParser.new do |parser|
+  parser.on("-l", "--language LANGUAGE", "Language used in the project") do |language|
+    args[:language] = language
+  end
+
+  parser.on("-s", "--severity SEVERITY", "Severity levels to use when filtering vulnerabilities") do |severity|
+    args[:severity] = severity
+  end
+
+  parser.on("-p", "--ignore-policy IGNORE_POLICY_PATH", "Ignore policy to use") do |ignore_policy|
+    args[:ignore_policy] = ignore_policy
+  end
+
+  parser.on("-i", "--ignore-packages IGNORE_PACKAGES", "Comma-separated list of packages to ignore") do |packages|
+    args[:ignore_packages] = packages
+  end
+
+  parser.on("-w", "--whitelist-license-for-packages WHITELIST_LICENSES_FOR_PACKAGES", "Comma-separated list of packages to ignore for their licenses") do |packages|
+    args[:whitelist_licenses_for_packages] = packages
+  end
+
+  parser.on("-d", "--dependencies", "Install dependencies") do
+    args[:install_dependencies] = true
+  end
+end.parse!
+
+if !args[:language]
+  puts "You need to specify a language, using the '--language' option."
+  exit 1
+end
+
+policy_file = "#{args[:language]}-ignore-policy.rego"
+if File.exist?(policy_file) and args[:ignore_policy].nil?
+  args[:ignore_policy] = policy_file
+end
+
+case args[:language]
+when "go", "js"
+  require_relative "#{__dir__}/policies/dependencies/trivy_fs"
+  Policy.run_all(args, [Policy::TrivyFs])
+when "elixir"
+  require_relative "#{__dir__}/policies/dependencies/mix_audit"
+  require_relative "#{__dir__}/policies/dependencies/mix_licenses"
+  Policy.run_all(args, [Policy::MixAudit, Policy::MixLicenses])
+when "ruby"
+  require_relative "#{__dir__}/policies/dependencies/bundler_audit"
+  require_relative "#{__dir__}/policies/dependencies/gem_licenses"
+  Policy.run_all(args, [Policy::BundlerAudit, Policy::GemLicenses])
+else
+  puts "Unsupported language '#{args[:language]}'."
+  exit 1
+end

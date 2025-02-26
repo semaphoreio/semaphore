@@ -103,7 +103,7 @@ resource "aws_acm_certificate_validation" "cert" {
 # ALB controller and External-DNS which will run within the cluster
 
 resource "aws_iam_role" "eks_role" {
-  name = "eks-role"
+  name = "eks-role-${var.cluster_name}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
