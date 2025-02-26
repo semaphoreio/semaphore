@@ -22,7 +22,7 @@ defmodule Front.Application do
         FrontWeb.Endpoint,
         {Task.Supervisor, [name: Front.TaskSupervisor]},
         Front.Tracing.Store,
-        Front.FeatureProviderInvalidatorWorker,
+        Front.FeatureProviderInvalidatorWorker
       ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]

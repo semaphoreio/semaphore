@@ -19,6 +19,7 @@ defmodule Front.FeatureHubProvider do
         response.organization_features
         |> Enum.map(&feature_from_grpc/1)
         |> Enum.filter(&FeatureProvider.Feature.visible?/1)
+
       ok(features)
     end)
   end
@@ -82,9 +83,5 @@ defmodule Front.FeatureHubProvider do
       type
       |> String.split("-", parts: 2)
     end)
-  end
-
-  defp cache_ttl do
-    Application.get_env(:front, :cache_settings)[:features_ttl]
   end
 end

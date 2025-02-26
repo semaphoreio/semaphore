@@ -29,8 +29,6 @@ config :front,
 
 config :front, default_user_name: "Semaphore User"
 
-config :front, :cache_settings, organization_features_ttl: :timer.minutes(15)
-
 config :feature_provider, provider: {Front.FeatureHubProvider, []}
 config :front, :superjerry_client, {Support.FakeClients.Superjerry, []}
 config :front, :scouter_client, {Front.Clients.Scouter, []}
