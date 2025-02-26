@@ -8,5 +8,5 @@
   "use_case": "ci_pipeline",
   "icon": "lang-elixir.svg",
   "template_path": "templates/elixir_docker_etl.yml",
-  "workflow_tip": "other"
+  "workflow_tip": "none"
 }
