@@ -26,7 +26,7 @@ defmodule Scheduler.Application do
         Application.get_env(:scheduler, :grpc_port, 50_050)}},
       Scheduler.Workers.ScheduleTaskManager,
       Supervisor.child_spec(
-        {Cachex, name: Scheduler.FeatureHubProvider},
+        {Cachex, name: :feature_cache},
         id: :feature_cache
       )
     ] ++ feature_provider()
