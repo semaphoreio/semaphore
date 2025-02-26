@@ -9,9 +9,14 @@ defmodule Guard.Services.InstanceConfigInvalidatorWorker.Test do
 
   describe ".handle_message" do
     test "Message processes and invalidates the cache" do
-      Cachex.put(:config_cache, "github_credentials", %{})
-      Cachex.put(:config_cache, "gitlab_credentials", %{})
-      Cachex.put(:config_cache, "bitbucket_credentials", %{})
+      default_credentials = %{
+        client_id: "client_id",
+        client_secret: "client_secret"
+      }
+
+      Cachex.put(:config_cache, "github_credentials", default_credentials)
+      Cachex.put(:config_cache, "gitlab_credentials", default_credentials)
+      Cachex.put(:config_cache, "bitbucket_credentials", default_credentials)
 
       [
         :CONFIG_TYPE_GITHUB_APP,
