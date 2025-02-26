@@ -24,7 +24,6 @@ defmodule Guard.Application do
     services = [Guard.Repo, Guard.FrontRepo] ++ start_instance_config()
 
     children = add_api_servers(services)
-    children = children ++ workers()
     children = children ++ init_feature_provider()
 
     children = children ++ caches()
@@ -66,15 +65,6 @@ defmodule Guard.Application do
     end
   end
 
-  defp workers do
-    select_active([
-      %{
-        worker: {Guard.Workers.SyncOidcUsers, []},
-        active: System.get_env("START_SYNC_OIDC_USERS_WORKER") == "true"
-      }
-    ])
-  end
-
   defp add_api_servers(services) do
     grpc = System.get_env("GRPC_API") || "true"
     rabbit = System.get_env("RABBIT_CONSUMER") || "true"
@@ -112,7 +102,11 @@ defmodule Guard.Application do
   defp add_test_grpc_service(services, _, _), do: services
 
   defp add_id_service(services, "true") do
-    services ++ [{Plug.Cowboy, scheme: :http, plug: Guard.Id.Api, options: [port: 4003]}]
+    services ++
+      [
+        {Plug.Cowboy, scheme: :http, plug: Guard.Id.Api, options: [port: 4003]},
+        {Services.InstanceConfigInvalidatorWorker, []}
+      ]
   end
 
   defp add_id_service(services, _), do: services
