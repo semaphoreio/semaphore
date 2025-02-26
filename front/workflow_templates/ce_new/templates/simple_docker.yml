@@ -13,54 +13,43 @@ agent:
 
   containers:
     - name: main
-      image: 'registry.semaphoreci.com/node:20'  # Node.js 20 container
-
-# Configure when to stop the pipeline early
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 fail_fast:
   stop:
-    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+    when: branch != 'main'
 auto_cancel:
   running:
-    when: branch != 'main'  # Cancel running pipelines on non-main branches
+    when: branch != 'main'
   queued:
-    when: branch = 'main'   # Cancel queued pipelines on main branch
-
-# Pipeline blocks represent groups of jobs that can run in parallel
+    when: branch = 'main'
 blocks:
-  # Block for testing
-  - name: "🧪 Test"
-    dependencies: []
+  - name: "\U0001F4E6 Build"
     task:
       jobs:
-        - name: "🟢 Run Tests"
+        - name: Install Dependencies
           commands:
-            - echo "Checking out code..."
-            - echo "Installing dependencies..."
-            - echo "Running test suite in container..."
-            - echo "Tests completed successfully!"
-
-  # Block for building Docker image
-  - name: "🐳 Docker"
-    dependencies: ["🧪 Test"]
-    task:
-      secrets:
-        - name: dockerhub-credentials
-      jobs:
-        - name: "📦 Build and Push"
-          commands:
-            - echo "Logging into Docker registry..."
-            - echo "Building Docker image..."
-            - echo "Pushing image to registry..."
-            - echo "Docker image published successfully!"
-
-  # Block for deployment
-  - name: "🚀 Deploy"
-    dependencies: ["🐳 Docker"]  # Only deploy if Docker build succeeds
+            - echo "Checking out source code..."
+            - echo "Setting up build environment..."
+            - echo "Installing project dependencies..."
+            - echo "Compiling source code..."
+            - echo "Build completed successfully!"
+  - name: "\U0001F9EA Test"
     task:
       jobs:
-        - name: "🌍 Deploy to Production"
+        - name: Run Tests
           commands:
-            - echo "Preparing deployment..."
-            - echo "Updating container version..."
-            - echo "Rolling out new containers..."
+            - echo "Preparing test environment..."
+            - echo "Running unit tests..."
+            - echo "Running integration tests..."
+            - echo "Running performance tests..."
+            - echo "All tests completed successfully!"
+  - name: "\U0001F680 Deploy"
+    task:
+      jobs:
+        - name: Deploy to Production
+          commands:
+            - echo "Preparing deployment artifacts..."
+            - echo "Connecting to deployment target..."
+            - echo "Transferring build artifacts..."
+            - echo "Updating production environment..."
             - echo "Deployment completed successfully!"
