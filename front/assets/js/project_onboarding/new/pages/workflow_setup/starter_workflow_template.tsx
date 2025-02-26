@@ -63,7 +63,7 @@ export const StarterWorkflowTemplate = () => {
   const groups = state.templatesSetup?.groups || [];
   const [activeFilters, setActiveFilters] = useState<Record<string, string[]>>({});
   const [searchQuery, setSearchQuery] = useState(``);
-  const [selectedTemplate, setSelectedTemplate] = useState<Templates.Template>(state.templates.find(t => t.title === `Fan-in / Fan-out`) || state.templates[0]);
+  const [selectedTemplate, setSelectedTemplate] = useState<Templates.Template>(state.templates.find(t => t.title.includes(`Fan-in`)) || state.templates[0]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
