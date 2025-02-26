@@ -66,8 +66,8 @@ defmodule Scheduler.Actions.ApplyImpl do
   end
 
   defp hook_exists?(project_id, org_id, definition) do
-    scheduler_hook_enabled? = FeatureProvider.feature_enabled?(:scheduler_hook, org_id)
-    just_run_enabled? = FeatureProvider.feature_enabled?(:just_run, org_id)
+    scheduler_hook_enabled? = FeatureProvider.feature_enabled?(:scheduler_hook, param: org_id)
+    just_run_enabled? = FeatureProvider.feature_enabled?(:just_run, param: org_id)
 
     if scheduler_hook_enabled? or just_run_enabled? do
       {:hook, {:ok, true}}

@@ -4,7 +4,7 @@
 </script>
 
 <%= if (@org_scope? && @permissions["organization.people.view"]) || (!@org_scope? && @permissions["project.access.view"]) do %>
-  <%= if FeatureProvider.feature_enabled?(:rbac__groups, @conn.assigns[:organization_id]) do %>
+  <%= if FeatureProvider.feature_enabled?(:rbac__groups, param: @conn.assigns[:organization_id]) do %>
     <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
       <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
         <div>

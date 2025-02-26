@@ -24,7 +24,6 @@ blocks:
     task:
       secrets:
         - name: container-registry-writer
-        - name: feature-provider-token
       env_vars:
         - name: RAILS_ENV
           value: "production"
@@ -35,8 +34,6 @@ blocks:
       jobs:
         - name: "Provision deployment image"
           commands:
-            - sudo chmod 600 ~/.ssh/feature_provider_rsa
-            - ssh-add ~/.ssh/feature_provider_rsa
             - make build
             - 'if [ $SEMAPHORE_GIT_BRANCH = "main" ]; then make configure.sign; fi'
             - make gcloud.configure

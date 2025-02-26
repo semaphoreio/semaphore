@@ -132,12 +132,21 @@ config :front,
 config :front, :on_prem?, on_prem?
 
 if on_prem? do
-  config :feature_provider,
-    provider: {FeatureProvider.YamlProvider, [yaml_path: System.get_env("FEATURE_YAML_PATH")]}
+  config :front,
+    feature_provider:
+      {FeatureProvider.YamlProvider,
+       [yaml_path: System.get_env("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
 
   config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
 else
-  config :feature_provider, provider: {Front.FeatureHubProvider, []}
+  config :front,
+    feature_provider:
+      {Front.FeatureHubProvider,
+       [
+         cache:
+           {FeatureProvider.CachexCache,
+            name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+       ]}
 end
 
 if System.get_env("AMQP_URL") != nil do

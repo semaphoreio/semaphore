@@ -27,20 +27,21 @@ RUN mix local.hex --force --if-missing && \
 
 WORKDIR /app
 
-COPY mix.* ./
-COPY config config
-COPY lib lib
-COPY priv priv
-RUN --mount=type=ssh mix do deps.get, deps.compile
+COPY repository_hub/mix.* ./
+COPY repository_hub/config config
+COPY repository_hub/lib lib
+COPY repository_hub/priv priv
+COPY feature_provider ../feature_provider
+RUN mix do deps.get, deps.compile
 
 #
 # Dev stage
 #
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY repository_hub/.formatter.exs .formatter.exs
+COPY repository_hub/.credo.exs .credo.exs
+COPY repository_hub/test test
 
 RUN mix compile
 
@@ -75,6 +76,6 @@ RUN adduser -D default -h /app
 USER default
 
 COPY --from=builder --chown=default /app/_build/prod/rel/repository_hub_service/ .
-COPY --chown=default priv/repo/migrations priv/repo/migrations
+COPY --from=builder --chown=default /app/priv/repo/migrations priv/repo/migrations
 
 CMD ["/app/bin/repository_hub_service", "start"]

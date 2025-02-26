@@ -1,8 +1,8 @@
 services:
   app:
     build: 
-      context: ../
-      dockerfile: scheduler/Dockerfile
+      context: ../..
+      dockerfile: periodic_scheduler/scheduler/Dockerfile
       target: dev
       args:
         APP_NAME: periodic-scheduler

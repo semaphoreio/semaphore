@@ -7,7 +7,8 @@ defmodule Projecthub.Application do
   def start(_type, _args) do
     env = Application.fetch_env!(:projecthub, :environment)
     port = Application.fetch_env!(:projecthub, :grpc_port)
-    FeatureProvider.init()
+    provider = Application.fetch_env!(:projecthub, :feature_provider)
+    FeatureProvider.init(provider)
 
     Logger.info("Running application in #{env} environment")
 
@@ -24,9 +25,14 @@ defmodule Projecthub.Application do
       [
         {Projecthub.Repo, []},
         {Projecthub.Workers.AgentStore, [name: :feature_store]},
-        {Task.Supervisor, [name: Projecthub.TaskSupervisor]}
+        {Task.Supervisor, [name: Projecthub.TaskSupervisor]},
+        %{
+          id: FeatureProvider.Cachex,
+          start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        }
       ] ++
         filter_enabled([
+          {provider, System.get_env("FEATURE_YAML_PATH") != nil},
           {{Support.MemoryDb, []}, env != :prod},
           {{Projecthub.Workers.ProjectInit, []}, start_worker?},
           {{GRPC.Server.Supervisor, {Projecthub.Api.Endpoint, port}}, start_server?}

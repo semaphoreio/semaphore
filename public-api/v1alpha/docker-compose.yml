@@ -8,8 +8,8 @@ services:
     # array). The sample below assumes your primary file is in the root of your project.
     #
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: public-api/v1alpha/Dockerfile
       cache_from:
         - ${IMAGE_LOCAL:-plumber-public:latest}
         - ${IMAGE}:${IMAGE_TAG}

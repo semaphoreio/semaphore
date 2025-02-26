@@ -55,7 +55,7 @@ defmodule Zebra.Mixfile do
       {:paginator, "~> 1.0.0"},
       {:poison, "~> 3.1"},
       {:joken, "~> 2.6"},
-      {:watchman, github: "renderedtext/ex-watchman", overide: false},
+      {:watchman, github: "renderedtext/ex-watchman"},
       {:util, github: "renderedtext/elixir-util"},
       {:uuid, "~> 1.1"},
       {:statistics, "~> 0.5.0"},
@@ -66,7 +66,7 @@ defmodule Zebra.Mixfile do
       {:tzdata, "~> 0.5.21"},
       {:yaml_elixir, "~> 2.4"},
       {:mox, "~> 1.0", only: [:dev, :test]},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.1"},
+      {:feature_provider, path: "../feature_provider"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

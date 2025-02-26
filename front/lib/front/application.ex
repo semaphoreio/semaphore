@@ -6,7 +6,10 @@ defmodule Front.Application do
 
   def start(_type, _args) do
     Logger.info("Running application in #{Application.get_env(:front, :environment)} environment")
-    FeatureProvider.init()
+
+    provider = Application.fetch_env!(:front, :feature_provider)
+    FeatureProvider.init(provider)
+
     # Disables too verbose logging from amqp supervisors
     :logger.add_primary_filter(
       :ignore_rabbitmq_progress_reports,
@@ -19,7 +22,7 @@ defmodule Front.Application do
         FrontWeb.Endpoint,
         {Task.Supervisor, [name: Front.TaskSupervisor]},
         Front.Tracing.Store
-      ] ++ reactor() ++ cache() ++ telemetry()
+      ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]
 
@@ -49,6 +52,7 @@ defmodule Front.Application do
 
     [
       {Cacheman, [:front, front_opts]},
+      Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
 
       # old, deprecated caches. Do not use.
       Supervisor.child_spec({Cachex, :front_cache}, id: :front_cache),
@@ -75,6 +79,14 @@ defmodule Front.Application do
         Front.Layout.CacheInvalidator,
         Front.WorkflowPage.PipelineStatus.CacheInvalidator
       ]
+    else
+      []
+    end
+  end
+
+  def feature_provider(provider) do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [provider]
     else
       []
     end

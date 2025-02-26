@@ -458,7 +458,7 @@ defmodule Front.Models.User do
       organization_id == "" ->
         GRPC.Stub.connect(Application.fetch_env!(:front, :user_grpc_endpoint))
 
-      FeatureProvider.feature_enabled?(:use_new_user_api, organization_id) ->
+      FeatureProvider.feature_enabled?(:use_new_user_api, param: organization_id) ->
         GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 
       true ->

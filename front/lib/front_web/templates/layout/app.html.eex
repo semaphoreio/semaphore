@@ -44,7 +44,7 @@
       </div>
     </div>
 
-    <%= if FeatureProvider.feature_enabled?(:billing, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:billing, param: @conn.assigns[:organization_id]) do %>
       <%= if FrontWeb.BillingView.with_plan_overlay?(@conn) do %>
         <div class="overlay" id="trial-overlay" style="display: block;">
         </div>

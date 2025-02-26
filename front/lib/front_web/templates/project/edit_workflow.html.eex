@@ -21,9 +21,9 @@
 
   window.InjectedDataByBackend.CanDismissAndExit = true
   window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
-    "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, @conn.assigns.organization_id),
+    "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, param: @conn.assigns.organization_id),
     "hidePromotions" => @hide_promotions,
-    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, @conn.assigns.organization_id)
+    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id)
   }) %>;
 
   window.InjectedDataByBackend.SecretNameList = <%= raw Poison.encode!(

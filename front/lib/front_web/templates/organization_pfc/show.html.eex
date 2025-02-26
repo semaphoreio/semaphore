@@ -27,14 +27,14 @@
     </div>
   <% end %>
 </div>
-<%= if FeatureProvider.feature_visible?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+<%= if FeatureProvider.feature_visible?(:pre_flight_checks, param: @conn.assigns[:organization_id]) do %>
   <div id="organization_pfc" class="pv3 bt b--lighter-gray">
     <h2 class="mb0 b f3">Pre-flight checks</h2>
     <p class="mb3 measure">
       Define commands and used secrets to configure custom security measures before running the pipeline.
       What you define here will be run before any pipeline in all projects across this organization.
     </p>
-    <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+    <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, param: @conn.assigns[:organization_id]) do %>
       <%= if @permissions["organization.pre_flight_checks.view"] do %>
         <%= render FrontWeb.OrganizationPFCView, "_edit_form.html",
             conn: @conn,

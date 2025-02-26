@@ -171,7 +171,7 @@ defmodule Secrethub.ProjectSecretsPublicApi do
 
   defp meta(call) do
     {org_id, user_id} = extract_headers(call)
-    render_content = FeatureProvider.feature_enabled?(:secrets_exposed_content, org_id)
+    render_content = FeatureProvider.feature_enabled?(:secrets_exposed_content, param: org_id)
 
     %{org_id: org_id, user_id: user_id, render_content: render_content}
   end
@@ -179,7 +179,7 @@ defmodule Secrethub.ProjectSecretsPublicApi do
   defp filter_on_feature_flag(""), do: {:error, :not_enabled}
 
   defp filter_on_feature_flag(org_id) do
-    if FeatureProvider.feature_enabled?(:project_level_secrets, org_id) do
+    if FeatureProvider.feature_enabled?(:project_level_secrets, param: org_id) do
       {:ok, :enabled}
     else
       {:error, :not_enabled}

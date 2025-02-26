@@ -14,7 +14,7 @@ defmodule FrontWeb.DashboardView do
 
     FeatureProvider.feature_enabled?(
       :get_started,
-      organization_id
+      param: organization_id
     )
   end
 

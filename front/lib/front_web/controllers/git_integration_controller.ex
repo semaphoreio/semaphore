@@ -21,8 +21,8 @@ defmodule FrontWeb.GitIntegrationController do
     Watchman.benchmark("git_integration.show.duration", fn ->
       notice = extract_notice(conn.params)
       org_id = conn.assigns.organization_id
-      bitbucket_enabled? = FeatureProvider.feature_enabled?(:bitbucket, org_id)
-      gitlab_enabled? = FeatureProvider.feature_enabled?(:gitlab, org_id)
+      bitbucket_enabled? = FeatureProvider.feature_enabled?(:bitbucket, param: org_id)
+      gitlab_enabled? = FeatureProvider.feature_enabled?(:gitlab, param: org_id)
 
       integrations =
         @available_integrations
@@ -166,8 +166,8 @@ defmodule FrontWeb.GitIntegrationController do
     org_id = conn.assigns[:organization_id]
 
     cond do
-      FeatureProvider.feature_enabled?(feature_type, org_id) -> :enabled
-      FeatureProvider.feature_zero_state?(feature_type, org_id) -> :zero_state
+      FeatureProvider.feature_enabled?(feature_type, param: org_id) -> :enabled
+      FeatureProvider.feature_zero_state?(feature_type, param: org_id) -> :zero_state
       true -> :hidden
     end
   end

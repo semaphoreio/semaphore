@@ -11,7 +11,7 @@ defmodule Projecthub.FeatureHubProvider do
   @cache_version :crypto.hash(:md5, File.read(__ENV__.file) |> elem(1)) |> Base.encode64()
 
   @impl FeatureProvider.Provider
-  def list_features(org_id, opts) do
+  def provide_features(org_id, opts) do
     use_cache? = Keyword.get(opts, :use_cache, true)
 
     if use_cache? do
@@ -24,7 +24,7 @@ defmodule Projecthub.FeatureHubProvider do
   end
 
   @impl FeatureProvider.Provider
-  def list_machines(_org_id, _opts) do
+  def provide_machines(_org_id, _opts) do
     wrap([])
   end
 

@@ -26,22 +26,23 @@ RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hos
 RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
-WORKDIR /app
-
-COPY mix.* ./
-COPY config config
-COPY lib lib
-COPY priv/repo/migrations priv/repo/migrations
-RUN --mount=type=ssh mix do deps.get, deps.compile
+RUN mkdir audit
+WORKDIR /app/audit
+COPY ee/audit/mix.* .
+COPY ee/audit/config config
+COPY ee/audit/lib lib
+COPY ee/audit/priv/repo/migrations priv/repo/migrations
+COPY feature_provider ../../feature_provider
+RUN mix do deps.get, deps.compile
 
 #
 # Dev stage
 #
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY ee/audit/.formatter.exs .formatter.exs
+COPY ee/audit/.credo.exs .credo.exs
+COPY ee/audit/test test
 
 RUN mix compile
 
@@ -75,7 +76,7 @@ WORKDIR /app
 RUN adduser -D default -h /app
 USER default
 
-COPY --from=builder --chown=default /app/_build/prod/rel/audit/ .
-COPY --chown=default priv/repo/migrations priv/repo/migrations
+COPY --from=builder --chown=default /app/audit/_build/prod/rel/audit/ .
+COPY --from=builder --chown=default /app/audit/priv/repo/migrations priv/repo/migrations
 
 CMD ["/app/bin/audit", "start"]

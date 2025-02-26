@@ -87,7 +87,7 @@ defmodule FrontWeb.AccountController do
 
   def reset_password(conn, %{"user_id" => user_id}) do
     Watchman.benchmark("account.reset_password", fn ->
-      if FeatureProvider.feature_enabled?(:email_members, conn.assigns.organization_id) do
+      if FeatureProvider.feature_enabled?(:email_members, param: conn.assigns.organization_id) do
         case Models.Member.reset_password(conn.assigns.user_id, user_id) do
           {:ok, res} ->
             conn

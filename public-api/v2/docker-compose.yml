@@ -1,8 +1,8 @@
 services:
   app:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../..
+      dockerfile: public-api/v2/Dockerfile
       cache_from:
         - ${IMAGE_LOCAL:-public-api:latest}
         - ${IMAGE}:${IMAGE_TAG}
@@ -38,8 +38,6 @@ services:
 
     volumes:
       - .:/app
-      - /app/_build
-      - /app/deps
       - /.elixir_ls
 
     depends_on:

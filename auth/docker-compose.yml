@@ -5,10 +5,10 @@ services:
     container_name: auth
     image: ${IMAGE:-auth-app}:${TAG:-latest}
     build:
-      context: .
+      context: ..
       cache_from:
         - "${IMAGE:-auth}:${IMAGE_TAG:-latest}"
-      dockerfile: Dockerfile
+      dockerfile: auth/Dockerfile
       target: ${DOCKER_BUILD_TARGET:-dev}
       args:
         - MIX_ENV=dev

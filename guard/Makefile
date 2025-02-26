@@ -2,6 +2,7 @@ export MIX_ENV?=dev
 
 include ../Makefile
 
+DOCKER_BUILD_PATH=..
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
@@ -9,7 +10,7 @@ RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
 RT_PROTOC_IMG_VSN=1.12.3-3.17.3-0.5.4
 
 # These libraries have LICENSES, but are not picked up correctly by our scanner library
-CHECK_DEPS_EXTRA_OPTS=-w esaml,openid_connect
+CHECK_DEPS_EXTRA_OPTS=-w feature_provider,esaml,openid_connect
 
 #
 # Environment variables requires for application/tests to run.

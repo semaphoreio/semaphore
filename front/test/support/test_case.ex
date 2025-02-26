@@ -13,6 +13,7 @@ defmodule Front.TestCase do
     Support.FakeServices.stub_responses()
     Cachex.clear(:front_cache)
     Cachex.clear(:auth_cache)
+    Cachex.clear!(:feature_provider_cache)
     Cacheman.clear(:front)
     Support.Stubs.init()
 

@@ -25,7 +25,7 @@
           <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M6.96 2.254c.374-1.075 1.894-1.075 2.267 0l1.08 3.106 3.288.067c1.137.023 1.607 1.469.7 2.156l-2.62 1.987.952 3.147c.33 1.09-.9 1.983-1.834 1.333l-2.7-1.878-2.699 1.878c-.933.65-2.163-.244-1.834-1.333l.953-3.147-2.62-1.987c-.907-.687-.438-2.133.7-2.156L5.88 5.36l1.08-3.106zm1.134 1.003l-.937 2.694a1.2 1.2 0 01-1.109.806l-2.852.058L5.47 8.538c.4.303.57.824.424 1.304l-.826 2.73 2.341-1.63a1.2 1.2 0 011.371 0l2.341 1.63-.826-2.73a1.2 1.2 0 01.424-1.304l2.273-1.723-2.852-.058A1.2 1.2 0 019.03 5.95l-.936-2.694z"/></svg>
           <span>My Starred Projects</span>
       </a>
-      <%= if FeatureProvider.feature_enabled?(:organization_health, @conn.assigns[:organization_id]) do %>
+      <%= if FeatureProvider.feature_enabled?(:organization_health, param: @conn.assigns[:organization_id]) do %>
         <a href=<%= dashboard_path(@conn, :index, dashboard: "organization-health") %> class="tab <%= if Map.get(assigns, :dashboard) == "organization-health", do: "tab--active" %>">
             <span class="material-symbols-outlined mr2 md-18">hive</span>
             <span>Organization Health</span>

@@ -5,10 +5,10 @@ services:
     container_name: projecthub
     image: "${IMAGE:-projecthub-app}:${IMAGE_TAG:-latest}"
     build:
-      context: .
+      context: ..
       cache_from:
         - "${REGISTRY_HOST:-local}/projecthub/${BRANCH:-main}:${IMAGE_TAG:-test}"
-      dockerfile: Dockerfile
+      dockerfile: projecthub/Dockerfile
       target: ${DOCKER_BUILD_TARGET:-dev}
       args:
         - BUILD_ENV=test

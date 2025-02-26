@@ -28,10 +28,10 @@ defmodule FrontWeb.AgentsView do
   @spec feature_state(Plug.Conn.t(), atom()) :: String.t()
   defp feature_state(conn, feature) do
     cond do
-      FeatureProvider.feature_enabled?(feature, conn.assigns.organization_id) ->
+      FeatureProvider.feature_enabled?(feature, param: conn.assigns.organization_id) ->
         "enabled"
 
-      FeatureProvider.feature_zero_state?(feature, conn.assigns.organization_id) ->
+      FeatureProvider.feature_zero_state?(feature, param: conn.assigns.organization_id) ->
         "zero"
 
       true ->

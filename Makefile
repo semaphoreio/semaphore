@@ -71,7 +71,7 @@ endif
 
 DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
-CHECK_DEPS_EXTRA_OPTS?=""
+CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,open_api_spex,when,uuid,esaml,openid_connect
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 #
@@ -158,7 +158,6 @@ ifneq ($(MIX_ENV),)
 endif
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
-		--ssh default \
 		--progress $(DOCKER_BUILD_PROGRESS) \
 		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
 		--build-arg APP_NAME=$(APP_NAME) \
@@ -199,6 +198,7 @@ test.ex.setup:
 # Locally we use database supplied by docker-compose.
 # On CI we're relying on database supplied by sem-service
 #
+OUT_VOLUME?=$(PWD)/out:/app/out
 test.ex: export MIX_ENV=test
 test.ex:
 ifeq ($(CI),)
@@ -209,9 +209,9 @@ ifeq ($(CI),)
 else
 	$(MAKE) test.ex.setup
 ifeq ($(SEMAPHORE_JOB_INDEX),)
-	docker run --network host -v $(PWD)/out:/app/out $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) mix test $(TEST_FILE) $(TEST_FLAGS) $(EX_CATCH_WARRNINGS_FLAG)
+	docker run --network host -v $(OUT_VOLUME) $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) mix test $(TEST_FILE) $(TEST_FLAGS) $(EX_CATCH_WARRNINGS_FLAG)
 else
-	docker run --network host -v $(PWD)/out:/app/out $(CONTAINER_ENV_VARS) -e MIX_TEST_PARTITION=$(SEMAPHORE_JOB_INDEX) $(IMAGE):$(IMAGE_TAG) mix test $(TEST_FILE) $(TEST_FLAGS) --partitions $(SEMAPHORE_JOB_COUNT) $(EX_CATCH_WARRNINGS_FLAG)
+	docker run --network host -v $(OUT_VOLUME) $(CONTAINER_ENV_VARS) -e MIX_TEST_PARTITION=$(SEMAPHORE_JOB_INDEX) $(IMAGE):$(IMAGE_TAG) mix test $(TEST_FILE) $(TEST_FLAGS) --partitions $(SEMAPHORE_JOB_COUNT) $(EX_CATCH_WARRNINGS_FLAG)
 endif
 endif
 

@@ -64,8 +64,10 @@ config :secrethub, Secrethub.Encryptor, url: System.get_env("ENCRYPTOR_URL")
 feature_provider =
   System.get_env("FEATURE_YAML_PATH")
   |> case do
-    nil -> {Secrethub.FeatureHubProvider, []}
-    path -> {FeatureProvider.YamlProvider, [yaml_path: path]}
+    nil -> {Secrethub.FeatureHubProvider, [
+      cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(10)}
+    ]}
+    path -> {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
   end
 
-config :feature_provider, :provider, feature_provider
+config :secrethub, :feature_provider, feature_provider

@@ -30,26 +30,27 @@ FROM base AS elixir
 WORKDIR /elixir
 RUN mix local.hex --force \
     && mix local.rebar --force
-COPY mix.* ./
-RUN --mount=type=ssh mix do deps.get, deps.compile
+COPY front/mix.* ./
+COPY feature_provider ../feature_provider
+RUN mix do deps.get, deps.compile
 
-COPY config config
-COPY priv priv
-COPY lib lib
-COPY secrets secrets
-COPY workflow_templates workflow_templates
-COPY test test
-COPY .formatter.exs ./
+COPY front/config config
+COPY front/priv priv
+COPY front/lib lib
+COPY front/secrets secrets
+COPY front/workflow_templates workflow_templates
+COPY front/test test
+COPY front/.formatter.exs ./
 RUN mix sentry_recompile && mix compile --warnings-as-errors
 # -- elixir stage
 
 # -- node stage
 FROM base AS node
 WORKDIR /node
-COPY assets/package.json assets/package-lock.json ./
+COPY front/assets/package.json front/assets/package-lock.json ./
 RUN npm install
 WORKDIR /assets
-COPY assets /assets
+COPY front/assets /assets
 RUN mv /node/node_modules /assets/node_modules
 # -- node stage
 
@@ -117,8 +118,7 @@ USER "${USER}"
 
 # copy release executables
 COPY --from=builder --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/front ./
-
-COPY workflow_templates workflow_templates
+COPY --from=builder --chown="${USER}":"${USER}" /app/workflow_templates workflow_templates
 
 ENTRYPOINT ["bin/front"]
 

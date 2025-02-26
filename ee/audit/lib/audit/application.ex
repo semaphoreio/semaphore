@@ -6,7 +6,8 @@ defmodule Audit.Application do
   @grpc_port 50_051
 
   def start(_type, _args) do
-    FeatureProvider.init()
+    provider = Application.fetch_env!(:audit, :feature_provider)
+    FeatureProvider.init(provider)
 
     :logger.add_primary_filter(
       :ignore_rabbitmq_progress_reports,
@@ -22,7 +23,10 @@ defmodule Audit.Application do
       {{Audit.Consumer, []}, enabled?("START_CONSUMER")},
       {{GRPC.Server.Supervisor, grpc_options}, enabled?("START_GRPC_API")},
       {{Audit.Streamer.Scheduler, []}, enabled?("START_STREAMER")},
-      {{Cachex, [name: Audit.Cache]}, true}
+      {{Cachex, [name: Audit.Cache]}, true},
+      {provider, System.get_env("FEATURE_YAML_PATH") != nil},
+      {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
+       true}
     ]
 
     children = filter_enabled_children(children)

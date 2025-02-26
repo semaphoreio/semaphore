@@ -29,28 +29,28 @@
           <% else %>
             <%= link "Workflow", to: project_settings_path(@conn, :workflow, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:badges, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:badges, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ project_settings_path(@conn, :badge, @project.name) do %>
               <%= link "Badge", to: project_settings_path(@conn, :badge, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
               <%= link "Badge", to: project_settings_path(@conn, :badge, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
             <% end %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:artifacts, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:artifacts, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ project_settings_path(@conn, :artifacts, @project.name) do %>
               <%= link "Artifacts", to: project_settings_path(@conn, :artifacts, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
               <%= link "Artifacts", to: project_settings_path(@conn, :artifacts, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
             <% end %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:pre_flight_checks, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ project_pfc_path(@conn, :show, @project.name) do %>
               <%= link "Pre-flight checks", to: project_pfc_path(@conn, :show, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>
               <%= link "Pre-flight checks", to: project_pfc_path(@conn, :show, @project.name), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
             <% end %>
           <% end %>
-          <%= if FeatureProvider.feature_enabled?(:restrict_job_ssh_access, @conn.assigns[:organization_id]) do %>
+          <%= if FeatureProvider.feature_enabled?(:restrict_job_ssh_access, param: @conn.assigns[:organization_id]) do %>
             <%= if @conn.request_path =~ project_settings_path(@conn, :permissions, @project.name) do %>
               <%= link "Permissions", to: project_settings_path(@conn, :permissions, @project.name), class: "link db pv1 ph3 br3 bg-green white" %>
             <% else %>

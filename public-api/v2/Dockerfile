@@ -23,15 +23,17 @@ RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts
 RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 
-WORKDIR /app
+RUN mkdir api
+WORKDIR /app/api
 
 # install hex + rebar
 RUN mix local.hex --force --if-missing && \
     mix local.rebar --force --if-missing
 
 # install mix dependencies
-COPY mix.exs mix.lock ./
-RUN --mount=type=ssh mix deps.get --only $MIX_ENV
+COPY public-api/v2/mix.exs public-api/v2/mix.lock ./
+COPY feature_provider ../../feature_provider
+RUN mix deps.get --only $MIX_ENV
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
@@ -39,16 +41,16 @@ RUN mkdir config
 # to be re-compiled.
 RUN mix deps.compile
 # copy the rest of the config files
-COPY config/ config/
+COPY public-api/v2/config/ config/
 
 # Compile the release
-COPY lib lib
+COPY public-api/v2/lib lib
 
 FROM base AS dev
 
-COPY .formatter.exs .formatter.exs
-COPY .credo.exs .credo.exs
-COPY test test
+COPY public-api/v2/.formatter.exs .formatter.exs
+COPY public-api/v2/.credo.exs .credo.exs
+COPY public-api/v2/test test
 
 RUN mix compile
 
@@ -84,7 +86,7 @@ ENV APP_NAME=${APP_NAME}
 ENV MIX_ENV="prod"
 
 # Only copy the final release from the build stage
-COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/${APP_NAME} ./
+COPY --from=builder --chown=nobody:root /app/api/_build/${MIX_ENV}/rel/${APP_NAME} ./
 
 USER nobody
 

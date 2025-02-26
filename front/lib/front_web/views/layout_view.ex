@@ -313,7 +313,7 @@ defmodule FrontWeb.LayoutView do
           true
 
         _ ->
-          FeatureProvider.feature_enabled?(:experimental_userpilot, organization_id)
+          FeatureProvider.feature_enabled?(:experimental_userpilot, param: organization_id)
       end
 
     token_present? = token != "" and token != nil

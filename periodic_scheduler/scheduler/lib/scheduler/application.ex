@@ -9,7 +9,9 @@ defmodule Scheduler.Application do
   def start(_type, _args) do
     Application.stop(:watchman)
     Application.ensure_all_started(:watchman)
-    FeatureProvider.init()
+
+    provider = Application.fetch_env!(:scheduler, :feature_provider)
+    FeatureProvider.init(provider)
 
     opts = [strategy: :one_for_one, name: Scheduler.Supervisor]
     get_env() |> children() |> Supervisor.start_link(opts)
@@ -27,7 +29,7 @@ defmodule Scheduler.Application do
         {Cachex, name: Scheduler.FeatureHubProvider},
         id: :feature_cache
       )
-    ]
+    ] ++ feature_provider()
   end
 
   def children(_), do: Enum.concat(children(:test), children_())
@@ -39,6 +41,16 @@ defmodule Scheduler.Application do
       {Scheduler.EventsConsumers.OrgBlocked, []},
       {Scheduler.EventsConsumers.OrgUnblocked, []}
     ]
+  end
+
+  def feature_provider do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [
+        Application.fetch_env!(:scheduler, :feature_provider)
+      ]
+    else
+      []
+    end
   end
 
   defp get_env(), do: Application.get_env(:scheduler, :mix_env)
