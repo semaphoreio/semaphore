@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import * as components from "../../components";
 import * as toolbox from "js/toolbox";
 import * as stores from "../../stores";
-import { useContext, useCallback } from "preact/hooks";
+import { useContext, useCallback, useEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 import Tippy from "@tippyjs/react";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -49,6 +49,20 @@ export const Projectenvironment = () => {
       available_os_images: isCloudAgent ? agent.available_os_images : undefined
     });
   }, [setSelectedAgentType]);
+
+  useEffect(() => {
+    // Only select if no agent is currently selected
+    if (!envState.selectedAgentType && configState.agentTypes) {
+      // Try to select first cloud agent, if available
+      if (configState.agentTypes.cloud.length > 0) {
+        handleAgentSelect(configState.agentTypes.cloud[0]);
+      }
+      // Otherwise try to select first self-hosted agent
+      else if (configState.agentTypes.selfHosted.length > 0) {
+        handleAgentSelect(configState.agentTypes.selfHosted[0]);
+      }
+    }
+  }, [configState.agentTypes, envState.selectedAgentType, handleAgentSelect]);
 
   const handleContinue = async () => {
     if (!envState.selectedAgentType || !configState.updateProjectUrl) return;
