@@ -221,6 +221,48 @@ defmodule InternalApi.Feature.Availability do
   field(:quantity, 2, type: :uint32)
 end
 
+defmodule InternalApi.Feature.MachinesChanged do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
+defmodule InternalApi.Feature.OrganizationMachinesChanged do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.Feature.FeaturesChanged do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
+defmodule InternalApi.Feature.OrganizationFeaturesChanged do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
 defmodule InternalApi.Feature.FeatureService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Feature.FeatureService"
