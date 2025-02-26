@@ -46,7 +46,9 @@ if config_env() == :prod do
       nil ->
         {Scheduler.FeatureHubProvider,
          [
-           cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(10)}
+           cache:
+             {FeatureProvider.CachexCache,
+              name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
          ]}
 
       path ->
