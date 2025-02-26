@@ -23,7 +23,10 @@ defmodule Support.TestConsumer do
 
         def handle_message(message) do
           Logger.debug("Test Consumer received message")
-          unquote(consumer_module).handle_message(message)
+
+          if function_exported?(unquote(consumer_module), :handle_message, 1),
+            do: unquote(consumer_module).handle_message(message)
+
           send(unquote(receiver_pid), {:ok, unquote(consumer_module)})
         end
       end,
