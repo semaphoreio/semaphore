@@ -32,6 +32,7 @@
     "dedent": "1.5.3",
     "diff": "v4.0.1",
     "domurl": "2.3.0",
+    "fs-extra": "^11.3.0",
     "highlight.js": "^9.16.2",
     "jquery": ">= 3.1",
     "js-yaml": "^3.13.1",

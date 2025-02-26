@@ -1,5 +1,5 @@
 const esbuild = require('esbuild')
-const fs = require('fs')
+const fs = require('fs-extra')
 const path = require('path')
 
 const bundle = true
@@ -12,23 +12,17 @@ const plugins = [
 
 const outputDir = '../priv/static/assets'
 
-const copyDir = (src, dest) => {
-  const files = fs.readdirSync(src)
-  
-  for (const file of files) {
-    const srcPath = path.join(src, file)
-    const destPath = path.join(dest, file)
-    fs.copyFileSync(srcPath, destPath)
-  }
-}
-
 // Function to copy static assets
 const copyAssets = () => {
   console.log('Copying original assets to output directory...')
   
-  copyDir('css', path.join(outputDir, 'css'), { overwrite: true })
-  copyDir('fonts', path.join(outputDir, 'fonts'), { overwrite: true })
-  copyDir('images', path.join(outputDir, 'images'), { overwrite: true })
+  fs.ensureDirSync(path.join(outputDir, 'css'))
+  fs.ensureDirSync(path.join(outputDir, 'fonts'))
+  fs.ensureDirSync(path.join(outputDir, 'images'))
+  
+  fs.copySync('css', path.join(outputDir, 'css'), { overwrite: true })
+  fs.copySync('fonts', path.join(outputDir, 'fonts'), { overwrite: true })
+  fs.copySync('images', path.join(outputDir, 'images'), { overwrite: true })
   
   console.log('Assets copied successfully')
 }
