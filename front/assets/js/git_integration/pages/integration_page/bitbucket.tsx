@@ -50,7 +50,6 @@ export const BitbucketIntegration = ({ integration, csrfToken, orgUsername }: Pr
                   href="https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/"
                   target="_blank"
                   rel="noreferrer"
-                  className="link blue hover-dark-blue"
                 >
                 Use OAuth on Bitbucket Cloud ↗
                 </a>

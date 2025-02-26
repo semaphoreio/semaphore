@@ -4,6 +4,9 @@ import { Box, Card } from "../components";
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import { gitSvg, addNewIcon } from "./home_page/icons";
+import { State } from "../stores/config";
+import { Integration } from "../types";
+import * as utils from "../utils";
 
 export const HomePage = () => {
   return (
@@ -18,24 +21,35 @@ export const HomePage = () => {
   );
 };
 
+const integrationsOrder = [
+  Integration.IntegrationType.GithubApp,
+  Integration.IntegrationType.GithubOauthToken,
+  Integration.IntegrationType.BitBucket,
+  Integration.IntegrationType.Gitlab,
+];
+
+const integrationsOrderMap = utils.createOrderMap(integrationsOrder);
+
 const Integrations = () => {
-  const config = useContext(stores.Config.Context);
+  const config: State = useContext(stores.Config.Context);
   const itemsLen = config.integrations ? config.integrations.length : 0;
 
   return (
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Integrations" boxIcon={gitSvg}>
-          {config.integrations.map((integration, index) => (
-            <Card
-              key={index}
-              title={integration.appName}
-              description={integration.description}
-              lastItem={itemsLen === index + 1}
-              connectionStatus={integration.connectionStatus}
-              integrationType={integration.type}
-            />
-          ))}
+          {utils.sortObjectByOrder(config.integrations, integrationsOrderMap, `type`).map(
+            (integration, index) => (
+              <Card
+                key={`integration-${integration.type}-${index}`}
+                title={integration.appName}
+                description={integration.description}
+                lastItem={itemsLen === index + 1}
+                connectionStatus={integration.connectionStatus}
+                integrationType={integration.type}
+              />
+            )
+          )}
         </Box>
       )}
     </Fragment>
@@ -50,18 +64,20 @@ const AddNewIntegration = () => {
     <Fragment>
       {itemsLen != 0 && (
         <Box boxTitle="Connect new" boxIcon={addNewIcon}>
-          {config.newIntegrations.map((integration, index) => (
-            <Card
-              key={index}
-              title={integration.name}
-              description={integration.description}
-              lastItem={itemsLen === index + 1}
-              time={integration.setupTime}
-              integrationType={integration.type}
-              connectButtonUrl={integration.connectUrl}
-              internalSetup={integration.internalSetup}
-            />
-          ))}
+          {utils.sortObjectByOrder(config.newIntegrations, integrationsOrderMap, `type`).map(
+            (integration, index) => (
+              <Card
+                key={`integration-${integration.type}-${index}`}
+                title={integration.name}
+                description={integration.description}
+                lastItem={itemsLen === index + 1}
+                time={integration.setupTime}
+                integrationType={integration.type}
+                connectButtonUrl={integration.connectUrl}
+                internalSetup={integration.internalSetup}
+              />
+            )
+          )}
         </Box>
       )}
     </Fragment>
