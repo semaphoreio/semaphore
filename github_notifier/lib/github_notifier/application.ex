@@ -22,7 +22,7 @@ defmodule GithubNotifier.Application do
         {{Services.PipelineStartedNotifier, []}, enabled?("START_CONSUMERS")},
         {{Services.PipelineFinishedNotifier, []}, enabled?("START_CONSUMERS")},
         {{Services.PipelineSummaryAvailableNotifier, []}, enabled?("START_CONSUMERS")},
-        {{GithubNotifier.FeatureProviderInvalidatorWorker, true}},
+        {{GithubNotifier.FeatureProviderInvalidatorWorker, []}, true},
         feature_provider()
       ])
 
