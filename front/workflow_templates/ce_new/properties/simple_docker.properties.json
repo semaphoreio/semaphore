@@ -8,5 +8,5 @@
   "use_case": "ci_pipeline",
   "icon": "lang-blank.svg",
   "template_path": "templates/simple_docker.yml",
-  "workflow_tip": "other"
+  "workflow_tip": "none"
 }
