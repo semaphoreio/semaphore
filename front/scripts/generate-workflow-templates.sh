@@ -25,6 +25,8 @@ if [ ! -d "$STARTER_TEMPLATES_DIR/ce" ] || [ ! -d "$STARTER_TEMPLATES_DIR/saas" 
     exit 1
 fi
 
+rm -rf "$CE_NEW_DIR"
+rm -rf "$SAAS_NEW_DIR"
 # Create target directories if they don't exist
 mkdir -p "$CE_NEW_DIR"
 mkdir -p "$SAAS_NEW_DIR"

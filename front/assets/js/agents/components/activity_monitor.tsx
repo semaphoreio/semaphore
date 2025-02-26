@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import * as toolbox from "js/toolbox";
@@ -25,10 +25,7 @@ export const ActivityMonitor = () => {
       </div>
       <InvisibleItems/>
       <LobbyItems/>
-      {waitingItems.map((item, idx) => (
-        <ActivityItem item={item} key={idx}/>
-      ))}
-      {runningItems.map((item, idx) => (
+      {waitingItems.concat(runningItems).map((item, idx) => (
         <ActivityItem item={item} key={idx}/>
       ))}
       {isEmpty && <EmptyState/>}

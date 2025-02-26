@@ -44,10 +44,14 @@ if config_env() == :prod do
     System.get_env("FEATURE_YAML_PATH")
     |> case do
       nil ->
-        {Scheduler.FeatureHubProvider, []}
+        {Scheduler.FeatureHubProvider,
+         [
+           cache: {FeatureProvider.CachexCache, name: :feature_cache, ttl_ms: :timer.minutes(10)}
+         ]}
 
       path ->
-        {FeatureProvider.YamlProvider, [yaml_path: get_env!.("FEATURE_YAML_PATH")]}
+        {FeatureProvider.YamlProvider,
+         [yaml_path: get_env!.("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
     end
   config :scheduler,
     feature_provider: feature_provider

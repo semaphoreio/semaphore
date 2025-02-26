@@ -1,9 +1,9 @@
-import { h } from "preact";
+
 import { Spendings } from "../types";
 import * as components from "../components";
 import * as types from "../types";
 import * as stores from "../stores";
-import { StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import _ from "lodash";
 import { Formatter } from "js/toolbox";
 import moment from "moment";
@@ -215,13 +215,13 @@ const Tooltip = (props: TooltipProps) => {
 
 interface LegendProps {
   aggregationType: AggregationType;
-  setAggregationType: StateUpdater<AggregationType>;
+  setAggregationType: Dispatch<StateUpdater<AggregationType>>;
   project: types.Spendings.DetailedProject;
   plotData: components.Charts.PlotData[];
   selectedMetric: string;
-  setSelectedMetrics: StateUpdater<string>;
+  setSelectedMetrics: Dispatch<StateUpdater<string>>;
   groupTypes: Spendings.GroupType[];
-  setGroupTypes: StateUpdater<Spendings.GroupType[]>;
+  setGroupTypes: Dispatch<StateUpdater<Spendings.GroupType[]>>;
   colorScale: (arg0: string) => string;
 }
 const Legend = (props: LegendProps) => {

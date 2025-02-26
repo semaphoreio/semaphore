@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useReducer } from "preact/hooks";
 import * as stores from "../stores";
 import * as types from "../types";

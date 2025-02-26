@@ -1,6 +1,6 @@
 import { ChartInterface } from './type';
 import * as types from '../../../types';
-import { createRef, h } from 'preact';
+import { createRef } from 'preact';
 import { useEffect } from 'preact/hooks';
 import * as d3 from 'd3';
 
@@ -78,4 +78,3 @@ export default ({ xScale, yScale, height, metrics, calculateOptimalRange }: Prop
     <svg ref={areaChart}></svg>
   );
 };
-

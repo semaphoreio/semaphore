@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useContext } from "preact/hooks";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
@@ -9,12 +9,14 @@ import * as stores from "../../stores";
 interface Props {
   integration: types.Integration.BitbucketIntegration;
   csrfToken: string;
+  orgUsername: string;
 }
 
-export const BitbucketIntegration = ({ integration, csrfToken }: Props) => {
+export const BitbucketIntegration = ({ integration, csrfToken, orgUsername }: Props) => {
   const [deleteDisabled, setDeleteDisabled] = useState(true);
+
   const deleteInputChange = (e: any) => {
-    if (e.target.value === integration.appName) {
+    if (e.target.value === orgUsername) {
       setDeleteDisabled(false);
     } else {
       setDeleteDisabled(true);
@@ -42,14 +44,17 @@ export const BitbucketIntegration = ({ integration, csrfToken }: Props) => {
           <div className="mb1">
             <label className="b mr1">Integration Setup</label>
             <div className="mt2">
-              <a
-                href="https://bitbucket.org/account/settings/app-passwords/"
-                target="_blank"
-                rel="noreferrer"
-                className="link blue hover-dark-blue"
-              >
-                Create Bitbucket App ↗
-              </a>
+              <p className="mb3">
+              Start by creating a OAuth consumer:&nbsp;
+                <a
+                  href="https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link blue hover-dark-blue"
+                >
+                Use OAuth on Bitbucket Cloud ↗
+                </a>
+              </p>
             </div>
           </div>
         )}
@@ -89,7 +94,7 @@ export const BitbucketIntegration = ({ integration, csrfToken }: Props) => {
 
           <div className="mb3">
             <label htmlFor="name_of_the_organization" className="db mb2">
-              Enter app name to confirm:
+              Enter organization name to confirm:
             </label>
             <div className="flex items-center">
               <form
@@ -102,7 +107,7 @@ export const BitbucketIntegration = ({ integration, csrfToken }: Props) => {
                 <input
                   type="text"
                   className="form-control w-100"
-                  placeholder="Enter app name..."
+                  placeholder="Enter organization name..."
                   onChange={deleteInputChange}
                 />
                 <button
@@ -140,7 +145,7 @@ const EditFields = ({ integration }: { integration: types.Integration.BitbucketI
           <input type="hidden" name="_csrf_token" value={csrfToken}/>
           <input type="hidden" name="type" value="bitbucket"/>
           <input type="hidden" name="redirect_to" value={config.redirectToAfterSetup}/>
-          
+
           <div className="mb3">
             <label className="db mb2">Key</label>
             <input

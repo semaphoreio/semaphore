@@ -102,6 +102,7 @@ defmodule Front.Browser.PeopleTest do
 
     test "when flag isn't enable, dont show remove button", ctx do
       Support.Stubs.Feature.disable_feature(ctx.stubs.org.id, :rbac__project_roles)
+      Cachex.clear!(:feature_provider_cache)
 
       {:ok, session} = Wallaby.start_session()
 

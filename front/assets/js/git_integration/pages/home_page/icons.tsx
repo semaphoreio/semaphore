@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 
 export const gitSvg = (
   <svg

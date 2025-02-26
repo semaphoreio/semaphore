@@ -31,6 +31,7 @@ defmodule FrontWeb.ConnCase do
     FunRegistry.clear!()
     Cachex.clear(:front_cache)
     Cachex.clear(:auth_cache)
+    Cachex.clear!(:feature_provider_cache)
     Cacheman.clear(:front)
     Support.Stubs.init()
 

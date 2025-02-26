@@ -1,8 +1,8 @@
-import { Formatter } from 'js/toolbox';
-import { Group, GroupType, Trend } from './group';
+import { Formatter } from "js/toolbox";
+import { Group, GroupType, Trend } from "./group";
 import * as components from "../../components";
-import moment from 'moment';
-import _ from 'lodash';
+import moment from "moment";
+import _ from "lodash";
 
 export class Project {
   id: string;
@@ -32,12 +32,17 @@ export class DetailedProject extends Project {
     detailedProject.name = json.project.name as string;
     detailedProject.cost = ProjectCost.fromJSON(json.project.cost);
 
-    const nonEmptyGroups = detailedProject.cost.groups.filter((group) => group.items.length != 0);
+    const nonEmptyGroups = detailedProject.cost.groups.filter(
+      (group) => group.items.length != 0
+    );
     detailedProject.cost.groups = nonEmptyGroups;
 
     const costs = json.costs.map(ProjectCost.fromJSON) as ProjectCost[];
     const missingCosts = detailedProject.missingCosts(costs);
-    detailedProject.periodicCosts = _.chain(costs).concat(missingCosts).sortBy((c) => c.fromDate).value();
+    detailedProject.periodicCosts = _.chain(costs)
+      .concat(missingCosts)
+      .sortBy((c) => c.fromDate)
+      .value();
     return detailedProject;
   }
 
@@ -48,7 +53,9 @@ export class DetailedProject extends Project {
   }
 
   findCostAt(date: Date) {
-    return this.periodicCosts.find((cost) => moment(cost.fromDate).isSame(date, `day`));
+    return this.periodicCosts.find((cost) =>
+      moment(cost.fromDate).isSame(date, `day`)
+    );
   }
 
   static get Empty(): DetailedProject {
@@ -64,14 +71,16 @@ export class DetailedProject extends Project {
     const fromDate = moment(this.cost.fromDate);
     const toDate = moment(this.cost.toDate);
 
-    const missingCosts = [];
+    const missingCosts: ProjectCost[] = [];
 
     let currentDate = fromDate.clone();
     while (currentDate.isBefore(toDate)) {
-      const cost = costs.find((c) => moment(c.fromDate).isSame(currentDate, `day`));
+      const cost = costs.find((c) =>
+        moment(c.fromDate).isSame(currentDate, `day`)
+      );
       if (!cost) {
         const projectCost = ProjectCost.Empty;
-        projectCost.fromDate= currentDate.toDate();
+        projectCost.fromDate = currentDate.toDate();
         projectCost.toDate = currentDate.add(1, `day`).toDate();
         missingCosts.push(projectCost);
       }
@@ -87,8 +96,8 @@ export class DetailedProject extends Project {
         name: this.name,
         value: cost.rawTotal,
         details: {
-          [this.name]: cost.rawTotal
-        }
+          [this.name]: cost.rawTotal,
+        },
       };
     });
   }
@@ -100,24 +109,27 @@ export class DetailedProject extends Project {
         name: this.name,
         value: cost.rawTotal,
         details: {
-          [this.name]: cost.rawTotal
-        }
+          [this.name]: cost.rawTotal,
+        },
       };
     });
   }
 
   get detailedPlotData(): components.Charts.PlotData[] {
     return this.periodicCosts.map((cost) => {
-      const details = cost.groups.reduce<Record<string, number>>((acc, group) => {
-        acc[group.type as string] = group.rawPrice;
-        return acc;
-      }, {});
+      const details = cost.groups.reduce<Record<string, number>>(
+        (acc, group) => {
+          acc[group.type as string] = group.rawPrice;
+          return acc;
+        },
+        {}
+      );
 
       return {
         day: cost.fromDate,
         name: this.name,
         value: cost.rawTotal,
-        details: details
+        details: details,
       };
     });
   }
@@ -125,14 +137,14 @@ export class DetailedProject extends Project {
   get workflowPlotData(): components.Charts.PlotData[] {
     return this.periodicCostsBeforeToday.map((cost) => {
       const details = {
-        'workflows': cost.workflowCount,
+        workflows: cost.workflowCount,
       };
 
       return {
         day: cost.fromDate,
         name: `workflows`,
         value: cost.workflowCount,
-        details: details
+        details: details,
       };
     });
   }
@@ -142,18 +154,20 @@ export class DetailedProject extends Project {
       const groups = cost.groups.filter((g) => groupType.includes(g.type));
       return groups.map((group) => {
         let total = 0;
-        const details = group.items.reduce<Record<string, number>>((acc, item) => {
-          acc[item.type] = item.rawPrice;
-          total += item.rawPrice;
-          return acc;
-        }, {});
-
+        const details = group.items.reduce<Record<string, number>>(
+          (acc, item) => {
+            acc[item.type] = item.rawPrice;
+            total += item.rawPrice;
+            return acc;
+          },
+          {}
+        );
 
         return {
           day: cost.fromDate,
           name: group.name,
           value: total,
-          details: details
+          details: details,
         };
       });
     });
@@ -161,7 +175,9 @@ export class DetailedProject extends Project {
 
   get periodicCostsBeforeToday(): ProjectCost[] {
     const today = moment.utc().startOf(`day`);
-    return this.periodicCosts.filter((cost) => moment(cost.fromDate).isBefore(today));
+    return this.periodicCosts.filter((cost) =>
+      moment(cost.fromDate).isBefore(today)
+    );
   }
 
   metricNames(): string[] {
@@ -194,8 +210,14 @@ export class ProjectCost {
   static fromJSON(json: any): ProjectCost {
     const projectCost = new ProjectCost();
 
-    const fromDate = moment.utc(json.from_date as string).startOf(`day`).format(`YYYY-MM-DD`);
-    const toDate = moment.utc(json.to_date as string).startOf(`day`).format(`YYYY-MM-DD`);
+    const fromDate = moment
+      .utc(json.from_date as string)
+      .startOf(`day`)
+      .format(`YYYY-MM-DD`);
+    const toDate = moment
+      .utc(json.to_date as string)
+      .startOf(`day`)
+      .format(`YYYY-MM-DD`);
 
     projectCost.fromDate = Formatter.parseDateToUTC(fromDate);
     projectCost.toDate = Formatter.parseDateToUTC(toDate);
@@ -203,7 +225,12 @@ export class ProjectCost {
     projectCost.groups = json.spending_groups.map(Group.fromJSON) as Group[];
 
     const groupSortOrder = Object.values(GroupType);
-    projectCost.groups = projectCost.groups.filter((group) => group).sort((a, b) => groupSortOrder.indexOf(a.type) - groupSortOrder.indexOf(b.type));
+    projectCost.groups = projectCost.groups
+      .filter((group) => group)
+      .sort(
+        (a, b) =>
+          groupSortOrder.indexOf(a.type) - groupSortOrder.indexOf(b.type)
+      );
 
     projectCost.workflowCount = json.workflow_count as number;
     projectCost.trends = json.workflow_trends.map(Trend.fromJSON);
@@ -235,31 +262,31 @@ export class ProjectCost {
   }
 
   get priceTrend(): string {
-    if(this.trends.length == 0) {
+    if (this.trends.length == 0) {
       return `new`;
     } else {
       const lastPrice = Formatter.parseMoney(this.trends[0].price);
       const currentPrice = Formatter.parseMoney(this.total);
-      if(lastPrice > currentPrice) {
+      if (lastPrice > currentPrice) {
         return `down`;
-      } else if(lastPrice < currentPrice) {
+      } else if (lastPrice < currentPrice) {
         return `up`;
-      } else if (lastPrice == currentPrice){
+      } else if (lastPrice == currentPrice) {
         return `same`;
       }
     }
   }
 
   get usageTrend(): string {
-    if(this.trends.length == 0) {
+    if (this.trends.length == 0) {
       return `new`;
     } else {
       const lastUsage = this.trends[0].usage;
-      if(lastUsage > this.workflowCount) {
+      if (lastUsage > this.workflowCount) {
         return `down`;
-      } else if(lastUsage < this.workflowCount) {
+      } else if (lastUsage < this.workflowCount) {
         return `up`;
-      } else if (lastUsage == this.workflowCount){
+      } else if (lastUsage == this.workflowCount) {
         return `same`;
       }
     }

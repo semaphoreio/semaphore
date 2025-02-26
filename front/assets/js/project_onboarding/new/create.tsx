@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import * as pages from "./pages";
 import * as components from "./components";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -7,7 +7,7 @@ import { OnboardingStep } from "./components/progress_bar";
 
 export const CreateApp = () => {
   const location = useLocation();
-  
+
   const getCurrentStep = (): OnboardingStep => {
     if (location.pathname === `/`) return `select-type`;
     if (location.pathname === `/github_oauth_token`) return `setup-project`;
@@ -31,7 +31,7 @@ export const CreateApp = () => {
               <Routes>
                 <Route path="/" element={<pages.Create.SelectProjectType/>}/>
                 {Object.values(IntegrationType).map(integrationType => (
-                  <Route 
+                  <Route
                     key={integrationType}
                     path={integrationType}
                     element={<pages.Create.ChooseRepo/>}

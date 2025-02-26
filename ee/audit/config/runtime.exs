@@ -47,8 +47,19 @@ config :audit, :migrations_path, System.get_env("MIGRATIONS_PATH") || "/app/priv
 feature_provider =
   System.get_env("ON_PREM")
   |> case do
-    "true" -> {FeatureProvider.YamlProvider, [yaml_path: System.get_env("FEATURE_YAML_PATH")]}
-    _ -> {Audit.FeatureHubProvider, []}
+    "true" ->
+      {FeatureProvider.YamlProvider,
+       [yaml_path: System.get_env("FEATURE_YAML_PATH", agent_name: :feature_provider_agent)]}
+
+    _ ->
+      {
+        Audit.FeatureHubProvider,
+        [
+          cache:
+            {FeatureProvider.CachexCache,
+             name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+        ]
+      }
   end
 
 config :audit, :feature_provider, feature_provider

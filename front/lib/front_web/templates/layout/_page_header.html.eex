@@ -42,14 +42,6 @@
         <img src="<%= assets_path() %>/images/semaphore-logo-sign-black.svg" alt="logo" width="26" height="17">
         <span class="dn db-m b pl2">Home</span>
       </a>
-      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, param: @conn.assigns[:organization_id]) do %>
-        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
-          <a href="<%= agents_index_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
-            <img src="<%= assets_path() %>/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
-            <span class="dn di-ns">Agents</span>
-          </a>
-        </div>
-      <% end %>
       <div class="bl b--black-15 pl2 pl3-ns ml2 ml3-ns">
         <div class="b pointer flex items-center hover-bg-washed-brown ph2 br3 nh1 pv1 js-projects-menu-trigger" data-template="projectsMenu" data-hotkey="/">
           <img src="<%= assets_path() %>/images/icn-project-nav.svg" alt="list" width="16" height="16" class="dn di-ns mr2">
@@ -94,18 +86,17 @@
       <% end %>
     </div>
     <div class="flex items-center flex-shrink-0">
-      <%= if FeatureProvider.feature_enabled?(:feedback, param: @conn.assigns[:organization_id]) do %>
-        <!-- Feedback Menu -->
-        <div class="dn db-m">
-          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="feedbackMenu">
-            <%= icon("icn-smiley", class: "db o-80", width: "24", height: "24") %>
-            <span class="dn db-m ml2 b">Feedback</span>
-          </div>
+      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, param: @conn.assigns[:organization_id]) do %>
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <a href="<%= agents_index_path(@conn, :index) %>" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+            <img src="<%= assets_path() %>/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
+            <span class="dn di-ns">Agents</span>
+          </a>
         </div>
       <% end %>
       <%= if FeatureProvider.feature_enabled?(:help, param: @conn.assigns[:organization_id]) do %>
         <!-- Help Menu -->
-        <div class="ph1 ph2-ns mr2-ns br-ns b--black-10">
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
           <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
             <%= icon("icn-help", class: "db o-80", width: "24", height: "24") %>
             <span class="dn db-m ml2 b">Help</span>
@@ -122,42 +113,6 @@
   </div>
 </div>
 <div style="display: none;">
-  <!-- Header Feedback Menu -->
-  <div id="feedbackMenu">
-    <div class="ph2 pv1">
-      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Share Feedback</div>
-      <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
-              href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
-              subject: "Feedback",
-              body: Enum.join([
-                "By: #{@layout_model.user.name}",
-                "From: #{@layout_model.current_organization.name}",
-                "========================================",
-                "",
-                "Share your feedback here…"
-              ], "\n")
-            }) |> String.replace("+", "%20") %>">
-        <div class="b">Submit an idea</div>
-        <p class="f6 o-80 mb0">Share your improvement proposal</p>
-      </a>
-      <%= if !FeatureProvider.feature_enabled?(:zendesk_support, param: @conn.assigns[:organization_id]) do %>
-        <a class="link db white mv1 pv1 ph2 br2 hover-bg-lightest-green hover-dark-gray"
-                href="mailto:feedback@semaphoreci.com?<%= URI.encode_query(%{
-                subject: "Feedback",
-                body: Enum.join([
-                  "By: #{@layout_model.user.name}",
-                  "From: #{@layout_model.current_organization.name}",
-                  "========================================",
-                  "",
-                  "Share your feedback here…"
-                ], "\n")
-              }) |> String.replace("+", "%20") %>">
-          <div class="b">Report a Bug</div>
-          <p class="f6 o-80 mb0">Tell us if something’s off</p>
-        </a>
-      <% end %>
-    </div>
-  </div>
   <!-- Header Help menu  -->
   <div id="helpMenu">
     <div class="ph2 pv1">
@@ -223,13 +178,7 @@
              card_title: "Projects",
              card_description: "All projects in this organization",
              tooltip: false %>
-      <%= if FeatureProvider.feature_enabled?(:ui_agent_page, param: @layout_model.current_organization.id) do %>
-        <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
-               card_url: agents_index_path(@conn, :index),
-               card_title: "Agents",
-               card_description: "Everything currently running across all projects",
-               tooltip: false %>
-      <% else %>
+      <%= if not FeatureProvider.feature_enabled?(:ui_agent_page, param: @layout_model.current_organization.id) do %>
         <%= if FeatureProvider.feature_enabled?(:activity_monitor, param: @layout_model.current_organization.id) do %>
           <%= render FrontWeb.LayoutView, "page_header/_menu_card.html",
                 card_url: activity_monitor_path(@conn, :index),

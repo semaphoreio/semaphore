@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import * as types from "../../../types";
 import * as util from "../../../util";
 

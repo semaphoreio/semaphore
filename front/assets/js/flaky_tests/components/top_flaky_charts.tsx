@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as stores from "../stores";
 import 'billboard.js/dist/billboard.min.css';
 import { Status } from "../types";

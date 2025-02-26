@@ -1,4 +1,4 @@
-import { h, Fragment } from "preact";
+import { Fragment } from "preact";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import * as pages from "./pages";
 import * as stores from "./stores";
@@ -25,7 +25,7 @@ export const WorkflowSetupApp = () => {
         >
           <Routes>
             <Route path="/" element={
-              configState.hasPipeline 
+              configState.hasPipeline
                 ? <Navigate to="/existing_configuration" replace/>
                 : <Navigate to="/environment" replace/>
             }/>

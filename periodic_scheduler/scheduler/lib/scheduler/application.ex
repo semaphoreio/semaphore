@@ -29,7 +29,7 @@ defmodule Scheduler.Application do
         {Cachex, name: Scheduler.FeatureHubProvider},
         id: :feature_cache
       )
-    ]
+    ] ++ feature_provider()
   end
 
   def children(_), do: Enum.concat(children(:test), children_())
@@ -41,6 +41,16 @@ defmodule Scheduler.Application do
       {Scheduler.EventsConsumers.OrgBlocked, []},
       {Scheduler.EventsConsumers.OrgUnblocked, []}
     ]
+  end
+
+  def feature_provider do
+    if System.get_env("FEATURE_YAML_PATH") != nil do
+      [
+        Application.fetch_env!(:scheduler, :feature_provider)
+      ]
+    else
+      []
+    end
   end
 
   defp get_env(), do: Application.get_env(:scheduler, :mix_env)

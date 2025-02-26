@@ -1,4 +1,4 @@
-<%= if @conn.assigns[:workflow_tip] do %>
+<%= if @conn.assigns[:workflow_tip] && @conn.assigns[:workflow_tip] != "none" do %>
   <div id="workflow-tips-popup" data-project="<%= @project.name %>" class="fixed bottom-0 <%= @right_or_left %>-0 z-9999 w-100 mw6 c-slide-from-bottom">
     <div class="bg-washed-green br3 shadow-2 pa3 pa4-ns mh3 mb3">
       <div id="workflow-tips-close-popup" class="f3 absolute top-0 right-0 mr3 mid-gray hover-dark-gray pt2 pr2 pb4 pl4 lh-solid pointer">

@@ -48,7 +48,7 @@ after_pipeline:
           - test-results gen-pipeline-report
 auto_cancel:
   running:
-    when: "branch != 'master'"
+    when: "branch != 'main'"
 blocks:
   # Audit
   - name: "Audit: \U0001F4CB Provision Test Image"
@@ -93,8 +93,6 @@ blocks:
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -105,7 +103,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/audit
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -169,8 +166,6 @@ blocks:
     run:
       when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -181,7 +176,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd artifacthub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -259,8 +253,6 @@ blocks:
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -271,7 +263,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd auth
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -352,8 +343,6 @@ blocks:
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -364,7 +353,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd badge
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -446,8 +434,6 @@ blocks:
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -458,7 +444,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd branch_hub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 3.0
           - make pull
       jobs:
@@ -547,7 +532,6 @@ blocks:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -559,7 +543,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd dashboardhub
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
           - sudo chmod 600 ~/.ssh/id_rsa
           - sem-version ruby 3.0
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
@@ -732,7 +715,6 @@ blocks:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       prologue:
         commands:
@@ -740,8 +722,6 @@ blocks:
           - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       env_vars:
         - name: MIX_ENV
           value: prod
@@ -808,8 +788,6 @@ blocks:
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -820,7 +798,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd guard
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -901,8 +878,6 @@ blocks:
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -913,8 +888,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd hooks_receiver
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ HooksReceiver Check code"
@@ -994,8 +967,6 @@ blocks:
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1006,8 +977,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd hooks_processor
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -1088,12 +1057,9 @@ blocks:
     run:
       when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd ee/gofer
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 2.7
           - make pull
       jobs:
@@ -1178,8 +1144,6 @@ blocks:
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1190,7 +1154,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd github_notifier
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -1255,13 +1218,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "Looper"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/looper
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1321,13 +1280,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "JobMatrix"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/job_matrix
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1387,13 +1342,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "DefinitionValidator"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/definition_validator
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1470,13 +1421,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "TaskApiMock"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/task_api_referent
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1539,13 +1486,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "Spec"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/spec
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1604,13 +1547,9 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "GoferClient"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/gofer_client
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1668,13 +1607,9 @@ blocks:
     run:
       when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd plumber/block
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1791,8 +1726,6 @@ blocks:
     run:
       when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1801,8 +1734,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd plumber/ppl
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
@@ -1910,8 +1841,6 @@ blocks:
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -1922,7 +1851,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/pre_flight_checks
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2004,8 +1932,6 @@ blocks:
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2016,7 +1942,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd projecthub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2096,8 +2021,6 @@ blocks:
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2108,7 +2031,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd projecthub-rest-api
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2170,8 +2092,6 @@ blocks:
     run:
       when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2182,7 +2102,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api-gateway
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1 Check code"
@@ -2241,8 +2160,6 @@ blocks:
     run:
       when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2253,7 +2170,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd repohub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2333,8 +2249,6 @@ blocks:
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2345,7 +2259,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd rbac/ce
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2427,8 +2340,6 @@ blocks:
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2439,7 +2350,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/rbac
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2544,7 +2454,6 @@ blocks:
           type: e2-standard-2
           os_image: ubuntu2004
       secrets:
-        - name: security-toolbox-shared-read-access
         - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
@@ -2556,8 +2465,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd repository_hub
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
@@ -2629,8 +2536,6 @@ blocks:
     run:
       when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2641,7 +2546,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd loghub2
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2701,8 +2605,6 @@ blocks:
     run:
       when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2713,7 +2615,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd encryptor
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2773,8 +2674,6 @@ blocks:
     run:
       when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2785,7 +2684,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd bootstrapper
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2845,8 +2743,6 @@ blocks:
     run:
       when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -2857,7 +2753,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd self_hosted_hub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -2935,8 +2830,6 @@ blocks:
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -2947,7 +2840,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd secrethub
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3027,8 +2919,6 @@ blocks:
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3039,7 +2929,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd notifications
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3121,8 +3010,6 @@ blocks:
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3133,7 +3020,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v1alpha
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3213,8 +3099,6 @@ blocks:
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3225,7 +3109,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd public-api/v2
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - sem-version ruby 3.3
           - make pull
       jobs:
@@ -3274,19 +3157,16 @@ blocks:
       env_vars:
         - name: SERVICE_NAME
           value: "PeriodicScheduler"
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd periodic_scheduler/scheduler
-          - sudo chmod 600 ~/.ssh/security-toolbox
-          - ssh-add ~/.ssh/security-toolbox
       jobs:
         - name: Check dependencies
           commands:
             - make check.ex.deps
         - name: Check docker resources
           commands:
+            - make build
             - make check.docker
         - name: Check code
           commands:
@@ -3376,8 +3256,6 @@ blocks:
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: RAILS_ENV
           value: "production"
@@ -3388,8 +3266,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd github_hooks
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3450,8 +3326,6 @@ blocks:
     run:
       when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -3460,8 +3334,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd statsd
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
           - sem-version ruby 2.7
           - make pull
       jobs:
@@ -3500,8 +3372,6 @@ blocks:
     run:
       when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: DOCKER_BUILDKIT
           value: "1"
@@ -3512,7 +3382,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd ee/velocity
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3590,8 +3459,6 @@ blocks:
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3602,7 +3469,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd zebra
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -3650,13 +3516,9 @@ blocks:
           value: "Keycloak setup"
         - name: APP_ENV
           value: prod
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd keycloak/setup
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: Validate
           commands:
@@ -3681,13 +3543,9 @@ blocks:
           value: "Keycloak"
         - name: APP_ENV
           value: prod
-      secrets:
-        - name: security-toolbox-shared-read-access
       prologue:
         commands:
           - checkout && cd keycloak/image
-          - mv ~/.ssh/security-toolbox ~/.ssh/id_rsa
-          - sudo chmod 600 ~/.ssh/id_rsa
       jobs:
         - name: Check docker image
           commands:
@@ -3738,8 +3596,6 @@ blocks:
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: security-toolbox-shared-read-access
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -3750,7 +3606,6 @@ blocks:
       prologue:
         commands:
           - checkout && cd scouter
-          - sudo chmod 600 ~/.ssh/security-toolbox
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"

@@ -1,4 +1,4 @@
-import { h, createContext } from "preact";
+import { createContext } from "preact";
 import { Insights } from "./components/insights";
 import { BrowserRouter } from "react-router-dom";
 

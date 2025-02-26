@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import moment from "moment";
 
 export const Duration = ({ duration, className }: { duration: number, className?: string, }) => {

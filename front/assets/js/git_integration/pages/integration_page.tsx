@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { NavLink, useParams } from "react-router-dom";
 import { useContext, useEffect, useState } from "preact/hooks";
 import * as stores from "../stores";
@@ -22,7 +22,7 @@ export const IntegrationPage = () => {
     }
 
     // If not found and it's gitlab or bitbucket, check newIntegrations
-    if (type === types.Integration.IntegrationType.Gitlab || 
+    if (type === types.Integration.IntegrationType.Gitlab ||
         type === types.Integration.IntegrationType.BitBucket) {
       const newIntegration = config.newIntegrations.find(i => i.type === type);
       if (newIntegration) {
@@ -51,9 +51,9 @@ export const IntegrationPage = () => {
     case types.Integration.IntegrationType.GithubApp:
       return <GithubIntegration integration={integration} csrfToken={csrfToken}/>;
     case types.Integration.IntegrationType.Gitlab:
-      return <GitlabIntegration integration={integration} csrfToken={csrfToken}/>;
+      return <GitlabIntegration integration={integration} csrfToken={csrfToken} orgUsername={config.orgUsername}/>;
     case types.Integration.IntegrationType.BitBucket:
-      return <BitbucketIntegration integration={integration} csrfToken={csrfToken}/>;
+      return <BitbucketIntegration integration={integration} csrfToken={csrfToken} orgUsername={config.orgUsername}/>;
     default:
       return (
         <Fragment>

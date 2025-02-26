@@ -22,4 +22,4 @@ promotions:
     pipeline_file: env-destroy-all.yml
     deployment_target: provision-test-env
     auto_promote:
-      when: "branch = 'master'"
+      when: "branch = 'main'"

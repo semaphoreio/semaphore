@@ -1,5 +1,5 @@
 /* eslint-disable quotes */
-import { h } from "preact";
+
 import { useContext } from "preact/hooks";
 import * as stores from "../../stores";
 import * as components from "../../components";
@@ -7,10 +7,10 @@ import * as components from "../../components";
 export const SelectProjectType = () => {
   return (
     <div className="flex-l">
-      <components.InfoPanel 
-        title="Project type" 
+      <components.InfoPanel
+        title="Project type"
         subtitle="Select how to start your project configuration."
-        additionalInfo="Each project is linked to a single repository for streamlined CI/CD management." 
+        additionalInfo="Each project is linked to a single repository for streamlined CI/CD management."
         svgPath="images/ill-girl-showing-continue.svg"/>
       {/* <!-- RIGHT SIDE --> */}
       <Providers/>

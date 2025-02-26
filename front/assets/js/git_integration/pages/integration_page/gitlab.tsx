@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useContext } from "preact/hooks";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
@@ -9,12 +9,13 @@ import * as stores from "../../stores";
 interface Props {
   integration: types.Integration.GitlabIntegration;
   csrfToken: string;
+  orgUsername: string;
 }
 
-export const GitlabIntegration = ({ integration, csrfToken }: Props) => {
+export const GitlabIntegration = ({ integration, csrfToken, orgUsername }: Props) => {
   const [deleteDisabled, setDeleteDisabled] = useState(true);
   const deleteInputChange = (e: any) => {
-    if (e.target.value === integration.appName) {
+    if (e.target.value === orgUsername) {
       setDeleteDisabled(false);
     } else {
       setDeleteDisabled(true);
@@ -88,7 +89,7 @@ export const GitlabIntegration = ({ integration, csrfToken }: Props) => {
 
           <div className="mb3">
             <label htmlFor="name_of_the_organization" className="db mb2">
-              Enter app name to confirm:
+              Enter organization name to confirm:
             </label>
             <div className="flex items-center">
               <form
@@ -101,7 +102,7 @@ export const GitlabIntegration = ({ integration, csrfToken }: Props) => {
                 <input
                   type="text"
                   className="form-control w-100"
-                  placeholder="Enter app name..."
+                  placeholder="Enter org name..."
                   onChange={deleteInputChange}
                 />
                 <button
@@ -139,7 +140,7 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
           <input type="hidden" name="_csrf_token" value={csrfToken}/>
           <input type="hidden" name="type" value="gitlab"/>
           <input type="hidden" name="redirect_to" value={config.redirectToAfterSetup}/>
-          
+
           <div className="mb3">
             <label className="db mb2">Application ID</label>
             <input

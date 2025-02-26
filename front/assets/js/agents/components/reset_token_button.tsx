@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { useNavigate } from "react-router-dom";
 import * as stores from "../stores";
 import { useContext } from "preact/hooks";

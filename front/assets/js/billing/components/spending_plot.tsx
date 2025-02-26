@@ -1,4 +1,4 @@
-import { createRef, h, VNode } from "preact";
+import { createRef, VNode } from "preact";
 import { useEffect, useState, useLayoutEffect } from "preact/hooks";
 import _ from "lodash";
 import * as d3 from "d3";
@@ -337,7 +337,6 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
     const stackGen = d3.stack()
       .keys(keys)
       .value((obj, key: string) => {
-        // @ts-expect-error - d3 types are wrong
         return obj.values[key] as number;
       });
 

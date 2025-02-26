@@ -1,5 +1,4 @@
 import * as plot from '../plot';
-import { h } from 'preact';
 import * as count from "../plot/y_axis/count";
 import moment from "moment";
 import { useContext } from "preact/hooks";

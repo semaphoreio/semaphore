@@ -1,4 +1,3 @@
-import { h } from "preact";
 import React, { createPortal, useEffect, useRef } from "preact/compat";
 
 interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {

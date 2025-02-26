@@ -154,6 +154,7 @@ defmodule AuthTest do
     end)
 
     Cachex.reset(:grpc_api_cache)
+    Cachex.reset(:feature_provider_cache)
 
     :ok
   end

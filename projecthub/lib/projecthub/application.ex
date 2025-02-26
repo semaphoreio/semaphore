@@ -25,9 +25,14 @@ defmodule Projecthub.Application do
       [
         {Projecthub.Repo, []},
         {Projecthub.Workers.AgentStore, [name: :feature_store]},
-        {Task.Supervisor, [name: Projecthub.TaskSupervisor]}
+        {Task.Supervisor, [name: Projecthub.TaskSupervisor]},
+        %{
+          id: FeatureProvider.Cachex,
+          start: {Cachex, :start_link, [:feature_provider_cache, []]}
+        }
       ] ++
         filter_enabled([
+          {provider, System.get_env("FEATURE_YAML_PATH") != nil},
           {{Support.MemoryDb, []}, env != :prod},
           {{Projecthub.Workers.ProjectInit, []}, start_worker?},
           {{GRPC.Server.Supervisor, {Projecthub.Api.Endpoint, port}}, start_server?}

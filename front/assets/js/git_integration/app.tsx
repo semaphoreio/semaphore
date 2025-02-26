@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import * as pages from "./pages";
 import { Routes, Route, Navigate, useSearchParams } from "react-router-dom";
 import { useContext, useEffect, useState } from "preact/hooks";
