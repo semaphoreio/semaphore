@@ -13,11 +13,7 @@ agent:
 
   containers:
     - name: main
-      image: 'registry.semaphoreci.com/node:20'  # Node.js 20 container
-    - name: postgres
-      image: registry.semaphoreci.com/postgres:17  # PostgreSQL 17 for database operations
-    - name: redis
-      image: registry.semaphoreci.com/redis:7.0  # Redis 7.0 for caching
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 
 # Configure when to stop the pipeline early
 fail_fast:
@@ -54,11 +50,6 @@ blocks:
   - name: "🔍 Integration Tests"
     dependencies: ["🛠️ Setup"]
     task:
-      env_vars:
-        - name: DATABASE_URL
-          value: postgresql://postgres@postgres:5432/test_db
-        - name: REDIS_URL
-          value: redis://redis:6379
       jobs:
         - name: "🔄 Run Integration Tests"
           commands:
@@ -117,8 +108,6 @@ blocks:
   - name: "🐳 Docker"
     dependencies: ["📦 Build"]
     task:
-      secrets:
-        - name: dockerhub-credentials
       jobs:
         - name: "📦 Build and Push"
           commands:
@@ -130,8 +119,6 @@ blocks:
   - name: "🚀 Deploy"
     dependencies: ["🐳 Docker"]
     task:
-      secrets:
-        - name: aws-credentials
       jobs:
         - name: "🌍 Deploy to Production"
           commands:

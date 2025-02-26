@@ -8,5 +8,5 @@
   "use_case": "ci_pipeline",
   "icon": "lang-go.svg",
   "template_path": "templates/go_docker.yml",
-  "workflow_tip": "other"
+  "workflow_tip": "none"
 }
