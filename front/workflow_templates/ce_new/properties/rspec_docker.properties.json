@@ -1,0 +1,12 @@
+{
+  "title": "RSpec",
+  "description": "Run parallel RSpec tests in Docker with PostgreSQL and Redis support. Uses Knapsack for test distribution. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Ruby</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>RSpec</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Knapsack</span></div>",
+  "short_description": "Run your Ruby RSpec suite",
+  "group": "ci",
+  "language": "Ruby",
+  "environment": "docker",
+  "use_case": "ci_pipeline",
+  "icon": "lang-ruby.svg",
+  "template_path": "templates/rspec_docker.yml",
+  "workflow_tip": "none"
+}
