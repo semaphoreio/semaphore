@@ -17,24 +17,9 @@
       <%= icon("icn-project-nav", alt: "projects", width: 16, height: 16, class: "mr2") %>
       <span>Projects</span>
     <% end %>
-    <%= if FeatureProvider.feature_enabled?(:ui_agent_page, @layout_model.current_organization.id) do %>
-      <%= link to: agents_index_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, agents_index_path(@conn, :index)) do %>
-        <%= icon("icn-self-hosted", alt: "agents", width: 16, height: 16, class: "mr2") %>
-        <span>Agents</span>
-      <% end %>
-    <% else %>
-      <%= if FeatureProvider.feature_enabled?(:activity_monitor, @layout_model.current_organization.id) do %>
-        <%= link to: activity_monitor_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, activity_monitor_path(@conn, :index)) do %>
-          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM9 2.937L5.516 8.96h1.968L7 12.875l3.484-5.884h-2L9 2.938z" /></svg>
-          <span>Activity Monitor</span>
-        <% end %>
-      <% end %>
-      <%= if FeatureProvider.feature_visible?(:self_hosted_agents, @conn.assigns[:organization_id]) do %>
-        <%= link to: self_hosted_agent_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, self_hosted_agent_path(@conn, :index)) do %>
-          <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M4.7 2.4a2.3 2.3 0 00-2.3 2.3v6.6a2.3 2.3 0 002.3 2.3h6.6a2.3 2.3 0 002.3-2.3V4.7a2.3 2.3 0 00-2.3-2.3H4.7zM1 4.7A3.7 3.7 0 014.7 1h6.6A3.7 3.7 0 0115 4.7v6.6a3.7 3.7 0 01-3.7 3.7H4.7A3.7 3.7 0 011 11.3V4.7zm4.7.7a.3.3 0 00-.3.3v4.6a.3.3 0 00.3.3h4.6a.3.3 0 00.3-.3V5.7a.3.3 0 00-.3-.3H5.7zM4 5.7A1.7 1.7 0 015.7 4h4.6A1.7 1.7 0 0112 5.7v4.6a1.7 1.7 0 01-1.7 1.7H5.7A1.7 1.7 0 014 10.3V5.7zm2.797 3.197v-1.8a.3.3 0 01.3-.3h1.8a.3.3 0 01.3.3v1.8a.3.3 0 01-.3.3h-1.8a.3.3 0 01-.3-.3z" fill="#203335"/></svg>
-          <span>Self-Hosted Agents</span>
-        <% end %>
-      <% end %>
+    <%= link to: agents_index_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, agents_index_path(@conn, :index)) do %>
+      <%= icon("icn-self-hosted", alt: "agents", width: 16, height: 16, class: "mr2") %>
+      <span>Agents</span>
     <% end %>
     <%= if FeatureProvider.feature_enabled?(:audit_logs, @layout_model.current_organization.id) do %>
       <%= link to: audit_path(@conn, :index), class: Front.Decorators.Header.Organization.tab_class(@conn, audit_path(@conn, :index)) do %>
