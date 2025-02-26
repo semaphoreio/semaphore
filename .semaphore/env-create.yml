@@ -45,7 +45,6 @@ blocks:
       secrets:
         - name: container-registry-writer
         - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
-        - name: e2e-test-gitlab-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
   - name: Update DNS
     dependencies: ["Create environment"]
     task:
