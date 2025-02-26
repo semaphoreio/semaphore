@@ -5,7 +5,7 @@
   "jason": {:hex, :jason, "1.4.1", "af1504e35f629ddcdd6addb3513c3853991f694921b1b9368b0bd32beb9f1b63", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "fbb01ecdfd565b56261302f7e1fcc27c4fb8f32d56eab74db621fc154604a7a1"},
   "junit_formatter": {:hex, :junit_formatter, "3.3.1", "c729befb848f1b9571f317d2fefa648e9d4869befc4b2980daca7c1edc468e40", [:mix], [], "hexpm", "761fc5be4b4c15d8ba91a6dafde0b2c2ae6db9da7b8832a55b5a1deb524da72b"},
   "protobuf": {:hex, :protobuf, "0.6.2", "154249f5ef7df8cfdd07aa8312a59ce294cbd136d7cc5cfb4505b5717fb58482", [:mix], [], "hexpm", "5eb35f30fd064676ecf45fb41fdd56a4516ea78a5c883f3b267d099b11bfa682"},
-  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "d525765198d9ba05ee547397e6e21aedfa623a7d", []},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "34548a46450465b2fc69642d81f3ff282b1aa097", []},
   "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "db1a91b55110140213e0b5fd37afb15dc4ede2bc", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
 }

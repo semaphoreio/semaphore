@@ -50,6 +50,7 @@ defmodule Gofer.Mixfile do
       {:jason, "~> 1.3"},
       {:cachex, "~> 3.5"},
       {:util, github: "renderedtext/elixir-util"},
+      {:poison, "~> 3.1", override: true},
       {:when, github: "renderedtext/when"},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:log_tee, git: "https://github.com/renderedtext/log-tee.git"},

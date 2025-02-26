@@ -49,7 +49,7 @@ defmodule Ppl.Mixfile do
       {:log_tee, git: "https://github.com/renderedtext/log-tee.git"},
       {:uuid, "~> 1.1"},
       {:credo, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:poison, "~> 3.1"},
+      {:poison, "~> 3.1", override: true},
       {:httpoison, "~> 0.11"},
       {:mix_test_watch, "~> 1.1", only: :dev, runtime: false},
       {:mock, "~> 0.3.0", only: :test},
