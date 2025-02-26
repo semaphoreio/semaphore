@@ -18,7 +18,7 @@
     "@monaco-editor/react": "^4.6.0",
     "@popperjs/core": "^2.11.5",
     "@preact/signals": "^1.3.0",
-    "@sentry/browser": "^6.15.0",
+    "@sentry/browser": "^6.19.7",
     "@tippyjs/react": "^4.2.6",
     "@trevoreyre/autocomplete": "^2.1.1",
     "billboard.js": "^3.9.3",
