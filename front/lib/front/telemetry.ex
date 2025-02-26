@@ -73,11 +73,11 @@ defmodule Front.Telemetry do
   defp get_from_api(field) do
     Front.Models.InstanceConfig.list_integrations(:CONFIG_TYPE_INSTALLATION_DEFAULTS)
     |> case do
-      {:ok, integration} ->
+      {:ok, %{state: :STATE_CONFIGURED} = integration} ->
         Cachex.put(:front_cache, @cache_key, integration)
         integration.fields[field]
 
-      {:error, _} ->
+      _ ->
         ""
     end
   end
