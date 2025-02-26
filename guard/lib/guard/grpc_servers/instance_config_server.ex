@@ -37,7 +37,7 @@ defmodule Guard.GrpcServers.InstanceConfigServer do
       parsed_request = request |> request_atom_type()
       response = modify_config_(parsed_request.config)
 
-      Guard.Events.ConfigModified.publish(parsed_request.config.type)
+      Guard.Events.ConfigModified.publish(request.config.type)
       response
     end)
   end
