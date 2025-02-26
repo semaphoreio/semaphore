@@ -69,7 +69,7 @@ defmodule Guard.GitProviderCredentialsTest do
     end
   end
 
-  defp setup_github_app_integration() do
+  defp setup_github_app_integration do
     private_key = JOSE.JWK.generate_key({:rsa, 1024})
     {_, pem_private_key} = JOSE.JWK.to_pem(private_key)
 
@@ -89,7 +89,7 @@ defmodule Guard.GitProviderCredentialsTest do
     |> Store.set()
   end
 
-  defp setup_gitlab_app_integration() do
+  defp setup_gitlab_app_integration do
     Guard.InstanceConfig.Models.Config.changeset(%Guard.InstanceConfig.Models.Config{}, %{
       name: :CONFIG_TYPE_GITLAB_APP |> Atom.to_string(),
       config: %{
@@ -100,7 +100,7 @@ defmodule Guard.GitProviderCredentialsTest do
     |> Store.set()
   end
 
-  defp setup_bitbucket_app_integration() do
+  defp setup_bitbucket_app_integration do
     Guard.InstanceConfig.Models.Config.changeset(%Guard.InstanceConfig.Models.Config{}, %{
       name: :CONFIG_TYPE_BITBUCKET_APP |> Atom.to_string(),
       config: %{
