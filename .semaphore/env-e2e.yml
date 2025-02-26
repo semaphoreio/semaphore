@@ -7,6 +7,7 @@ agent:
 global_job_config:
   secrets:
     - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+    - name: e2e-test-gitlab-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
   prologue:
     commands:
       - checkout && cd e2e
