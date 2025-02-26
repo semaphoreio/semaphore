@@ -49,7 +49,7 @@
     "preact-router": "^4.1.0",
     "preactement": "^1.8.2",
     "querystringify": "^2.1.1",
-    "react-router-dom": "^6.3.0",
+    "react-router-dom": "^6.29.0",
     "semver": "^7.5.4",
     "time-elements": "^1.2.0",
     "tippy.js": "^6.3.7",
