@@ -30,3 +30,13 @@ config :rbac,
   organization_grpc_endpoint: System.get_env("INTERNAL_API_URL_ORGANIZATION") || "localhost:50052"
 
 config :rbac, amqp_url: System.get_env("AMQP_URL") || "amqp://127.0.0.1:5672"
+
+if System.get_env("AMQP_URL") != nil do
+  config :amqp,
+    connections: [
+      amqp: [url: System.get_env("AMQP_URL")]
+    ],
+    channels: [
+      authorization: [connection: :amqp]
+    ]
+end
