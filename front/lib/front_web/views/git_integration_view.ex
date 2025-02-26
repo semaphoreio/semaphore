@@ -1,6 +1,5 @@
 defmodule FrontWeb.GitIntegrationView do
   require Logger
-
   use FrontWeb, :view
 
   def json_config(conn) do
@@ -9,6 +8,7 @@ defmodule FrontWeb.GitIntegrationView do
     %{
       "baseUrl" => git_integration_path(conn, :show, []),
       "orgId" => conn.assigns.org_id,
+      "orgUsername" => conn.assigns.organization_username,
       "integrations" => config.integrations |> Enum.map(&format_integration(conn, &1)),
       "newIntegrations" => config.new_integrations |> Enum.map(&format_new_integration(conn, &1)),
       "csrfTokenCookieKey" => conn.assigns.csrf_token_cookie_key,

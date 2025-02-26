@@ -84,6 +84,8 @@ defmodule Rbac.GrpcServers.RbacServerTest do
       {:ok, response} = Stub.assign_role(channel, request)
       assert response == %InternalApi.RBAC.AssignRoleResponse{}
 
+      assert_receive {:ok, :role_assigned}, 5_000
+
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
 
@@ -107,6 +109,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.assign_role(channel, request)
       assert response == %InternalApi.RBAC.AssignRoleResponse{}
+      assert_receive {:ok, :role_assigned}, 5_000
 
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
@@ -131,6 +134,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.assign_role(channel, request)
       assert response == %InternalApi.RBAC.AssignRoleResponse{}
+      assert_receive {:ok, :role_assigned}, 5_000
 
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
@@ -156,6 +160,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.assign_role(channel, request)
       assert response == %InternalApi.RBAC.AssignRoleResponse{}
+      assert_receive {:ok, :role_assigned}, 5_000
 
       project_assignment =
         Rbac.Models.ProjectAssignment.get_by_user_and_project_id(member_user.user_id, project_id)
@@ -190,6 +195,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.assign_role(channel, request)
       assert response == %InternalApi.RBAC.AssignRoleResponse{}
+      assert_receive {:ok, :role_assigned}, 5_000
 
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(member_user.user_id, org_id)
@@ -218,6 +224,8 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:error, response} = Stub.assign_role(channel, request)
       assert response.status == GRPC.Status.not_found()
+
+      refute_received {:ok, :role_assigned}
     end
   end
 
@@ -485,6 +493,8 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, _} = Stub.retract_role(channel, request)
 
+      assert_receive {:ok, :role_retracted}, 5_000
+
       role = Rbac.Models.RoleAssignment.get_by_user_and_org_id(member_user.user_id, org_id)
       assert role == nil
     end
@@ -505,6 +515,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
       }
 
       {:error, response} = Stub.retract_role(channel, request)
+      refute_received {:ok, :role_retracted}
       assert response.status == GRPC.Status.permission_denied()
 
       assert response.message ==
@@ -538,6 +549,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.retract_role(channel, request)
       assert response == %InternalApi.RBAC.RetractRoleResponse{}
+      assert_receive {:ok, :role_retracted}, 5_000
 
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(member_user.user_id, org_id)
@@ -575,6 +587,7 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       {:ok, response} = Stub.retract_role(channel, request)
       assert response == %InternalApi.RBAC.RetractRoleResponse{}
+      assert_receive {:ok, :role_retracted}, 5_000
 
       role_assignment =
         Rbac.Models.RoleAssignment.get_by_user_and_org_id(member_user.user_id, org_id)
@@ -999,6 +1012,30 @@ defmodule Rbac.GrpcServers.RbacServerTest do
           grpc_error!(:not_found, "User not found")
       end
     end)
+
+    {:module, role_assign_consumer, _, _} =
+      Support.TestConsumer.create_test_consumer(
+        self(),
+        Application.get_env(:rbac, :amqp_url),
+        "rbac_exchange",
+        "role_assigned",
+        Ecto.UUID.generate(),
+        :role_assigned
+      )
+
+    {:ok, _} = role_assign_consumer.start_link()
+
+    {:module, role_retract_consumer, _, _} =
+      Support.TestConsumer.create_test_consumer(
+        self(),
+        Application.get_env(:rbac, :amqp_url),
+        "rbac_exchange",
+        "role_retracted",
+        Ecto.UUID.generate(),
+        :role_retracted
+      )
+
+    {:ok, _} = role_retract_consumer.start_link()
 
     {:ok,
      channel: channel,
