@@ -91,7 +91,7 @@ export var InteractivePipelineTree = {
     let treeItem = $(`[workflow-tree-item][data-pipeline-id='${pipelineId}']`);
     treeItem.append(`
                     <span workflow-tree-item-spinner class="flex items-center ml2">
-                    <img src="https://storage.googleapis.com/semaphore-design/release-ea43aa5/images/spinner-2.svg" width="20px"/>
+                    <img src="/projects/assets/images/spinner-2.svg" width="20px"/>
                       </span>
                     `);
   },

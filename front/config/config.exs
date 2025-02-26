@@ -25,7 +25,6 @@ config :logger, :console,
 config :logger, level: (System.get_env("LOG_LEVEL") || "debug") |> String.to_atom()
 
 config :front,
-  assets_path: "https://storage.googleapis.com/semaphore-design/release-d5272d8",
   default_internal_api_request_timeout: 30_000
 
 config :front, default_user_name: "Semaphore User"
