@@ -54,7 +54,7 @@ defmodule Guard.Mixfile do
       {:plug_rails_cookie_session_store, "~> 2.0"},
       {:yaml_elixir, "~> 2.9"},
       {:mox, "~> 1.0", only: [:dev, :test]},
-      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.1"},
+      {:feature_provider, git: "git@github.com:renderedtext/feature_provider", tag: "v0.2.2"},
       {:ex_marshal,
        github: "renderedtext/ex_marshal", ref: "b729808efefb6c61e53b6de13c79c28e2594e97a"},
       {:unplug, "~> 1.0.0"},
