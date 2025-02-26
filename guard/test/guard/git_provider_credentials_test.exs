@@ -79,8 +79,8 @@ defmodule Guard.GitProviderCredentialsTest do
         app_id: "11111111111111111111111",
         slug: "slug",
         name: "name",
-        client_id: client_id,
-        client_secret: client_secret,
+        client_id: "client_id",
+        client_secret: "client_secret",
         pem: pem_private_key,
         html_url: "https://github.com",
         webhook_secret: "webhook_secret"
@@ -93,8 +93,8 @@ defmodule Guard.GitProviderCredentialsTest do
     Guard.InstanceConfig.Models.Config.changeset(%Guard.InstanceConfig.Models.Config{}, %{
       name: :CONFIG_TYPE_GITLAB_APP |> Atom.to_string(),
       config: %{
-        client_id: client_id,
-        client_secret: client_secret
+        client_id: "client_id",
+        client_secret: "client_secret"
       }
     })
     |> Store.set()
@@ -104,8 +104,8 @@ defmodule Guard.GitProviderCredentialsTest do
     Guard.InstanceConfig.Models.Config.changeset(%Guard.InstanceConfig.Models.Config{}, %{
       name: :CONFIG_TYPE_BITBUCKET_APP |> Atom.to_string(),
       config: %{
-        client_id: client_id,
-        client_secret: client_secret
+        client_id: "client_id",
+        client_secret: "client_secret"
       }
     })
     |> Store.set()
