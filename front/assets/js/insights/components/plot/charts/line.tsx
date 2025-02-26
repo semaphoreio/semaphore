@@ -1,5 +1,5 @@
 
-import { createRef, h } from "preact";
+import { createRef } from "preact";
 import { useEffect } from "preact/hooks";
 import * as d3 from "d3";
 import * as types from "../../../types";

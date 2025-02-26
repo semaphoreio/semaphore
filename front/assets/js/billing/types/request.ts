@@ -1,4 +1,3 @@
-
 import { RequestStatus } from "./request_status";
 import * as stores from "../stores";
 

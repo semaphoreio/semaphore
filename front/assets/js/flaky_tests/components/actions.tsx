@@ -1,7 +1,7 @@
 import { FlakyTestItem } from "../types/flaky_test_item";
-import { StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import * as stores from "../stores";
-import { h } from "preact";
+
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
@@ -147,15 +147,15 @@ const TicketDetail = (props: TicketDetailProps) => {
 
   const createMarkdown = () => {
     const markdown = `## Flaky Test
-    
+
     **Test**: ${props.item.testName}
-    
+
     **Last flake**: ${props.item.latestDisruptionTimestamp.toString()}
-    
+
     **Service**: ${props.item.testGroup}
-    
+
     **Commit**: ${props.item.latestDisruptionSha()}
-    
+
     **File**: ${props.item.testFile}`;
     return marked.parse(markdown);
   };
@@ -203,7 +203,7 @@ const TicketDetail = (props: TicketDetailProps) => {
 };
 
 
-const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: StateUpdater<boolean>, }) => {
+const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: Dispatch<StateUpdater<boolean>>, }) => {
   const onClick = () => {
     if (resolved) {
       setResolved(!resolved);

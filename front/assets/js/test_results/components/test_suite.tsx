@@ -1,4 +1,4 @@
-import { createRef, Fragment, h } from "preact";
+import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { NavigationStore, FilterStore } from "../stores";
 import { Suite } from "../types/suite";

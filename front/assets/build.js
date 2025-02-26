@@ -14,7 +14,7 @@ const buildOptions = {
   entryPoints: ['js/app.js'],
   external: ['fs'],
   bundle,
-  target: 'es2018',
+  target: 'es2020',
   plugins,
   outdir: '../priv/static/assets',
   logLevel,
@@ -25,6 +25,7 @@ const buildOptions = {
   },
   jsxImportSource: 'preact',
   jsx: 'automatic',
+  jsxFragment: "Fragment",
   alias: {
     'react': 'preact/compat',
     'react-dom': 'preact/compat'

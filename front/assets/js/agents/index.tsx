@@ -1,5 +1,5 @@
 import { Fragment, render } from "preact";
-import { h } from "preact";
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import * as stores from "js/agents/stores";

@@ -1,5 +1,5 @@
 import { IntegrationType } from '../types/provider';
-import { h, Fragment } from 'preact';
+import { Fragment } from 'preact';
 
 export const getProviderName = (type: IntegrationType | string): string => {
   switch (type) {

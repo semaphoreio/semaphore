@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import * as stores from "../stores";
 import * as types from "../types";
@@ -324,4 +324,3 @@ export const Warning = (text: string) => {
     </div>
   );
 };
-

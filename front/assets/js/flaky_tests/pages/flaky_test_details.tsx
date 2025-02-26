@@ -1,4 +1,4 @@
-import { Fragment, VNode, h } from "preact";
+import { Fragment, VNode } from "preact";
 import { Link, useParams } from "react-router-dom";
 import * as stores from "../stores";
 import * as types from "../types";
@@ -386,7 +386,7 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       fetch(request.url)
         .then((response) => {
-          const totalPages = parseInt(response.headers.get(`X-TOTAL-PAGES` || `1`), 10);
+          const totalPages = parseInt(response.headers.get(`X-TOTAL-PAGES`) || `1`, 10);
           if(totalPages > page) {
             setPage(page + 1);
             setHasNextPage(true);

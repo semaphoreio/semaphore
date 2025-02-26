@@ -1,6 +1,6 @@
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 
 export const Pagination = () => {
   const { state, dispatch } = useContext(stores.FlakyTest.Context);

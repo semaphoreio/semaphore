@@ -1,4 +1,4 @@
-import { cloneElement, h, VNode } from "preact";
+import { cloneElement, VNode } from "preact";
 import * as types from "../../types";
 
 interface Props {

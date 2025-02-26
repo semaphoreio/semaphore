@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { h, Fragment } from "preact";
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import { useNavigate } from "react-router-dom";

@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import * as toolbox from "js/toolbox";
 import * as types from "../types";
 import * as stores from "../stores";

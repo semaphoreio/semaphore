@@ -1,4 +1,4 @@
-import { h } from "preact";
+
 import { forwardRef } from "preact/compat";
 import Editor from '@monaco-editor/react';
 

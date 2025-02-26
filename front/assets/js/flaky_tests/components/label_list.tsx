@@ -1,4 +1,4 @@
-import { Fragment, h } from "preact";
+import { Fragment } from "preact";
 import Tippy from "@tippyjs/react";
 import { useContext, useRef, useState } from "preact/hooks";
 import * as stores from "../stores";
@@ -141,8 +141,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
   };
 
   return <Tippy placement="right"
-    allowHTML="true"
-    interactive="true"
+    allowHTML={true}
+    interactive={true}
     theme="light"
     trigger="click"
     visible={visible}
