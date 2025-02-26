@@ -26,6 +26,7 @@ defmodule Projecthub.Application do
         {Projecthub.Repo, []},
         {Projecthub.Workers.AgentStore, [name: :feature_store]},
         {Task.Supervisor, [name: Projecthub.TaskSupervisor]},
+        {Projecthub.FeatureProviderInvalidatorWorker, []},
         %{
           id: FeatureProvider.Cachex,
           start: {Cachex, :start_link, [:feature_provider_cache, []]}
