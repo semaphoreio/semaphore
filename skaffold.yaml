@@ -3,9 +3,76 @@ kind: Config
 metadata:
   name: semaphore
 build:
+  local: {}
   artifacts:
     - image: ghcr.io/semaphoreio/auth
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
       context: auth
+    - image: ghcr.io/semaphoreio/guard
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: guard
+    - image: ghcr.io/semaphoreio/badges
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: badge
+    - image: ghcr.io/semaphoreio/front
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: front
+    - image: ghcr.io/semaphoreio/ppl
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: plumber/ppl
+    - image: ghcr.io/semaphoreio/projecthub-grpc
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: projecthub
+    - image: ghcr.io/semaphoreio/projecthub-rest-api
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: projecthub-rest-api
+    - image: ghcr.io/semaphoreio/secrethub
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: secrethub
+    - image: ghcr.io/semaphoreio/notifications
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: notifications
+    - image: ghcr.io/semaphoreio/zebra
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: zebra
+    - image: ghcr.io/semaphoreio/periodic-scheduler
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: periodic_scheduler/scheduler
+    - image: ghcr.io/semaphoreio/dashboardhub
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: dashboardhub
+    - image: ghcr.io/semaphoreio/github_notifier
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: github_notifier
+    - image: ghcr.io/semaphoreio/branch_hub
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: branch_hub
+    - image: ghcr.io/semaphoreio/public-api
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: public-api/v2
+    - image: ghcr.io/semaphoreio/plumber-public
+      custom:
+        buildCommand: "MIX_ENV=prod make build.skaffold"
+      context: public-api/v1alpha
+    - image: ghcr.io/semaphoreio/bootstrapper
+      custom:
+        buildCommand: "APP_ENV=prod make build.skaffold"
+      context: bootstrapper
 deploy:
   helm:
     releases:
