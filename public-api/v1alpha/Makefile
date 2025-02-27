@@ -10,7 +10,7 @@ RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
 RT_PROTOC_IMG_VSN=1.15.4-3.20.1-0.12.0
 APP_NAME=plumber-public
 
-CHECK_DEPS_EXTRA_OPTS=-w util
+CHECK_DEPS_EXTRA_OPTS=-w util,feature_provider
 
 PROTOC_TAG=1.6.6-3.3.0-0.5.4
 API_VERSION=v1alpha
