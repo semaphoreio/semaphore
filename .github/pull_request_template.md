@@ -11,12 +11,6 @@
 - [ ] Code refactoring
 - [ ] Test updates
 
-## Impact
-<!-- Which version of the app is affected -->
-- [ ] Community Edition
-- [ ] Enterprise Edition
-- [ ] Cloud Edition
-
 ## Testing
 <!-- How has this been tested? -->
 - [ ] Unit tests added/updated
