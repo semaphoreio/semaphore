@@ -85,7 +85,7 @@
   "util": {:git, "https://github.com/renderedtext/elixir-util.git", "34548a46450465b2fc69642d81f3ff282b1aa097", []},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
   "wallaby": {:hex, :wallaby, "0.23.0", "4100a43ad0d2bc60491871ae7556ac17d454ff53815ab87a8b9fea3b00e98cec", [:mix], [{:httpoison, "~> 0.12 or ~> 1.0", [hex: :httpoison, repo: "hexpm", optional: false]}, {:jason, "~> 1.1", [hex: :jason, repo: "hexpm", optional: false]}, {:poolboy, "~> 1.5", [hex: :poolboy, repo: "hexpm", optional: false]}], "hexpm", "4ee4f3b1860b24982a691c2c97c518e635b4b8bd5aea580c11183442ab05f70c"},
-  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9a13fb1992967857570e09130c55efb3e4ef577f", []},
+  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "e813e1a78799e95f2ecd80ad17b95722fd122da5", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
   "yamerl": {:hex, :yamerl, "0.7.0", "e51dba652dce74c20a88294130b48051ebbbb0be7d76f22de064f0f3ccf0aaf5", [:rebar3], [], "hexpm", "cb5a4481e2e2ad36db83bd9962153e1a9208e2b2484185e33fc2caac6a50b108"},
   "yaml_elixir": {:hex, :yaml_elixir, "2.4.0", "2f444abc3c994c902851fde56b6a9cb82895c291c05a0490a289035c2e62ae71", [:mix], [{:yamerl, "~> 0.7", [hex: :yamerl, repo: "hexpm", optional: false]}], "hexpm", "4e25a6d5c873e393689c6f1062c5ec90f6cd1be2527b073178ae37eae4c78bee"},
