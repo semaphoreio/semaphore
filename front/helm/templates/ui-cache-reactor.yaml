@@ -42,7 +42,6 @@ spec:
       containers:
         - name: "ui-cache-reactor"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false

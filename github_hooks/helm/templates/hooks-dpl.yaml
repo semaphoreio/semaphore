@@ -31,7 +31,6 @@ spec:
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["bash", "-c"]
           args: ["bundle exec rails db:create db:migrate && bundle exec puma"]
-          imagePullPolicy: Always
           ports:
             - name: web-port
               containerPort: 3000

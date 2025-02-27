@@ -36,7 +36,6 @@ spec:
       containers:
         - name: "{{ .Chart.Name }}-api"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
