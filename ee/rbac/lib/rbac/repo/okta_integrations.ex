@@ -14,7 +14,6 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_issuer,
     :saml_certificate_fingerprint,
     :scim_token_hash,
-    :jit_provisioning_enabled,
     :sso_url
   ]
 
@@ -27,7 +26,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:sso_url, :string)
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
-    field(:jit_provisioning_enabled, :boolean)
+    field(:jit_provisioning_enabled, :boolean, default: false)
 
     timestamps()
   end

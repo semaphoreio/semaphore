@@ -27,8 +27,8 @@ defmodule Rbac.Okta.Integration do
              creator_id: creator_id,
              sso_url: sso_url,
              saml_issuer: saml_issuer,
-             saml_certificate_fingerprint: fingerprint,
-             idempotency_token: idempotency_token,
+             saml_certificate_fingerprint: Base.encode64(fingerprint),
+             idempotency_token: idempotency_token
            ) do
       {:ok, integration}
     else
