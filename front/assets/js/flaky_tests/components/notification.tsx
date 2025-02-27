@@ -233,6 +233,8 @@ export const Notification = (props: NotificationProps) => {
     }
   };
 
+  const branches = settings?.branches?.join(`, `);
+
   return (
     <Fragment>
       <div>
@@ -310,7 +312,7 @@ export const Notification = (props: NotificationProps) => {
             type="text"
             className="form-control w-100"
             placeholder="e.g. master,prod-*,.*"
-            value={settings?.branches.join(` `)}
+            value={branches}
             onInput={onBranchesChange}
           />
           <p className="f6 mt1 mb0 nb1">
