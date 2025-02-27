@@ -32,6 +32,7 @@ defmodule Secrethub.Application do
 
     children = [
       {Secrethub.Repo, []},
+      {Secrethub.FeatureProviderInvalidatorWorker, []},
       %{id: :auth_cache, start: {Cachex, :start_link, [:auth_cache, []]}},
       %{id: :feature_cache, start: {Cachex, :start_link, [:feature_cache, []]}},
       %{
