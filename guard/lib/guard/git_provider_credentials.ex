@@ -47,7 +47,8 @@ defmodule Guard.GitProviderCredentials do
     cache_key = "#{provider}_credentials"
 
     case Cachex.get(:config_cache, cache_key) do
-      {:ok, credentials} when not is_nil(credentials) ->
+      {:ok, %{client_id: client_id, client_secret: client_secret} = credentials}
+      when not is_nil(client_id) and not is_nil(client_secret) ->
         {:ok, credentials}
 
       _ ->
