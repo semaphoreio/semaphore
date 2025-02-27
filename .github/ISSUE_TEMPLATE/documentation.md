@@ -1,5 +1,5 @@
 ---
-name: Documentation
+name: 📚 Documentation Improvement
 about: Report documentation issues or suggest improvements
 title: '[DOCS] '
 labels: documentation
@@ -33,5 +33,5 @@ assignees: ''
 
 ## Affects Version
 <!-- Which version(s) of the documentation does this affect? -->
-- [ ] Latest (main branch)
-- [ ] Previous versions (specify):
+- [ ] Cloud Semaphore
+- [ ] Community Edition (specify version):

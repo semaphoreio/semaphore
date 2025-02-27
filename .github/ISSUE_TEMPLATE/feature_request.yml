@@ -1,11 +1,11 @@
-name: 💡 Feature request
+name: 💡 Improvement proposal
 description: Suggest a new idea/improvement for Semaphore
 labels: ["enhancement"]
 body:
   - type: textarea
     id: description
     attributes:
-      label: Is your feature request related to a problem? Please describe.
+      label: Is your improvement proposal related to a problem? Please describe.
       description: A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
     validations:
       required: true

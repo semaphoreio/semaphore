@@ -88,7 +88,7 @@ Semaphore follows a governance model that balances commercial stewardship with c
 
 - GitHub Issues and Discussions
 - [Project Documentation](https://docs.semaphoreci.com/CE/getting-started/about-semaphore)
-- [Discord Server](https://discord.com/channels/1097422014735732746/1097434200438755369)
+- [Discord Server](https://discord.gg/zEwewmzuft)
 
 ### Decision Visibility
 
@@ -123,11 +123,3 @@ All participants must follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 3. Maintainer review
 4. Project Owner approval
 5. Document update
-
-## Project Resources
-
-- [Contributing Guide](CONTRIBUTING.md)
-- [Support](SUPPORT.md)
-- [Security](SECURITY.md)
-- [Code of Conduct](CODE_OF_CONDUCT.md)
-- [Roadmap](ROADMAP.md)
