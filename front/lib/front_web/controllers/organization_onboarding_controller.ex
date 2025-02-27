@@ -88,7 +88,7 @@ defmodule FrontWeb.OrganizationOnboardingController do
     if me_host == nil do
       wait_for_organization_path(conn, :wait_for_organization, org_id: org_id)
     else
-      "https://#{me_host}.#{domain}/wait?org_id=#{org_id}"
+      "https://#{me_host}#{domain}/wait?org_id=#{org_id}"
     end
   end
 end
