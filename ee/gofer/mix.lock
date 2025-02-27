@@ -38,7 +38,7 @@
   "telemetry": {:hex, :telemetry, "1.1.0", "a589817034a27eab11144ad24d5c0f9fab1f58173274b1e9bae7074af9cbee51", [:rebar3], [], "hexpm", "b727b2a1f75614774cff2d7565b64d0dfa5bd52ba517f16543e6fc7efcc0df48"},
   "thoas": {:hex, :thoas, "1.0.0", "567c03902920827a18a89f05b79a37b5bf93553154b883e0131801600cf02ce0", [:rebar3], [], "hexpm", "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735"},
   "unsafe": {:hex, :unsafe, "1.0.1", "a27e1874f72ee49312e0a9ec2e0b27924214a05e3ddac90e91727bc76f8613d8", [:mix], [], "hexpm", "6c7729a2d214806450d29766abc2afaa7a2cbecf415be64f36a6691afebb50e5"},
-  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "34548a46450465b2fc69642d81f3ff282b1aa097", []},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "7104e9565ff0067970bd2cead9a7bd99955421ed", []},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
   "vmstats": {:hex, :vmstats, "2.4.0", "57763d3edc861da2de02b2f0df3adc37e5a140117147937e83908cac40a10c9b", [:rebar3], [], "hexpm", "266f464e64b459f614ed64e25bda270f8a77951868bbaf0e2209274efc3d9b6d"},
   "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9a13fb1992967857570e09130c55efb3e4ef577f", []},
