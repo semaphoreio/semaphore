@@ -157,12 +157,11 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "unauthorized requests", state do
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.modify_group(request)
       assert status == GRPC.Status.permission_denied()
@@ -170,12 +169,11 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "group for update does not exist", state do
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.modify_group(request)
       assert status == GRPC.Status.invalid_argument()
@@ -185,13 +183,12 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     test "user that is being added to the group is not org member", state do
       {:ok, user1} = Support.Factories.RbacUser.insert()
 
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
-          members_to_add: [user1.id],
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
+        members_to_add: [user1.id],
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.modify_group(request)
       assert status == GRPC.Status.invalid_argument()
@@ -199,12 +196,11 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "updated only name", state do
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:ok, %{group: group_response}} = state.grpc_channel |> Stub.modify_group(request)
 
@@ -216,12 +212,11 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "updated only desc", state do
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: state.group.id, description: "New Description"},
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: state.group.id, description: "New Description"},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:ok, %{group: group_response}} = state.grpc_channel |> Stub.modify_group(request)
 
@@ -244,14 +239,13 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       [user1.id, user2.id]
       |> Enum.each(&Support.Rbac.assign_org_role_by_name(@org_id, &1, "Member"))
 
-      request =
-        %Request{
-          group: %InternalApi.Groups.Group{id: state.group.id},
-          members_to_add: [user1.id, user2.id],
-          members_to_remove: [user3.id],
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %Request{
+        group: %InternalApi.Groups.Group{id: state.group.id},
+        members_to_add: [user1.id, user2.id],
+        members_to_remove: [user3.id],
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:ok, _} = state.grpc_channel |> Stub.modify_group(request)
       assert_request_created(user1.id, state.group.id, "add")
@@ -284,11 +278,10 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "unauthorized requests", state do
-      request =
-        %InternalApi.Groups.CreateGroupRequest{
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %InternalApi.Groups.CreateGroupRequest{
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.create_group(request)
       assert status == GRPC.Status.permission_denied()
@@ -296,11 +289,10 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "when group data is missing, we return an error", state do
-      request =
-        %InternalApi.Groups.CreateGroupRequest{
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %InternalApi.Groups.CreateGroupRequest{
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       assert {:error, %{status: status, message: msg}} =
                state.grpc_channel |> Stub.create_group(request)
@@ -310,12 +302,11 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "when group name is missing, we return an error", state do
-      request =
-        %InternalApi.Groups.CreateGroupRequest{
-          group: %InternalApi.Groups.Group{},
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %InternalApi.Groups.CreateGroupRequest{
+        group: %InternalApi.Groups.Group{},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       assert {:error, %{status: status, message: msg}} =
                state.grpc_channel |> Stub.create_group(request)
@@ -325,16 +316,15 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "when members are not part of the org, we return an error", state do
-      request =
-        %InternalApi.Groups.CreateGroupRequest{
-          group: %InternalApi.Groups.Group{
-            name: "Test Group",
-            description: "Test group description",
-            member_ids: [Ecto.UUID.generate()]
-          },
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %InternalApi.Groups.CreateGroupRequest{
+        group: %InternalApi.Groups.Group{
+          name: "Test Group",
+          description: "Test group description",
+          member_ids: [Ecto.UUID.generate()]
+        },
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.create_group(request)
       assert status == GRPC.Status.invalid_argument()
@@ -348,16 +338,15 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       Support.Rbac.create_org_roles(@org_id)
       Support.Rbac.assign_org_role_by_name(@org_id, user1.id, "Member")
 
-      request =
-        %InternalApi.Groups.CreateGroupRequest{
-          group: %InternalApi.Groups.Group{
-            name: "Test Group",
-            description: "Test group description",
-            member_ids: [user1.id]
-          },
-          requester_id: @requester_id,
-          org_id: @org_id
-        }
+      request = %InternalApi.Groups.CreateGroupRequest{
+        group: %InternalApi.Groups.Group{
+          name: "Test Group",
+          description: "Test group description",
+          member_ids: [user1.id]
+        },
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
 
       {:ok, resp} = state.grpc_channel |> Stub.create_group(request)
       {:ok, group} = Rbac.Store.Group.fetch_group(resp.group.id)

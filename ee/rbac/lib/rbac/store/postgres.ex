@@ -49,8 +49,7 @@ defmodule Rbac.Store.Postgres do
   def delete(store_name, keys) when is_list(keys) do
     ecto_module = get_ecto_module_from_store_name(store_name)
 
-    {no_of_deletions, nil} =
-      ecto_module |> where([kv], kv.key in ^keys) |> Rbac.Repo.delete_all()
+    {no_of_deletions, nil} = ecto_module |> where([kv], kv.key in ^keys) |> Rbac.Repo.delete_all()
 
     {:ok, no_of_deletions}
   end

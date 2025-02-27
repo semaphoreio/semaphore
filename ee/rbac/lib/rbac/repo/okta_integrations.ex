@@ -14,6 +14,7 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_issuer,
     :saml_certificate_fingerprint,
     :scim_token_hash,
+    :jit_provisioning_enabled,
     :sso_url
   ]
 
@@ -26,6 +27,7 @@ defmodule Rbac.Repo.OktaIntegration do
     field(:sso_url, :string)
     field(:saml_certificate_fingerprint, :string)
     field(:scim_token_hash, :string)
+    field(:jit_provisioning_enabled, :boolean)
 
     timestamps()
   end
@@ -44,20 +46,14 @@ defmodule Rbac.Repo.OktaIntegration do
     )
   end
 
-  def insert_or_update(org_id, creator_id, sso_url, issuer, fingerprint, idempotency_token) do
-    integration = %__MODULE__{
-      org_id: org_id,
-      creator_id: creator_id,
-      sso_url: sso_url,
-      saml_issuer: issuer,
-      saml_certificate_fingerprint: Base.encode64(fingerprint),
-      idempotency_token: idempotency_token,
-      scim_token_hash: ""
-    }
+  def insert_or_update(fields \\ []) do
+    # Each time you want to make any change to the integration, token will be reset
+    fields = Keyword.put(fields, :scim_token_hash, "")
+    integration = struct(__MODULE__, fields)
 
     changeset = Rbac.Repo.OktaIntegration.changeset(integration)
 
-    case find_idempotent_record(org_id, idempotency_token) do
+    case find_idempotent_record(fields[:org_id], fields[:idempotency_token]) do
       {:ok, integration} ->
         {:ok, integration}
 

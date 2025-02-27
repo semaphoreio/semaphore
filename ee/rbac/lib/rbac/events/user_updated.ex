@@ -3,13 +3,12 @@ defmodule Rbac.Events.UserUpdated do
 
   @spec publish(String.t(), String.t(), String.t()) :: :ok
   def publish(user_id, exchange_name, routing_key \\ @routing_key) do
-    event =
-      %InternalApi.User.UserUpdated{
-        user_id: user_id,
-        timestamp: %Google.Protobuf.Timestamp{
-          seconds: DateTime.utc_now() |> DateTime.to_unix(:second)
-        }
+    event = %InternalApi.User.UserUpdated{
+      user_id: user_id,
+      timestamp: %Google.Protobuf.Timestamp{
+        seconds: DateTime.utc_now() |> DateTime.to_unix(:second)
       }
+    }
 
     message = InternalApi.User.UserUpdated.encode(event)
     {:ok, channel} = AMQP.Application.get_channel(:user)
