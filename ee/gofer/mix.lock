@@ -41,7 +41,7 @@
   "util": {:git, "https://github.com/renderedtext/elixir-util.git", "7104e9565ff0067970bd2cead9a7bd99955421ed", []},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
   "vmstats": {:hex, :vmstats, "2.4.0", "57763d3edc861da2de02b2f0df3adc37e5a140117147937e83908cac40a10c9b", [:rebar3], [], "hexpm", "266f464e64b459f614ed64e25bda270f8a77951868bbaf0e2209274efc3d9b6d"},
-  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9a13fb1992967857570e09130c55efb3e4ef577f", []},
+  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "a9962958ad9d536778138505d2b31fdd74786584", []},
   "when": {:git, "https://github.com/renderedtext/when.git", "55b3085bd440cb565acba339c9a39436866aa13d", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
 }

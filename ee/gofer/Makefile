@@ -7,7 +7,7 @@ INTERNAL_API_TMP_DIR ?= /tmp/internal_api
 INTERNAL_API_BRANCH ?= master
 PROTOC_IMAGE_TAG ?= 1.14.5-3.20.1-0.10.0
 
-CHECK_DEPS_EXTRA_OPTS=-w util
+CHECK_DEPS_EXTRA_OPTS=-w util,watchman
 
 POSTGRES_DB_USER?="postgres"
 POSTGRES_DB_PASSWORD?="the-cake-is-a-lie"
