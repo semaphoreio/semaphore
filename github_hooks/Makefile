@@ -84,10 +84,10 @@ else
 	docker run --rm $(VOLUME_BIND) $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) bundle exec rubocop --format progress --format offenses --format junit --out out/results.xml
 endif
 
-check.ruby.code: check.prepare
+check.ruby.code:
 	$(MAKE) check.code LANGUAGE=ruby
 
-check.ruby.deps: check.prepare
+check.ruby.deps:
 	$(MAKE) check.deps LANGUAGE=ruby CHECK_DEPS_OPTS="-w app,rt-watchman"
 
 pb.gen:
