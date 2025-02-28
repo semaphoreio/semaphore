@@ -17,15 +17,14 @@ defmodule Rbac.CollaboratorsRefresher.Test do
     test "sync the collaborators list" do
       alias InternalApi.Repository.Collaborator
 
-      list_collaborators =
-        %InternalApi.Repository.ListCollaboratorsResponse{
-          next_page_token: "",
-          collaborators: [
-            %Collaborator{id: "2", login: "bar", permission: :ADMIN},
-            %Collaborator{id: "3", login: "baz", permission: :WRITE},
-            %Collaborator{id: "4", login: "bam", permission: :READ}
-          ]
-        }
+      list_collaborators = %InternalApi.Repository.ListCollaboratorsResponse{
+        next_page_token: "",
+        collaborators: [
+          %Collaborator{id: "2", login: "bar", permission: :ADMIN},
+          %Collaborator{id: "3", login: "baz", permission: :WRITE},
+          %Collaborator{id: "4", login: "bam", permission: :READ}
+        ]
+      }
 
       GrpcMock.stub(RepositoryMock, :list_collaborators, fn _, _ ->
         list_collaborators
@@ -33,11 +32,10 @@ defmodule Rbac.CollaboratorsRefresher.Test do
 
       project = Support.Factories.project()
 
-      response =
-        %InternalApi.Projecthub.DescribeResponse{
-          metadata: Support.Factories.response_meta(),
-          project: project
-        }
+      response = %InternalApi.Projecthub.DescribeResponse{
+        metadata: Support.Factories.response_meta(),
+        project: project
+      }
 
       GrpcMock.stub(ProjecthubMock, :describe, fn _, _ -> response end)
 

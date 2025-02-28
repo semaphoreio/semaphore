@@ -16,19 +16,19 @@ defmodule Rbac.Okta.Integration do
         org_id,
         creator_id,
         sso_url,
-        issuer,
+        saml_issuer,
         certificate,
         idempotency_token \\ Ecto.UUID.generate()
       ) do
     with {:ok, fingerprint} <- Certificate.fingerprint(certificate),
          {:ok, integration} <-
            Rbac.Repo.OktaIntegration.insert_or_update(
-             org_id,
-             creator_id,
-             sso_url,
-             issuer,
-             fingerprint,
-             idempotency_token
+             org_id: org_id,
+             creator_id: creator_id,
+             sso_url: sso_url,
+             saml_issuer: saml_issuer,
+             saml_certificate_fingerprint: Base.encode64(fingerprint),
+             idempotency_token: idempotency_token
            ) do
       {:ok, integration}
     else

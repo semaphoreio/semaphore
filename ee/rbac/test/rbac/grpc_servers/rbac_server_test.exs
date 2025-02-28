@@ -741,15 +741,14 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     setup do
       {:ok, worker} = Rbac.Refresh.Worker.start_link()
 
-      list_collaborators =
-        %InternalApi.Repository.ListCollaboratorsResponse{
-          next_page_token: "",
-          collaborators: [
-            %Collaborator{id: "2", login: "bar", permission: :ADMIN},
-            %Collaborator{id: "3", login: "baz", permission: :WRITE},
-            %Collaborator{id: "4", login: "bam", permission: :READ}
-          ]
-        }
+      list_collaborators = %InternalApi.Repository.ListCollaboratorsResponse{
+        next_page_token: "",
+        collaborators: [
+          %Collaborator{id: "2", login: "bar", permission: :ADMIN},
+          %Collaborator{id: "3", login: "baz", permission: :WRITE},
+          %Collaborator{id: "4", login: "bam", permission: :READ}
+        ]
+      }
 
       GrpcMock.stub(RepositoryMock, :list_collaborators, fn _, _ ->
         list_collaborators
@@ -802,15 +801,14 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     alias InternalApi.RBAC.ModifyRoleRequest, as: Request
 
     test "modify role that does not exist", state do
-      req =
-        %Request{
-          role: %InternalApi.RBAC.Role{
-            id: Ecto.UUID.generate(),
-            org_id: @org_id,
-            scope: :SCOPE_ORG
-          },
-          requester_id: @requester_id
-        }
+      req = %Request{
+        role: %InternalApi.RBAC.Role{
+          id: Ecto.UUID.generate(),
+          org_id: @org_id,
+          scope: :SCOPE_ORG
+        },
+        requester_id: @requester_id
+      }
 
       {:error, err} = state.grpc_channel |> Stub.modify_role(req)
 
@@ -823,22 +821,21 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:ok, member_role} = Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
       {:ok, reader_role} = Repo.RbacRole.get_role_by_name("Reader", "project_scope", @org_id)
 
-      req =
-        %Request{
-          role: %InternalApi.RBAC.Role{
-            org_id: @org_id,
-            scope: :SCOPE_ORG,
-            name: "New Role",
-            rbac_permissions: [
-              %InternalApi.RBAC.Permission{
-                id: Repo.Permission.get_permission_id("organization.delete")
-              }
-            ],
-            maps_to: %InternalApi.RBAC.Role{id: reader_role.id},
-            inherited_role: %InternalApi.RBAC.Role{id: member_role.id}
-          },
-          requester_id: @requester_id
-        }
+      req = %Request{
+        role: %InternalApi.RBAC.Role{
+          org_id: @org_id,
+          scope: :SCOPE_ORG,
+          name: "New Role",
+          rbac_permissions: [
+            %InternalApi.RBAC.Permission{
+              id: Repo.Permission.get_permission_id("organization.delete")
+            }
+          ],
+          maps_to: %InternalApi.RBAC.Role{id: reader_role.id},
+          inherited_role: %InternalApi.RBAC.Role{id: member_role.id}
+        },
+        requester_id: @requester_id
+      }
 
       {:ok, %{role: response_role}} = state.grpc_channel |> Stub.modify_role(req)
       {:ok, role_from_db} = Repo.RbacRole.get_role_by_name("New Role", "org_scope", @org_id)
@@ -855,21 +852,20 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       {:ok, member_role} = Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
       {:ok, reader_role} = Repo.RbacRole.get_role_by_name("Reader", "project_scope", @org_id)
 
-      req =
-        %Request{
-          role: %InternalApi.RBAC.Role{
-            id: member_role.id,
-            org_id: @org_id,
-            description: "Test description",
-            rbac_permissions: [
-              %InternalApi.RBAC.Permission{
-                id: Repo.Permission.get_permission_id("organization.delete")
-              }
-            ],
-            maps_to: %InternalApi.RBAC.Role{id: reader_role.id}
-          },
-          requester_id: @requester_id
-        }
+      req = %Request{
+        role: %InternalApi.RBAC.Role{
+          id: member_role.id,
+          org_id: @org_id,
+          description: "Test description",
+          rbac_permissions: [
+            %InternalApi.RBAC.Permission{
+              id: Repo.Permission.get_permission_id("organization.delete")
+            }
+          ],
+          maps_to: %InternalApi.RBAC.Role{id: reader_role.id}
+        },
+        requester_id: @requester_id
+      }
 
       member_role |> Repo.RbacRole.changeset(%{editable: true}) |> Repo.update()
       {:ok, %{role: response_role}} = state.grpc_channel |> Stub.modify_role(req)
@@ -882,11 +878,10 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "user is unauthorized to update roles", state do
-      req =
-        %Request{
-          role: %InternalApi.RBAC.Role{org_id: @org_id},
-          requester_id: @requester_id
-        }
+      req = %Request{
+        role: %InternalApi.RBAC.Role{org_id: @org_id},
+        requester_id: @requester_id
+      }
 
       {:error, err} = state.grpc_channel |> Stub.modify_role(req)
 
@@ -912,8 +907,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "user is unauthorized to update roles", state do
-      req =
-        %Request{role_id: Ecto.UUID.generate(), org_id: @org_id, requester_id: @requester_id}
+      req = %Request{role_id: Ecto.UUID.generate(), org_id: @org_id, requester_id: @requester_id}
 
       {:error, err} = state.grpc_channel |> Stub.destroy_role(req)
 
@@ -939,13 +933,12 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
       random_user = Ecto.UUID.generate()
 
-      req =
-        %Request{
-          role_assignments: [
-            gen_role_assignment(role.id, @user_id, @org_id),
-            gen_role_assignment(role.id, random_user, @org_id)
-          ]
-        }
+      req = %Request{
+        role_assignments: [
+          gen_role_assignment(role.id, @user_id, @org_id),
+          gen_role_assignment(role.id, random_user, @org_id)
+        ]
+      }
 
       {:ok, response} = state.grpc_channel |> Stub.subjects_have_roles(req)
 

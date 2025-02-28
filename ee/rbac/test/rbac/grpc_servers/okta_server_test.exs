@@ -7,14 +7,13 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     test "permission denied if no organization.okta.manage for user" do
       {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: Ecto.UUID.generate(),
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: cert
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: Ecto.UUID.generate(),
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: cert
+      }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
       assert {:error, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
@@ -25,14 +24,13 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     test "set up with proper values => returns a serialized okta integration" do
       {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: Ecto.UUID.generate(),
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: cert
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: Ecto.UUID.generate(),
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: cert
+      }
 
       with_mock Rbac.Store.UserPermissions, [:passthrough],
         read_user_permissions: fn _ -> "organization.okta.manage" end do
@@ -70,14 +68,13 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     test "idempotent requests return the same response" do
       {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: Ecto.UUID.generate(),
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: cert
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: Ecto.UUID.generate(),
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: cert
+      }
 
       with_mock Rbac.Store.UserPermissions, [:passthrough],
         read_user_permissions: fn _ -> "organization.okta.manage" end do
@@ -94,23 +91,21 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
       org_id = Ecto.UUID.generate()
 
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: org_id,
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: cert
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: cert
+      }
 
-      update_request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: org_id,
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/else",
-          saml_certificate: cert
-        }
+      update_request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/else",
+        saml_certificate: cert
+      }
 
       with_mock Rbac.Store.UserPermissions, [:passthrough],
         read_user_permissions: fn _ -> "organization.okta.manage" end do
@@ -126,14 +121,13 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     end
 
     test "If certificate is not valid, return invalid_argument error" do
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: Ecto.UUID.generate(),
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: "-----BEGIN CERTIFICATE-----"
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: Ecto.UUID.generate(),
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: "-----BEGIN CERTIFICATE-----"
+      }
 
       with_mock Rbac.Store.UserPermissions, [:passthrough],
         read_user_permissions: fn _ -> "organization.okta.manage" end do
@@ -147,8 +141,9 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
   describe "generate_scim_token" do
     test "invalid ID format is passed" do
-      request =
-        %InternalApi.Okta.GenerateScimTokenRequest{integration_id: "lol-deal-with-it-trololol"}
+      request = %InternalApi.Okta.GenerateScimTokenRequest{
+        integration_id: "lol-deal-with-it-trololol"
+      }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
       assert {:error, err} = InternalApi.Okta.Okta.Stub.generate_scim_token(channel, request)
@@ -289,11 +284,10 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     test "integration does not exist" do
       with_mock Rbac.Store.UserPermissions, [:passthrough],
         read_user_permissions: fn _ -> "organization.okta.manage" end do
-        request =
-          %InternalApi.Okta.DestroyRequest{
-            user_id: Ecto.UUID.generate(),
-            integration_id: Ecto.UUID.generate()
-          }
+        request = %InternalApi.Okta.DestroyRequest{
+          user_id: Ecto.UUID.generate(),
+          integration_id: Ecto.UUID.generate()
+        }
 
         assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
         assert {:error, res} = InternalApi.Okta.Okta.Stub.destroy(channel, request)
@@ -331,8 +325,10 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
           binding_source: :manually_assigned
         )
 
-      request =
-        %InternalApi.Okta.DestroyRequest{user_id: okta_user.id, integration_id: integration.id}
+      request = %InternalApi.Okta.DestroyRequest{
+        user_id: okta_user.id,
+        integration_id: integration.id
+      }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
@@ -349,11 +345,10 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     end
 
     test "Dont allow if user doesn't have permission", %{integration: integration} do
-      request =
-        %InternalApi.Okta.DestroyRequest{
-          user_id: Ecto.UUID.generate(),
-          integration_id: integration.id
-        }
+      request = %InternalApi.Okta.DestroyRequest{
+        user_id: Ecto.UUID.generate(),
+        integration_id: integration.id
+      }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
@@ -373,15 +368,14 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
     with_mock Rbac.Store.UserPermissions, [:passthrough],
       read_user_permissions: fn _ -> "organization.okta.manage" end do
-      request =
-        %InternalApi.Okta.SetUpRequest{
-          org_id: Ecto.UUID.generate(),
-          creator_id: Ecto.UUID.generate(),
-          idempotency_token: Ecto.UUID.generate(),
-          saml_issuer: "https://otkta.something/very/secure",
-          saml_certificate: cert,
-          sso_url: "https://otkta.something/very/secure"
-        }
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: Ecto.UUID.generate(),
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        saml_certificate: cert,
+        sso_url: "https://otkta.something/very/secure"
+      }
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
       {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)

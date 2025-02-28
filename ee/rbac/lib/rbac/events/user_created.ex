@@ -1,14 +1,13 @@
 defmodule Rbac.Events.UserCreated do
   @spec publish(String.t(), boolean) :: :ok
   def publish(user_id, invited) do
-    event =
-      %InternalApi.User.UserCreated{
-        user_id: user_id,
-        invited: invited,
-        timestamp: %Google.Protobuf.Timestamp{
-          seconds: DateTime.utc_now() |> DateTime.to_unix(:second)
-        }
+    event = %InternalApi.User.UserCreated{
+      user_id: user_id,
+      invited: invited,
+      timestamp: %Google.Protobuf.Timestamp{
+        seconds: DateTime.utc_now() |> DateTime.to_unix(:second)
       }
+    }
 
     message = InternalApi.User.UserCreated.encode(event)
 

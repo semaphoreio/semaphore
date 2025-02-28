@@ -13,15 +13,14 @@ defmodule Support.Factories do
     meta = Keyword.merge(meta_def, meta) |> Map.new()
     meta = struct(InternalApi.Projecthub.Project.Metadata, meta)
 
-    spec =
-      %{
-        repository: %InternalApi.Projecthub.Project.Spec.Repository{
-          id: "1e2e6241-f30b-4892-a0d5-bd900b713430",
-          url: "git@github.com:renderedtext/rbac.git",
-          name: "rbac",
-          owner: "renderedtext"
-        }
+    spec = %{
+      repository: %InternalApi.Projecthub.Project.Spec.Repository{
+        id: "1e2e6241-f30b-4892-a0d5-bd900b713430",
+        url: "git@github.com:renderedtext/rbac.git",
+        name: "rbac",
+        owner: "renderedtext"
       }
+    }
 
     spec = struct(InternalApi.Projecthub.Project.Spec, spec)
 

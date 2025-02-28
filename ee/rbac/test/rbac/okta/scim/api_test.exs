@@ -261,8 +261,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
       with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
         response = create_user(ctx.token)
 
-        assert {:ok, okta_user} =
-                 Rbac.Okta.Integration.find_user(ctx.integration, response["id"])
+        assert {:ok, okta_user} = Rbac.Okta.Integration.find_user(ctx.integration, response["id"])
 
         assert okta_user.user_id != nil
         assert okta_user.state == :processed
