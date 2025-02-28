@@ -11,7 +11,7 @@ INTERNAL_API_BRANCH?=master
 PUBLIC_API_BRANCH ?= master
 APP_DESIGN_BRANCH ?= master
 
-CHECK_DEPS_EXTRA_OPTS=-w watchman,feature_provider,tentacat
+CHECK_DEPS_EXTRA_OPTS=-w watchman,feature_provider,tentacat,util
 
 #
 # Environment variables required for application to run
