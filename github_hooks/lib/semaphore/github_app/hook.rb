@@ -124,5 +124,16 @@ module Semaphore::GithubApp
     def self.get_installation(installation_id)
       GithubAppInstallation.find_by!(:installation_id => installation_id)
     end
+
+    def self.webhook_signature_valid?(secret, signature, payload)
+      signing_secret = secret
+      computed_signature = "sha256=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new("sha256"), signing_secret, payload)}"
+
+      if Rack::Utils.secure_compare(computed_signature, signature)
+        :ok
+      else
+        :not_verified
+      end
+    end
   end
 end

@@ -20,6 +20,16 @@ class ProjectsController < ApplicationController
         head :ok and return
       end
 
+      if webhook_filter.github_app_webhook? && App.check_github_app_webhook?
+        signature = repo_host_request.headers["X-Hub-Signature-256"]
+        secret = Semaphore::GithubApp::Credentials.github_app_webhook_secret
+
+        if Semaphore::GithubApp::Hook.webhook_signature_valid?(secret, signature, repo_host_request.body.string) != :ok
+          logger.error("Webhook validation failed")
+          head :not_found and return
+        end
+      end
+
       if webhook_filter.github_app_installation_webhook?
         Watchman.increment("repo_host_post_commit_hooks.controller.github_app_webhook")
         logger.info("Github App Webhook")
