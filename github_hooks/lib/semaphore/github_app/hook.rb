@@ -112,7 +112,7 @@ module Semaphore::GithubApp
       WHERE installation_id = $1
       SQL
 
-      GithubAppInstallation.connection.exec_update(sql, "Removes GitHub App repositories", [installation_id, "{#{repositories.join(',')}}"])
+      GithubAppInstallation.connection.exec_update(sql, "Removes GitHub App repositories", [installation_id, "{#{repositories.join(",")}}"])
 
       repositories.each do |slug|
         # GitHub sends us a webhook before API is ready to admit that changes took place.
