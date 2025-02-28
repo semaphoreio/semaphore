@@ -107,7 +107,7 @@ module Semaphore::GithubApp
     end
 
     def self.remove_repositories(installation_id, repositories)
-      sql_repositories = repositories.map { |r| ActiveRecord::Base.connection.quote(r) }.join(', ')
+      sql_repositories = repositories.map { |r| ActiveRecord::Base.connection.quote(r) }.join(", ")
       sql = <<-SQL
       UPDATE github_app_installations
       SET repositories = to_jsonb(array_diff((SELECT array_agg(trim(JsonString::text, '"')) FROM jsonb_array_elements(repositories) JsonString), array[#{sql_repositories}]))
