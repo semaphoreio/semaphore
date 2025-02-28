@@ -90,14 +90,13 @@ module Semaphore::GithubApp
     end
 
     def self.add_repositories(installation_id, repositories)
-      sql_repositories = "[\"#{repositories.join('", "')}\"]"
       sql = <<-SQL
       UPDATE github_app_installations
-      SET repositories = (SELECT to_jsonb(array_agg(DISTINCT b)) FROM (SELECT jsonb_array_elements_text(repositories || '#{sql_repositories}') as b FROM github_app_installations WHERE installation_id = '#{installation_id}') as c)
-      WHERE installation_id = #{installation_id}
+      SET repositories = (SELECT to_jsonb(array_agg(DISTINCT b)) FROM (SELECT jsonb_array_elements_text(repositories || $1::jsonb) AS b FROM github_app_installations WHERE installation_id = $2 ) AS c )
+      WHERE installation_id = $2
       SQL
 
-      GithubAppInstallation.connection.exec_update(sql, "Adds GitHub App repositories")
+      GithubAppInstallation.connection.exec_update(sql, "Adds GitHub App repositories", [repositories.to_json, installation_id])
 
       repositories.each do |slug|
         # GitHub sends us a webhook before API is ready to admit that changes took place.
@@ -107,14 +106,13 @@ module Semaphore::GithubApp
     end
 
     def self.remove_repositories(installation_id, repositories)
-      sql_repositories = "'#{repositories.join("', '")}'"
       sql = <<-SQL
       UPDATE github_app_installations
-      SET repositories = to_jsonb(array_diff((SELECT array_agg(trim(JsonString::text, '"')) FROM jsonb_array_elements(repositories) JsonString), array[#{sql_repositories}]))
-      WHERE installation_id = #{installation_id}
+      SET repositories = to_jsonb(array_diff((SELECT array_agg(trim(JsonString::text, '"')) FROM jsonb_array_elements(repositories) JsonString), $2::text[]))
+      WHERE installation_id = $1
       SQL
 
-      GithubAppInstallation.connection.exec_update(sql, "Removes GitHub App repositories")
+      GithubAppInstallation.connection.exec_update(sql, "Removes GitHub App repositories", [installation_id, "{#{repositories.join(",")}}"])
 
       repositories.each do |slug|
         # GitHub sends us a webhook before API is ready to admit that changes took place.
