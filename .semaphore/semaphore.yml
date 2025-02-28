@@ -544,6 +544,7 @@ blocks:
         commands:
           - checkout && cd dashboardhub
           - make pull
+          - make build
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
