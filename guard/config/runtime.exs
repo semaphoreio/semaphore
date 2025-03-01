@@ -179,6 +179,7 @@ if System.get_env("AMQP_URL") != nil do
       authorization: [connection: :amqp],
       user: [connection: :amqp],
       organization: [connection: :amqp],
-      project: [connection: :amqp]
+      project: [connection: :amqp],
+      instance_config: [connection: :amqp]
     ]
 end

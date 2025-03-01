@@ -20,11 +20,10 @@ defmodule Rbac.Api.Repository do
   end
 
   defp fetch_collaborators_request(repository_id, page_token) do
-    req =
-      %InternalApi.Repository.ListCollaboratorsRequest{
-        repository_id: repository_id,
-        page_token: page_token
-      }
+    req = %InternalApi.Repository.ListCollaboratorsRequest{
+      repository_id: repository_id,
+      page_token: page_token
+    }
 
     {:ok, channel} =
       GRPC.Stub.connect(Application.fetch_env!(:rbac, :repositoryhub_grpc_endpoint))

@@ -36,6 +36,6 @@
 <% end %>
 
   <div class="nh3 nb3">
-    <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-welcome.png" %> class="db br2 br--bottom">
+    <img src=<%= "#{assets_path()}/images/ill-welcome.png" %> class="db br2 br--bottom">
   </div>
 </div>

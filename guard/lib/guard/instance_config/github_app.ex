@@ -3,7 +3,7 @@ defmodule Guard.InstanceConfig.GithubApp do
 
   def manifest(org_username \\ "") do
     default_rand_name =
-      "Semaphore #{org_username} " <>
+      "#{org_username}-" <>
         for(_ <- 1..10, into: "", do: <<Enum.random('0123456789abcdef')>>)
 
     base_domain = Application.get_env(:guard, :base_domain)

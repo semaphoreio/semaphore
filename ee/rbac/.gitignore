@@ -28,4 +28,5 @@ home_dir/*
 .elixir_ls/
 test_report/*
 .devcontainer
+.tool-versions
 docker-compose.local.yml

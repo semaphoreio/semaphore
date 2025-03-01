@@ -86,9 +86,8 @@ defmodule Support.Browser.WorkflowPage do
   end
 
   defp strip_asset_host(href) do
-    asset_path = Application.get_env(:front, :assets_path)
-
-    String.replace_leading(href, asset_path, "")
+    [_, relative_path] = String.split(href, "/projects/assets", parts: 2)
+    relative_path
   end
 
   def stop_polling(page) do

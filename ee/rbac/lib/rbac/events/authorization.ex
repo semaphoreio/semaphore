@@ -14,16 +14,15 @@ defmodule Rbac.Events.Authorization do
     with :ok <- validate(routing_key) do
       date_time = DateTime.utc_now()
 
-      event =
-        %InternalApi.Guard.AuthorizationEvent{
-          org_id: org_id,
-          project_id: project_id,
-          user_id: user_id,
-          timestamp: %Google.Protobuf.Timestamp{
-            seconds: date_time |> seconds(),
-            nanos: date_time |> nanos()
-          }
+      event = %InternalApi.Guard.AuthorizationEvent{
+        org_id: org_id,
+        project_id: project_id,
+        user_id: user_id,
+        timestamp: %Google.Protobuf.Timestamp{
+          seconds: date_time |> seconds(),
+          nanos: date_time |> nanos()
         }
+      }
 
       message = InternalApi.Guard.AuthorizationEvent.encode(event)
 

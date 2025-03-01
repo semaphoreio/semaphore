@@ -7,8 +7,7 @@ defmodule Support.TestConsumer do
   """
 
   def create_test_consumer(receiver_pid, url, exchange, routing_key, service, consumer_module) do
-    unique_module_name =
-      Module.concat(Support.TestConsumer, "Consumer_#{Ecto.UUID.generate()}")
+    unique_module_name = Module.concat(Support.TestConsumer, "Consumer_#{Ecto.UUID.generate()}")
 
     Module.create(
       unique_module_name,

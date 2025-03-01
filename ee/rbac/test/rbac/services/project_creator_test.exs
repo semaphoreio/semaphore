@@ -14,25 +14,23 @@ defmodule Rbac.Services.ProjectCreatedTest do
 
       {:ok, _org_scope} = Support.Factories.Scope.insert("org_scope")
 
-      list_collaborators =
-        %InternalApi.Repository.ListCollaboratorsResponse{
-          next_page_token: "",
-          collaborators: [
-            %Collaborator{id: "2", login: "bar", permission: :ADMIN},
-            %Collaborator{id: "3", login: "baz", permission: :WRITE},
-            %Collaborator{id: "4", login: "bam", permission: :READ}
-          ]
-        }
+      list_collaborators = %InternalApi.Repository.ListCollaboratorsResponse{
+        next_page_token: "",
+        collaborators: [
+          %Collaborator{id: "2", login: "bar", permission: :ADMIN},
+          %Collaborator{id: "3", login: "baz", permission: :WRITE},
+          %Collaborator{id: "4", login: "bam", permission: :READ}
+        ]
+      }
 
       GrpcMock.stub(RepositoryMock, :list_collaborators, list_collaborators)
 
       project = Support.Factories.project()
 
-      response =
-        %InternalApi.Projecthub.DescribeResponse{
-          metadata: Support.Factories.response_meta(),
-          project: project
-        }
+      response = %InternalApi.Projecthub.DescribeResponse{
+        metadata: Support.Factories.response_meta(),
+        project: project
+      }
 
       GrpcMock.stub(ProjecthubMock, :describe, response)
 

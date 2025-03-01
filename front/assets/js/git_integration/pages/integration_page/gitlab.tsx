@@ -5,6 +5,7 @@ import { useState } from "preact/hooks";
 import * as components from "../../components";
 import * as types from "../../types";
 import * as stores from "../../stores";
+import * as utils from "../../utils";
 
 interface Props {
   integration: types.Integration.GitlabIntegration;
@@ -43,14 +44,15 @@ export const GitlabIntegration = ({ integration, csrfToken, orgUsername }: Props
           <div className="mb1">
             <label className="b mr1">Integration Setup</label>
             <div className="mt2">
-              <a
-                href="https://gitlab.com/-/user_settings/applications"
-                target="_blank"
-                rel="noreferrer"
-                className="link blue hover-dark-blue"
-              >
-                Create GitLab App ↗
-              </a>
+              <p className="mb3">Start by creating a new application:&nbsp;
+                <a
+                  href="https://gitlab.com/-/user_settings/applications"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Create GitLab App ↗
+                </a>
+              </p>
             </div>
           </div>
         )}
@@ -193,6 +195,17 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
   );
 };
 
+const manifestPermissionsOrder = [
+  `api:true`,
+  `read_api:true`,
+  `read_user:true`,
+  `read_repository:true`,
+  `write_repository:true`,
+  `openid:true`,
+];
+
+const permissionsOrderMap = utils.createOrderMap(manifestPermissionsOrder);
+
 const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
   const manifest = integration.manifest as {
     permissions: string;
@@ -201,13 +214,20 @@ const CopyFields = ({ integration }: { integration: types.Integration.GitlabInte
 
   const redirectUrls = manifest.redirect_urls.split(`,`).map(url => url.trim());
 
+  const sortPermissions = (permissions: string) => {
+    const currentPermissions = permissions.split(`,`).map(permission => permission.trim());
+    const sortedPermissions = utils.sortByOrder(currentPermissions, permissionsOrderMap);
+
+    return sortedPermissions.join(`,`);
+  };
+
   return (
     <Fragment>
       <components.CopyField
         title="Redirect URI"
         url={redirectUrls}
       />
-      <components.PermissionsField permissions={manifest.permissions} checkboxPermissions={true}/>
+      <components.PermissionsField permissions={sortPermissions(manifest.permissions)} checkboxPermissions={true}/>
     </Fragment>
   );
 };

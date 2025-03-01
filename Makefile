@@ -259,7 +259,7 @@ gcloud.push:
 gcloud.sign: cosign.install
 	cosign sign -y \
 		--identity-token $$(cat /tmp/sigstore-token) \
-		$(shell docker inspect --format='{{index .RepoDigests 1}}' us.gcr.io/$(GOOGLE_PROJECT_NAME)/$(APP_NAME):$(GCR_RELEASE_TAG))
+		$(shell docker inspect --format='{{index .RepoDigests 0}}' us.gcr.io/$(GOOGLE_PROJECT_NAME)/$(APP_NAME):$(GCR_RELEASE_TAG))
 
 ghcr.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin

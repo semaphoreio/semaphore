@@ -83,11 +83,10 @@ defmodule Rbac.Services.ProjectDestroyerTest do
   #
 
   def publish_event(project) do
-    event =
-      %InternalApi.Projecthub.ProjectDeleted{
-        org_id: project.metadata.org_id,
-        project_id: project.metadata.id
-      }
+    event = %InternalApi.Projecthub.ProjectDeleted{
+      org_id: project.metadata.org_id,
+      project_id: project.metadata.id
+    }
 
     message = InternalApi.Projecthub.ProjectDeleted.encode(event)
 

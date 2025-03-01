@@ -12,12 +12,11 @@ defmodule Rbac.Events.UserJoinedOrganization do
   end
 
   def publish(user_id, org_id, join_time \\ DateTime.utc_now()) do
-    event =
-      %InternalApi.User.UserJoinedOrganization{
-        user_id: user_id,
-        org_id: org_id,
-        timestamp: %Google.Protobuf.Timestamp{seconds: join_time |> DateTime.to_unix(:second)}
-      }
+    event = %InternalApi.User.UserJoinedOrganization{
+      user_id: user_id,
+      org_id: org_id,
+      timestamp: %Google.Protobuf.Timestamp{seconds: join_time |> DateTime.to_unix(:second)}
+    }
 
     message = InternalApi.User.UserJoinedOrganization.encode(event)
 

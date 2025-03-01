@@ -64,7 +64,6 @@ config :wallaby, max_wait_time: 10_000
 
 config :joken, current_time_adapter: Support.TimeMock
 
-config :front, :cache_settings, organization_features_ttl: 0
 config :front, guard_grpc_timeout: 1_000
 config :front, permission_patrol_timeout: 1_000
 

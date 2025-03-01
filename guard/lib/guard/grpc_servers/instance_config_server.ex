@@ -34,9 +34,11 @@ defmodule Guard.GrpcServers.InstanceConfigServer do
 
   def modify_config(request, _stream) do
     Watchman.benchmark("modify_config.duration", fn ->
-      request = request |> request_atom_type()
+      parsed_request = request |> request_atom_type()
+      response = modify_config_(parsed_request.config)
 
-      modify_config_(request.config)
+      Guard.Events.ConfigModified.publish(request.config.type)
+      response
     end)
   end
 

@@ -3,14 +3,12 @@ defmodule Rbac.Api.Project do
 
   def fetch(project_id) do
     Watchman.benchmark("fetch_project.duration", fn ->
-      req =
-        %InternalApi.Projecthub.DescribeRequest{
-          id: project_id,
-          metadata: %InternalApi.Projecthub.RequestMeta{}
-        }
+      req = %InternalApi.Projecthub.DescribeRequest{
+        id: project_id,
+        metadata: %InternalApi.Projecthub.RequestMeta{}
+      }
 
-      {:ok, channel} =
-        GRPC.Stub.connect(Application.fetch_env!(:rbac, :projecthub_grpc_endpoint))
+      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:rbac, :projecthub_grpc_endpoint))
 
       result = InternalApi.Projecthub.ProjectService.Stub.describe(channel, req, timeout: 30_000)
 

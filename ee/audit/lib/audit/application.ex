@@ -25,6 +25,7 @@ defmodule Audit.Application do
       {{Audit.Streamer.Scheduler, []}, enabled?("START_STREAMER")},
       {{Cachex, [name: Audit.Cache]}, true},
       {provider, System.get_env("FEATURE_YAML_PATH") != nil},
+      {{Audit.FeatureProviderInvalidatorWorker, []}, true},
       {Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
        true}
     ]
