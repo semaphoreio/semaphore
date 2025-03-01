@@ -39,7 +39,7 @@ defmodule Notifications.Mixfile do
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:paginator, "~> 1.0"},
       {:tackle, github: "renderedtext/ex-tackle"},
-      {:util, github: "renderedtext/elixir-util", branch: "rw/string_enums"},
+      {:util, github: "renderedtext/elixir-util"},
       {:sentry, "~> 8.0"},
       {:hackney, "~> 1.8"},
       {:sentry_grpc, github: "renderedtext/sentry_grpc"},

@@ -31,7 +31,7 @@ defmodule HooksProcessor.MixProject do
       {:amqp_client, "~> 3.11.18"},
       {:tackle, github: "renderedtext/ex-tackle", tag: "v0.3.0"},
       {:util, github: "renderedtext/elixir-util"},
-      {:watchman, github: "renderedtext/ex-watchman", tag: "v0.3.0", override: true},
+      {:watchman, github: "renderedtext/ex-watchman", ref: "9a13fb1992967857570e09130c55efb3e4ef577f", override: true},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
       {:grpc, "~> 0.9.0"},
       {:protobuf, "~> 0.13.0"},
@@ -41,7 +41,7 @@ defmodule HooksProcessor.MixProject do
       {:junit_formatter, "~> 3.1", only: [:test]},
       # head because support for JSON is not yet released
       {:sentry, github: "getsentry/sentry-elixir", ref: "f375551f32f35674f9baab470d0e571466b07055"},
-      {:sentry_grpc, github: "radwo/sentry_grpc", branch: "grpc08"}
+      {:sentry_grpc, github: "renderedtext/sentry_grpc", branch: "grpc08"}
     ]
   end
 end

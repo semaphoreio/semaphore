@@ -7,6 +7,8 @@ EX_CATCH_WARRNINGS_FLAG=
 
 APP_NAME=definition_validator
 
+CHECK_DEPS_EXTRA_OPTS=-w spec
+
 IN_DOCKER?="true"
 LOG_LEVEL?=info
 
