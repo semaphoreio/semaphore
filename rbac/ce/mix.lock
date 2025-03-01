@@ -31,7 +31,7 @@
   "tackle": {:git, "https://github.com/renderedtext/ex-tackle.git", "cdd3c8bd34c3eeb8b9c0d8bc48552179c0c30c7c", []},
   "telemetry": {:hex, :telemetry, "1.3.0", "fedebbae410d715cf8e7062c96a1ef32ec22e764197f70cda73d82778d61e7a2", [:rebar3], [], "hexpm", "7015fc8919dbe63764f4b4b87a95b7c0996bd539e0d499be6ec9d7f3875b79e6"},
   "thoas": {:hex, :thoas, "1.0.0", "567c03902920827a18a89f05b79a37b5bf93553154b883e0131801600cf02ce0", [:rebar3], [], "hexpm", "fc763185b932ecb32a554fb735ee03c3b6b1b31366077a2427d2a97f3bd26735"},
-  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "7a35f61a97ea37b8a5861a1e6aa00d39ffb54f12", []},
-  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "1ff788c782352758d644d4e921aa4423d360a64a", []},
+  "util": {:git, "https://github.com/renderedtext/elixir-util.git", "34548a46450465b2fc69642d81f3ff282b1aa097", []},
+  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9a13fb1992967857570e09130c55efb3e4ef577f", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
 }

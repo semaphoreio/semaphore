@@ -7,6 +7,8 @@
 
 ELIXIR_DOCKER_IMAGE=elixir:1.14
 
+CHECK_DEPS_EXTRA_OPTS=-w spec
+
 SEMAPHORE_EXECUTABLE_UUID?=""
 GIT_HASH=$(shell git log --format=format:'%h' -1)
 TAG?=$(GIT_HASH)-$(SEMAPHORE_EXECUTABLE_UUID)

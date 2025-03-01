@@ -55,7 +55,6 @@ if config_env() == :prod do
         {FeatureProvider.YamlProvider,
          [yaml_path: get_env!.("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
     end
-
   config :scheduler,
     feature_provider: feature_provider
 
