@@ -28,6 +28,7 @@ defmodule Rbac.GrpcServers.OktaServer do
           req.sso_url,
           req.saml_issuer,
           req.saml_certificate,
+          req.jit_provisioning_enabled,
           req.idempotency_token
         )
 
@@ -137,7 +138,8 @@ defmodule Rbac.GrpcServers.OktaServer do
       updated_at: serialize_time(integration.updated_at),
       saml_issuer: integration.saml_issuer,
       idempotency_token: integration.idempotency_token,
-      sso_url: integration.sso_url
+      sso_url: integration.sso_url,
+      jit_provisioning_enabled: integration.jit_provisioning_enabled
     }
   end
 

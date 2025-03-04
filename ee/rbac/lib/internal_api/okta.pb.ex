@@ -11,6 +11,7 @@ defmodule InternalApi.Okta.OktaIntegration do
   field(:idempotency_token, 6, type: :string, json_name: "idempotencyToken")
   field(:saml_issuer, 7, type: :string, json_name: "samlIssuer")
   field(:sso_url, 8, type: :string, json_name: "ssoUrl")
+  field(:jit_provisioning_enabled, 9, type: :bool, json_name: "jitProvisioningEnabled")
 end
 
 defmodule InternalApi.Okta.SetUpRequest do
@@ -24,6 +25,7 @@ defmodule InternalApi.Okta.SetUpRequest do
   field(:saml_certificate, 4, type: :string, json_name: "samlCertificate")
   field(:saml_issuer, 5, type: :string, json_name: "samlIssuer")
   field(:sso_url, 6, type: :string, json_name: "ssoUrl")
+  field(:jit_provisioning_enabled, 7, type: :bool, json_name: "jitProvisioningEnabled")
 end
 
 defmodule InternalApi.Okta.SetUpResponse do

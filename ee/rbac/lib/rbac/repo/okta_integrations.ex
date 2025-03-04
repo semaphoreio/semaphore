@@ -14,7 +14,8 @@ defmodule Rbac.Repo.OktaIntegration do
     :saml_issuer,
     :saml_certificate_fingerprint,
     :scim_token_hash,
-    :sso_url
+    :sso_url,
+    :jit_provisioning_enabled
   ]
 
   schema "okta_integrations" do

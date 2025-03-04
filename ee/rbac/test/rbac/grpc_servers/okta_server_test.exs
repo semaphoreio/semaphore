@@ -12,6 +12,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
         saml_certificate: cert
       }
 
@@ -29,6 +30,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
         saml_certificate: cert
       }
 
@@ -73,6 +75,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
         saml_certificate: cert
       }
 
@@ -96,6 +99,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
         saml_certificate: cert
       }
 
@@ -104,6 +108,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/else",
+        jit_provisioning_enabled: false,
         saml_certificate: cert
       }
 
@@ -126,6 +131,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         creator_id: Ecto.UUID.generate(),
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
         saml_certificate: "-----BEGIN CERTIFICATE-----"
       }
 
@@ -212,6 +218,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       assert Enum.at(res.integrations, 0).creator_id == integration.creator_id
       assert Enum.at(res.integrations, 0).saml_issuer == integration.saml_issuer
       assert Enum.at(res.integrations, 0).sso_url == integration.sso_url
+      assert Enum.at(res.integrations, 0).jit_provisioning_enabled == false
     end
   end
 
@@ -374,6 +381,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         idempotency_token: Ecto.UUID.generate(),
         saml_issuer: "https://otkta.something/very/secure",
         saml_certificate: cert,
+        jit_provisioning_enabled: false,
         sso_url: "https://otkta.something/very/secure"
       }
 
