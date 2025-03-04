@@ -32,6 +32,7 @@ defmodule FrontWeb.PeopleView do
         providers: available_user_providers(conn.assigns.organization_id),
         create_url: url(:post, people_path(conn, :create_member, format: "json")),
         invite_url: url(:post, people_path(conn, :create, format: "json")),
+        sync_url: url(:post, people_path(conn, :refresh)),
         collaborators_url: url(:get, people_path(conn, :sync, format: "json"))
       }
     }

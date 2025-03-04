@@ -1,20 +1,25 @@
-import { createContext, Fragment, render, VNode } from "preact";
+import { Fragment, render, VNode } from "preact";
 import { Modal } from "js/toolbox";
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import _ from "lodash";
 import { ChangeEvent } from "react-dom/src";
 import styled from "styled-components";
+import { Config, AppConfig, RawConfig } from "./config";
+import { AddPeopleState, AvailableProviderTypes, Collaborator, PeopleStateReducer, Person, PersonState, UserProvider } from "./types";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { Notice } from "js/notice";
 
 export default function ({
   dom,
   config: jsonConfig,
 }: {
   dom: HTMLElement;
-  config: any;
+  config: RawConfig;
 }) {
   render(
-    <Config.Provider value={State.fromJSON(jsonConfig as DOMStringMap)}>
+    <Config.Provider value={AppConfig.fromJSON(jsonConfig)}>
       <App/>
     </Config.Provider>,
     dom
@@ -63,7 +68,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
 
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refreshCollaborators = () => {
     void config.collaboratorListUrl
       .call()
       .then((resp) => {
@@ -76,6 +81,9 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
       .finally(() => {
         setLoading(false);
       });
+  };
+  useEffect(() => {
+    refreshCollaborators();
   }, []);
 
   const userProviderBox = (provider: UserProvider) => {
@@ -140,7 +148,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
       </div>
 
       {userProviders.length > 1 && (
-        <div className="mb3 button-group ph4 w-100">
+        <div className="mb3 button-group ph4 w-100 items-center justify-center">
           {userProviders.map(userProviderBox)}
         </div>
       )}
@@ -168,6 +176,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
                   ].includes(provider)}
                   collaborators={collaborators}
                   onCancel={props.close}
+                  onRefreshCollaborators={refreshCollaborators}
                 />
               )}
             </Fragment>
@@ -183,6 +192,7 @@ interface ProvideViaProps {
   collaborators: Collaborator[];
   noManualInvite: boolean;
   onCancel?: (reload: boolean) => void;
+  onRefreshCollaborators: () => void;
 }
 
 const ProvideVia = (props: ProvideViaProps) => {
@@ -193,9 +203,8 @@ const ProvideVia = (props: ProvideViaProps) => {
       (collaborator) => collaborator.provider === props.provider.toLowerCase()
     )
   );
-  const [selectedCollaborators, setSelectedCollaborators] = useState<
-  Collaborator[]
-  >([]);
+
+  const [selectedCollaborators, setSelectedCollaborators] = useState<Collaborator[]>([]);
 
   const toggleCollaborator = (collaborator: Collaborator) => {
     if (selectedCollaborators.includes(collaborator)) {
@@ -212,6 +221,7 @@ const ProvideVia = (props: ProvideViaProps) => {
   const [message, setMessage] = useState(``);
   const [loading, setLoading] = useState(false);
   const [anyInvites, setAnyInvites] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const invite = (collaborators: Collaborator[]) => {
     const invitees = collaborators.map((collaborator) => ({
@@ -254,6 +264,23 @@ const ProvideVia = (props: ProvideViaProps) => {
 
     setCollaborators([collaborator, ...collaborators]);
     toggleCollaborator(collaborator);
+  };
+
+  const refreshPeople = () => {
+    setSyncing(true);
+
+    config.syncGitHubUsersUrl
+      .call()
+      .then((resp) => {
+        Notice.notice(resp.data.message);
+        props.onRefreshCollaborators();
+      })
+      .catch((err) => {
+        Notice.error(err.error as string);
+      })
+      .finally(() => {
+        setSyncing(false);
+      });
   };
 
   const handleSubmit = (key: string) => {
@@ -325,6 +352,25 @@ const ProvideVia = (props: ProvideViaProps) => {
                 Invite
               </button>
             </div>
+
+            {props.provider == UserProvider.GitHub &&
+              <div className="ml2">
+                <toolbox.Tooltip
+                  anchor={
+                    <button
+                      className="btn btn-secondary"
+                      onClick={refreshPeople}
+                      disabled={syncing}
+                    >
+                      {syncing && <toolbox.Asset path="images/spinner.svg"/>}
+                      {!syncing && `Sync`}
+                    </button>
+                  }
+                  content={`Sync users with GitHub`}
+                  placement="top"
+                />
+
+              </div>}
           </div>
         )}
         {collaborators.length > 0 && (
@@ -621,62 +667,6 @@ const ProvideViaEmail = (props: ProvideViaEmailProps) => {
   );
 };
 
-export class State {
-  collaboratorListUrl: toolbox.APIRequest.Url<{ collaborators: any, }>;
-  inviteMemberUrl: toolbox.APIRequest.Url<{ message: string, }>;
-  createMemberUrl: toolbox.APIRequest.Url<{
-    password: string;
-    message: string;
-  }>;
-  allowedProviders: UserProvider[] = [];
-
-  static fromJSON(rawJson: DOMStringMap): State {
-    const config = State.default();
-    const json = JSON.parse(rawJson.config);
-
-    config.collaboratorListUrl = toolbox.APIRequest.Url.fromJSON(
-      json.users.collaborators_url
-    );
-    config.createMemberUrl = toolbox.APIRequest.Url.fromJSON(
-      json.users.create_url
-    );
-    config.inviteMemberUrl = toolbox.APIRequest.Url.fromJSON(
-      json.users.invite_url
-    );
-
-    json.users.providers
-      .map((provider: string) => {
-        switch (provider) {
-          case `email`:
-            return config.allowedProviders.push(UserProvider.Email);
-          case `github`:
-            return config.allowedProviders.push(UserProvider.GitHub);
-          case `bitbucket`:
-            return config.allowedProviders.push(UserProvider.Bitbucket);
-          case `gitlab`:
-            return config.allowedProviders.push(UserProvider.GitLab);
-          default:
-            return null;
-        }
-      })
-      .filter((provider: UserProvider | null) => provider);
-    return config;
-  }
-
-  static default(): State {
-    const config = new State();
-    return config;
-  }
-}
-
-export const Config = createContext<State>(new State());
-
-enum UserProvider {
-  Email = `email`,
-  GitHub = `github`,
-  Bitbucket = `bitbucket`,
-  GitLab = `gitlab`,
-}
 
 const ActiveShadowLink = styled.button`
   &:hover,
@@ -686,128 +676,6 @@ const ActiveShadowLink = styled.button`
   }
 `;
 
-class Collaborator {
-  displayName: string;
-  uid: string;
-  login: string;
-  provider: string;
-  avatarUrl: string;
-
-  constructor() {
-    this.displayName = ``;
-    this.uid = ``;
-    this.login = ``;
-    this.provider = ``;
-    this.avatarUrl = ``;
-  }
-
-  static fromJSON(json: any): Collaborator {
-    const collaborator = new Collaborator();
-    collaborator.displayName = json.display_name as string;
-    collaborator.login = json.login as string;
-    collaborator.uid = json.uid as string;
-    collaborator.provider = json.provider as string;
-    collaborator.avatarUrl = json.avatar_url as string;
-
-    return collaborator;
-  }
-
-  hasAvatar(): boolean {
-    return this.avatarUrl.length != 0;
-  }
-}
-
-enum PersonState {
-  Empty,
-  Loading,
-  Invited,
-  Error,
-}
-
-class Person {
-  id: string;
-  email: string;
-  username: string;
-  password = ``;
-  errorMessage = ``;
-  state: PersonState = PersonState.Empty;
-  wasInvited: boolean;
-  emailValid = true;
-
-  constructor() {
-    this.id = _.uniqueId(`person_`);
-    this.email = ``;
-    this.username = ``;
-    this.wasInvited = false;
-  }
-
-  isEmpty(): boolean {
-    return _.isEmpty(this.email) && _.isEmpty(this.username);
-  }
-
-  init() {
-    this.password = ``;
-    this.errorMessage = ``;
-    this.state = PersonState.Empty;
-  }
-
-  setPassword(password: string) {
-    this.state = PersonState.Invited;
-    this.password = password;
-  }
-
-  setError(errorMessage: string) {
-    this.state = PersonState.Error;
-    this.errorMessage = errorMessage;
-  }
-  setLoading() {
-    this.wasInvited = true;
-    this.state = PersonState.Loading;
-  }
-}
-
-class AddPeopleState {
-  people: Person[] = [new Person()];
-  type: UserProvider;
-}
-
-export type AddPeopleAction =
-  | { type: `UPDATE_PERSON`, id: string, value: Person, }
-  | { type: `REMOVE_PERSON`, id: string, }
-  | { type: `RESET`, };
-
-const PeopleStateReducer = (state: AddPeopleState, action: AddPeopleAction) => {
-  switch (action.type) {
-    case `UPDATE_PERSON`: {
-      const newPeople = state.people
-        .map((person) => {
-          if (person.id == action.id) {
-            return action.value;
-          }
-          return person;
-        })
-        .filter((person) => !person.isEmpty());
-
-      newPeople.push(new Person());
-
-      return { ...state, people: newPeople };
-    }
-
-    case `REMOVE_PERSON`: {
-      const newPeople = state.people.filter((person) => person.id != action.id);
-
-      return { ...state, people: newPeople };
-    }
-
-    case `RESET`: {
-      return { ...state, people: [new Person()] };
-    }
-
-    default:
-      return state;
-  }
-};
-
 const ActiveShadowDiv = styled.div`
   &:hover,
   &.active {
@@ -815,9 +683,3 @@ const ActiveShadowDiv = styled.div`
     box-shadow: 0 0 0 3px #00359f !important;
   }
 `;
-const AvailableProviderTypes: UserProvider[] = [
-  UserProvider.Email,
-  UserProvider.GitHub,
-  UserProvider.Bitbucket,
-  UserProvider.GitLab,
-];
