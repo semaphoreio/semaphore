@@ -9,10 +9,11 @@ defmodule Front.Models.OktaIntegration do
           sso_url: String.t() | nil,
           issuer: String.t() | nil,
           certificate: String.t() | nil,
-          idempotency_token: String.t()
+          idempotency_token: String.t(),
+          jit_provisioning_enabled: boolean()
         }
 
-  @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token)a
+  @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled)a
   @primary_key false
 
   embedded_schema do
@@ -22,6 +23,7 @@ defmodule Front.Models.OktaIntegration do
     field(:sso_url, :string)
     field(:issuer, :string)
     field(:certificate, :string)
+    field(:jit_provisioning_enabled, :boolean)
     field(:idempotency_token, :string)
   end
 
@@ -106,6 +108,7 @@ defmodule Front.Models.OktaIntegration do
       :sso_url,
       :issuer,
       :certificate,
+      :jit_provisioning_enabled,
       :idempotency_token
     ])
   end
@@ -120,7 +123,8 @@ defmodule Front.Models.OktaIntegration do
         sso_url: model.sso_url,
         saml_issuer: model.issuer,
         saml_certificate: model.certificate,
-        idempotency_token: model.idempotency_token
+        idempotency_token: model.idempotency_token,
+        saml_auto_provision: model.jit_provisioning_enabled
       )
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
@@ -150,7 +154,10 @@ defmodule Front.Models.OktaIntegration do
             Enum.map(response.integrations, fn i ->
               struct!(__MODULE__,
                 id: i.id,
-                org_id: i.org_id
+                org_id: i.org_id,
+                sso_url: i.sso_url,
+                issuer: i.saml_issuer,
+                jit_provisioning_enabled: i.jit_provisioning_enabled
               )
             end)
 

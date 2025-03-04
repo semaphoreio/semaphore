@@ -17,6 +17,12 @@
     <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :certificate, name: "Certificate" %>
     <%= textarea f, :certificate, placeholder: "Paste your x509 certificate here...", class: "form-control w-100", wrap: "off", rows: "6", style: "resize: vertical;" %>
 
+    <div class="mt3">
+        <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :jit_provisioning_enabled, name: "SAML Auto-provisioning" %>
+        <%= checkbox f, :jit_provisioning_enabled, hidden_input: false, value: input_value(f, :jit_provisioning_enabled) %>
+        <%= label f, :jit_provisioning_enabled, "I don't have SCIM, I am using JIT provisioning", class: "ml2" %>
+    </div>
+
     <p class="mt2">
         <a href="https://docs.semaphoreci.com/security/okta/installation/" target="_blank">Docs: How to find SAML Issuer and Certificate?</a>
     </p>

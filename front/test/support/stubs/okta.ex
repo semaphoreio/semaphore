@@ -10,7 +10,9 @@ defmodule Support.Stubs.Okta do
       :org_id,
       :creator_id,
       :saml_issuer,
+      :sso_url,
       :saml_certificate,
+      :saml_auto_provision,
       :created_at,
       :updated_at
     ])
@@ -38,8 +40,10 @@ defmodule Support.Stubs.Okta do
           id: UUID.gen(),
           org_id: req.org_id,
           creator_id: req.creator_id,
+          sso_url: req.sso_url,
           saml_issuer: req.saml_issuer,
           saml_certificate: req.saml_certificate,
+          saml_auto_provision: req.saml_auto_provision,
           created_at: StubTime.now(),
           updated_at: StubTime.now()
         })
@@ -75,7 +79,10 @@ defmodule Support.Stubs.Okta do
       InternalApi.Okta.OktaIntegration.new(
         id: integration.id,
         org_id: integration.org_id,
-        creator_id: integration.creator_id
+        creator_id: integration.creator_id,
+        saml_issuer: integration.saml_issuer,
+        sso_url: integration.sso_url,
+        saml_auto_provision: integration.saml_auto_provision
       )
     end
   end
