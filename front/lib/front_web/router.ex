@@ -566,6 +566,8 @@ defmodule FrontWeb.Router do
     # Okta Integration Settings
     get("/settings/okta", OrganizationOktaController, :show)
     get("/settings/okta/form", OrganizationOktaController, :form)
+    get("/settings/okta/group_mapping", OrganizationOktaController, :group_mapping)
+    post("/settings/okta/group_mapping", OrganizationOktaController, :update_group_mapping)
 
     get(
       "/settings/okta/disconnect_notice/:integration_id",

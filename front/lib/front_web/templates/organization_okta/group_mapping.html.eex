@@ -1,0 +1,15 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.OrganizationOktaConfig = <%= raw json_encode(
+        %{
+            groups: Enum.map(@groups, fn group -> Map.take(group, [:id, :name]) end),
+            roles: Enum.map(@roles, fn role -> Map.take(role, [:id, :name]) end),
+            saveUrl: organization_okta_path(@conn, :update_group_mapping),
+            cancelUrl: organization_okta_path(@conn, :show)
+        }
+    ) %>;
+</script>
+
+<h1 class="f3 f2-m mb0">Okta SAML Group Mapping</h1>
+<p>Configure group mapping to Semaphore groups from your SAML groups.</p>
+
+<div id="group-mapping-container"></div>

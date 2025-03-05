@@ -19,7 +19,7 @@
 
     <div class="mt3">
         <%= render FrontWeb.OrganizationOktaView, "_error.html", form: f, field: :jit_provisioning_enabled, name: "SAML Auto-provisioning" %>
-        <%= checkbox f, :jit_provisioning_enabled, hidden_input: false, value: input_value(f, :jit_provisioning_enabled) %>
+        <%= checkbox f, :jit_provisioning_enabled, value: input_value(f, :jit_provisioning_enabled) %>
         <%= label f, :jit_provisioning_enabled, "I don't have SCIM, I am using JIT provisioning", class: "ml2" %>
     </div>
 

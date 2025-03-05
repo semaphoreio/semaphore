@@ -9,6 +9,7 @@
         <%= if @permissions["organization.okta.manage"] do %>
           <div class="button-group">
             <a class="btn btn-small btn-secondary" href="<%=organization_okta_path(@conn, :form) %>">Edit</a>
+            <a class="btn btn-small btn-secondary" href="<%=organization_okta_path(@conn, :group_mapping) %>">Group mapping</a>
             <a class="btn btn-small btn-secondary hover-red" href="<%=organization_okta_path(@conn, :disconnect_notice, @integration.id) %>">Disconnect</a>
           </div>
         <% end %>

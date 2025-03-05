@@ -12,7 +12,7 @@ defmodule Support.Stubs.Okta do
       :saml_issuer,
       :sso_url,
       :saml_certificate,
-      :saml_auto_provision,
+      :jit_provisioning_enabled,
       :created_at,
       :updated_at
     ])
@@ -43,14 +43,18 @@ defmodule Support.Stubs.Okta do
           sso_url: req.sso_url,
           saml_issuer: req.saml_issuer,
           saml_certificate: req.saml_certificate,
-          saml_auto_provision: req.saml_auto_provision,
+          jit_provisioning_enabled: req.jit_provisioning_enabled,
           created_at: StubTime.now(),
           updated_at: StubTime.now()
         })
 
       serialized = serialize(integration)
 
-      InternalApi.Okta.SetUpResponse.new(integration: serialized)
+      resp = InternalApi.Okta.SetUpResponse.new(integration: serialized)
+
+      Logger.info("[stub] Created Okta integration: #{inspect(resp)}")
+
+      resp
     end
 
     def list(req, _) do
@@ -82,7 +86,7 @@ defmodule Support.Stubs.Okta do
         creator_id: integration.creator_id,
         saml_issuer: integration.saml_issuer,
         sso_url: integration.sso_url,
-        saml_auto_provision: integration.saml_auto_provision
+        jit_provisioning_enabled: integration.jit_provisioning_enabled
       )
     end
   end

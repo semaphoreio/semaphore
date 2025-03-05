@@ -49,8 +49,12 @@ defmodule FrontWeb.OrganizationOktaController do
 
       changeset =
         case Front.Models.OktaIntegration.find_for_org(organization_id) do
-          {:error, :not_found} -> OktaIntegration.new()
-          {:ok, integration} -> integration |> OktaIntegration.changeset()
+          {:error, :not_found} ->
+            OktaIntegration.new()
+
+          {:ok, integration} ->
+            Logger.info("Okta integration found #{inspect(integration)}")
+            integration |> OktaIntegration.changeset()
         end
 
       with {:ok, params} <- fetch_params(organization_id) do
@@ -83,7 +87,7 @@ defmodule FrontWeb.OrganizationOktaController do
 
             conn
             |> put_flash(:notice, "Success: Your organization is connected with Okta")
-            |> render_token(token, params)
+            |> render_token(token, model.jit_provisioning_enabled, params)
           else
             {:error, :create_integration, changeset, alert} ->
               Watchman.increment(watchman_name(:create, :failure))
@@ -101,6 +105,49 @@ defmodule FrontWeb.OrganizationOktaController do
           Watchman.increment(watchman_name(:create, :failure))
           {:error, reason}
       end
+    end)
+  end
+
+  @doc """
+  Page that renders the group mapping with edit forms.
+  This is available only when jit_provisioning_enabled is true.
+  """
+  def group_mapping(conn, _params) do
+    Watchman.benchmark(watchman_name(:group_mapping, :duration), fn ->
+      org_id = conn.assigns.organization_id
+
+      with {:ok, params} <- fetch_params(org_id),
+           {:okta_integration, {:ok, integration}} <-
+             {:okta_integration, Front.Models.OktaIntegration.find_for_org(org_id)},
+           {:ok, {groups, _}} <-
+             Front.RBAC.Members.list_org_members(org_id, member_type: "group"),
+           {:ok, roles} <- Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope") do
+        render_group_mapping(conn, integration, groups, roles, params)
+      else
+        {:okta_integration, {:error, :not_found}} ->
+          conn
+          |> put_flash(:alert, "You need to set up Okta integration first")
+          |> redirect(to: organization_okta_path(conn, :show))
+
+        error ->
+          Logger.error("Group mapping error: #{inspect(error)}")
+
+          conn
+          |> put_flash(:alert, "Something went wrong.")
+          |> redirect(to: organization_okta_path(conn, :show))
+      end
+    end)
+  end
+
+  @doc """
+  Page that updates the group mapping.
+  """
+  def update_group_mapping(conn, params) do
+    Watchman.benchmark(watchman_name(:update_group_mapping, :duration), fn ->
+      Logger.info("update_group_mapping, params: #{inspect(params)}")
+
+      conn
+      |> redirect(to: organization_okta_path(conn, :show))
     end)
   end
 
@@ -239,13 +286,30 @@ defmodule FrontWeb.OrganizationOktaController do
     )
   end
 
-  defp render_token(conn, token, params) do
+  defp render_token(conn, token, jit_provisioning_enabled, params) do
     render(conn, "token.html",
       permissions: conn.assigns.permissions,
       organization: params.organization,
       org_restricted: params.organization.restricted,
+      jit_provisioning_enabled: jit_provisioning_enabled,
       title: "Okta・#{params.organization.name}",
       token: token,
+      notice: get_flash(conn, :notice),
+      alert: get_flash(conn, :alert)
+    )
+  end
+
+  defp render_group_mapping(conn, integration, groups, roles, params) do
+    Logger.info("render_group_mapping, groups: #{inspect(groups)}, roles: #{inspect(roles)}")
+
+    render(conn, "group_mapping.html",
+      js: :organization_okta,
+      permissions: conn.assigns.permissions,
+      organization: params.organization,
+      integration: integration,
+      groups: groups,
+      roles: roles,
+      title: "Okta・#{params.organization.name}",
       notice: get_flash(conn, :notice),
       alert: get_flash(conn, :alert)
     )

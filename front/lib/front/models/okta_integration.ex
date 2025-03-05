@@ -10,7 +10,7 @@ defmodule Front.Models.OktaIntegration do
           issuer: String.t() | nil,
           certificate: String.t() | nil,
           idempotency_token: String.t(),
-          jit_provisioning_enabled: boolean()
+          jit_provisioning_enabled: boolean() | nil
         }
 
   @fields ~w(org_id creator_id sso_url issuer certificate idempotency_token jit_provisioning_enabled)a
@@ -124,7 +124,7 @@ defmodule Front.Models.OktaIntegration do
         saml_issuer: model.issuer,
         saml_certificate: model.certificate,
         idempotency_token: model.idempotency_token,
-        saml_auto_provision: model.jit_provisioning_enabled
+        jit_provisioning_enabled: model.jit_provisioning_enabled
       )
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
@@ -133,7 +133,8 @@ defmodule Front.Models.OktaIntegration do
           {:ok,
            struct!(__MODULE__,
              id: response.integration.id,
-             org_id: response.integration.org_id
+             org_id: response.integration.org_id,
+             jit_provisioning_enabled: response.integration.jit_provisioning_enabled
            )}
 
         e ->
