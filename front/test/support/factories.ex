@@ -1366,7 +1366,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Receives Git Hooks on Sempahore 2.0 and Stores them in a Rabbit queue",
+        description: "Receives Git Hooks on Semaphore 2.0 and Stores them in a Rabbit queue",
         name: "git-hook-broker",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",
