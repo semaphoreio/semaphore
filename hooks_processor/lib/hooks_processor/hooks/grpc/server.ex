@@ -142,9 +142,13 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
   defp repo_html_url(repository = %{integration_type: :GITHUB_OAUTH_TOKEN}), do: repo_html_url(:github, repository)
   defp repo_html_url(repository = %{integration_type: :GITHUB_APP}), do: repo_html_url(:github, repository)
   defp repo_html_url(repository = %{integration_type: :BITBUCKET}), do: repo_html_url(:bitbucket, repository)
+  defp repo_html_url(repository = %{integration_type: :GITLAB}), do: repo_html_url(:gitlab, repository)
+  defp repo_html_url(repository = %{integration_type: :GIT}), do: repo_html_url(:git, repository)
 
   defp repo_html_url(:github, repository), do: "https://github.com/#{repository.owner}/#{repository.name}"
   defp repo_html_url(:bitbucket, repository), do: "https://bitbucket.org/#{repository.owner}/#{repository.name}"
+  defp repo_html_url(:gitlab, repository), do: "https://gitlab.com/#{repository.owner}/#{repository.name}"
+  defp repo_html_url(_, _), do: ""
 
   defp form_response(:create, hook) do
     %CreateResponse{
@@ -180,4 +184,6 @@ defmodule HooksProcessor.Hooks.Grpc.Server do
   defp provider(:GITHUB_OAUTH_TOKEN), do: "github"
   defp provider(:GITHUB_APP), do: "github"
   defp provider(:BITBUCKET), do: "bitbucket"
+  defp provider(:GITLAB), do: "gitlab"
+  defp provider(:GIT), do: "git"
 end
