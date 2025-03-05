@@ -12,8 +12,6 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.ProjectClient do
     RequestMeta,
   }
 
-  require Logger
-
   defp url(), do: System.get_env("INTERNAL_API_URL_PROJECT")
   @opts [{:timeout, 2_500_000}]
 
@@ -38,14 +36,8 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.ProjectClient do
       request = DescribeRequest.new(metadata: metadata, id: project_id)
       {:ok, channel} = GRPC.Stub.connect(url())
 
-      Logger.info("Describing project with request: #{inspect(request)}")
-
-      response = channel
+      channel
       |> ProjectService.Stub.describe(request, @opts)
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> response_to_map()
       |> process_status()
     end)

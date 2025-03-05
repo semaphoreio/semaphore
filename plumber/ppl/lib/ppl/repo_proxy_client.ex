@@ -4,7 +4,6 @@ defmodule Ppl.RepoProxyClient do
   """
 
   alias LogTee, as: LT
-  require Logger
   alias Util.{Metrics, Proto, ToTuple}
 
   alias InternalApi.RepoProxy.{
@@ -34,15 +33,10 @@ defmodule Ppl.RepoProxyClient do
   def describe_hook(hook_id) do
     Metrics.benchmark("Ppl.RepoProxyClient.describe", fn ->
       request = DescribeRequest.new(hook_id: hook_id)
-      Logger.info("Describing with request: #{inspect(request)}")
       {:ok, channel} = GRPC.Stub.connect(old_url())
 
-      response = channel
+      channel
       |> RepoProxyService.Stub.describe(request, @opts)
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> response_to_map()
       |> process_status()
     end)
@@ -56,12 +50,8 @@ defmodule Ppl.RepoProxyClient do
       )
 
     case result do
-      {:ok, result} ->
-        Logger.info("Created blank: #{inspect(result)}")
-        result
-      error ->
-        Logger.error("Error creating blank: #{inspect(error)}")
-        error
+      {:ok, result} -> result
+      error -> error
     end
   end
 
@@ -85,13 +75,8 @@ defmodule Ppl.RepoProxyClient do
 
       {:ok, channel} = GRPC.Stub.connect(new_url())
 
-      Logger.info("Creating blank with request: #{inspect(request)}")
-      response = channel
+      channel
       |> RepoProxyService.Stub.create_blank(request, @opts)
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> response_to_map()
     end)
   end

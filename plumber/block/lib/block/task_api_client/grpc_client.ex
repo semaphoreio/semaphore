@@ -13,7 +13,6 @@ defmodule Block.TaskApiClient.GrpcClient do
     TerminateRequest
   }
 
-  require Logger
 
   @opts [{:timeout, 2_500_000}]
 
@@ -36,13 +35,8 @@ defmodule Block.TaskApiClient.GrpcClient do
   defp schedule_task(request, server_url) do
     {:ok, channel} = GRPC.Stub.connect(server_url)
 
-    Logger.info("Scheduling with request: #{inspect(request)}")
-
-    response = channel
+    channel
     |> TaskService.Stub.schedule(request, @opts)
-
-    Logger.info("Response: #{inspect(response)}")
-    response
     |> log?("schedule")
   end
 
@@ -64,14 +58,8 @@ defmodule Block.TaskApiClient.GrpcClient do
     request = DescribeRequest.new(task_id: task_id)
     {:ok, channel} = GRPC.Stub.connect(url)
 
-    Logger.info("Describing with request: #{inspect(request)}")
-
-    response =
     channel
     |> TaskService.Stub.describe(request, @opts)
-
-    Logger.info("Response: #{inspect(response)}")
-    response
     |> log?("describe")
   end
 
@@ -90,13 +78,8 @@ defmodule Block.TaskApiClient.GrpcClient do
     request = TerminateRequest.new(task_id: task_id)
     {:ok, channel} = GRPC.Stub.connect(url)
 
-    Logger.info("Terminating with request: #{inspect(request)}")
-
-    response = channel
+    channel
     |> TaskService.Stub.terminate(request, @opts)
-
-    Logger.info("Response: #{inspect(response)}")
-    response
     |> log?("terminate")
   end
 

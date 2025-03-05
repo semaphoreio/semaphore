@@ -7,8 +7,6 @@ defmodule Ppl.UserClient do
   alias Util.{Metrics, Proto, ToTuple}
   alias InternalApi.User.{UserService, DescribeRequest}
 
-  require Logger
-
   defp url(), do: System.get_env("INTERNAL_API_URL_USER")
   @opts [{:timeout, 2_500_000}]
 
@@ -26,15 +24,10 @@ defmodule Ppl.UserClient do
   def describe_user(user_id) do
     Metrics.benchmark("Ppl.UserClient.describe", fn ->
       request = DescribeRequest.new(user_id: user_id)
-      Logger.info("Describing with request: #{inspect(request)}")
       {:ok, channel} = GRPC.Stub.connect(url())
 
-      response = channel
+      channel
       |> UserService.Stub.describe(request, @opts)
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> response_to_map()
       |> process_status()
     end)

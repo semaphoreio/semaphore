@@ -9,8 +9,6 @@ defmodule GoferClient.GrpcClient do
   alias Util.Metrics
   alias LogTee, as: LT
 
-  require Logger
-
   defp url(), do: System.get_env("INTERNAL_API_URL_GOFER")
   defp opts(), do: [{:timeout, Application.get_env(:gofer_client, :gofer_grpc_timeout)}]
 
@@ -27,15 +25,10 @@ defmodule GoferClient.GrpcClient do
   def create_switch(error), do: error
 
   def create_(create_request) do
-    Logger.info("Creating with request: #{inspect(create_request)}")
     {:ok, channel} = GRPC.Stub.connect(url())
     Metrics.benchmark("Ppl.gofer_client.grpc_client", "create", fn ->
-      response = channel
+      channel
       |> Switch.Stub.create(create_request, opts())
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> is_ok?("create")
     end)
   end
@@ -53,15 +46,10 @@ defmodule GoferClient.GrpcClient do
   def pipeline_done(error), do: error
 
   def pipeline_done_(request) do
-    Logger.info("Pipeline done with request: #{inspect(request)}")
     {:ok, channel} = GRPC.Stub.connect(url())
     Metrics.benchmark("Ppl.gofer_client.grpc_client", "pipeline_done", fn ->
-      response = channel
+      channel
       |> Switch.Stub.pipeline_done(request, opts())
-      |> is_ok?("pipeline_done")
-
-      Logger.info("Response: #{inspect(response)}")
-      response
       |> is_ok?("pipeline_done")
     end)
   end

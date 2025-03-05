@@ -7,8 +7,6 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.AtifactsClient do
   alias InternalApi.Artifacthub.ArtifactService
   alias Util.{Metrics, Proto}
 
-  require Logger
-
   defp artifacts_url(), do: System.get_env("INTERNAL_API_URL_ARTIFACTHUB")
   @opts [{:timeout, 5_000_000}]
 
@@ -53,15 +51,8 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.AtifactsClient do
 
       {:ok, channel} = GRPC.Stub.connect(artifacts_url())
 
-      Logger.info("Getting signed url with request: #{inspect(request)}")
-
-
-      response = channel
+      channel
       |> ArtifactService.Stub.get_signed_url(request, @opts)
-
-      Logger.info("Response: #{inspect(response)}")
-
-      response
       |> response_to_map()
     end)
   end
