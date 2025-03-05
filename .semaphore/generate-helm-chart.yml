@@ -66,9 +66,9 @@ blocks:
             - cd $(jq -r --arg application "$APPLICATION" '.services[$application][]["path"]' .semaphore/services.json)
             - make build
             - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make configure.sign; fi'
-            - make ghcr.configure
-            - make ghcr.push
-            - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make ghcr.sign; fi'
+            - make registry.configure
+            - make registry.push
+            - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make registry.sign; fi'
 
   - name: "Create Helm chart"
     task:
