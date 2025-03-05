@@ -151,7 +151,7 @@ tag:
 # If MIX_ENV is set, we're dealing with an Elixir application,
 # so we need to create the 'deps' and '_build' folders.
 #
-build: pull
+build:
 ifneq ($(MIX_ENV),)
 	mkdir -p deps _build
 endif
@@ -165,6 +165,7 @@ ifeq ($(NO_BUILD_CACHE),true)
 		-t $(IMAGE):$(IMAGE_TAG) \
 		$(DOCKER_BUILD_PATH)
 else
+	$(MAKE) pull
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
 		--progress $(DOCKER_BUILD_PROGRESS) \
