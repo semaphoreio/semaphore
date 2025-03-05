@@ -155,6 +155,16 @@ build: pull
 ifneq ($(MIX_ENV),)
 	mkdir -p deps _build
 endif
+ifeq ($(NO_BUILD_CACHE),true)
+	docker build -f Dockerfile \
+		--target $(DOCKER_BUILD_TARGET) \
+		--progress $(DOCKER_BUILD_PROGRESS) \
+		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
+		--build-arg APP_NAME=$(APP_NAME) \
+		--build-arg BUILD_ENV=$(BUILD_ENV) \
+		-t $(IMAGE):$(IMAGE_TAG) \
+		$(DOCKER_BUILD_PATH)
+else
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
 		--progress $(DOCKER_BUILD_PROGRESS) \
@@ -165,6 +175,7 @@ endif
 		--cache-from=$(REGISTRY_HOST)/$(MAIN_IMAGE):$(IMAGE_TAG) \
 		-t $(IMAGE):$(IMAGE_TAG) \
 		$(DOCKER_BUILD_PATH)
+endif
 
 #
 # Development operations
