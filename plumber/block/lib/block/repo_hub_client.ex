@@ -11,6 +11,8 @@ defmodule Block.RepoHubClient do
     GetFileRequest,
   }
 
+  require Logger
+
   defp url(), do: System.get_env("INTERNAL_API_URL_REPOSITORY")
   @opts [{:timeout, 2_500_000}]
 
@@ -34,8 +36,13 @@ defmodule Block.RepoHubClient do
 
       {:ok, channel} = GRPC.Stub.connect(url())
 
-      channel
+      Logger.info("Getting file with request: #{inspect(request)}")
+      response = channel
       |> RepositoryService.Stub.get_file(request, @opts)
+
+      Logger.info("File response: #{inspect(response)}")
+
+      response
       |> file_response_to_map()
       |> extract_content()
     end)
@@ -72,10 +79,15 @@ defmodule Block.RepoHubClient do
   def get_repo_id_(project_id) do
     Metrics.benchmark("Ppl.RepoHubClient.list", fn ->
       request = DescribeManyRequest.new(project_ids: [project_id])
+      Logger.info("Describing many with request: #{inspect(request)}")
       {:ok, channel} = GRPC.Stub.connect(url())
 
-      channel
+      response = channel
       |> RepositoryService.Stub.describe_many(request, @opts)
+
+      Logger.info("Response: #{inspect(response)}")
+
+      response
       |> response_to_map()
       |> extract_repo_id(project_id)
     end)
@@ -107,8 +119,12 @@ defmodule Block.RepoHubClient do
       {:ok, request} = params |> Proto.deep_new(GetChangedFilePathsRequest)
       {:ok, channel} = GRPC.Stub.connect(url())
 
-      channel
+      response = channel
       |> RepositoryService.Stub.get_changed_file_paths(request, @opts)
+
+      Logger.info("Response: #{inspect(response)}")
+
+      response
       |> response_to_map()
       |> extract_changes()
     end)

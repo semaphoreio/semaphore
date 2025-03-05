@@ -7,6 +7,8 @@ defmodule Block.CodeRepo.Snapshot do
   alias InternalApi.Paparazzo.SnapshotService.Stub
   alias Google.Rpc.Code
 
+  require Logger
+
   def get_file(snapshot_id, path) do
     snapshot_id
     |> do_get_file(path)
@@ -16,7 +18,9 @@ defmodule Block.CodeRepo.Snapshot do
   def do_get_file(snapshot_id, path) do
     {:ok, channel} = GRPC.Stub.connect(paparazzo_url())
     request = %GetFileRequest{id: snapshot_id, path: path}
+    Logger.info("Getting file with request: #{inspect(request)}")
     {:ok, response} = channel |> Stub.get_file(request)
+    Logger.info("Response: #{inspect(response)}")
     response
   end
 

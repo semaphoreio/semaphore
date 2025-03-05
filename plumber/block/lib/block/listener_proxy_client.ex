@@ -2,6 +2,7 @@ defmodule Block.ListenerProxyClient do
   @moduledoc """
   Fetches configuration blobs from listener proxy
   """
+  require Logger
 
   @timeout :timer.seconds(2)
 
@@ -16,6 +17,10 @@ defmodule Block.ListenerProxyClient do
 
     {:ok, channel} = GRPC.Stub.connect("localhost:22345")
 
-    StethoscopeService.Stub.get_blob(channel, request, timeout: @timeout)
+    Logger.info("Fetching config with request: #{inspect(request)}")
+    response = StethoscopeService.Stub.get_blob(channel, request, timeout: @timeout)
+
+    Logger.info("Config response: #{inspect(response)}")
+    response
   end
 end
