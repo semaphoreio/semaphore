@@ -187,7 +187,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
 
     periodic =
       ctx.periodic
-      |> Periodics.changeset("v1.1.0", %{
+      |> Periodics.changeset("v1.1", %{
         parameters: [
           %{name: "param_gitlab1", required: true, default_value: "value1"},
           %{name: "param_gitlab2", required: false, default_value: "value2"},
@@ -246,7 +246,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
 
     periodic =
       ctx.periodic
-      |> Periodics.changeset("v1.1.0", %{
+      |> Periodics.changeset("v1.1", %{
         parameters: [
           %{name: "param_git1", required: true, default_value: "value1"},
           %{name: "param_git2", required: false, default_value: "value2"},
