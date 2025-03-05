@@ -2,7 +2,7 @@
 
 ### Components of the system
 
-- __Notificaitons API__: Public API for managing notification settings
+- __Notifications API__: Public API for managing notification settings
 - __Event Coordinator__: Filters incoming Rabbit messages from the pipeline system, creates new
   specific messages and ships them to dedicated RabbitMQ queues.
 - __Observer__: Observes the states of queues and ships Statsd messages for monitoring and alerting
