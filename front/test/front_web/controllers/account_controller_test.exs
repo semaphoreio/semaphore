@@ -125,7 +125,7 @@ defmodule FrontWeb.AccountControllerTest do
         |> post("/account/reset_token")
 
       assert get_req_header(conn, "x-semaphore-org-id") == []
-      assert conn.resp_body =~ "An error occured while regenerating the API token"
+      assert conn.resp_body =~ "An error occurred while regenerating the API token"
     end
   end
 

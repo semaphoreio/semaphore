@@ -110,7 +110,7 @@ defmodule FrontWeb.GroupsController.Test do
           |> post("/groups")
 
         assert html_response(conn, 302) =~ "/people"
-        assert get_flash(conn, :alert) =~ "An error occured"
+        assert get_flash(conn, :alert) =~ "An error occurred"
       end
     end
 
