@@ -250,5 +250,19 @@ module Semaphore::GithubApp
         GithubAppInstallation.find_by(:installation_id => installation_id)
       end
     end
+
+    describe ".verify_signature" do
+      let(:payload) { RepoHost::Github::Responses::Payload.installation_created }
+      let(:signature) { "sha256=fe4f21865972070cb4743aa008614042a26f6cb69e06d6a9b6d913ee594d23d7" }
+      let(:github_app_webhook_secret) { "secret" }
+
+      it "returns :ok when the signature is valid" do
+        expect(described_class.webhook_signature_valid?(github_app_webhook_secret, signature, payload)).to eq(:ok)
+      end
+
+      it "returns :not_verified when the signature is not valid" do
+        expect(described_class.webhook_signature_valid?(github_app_webhook_secret, "bad-signature", payload)).to eq(:not_verified)
+      end
+    end
   end
 end

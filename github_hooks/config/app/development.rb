@@ -11,6 +11,7 @@ App.configure do
 
   config.github_app_id = SemaphoreConfig.github_app_id
   config.github_secret_id = SemaphoreConfig.github_secret_id
+  config.github_app_webhook_secret = SemaphoreConfig.github_app_webhook_secret
 
   config.bitbucket_app_id = SemaphoreConfig.bitbucket_app_id
   config.bitbucket_secret_id = SemaphoreConfig.bitbucket_secret_id

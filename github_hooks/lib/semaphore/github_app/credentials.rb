@@ -4,6 +4,7 @@ module Semaphore::GithubApp::Credentials
   @github_application_id = nil
   @github_client_id = nil
   @github_client_secret = nil
+  @github_app_webhook_secret = nil
 
   def self.private_key
     @private_key ||= Local.pem || InstanceConfigClient.pem
@@ -23,6 +24,10 @@ module Semaphore::GithubApp::Credentials
 
   def self.github_client_secret
     @github_client_secret ||= InstanceConfigClient.github_client_secret || Local.github_client_secret
+  end
+
+  def self.github_app_webhook_secret
+    @github_app_webhook_secret ||= InstanceConfigClient.github_app_webhook_secret || Local.github_app_webhook_secret
   end
 
   class Local
@@ -46,6 +51,10 @@ module Semaphore::GithubApp::Credentials
 
     def self.github_client_secret
       App.github_secret_id.presence
+    end
+
+    def self.github_app_webhook_secret
+      App.github_app_webhook_secret.presence
     end
   end
 
@@ -90,6 +99,10 @@ module Semaphore::GithubApp::Credentials
 
     def self.github_client_id
       get_field("client_id")
+    end
+
+    def self.github_app_webhook_secret
+      get_field("webhook_secret")
     end
 
     def self.github_client_secret

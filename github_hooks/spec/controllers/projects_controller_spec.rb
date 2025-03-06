@@ -26,6 +26,9 @@ RSpec.describe ProjectsController, :type => :controller do
     context "when GitHub hook" do
       let(:workflow) { double(Workflow, :id => 111, :update_attribute => nil) }
       let(:payload) { RepoHost::Github::Responses::Payload.post_receive_hook_pull_request }
+      let(:signature) do
+        "sha256=#{OpenSSL::HMAC.hexdigest(OpenSSL::Digest.new("sha256"), "secret", payload)}"
+      end
       let(:payload_request) do
         body = StringIO.new
         body.puts payload
@@ -34,7 +37,7 @@ RSpec.describe ProjectsController, :type => :controller do
                  "User-Agent" => "GitHub-Hookshot/xxx",
                  "X-Github-Event" => event,
                  "X-GitHub-Hook-Installation-Target-Type" => installation_target_type,
-                 "X-Hub-Signature-256" => "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
+                 "X-Hub-Signature-256" => signature
                }, :body => body, :raw_post => "Hello, World!")
       end
 
@@ -42,6 +45,7 @@ RSpec.describe ProjectsController, :type => :controller do
         allow(controller).to receive(:repo_host_request) { payload_request }
         allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook).and_return(workflow)
         allow(Semaphore::RepoHost::Hooks::Handler).to receive(:enqueue_job)
+        allow(Semaphore::GithubApp::Credentials).to receive(:github_app_webhook_secret).and_return("secret")
 
         @organization = FactoryBot.create(:organization)
         @project = FactoryBot.create(:project,
@@ -110,7 +114,7 @@ RSpec.describe ProjectsController, :type => :controller do
 
         it "calls execute on post commit service" do
           expect(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook).and_return(workflow)
-          expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_async).with(111, "Hello, World!", "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17", 0)
+          expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_async).with(111, "Hello, World!", signature, 0)
 
           post_payload(payload)
         end
@@ -148,41 +152,42 @@ RSpec.describe ProjectsController, :type => :controller do
 
       context "when issue comment event occurs" do
         let(:event) { "issue_comment" }
+        let(:payload) { RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment }
 
         it "doesn't required authenticated_user" do
           expect(controller).not_to receive(:authenticate_user!)
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "doesn't publish event" do
           expect(Tackle).not_to receive(:publish)
           expect(Semaphore::GithubApp::Collaborators::Worker).not_to receive(:perform_async)
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "saves the hook payload" do
           expect(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "calls execute on post commit service" do
           expect(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook).and_return(workflow)
-          expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_async).with(111, "Hello, World!", "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17", 0)
+          expect(Semaphore::RepoHost::Hooks::Handler::Worker).to receive(:perform_async).with(111, "Hello, World!", signature, 0)
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "saves workflow's result as OK" do
           expect(workflow).to receive(:update_attribute).with(:result, Workflow::RESULT_OK)
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "responds with OK" do
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
 
           expect(response).to be_ok
         end
@@ -190,19 +195,19 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "increments the handled hooks count" do
           expect(Watchman).to receive(:increment).with("IncommingHooks.processed", { external: true }).and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
 
         it "increments the external metric for hooks count" do
           expect(Watchman).to receive(:increment).with("IncommingHooks.received", { external: true }).and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
+          post_payload(payload)
         end
       end
 
@@ -271,9 +276,10 @@ RSpec.describe ProjectsController, :type => :controller do
       context "when repository event occurs" do
         let(:event) { "repository" }
         let(:installation_target_type) { "integration" }
+        let(:payload) { RepoHost::Github::Responses::Payload.repository_renamed_app_hook }
 
         it "response with head ok" do
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_app_hook)
+          post_payload(payload)
 
           expect(response).to be_ok
         end
@@ -281,7 +287,7 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_app_hook)
+          post_payload(payload)
         end
 
         it "increments the repository_webhook count" do
@@ -290,21 +296,22 @@ RSpec.describe ProjectsController, :type => :controller do
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.github_app_webhook").and_call_original
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.repository_webhook").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_app_hook)
+          post_payload(payload)
         end
 
         it "perform repository sync" do
           expect(Semaphore::GithubApp::Repositories::Worker).to receive(:perform_async).and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_app_hook)
+          post_payload(payload)
         end
       end
 
       context "when repository renamed event occurs" do
         let(:event) { "repository" }
+        let(:payload) { RepoHost::Github::Responses::Payload.repository_renamed_hook }
 
         it "response with head ok" do
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_hook)
+          post_payload(payload)
 
           expect(response).to be_ok
         end
@@ -312,13 +319,13 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_hook)
+          post_payload(payload)
         end
 
         it "increments the repository_renamed_webhook count" do
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.repository_webhook").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_hook)
+          post_payload(payload)
         end
 
         it "publish event" do
@@ -328,15 +335,16 @@ RSpec.describe ProjectsController, :type => :controller do
 
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.repository_renamed_hook)
+          post_payload(payload)
         end
       end
 
       context "when default branch changed event occurs" do
         let(:event) { "repository" }
+        let(:payload) { RepoHost::Github::Responses::Payload.default_branch_changed }
 
         it "response with head ok" do
-          post_payload(RepoHost::Github::Responses::Payload.default_branch_changed)
+          post_payload(payload)
 
           expect(response).to be_ok
         end
@@ -344,13 +352,13 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.default_branch_changed)
+          post_payload(payload)
         end
 
         it "increments the default_branch_changed count" do
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.repository_webhook").and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.default_branch_changed)
+          post_payload(payload)
         end
 
         it "publish event" do
@@ -360,15 +368,16 @@ RSpec.describe ProjectsController, :type => :controller do
 
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
 
-          post_payload(RepoHost::Github::Responses::Payload.default_branch_changed)
+          post_payload(payload)
         end
       end
 
       context "when github_app installation event occurs" do
         let(:event) { "installation" }
+        let(:payload) { RepoHost::Github::Responses::Payload.installation_created }
 
         it "response with head ok" do
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_created)
+          post_app_payload(payload)
 
           expect(response).to be_ok
         end
@@ -376,27 +385,28 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_created)
+          post_app_payload(payload)
         end
 
         it "increments the github_app_webhook count" do
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.github_app_webhook").and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_created)
+          post_app_payload(payload)
         end
 
         it "calls GithubApp hook processor" do
           expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_created)
+          post_app_payload(payload)
         end
       end
 
       context "when github_app installation_repositories event occurs" do
         let(:event) { "installation_repositories" }
+        let(:payload) { RepoHost::Github::Responses::Payload.installation_repositories_added }
 
         it "response with head ok" do
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_repositories_added)
+          post_app_payload(payload)
 
           expect(response).to be_ok
         end
@@ -404,19 +414,19 @@ RSpec.describe ProjectsController, :type => :controller do
         it "measures the execution duration" do
           expect(Watchman).to receive(:benchmark).with("repo_host_post_commit_hooks.controller.duration").and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_repositories_added)
+          post_app_payload(payload)
         end
 
         it "increments the github_app_webhook count" do
           expect(Watchman).to receive(:increment).with("repo_host_post_commit_hooks.controller.github_app_webhook").and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_repositories_added)
+          post_app_payload(payload)
         end
 
         it "calls GithubApp hook processor" do
           expect(Semaphore::GithubApp::Hook).to receive(:process).and_call_original
 
-          post_app_payload(RepoHost::Github::Responses::Payload.installation_repositories_added)
+          post_app_payload(payload)
         end
       end
 
