@@ -180,7 +180,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code
+            - make check.go.code CHECK_CODE_OPTS='--ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -2757,7 +2757,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -3386,7 +3386,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps

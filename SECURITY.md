@@ -7,7 +7,7 @@ At Semaphore, we take security seriously. If you believe you have found a securi
 ### How to Report
 
 Please send reports about any security related issues you find to:
-**security@semaphoreci.com**
+**support+security@semaphoreci.com**
 
 Please provide as much information as possible, including:
 
