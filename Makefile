@@ -57,8 +57,7 @@ ifneq ($(CI),)
 	FORMAT_ARGS?=--dry-run --check-formatted
 endif
 
-DOCKERHUB_RELEASE_TAG?=$(shell git rev-list -1 HEAD -- .)
-GCR_RELEASE_TAG?=$(SEMAPHORE_WORKFLOW_ID)-sha-$(SEMAPHORE_GIT_SHA)
+RELEASE_TAG?=$(shell git rev-list -1 HEAD -- .)
 BUILDKIT_INLINE_CACHE=1
 
 #
@@ -152,10 +151,21 @@ tag:
 # If MIX_ENV is set, we're dealing with an Elixir application,
 # so we need to create the 'deps' and '_build' folders.
 #
-build: pull
+build:
 ifneq ($(MIX_ENV),)
 	mkdir -p deps _build
 endif
+ifeq ($(NO_BUILD_CACHE),true)
+	docker build -f Dockerfile \
+		--target $(DOCKER_BUILD_TARGET) \
+		--progress $(DOCKER_BUILD_PROGRESS) \
+		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
+		--build-arg APP_NAME=$(APP_NAME) \
+		--build-arg BUILD_ENV=$(BUILD_ENV) \
+		-t $(IMAGE):$(IMAGE_TAG) \
+		$(DOCKER_BUILD_PATH)
+else
+	$(MAKE) pull
 	docker build -f Dockerfile \
 		--target $(DOCKER_BUILD_TARGET) \
 		--progress $(DOCKER_BUILD_PROGRESS) \
@@ -166,6 +176,7 @@ endif
 		--cache-from=$(REGISTRY_HOST)/$(MAIN_IMAGE):$(IMAGE_TAG) \
 		-t $(IMAGE):$(IMAGE_TAG) \
 		$(DOCKER_BUILD_PATH)
+endif
 
 #
 # Development operations
@@ -248,33 +259,20 @@ configure.sign:
 	pip install google-cloud-iam && \
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
-gcloud.configure:
-	gcloud auth activate-service-account $(GCP_REGISTRY_WRITER_EMAIL) --key-file ~/gce-registry-writer-key.json
-	gcloud --quiet auth configure-docker
+registry.push:
+	docker tag $(IMAGE):$(IMAGE_TAG) $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
+	docker push $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
 
-gcloud.push:
-	docker tag $(IMAGE):$(IMAGE_TAG) us.gcr.io/$(GOOGLE_PROJECT_NAME)/$(APP_NAME):$(GCR_RELEASE_TAG)
-	docker push us.gcr.io/$(GOOGLE_PROJECT_NAME)/$(APP_NAME):$(GCR_RELEASE_TAG)
-
-gcloud.sign: cosign.install
+registry.sign: cosign.install
 	cosign sign -y \
 		--identity-token $$(cat /tmp/sigstore-token) \
-		$(shell docker inspect --format='{{index .RepoDigests 0}}' us.gcr.io/$(GOOGLE_PROJECT_NAME)/$(APP_NAME):$(GCR_RELEASE_TAG))
+		$(shell docker inspect --format='{{index .RepoDigests 0}}' $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG))
 
-ghcr.configure:
+registry.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 
-ghcr.helm.configure:
+registry.helm.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | helm registry login ghcr.io/semaphoreio --username "$(GITHUB_USERNAME)" --password-stdin
-
-ghcr.push:
-	docker tag $(IMAGE):$(IMAGE_TAG) ghcr.io/semaphoreio/$(APP_NAME):$(DOCKERHUB_RELEASE_TAG)
-	docker push ghcr.io/semaphoreio/$(APP_NAME):$(DOCKERHUB_RELEASE_TAG)
-
-ghcr.sign: cosign.install
-	cosign sign -y \
-		--identity-token $$(cat /tmp/sigstore-token) \
-		$(shell docker inspect --format='{{index .RepoDigests 0}}' ghcr.io/semaphoreio/$(APP_NAME):$(DOCKERHUB_RELEASE_TAG))
 
 cosign.install:
 	curl -O -L "https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64" && \
