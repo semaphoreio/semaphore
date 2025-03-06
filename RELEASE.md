@@ -33,7 +33,7 @@ git push origin v1.0.0
 You can use [yq](https://mikefarah.gitbook.io/yq) to update all `change_in` directives in the Semaphore YAML:
 
 ```bash
-yq e -i '(.blocks.[].run.when) |= (. | sub("main", "release/1.0.x"))' .semaphore/semaphore.yml
+yq e -i '(.blocks.[].run.when) |= (. | sub("main", "release/v1.0.x"))' .semaphore/semaphore.yml
 ```
 
 #### Generate changelog
