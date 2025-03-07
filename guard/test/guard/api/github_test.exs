@@ -44,7 +44,7 @@ defmodule Guard.Api.GithubTest do
           {:ok,
            %Tesla.Env{status: 200, body: %{"access_token" => "new_token", "expires_in" => 3600}}}
 
-        %{method: :post, url: "https://api.github.com/applications/github_client_id/token"} ->
+        %{method: :post, url: "https://api.github.com/applications" <> _client_id_path} ->
           {:ok, %Tesla.Env{status: 404, body: %{}}}
       end)
 
