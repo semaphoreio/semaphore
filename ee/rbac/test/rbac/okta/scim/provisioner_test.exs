@@ -20,7 +20,14 @@ defmodule Rbac.Okta.Scim.ProvisionerTest do
     {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
     {:ok, integration} =
-      Rbac.Okta.Integration.create_or_update(@org_id, @creator_id, @sso_url, @okta_issuer, cert)
+      Rbac.Okta.Integration.create_or_update(
+        @org_id,
+        @creator_id,
+        @sso_url,
+        @okta_issuer,
+        cert,
+        false
+      )
 
     {:ok, %{integration: integration}}
   end

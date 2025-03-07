@@ -18,6 +18,7 @@ defmodule Rbac.Okta.Integration do
         sso_url,
         saml_issuer,
         certificate,
+        jit_provisioning_enabled,
         idempotency_token \\ Ecto.UUID.generate()
       ) do
     with {:ok, fingerprint} <- Certificate.fingerprint(certificate),
@@ -28,6 +29,7 @@ defmodule Rbac.Okta.Integration do
              sso_url: sso_url,
              saml_issuer: saml_issuer,
              saml_certificate_fingerprint: Base.encode64(fingerprint),
+             jit_provisioning_enabled: jit_provisioning_enabled,
              idempotency_token: idempotency_token
            ) do
       {:ok, integration}

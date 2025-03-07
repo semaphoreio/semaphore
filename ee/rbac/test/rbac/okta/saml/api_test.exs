@@ -47,7 +47,8 @@ defmodule Rbac.Okta.Saml.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, %{integration: integration}}
