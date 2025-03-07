@@ -61,14 +61,14 @@ defmodule Guard.Utils.OAuth do
 
     if valid_token?(expires_at) do
       Cachex.put(:token_cache, token_cache_key(repo_host_account), {token, expires_at})
-      update_refresh_token(repo_host_account, refresh_token)
+      update_token_pair(repo_host_account, token, refresh_token)
     end
 
     {:ok, {token, expires_at}}
   end
 
-  defp update_refresh_token(repo_host_account, refresh_token) do
-    Guard.FrontRepo.RepoHostAccount.update_refresh_token(repo_host_account, refresh_token)
+  defp update_token_pair(repo_host_account, token, refresh_token) do
+    Guard.FrontRepo.RepoHostAccount.update_token_pair(repo_host_account, token, refresh_token)
   end
 
   def calc_expires_at(nil), do: nil

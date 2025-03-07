@@ -39,7 +39,7 @@ defmodule Guard.Api.Bitbucket do
 
     case Cachex.get(:token_cache, cache_key) do
       {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
-        if valid_token?(expires_at) do
+        if OAuth.valid_token?(expires_at) do
           {:ok, {token, expires_at}}
         else
           fetch_and_cache_token(repo_host_account)
@@ -73,7 +73,7 @@ defmodule Guard.Api.Bitbucket do
 
     case Tesla.post(client, @oauth2_path, body_params) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
-        handle_ok_token_response(repo_host_account, body)
+        OAuth.handle_ok_token_response(repo_host_account, body)
 
       {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
         Logger.warn("Failed to refresh token, account might be revoked")
@@ -86,27 +86,6 @@ defmodule Guard.Api.Bitbucket do
         Logger.error("Error fetching token: #{inspect(error)}")
         {:error, :network_error}
     end
-  end
-
-  defp handle_ok_token_response(repo_host_account, body) do
-    body =
-      if is_binary(body) do
-        Jason.decode!(body)
-      else
-        body
-      end
-
-    token = body["access_token"]
-    expires_in = body["expires_in"]
-
-    current_time = DateTime.utc_now() |> DateTime.to_unix()
-    expires_at = current_time + expires_in
-
-    if valid_token?(expires_at) do
-      Cachex.put(:token_cache, OAuth.token_cache_key(repo_host_account), {token, expires_at})
-    end
-
-    {:ok, {token, expires_at}}
   end
 
   defp build_token_client do
@@ -124,11 +103,5 @@ defmodule Guard.Api.Bitbucket do
       {Tesla.Middleware.BaseUrl, "#{@api_base_url}/2.0"},
       Tesla.Middleware.JSON
     ])
-  end
-
-  defp valid_token?(expires_at) do
-    current_time = DateTime.utc_now() |> DateTime.to_unix()
-    # 5 minutes before expiration
-    expires_at - 300 > current_time
   end
 end

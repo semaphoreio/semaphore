@@ -184,8 +184,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_refresh_token(rha, refresh_token) do
-    update_account(%{refresh_token: refresh_token}, rha)
+  def update_token_pair(rha, token, refresh_token) do
+    update_account(%{token: token, refresh_token: refresh_token}, rha)
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
