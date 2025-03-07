@@ -49,7 +49,7 @@ spec:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
             - name: SKIP_PFC
-              value: "true"
+              value: {{ eq .Values.global.edition "ce" | quote }}
             - name: SKIP_PROMOTIONS
               value: {{ eq .Values.global.edition "ce" | quote }}
             - name: REPO_PROXY_NEW_GRPC_URL
