@@ -1,4 +1,7 @@
 global:
+  # Edition of Semaphore to install (ce or ee)
+  edition: "ce"
+
   domain:
     ip: ""
     name: ""
@@ -140,9 +143,6 @@ global:
 
   gitlabApp:
     secretName: ""
-
-tags:
-  enterprise: false
 
 toolbox:
   version: "v1.22.5"

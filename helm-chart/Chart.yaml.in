@@ -27,8 +27,7 @@ dependencies:
   - name: gofer
     version: "@chartVersion@"
     repository: "file://../ee/gofer/helm"
-    tags:
-      - enterprise
+    condition: global.edition=ee
   - name: secrethub
     version: "@chartVersion@"
     repository: "file://../secrethub/helm"
@@ -110,10 +109,8 @@ dependencies:
   - name: pre-flight-checks-hub
     version: "@chartVersion@"
     repository: "file://../ee/pre_flight_checks/helm"
-    tags:
-      - enterprise
+    condition: global.edition=ee
   - name: velocity-hub
     version: "@chartVersion@"
     repository: "file://../ee/velocity/helm"
-    tags:
-      - enterprise
+    condition: global.edition=ee
