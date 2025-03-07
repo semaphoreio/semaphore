@@ -48,6 +48,12 @@ defmodule Guard.Api.GithubTest do
     end)
 
     assert {:ok, {"new_token", _}} = Github.user_token(rha)
+
+    updated_rha =
+      Guard.FrontRepo.RepoHostAccount
+      |> Guard.FrontRepo.get!(rha.id)
+
+    assert updated_rha.token == "new_token"
   end
 
   defp valid_expires_at do
