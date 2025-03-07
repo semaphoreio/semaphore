@@ -1,10 +1,10 @@
 import { render, createContext, Fragment } from "preact";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { Notice } from "js/notice";
 import { useContext, useState } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import styled from "styled-components";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { Notice } from "js/notice";
 
 export default function ({
   dom,
@@ -26,10 +26,8 @@ export default function ({
 }
 
 const Button = () => {
-
   const config = useContext(Config);
   const [syncing, setSyncing] = useState(false);
-
 
   const refreshPeople = () => {
     setSyncing(true);
@@ -46,10 +44,7 @@ const Button = () => {
       });
   };
 
-
   return (
-
-
     <Fragment>
       <toolbox.Tooltip
         anchor={
@@ -68,7 +63,6 @@ const Button = () => {
   );
 };
 
-
 export interface RawConfig {
   config: string;
 }
@@ -82,7 +76,6 @@ export class ConfigState {
   syncUrl: toolbox.APIRequest.Url<{
     message: string;
   }>;
-
 
   static fromJSON(rawJson: RawConfig): ConfigState {
     const config = this.default();
@@ -100,7 +93,6 @@ export class ConfigState {
 }
 
 export const Config = createContext<ConfigState>(ConfigState.default());
-
 
 const Spinner = styled.div`
   @keyframes spin {
