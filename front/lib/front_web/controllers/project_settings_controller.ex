@@ -470,7 +470,7 @@ defmodule FrontWeb.ProjectSettingsController do
       else
         {:error, message} when is_binary(message) ->
           conn
-          |> put_flash(:alert, message)
+          |> put_flash(:alert, URI.decode(message))
           |> redirect(to: project_settings_path(conn, :general, project.name))
 
         {:error, owner_changeset} ->
@@ -494,7 +494,7 @@ defmodule FrontWeb.ProjectSettingsController do
 
         {:error, message} ->
           conn
-          |> put_flash(:alert, message)
+          |> put_flash(:alert, URI.decode(message))
           |> redirect(to: project_settings_path(conn, :repository, project.name))
       end
     end)
@@ -512,7 +512,7 @@ defmodule FrontWeb.ProjectSettingsController do
 
         {:error, message} ->
           conn
-          |> put_flash(:alert, message)
+          |> put_flash(:alert, URI.decode(message))
           |> redirect(to: project_settings_path(conn, :repository, project.name))
       end
     end)
@@ -538,7 +538,7 @@ defmodule FrontWeb.ProjectSettingsController do
 
         {:error, :message, message} ->
           conn
-          |> put_flash(:alert, message)
+          |> put_flash(:alert, URI.decode(message))
           |> redirect(to: project_settings_path(conn, source, project.name))
 
         {:error, :grpc_req_failed} ->

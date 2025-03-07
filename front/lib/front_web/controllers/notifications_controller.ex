@@ -91,12 +91,12 @@ defmodule FrontWeb.NotificationsController do
 
           {:error, %{status: :invalid_argument, message: message}} ->
             conn
-            |> put_flash(:alert, message)
+            |> put_flash(:alert, URI.decode(message))
             |> redirect(to: notifications_path(conn, :new))
 
           {:error, %{status: 3, message: message}} ->
             conn
-            |> put_flash(:alert, message)
+            |> put_flash(:alert, URI.decode(message))
             |> redirect(to: notifications_path(conn, :new))
 
           {:error, %{message: message, status: 9}} ->
@@ -168,12 +168,12 @@ defmodule FrontWeb.NotificationsController do
 
           {:error, %{status: :invalid_argument, message: message}} ->
             conn
-            |> put_flash(:alert, message)
+            |> put_flash(:alert, URI.decode(message))
             |> redirect(to: notifications_path(conn, :edit, id))
 
           {:error, %{status: 3, message: message}} ->
             conn
-            |> put_flash(:alert, message)
+            |> put_flash(:alert, URI.decode(message))
             |> redirect(to: notifications_path(conn, :edit, id))
 
           {:error, %{message: message, status: 9}} ->

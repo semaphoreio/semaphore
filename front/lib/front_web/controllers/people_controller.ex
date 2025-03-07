@@ -590,7 +590,7 @@ defmodule FrontWeb.PeopleController do
 
       {:error, message} ->
         conn
-        |> put_flash(:alert, message)
+        |> put_flash(:alert, URI.decode(message))
         |> redirect(to: people_path(conn, :sync))
     end
   end
