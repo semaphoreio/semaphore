@@ -170,6 +170,123 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
     assert schedule_params.triggered_by == :SCHEDULE
   end
 
+  test "schedule() - schedule params are correctly formed for gitlab in JustRun case", ctx do
+    alias Scheduler.Actions.ScheduleWfImpl
+
+    use_mock_workflow_service()
+    mock_workflow_service_response("just_run")
+    reset_mock_feature_service()
+    mock_feature_response("just_run")
+    use_mock_project_service()
+    mock_projecthub_response("ok")
+    use_mock_repository_service()
+    mock_repositoryhub_response("ok")
+
+    ts_before = DateTime.utc_now()
+    timestamp = Timex.shift(ts_before, minutes: -1)
+
+    periodic =
+      ctx.periodic
+      |> Periodics.changeset("v1.1", %{
+        parameters: [
+          %{name: "param_gitlab1", required: true, default_value: "value1"},
+          %{name: "param_gitlab2", required: false, default_value: "value2"},
+          %{name: "param_gitlab3", required: false, default_value: "value3"},
+          %{name: "param_gitlab4", required: false}
+        ]
+      })
+      |> Scheduler.PeriodicsRepo.update!()
+
+    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+    :timer.sleep(2_000)
+
+    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+    assert tr.scheduling_status == "passed"
+    assert tr.scheduled_workflow_id == "wf_id"
+    assert tr.error_description == nil
+
+    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+             %{
+               "param_gitlab1" => "value1",
+               "param_gitlab2" => "value2",
+               "param_gitlab3" => "value3"
+             }
+
+    assert tr.attempts == 1
+
+    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+
+    repository = %{id: UUID.uuid4(), integration_type: :GITLAB}
+
+    assert {:ok, schedule_params} =
+             ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+
+    assert schedule_params.service == :GITLAB
+    assert schedule_params.requester_id == periodic.requester_id
+    assert schedule_params.triggered_by == :SCHEDULE
+  end
+
+  test "schedule() - schedule params are correctly formed for git agnostic in JustRun case",
+       ctx do
+    alias Scheduler.Actions.ScheduleWfImpl
+
+    use_mock_workflow_service()
+    mock_workflow_service_response("just_run")
+    reset_mock_feature_service()
+    mock_feature_response("just_run")
+    use_mock_project_service()
+    mock_projecthub_response("ok")
+    use_mock_repository_service()
+    mock_repositoryhub_response("ok")
+
+    ts_before = DateTime.utc_now()
+    timestamp = Timex.shift(ts_before, minutes: -1)
+
+    periodic =
+      ctx.periodic
+      |> Periodics.changeset("v1.1", %{
+        parameters: [
+          %{name: "param_git1", required: true, default_value: "value1"},
+          %{name: "param_git2", required: false, default_value: "value2"},
+          %{name: "param_git3", required: false, default_value: "value3"},
+          %{name: "param_git4", required: false}
+        ]
+      })
+      |> Scheduler.PeriodicsRepo.update!()
+
+    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+    :timer.sleep(2_000)
+
+    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+    assert tr.scheduling_status == "passed"
+    assert tr.scheduled_workflow_id == "wf_id"
+    assert tr.error_description == nil
+
+    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+             %{
+               "param_git1" => "value1",
+               "param_git2" => "value2",
+               "param_git3" => "value3"
+             }
+
+    assert tr.attempts == 1
+
+    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+
+    repository = %{id: UUID.uuid4(), integration_type: :GIT}
+
+    assert {:ok, schedule_params} =
+             ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+
+    assert schedule_params.service == :GIT
+    assert schedule_params.requester_id == periodic.requester_id
+    assert schedule_params.triggered_by == :SCHEDULE
+  end
+
   test "schedule() - when project service fails for JustRun case then workflow is not scheduled",
        ctx do
     use_mock_workflow_service()

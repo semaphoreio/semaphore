@@ -140,6 +140,8 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
   defp schedule_workflow_service_type(:GITHUB_OAUTH_TOKEN), do: :GIT_HUB
   defp schedule_workflow_service_type(:GITHUB_APP), do: :GIT_HUB
   defp schedule_workflow_service_type(:BITBUCKET), do: :BITBUCKET
+  defp schedule_workflow_service_type(:GITLAB), do: :GITLAB
+  defp schedule_workflow_service_type(:GIT), do: :GIT
 
   defp parameter_values_to_env_vars(parameter_values) do
     Enum.into(parameter_values, [], &parameter_value_to_env_var/1)

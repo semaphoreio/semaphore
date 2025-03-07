@@ -51,7 +51,7 @@ class Policy::Gosec < Policy
       {
         name: "gosec",
         install: Proc.new do
-          `curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sudo sh -s -- -b /usr/local/bin v2.18.2`
+          `curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sudo sh -s -- -b /usr/local/bin v2.22.1`
           $?.exitstatus
         end
       }

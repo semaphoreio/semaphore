@@ -180,7 +180,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code
+            - make check.go.code CHECK_CODE_OPTS='--ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -2757,7 +2757,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -3386,7 +3386,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -3686,92 +3686,6 @@ blocks:
             - make test
             - cache store
 promotions:
-  - name: Push Image - Production
-    pipeline_file: push-image.yml
-    deployment_target: Production
-    parameters:
-      env_vars:
-        - name: SERVICE
-          required: true
-          options:
-            - "APIv1alpha"
-            - "APIv2"
-            - "ArtifactHub"
-            - "Audit"
-            - "Badge"
-            - "BranchHub"
-            - "Dashboardhub"
-            - "Encryptor"
-            - "Front"
-            - "GithubNotifier"
-            - "Gofer"
-            - "Guard"
-            - "HooksProcessor"
-            - "HooksReceiver"
-            - "Keycloak image"
-            - "Keycloak setup"
-            - "Loghub2"
-            - "Monolith"
-            - "Notifications"
-            - "PeriodicScheduler"
-            - "Plumber"
-            - "PreFlightChecks"
-            - "ProjectHub REST API"
-            - "ProjectHub"
-            - "PublicApiGateway"
-            - "RBAC CE"
-            - "RBAC EE"
-            - "Repohub"
-            - "RepositoryHub"
-            - "Scouter"
-            - "SecretHub"
-            - "Self Hosted Hub"
-            - "Statsd"
-            - "Velocity"
-            - "Zebra"
-  - name: Push Image
-    pipeline_file: push-image.yml
-    deployment_target: PreProduction
-    parameters:
-      env_vars:
-        - name: SERVICE
-          required: true
-          options:
-            - "APIv1alpha"
-            - "APIv2"
-            - "ArtifactHub"
-            - "Audit"
-            - "Badge"
-            - "BranchHub"
-            - "Dashboardhub"
-            - "Encryptor"
-            - "Front"
-            - "GithubHooks"
-            - "GithubNotifier"
-            - "Gofer"
-            - "Guard"
-            - "HooksProcessor"
-            - "HooksReceiver"
-            - "Keycloak image"
-            - "Keycloak setup"
-            - "Loghub2"
-            - "Notifications"
-            - "PeriodicScheduler"
-            - "Plumber"
-            - "PreFlightChecks"
-            - "ProjectHub REST API"
-            - "ProjectHub"
-            - "PublicApiGateway"
-            - "RBAC CE"
-            - "RBAC EE"
-            - "Repohub"
-            - "RepositoryHub"
-            - "Scouter"
-            - "SecretHub"
-            - "Self Hosted Hub"
-            - "Statsd"
-            - "Velocity"
-            - "Zebra"
   - name: Generate Helm Chart
     pipeline_file: generate-helm-chart.yml
     deployment_target: github-packages

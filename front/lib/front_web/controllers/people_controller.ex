@@ -949,7 +949,10 @@ defmodule FrontWeb.PeopleController do
     Watchman.benchmark("people.refresh_organization.duration", fn ->
       Auth.refresh_people(conn.assigns.organization_id)
 
-      text(conn, "Successfully triggered refreshing collaborators.")
+      conn
+      |> json(%{
+        message: "Successfully triggered refreshing collaborators."
+      })
     end)
   end
 
