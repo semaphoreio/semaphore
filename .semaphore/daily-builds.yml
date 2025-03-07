@@ -3421,6 +3421,7 @@ promotions:
           options:
             - gke
             - single-vm
+          default_value: single-vm
   - name: Cloud Environment - E2E
     pipeline_file: env-e2e.yml
     deployment_target: provision-test-env
@@ -3443,3 +3444,4 @@ promotions:
           options:
             - gke
             - single-vm
+          default_value: single-vm
