@@ -9,7 +9,10 @@ defmodule Rbac.GrpcServers.OktaServer do
     SetUpResponse,
     GenerateScimTokenResponse,
     ListResponse,
-    ListUsersResponse
+    ListUsersResponse,
+    SetUpGroupMappingResponse,
+    ListGroupMappingsResponse,
+    GroupMapping
   }
 
   @manage_okta_permission "organization.okta.manage"
@@ -121,6 +124,73 @@ defmodule Rbac.GrpcServers.OktaServer do
 
         {:error, :not_found} ->
           grpc_error!(:not_found, "Integration does not exist")
+      end
+    end)
+  end
+
+  def set_up_group_mapping(req, _stream) do
+    observe("set_up_group_mapping", fn ->
+      # Validate that we received a valid UUID for org_id
+      validate_uuid!(req.org_id)
+
+      # Convert from protobuf messages to our internal format (list of maps)
+      mappings =
+        Enum.map(req.mappings, fn mapping ->
+          %{
+            idp_group_id: mapping.okta_group_id,
+            semaphore_group_id: mapping.semaphore_group_id
+          }
+        end)
+
+      case Rbac.Okta.IdpGroupMappings.create_or_update(req.org_id, mappings) do
+        {:ok, _mapping} ->
+          Logger.info("Group mappings created/updated for org #{req.org_id}")
+          %SetUpGroupMappingResponse{}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          Logger.error(
+            "Error while setting up group mappings for org #{req.org_id}: #{inspect(changeset)}"
+          )
+
+          grpc_error!(
+            :failed_precondition,
+            "Invalid group mappings: #{inspect(changeset.errors)}"
+          )
+
+        error ->
+          Logger.error("Unknown error while setting up group mappings: #{inspect(error)}")
+          grpc_error!(:unknown, "Unknown error while setting up group mappings")
+      end
+    end)
+  end
+
+  def list_group_mappings(req, _stream) do
+    observe("list_group_mappings", fn ->
+      validate_uuid!(req.org_id)
+
+      case Rbac.Okta.IdpGroupMappings.list_mappings(req.org_id) do
+        {:ok, mappings} ->
+          # Convert from our internal format to protobuf messages
+          group_mappings =
+            Enum.map(mappings, fn %{idp_group_id: okta_id, semaphore_group_id: semaphore_id} ->
+              %GroupMapping{
+                okta_group_id: okta_id,
+                semaphore_group_id: semaphore_id
+              }
+            end)
+
+          %ListGroupMappingsResponse{mappings: group_mappings}
+
+        {:error, :not_found} ->
+          # Return an empty list if no mappings exist
+          %ListGroupMappingsResponse{mappings: []}
+
+        error ->
+          Logger.error(
+            "Error while listing group mappings for org #{req.org_id}: #{inspect(error)}"
+          )
+
+          grpc_error!(:unknown, "Unknown error while listing group mappings")
       end
     end)
   end

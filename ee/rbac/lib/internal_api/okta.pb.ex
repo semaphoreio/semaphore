@@ -52,6 +52,46 @@ defmodule InternalApi.Okta.GenerateScimTokenResponse do
   field(:token, 1, type: :string)
 end
 
+defmodule InternalApi.Okta.SetUpGroupMappingRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:mappings, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.SetUpGroupMappingResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+end
+
+defmodule InternalApi.Okta.ListGroupMappingsRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+end
+
+defmodule InternalApi.Okta.ListGroupMappingsResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:mappings, 1, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.GroupMapping do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:semaphore_group_id, 1, type: :string, json_name: "semaphoreGroupId")
+  field(:okta_group_id, 2, type: :string, json_name: "oktaGroupId")
+end
+
 defmodule InternalApi.Okta.ListRequest do
   @moduledoc false
 
@@ -117,6 +157,18 @@ defmodule InternalApi.Okta.Okta.Service do
   rpc(:ListUsers, InternalApi.Okta.ListUsersRequest, InternalApi.Okta.ListUsersResponse)
 
   rpc(:Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse)
+
+  rpc(
+    :SetUpGroupMapping,
+    InternalApi.Okta.SetUpGroupMappingRequest,
+    InternalApi.Okta.SetUpGroupMappingResponse
+  )
+
+  rpc(
+    :ListGroupMappings,
+    InternalApi.Okta.ListGroupMappingsRequest,
+    InternalApi.Okta.ListGroupMappingsResponse
+  )
 end
 
 defmodule InternalApi.Okta.Okta.Stub do
