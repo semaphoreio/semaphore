@@ -5,6 +5,8 @@ defmodule Guard.Api.GithubTest do
   alias Guard.Utils.OAuth
 
   setup do
+    Application.put_env(:guard, :include_instance_config, false)
+
     {:ok, user} = Support.Factories.RbacUser.insert()
     {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
 
