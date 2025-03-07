@@ -45,7 +45,7 @@ defmodule Guard.Utils do
 end
 
 defmodule Guard.Utils.OAuth do
-  def handle_ok_token_response(repo_host_account, body) do
+  def handle_ok_token_response(repo_host_account, body, opts \\ [cache: true]) do
     body =
       if is_binary(body) do
         Jason.decode!(body)
@@ -60,8 +60,11 @@ defmodule Guard.Utils.OAuth do
     expires_at = calc_expires_at(expires_in)
 
     if valid_token?(expires_at) do
-      Cachex.put(:token_cache, token_cache_key(repo_host_account), {token, expires_at})
       update_token_pair(repo_host_account, token, refresh_token)
+    end
+
+    if opts[:cache] do
+      Cachex.put(:token_cache, token_cache_key(repo_host_account), {token, expires_at})
     end
 
     {:ok, {token, expires_at}}

@@ -38,33 +38,14 @@ defmodule Guard.Api.Github do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = OAuth.token_cache_key(repo_host_account)
-
-    case Cachex.get(:token_cache, cache_key) do
-      {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
-        if OAuth.valid_token?(expires_at) do
-          {:ok, {token, expires_at}}
-        else
-          handle_fetch_and_cache_token(repo_host_account)
-        end
-
-      _ ->
-        handle_static_token_or_fetch(repo_host_account)
+    if validate_token(repo_host_account.token) do
+      {:ok, {repo_host_account.token, nil}}
+    else
+      handle_fetch_token(repo_host_account)
     end
   end
 
-  defp handle_static_token_or_fetch(rha) do
-    case validate_token(rha.token) do
-      {:ok, true} ->
-        Cachex.put(:token_cache, OAuth.token_cache_key(rha), {rha.token, nil})
-        {:ok, {rha.token, nil}}
-
-      _ ->
-        handle_fetch_and_cache_token(rha)
-    end
-  end
-
-  defp handle_fetch_and_cache_token(repo_host_account) do
+  defp handle_fetch_token(repo_host_account) do
     {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:github)
 
     query_params = [
@@ -78,7 +59,7 @@ defmodule Guard.Api.Github do
 
     case Tesla.post(client, @oauth_path, nil, query: query_params) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
-        OAuth.handle_ok_token_response(repo_host_account, body)
+        OAuth.handle_ok_token_response(repo_host_account, body, cache: false)
 
       {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
         Logger.warning("Failed to refresh github token, account might be revoked")
