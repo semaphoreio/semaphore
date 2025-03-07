@@ -38,10 +38,9 @@ defmodule Guard.Api.Github do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    if validate_token(repo_host_account.token) do
-      {:ok, {repo_host_account.token, nil}}
-    else
-      handle_fetch_token(repo_host_account)
+    case validate_token(repo_host_account.token) do
+      {:ok, true} -> {:ok, {repo_host_account.token, nil}}
+      _ -> handle_fetch_token(repo_host_account)
     end
   end
 

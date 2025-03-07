@@ -33,14 +33,16 @@ defmodule Guard.Api.GithubTest do
   end
 
   describe "user_token/1" do
-    test "returns cached token when valid", %{repo_host_account: rha} do
-      cache_key = OAuth.token_cache_key(rha)
-      Cachex.put(:token_cache, cache_key, {"cached_token", valid_expires_at()})
+    test "returns current token when valid", %{repo_host_account: rha} do
+      Tesla.Mock.mock_global(fn
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
 
-      assert {:ok, {"cached_token", _}} = Github.user_token(rha)
+      assert {:ok, {"token", _}} = Github.user_token(rha)
     end
 
-    test "refreshes token when cache is expired", %{repo_host_account: rha} do
+    test "refreshes token when the current one is expired", %{repo_host_account: rha} do
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
           {:ok,
@@ -58,9 +60,5 @@ defmodule Guard.Api.GithubTest do
 
       assert updated_rha.token == "new_token"
     end
-  end
-
-  defp valid_expires_at do
-    (DateTime.utc_now() |> DateTime.to_unix()) + 3600
   end
 end
