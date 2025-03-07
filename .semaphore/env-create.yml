@@ -38,6 +38,9 @@ blocks:
     task:
       jobs:
         - name: 'Install Helm chart'
+          env_vars:
+            - name: SEMAPHORE_EDITION
+              value: ${{parameters.SEMAPHORE_EDITION}}
           commands:
             - make auth
             - terraform init
@@ -83,6 +86,12 @@ promotions:
           options:
             - gke
             - single-vm
+        - name: SEMAPHORE_EDITION
+          required: true
+          options:
+            - ce
+            - ee
+          default_value: ce
   - name: E2E
     pipeline_file: env-e2e.yml
     deployment_target: provision-test-env
@@ -105,3 +114,9 @@ promotions:
           options:
             - gke
             - single-vm
+        - name: SEMAPHORE_EDITION
+          required: true
+          options:
+            - ce
+            - ee
+          default_value: ce

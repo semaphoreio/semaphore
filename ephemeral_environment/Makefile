@@ -24,6 +24,7 @@ terraform.destroy:
 
 helm.install:
 	$(eval $(call check_defined,CLOUD_TEST_ENVIRONMENT_TYPE))
+	$(eval $(call check_defined,SEMAPHORE_EDITION))
 	cd $(ROOT_PATH)/scripts && ./install.sh
 
 dns.update:

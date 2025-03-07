@@ -12,6 +12,7 @@ global_job_config:
     commands:
       - checkout && cd e2e
       - make gcloud.auth
+      - export SEMAPHORE_EDITION=${{parameters.SEMAPHORE_EDITION}}
       - source scripts/test-setup.sh
   epilogue:
     always:
