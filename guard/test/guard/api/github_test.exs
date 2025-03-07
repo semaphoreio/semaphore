@@ -2,7 +2,6 @@ defmodule Guard.Api.GithubTest do
   use Guard.RepoCase
 
   alias Guard.Api.Github
-  alias Guard.Utils.OAuth
 
   setup do
     Application.put_env(:guard, :include_instance_config, false)
