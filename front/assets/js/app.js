@@ -293,9 +293,6 @@ export var App = {
     });
   },
   organization_okta: function () {
-    console.log("Starting JS component: organization_okta");
-    console.log(window.InjectedDataByBackend.OrganizationOktaConfig);
-
     OrganizationOktaGroupMappingApp({
       dom: document.getElementById("group-mapping-container"),
       config: window.InjectedDataByBackend.OrganizationOktaConfig

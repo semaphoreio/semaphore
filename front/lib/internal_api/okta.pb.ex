@@ -104,6 +104,69 @@ defmodule InternalApi.Okta.GenerateScimTokenResponse do
   field(:token, 1, type: :string)
 end
 
+defmodule InternalApi.Okta.SetUpGroupMappingRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          default_role_id: String.t(),
+          mappings: [InternalApi.Okta.GroupMapping.t()]
+        }
+  defstruct [:org_id, :default_role_id, :mappings]
+
+  field(:org_id, 1, type: :string)
+  field(:default_role_id, 2, type: :string)
+  field(:mappings, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.SetUpGroupMappingResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
+defmodule InternalApi.Okta.DescribeGroupMappingRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.Okta.DescribeGroupMappingResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          default_role_id: String.t(),
+          mappings: [InternalApi.Okta.GroupMapping.t()]
+        }
+  defstruct [:default_role_id, :mappings]
+
+  field(:default_role_id, 1, type: :string)
+  field(:mappings, 2, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.GroupMapping do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          semaphore_group_id: String.t(),
+          okta_group_id: String.t()
+        }
+  defstruct [:semaphore_group_id, :okta_group_id]
+
+  field(:semaphore_group_id, 1, type: :string)
+  field(:okta_group_id, 2, type: :string)
+end
+
 defmodule InternalApi.Okta.ListRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -188,6 +251,18 @@ defmodule InternalApi.Okta.Okta.Service do
   rpc(:List, InternalApi.Okta.ListRequest, InternalApi.Okta.ListResponse)
   rpc(:ListUsers, InternalApi.Okta.ListUsersRequest, InternalApi.Okta.ListUsersResponse)
   rpc(:Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse)
+
+  rpc(
+    :SetUpGroupMapping,
+    InternalApi.Okta.SetUpGroupMappingRequest,
+    InternalApi.Okta.SetUpGroupMappingResponse
+  )
+
+  rpc(
+    :DescribeGroupMapping,
+    InternalApi.Okta.DescribeGroupMappingRequest,
+    InternalApi.Okta.DescribeGroupMappingResponse
+  )
 end
 
 defmodule InternalApi.Okta.Okta.Stub do

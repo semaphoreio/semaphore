@@ -1,5 +1,9 @@
 import { render, createContext } from "preact";
-import { useState, useContext } from "preact/hooks";
+import { useState, useContext, useEffect } from "preact/hooks";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { Notice } from "js/notice";
 
 interface group {
   id: string;
@@ -14,13 +18,13 @@ interface role {
 export class State {
   groups: group[];
   roles: role[];
+  defaultRoleId: string;
   saveUrl: string;
   cancelUrl: string;
+  mappings?: any[];
 
   static fromJSON(configJSON: any): State {
     const config = State.default();
-
-    console.log(`configJSON:`, configJSON);
 
     config.groups = configJSON.groups.map((group: any) => {
       return {
@@ -38,6 +42,8 @@ export class State {
 
     config.saveUrl = configJSON.saveUrl;
     config.cancelUrl = configJSON.cancelUrl;
+    config.defaultRoleId = configJSON.defaultRoleId;
+    config.mappings = configJSON.mappings || [];
 
     return config;
   }
@@ -67,7 +73,18 @@ const App = () => {
     { idpGroupId: ``, semaphoreGroupId: `` },
     { idpGroupId: ``, semaphoreGroupId: `` }
   ]);
-  const [defaultRole, setDefaultRole] = useState(`Member`);
+  const [defaultRole, setDefaultRole] = useState(config.defaultRoleId || ``);
+
+  useEffect(() => {
+    // Initialize mappings from the server data if available
+    if (config.mappings && config.mappings.length > 0) {
+      const initialMappings = config.mappings.map((mapping: any) => ({
+        idpGroupId: mapping.okta_group_id || ``,
+        semaphoreGroupId: mapping.semaphore_group_id || ``
+      }));
+      setMappings(initialMappings);
+    }
+  }, [config.mappings]);
 
   const addMapping = () => {
     setMappings([...mappings, { idpGroupId: ``, semaphoreGroupId: `` }]);
@@ -86,40 +103,36 @@ const App = () => {
   };
 
   const handleSave = () => {
-    // Implementation for saving the mappings
-    console.log(`Saving mappings:`, mappings);
-    console.log(`Default role:`, defaultRole);
-    
     // Create form data
     const formData = new FormData();
-    formData.append('default_role', defaultRole);
+    formData.append(`default_role_id`, defaultRole);
     
     // Add mappings
     mappings.forEach((mapping, index) => {
       if (mapping.idpGroupId && mapping.semaphoreGroupId) {
-        formData.append(`mappings[${index}][idp_group_id]`, mapping.idpGroupId);
+        formData.append(`mappings[${index}][okta_group_id]`, mapping.idpGroupId);
         formData.append(`mappings[${index}][semaphore_group_id]`, mapping.semaphoreGroupId);
       }
     });
     
     // Submit the form
     fetch(config.saveUrl, {
-      method: 'POST',
+      method: `POST`,
       body: formData,
       headers: {
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        'X-CSRF-Token': document.querySelector(`meta[name="csrf-token"]`)?.getAttribute(`content`) || ``,
       },
     })
-    .then(response => {
-      if (response.ok) {
-        window.location.href = config.cancelUrl;
-      } else {
-        console.error('Failed to save mappings');
-      }
-    })
-    .catch(error => {
-      console.error('Error saving mappings:', error);
-    });
+      .then(response => {
+        if (response.ok) {
+          window.location.href = config.cancelUrl;
+        } else {
+          Notice.error(`Failed to save mappings`);
+        }
+      })
+      .catch(error => {
+        Notice.error(`Error saving mappings: ${error.message}`);
+      });
   };
 
   return (
@@ -131,34 +144,39 @@ const App = () => {
         </div>
         
         {mappings.map((mapping, index) => (
-          <div key={index} className="flex items-center mb3">
-            <input 
-              type="text" 
-              className="form-control w-100 mr3"
-              value={mapping.idpGroupId} 
-              onChange={(e) => updateMapping(index, `idpGroupId`, e.currentTarget.value)}
-              placeholder={`id-of-group${index + 1}`}
-            />
-            <div className="gray f4 mh3">→</div>
-            <select
-              className="form-control w-100"
-              value={mapping.semaphoreGroupId}
-              onChange={(e) => updateMapping(index, `semaphoreGroupId`, e.currentTarget.value)}
-            >
-              <option value="">Select a group</option>
-              {config.groups.map(group => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-            <button 
-              className="btn btn-secondary ml3" 
-              name="remove-btn"
-              onClick={() => removeMapping(index)}
-            >
-              ×
-            </button>
+          <div key={index}>
+            {mapping.semaphoreGroupId && !config.groups.some(g => g.id === mapping.semaphoreGroupId) && (
+              <div className="f5 b mv1 red">Selected semaphore group is deleted</div>
+            )}
+            <div className="flex items-center mb3">
+              <input 
+                type="text" 
+                className="form-control w-100 mr3"
+                value={mapping.idpGroupId} 
+                onChange={(e) => updateMapping(index, `idpGroupId`, e.currentTarget.value)}
+                placeholder={`id-of-group${index + 1}`}
+              />
+              <div className="gray f4 mh3">→</div>
+              <select
+                className={`form-control w-100 ${mapping.semaphoreGroupId && !config.groups.some(g => g.id === mapping.semaphoreGroupId) ? `form-control-error` : ``}`}
+                value={mapping.semaphoreGroupId}
+                onChange={(e) => updateMapping(index, `semaphoreGroupId`, e.currentTarget.value)}
+              >
+                <option value="">Select a group</option>
+                {config.groups.map(group => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <button 
+                className="btn btn-secondary ml3" 
+                name="remove-btn"
+                onClick={() => removeMapping(index)}
+              >
+                ×
+              </button>
+            </div>
           </div>
         ))}
         
@@ -182,7 +200,7 @@ const App = () => {
           onChange={(e) => setDefaultRole(e.currentTarget.value)}
         >
           {config.roles.map(role => (
-            <option key={role.id} value={role.name}>
+            <option key={role.id} value={role.id}>
               {role.name}
             </option>
           ))}

@@ -1,7 +1,7 @@
 defmodule FrontWeb.OrganizationOktaController do
   @moduledoc false
   use FrontWeb, :controller
-  alias Front.{Async, Audit}
+  alias Front.{Async, Audit, Models.OktaIntegration}
   require Logger
 
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
@@ -17,7 +17,7 @@ defmodule FrontWeb.OrganizationOktaController do
       organization_id = conn.assigns.organization_id
 
       with {:ok, params} <- fetch_params(organization_id) do
-        case Front.Models.OktaIntegration.find_for_org(organization_id) do
+        case OktaIntegration.find_for_org(organization_id) do
           {:ok, integration} ->
             Watchman.increment(watchman_name(:show, :success))
             render_show(conn, integration, params)
@@ -48,7 +48,7 @@ defmodule FrontWeb.OrganizationOktaController do
       organization_id = conn.assigns.organization_id
 
       changeset =
-        case Front.Models.OktaIntegration.find_for_org(organization_id) do
+        case OktaIntegration.find_for_org(organization_id) do
           {:error, :not_found} ->
             OktaIntegration.new()
 
@@ -118,11 +118,12 @@ defmodule FrontWeb.OrganizationOktaController do
 
       with {:ok, params} <- fetch_params(org_id),
            {:okta_integration, {:ok, integration}} <-
-             {:okta_integration, Front.Models.OktaIntegration.find_for_org(org_id)},
+             {:okta_integration, OktaIntegration.find_for_org(org_id)},
            {:ok, {groups, _}} <-
              Front.RBAC.Members.list_org_members(org_id, member_type: "group"),
-           {:ok, roles} <- Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope") do
-        render_group_mapping(conn, integration, groups, roles, params)
+           {:ok, roles} <- Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope"),
+           {:ok, {default_role_id, mappings}} <- OktaIntegration.get_group_mappings(org_id) do
+        render_group_mapping(conn, integration, groups, roles, params, default_role_id, mappings)
       else
         {:okta_integration, {:error, :not_found}} ->
           conn
@@ -146,8 +147,31 @@ defmodule FrontWeb.OrganizationOktaController do
     Watchman.benchmark(watchman_name(:update_group_mapping, :duration), fn ->
       Logger.info("update_group_mapping, params: #{inspect(params)}")
 
-      conn
-      |> redirect(to: organization_okta_path(conn, :show))
+      org_id = conn.assigns.organization_id
+      user_id = conn.assigns.user_id
+
+      {default_role_id, mappings} = OktaIntegration.parse_mapping_params(params)
+
+      case OktaIntegration.set_group_mappings(org_id, default_role_id, mappings) do
+        :ok ->
+          # # Log audit event for group mapping update
+          # if Front.on_prem?() do
+          #   Audit.log_event(user_id, "okta.group_mapping_updated", %{
+          #     org_id: org_id,
+          #     default_role_id: default_role_id,
+          #     mapping_count: length(mappings)
+          #   })
+          # end
+
+          conn
+          |> put_flash(:notice, "Okta group mappings successfully updated")
+          |> redirect(to: organization_okta_path(conn, :show))
+
+        {:error, _error} ->
+          conn
+          |> put_flash(:alert, "Failed to update Okta group mappings. Please try again.")
+          |> redirect(to: organization_okta_path(conn, :group_mapping))
+      end
     end)
   end
 
@@ -240,7 +264,7 @@ defmodule FrontWeb.OrganizationOktaController do
 
   defp fetch_org_okta_members(org_id) do
     fn ->
-      case Front.Models.OktaIntegration.get_okta_members(org_id) do
+      case OktaIntegration.get_okta_members(org_id) do
         {:ok, user_ids} -> user_ids
         {:error, _} -> []
       end
@@ -299,7 +323,7 @@ defmodule FrontWeb.OrganizationOktaController do
     )
   end
 
-  defp render_group_mapping(conn, integration, groups, roles, params) do
+  defp render_group_mapping(conn, integration, groups, roles, params, default_role_id, mappings) do
     Logger.info("render_group_mapping, groups: #{inspect(groups)}, roles: #{inspect(roles)}")
 
     render(conn, "group_mapping.html",
@@ -309,6 +333,8 @@ defmodule FrontWeb.OrganizationOktaController do
       integration: integration,
       groups: groups,
       roles: roles,
+      default_role_id: default_role_id,
+      mappings: mappings,
       title: "Okta・#{params.organization.name}",
       notice: get_flash(conn, :notice),
       alert: get_flash(conn, :alert)

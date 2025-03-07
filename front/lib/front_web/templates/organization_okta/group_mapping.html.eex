@@ -4,7 +4,9 @@
             groups: Enum.map(@groups, fn group -> Map.take(group, [:id, :name]) end),
             roles: Enum.map(@roles, fn role -> Map.take(role, [:id, :name]) end),
             saveUrl: organization_okta_path(@conn, :update_group_mapping),
-            cancelUrl: organization_okta_path(@conn, :show)
+            cancelUrl: organization_okta_path(@conn, :show),
+            defaultRoleId: @default_role_id,
+            mappings: @mappings
         }
     ) %>;
 </script>
