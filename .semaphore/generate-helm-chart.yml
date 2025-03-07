@@ -36,7 +36,6 @@ blocks:
                 - "PublicApiGateway"
                 - "HooksProcessor"
                 - "HooksReceiver"
-                - "Self Hosted Hub"
                 - "Keycloak image"
                 - "Keycloak setup"
                 - "Bootstrapper"

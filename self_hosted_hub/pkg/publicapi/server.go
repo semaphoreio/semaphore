@@ -111,8 +111,6 @@ type RefreshTokenResponse struct {
 func (s *Server) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	defer watchman.Benchmark(time.Now(), "token.refresh")
 
-	// TODO: remove this, I just want to check if the build actually is built now
-
 	agent, err := findAgent(r)
 	if err != nil {
 		respondWith404(w)
