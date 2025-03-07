@@ -2,6 +2,7 @@ defmodule Guard.Api.Gitlab do
   require Logger
 
   alias Guard.FrontRepo
+  alias Guard.Utils.OAuth
 
   @base_url "https://gitlab.com"
   @oauth_path "/oauth/token"
@@ -15,7 +16,7 @@ defmodule Guard.Api.Gitlab do
 
     case Cachex.get(:token_cache, cache_key) do
       {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
-        if valid_token?(expires_at) do
+        if OAuth.valid_token?(expires_at) do
           {:ok, {token, expires_at}}
         else
           handle_fetch_and_cache_token(repo_host_account)
@@ -31,22 +32,13 @@ defmodule Guard.Api.Gitlab do
 
     case Tesla.get(client, @oauth_token_info_path) do
       {:ok, res} ->
-        expires_at = calc_expires_at(res.body["expires_in"])
-        {:ok, res.status in 200..299 && valid_token?(expires_at)}
+        expires_at = OAuth.calc_expires_at(res.body["expires_in"])
+        {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at)}
 
       {:error, error} ->
         Logger.error("Error validating token: #{inspect(error)}")
         {:error, :network_error}
     end
-  end
-
-  # Case where the token never expires
-  defp valid_token?(nil), do: true
-
-  defp valid_token?(expires_at) do
-    current_time = DateTime.utc_now() |> DateTime.to_unix()
-    # 5 minutes before expiration
-    expires_at - 300 > current_time
   end
 
   defp handle_fetch_and_cache_token(repo_host_account) do
@@ -60,7 +52,7 @@ defmodule Guard.Api.Gitlab do
 
     case Tesla.post(client, @oauth_path, body_params) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
-        handle_ok_token_response(repo_host_account, body)
+        OAuth.handle_ok_token_response(repo_host_account, body)
 
       {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
         Logger.warning("Failed to refresh gitlab token, account might be revoked")
@@ -99,35 +91,6 @@ defmodule Guard.Api.Gitlab do
     {_, gitlab_config} = providers[:gitlab]
 
     gitlab_config[:default_scope]
-  end
-
-  defp handle_ok_token_response(repo_host_account, body) do
-    body =
-      if is_binary(body) do
-        Jason.decode!(body)
-      else
-        body
-      end
-
-    token = body["access_token"]
-    expires_in = body["expires_in"]
-    refresh_token = body["refresh_token"]
-
-    expires_at = calc_expires_at(expires_in)
-
-    if valid_token?(expires_at) do
-      Cachex.put(:token_cache, token_cache_key(repo_host_account.id), {token, expires_at})
-      update_refresh_token(repo_host_account, refresh_token)
-    end
-
-    {:ok, {token, expires_at}}
-  end
-
-  defp calc_expires_at(nil), do: nil
-
-  defp calc_expires_at(expires_in) do
-    current_time = DateTime.utc_now() |> DateTime.to_unix()
-    current_time + expires_in
   end
 
   defp token_cache_key(account_id), do: "gitlab_token_#{account_id}"
