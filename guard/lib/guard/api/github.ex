@@ -3,6 +3,8 @@ defmodule Guard.Api.Github do
 
   use Tesla
 
+  alias Guard.Utils.OAuth
+
   @oauth_base_url "https://github.com"
   @oauth_path "/login/oauth/access_token"
 
