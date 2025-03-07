@@ -268,6 +268,9 @@ registry.sign: cosign.install
 		--identity-token $$(cat /tmp/sigstore-token) \
 		$(shell docker inspect --format='{{index .RepoDigests 0}}' $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG))
 
+registry.image:
+	@echo $(REGISTRY_HOST)/$(APP_NAME):$(RELEASE_TAG)
+
 registry.configure:
 	@printf "%s" "$(GITHUB_TOKEN)" | docker login ghcr.io -u "$(GITHUB_USERNAME)" --password-stdin
 

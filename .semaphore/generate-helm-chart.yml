@@ -14,6 +14,8 @@ blocks:
           value: "prod"
         - name: DOCKER_BUILDKIT
           value: "1"
+        - name: REGISTRY_HOST
+          value: "ghcr.io/semaphoreio"
       jobs:
         - name: Build and push images
           matrix:
@@ -34,7 +36,6 @@ blocks:
                 - "PublicApiGateway"
                 - "HooksProcessor"
                 - "HooksReceiver"
-                - "Self Hosted Hub"
                 - "Keycloak image"
                 - "Keycloak setup"
                 - "Bootstrapper"
@@ -60,9 +61,14 @@ blocks:
             - if git rev-parse --is-shallow-repository | grep -q true; then git fetch --unshallow --tags; else git fetch --tags; fi
             - export APP_NAME=$(jq -r --arg application "$APPLICATION" '.services[$application][]["app"]' .semaphore/services.json)
             - cd $(jq -r --arg application "$APPLICATION" '.services[$application][]["path"]' .semaphore/services.json)
+            - |
+              if docker manifest inspect $(make registry.image); then
+                echo "Image $(make registry.image) already exists - skipping"
+                export SEMAPHORE_JOB_RESULT=passed
+                return 130
+              fi
             - make build NO_BUILD_CACHE=true
             - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make configure.sign; fi'
-            - export REGISTRY_HOST=ghcr.io/semaphoreio
             - make registry.configure
             - make registry.push
             - 'if [[ -n $SEMAPHORE_GIT_TAG_NAME ]]; then make registry.sign; fi'
