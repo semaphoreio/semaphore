@@ -131,7 +131,7 @@ const App = () => {
         }
       })
       .catch(error => {
-        Notice.error(`Error saving mappings: ${error.message}`);
+        Notice.error(`Error saving mappings: ${error instanceof Error ? error.message : String(error)}`);
       });
   };
 
@@ -139,8 +139,10 @@ const App = () => {
     <div className="mw7 center">
       <div className="mb4">
         <div className="flex mb3">
-          <div className="w-50 tc mr3">IdP group</div>
+          <div className="w-50 tc">IdP group</div>
+          <div className="gray f4 mh3">→</div>
           <div className="w-50 tc">Semaphore group</div>
+          <div className="w3 ml3">&nbsp;</div> {/* Invisible spacer matching width of remove button */}
         </div>
         
         {mappings.map((mapping, index) => (
@@ -151,7 +153,7 @@ const App = () => {
             <div className="flex items-center mb3">
               <input 
                 type="text" 
-                className="form-control w-100 mr3"
+                className="form-control w-100"
                 value={mapping.idpGroupId} 
                 onChange={(e) => updateMapping(index, `idpGroupId`, e.currentTarget.value)}
                 placeholder={`id-of-group${index + 1}`}
@@ -170,7 +172,7 @@ const App = () => {
                 ))}
               </select>
               <button 
-                className="btn btn-secondary ml3" 
+                className="btn btn-secondary w3 ml3" 
                 name="remove-btn"
                 onClick={() => removeMapping(index)}
               >
