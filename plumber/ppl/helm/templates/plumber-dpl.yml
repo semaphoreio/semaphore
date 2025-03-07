@@ -51,7 +51,7 @@ spec:
             - name: SKIP_PFC
               value: "true"
             - name: SKIP_PROMOTIONS
-              value: "true"
+              value: {{ eq .Values.global.edition "ce" | quote }}
             - name: REPO_PROXY_NEW_GRPC_URL
               valueFrom:
                 configMapKeyRef:
