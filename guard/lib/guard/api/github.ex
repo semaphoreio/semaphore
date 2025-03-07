@@ -103,13 +103,7 @@ defmodule Guard.Api.Github do
   def validate_token(""), do: false
 
   def validate_token(token) do
-    {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:github)
-
-    body = %{"access_token" => token}
-
-    case post("/applications/#{client_id}/token", body,
-           headers: authorization_headers(client_id, client_secret)
-         ) do
+    case get("", headers: authorization_headers(token)) do
       {:ok, res} ->
         is_valid = res.status in 200..299
 
@@ -127,11 +121,9 @@ defmodule Guard.Api.Github do
     end
   end
 
-  defp authorization_headers(client_id, client_secret) do
+  defp authorization_headers(token) do
     [
-      {"Accept", "application/vnd.github+json"},
-      {"Authorization", "Basic " <> Base.encode64("#{client_id}:#{client_secret}")},
-      {"X-GitHub-Api-Version", "2022-11-28"}
+      {"Authorization", "token #{token}"}
     ]
   end
 end
