@@ -1,5 +1,5 @@
 version: v1.0
-name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}} - ${{parameters.SEMAPHORE_EDITION}}
 agent:
   machine:
     type: f1-standard-2
