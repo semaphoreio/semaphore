@@ -4,7 +4,8 @@ defmodule Rbac.Repo.Migrations.AddGroupMappingTable do
   def change do
     create table(:idp_group_mapping) do
       add :organization_id, :uuid, null: false
-      add :group_mappings, :map, null: false
+      add :group_mapping, :map, null: false
+      add :default_role_id, :uuid, null: false
 
       timestamps()
     end

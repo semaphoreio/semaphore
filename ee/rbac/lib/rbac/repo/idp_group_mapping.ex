@@ -6,11 +6,13 @@ defmodule Rbac.Repo.IdpGroupMapping do
 
   @required_fields [
     :organization_id,
-    :group_mappings
+    :group_mapping,
+    :default_role_id
   ]
 
   @updatable_fields [
-    :organization_id
+    :organization_id,
+    :default_role_id
   ]
 
   # Define embedded schema for a single group mapping
@@ -33,7 +35,8 @@ defmodule Rbac.Repo.IdpGroupMapping do
 
   schema "idp_group_mapping" do
     field(:organization_id, :binary_id)
-    embeds_many(:group_mappings, GroupMapping, on_replace: :delete)
+    embeds_many(:group_mapping, GroupMapping, on_replace: :delete)
+    field(:default_role_id, :binary_id)
 
     timestamps()
   end
@@ -41,18 +44,19 @@ defmodule Rbac.Repo.IdpGroupMapping do
   def changeset(idp_group_mapping, params \\ %{}) do
     idp_group_mapping
     |> cast(params, @updatable_fields)
-    |> cast_embed(:group_mappings, with: &GroupMapping.changeset/2)
+    |> cast_embed(:group_mapping, with: &GroupMapping.changeset/2, required: true)
     |> validate_required(@required_fields)
     |> unique_constraint(:organization_id,
       name: "idp_group_mapping_organization_id_index",
       message: "Organization already has IDP group mappings"
     )
     |> validate_group_mapping_uniqueness()
+    |> validate_group_mapping_not_empty()
   end
 
   # Validate that there are no duplicate idp_group_id values
   defp validate_group_mapping_uniqueness(changeset) do
-    case get_change(changeset, :group_mappings) do
+    case get_change(changeset, :group_mapping) do
       nil ->
         changeset
 
@@ -74,24 +78,40 @@ defmodule Rbac.Repo.IdpGroupMapping do
         unique_ids = Enum.uniq(idp_group_ids)
 
         if length(idp_group_ids) != length(unique_ids) do
-          add_error(changeset, :group_mappings, "contains duplicate IDP group IDs")
+          add_error(changeset, :group_mapping, "contains duplicate IDP group IDs")
         else
           changeset
         end
     end
   end
 
+  # Validate that group_mapping is not empty
+  defp validate_group_mapping_not_empty(changeset) do
+    case get_change(changeset, :group_mapping) do
+      nil ->
+        # If there's no change, check the data
+        case get_field(changeset, :group_mapping) do
+          nil -> add_error(changeset, :group_mapping, "must be provided")
+          [] -> add_error(changeset, :group_mapping, "cannot be empty")
+          _ -> changeset
+        end
+
+      [] ->
+        add_error(changeset, :group_mapping, "cannot be empty")
+
+      _ ->
+        changeset
+    end
+  end
+
   def insert_or_update(fields \\ []) do
-    # Check if there's an existing record for this organization
     case fetch_for_org(Keyword.get(fields, :organization_id)) do
       {:ok, existing} ->
-        # Update existing record
         existing
         |> changeset(Map.new(fields))
         |> Rbac.Repo.update()
 
       {:error, :not_found} ->
-        # Create new record
         %__MODULE__{}
         |> changeset(Map.new(fields))
         |> Rbac.Repo.insert()
@@ -110,12 +130,5 @@ defmodule Rbac.Repo.IdpGroupMapping do
       nil -> {:error, :not_found}
       mapping -> {:ok, mapping}
     end
-  end
-
-  # Extract a list of all mappings for easier consumption
-  def to_list(mapping) do
-    Enum.map(mapping.group_mappings, fn m ->
-      %{idp_group_id: m.idp_group_id, semaphore_group_id: m.semaphore_group_id}
-    end)
   end
 end

@@ -11,7 +11,7 @@ defmodule Rbac.GrpcServers.OktaServer do
     ListResponse,
     ListUsersResponse,
     SetUpGroupMappingResponse,
-    ListGroupMappingsResponse,
+    DescribeGroupMappingResponse,
     GroupMapping
   }
 
@@ -142,7 +142,7 @@ defmodule Rbac.GrpcServers.OktaServer do
           }
         end)
 
-      case Rbac.Okta.IdpGroupMappings.create_or_update(req.org_id, mappings) do
+      case Rbac.Okta.IdpGroupMapping.create_or_update(req.org_id, mappings, req.default_role_id) do
         {:ok, _mapping} ->
           Logger.info("Group mappings created/updated for org #{req.org_id}")
           %SetUpGroupMappingResponse{}
@@ -154,7 +154,7 @@ defmodule Rbac.GrpcServers.OktaServer do
 
           grpc_error!(
             :failed_precondition,
-            "Invalid group mappings: #{inspect(changeset.errors)}"
+            "Failed to save group mappings: Invalid"
           )
 
         error ->
@@ -164,26 +164,32 @@ defmodule Rbac.GrpcServers.OktaServer do
     end)
   end
 
-  def list_group_mappings(req, _stream) do
+  def describe_group_mapping(req, _stream) do
     observe("list_group_mappings", fn ->
       validate_uuid!(req.org_id)
 
-      case Rbac.Okta.IdpGroupMappings.list_mappings(req.org_id) do
-        {:ok, mappings} ->
+      case Rbac.Okta.IdpGroupMapping.get_for_organization(req.org_id) do
+        {:ok, idp_group_mapping} ->
           # Convert from our internal format to protobuf messages
-          group_mappings =
-            Enum.map(mappings, fn %{idp_group_id: okta_id, semaphore_group_id: semaphore_id} ->
+          group_mapping =
+            Enum.map(idp_group_mapping.group_mapping, fn %{
+                                                           idp_group_id: okta_id,
+                                                           semaphore_group_id: semaphore_id
+                                                         } ->
               %GroupMapping{
                 okta_group_id: okta_id,
                 semaphore_group_id: semaphore_id
               }
             end)
 
-          %ListGroupMappingsResponse{mappings: group_mappings}
+          %DescribeGroupMappingResponse{
+            mappings: group_mapping,
+            default_role_id: idp_group_mapping.default_role_id
+          }
 
         {:error, :not_found} ->
           # Return an empty list if no mappings exist
-          %ListGroupMappingsResponse{mappings: []}
+          %DescribeGroupMappingResponse{mappings: []}
 
         error ->
           Logger.error(

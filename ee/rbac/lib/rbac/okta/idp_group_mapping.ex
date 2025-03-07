@@ -1,4 +1,4 @@
-defmodule Rbac.Okta.IdpGroupMappings do
+defmodule Rbac.Okta.IdpGroupMapping do
   @moduledoc """
   This module handles operations related to IDP group mappings.
   It provides functionality to create, update, and retrieve group mappings.
@@ -15,15 +15,21 @@ defmodule Rbac.Okta.IdpGroupMappings do
   ## Parameters
     * organization_id - The ID of the organization
     * group_mappings - A list of maps with idp_group_id and semaphore_group_id keys
-    
+    * default_role_id - The default role ID to use when no group mapping matches
+
   ## Returns
     * `{:ok, mapping}` - The created or updated mapping
     * `{:error, changeset}` - Error with changeset containing validation errors
   """
-  def create_or_update(organization_id, group_mappings) when is_list(group_mappings) do
+  def create_or_update(organization_id, group_mapping, default_role_id)
+      when is_list(group_mapping) do
+    require Logger
+    Logger.info("req: group_mapping: #{inspect(group_mapping)}")
+
     IdpGroupMapping.insert_or_update(
       organization_id: organization_id,
-      group_mappings: group_mappings
+      group_mapping: group_mapping,
+      default_role_id: default_role_id
     )
   end
 
@@ -50,7 +56,7 @@ defmodule Rbac.Okta.IdpGroupMappings do
     * idp_groups - List of IDP group identifiers
 
   ## Returns
-    * `{:ok, semaphore_groups}` - List of mapped Semaphore group IDs
+    * `{:ok, semaphore_groups, default_role_id}` - List of mapped Semaphore group IDs and default role ID
     * `{:error, :not_found}` - No mapping found for the organization
   """
   def map_groups(organization_id, idp_groups) when is_list(idp_groups) do
@@ -73,27 +79,7 @@ defmodule Rbac.Okta.IdpGroupMappings do
           end)
           |> Enum.uniq()
 
-        {:ok, mapped_groups}
-
-      error ->
-        error
-    end
-  end
-
-  @doc """
-  Gets a list of all mappings.
-
-  ## Parameters
-    * organization_id - The ID of the organization
-
-  ## Returns
-    * `{:ok, [%{idp_group_id: string, semaphore_group_id: string}]}` - List of all mappings
-    * `{:error, :not_found}` - No mapping found for the organization
-  """
-  def list_mappings(organization_id) do
-    case IdpGroupMapping.fetch_for_org(organization_id) do
-      {:ok, mapping} ->
-        {:ok, IdpGroupMapping.to_list(mapping)}
+        {:ok, mapped_groups, mapping.default_role_id}
 
       error ->
         error

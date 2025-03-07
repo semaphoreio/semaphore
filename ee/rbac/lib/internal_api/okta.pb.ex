@@ -58,6 +58,7 @@ defmodule InternalApi.Okta.SetUpGroupMappingRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:default_role_id, 2, type: :string, json_name: "defaultRoleId")
   field(:mappings, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
 end
 
@@ -67,7 +68,7 @@ defmodule InternalApi.Okta.SetUpGroupMappingResponse do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
-defmodule InternalApi.Okta.ListGroupMappingsRequest do
+defmodule InternalApi.Okta.DescribeGroupMappingRequest do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
@@ -75,12 +76,13 @@ defmodule InternalApi.Okta.ListGroupMappingsRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
 
-defmodule InternalApi.Okta.ListGroupMappingsResponse do
+defmodule InternalApi.Okta.DescribeGroupMappingResponse do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:mappings, 1, repeated: true, type: InternalApi.Okta.GroupMapping)
+  field(:default_role_id, 1, type: :string, json_name: "defaultRoleId")
+  field(:mappings, 2, repeated: true, type: InternalApi.Okta.GroupMapping)
 end
 
 defmodule InternalApi.Okta.GroupMapping do
@@ -165,9 +167,9 @@ defmodule InternalApi.Okta.Okta.Service do
   )
 
   rpc(
-    :ListGroupMappings,
-    InternalApi.Okta.ListGroupMappingsRequest,
-    InternalApi.Okta.ListGroupMappingsResponse
+    :DescribeGroupMapping,
+    InternalApi.Okta.DescribeGroupMappingRequest,
+    InternalApi.Okta.DescribeGroupMappingResponse
   )
 end
 
