@@ -10,6 +10,8 @@ global_job_config:
       value: "test.sonprem.com"
     - name: ROLE_ARN
       value: "arn:aws:iam::451765615567:role/sem-install-dns-update-role"
+    - name: SEMAPHORE_EDITION
+      value: ${{parameters.SEMAPHORE_EDITION}}
   prologue:
     commands:
       - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
@@ -38,9 +40,6 @@ blocks:
     task:
       jobs:
         - name: 'Install Helm chart'
-          env_vars:
-            - name: SEMAPHORE_EDITION
-              value: ${{parameters.SEMAPHORE_EDITION}}
           commands:
             - make auth
             - terraform init
