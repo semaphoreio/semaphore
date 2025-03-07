@@ -1,6 +1,7 @@
 defmodule Guard.Api.Bitbucket do
   require Logger
   use Tesla
+  alias Guard.Utils.OAuth
 
   @api_base_url "https://api.bitbucket.org"
   @base_url "https://bitbucket.org"
@@ -34,7 +35,7 @@ defmodule Guard.Api.Bitbucket do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = token_cache_key(repo_host_account.id)
+    cache_key = OAuth.token_cache_key(repo_host_account)
 
     case Cachex.get(:token_cache, cache_key) do
       {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
@@ -102,7 +103,7 @@ defmodule Guard.Api.Bitbucket do
     expires_at = current_time + expires_in
 
     if valid_token?(expires_at) do
-      Cachex.put(:token_cache, token_cache_key(repo_host_account.id), {token, expires_at})
+      Cachex.put(:token_cache, OAuth.token_cache_key(repo_host_account), {token, expires_at})
     end
 
     {:ok, {token, expires_at}}
@@ -124,8 +125,6 @@ defmodule Guard.Api.Bitbucket do
       Tesla.Middleware.JSON
     ])
   end
-
-  defp token_cache_key(account_id), do: "bitbucket_token_#{account_id}"
 
   defp valid_token?(expires_at) do
     current_time = DateTime.utc_now() |> DateTime.to_unix()

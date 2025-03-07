@@ -3,6 +3,8 @@ defmodule Guard.Api.Github do
 
   use Tesla
 
+  alias Guard.Utils.OAuth
+
   @oauth_base_url "https://github.com"
   @oauth_path "/login/oauth/access_token"
 
@@ -36,7 +38,7 @@ defmodule Guard.Api.Github do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = token_cache_key(repo_host_account.id)
+    cache_key = OAuth.token_cache_key(repo_host_account)
 
     case Cachex.get(:token_cache, cache_key) do
       {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
@@ -54,7 +56,7 @@ defmodule Guard.Api.Github do
   defp handle_static_token_or_fetch(rha) do
     case validate_token(rha.token) do
       {:ok, true} ->
-        Cachex.put(:token_cache, token_cache_key(rha.id), {rha.token, nil})
+        Cachex.put(:token_cache, OAuth.token_cache_key(rha), {rha.token, nil})
         {:ok, {rha.token, nil}}
 
       _ ->
@@ -131,11 +133,5 @@ defmodule Guard.Api.Github do
       {"Authorization", "Basic " <> Base.encode64("#{client_id}:#{client_secret}")},
       {"X-GitHub-Api-Version", "2022-11-28"}
     ]
-  end
-
-  defp token_cache_key(account_id), do: "github_token_#{account_id}"
-
-  defp update_refresh_token(repo_host_account, refresh_token) do
-    Guard.FrontRepo.RepoHostAccount.update_refresh_token(repo_host_account, refresh_token)
   end
 end

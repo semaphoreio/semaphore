@@ -1,7 +1,6 @@
 defmodule Guard.Api.Gitlab do
   require Logger
 
-  alias Guard.FrontRepo
   alias Guard.Utils.OAuth
 
   @base_url "https://gitlab.com"
@@ -12,7 +11,7 @@ defmodule Guard.Api.Gitlab do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = token_cache_key(repo_host_account.id)
+    cache_key = OAuth.token_cache_key(repo_host_account)
 
     case Cachex.get(:token_cache, cache_key) do
       {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
@@ -91,11 +90,5 @@ defmodule Guard.Api.Gitlab do
     {_, gitlab_config} = providers[:gitlab]
 
     gitlab_config[:default_scope]
-  end
-
-  defp token_cache_key(account_id), do: "gitlab_token_#{account_id}"
-
-  defp update_refresh_token(repo_host_account, refresh_token) do
-    FrontRepo.RepoHostAccount.update_refresh_token(repo_host_account, refresh_token)
   end
 end
