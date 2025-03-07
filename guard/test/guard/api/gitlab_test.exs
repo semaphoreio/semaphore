@@ -1,7 +1,7 @@
-defmodule Guard.Api.GithubTest do
+defmodule Guard.Api.GitlabTest do
   use Guard.RepoCase
 
-  alias Guard.Api.Github
+  alias Guard.Api.Gitlab
   alias Guard.Utils.OAuth
 
   setup do
@@ -19,7 +19,7 @@ defmodule Guard.Api.GithubTest do
       Support.Members.insert_repo_host_account(
         login: "example",
         name: "example",
-        repo_host: "github",
+        repo_host: "gitlab",
         refresh_token: "example_refresh_token",
         user_id: user.id,
         token: "token",
@@ -35,20 +35,20 @@ defmodule Guard.Api.GithubTest do
       cache_key = OAuth.token_cache_key(rha)
       Cachex.put(:token_cache, cache_key, {"cached_token", valid_expires_at()})
 
-      assert {:ok, {"cached_token", _}} = Github.user_token(rha)
+      assert {:ok, {"cached_token", _}} = Gitlab.user_token(rha)
     end
 
     test "refreshes token when cache is expired", %{repo_host_account: rha} do
       Tesla.Mock.mock_global(fn
-        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+        %{method: :post, url: "https://gitlab.com/oauth/token"} ->
           {:ok,
            %Tesla.Env{status: 200, body: %{"access_token" => "new_token", "expires_in" => 3600}}}
 
-        %{method: :post, url: "https://api.github.com/applications/github_client_id/token"} ->
+        %{method: :get, url: "https://gitlab.com/oauth/token/info"} ->
           {:ok, %Tesla.Env{status: 404, body: %{}}}
       end)
 
-      assert {:ok, {"new_token", _}} = Github.user_token(rha)
+      assert {:ok, {"new_token", _}} = Gitlab.user_token(rha)
 
       updated_rha =
         Guard.FrontRepo.RepoHostAccount
