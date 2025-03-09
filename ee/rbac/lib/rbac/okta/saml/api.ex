@@ -117,7 +117,7 @@ defmodule Rbac.Okta.Saml.Api do
     metadata_uri = "https://#{org_username}.#{domain()}"
 
     with {:ok, integration} <- Integration.find_by_org_id(org_id),
-         {:ok, email} <- PayloadParser.parse(integration, params, consume_uri, metadata_uri),
+         {:ok, email, att} <- PayloadParser.parse(integration, params, consume_uri, metadata_uri),
          {:ok, okta_user} <- find_okta_user(integration, email),
          {:ok, user} <- find_user(okta_user),
          {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
