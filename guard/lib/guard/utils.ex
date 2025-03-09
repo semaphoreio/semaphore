@@ -44,6 +44,55 @@ defmodule Guard.Utils do
   def timestamp_to_datetime(_, default), do: {:ok, default}
 end
 
+defmodule Guard.Utils.OAuth do
+  def handle_ok_token_response(repo_host_account, body, opts \\ [cache: true]) do
+    body =
+      if is_binary(body) do
+        Jason.decode!(body)
+      else
+        body
+      end
+
+    token = body["access_token"]
+    expires_in = body["expires_in"]
+    refresh_token = body["refresh_token"]
+
+    expires_at = calc_expires_at(expires_in)
+
+    if valid_token?(expires_at) do
+      update_token_pair(repo_host_account, token, refresh_token)
+    end
+
+    if opts[:cache] do
+      Cachex.put(:token_cache, token_cache_key(repo_host_account), {token, expires_at})
+    end
+
+    {:ok, {token, expires_at}}
+  end
+
+  defp update_token_pair(repo_host_account, token, refresh_token) do
+    Guard.FrontRepo.RepoHostAccount.update_token_pair(repo_host_account, token, refresh_token)
+  end
+
+  def calc_expires_at(nil), do: nil
+
+  def calc_expires_at(expires_in) do
+    current_time = DateTime.utc_now() |> DateTime.to_unix()
+    current_time + expires_in
+  end
+
+  # Case where the token never expires
+  def valid_token?(nil), do: true
+
+  def valid_token?(expires_at) do
+    current_time = DateTime.utc_now() |> DateTime.to_unix()
+    # 5 minutes before expiration
+    expires_at - 300 > current_time
+  end
+
+  def token_cache_key(%{repo_host: repo_host, id: id}), do: "#{repo_host}_token_#{id}"
+end
+
 defmodule Guard.Utils.Http do
   require Logger
 
