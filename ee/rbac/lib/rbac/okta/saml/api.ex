@@ -138,7 +138,7 @@ defmodule Rbac.Okta.Saml.Api do
         {:error, :scim_saml_user, :not_found} = e ->
           if integration.jit_provisioning_enabled do
             {:ok, saml_jit_user} = Rbac.Repo.SamlJitUser.create(integration, email, attributes)
-            Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
+            :ok = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
 
             conn
             |> put_resp_content_type("text/plain")
