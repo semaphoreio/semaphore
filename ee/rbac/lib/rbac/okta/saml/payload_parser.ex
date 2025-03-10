@@ -14,6 +14,7 @@ defmodule Rbac.Okta.Saml.PayloadParser do
          {:ok, payload} <- extract_saml_response(params),
          {:ok, decoded} <- decode_payload(payload),
          {:ok, assertion} <- validate_assertion(decoded, sp) do
+      IO.inspect(assertion)
       email = esaml_assertion(assertion, :subject) |> esaml_subject(:name)
       attributes = esaml_assertion(assertion, :attributes) |> construct_attributes_map()
 
