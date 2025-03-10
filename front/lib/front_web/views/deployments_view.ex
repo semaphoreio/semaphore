@@ -5,9 +5,7 @@ defmodule FrontWeb.DeploymentsView do
   alias Front.Models.RepoProxy
 
   def time_ago(timestamp) do
-    Phoenix.HTML.Tag.content_tag("time-ago", format_date(timestamp),
-      datetime: format_date(timestamp)
-    )
+    Front.Utils.decorate_relative(timestamp)
   end
 
   def has_promotion_parameters?(details = %DeploymentDetails{}) do

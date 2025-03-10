@@ -9,9 +9,7 @@ defmodule FrontWeb.SchedulersView do
   end
 
   def time_ago(timestamp) do
-    Phoenix.HTML.Tag.content_tag("time-ago", format_date(timestamp),
-      datetime: format_date(timestamp)
-    )
+    Front.Utils.decorate_relative(timestamp)
   end
 
   def target_link(project, scheduler) do
