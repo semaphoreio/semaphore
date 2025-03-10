@@ -1,5 +1,6 @@
 defmodule Rbac.Repo.SamlJitUser do
   use Rbac.Repo.Schema
+  alias Rbac.Repo
 
   @timestamps_opts [type: :utc_datetime]
 
@@ -20,7 +21,7 @@ defmodule Rbac.Repo.SamlJitUser do
   ]
 
   schema "saml_jit_users" do
-    belongs_to(:integration, Rbac.Repo.OktaIntegration)
+    belongs_to(:integration, Repo.OktaIntegration)
 
     field(:org_id, :binary_id)
     field(:attributes, :map)
@@ -40,4 +41,14 @@ defmodule Rbac.Repo.SamlJitUser do
   #     state: :pending
   #   }
   # end
+
+  def changeset(user, params \\ %{}) do
+    user
+    |> cast(params, @updatable_fields)
+    |> validate_required(@required_fields)
+  end
+
+  def connect_user(saml_jit_user, user_id) do
+    changeset(saml_jit_user, %{user_id: user_id}) |> Repo.update()
+  end
 end
