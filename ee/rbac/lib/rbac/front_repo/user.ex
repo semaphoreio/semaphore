@@ -37,7 +37,7 @@ defmodule Rbac.FrontRepo.User do
     field(:remember_created_at, :utc_datetime)
     field(:visited_at, :utc_datetime)
 
-    field(:creation_source, Ecto.Enum, values: [:okta])
+    field(:creation_source, Ecto.Enum, values: [:okta, :saml_jit])
     field(:single_org_user, :boolean)
     field(:org_id, :binary_id)
     field(:idempotency_token, :string)
