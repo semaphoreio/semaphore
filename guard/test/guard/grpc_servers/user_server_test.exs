@@ -962,6 +962,15 @@ defmodule Guard.GrpcServers.UserServerTest do
 
     test "get_repository_token should return a valid github repository token",
          %{grpc_channel: channel, user: user} do
+      Tesla.Mock.mock_global(fn
+        %{method: :post, url: "https://github.com/login/oauth/access_token"} ->
+          {:ok,
+           %Tesla.Env{status: 200, body: %{"access_token" => "mock_token", "expires_in" => 3600}}}
+
+        %{method: :get, url: "https://api.github.com"} ->
+          {:ok, %Tesla.Env{status: 200, body: %{}}}
+      end)
+
       request =
         User.GetRepositoryTokenRequest.new(
           user_id: user.id,
@@ -1085,9 +1094,8 @@ defmodule Guard.GrpcServers.UserServerTest do
          } do
       Tesla.Mock.mock_global(fn
         %{
-          method: :post,
-          url: "https://api.github.com/applications/github_client_id/token",
-          body: "{\"access_token\":\"token\"}"
+          method: :get,
+          url: "https://api.github.com"
         } ->
           json(%{"valid" => "valid"})
       end)

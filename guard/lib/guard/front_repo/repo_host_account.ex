@@ -128,7 +128,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
   end
 
   @spec get_github_token(String.t()) :: {:ok, String.t()} | {:error, :not_found}
-  def get_github_token(user_id) do
+  def get_github_token(user_id) when is_binary(user_id) do
     token =
       Guard.FrontRepo.RepoHostAccount
       |> where([rha], rha.user_id == ^user_id)
@@ -139,6 +139,20 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     case token do
       nil -> {:error, :not_found}
       token -> {:ok, token}
+    end
+  end
+
+  def get_github_token(%__MODULE__{} = rha) do
+    case Guard.Api.Github.user_token(rha) do
+      {:ok, {_token, _expires_at}} = token_tuple ->
+        token_tuple
+
+      {:error, :revoked} ->
+        update_account(%{revoked: true}, rha)
+        {:error, {"", nil}}
+
+      {:error, _} ->
+        {:error, {"", nil}}
     end
   end
 
@@ -170,8 +184,8 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_refresh_token(rha, refresh_token) do
-    update_account(%{refresh_token: refresh_token}, rha)
+  def update_token_pair(rha, token, refresh_token) do
+    update_account(%{token: token, refresh_token: refresh_token}, rha)
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
