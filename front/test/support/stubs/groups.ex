@@ -85,9 +85,9 @@ defmodule Support.Stubs.Groups do
 
       # Extract pagination parameters with proper defaults
       {page_size, page_no} = extract_pagination_params(req.page)
-      
+
       total_count = length(groups)
-      total_pages = max(1, (if page_size == 0, do: 1, else: ceil(total_count / page_size)))
+      total_pages = max(1, if(page_size == 0, do: 1, else: ceil(total_count / page_size)))
 
       # Apply pagination
       paged_groups =
@@ -96,7 +96,8 @@ defmodule Support.Stubs.Groups do
           |> Enum.drop((page_no - 1) * page_size)
           |> Enum.take(page_size)
         else
-          groups # Return all groups if page_size is 0
+          # Return all groups if page_size is 0
+          groups
         end
 
       %InternalApi.Groups.ListGroupsResponse{
@@ -183,7 +184,10 @@ defmodule Support.Stubs.Groups do
 
     # Extract pagination parameters with defaults
     defp extract_pagination_params(nil), do: {10, 1}
-    defp extract_pagination_params(%{page_size: size, page_no: no}) when size <= 0, do: {0, max(1, no)}
+
+    defp extract_pagination_params(%{page_size: size, page_no: no}) when size <= 0,
+      do: {0, max(1, no)}
+
     defp extract_pagination_params(%{page_size: size, page_no: no}) when no <= 0, do: {size, 1}
     defp extract_pagination_params(%{page_size: size, page_no: no}), do: {size, no}
 
