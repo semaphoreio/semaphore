@@ -21,7 +21,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   def run(saml_jit_user) do
     idempotency_token = "okta-user-#{saml_jit_user.id}"
     email = saml_jit_user.email
-    name = SamlJitUser.name(saml_jit_user)
+    name = SamlJitUser.construct_name(saml_jit_user)
 
     user_params = %{
       email: email,

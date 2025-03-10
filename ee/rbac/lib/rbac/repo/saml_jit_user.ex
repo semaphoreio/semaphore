@@ -49,8 +49,18 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
-  def connect_user(saml_jit_user, user_id) do
-    changeset(saml_jit_user, %{user_id: user_id}) |> Repo.update()
+  def connect_user(user, user_id) do
+    changeset(user, %{user_id: user_id}) |> Repo.update()
+  end
+
+  def construct_name(user = %__MODULE__{}) do
+    name = extract_attribute(user, "firstName") <> " " <> extract_attribute(user, "lastName")
+
+    if String.trim(name) == "" do
+      user.email |> String.split("@") |> List.first()
+    else
+      name
+    end
   end
 
   defp new(integration, email, attributes) do
@@ -67,5 +77,9 @@ defmodule Rbac.Repo.SamlJitUser do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
+  end
+
+  defp extract_attribute(user, name) do
+    Map.get(user.attributes, name, [""]) |> List.first()
   end
 end
