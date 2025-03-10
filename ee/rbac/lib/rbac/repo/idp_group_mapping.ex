@@ -64,14 +64,9 @@ defmodule Rbac.Repo.IdpGroupMapping do
         # Extract idp_group_id values safely
         idp_group_ids =
           Enum.map(mappings, fn mapping ->
-            cond do
-              # For Ecto.Changeset instances
-              is_map(mapping.changes) && Map.has_key?(mapping.changes, :idp_group_id) ->
-                mapping.changes.idp_group_id
-
-              true ->
-                nil
-            end
+            if is_map(mapping.changes) && Map.has_key?(mapping.changes, :idp_group_id),
+              do: mapping.changes.idp_group_id,
+              else: nil
           end)
           |> Enum.reject(&is_nil/1)
 
