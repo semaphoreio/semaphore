@@ -29,6 +29,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field(:ROLE_BINDING_SOURCE_GITLAB, 4)
   field(:ROLE_BINDING_SOURCE_SCIM, 5)
   field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
+  field(:ROLE_BINDING_SOURCE_SAML_JIT, 7)
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do
@@ -247,16 +248,18 @@ end
 
 defmodule InternalApi.RBAC.CountMembersRequest do
   @moduledoc false
-  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
 
 defmodule InternalApi.RBAC.CountMembersResponse do
   @moduledoc false
-  use Protobuf, protoc_gen_elixir_version: "0.13.0", syntax: :proto3
 
-  field(:members, 1, type: :int32, json_name: "members")
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:members, 1, type: :int32)
 end
 
 defmodule InternalApi.RBAC.SubjectRoleBinding do

@@ -65,6 +65,25 @@ defmodule InternalApi.Guard.Operation.Name do
   field(:ManageDeploymentTargets, 22)
 end
 
+defmodule InternalApi.Guard.ChangeEmailRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:requester_id, 1, type: :string, json_name: "requesterId")
+  field(:user_id, 2, type: :string, json_name: "userId")
+  field(:email, 3, type: :string)
+end
+
+defmodule InternalApi.Guard.ChangeEmailResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:email, 1, type: :string)
+  field(:msg, 2, type: :string)
+end
+
 defmodule InternalApi.Guard.ResetPasswordRequest do
   @moduledoc false
 
@@ -536,6 +555,8 @@ defmodule InternalApi.Guard.Guard.Service do
     InternalApi.Guard.ResetPasswordRequest,
     InternalApi.Guard.ResetPasswordResponse
   )
+
+  rpc(:ChangeEmail, InternalApi.Guard.ChangeEmailRequest, InternalApi.Guard.ChangeEmailResponse)
 end
 
 defmodule InternalApi.Guard.Guard.Stub do
