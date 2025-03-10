@@ -174,7 +174,7 @@ defmodule FrontWeb.SelfHostedAgentController do
 
       {:error, %GRPC.RPCError{status: 3, message: message}} ->
         conn
-        |> put_flash(:alert, "Error creating agent type: #{message}")
+        |> put_flash(:alert, "Error creating agent type: #{URI.decode(message)}")
         |> redirect(to: self_hosted_agent_path(conn, :new))
 
       {:error, e} ->
@@ -227,7 +227,7 @@ defmodule FrontWeb.SelfHostedAgentController do
         conn
         |> put_status(422)
         |> json(%{
-          message: "Error updating agent type: #{message}"
+          message: "Error updating agent type: #{URI.decode(message)}"
         })
 
       {:error, e} ->
@@ -249,7 +249,7 @@ defmodule FrontWeb.SelfHostedAgentController do
 
       {:error, %GRPC.RPCError{status: 3, message: message}} ->
         conn
-        |> put_flash(:alert, "Error updating agent type: #{message}")
+        |> put_flash(:alert, "Error updating agent type: #{URI.decode(message)}")
         |> redirect(to: self_hosted_agent_edit_path(conn, :edit, agent_type_name))
 
       {:error, e} ->
