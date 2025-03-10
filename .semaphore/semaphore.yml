@@ -531,8 +531,6 @@ blocks:
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      secrets:
-        - name: semreg-semaphoredev-credentials
       env_vars:
         - name: MIX_ENV
           value: "prod"
@@ -542,11 +540,7 @@ blocks:
           value: "DashboardHub"
       prologue:
         commands:
-          - checkout && cd dashboardhub
-          - sudo chmod 600 ~/.ssh/id_rsa
-          - sem-version ruby 3.0
-          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
-          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - checkout && cd guard
           - make pull
       jobs:
         - name: "\U0001F6E1️ Check code"
@@ -557,6 +551,7 @@ blocks:
             - make check.ex.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker
   - name: "Dashboardhub: \U0001F9EA QA"
     dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
@@ -3346,6 +3341,7 @@ blocks:
             - make check.js.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'
   # Velocity
   - name: "Velocity: \U0001F4CB Provision Prod Image"
