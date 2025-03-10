@@ -172,8 +172,8 @@ defmodule Rbac.GrpcServers.OktaServer do
           group_mapping =
             Enum.map(idp_group_mapping.group_mapping, fn mapping ->
               %GroupMapping{
-                okta_group_id: mapping.okta_id,
-                semaphore_group_id: mapping.semaphore_id
+                okta_group_id: mapping.idp_group_id,
+                semaphore_group_id: mapping.semaphore_group_id
               }
             end)
 
