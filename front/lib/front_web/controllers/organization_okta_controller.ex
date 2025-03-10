@@ -148,20 +148,11 @@ defmodule FrontWeb.OrganizationOktaController do
       Logger.info("update_group_mapping, params: #{inspect(params)}")
 
       org_id = conn.assigns.organization_id
-      user_id = conn.assigns.user_id
 
       {default_role_id, mappings} = OktaIntegration.parse_mapping_params(params)
 
       case OktaIntegration.set_group_mappings(org_id, default_role_id, mappings) do
         :ok ->
-          # # Log audit event for group mapping update
-          # if Front.on_prem?() do
-          #   Audit.log_event(user_id, "okta.group_mapping_updated", %{
-          #     org_id: org_id,
-          #     default_role_id: default_role_id,
-          #     mapping_count: length(mappings)
-          #   })
-          # end
 
           conn
           |> put_flash(:notice, "Okta group mappings successfully updated")
