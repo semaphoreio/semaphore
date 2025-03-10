@@ -468,10 +468,6 @@ export var App = {
       })
     }
 
-    // This has to be required at the bottom of the body element
-    // therefore we require it within App.run() function
-    require("time-elements");
-
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
     maybeEnableUserpilot()
