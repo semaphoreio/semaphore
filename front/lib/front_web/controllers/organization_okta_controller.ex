@@ -153,7 +153,6 @@ defmodule FrontWeb.OrganizationOktaController do
 
       case OktaIntegration.set_group_mappings(org_id, default_role_id, mappings) do
         :ok ->
-
           conn
           |> put_flash(:notice, "Okta group mappings successfully updated")
           |> redirect(to: organization_okta_path(conn, :show))
