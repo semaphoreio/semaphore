@@ -15,7 +15,6 @@ defmodule Rbac.Repo.IdpGroupMapping do
     :default_role_id
   ]
 
-  # Define embedded schema for a single group mapping
   defmodule GroupMapping do
     use Ecto.Schema
     import Ecto.Changeset
@@ -54,14 +53,12 @@ defmodule Rbac.Repo.IdpGroupMapping do
     |> validate_group_mapping_not_empty()
   end
 
-  # Validate that there are no duplicate idp_group_id values
   defp validate_group_mapping_uniqueness(changeset) do
     case get_change(changeset, :group_mapping) do
       nil ->
         changeset
 
       mappings ->
-        # Extract idp_group_id values safely
         idp_group_ids =
           Enum.map(mappings, fn mapping ->
             if is_map(mapping.changes) && Map.has_key?(mapping.changes, :idp_group_id),
@@ -80,11 +77,9 @@ defmodule Rbac.Repo.IdpGroupMapping do
     end
   end
 
-  # Validate that group_mapping is not empty
   defp validate_group_mapping_not_empty(changeset) do
     case get_change(changeset, :group_mapping) do
       nil ->
-        # If there's no change, check the data
         case get_field(changeset, :group_mapping) do
           nil -> add_error(changeset, :group_mapping, "must be provided")
           [] -> add_error(changeset, :group_mapping, "cannot be empty")

@@ -130,10 +130,8 @@ defmodule Rbac.GrpcServers.OktaServer do
 
   def set_up_group_mapping(req, _stream) do
     observe("set_up_group_mapping", fn ->
-      # Validate that we received a valid UUID for org_id
       validate_uuid!(req.org_id)
 
-      # Convert from protobuf messages to our internal format (list of maps)
       mappings =
         Enum.map(req.mappings, fn mapping ->
           %{
@@ -172,13 +170,10 @@ defmodule Rbac.GrpcServers.OktaServer do
         {:ok, idp_group_mapping} ->
           # Convert from our internal format to protobuf messages
           group_mapping =
-            Enum.map(idp_group_mapping.group_mapping, fn %{
-                                                           idp_group_id: okta_id,
-                                                           semaphore_group_id: semaphore_id
-                                                         } ->
+            Enum.map(idp_group_mapping.group_mapping, fn mapping ->
               %GroupMapping{
-                okta_group_id: okta_id,
-                semaphore_group_id: semaphore_id
+                okta_group_id: mapping.okta_id,
+                semaphore_group_id: mapping.semaphore_id
               }
             end)
 
@@ -188,7 +183,6 @@ defmodule Rbac.GrpcServers.OktaServer do
           }
 
         {:error, :not_found} ->
-          # Return an empty list if no mappings exist
           %DescribeGroupMappingResponse{mappings: []}
 
         error ->
