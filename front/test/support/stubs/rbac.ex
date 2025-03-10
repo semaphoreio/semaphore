@@ -359,6 +359,7 @@ defmodule Support.Stubs.RBAC do
       GrpcMock.stub(RBACMock, :list_accessible_orgs, &__MODULE__.list_accessible_orgs/2)
       GrpcMock.stub(RBACMock, :list_accessible_projects, &__MODULE__.list_accessible_projects/2)
       GrpcMock.stub(RBACMock, :list_existing_permissions, &__MODULE__.list_existing_permissions/2)
+      GrpcMock.stub(RBACMock, :refresh_collaborators, &__MODULE__.refresh_collaborators/2)
     end
 
     def expect(function, n \\ 1, callback) do
@@ -634,6 +635,10 @@ defmodule Support.Stubs.RBAC do
     rescue
       _ ->
         reraise GRPC.RPCError, status: GRPC.Status.invalid_argument(), message: "Bad request"
+    end
+
+    def refresh_collaborators(_req, _) do
+      InternalApi.RBAC.RefreshCollaboratorsResponse.new()
     end
 
     ###
