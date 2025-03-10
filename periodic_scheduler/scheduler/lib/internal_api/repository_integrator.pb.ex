@@ -5,6 +5,8 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   field :GITHUB_OAUTH_TOKEN, 0
   field :GITHUB_APP, 1
   field :BITBUCKET, 2
+  field :GITLAB, 3
+  field :GIT, 4
 end
 
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
