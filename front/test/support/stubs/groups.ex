@@ -84,40 +84,23 @@ defmodule Support.Stubs.Groups do
         end
 
       # Extract pagination parameters with proper defaults
-      page_size =
-        case req.page do
-          nil -> 10
-          # Return all results when page_size is 0
-          page when page.page_size <= 0 -> length(groups)
-          page -> page.page_size
-        end
-
-      page_no =
-        case req.page do
-          nil -> 1
-          # Default to page 1 when page_no is 0
-          page when page.page_no <= 0 -> 1
-          page -> page.page_no
-        end
-
+      {page_size, page_no} = extract_pagination_params(req.page)
+      
       total_count = length(groups)
-      total_pages = if page_size == 0, do: 1, else: max(1, ceil(total_count / page_size))
+      total_pages = max(1, (if page_size == 0, do: 1, else: ceil(total_count / page_size)))
 
-      # Apply pagination only if page_size > 0
+      # Apply pagination
       paged_groups =
         if page_size > 0 do
           groups
           |> Enum.drop((page_no - 1) * page_size)
           |> Enum.take(page_size)
         else
-          # Return all groups if page_size is 0
-          groups
+          groups # Return all groups if page_size is 0
         end
 
-      group_models = Enum.map(paged_groups, &to_group_model/1)
-
       %InternalApi.Groups.ListGroupsResponse{
-        groups: group_models,
+        groups: Enum.map(paged_groups, &to_group_model/1),
         total_pages: total_pages
       }
     end
@@ -197,6 +180,12 @@ defmodule Support.Stubs.Groups do
     defp ensure_list(nil), do: []
     defp ensure_list(value) when is_list(value), do: value
     defp ensure_list(value), do: [value]
+
+    # Extract pagination parameters with defaults
+    defp extract_pagination_params(nil), do: {10, 1}
+    defp extract_pagination_params(%{page_size: size, page_no: no}) when size <= 0, do: {0, max(1, no)}
+    defp extract_pagination_params(%{page_size: size, page_no: no}) when no <= 0, do: {size, 1}
+    defp extract_pagination_params(%{page_size: size, page_no: no}), do: {size, no}
 
     defp update_member_ids(current_members, members_to_add, members_to_remove) do
       # Ensure all parameters are lists
