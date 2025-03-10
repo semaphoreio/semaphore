@@ -1,54 +1,42 @@
 defmodule InternalApi.PermissionPatrol.HasPermissionsRequest do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          user_id: String.t(),
-          org_id: String.t(),
-          project_id: String.t(),
-          permissions: [String.t()]
-        }
-  defstruct [:user_id, :org_id, :project_id, :permissions]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:user_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:project_id, 3, type: :string)
+  field(:user_id, 1, type: :string, json_name: "userId")
+  field(:org_id, 2, type: :string, json_name: "orgId")
+  field(:project_id, 3, type: :string, json_name: "projectId")
   field(:permissions, 4, repeated: true, type: :string)
-end
-
-defmodule InternalApi.PermissionPatrol.HasPermissionsResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          has_permissions: %{String.t() => boolean}
-        }
-  defstruct [:has_permissions]
-
-  field(:has_permissions, 1,
-    repeated: true,
-    type: InternalApi.PermissionPatrol.HasPermissionsResponse.HasPermissionsEntry,
-    map: true
-  )
 end
 
 defmodule InternalApi.PermissionPatrol.HasPermissionsResponse.HasPermissionsEntry do
   @moduledoc false
-  use Protobuf, map: true, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          key: String.t(),
-          value: boolean
-        }
-  defstruct [:key, :value]
+  use Protobuf, map: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:key, 1, type: :string)
   field(:value, 2, type: :bool)
 end
 
+defmodule InternalApi.PermissionPatrol.HasPermissionsResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:has_permissions, 1,
+    repeated: true,
+    type: InternalApi.PermissionPatrol.HasPermissionsResponse.HasPermissionsEntry,
+    json_name: "hasPermissions",
+    map: true
+  )
+end
+
 defmodule InternalApi.PermissionPatrol.PermissionPatrol.Service do
   @moduledoc false
-  use GRPC.Service, name: "InternalApi.PermissionPatrol.PermissionPatrol"
+
+  use GRPC.Service,
+    name: "InternalApi.PermissionPatrol.PermissionPatrol",
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :HasPermissions,
@@ -59,5 +47,6 @@ end
 
 defmodule InternalApi.PermissionPatrol.PermissionPatrol.Stub do
   @moduledoc false
+
   use GRPC.Stub, service: InternalApi.PermissionPatrol.PermissionPatrol.Service
 end

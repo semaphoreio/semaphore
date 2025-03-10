@@ -5,7 +5,7 @@ include ../Makefile
 DOCKER_BUILD_PATH=..
 APP_NAME?=project_page
 SHELL := /bin/bash
-PROTOC_TAG=1.6.6-3.3.0-0.5.4
+PROTOC_TAG=1.12-3.20.1-0.13.0
 TMP_REPO_DIR ?= /tmp/internal_api
 INTERNAL_API_BRANCH?=master
 PUBLIC_API_BRANCH ?= master

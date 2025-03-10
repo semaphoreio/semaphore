@@ -1,59 +1,28 @@
-defmodule Semaphore.Dashboards.V1alpha.Dashboard do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: Semaphore.Dashboards.V1alpha.Dashboard.Metadata.t(),
-          spec: Semaphore.Dashboards.V1alpha.Dashboard.Spec.t()
-        }
-  defstruct [:metadata, :spec]
-
-  field(:metadata, 1, type: Semaphore.Dashboards.V1alpha.Dashboard.Metadata)
-  field(:spec, 2, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec)
-end
-
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Metadata do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          name: String.t(),
-          id: String.t(),
-          title: String.t(),
-          create_time: integer,
-          update_time: integer
-        }
-  defstruct [:name, :id, :title, :create_time, :update_time]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:id, 2, type: :string)
   field(:title, 3, type: :string)
-  field(:create_time, 4, type: :int64)
-  field(:update_time, 5, type: :int64)
+  field(:create_time, 4, type: :int64, json_name: "createTime")
+  field(:update_time, 5, type: :int64, json_name: "updateTime")
 end
 
-defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec do
+defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.FiltersEntry do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          widgets: [Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.t()]
-        }
-  defstruct [:widgets]
+  use Protobuf, map: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:widgets, 2, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget)
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          name: String.t(),
-          type: String.t(),
-          filters: %{String.t() => String.t()}
-        }
-  defstruct [:name, :type, :filters]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:name, 1, type: :string)
   field(:type, 2, type: :string)
@@ -65,98 +34,79 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget do
   )
 end
 
-defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.FiltersEntry do
+defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec do
   @moduledoc false
-  use Protobuf, map: true, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          key: String.t(),
-          value: String.t()
-        }
-  defstruct [:key, :value]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:key, 1, type: :string)
-  field(:value, 2, type: :string)
+  field(:widgets, 2, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget)
+end
+
+defmodule Semaphore.Dashboards.V1alpha.Dashboard do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:metadata, 1, type: Semaphore.Dashboards.V1alpha.Dashboard.Metadata)
+  field(:spec, 2, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.ListDashboardsRequest do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          page_size: integer,
-          page_token: String.t()
-        }
-  defstruct [:page_size, :page_token]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:page_size, 1, type: :int32)
-  field(:page_token, 2, type: :string)
+  field(:page_size, 1, type: :int32, json_name: "pageSize")
+  field(:page_token, 2, type: :string, json_name: "pageToken")
 end
 
 defmodule Semaphore.Dashboards.V1alpha.ListDashboardsResponse do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          dashboards: [Semaphore.Dashboards.V1alpha.Dashboard.t()],
-          next_page_token: String.t(),
-          total_size: integer
-        }
-  defstruct [:dashboards, :next_page_token, :total_size]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:dashboards, 1, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard)
-  field(:next_page_token, 2, type: :string)
-  field(:total_size, 3, type: :int32)
+  field(:next_page_token, 2, type: :string, json_name: "nextPageToken")
+  field(:total_size, 3, type: :int32, json_name: "totalSize")
 end
 
 defmodule Semaphore.Dashboards.V1alpha.GetDashboardRequest do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          id_or_name: String.t()
-        }
-  defstruct [:id_or_name]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:id_or_name, 1, type: :string)
+  field(:id_or_name, 1, type: :string, json_name: "idOrName")
 end
 
 defmodule Semaphore.Dashboards.V1alpha.UpdateDashboardRequest do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          id_or_name: String.t(),
-          dashboard: Semaphore.Dashboards.V1alpha.Dashboard.t()
-        }
-  defstruct [:id_or_name, :dashboard]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:id_or_name, 1, type: :string)
+  field(:id_or_name, 1, type: :string, json_name: "idOrName")
   field(:dashboard, 2, type: Semaphore.Dashboards.V1alpha.Dashboard)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.DeleteDashboardRequest do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  @type t :: %__MODULE__{
-          id_or_name: String.t()
-        }
-  defstruct [:id_or_name]
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:id_or_name, 1, type: :string)
+  field(:id_or_name, 1, type: :string, json_name: "idOrName")
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Empty do
   @moduledoc false
-  use Protobuf, syntax: :proto3
 
-  defstruct []
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
 defmodule Semaphore.Dashboards.V1alpha.DashboardsApi.Service do
   @moduledoc false
-  use GRPC.Service, name: "semaphore.dashboards.v1alpha.DashboardsApi"
+
+  use GRPC.Service,
+    name: "semaphore.dashboards.v1alpha.DashboardsApi",
+    protoc_gen_elixir_version: "0.13.0"
 
   rpc(
     :ListDashboards,
@@ -191,5 +141,6 @@ end
 
 defmodule Semaphore.Dashboards.V1alpha.DashboardsApi.Stub do
   @moduledoc false
+
   use GRPC.Stub, service: Semaphore.Dashboards.V1alpha.DashboardsApi.Service
 end
