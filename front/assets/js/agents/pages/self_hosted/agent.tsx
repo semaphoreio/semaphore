@@ -228,7 +228,7 @@ const ConnectedAgent = (props: ConnectAgentProps) => {
       <div className="pl2-l">
         <div className="flex-l items-center justify-between">
           <h3 className="f4 mb1">
-            <span className="green mr1">●</span>
+            <span className="green mr1 select-none">●</span>
             {agent.name}
           </h3>
           <div className="f5 gray mb0">
