@@ -373,7 +373,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       %{integration: integration}
     end
 
-    test "invalid org_id format", %{integration: integration} do
+    test "invalid org_id format" do
       request = %InternalApi.Okta.SetUpGroupMappingRequest{
         org_id: "not-a-valid-uuid",
         mappings: []
@@ -515,7 +515,6 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
     test "fails when default role id not present", %{integration: integration} do
       semaphore_group_id_1 = Ecto.UUID.generate()
-      semaphore_group_id_2 = Ecto.UUID.generate()
 
       # First set up with a default_role_id
       initial_mappings = [
