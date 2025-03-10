@@ -21,7 +21,7 @@ export class State {
   defaultRoleId: string;
   saveUrl: string;
   cancelUrl: string;
-  mappings?: any[];
+  mappings: any[];
 
   static fromJSON(configJSON: any): State {
     const config = State.default();
