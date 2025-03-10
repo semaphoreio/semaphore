@@ -285,7 +285,7 @@ defmodule Front.Utils do
       "2 days ago"
 
       iex> Utils.decorate_relative(~U[2025-03-07 22:05:26.833945Z])
-      "Fri, 07th Mar 2025"
+      "Fri 07th Mar 2025"
   """
   @spec decorate_relative(integer | float | DateTime.t() | nil) :: String.t()
   def decorate_relative(0), do: ""
@@ -303,7 +303,7 @@ defmodule Front.Utils do
       [weekday, day, month, year] = String.split(unssufixed_date, " ")
 
       suffixed_day = day <> ordinal_suffix(String.to_integer(day))
-      "#{weekday}, #{suffixed_day} #{month} #{year}"
+      "#{weekday} #{suffixed_day} #{month} #{year}"
     else
       Timex.format!(date, "{relative}", :relative)
     end
