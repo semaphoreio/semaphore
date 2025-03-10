@@ -9,7 +9,7 @@
 /github_hooks/ @radwo @VeljkoMaksimovic @skipi @darkofabijan
 /github_notifier/ @radwo @VeljkoMaksimovic @hamir-suspect
 /ee/gofer/ @DamjanBecirovic @dexyk
-/guard/ @VeljkoMaksimovic @radwo @lucaspin
+/guard/ @VeljkoMaksimovic @forestileao @lucaspin
 /hooks_processor/ @radwo @hamir-suspect @DamjanBecirovic
 /hooks_receiver/ @radwo @hamir-suspect @DamjanBecirovic
 /keycloak/ @radwo @skipi @hamir-suspect
@@ -24,7 +24,8 @@
 /public-api/v2 @hamir-suspect @DamjanBecirovic
 /public-api/v1alpha @hamir-suspect @DamjanBecirovic
 /rbac/ @VeljkoMaksimovic @radwo @lucaspin
-/ee/rbac/ @VeljkoMaksimovic @radwo @lucaspin
+/ee/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
+/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
 /repohub/ @radwo @skipi @lucaspin
 /repository_hub/ @skipi @radwo @hamir-suspect
 /secrethub/ @hamir-suspect @lucaspin @VeljkoMaksimovic
