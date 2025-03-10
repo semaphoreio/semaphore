@@ -55,13 +55,12 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       nil ->
         case Rbac.Store.RbacUser.fetch_by_email(user_params.email) do
           {:error, :not_found} ->
-            Logger.info("[SamlJIT Provisioner] Creating new saml_jit user #{inspect(user_params)}")
-
+            Logger.info("[Sam lJIT Provisioner] Creating new user #{inspect(user_params)}")
             Rbac.User.Actions.create(user_params)
 
           {:ok, user} ->
             Logger.info(
-              "[SamlJIT Provisioner] Adding idempotency token to existing user #{inspect(user_params)}"
+              "[Saml JIT Provisioner] Adding idempotency token to existing user #{inspect(user_params)}"
             )
 
             Rbac.Store.User.Front.add_idempotency_token(user.id, idempotency_token)

@@ -118,13 +118,13 @@ defmodule Rbac.Okta.Saml.Api do
 
     with {:ok, integration} <- Integration.find_by_org_id(org_id),
          {:ok, email, att} <- PayloadParser.parse(integration, params, consume_uri, metadata_uri),
-         {:ok, okta_user} <- find_okta_user(integration, email),
-         {:ok, user} <- find_user(okta_user),
+         {:ok, scim_saml_user} <- find_scim_or_saml_user(integration, email),
+         {:ok, user} <- find_user(scim_saml_user),
          {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
-      Watchman.increment("okta_login.success")
+      Watchman.increment("saml_login.success")
 
       Logger.info(
-        "[Okta] User create a session user_id: #{user.id} integration_id: #{integration.id}"
+        "[SAML] User create a session user_id: #{user.id} integration_id: #{integration.id}"
       )
 
       conn
@@ -133,7 +133,7 @@ defmodule Rbac.Okta.Saml.Api do
     else
       e ->
         Watchman.increment("okta_login.failure")
-        Logger.error("Okta auth failed #{inspect(e)}")
+        Logger.error("SAML auth failed #{inspect(e)}")
         render_not_found(conn)
     end
   end
@@ -166,16 +166,22 @@ defmodule Rbac.Okta.Saml.Api do
     conn |> put_resp_content_type("text/plain") |> send_resp(404, "Not found")
   end
 
-  defp find_okta_user(integration, email) do
+  defp find_scim_or_saml_user(integration, email) do
     case Rbac.Repo.OktaUser.find_by_email(integration, email) do
-      {:ok, user} -> {:ok, user}
-      {:error, :not_found} -> {:error, :okta_user, :not_found}
+      {:ok, user} ->
+        {:ok, user}
+
+      {:error, :not_found} ->
+        case Rbac.Repo.SamlJitUser.find_by_email(integration, email) do
+          {:ok, user} -> {:ok, user}
+          {:error, :not_found} -> {:error, :scim_saml_user, :not_found}
+        end
     end
   end
 
-  defp find_user(okta_user) do
-    if okta_user.user_id do
-      case FrontRepo.User.active_user_by_id(okta_user.user_id) do
+  defp find_user(saml_scim_user) do
+    if saml_scim_user.user_id do
+      case FrontRepo.User.active_user_by_id(saml_scim_user.user_id) do
         {:ok, user} -> {:ok, user}
         {:error, :not_found} -> {:error, :user, :not_found}
       end
