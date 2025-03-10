@@ -135,7 +135,7 @@ defmodule Rbac.Okta.Saml.Api do
         |> inject_session_cookie(user)
         |> redirect(user)
       else
-        {:error, :scim_saml_user, :not_found} ->
+        {:error, :scim_saml_user, :not_found} = e ->
           if integration.jit_provisioning_enabled do
             {:ok, saml_jit_user} = Rbac.Repo.SamlJitUser.create(integration, email, attributes)
             Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
@@ -144,7 +144,7 @@ defmodule Rbac.Okta.Saml.Api do
             |> put_resp_content_type("text/plain")
             |> send_resp(200, "User provisioning, try again in a minute")
           else
-            raise {:error, :scim_saml_user, :not_found}
+            raise e
           end
 
         e ->
