@@ -48,6 +48,16 @@ defmodule Rbac.Repo.SamlJitUser do
     |> validate_required(@required_fields)
   end
 
+  def find_by_email(integration, email) do
+    __MODULE__
+    |> where([u], u.integration_id == ^integration.id and e.email == ^email)
+    |> Repo.one()
+    |> case do
+      nil -> {:error, :not_found}
+      user -> {:ok, user}
+    end
+  end
+
   def connect_user(saml_jit_user, user_id) do
     changeset(saml_jit_user, %{user_id: user_id}) |> Repo.update()
   end
