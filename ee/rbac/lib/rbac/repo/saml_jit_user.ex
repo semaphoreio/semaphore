@@ -49,7 +49,7 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
-  def connect_user(user, user_id) do
+  def connect_user(user = %__MODULE__{}, user_id) do
     changeset(user, %{user_id: user_id}) |> Repo.update()
   end
 
@@ -63,6 +63,10 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
+  def mark_as_processed(user = %__MODULE__{}) do
+    changeset(user, %{state: :processed}) |> Rbac.Repo.update()
+  end
+
   defp new(integration, email, attributes) do
     %__MODULE__{
       integration_id: integration.id,
@@ -73,13 +77,13 @@ defmodule Rbac.Repo.SamlJitUser do
     }
   end
 
-  defp changeset(user, params \\ %{}) do
+  defp changeset(user = %__MODULE__{}, params \\ %{}) do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
   end
 
-  defp extract_attribute(user, name) do
+  defp extract_attribute(user = %__MODULE__{}, name) do
     Map.get(user.attributes, name, [""]) |> List.first()
   end
 end
