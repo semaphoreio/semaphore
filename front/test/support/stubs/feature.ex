@@ -79,6 +79,7 @@ defmodule Support.Stubs.Feature do
       {"ip_allow_list", state: :ENABLED, quantity: 1},
       {"organization_health", state: :ENABLED, quantity: 1},
       {"superjerry_tests", state: :ENABLED, quantity: 1},
+      {"rbac__groups", state: :ENABLED, quantity: 1},
       {"experimental_userpilot", state: :HIDDEN, quantity: 0}
     ]
   end

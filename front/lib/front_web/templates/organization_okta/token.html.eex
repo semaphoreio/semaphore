@@ -10,6 +10,18 @@
 
 <p class="mt3"><span class="serif">⚠️</span> For your own security, we’ll show you the token only once.</p>
 
-<div class="flex mt4">
-    <%= link "View Integration", to: organization_okta_path(@conn, :show), class: "btn btn-primary" %>
-</div>
+<%= if @jit_provisioning_enabled do %>
+    <p class="mt3">
+        JIT provisioning is enabled.
+        By default, all provisioned users will get the "Member" role. Continue to the next step to configure group mapping.
+    </p>
+
+    <div class="flex mt4">
+        <%= link "Configure Group Mapping", to: organization_okta_path(@conn, :group_mapping), class: "btn btn-primary" %>
+        <%= link "Use default mapping", to: organization_okta_path(@conn, :show), class: "btn btn-secondary ml2" %>
+    </div>
+<% else %>
+    <div class="flex mt4">
+        <%= link "View Integration", to: organization_okta_path(@conn, :show), class: "btn btn-primary" %>
+    </div>
+<% end %>

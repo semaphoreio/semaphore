@@ -346,6 +346,22 @@ defmodule Support.Stubs.RBAC do
     DB.find_all_by(:rbac_roles, :name, "Contributor") |> List.first() |> Map.get(:id)
   end
 
+  def add_group(org_id, group_name, group_id) do
+    DB.insert(:subjects, %{
+      type: "group",
+      id: group_id,
+      name: group_name
+    })
+
+    DB.insert(:subject_role_bindings, %{
+      id: UUID.gen(),
+      org_id: org_id,
+      subject_id: group_id,
+      role_id: member_role_id(),
+      project_id: nil
+    })
+  end
+
   defmodule Grpc do
     def init do
       GrpcMock.stub(RBACMock, :list_roles, &__MODULE__.list_roles/2)

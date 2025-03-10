@@ -9,7 +9,10 @@ defmodule Rbac.GrpcServers.OktaServer do
     SetUpResponse,
     GenerateScimTokenResponse,
     ListResponse,
-    ListUsersResponse
+    ListUsersResponse,
+    SetUpGroupMappingResponse,
+    DescribeGroupMappingResponse,
+    GroupMapping
   }
 
   @manage_okta_permission "organization.okta.manage"
@@ -28,6 +31,7 @@ defmodule Rbac.GrpcServers.OktaServer do
           req.sso_url,
           req.saml_issuer,
           req.saml_certificate,
+          req.jit_provisioning_enabled,
           req.idempotency_token
         )
 
@@ -124,6 +128,73 @@ defmodule Rbac.GrpcServers.OktaServer do
     end)
   end
 
+  def set_up_group_mapping(req, _stream) do
+    observe("set_up_group_mapping", fn ->
+      validate_uuid!(req.org_id)
+
+      mappings =
+        Enum.map(req.mappings, fn mapping ->
+          %{
+            idp_group_id: mapping.okta_group_id,
+            semaphore_group_id: mapping.semaphore_group_id
+          }
+        end)
+
+      case Rbac.Okta.IdpGroupMapping.create_or_update(req.org_id, mappings, req.default_role_id) do
+        {:ok, _mapping} ->
+          Logger.info("Group mappings created/updated for org #{req.org_id}")
+          %SetUpGroupMappingResponse{}
+
+        {:error, %Ecto.Changeset{} = changeset} ->
+          Logger.error(
+            "Error while setting up group mappings for org #{req.org_id}: #{inspect(changeset)}"
+          )
+
+          grpc_error!(
+            :failed_precondition,
+            "Failed to save group mappings: Invalid"
+          )
+
+        error ->
+          Logger.error("Unknown error while setting up group mappings: #{inspect(error)}")
+          grpc_error!(:unknown, "Unknown error while setting up group mappings")
+      end
+    end)
+  end
+
+  def describe_group_mapping(req, _stream) do
+    observe("list_group_mappings", fn ->
+      validate_uuid!(req.org_id)
+
+      case Rbac.Okta.IdpGroupMapping.get_for_organization(req.org_id) do
+        {:ok, idp_group_mapping} ->
+          # Convert from our internal format to protobuf messages
+          group_mapping =
+            Enum.map(idp_group_mapping.group_mapping, fn mapping ->
+              %GroupMapping{
+                okta_group_id: mapping.idp_group_id,
+                semaphore_group_id: mapping.semaphore_group_id
+              }
+            end)
+
+          %DescribeGroupMappingResponse{
+            mappings: group_mapping,
+            default_role_id: idp_group_mapping.default_role_id
+          }
+
+        {:error, :not_found} ->
+          %DescribeGroupMappingResponse{mappings: []}
+
+        error ->
+          Logger.error(
+            "Error while listing group mappings for org #{req.org_id}: #{inspect(error)}"
+          )
+
+          grpc_error!(:unknown, "Unknown error while listing group mappings")
+      end
+    end)
+  end
+
   #
   # Serialization Utilities
   #
@@ -137,7 +208,8 @@ defmodule Rbac.GrpcServers.OktaServer do
       updated_at: serialize_time(integration.updated_at),
       saml_issuer: integration.saml_issuer,
       idempotency_token: integration.idempotency_token,
-      sso_url: integration.sso_url
+      sso_url: integration.sso_url,
+      jit_provisioning_enabled: integration.jit_provisioning_enabled
     }
   end
 

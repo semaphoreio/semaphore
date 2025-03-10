@@ -11,6 +11,7 @@ defmodule InternalApi.Okta.OktaIntegration do
   field(:idempotency_token, 6, type: :string, json_name: "idempotencyToken")
   field(:saml_issuer, 7, type: :string, json_name: "samlIssuer")
   field(:sso_url, 8, type: :string, json_name: "ssoUrl")
+  field(:jit_provisioning_enabled, 9, type: :bool, json_name: "jitProvisioningEnabled")
 end
 
 defmodule InternalApi.Okta.SetUpRequest do
@@ -24,6 +25,7 @@ defmodule InternalApi.Okta.SetUpRequest do
   field(:saml_certificate, 4, type: :string, json_name: "samlCertificate")
   field(:saml_issuer, 5, type: :string, json_name: "samlIssuer")
   field(:sso_url, 6, type: :string, json_name: "ssoUrl")
+  field(:jit_provisioning_enabled, 7, type: :bool, json_name: "jitProvisioningEnabled")
 end
 
 defmodule InternalApi.Okta.SetUpResponse do
@@ -48,6 +50,48 @@ defmodule InternalApi.Okta.GenerateScimTokenResponse do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:token, 1, type: :string)
+end
+
+defmodule InternalApi.Okta.SetUpGroupMappingRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:default_role_id, 2, type: :string, json_name: "defaultRoleId")
+  field(:mappings, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.SetUpGroupMappingResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+end
+
+defmodule InternalApi.Okta.DescribeGroupMappingRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+end
+
+defmodule InternalApi.Okta.DescribeGroupMappingResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:default_role_id, 1, type: :string, json_name: "defaultRoleId")
+  field(:mappings, 2, repeated: true, type: InternalApi.Okta.GroupMapping)
+end
+
+defmodule InternalApi.Okta.GroupMapping do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:semaphore_group_id, 1, type: :string, json_name: "semaphoreGroupId")
+  field(:okta_group_id, 2, type: :string, json_name: "oktaGroupId")
 end
 
 defmodule InternalApi.Okta.ListRequest do
@@ -115,6 +159,18 @@ defmodule InternalApi.Okta.Okta.Service do
   rpc(:ListUsers, InternalApi.Okta.ListUsersRequest, InternalApi.Okta.ListUsersResponse)
 
   rpc(:Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse)
+
+  rpc(
+    :SetUpGroupMapping,
+    InternalApi.Okta.SetUpGroupMappingRequest,
+    InternalApi.Okta.SetUpGroupMappingResponse
+  )
+
+  rpc(
+    :DescribeGroupMapping,
+    InternalApi.Okta.DescribeGroupMappingRequest,
+    InternalApi.Okta.DescribeGroupMappingResponse
+  )
 end
 
 defmodule InternalApi.Okta.Okta.Stub do
