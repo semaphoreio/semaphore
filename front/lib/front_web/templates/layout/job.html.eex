@@ -35,7 +35,7 @@
           <%= if @block != nil do %>
             / Block: <%= @block.name %>
           <% end %>
-          <%= "· by #{@hook.repo_host_username}, #{Timex.Format.DateTime.Formatters.Relative.format!(@workflow.created_at, "{relative}")}" %>
+          <%= "· by #{@hook.repo_host_username}, #{Front.Utils.decorate_relative(@workflow.created_at)}" %>
           ">
           <img src="<%= assets_path() %>/images/icn-info-15.svg" width="16px" height="16px" alt="commit" class="v-mid">
         </span>

@@ -271,7 +271,10 @@ defmodule Front.Utils do
   end
 
   @doc """
-  Decorates a date in seconds in a relative format.
+  Decorates a date in seconds or a DateTime in a relative format.
+  If more than 3 days compared to the current date, display the whole date
+  in: Weekday, Day Month Year format.
+
   ## Examples
       iex> alias Front.Utils, as: Utils
       iex> Utils.decorate_relative(0)
@@ -280,14 +283,40 @@ defmodule Front.Utils do
       ""
       iex> Utils.decorate_relative(1616425200)
       "2 days ago"
+
+      iex> Utils.decorate_relative(~U[2025-03-07 22:05:26.833945Z])
+      "Fri, 07th Mar 2025"
   """
-  @spec decorate_relative(integer | float | nil) :: String.t()
+  @spec decorate_relative(integer | float | DateTime.t() | nil) :: String.t()
   def decorate_relative(0), do: ""
   def decorate_relative(nil), do: ""
 
-  def decorate_relative(seconds) do
+  def decorate_relative(seconds) when is_integer(seconds) do
     seconds
     |> DateTime.from_unix!()
-    |> Timex.format!("{relative}", :relative)
+    |> decorate_relative()
+  end
+
+  def decorate_relative(date) do
+    if Timex.diff(DateTime.utc_now(), date, :days) > 3 do
+      unssufixed_date = Timex.format!(date, "%a %d %b %Y", :strftime)
+      [weekday, day, month, year] = String.split(unssufixed_date, " ")
+
+      suffixed_day = day <> ordinal_suffix(String.to_integer(day))
+      "#{weekday}, #{suffixed_day} #{month} #{year}"
+    else
+      Timex.format!(date, "{relative}", :relative)
+    end
+  end
+
+  defp ordinal_suffix(day) when day in [11, 12, 13], do: "th"
+
+  defp ordinal_suffix(day) do
+    case rem(day, 10) do
+      1 -> "st"
+      2 -> "nd"
+      3 -> "rd"
+      _ -> "th"
+    end
   end
 end
