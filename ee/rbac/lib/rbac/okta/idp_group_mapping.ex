@@ -4,9 +4,6 @@ defmodule Rbac.Okta.IdpGroupMapping do
   It provides functionality to create, update, and retrieve group mappings.
   """
 
-  require Ecto.Query
-  alias Ecto.Query
-  alias Rbac.Repo
   alias Rbac.Repo.IdpGroupMapping
 
   @doc """
