@@ -1,0 +1,7 @@
+<div
+  data-poll-background
+  data-poll-state="<%= @badge_pollman.state %>"
+  data-poll-href="<%= @badge_pollman.href %>"
+>
+  <%= raw job_status_badge(@job) %>
+</div>

@@ -171,12 +171,18 @@ defmodule FrontWeb.JobController do
         href: "/jobs/#{conn.assigns.job.id}/status"
       }
 
+      badge_pollman = %{
+        state: pollman_state,
+        href: "/jobs/#{conn.assigns.job.id}/status_badge"
+      }
+
       data =
         [
           debug_action: debug_action,
           can_debug: can_debug,
           self_hosted: self_hosted,
-          pollman: pollman
+          pollman: pollman,
+          badge_pollman: badge_pollman
         ]
         |> inject_nonce(params)
 
@@ -185,6 +191,22 @@ defmodule FrontWeb.JobController do
       |> put_layout(false)
       |> render("_state.html", data)
     end)
+  end
+
+  def status_badge(conn, _params) do
+    pollman_state = extract_state(conn.assigns.job.state)
+
+    badge_pollman = %{
+      state: pollman_state,
+      href: "/jobs/#{conn.assigns.job.id}/status_badge"
+    }
+
+    data = [badge_pollman: badge_pollman]
+
+    conn
+    |> put_view(FrontWeb.JobView)
+    |> put_layout(false)
+    |> render("_status_badge.html", data)
   end
 
   def stop(conn, _params) do
