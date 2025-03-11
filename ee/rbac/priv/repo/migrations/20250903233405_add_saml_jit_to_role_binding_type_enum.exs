@@ -10,7 +10,7 @@ defmodule Rbac.Repo.Migrations.AddSamlJitToRoleBindingEnum do
   ###
   @sql_commands_for_altering_enum_type [
     "ALTER TYPE role_binding_scope RENAME TO deprecated;",
-    "CREATE TYPE role_binding_scope AS ENUM ('github', 'bitbucket', 'gitlab', 'manually_assigned', 'okta', 'saml_jit');",
+    "CREATE TYPE role_binding_scope AS ENUM ('github', 'bitbucket', 'gitlab', 'manually_assigned', 'okta', 'inherited_from_org_role', 'saml_jit');",
     "ALTER TABLE subject_role_bindings
       ALTER COLUMN binding_source TYPE role_binding_scope USING binding_source::text::role_binding_scope;",
     "DROP TYPE deprecated;"

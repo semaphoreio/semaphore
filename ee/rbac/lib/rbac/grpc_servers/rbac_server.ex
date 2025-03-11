@@ -69,7 +69,7 @@ defmodule Rbac.GrpcServers.RbacServer do
           %RBAC.AssignRoleResponse{}
 
         {:error, error_msg} ->
-          IO.puts("Error assigning role: #{error_msg}")
+          Logger.error("Error assigning role: #{error_msg}")
           grpc_error!(:failed_precondition, error_msg)
       end
     end)

@@ -1,4 +1,4 @@
-defmodule Rbac.Repo.Migrations.CreateSamlJitUsers do
+defmodule Guard.Repo.Migrations.CreateSamlJitUsers do
   use Ecto.Migration
 
   def change do
