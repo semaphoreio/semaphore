@@ -99,63 +99,61 @@ defmodule Rbac.Okta.Saml.Api do
   # Okta Authentication
   #
 
-  post "/okta/auth" do
+  post("/okta/auth", do: handle_auth(conn))
+
+  defp handle_auth(conn) do
     alias Rbac.Okta.Integration
     alias Rbac.Okta.Saml.PayloadParser
 
-    try do
-      params = conn.params
+    params = conn.params
 
-      Logger.debug("Auth params: #{inspect(params)}")
+    Logger.debug("Auth params: #{inspect(params)}")
 
-      org_id = conn.assigns.org_id
-      org_username = conn.assigns.org_username
+    org_id = conn.assigns.org_id
+    org_username = conn.assigns.org_username
 
-      Logger.debug("Org ID: #{inspect(org_id)}")
-      Logger.debug("Org username: #{inspect(org_username)}")
+    Logger.debug("Org ID: #{inspect(org_id)}")
+    Logger.debug("Org username: #{inspect(org_username)}")
 
-      consume_uri = "https://#{org_username}.#{domain()}/okta/auth"
-      metadata_uri = "https://#{org_username}.#{domain()}"
+    consume_uri = "https://#{org_username}.#{domain()}/okta/auth"
+    metadata_uri = "https://#{org_username}.#{domain()}"
 
-      {:ok, integration} = Integration.find_by_org_id(org_id)
+    {:ok, integration} = Integration.find_by_org_id(org_id)
+    {:ok, email, attributes} = PayloadParser.parse(integration, params, consume_uri, metadata_uri)
 
-      {:ok, email, attributes} =
-        PayloadParser.parse(integration, params, consume_uri, metadata_uri)
+    with {:ok, scim_saml_user} <- find_scim_or_saml_user(integration, email),
+         {:ok, user} <- find_user(scim_saml_user),
+         {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
+      Watchman.increment("saml_login.success")
 
-      with {:ok, scim_saml_user} <- find_scim_or_saml_user(integration, email),
-           {:ok, user} <- find_user(scim_saml_user),
-           {:ok, user} <- FrontRepo.User.set_remember_timestamp(user) do
-        Watchman.increment("saml_login.success")
+      Logger.info(
+        "[SAML] User create a session user_id: #{user.id} integration_id: #{integration.id}"
+      )
 
-        Logger.info(
-          "[SAML] User create a session user_id: #{user.id} integration_id: #{integration.id}"
-        )
+      conn
+      |> inject_session_cookie(user)
+      |> redirect(user)
+    else
+      {:error, :scim_saml_user, :not_found} = e ->
+        if integration.jit_provisioning_enabled do
+          {:ok, saml_jit_user} = Rbac.Repo.SamlJitUser.create(integration, email, attributes)
+          :ok = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
 
-        conn
-        |> inject_session_cookie(user)
-        |> redirect(user)
-      else
-        {:error, :scim_saml_user, :not_found} = e ->
-          if integration.jit_provisioning_enabled do
-            {:ok, saml_jit_user} = Rbac.Repo.SamlJitUser.create(integration, email, attributes)
-            :ok = Rbac.Okta.Saml.JitProvisioner.AddUser.run(saml_jit_user)
-
-            conn
-            |> put_resp_content_type("text/plain")
-            |> send_resp(200, "User provisioning, try again in a minute")
-          else
-            raise e
-          end
-
-        e ->
+          conn
+          |> put_resp_content_type("text/plain")
+          |> send_resp(200, "User provisioning, try again in a minute")
+        else
           raise e
-      end
-    rescue
+        end
+
       e ->
-        Watchman.increment("saml_login.failure")
-        Logger.error("SAML auth failed #{inspect(e)}")
-        render_not_found(conn)
+        raise e
     end
+  rescue
+    e ->
+      Watchman.increment("saml_login.failure")
+      Logger.error("SAML auth failed #{inspect(e)}")
+      render_not_found(conn)
   end
 
   defp inject_session_cookie(conn, user) do

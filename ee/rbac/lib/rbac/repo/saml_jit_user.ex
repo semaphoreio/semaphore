@@ -49,11 +49,11 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
-  def connect_user(user = %__MODULE__{}, user_id) do
+  def connect_user(%__MODULE__{} = user, user_id) do
     changeset(user, %{user_id: user_id}) |> Repo.update()
   end
 
-  def construct_name(user = %__MODULE__{}) do
+  def construct_name(%__MODULE__{} = user) do
     name = extract_attribute(user, "firstName") <> " " <> extract_attribute(user, "lastName")
 
     if String.trim(name) == "" do
@@ -63,7 +63,7 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
-  def mark_as_processed(user = %__MODULE__{}) do
+  def mark_as_processed(%__MODULE__{} = user) do
     changeset(user, %{state: :processed}) |> Rbac.Repo.update()
   end
 
@@ -77,13 +77,13 @@ defmodule Rbac.Repo.SamlJitUser do
     }
   end
 
-  defp changeset(user = %__MODULE__{}, params \\ %{}) do
+  defp changeset(%__MODULE__{} = user, params \\ %{}) do
     user
     |> cast(params, @updatable_fields)
     |> validate_required(@required_fields)
   end
 
-  defp extract_attribute(user = %__MODULE__{}, name) do
+  defp extract_attribute(%__MODULE__{} = user, name) do
     Map.get(user.attributes, name, [""]) |> List.first()
   end
 end
