@@ -20,7 +20,7 @@
     <span class="mh1">&middot;</span>
     <span class="gray">
       <%= raw FrontWeb.PipelineView.format_triggerer(@conn, @workflow, @pipeline) %>
-      <%= Front.Utils.decorate_relative(@pipeline.timeline.created_at) %>
+      <time-ago datetime="<%= format_date(@pipeline.timeline.created_at) %>"></time-ago>
     </span>
   </div>
 </div>

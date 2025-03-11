@@ -15,7 +15,7 @@
     <span class="gray mh1">&middot;</span>
     <span class="gray">
       <%= raw FrontWeb.PipelineView.format_triggerer(@conn, @workflow, @pipeline) %>
-      <%= Front.Utils.decorate_relative(@pipeline.timeline.created_at) %>
+      <time-ago datetime="<%= format_date(@pipeline.timeline.created_at) %>"></time-ago>
     </span>
     <%= if @conn.assigns.permissions["project.job.stop"] && FrontWeb.PipelineView.pipeline_stoppable?(@pipeline) && !FrontWeb.PipelineView.anonymous?(@conn) do %>
       <span class="gray mh2">&middot;</span>

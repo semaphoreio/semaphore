@@ -50,4 +50,11 @@ defmodule FrontWeb.SwitchView do
   def status_icon(:DONE, :STOPPED), do: "icn-stopped.svg"
   def status_icon(:DONE, :CANCELED), do: "icn-stopped.svg"
   def status_icon(_, _), do: "icn-enqueued.svg"
+
+  def triggered_at(trigger_event) do
+    DateTime.from_unix(trigger_event.triggered_at)
+    |> elem(1)
+    |> Timex.format("%FT%T%:z", :strftime)
+    |> elem(1)
+  end
 end

@@ -14,7 +14,9 @@
             <a href="/workflows/<%= branch.workflow.id %>" class="link dark-gray underline-hover word-wrap"><%= branch.workflow.commit_message %></a>
           </div>
           <div class="f6 gray">
-            <%= branch.workflow.author_name %> · <%= Front.Utils.decorate_relative(branch.workflow.created_at) %>
+            <%= branch.workflow.author_name %> · <time-ago datetime="<%= Timex.format!(branch.workflow.created_at, "%FT%T%:z", :strftime) %>">
+              <%= Timex.format!(branch.workflow.created_at, "{Mshort} {D}, {YYYY}") %>
+            </time-ago>
           </div>
         </div>
         <div class="pa3 flex items-center justify-between">

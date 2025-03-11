@@ -17,7 +17,9 @@
       / <%= link @job.name, to: job_path(@conn, :show, @job.id) %>
       / Test Results
       <span class="gray">· by <%= @hook.repo_host_username %>,
-        <%= Front.Utils.decorate_relative(@workflow.created_at) %>
+        <time-ago datetime="<%= @workflow.created_at |> Timex.format!("%FT%T%:z", :strftime) %>">
+          <%= @workflow.created_at |> Timex.format!("{Mshort} {D}, {YYYY}") %>
+        </time-ago>
       </span>
     </div>
   </div>

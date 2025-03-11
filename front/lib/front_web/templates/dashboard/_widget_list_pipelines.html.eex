@@ -29,7 +29,9 @@
           </div>
         </div>
         <div class="f6 nowrap tr-l">
-          <%= Front.Utils.decorate_relative(pipeline.created_at) %>
+          <time-ago datetime="<%= Timex.format!(pipeline.created_at, "%FT%T%:z", :strftime) %>">
+            <%= Timex.format!(pipeline.created_at, "{Mshort} {D}, {YYYY}") %>
+          </time-ago>
         </div>
       </div>
     </div>

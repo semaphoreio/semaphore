@@ -46,9 +46,9 @@
                 Failed to promote
                 <span class="gray">
                   <%= if event.author do %>
-                    · by <%= event.author.name %>, <%= Front.Utils.decorate_relative(event.triggered_at) %>
+                    · by <%= event.author.name %>, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
                   <% else %>
-                    · Auto-Promoted, <%= Front.Utils.decorate_relative(event.triggered_at) %>
+                    · Auto-Promoted, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
                   <% end %>
                 </span>
               </div>
@@ -75,9 +75,9 @@
       <%= "#{event.pipeline.name} " %>
       <span class="gray"> · <%= raw FrontWeb.SwitchView.timer(event) %>
             <%= if event.author do %>
-              · by <%= event.author.name %>, <%= Front.Utils.decorate_relative(event.triggered_at) %>
+              · by <%= event.author.name %>, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
             <% else %>
-              · Auto-Promoted, <%= Front.Utils.decorate_relative(event.triggered_at) %>
+              · Auto-Promoted, <time-ago datetime="<%= FrontWeb.SwitchView.triggered_at(event) %>"></time-ago>
             <% end %>
           </span>
         </div>
