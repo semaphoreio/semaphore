@@ -303,7 +303,7 @@ defmodule Front.Utils do
       [weekday, day, month, year] = String.split(unssufixed_date, " ")
 
       suffixed_day = day <> ordinal_suffix(String.to_integer(day))
-      "#{weekday} #{suffixed_day} #{month} #{year}"
+      "on #{weekday} #{suffixed_day} #{month} #{year}"
     else
       Timex.format!(date, "{relative}", :relative)
     end

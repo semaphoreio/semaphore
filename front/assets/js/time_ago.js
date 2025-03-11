@@ -54,7 +54,7 @@ class TimeAgo extends HTMLElement {
         const [weekday, month, day, year] = formattedDate.replaceAll(",", "").split(" ");
         const suffixedDay = day + this.ordinalSuffix(parseInt(day, 10));
         
-        return `${weekday} ${suffixedDay} ${month} ${year}`;
+        return `on ${weekday} ${suffixedDay} ${month} ${year}`;
     }
 
     ordinalSuffix(day) {
