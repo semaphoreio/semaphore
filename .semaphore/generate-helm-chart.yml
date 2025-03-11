@@ -61,6 +61,7 @@ blocks:
             - checkout
             - if git rev-parse --is-shallow-repository | grep -q true; then git fetch --unshallow --tags; else git fetch --tags; fi
             - export APP_NAME=$(jq -r --arg application "$APPLICATION" '.services[$application][]["app"]' .semaphore/services.json)
+            - export RELEASE_TAG_PREFIX=$(jq -r --arg application "$APPLICATION" '.services[$application][] | (.tagPrefix // "")' .semaphore/services.json)
             - cd $(jq -r --arg application "$APPLICATION" '.services[$application][]["path"]' .semaphore/services.json)
             - |
               if docker manifest inspect $(make registry.image); then
