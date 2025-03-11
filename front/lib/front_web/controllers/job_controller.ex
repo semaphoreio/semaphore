@@ -103,6 +103,11 @@ defmodule FrontWeb.JobController do
       href: "/jobs/#{job_id}/status"
     }
 
+    badge_pollman = %{
+      state: pollman_state,
+      href: "/jobs/#{conn.assigns.job.id}/status_badge"
+    }
+
     log_state = %{
       dark: memory["logDark"],
       wrap: memory["logWrap"],
@@ -117,6 +122,7 @@ defmodule FrontWeb.JobController do
     assigns =
       %{
         pollman: pollman,
+        badge_pollman: badge_pollman,
         log_state: log_state,
         finished_job: finished_job,
         token: token,
@@ -171,18 +177,12 @@ defmodule FrontWeb.JobController do
         href: "/jobs/#{conn.assigns.job.id}/status"
       }
 
-      badge_pollman = %{
-        state: pollman_state,
-        href: "/jobs/#{conn.assigns.job.id}/status_badge"
-      }
-
       data =
         [
           debug_action: debug_action,
           can_debug: can_debug,
           self_hosted: self_hosted,
-          pollman: pollman,
-          badge_pollman: badge_pollman
+          pollman: pollman
         ]
         |> inject_nonce(params)
 
