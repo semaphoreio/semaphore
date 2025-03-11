@@ -62,4 +62,17 @@ defmodule FrontWeb.JobView do
       "The job is waiting on #{job.machine_type} quota."
     end
   end
+
+  def job_status_badge(nil), do: ""
+
+  def job_status_badge(job),
+    do:
+      "<span class='#{job_state_color(job.state)} white br1 pv1 ph2 mt1'>#{String.capitalize(job.state)}</span>"
+
+  defp job_state_color("enqueued"), do: "bg-light-gray"
+  defp job_state_color("running"), do: "bg-indigo"
+  defp job_state_color("stopping"), do: "bg-gray"
+  defp job_state_color("passed"), do: "bg-green"
+  defp job_state_color("failed"), do: "bg-red"
+  defp job_state_color("stopped"), do: "bg-gray"
 end

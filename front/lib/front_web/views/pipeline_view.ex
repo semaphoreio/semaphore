@@ -572,12 +572,6 @@ defmodule FrontWeb.PipelineView do
   def pipeline_status_icon_name(:DONE, :STOPPED), do: "icn-stopped"
   def pipeline_status_icon_name(:DONE, :CANCELED), do: "icn-skipped"
 
-  def job_status_badge(nil), do: ""
-
-  def job_status_badge(job),
-    do:
-      "<span class='#{job_status_color(job)} white br1 pv1 ph2 mt1'>#{stringify_job_status(job)}</span>"
-
   def job_status_color(job), do: job_status_color(job.state, job.result)
   def job_status_color(:ENQUEUED, _), do: "light-gray"
   def job_status_color(:RUNNING, _), do: "indigo"
@@ -585,14 +579,6 @@ defmodule FrontWeb.PipelineView do
   def job_status_color(:FINISHED, :PASSED), do: "green"
   def job_status_color(:FINISHED, :STOPPED), do: "gray"
   def job_status_color(:FINISHED, :FAILED), do: "red"
-
-  defp stringify_job_status(job) when job.state in [:RUNNING, :ENQUEUED, :STOPPING] do
-    job.state |> to_string() |> String.capitalize()
-  end
-
-  defp stringify_job_status(job) do
-    job.result |> to_string() |> String.capitalize()
-  end
 
   def nodes(blocks, conn) do
     blocks
