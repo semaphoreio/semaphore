@@ -123,9 +123,9 @@ spec:
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
               value: "true"
-{{- end }}
             - name: "HIDE_PROMOTIONS"
               value: "true"
+{{- end }}
             - name: "CE_ROLES"
               value: "true"
             - name: "SINGLE_TENANT"

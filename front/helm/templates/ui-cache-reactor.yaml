@@ -105,9 +105,15 @@ spec:
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
               value: "true"
+<<<<<<< HEAD
 {{- end }}
+=======
+{{- if eq .Values.global.edition "ee" }}
+            - name: "HIDE_PROMOTIONS"
+              value: "false"
             - name: "HIDE_PROMOTIONS"
               value: "true"
+{{- end }}
             - name: "CE_ROLES"
               value: "true"
             - name: "SINGLE_TENANT"
