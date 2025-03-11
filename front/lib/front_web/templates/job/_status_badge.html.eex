@@ -1,4 +1,5 @@
 <div
+  class="flex mt1"
   data-poll-background
   data-poll-state="<%= @badge_pollman.state %>"
   data-poll-href="<%= @badge_pollman.href %>"
