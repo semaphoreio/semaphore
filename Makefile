@@ -57,7 +57,8 @@ ifneq ($(CI),)
 	FORMAT_ARGS?=--dry-run --check-formatted
 endif
 
-RELEASE_TAG?=$(shell git rev-list -1 HEAD -- .)
+RELEASE_TAG?="${RELEASE_TAG_PREFIX}$(shell git rev-list -1 HEAD -- .)"
+
 BUILDKIT_INLINE_CACHE=1
 
 #

@@ -1,13 +1,14 @@
-{{- if eq .Values.global.edition "ce" }}
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "rbac-api"
+  name: "rbac-ee-api"
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: "rbac-api"
-  replicas: {{ .Values.replicas }}
+      app: "rbac-ee-api"
+  replicas: {{ .Values.rbacEEApi.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -15,9 +16,9 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
-      name: "rbac-api"
+      name: "rbac-ee-api"
       labels:
-        app: "rbac-api"
+        app: "rbac-ee-api"
     spec:
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -26,10 +27,19 @@ spec:
 {{- end }}
 {{- end }}
       automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
+      priorityClassName: medium-priority
       containers:
-        - name: "rbac-api"
+        - name: "rbac-ee-api"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["bash", "-c"]
           args: ["bin/rbac eval \"Rbac.Release.create_and_migrate()\" && bin/rbac start"]
@@ -46,34 +56,60 @@ spec:
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
+            - configMapRef:
+                name: {{ .Values.global.authentication.configMapName }}
+            - secretRef:
+                name: {{ include "secrets.authentication.name" . }}
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
           env:
-{{- if .Values.global.statsd.enabled }}
-            - name: METRICS_NAMESPACE
-              value: {{ .Values.global.statsd.metricsNamespace }}
-{{- end }}
             {{- include "env.db.elixir" . | indent 12 }}
-            - name: BASE_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.domain.configMapName }}
-                  key: BASE_DOMAIN
-            - name: POSTGRES_DB_SSL
-              value: {{ .Values.global.database.ssl | quote }}
-            - name: POSTGRES_DB_NAME
-              value: rbac_ce
-            - name: POSTGRES_DB_POOL_SIZE
-              value: {{ .Values.db.poolSize | quote }}
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
+            - name: START_GRPC_HEALTH_CHECK
+              value: "true"
+            - name: START_GRPC_RBAC_API
+              value: "true"
+            - name: START_GRPC_GROUPS_API
+              value: "false"
+            - name: START_GRPC_OKTA_API
+              value: "false"
+            - name: START_SAML_HTTP_API
+              value: "false"
+            - name: START_SCIM_HTTP_API
+              value: "false"
+            - name: START_RBAC_WORKERS
+              value: "false"
+            - name: RABBIT_CONSUMER
+              value: "false"
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
+            - name: OIDC_DISCOVERY_URL
+              value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
+            - name: OIDC_MANAGE_URL
+              value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_FRONT_DB_NAME
+              value: {{ .Values.db.frontName | quote }}
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.rbacEEApi.dbPoolSize | quote }}
             - name: LOG_LEVEL
-              value: {{ .Values.logging | quote }}
-{{- if .Values.resources }}
-          resources:
-{{ toYaml .Values.resources | indent 12 }}
+              value: {{ .Values.logLevel | quote }}
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
+          resources:
+{{ toYaml .Values.rbacEEApi.resources | indent 12 }}
           startupProbe:
             grpc:
               port: 50051
@@ -93,7 +129,7 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
 {{- if .Values.global.statsd.enabled }}
-        - name: {{ .Chart.Name }}-statsd
+        - name: rbac-ee-api-statsd
           image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
           env:
             - name: FLUSH_INTERVAL
