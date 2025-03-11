@@ -9,6 +9,7 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
   @okta_issuer "http://www.okta.com/exk207czditgMeFGI697"
   @jump_cloud_issuer "http://www.jumpcloud.com/exk207czditgMeFGI697"
   @sso_url "http://www.okta.com/sso_endpoint"
+  @email "igor@renderedtext.com"
   @creator_id Ecto.UUID.generate()
 
   test "saml data not provided => it returns saml not found error" do
@@ -32,19 +33,19 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
              Parser.parse(integration(@okta_issuer), payload, @recipient, @audience)
   end
 
-  test "valid SAML XML for Okta => returns a parsed SamlPayload" do
+  test "valid SAML XML without attributes => returns a parsed SamlPayload" do
     payload =
       Support.Okta.Saml.PayloadBuilder.build(
         %{
           recipient: @recipient,
           audience: @audience,
           issuer: @okta_issuer,
-          email: "igor@renderedtext.com"
+          email: @email
         },
         :okta
       )
 
-    assert {:ok, _assertions} =
+    assert {:ok, @email, %{}} =
              Parser.parse(
                integration(@okta_issuer),
                URI.decode_query(payload),
@@ -53,19 +54,26 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
              )
   end
 
-  test "valid SAML XML for JumpCloud => returns a parsed SamlPayload" do
+  test "valid SAML XML with attributes => returns a parsed SamlPayload" do
+    attributes = [
+      {"memberOf", "group1"},
+      {"memberOf", "group2"},
+      {"role", "user"}
+    ]
+
     payload =
       Support.Okta.Saml.PayloadBuilder.build(
         %{
           recipient: @recipient,
           audience: @audience,
           issuer: @jump_cloud_issuer,
-          email: "igor@renderedtext.com"
+          email: @email,
+          attributes: attributes
         },
         :jump_cloud
       )
 
-    assert {:ok, _assertions} =
+    assert {:ok, @email, %{role: ["user"], memberOf: ["group2", "group1"]}} =
              Parser.parse(
                integration(@jump_cloud_issuer),
                URI.decode_query(payload),

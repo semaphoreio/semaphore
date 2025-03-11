@@ -95,10 +95,45 @@ defmodule Support.Okta.Saml.PayloadBuilder do
         issuer(inputs),
         subject(inputs),
         conditions(inputs),
-        authn_statement(inputs)
+        authn_statement(inputs),
+        attribute_statement(inputs)
       ]
     )
     |> sign()
+  end
+
+  defp attribute_statement(inputs) do
+    XML.el(
+      name: "saml2:AttributeStatement",
+      attributes: [
+        XML.attr("xmlns:saml2", "urn:oasis:names:tc:SAML:2.0:assertion")
+      ],
+      content: create_attributes(inputs[:attributes] || [])
+    )
+  end
+
+  defp create_attributes(attributes) do
+    Enum.map(attributes, fn {name, value} -> create_attribute(name, value) end)
+  end
+
+  defp create_attribute(name, value) do
+    XML.el(
+      name: "saml2:Attribute",
+      attributes: [
+        XML.attr("Name", name),
+        XML.attr("NameFormat", "urn:oasis:names:tc:SAML:2.0:attrname-format:basic")
+      ],
+      content: [
+        XML.el(
+          name: "saml2:AttributeValue",
+          attributes: [
+            XML.attr("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
+            XML.attr("xsi:type", "xs:string")
+          ],
+          content: [XML.text(value)]
+        )
+      ]
+    )
   end
 
   defp conditions(inputs) do
