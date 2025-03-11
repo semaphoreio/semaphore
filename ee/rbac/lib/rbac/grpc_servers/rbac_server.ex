@@ -69,7 +69,7 @@ defmodule Rbac.GrpcServers.RbacServer do
           %RBAC.AssignRoleResponse{}
 
         {:error, error_msg} ->
-          IO.puts("Error assigning role: #{error_msg}")
+          Logger.error("Error assigning role: #{error_msg}")
           grpc_error!(:failed_precondition, error_msg)
       end
     end)
@@ -408,6 +408,7 @@ defmodule Rbac.GrpcServers.RbacServer do
           "github" -> :ROLE_BINDING_SOURCE_GITHUB
           "bitbucket" -> :ROLE_BINDING_SOURCE_BITBUCKET
           "okta" -> :ROLE_BINDING_SOURCE_SCIM
+          "saml_jit" -> :ROLE_BINDING_SOURCE_SAML_JIT
           "inherited_from_org_role" -> :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
           _ -> :ROLE_BINDING_SOURCE_UNSPECIFIED
         end

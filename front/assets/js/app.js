@@ -32,6 +32,7 @@ import { ChangeRoleDropdown } from "./people/change_role_dropdown";
 import { RetractRole } from "./people/retract_role";
 import { AddToProject } from "./people/add_to_project.js";
 import { GroupManagement } from "./groups/group_management.js";
+import { OrganizationOktaGroupMappingApp } from "./organization_okta";
 import { OrganizationSecrets } from "./organization_secrets";
 import { ProjectSecrets } from "./project_settings/secrets";
 import { ProjectArtifactsSettings } from "./project_settings/artifacts.js";
@@ -298,6 +299,12 @@ export var App = {
         dom: syncPeopleAppRoot,
         config: syncPeopleAppRoot.dataset
       })
+    });
+  },
+  organization_okta: function () {
+    OrganizationOktaGroupMappingApp({
+      dom: document.getElementById("group-mapping-container"),
+      config: window.InjectedDataByBackend.OrganizationOktaConfig
     });
   },
   organization_secrets: function () {

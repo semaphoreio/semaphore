@@ -47,16 +47,34 @@ defmodule Rbac.Okta.Saml.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, %{integration: integration}}
     end
 
-    test "valid SAML but user does not exist" do
+    test "valid SAML but user does not exist, JIT provisioning disabled" do
       {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
 
       assert response.status_code == 404
+    end
+
+    test "valid SAML but user does not exist, JIT provisioning enabled", ctx do
+      alias Rbac.Events.UserJoinedOrganization
+
+      enable_jit_provisioning(ctx.integration)
+
+      with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
+        {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+        assert response.status_code == 200
+        assert response.body == "User provisioning, try again in a minute"
+      end
+
+      {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
+      location = Enum.find(response.headers, fn h -> elem(h, 0) == "location" end)
+      assert response.status_code == 302
+      assert location == {"location", "https://me.localhost/account/welcome/okta"}
     end
 
     test "valid SAML, okta user exists, but semaphore user does not", ctx do
@@ -159,6 +177,16 @@ defmodule Rbac.Okta.Saml.Api.Test do
         assert location == {"location", "#{@host}/settings"}
       end
     end
+  end
+
+  ###
+  ### Helper functions
+  ###
+
+  defp enable_jit_provisioning(integration) do
+    integration
+    |> Rbac.Repo.OktaIntegration.changeset(%{jit_provisioning_enabled: true})
+    |> Rbac.Repo.update!()
   end
 
   defp log_out_user(user) do
