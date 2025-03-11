@@ -31,6 +31,7 @@ import { ChangeRoleDropdown } from "./people/change_role_dropdown";
 import { RetractRole } from "./people/retract_role";
 import { AddToProject } from "./people/add_to_project.js";
 import { GroupManagement } from "./groups/group_management.js";
+import { OrganizationOktaGroupMappingApp } from "./organization_okta";
 import { OrganizationSecrets } from "./organization_secrets";
 import { ProjectSecrets } from "./project_settings/secrets";
 import { ProjectArtifactsSettings } from "./project_settings/artifacts.js";
@@ -63,6 +64,7 @@ import { default as GetStarted } from "./get_started"
 import { default as Agents} from "./agents";
 import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
+import { default as SyncPeople } from "./people/sync_people";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
 import { AccountInitializingScreen } from "./me/initialization/initializing";
@@ -276,19 +278,32 @@ export var App = {
     GroupManagement.init();
     new Star();
 
-    const addPeopleApp = document.getElementById("add-people");
-    if (addPeopleApp) {
+    const addPeopleAppRoot = document.getElementById("add-people");
+    if (addPeopleAppRoot) {
       AddPeople({
-        dom: addPeopleApp,
-        config: addPeopleApp.dataset,
+        dom: addPeopleAppRoot,
+        config: addPeopleAppRoot.dataset,
       });
     }
 
-    document.querySelectorAll(".app-edit-person").forEach((person) => {
+    document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
       EditPerson({
-        dom: person,
-        config: person.dataset
+        dom: editPersonAppRoot,
+        config: editPersonAppRoot.dataset
       })
+    });
+
+    document.querySelectorAll(".app-sync-people").forEach((syncPeopleAppRoot) => {
+      SyncPeople({
+        dom: syncPeopleAppRoot,
+        config: syncPeopleAppRoot.dataset
+      })
+    });
+  },
+  organization_okta: function () {
+    OrganizationOktaGroupMappingApp({
+      dom: document.getElementById("group-mapping-container"),
+      config: window.InjectedDataByBackend.OrganizationOktaConfig
     });
   },
   organization_secrets: function () {

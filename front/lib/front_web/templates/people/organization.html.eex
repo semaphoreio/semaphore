@@ -9,10 +9,13 @@
         <p class="mb0">See different <a href="https://docs.semaphoreci.com/account-management/permission-levels/" target="_blank" rel="noopener">Permission levels</a> in the Docs.</p>
         <p class="mb0">How to <a href="https://docs.semaphoreci.com/account-management/organizations/#transferring-ownership-of-an-organization" target="_blank" rel="noopener">Transfer the ownership</a>?</p>
       </div>
-      <%= link to: roles_path(@conn, :index), class: "pointer flex items-center btn-secondary btn nowrap" do %>
-        <span class="material-symbols-outlined mr1">open_in_new</span>
-        <span><%= roles_action_message() %> Roles</span>
-      <% end %>
+      <div class="flex items-center">
+        <div class="app-sync-people" data-config="<%= Poison.encode!(sync_people_config(@conn)) %>"></div>
+        <%= link to: roles_path(@conn, :index), class: "pointer flex items-center btn-secondary btn nowrap ml2" do %>
+          <span class="material-symbols-outlined mr1">open_in_new</span>
+          <span><%= roles_action_message() %> Roles</span>
+        <% end %>
+      </div>
     </div>
 
     <div class="w-100 flex">

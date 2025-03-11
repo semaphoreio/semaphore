@@ -590,7 +590,7 @@ defmodule FrontWeb.PeopleController do
 
       {:error, message} ->
         conn
-        |> put_flash(:alert, message)
+        |> put_flash(:alert, URI.decode(message))
         |> redirect(to: people_path(conn, :sync))
     end
   end
@@ -949,7 +949,10 @@ defmodule FrontWeb.PeopleController do
     Watchman.benchmark("people.refresh_organization.duration", fn ->
       Auth.refresh_people(conn.assigns.organization_id)
 
-      text(conn, "Successfully triggered refreshing collaborators.")
+      conn
+      |> json(%{
+        message: "Successfully triggered refreshing collaborators."
+      })
     end)
   end
 

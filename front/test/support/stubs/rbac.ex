@@ -346,6 +346,22 @@ defmodule Support.Stubs.RBAC do
     DB.find_all_by(:rbac_roles, :name, "Contributor") |> List.first() |> Map.get(:id)
   end
 
+  def add_group(org_id, group_name, group_id) do
+    DB.insert(:subjects, %{
+      type: "group",
+      id: group_id,
+      name: group_name
+    })
+
+    DB.insert(:subject_role_bindings, %{
+      id: UUID.gen(),
+      org_id: org_id,
+      subject_id: group_id,
+      role_id: member_role_id(),
+      project_id: nil
+    })
+  end
+
   defmodule Grpc do
     def init do
       GrpcMock.stub(RBACMock, :list_roles, &__MODULE__.list_roles/2)
@@ -359,6 +375,7 @@ defmodule Support.Stubs.RBAC do
       GrpcMock.stub(RBACMock, :list_accessible_orgs, &__MODULE__.list_accessible_orgs/2)
       GrpcMock.stub(RBACMock, :list_accessible_projects, &__MODULE__.list_accessible_projects/2)
       GrpcMock.stub(RBACMock, :list_existing_permissions, &__MODULE__.list_existing_permissions/2)
+      GrpcMock.stub(RBACMock, :refresh_collaborators, &__MODULE__.refresh_collaborators/2)
     end
 
     def expect(function, n \\ 1, callback) do
@@ -634,6 +651,10 @@ defmodule Support.Stubs.RBAC do
     rescue
       _ ->
         reraise GRPC.RPCError, status: GRPC.Status.invalid_argument(), message: "Bad request"
+    end
+
+    def refresh_collaborators(_req, _) do
+      InternalApi.RBAC.RefreshCollaboratorsResponse.new()
     end
 
     ###

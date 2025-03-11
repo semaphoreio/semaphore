@@ -37,6 +37,14 @@ defmodule FrontWeb.PeopleView do
     }
   end
 
+  def sync_people_config(conn) do
+    %{
+      users: %{
+        sync_url: url(:post, people_path(conn, :refresh))
+      }
+    }
+  end
+
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
