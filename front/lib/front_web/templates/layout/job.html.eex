@@ -46,9 +46,12 @@
     </div>
   </div>
   <div class="flex items-center justify-between mt1 mt2-m mb2 mb3-m">
-    <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate">
-      <%= @job.name %>
-    </h1>
+    <div class="flex justify-center items-center">
+      <h1 class="f2 f1-m lh-title mt1 mb0 pr3 truncate">
+        <%= @job.name %>
+      </h1>
+      <%= FrontWeb.PipelineView.job_status_badge(@job) %>
+    </div>
     <div class="flex">
       <%= if !assigns[:permissions] or @permissions["project.job.rerun"] do %>
         <%= link "Rerun", to: workflow_path(@conn, :rebuild, @workflow.id), method: :post, class: "btn btn-secondary ml1", "data-tippy-content": "Rerun the parent workflow, including this job" %>
