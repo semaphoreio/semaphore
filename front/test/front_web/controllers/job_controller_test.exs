@@ -74,4 +74,13 @@ defmodule FrontWeb.JobControllerTest do
       assert html_response(conn, 404) =~ "404"
     end
   end
+
+  describe "status_badge" do
+    test "renders badge", %{conn: conn, job: job} do
+      conn = get(conn, job_path(conn, :status_badge, job.id))
+
+      assert html_response(conn, 200) ==
+               "<div\n  class=\"flex mt1\"\n  data-poll-background\n  data-poll-state=\"poll\"\n  data-poll-href=\"/jobs/job-id/status_badge\"\n>\n<span class='bg-indigo white br1 ph2'>Running</span>\n</div>\n"
+    end
+  end
 end
