@@ -79,7 +79,7 @@ defmodule Rbac.Release do
     Path.join([priv_dir, repo_underscore, filename])
   end
 
-  defp seed_data do
+  def seed_data do
     {:ok, _} = Rbac.Repo.start_link(pool_size: 2)
 
     IO.puts("Seeding data - Inserting scopes...")

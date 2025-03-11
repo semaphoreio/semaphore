@@ -42,7 +42,7 @@ spec:
         - name: "rbac-ee-api"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["bash", "-c"]
-          args: ["bin/rbac eval \"Rbac.Release.create_and_migrate()\" && bin/rbac start"]
+          args: ["bin/rbac eval \"Rbac.Release.seed_data()\" && bin/rbac start"]
           ports:
           - name: grpc
             containerPort: 50051
