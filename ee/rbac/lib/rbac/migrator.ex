@@ -28,7 +28,7 @@ defmodule Rbac.Release do
   defp ensure_repo_created(repo) do
     IO.puts("Create #{inspect(repo)} database if it doesn't exist")
 
-    case repo.__adapter__.storage_up(repo.config) do
+    case repo.__adapter__().storage_up(repo.config()) do
       :ok ->
         IO.puts("Database created!")
         :ok
@@ -46,10 +46,11 @@ defmodule Rbac.Release do
     IO.puts("Starting to run migrations...")
 
     for repo <- get_repos() do
+      path = priv_path_for(repo, "migrations")
       {:ok, _, _} =
         Ecto.Migrator.with_repo(
           repo,
-          &Ecto.Migrator.run(&1, [path()], :up, all: true)
+          &Ecto.Migrator.run(&1, path, :up, all: true)
         )
     end
 
@@ -64,11 +65,23 @@ defmodule Rbac.Release do
     [Rbac.Repo]
   end
 
-  defp path do
-    Application.fetch_env!(@app, :migrations_path)
+  defp priv_path_for(repo, filename) do
+    app = Keyword.get(repo.config(), :otp_app)
+
+    repo_underscore =
+      repo
+      |> Module.split()
+      |> List.last()
+      |> Macro.underscore()
+
+    priv_dir = "#{:code.priv_dir(app)}"
+
+    Path.join([priv_dir, repo_underscore, filename])
   end
 
   defp seed_data do
+    {:ok, _} = Rbac.Repo.start_link(pool_size: 2)
+
     IO.puts("Seeding data - Inserting scopes...")
     %Rbac.Repo.Scope{scope_name: "org_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
     %Rbac.Repo.Scope{scope_name: "project_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
