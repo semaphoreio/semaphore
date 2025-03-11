@@ -93,6 +93,9 @@ dependencies:
   - name: public-api
     version: "@chartVersion@"
     repository: "file://../public-api/v2/helm"
+  - name: rbac-ee
+    version: "@chartVersion@"
+    repository: "file://../ee/rbac/helm"
   - name: rbac
     version: "@chartVersion@"
     repository: "file://../rbac/ce/helm"

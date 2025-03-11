@@ -172,13 +172,16 @@
     "RBAC CE": [
       {
         "path": "rbac/ce",
-        "component": "rbac"
+        "component": "rbac",
+        "tagPrefix": "ce-"
       }
     ],
     "RBAC EE": [
       {
         "path": "ee/rbac",
-        "component": "rbac"
+        "component": "rbac-ee",
+        "tagPrefix": "ee-",
+        "app": "rbac"
       }
     ],
     "Repohub": [

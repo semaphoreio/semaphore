@@ -53,6 +53,7 @@ applications=(
   "ProjectHub REST API"
   "PreFlightChecks"
   "RBAC CE"
+  "RBAC EE"
   "PublicApiGateway"
   "Repohub"
   "RepositoryHub"
@@ -112,13 +113,14 @@ for application in "${applications[@]}"; do
 
   path=$(jq -r ".services[\"${application}\"][][\"path\"]" ../.semaphore/services.json)
   component=$(jq -r ".services[\"${application}\"][][\"component\"]" ../.semaphore/services.json)
+  tagPrefix=$(jq -r ".services[\"${application}\"][] | (.tagPrefix // \"\")" ../.semaphore/services.json)
 
   p="../${path}/helm/Chart.yaml"
   cp "${p}.in" "${p}.tmp"
   yq -i ".version = \"${chart_version}\"" "${p}.tmp"
   mv "${p}.tmp" "${p}"
 
-  image_tag=$(git rev-list -1 HEAD -- "../${path}")
+  image_tag="${tagPrefix}$(git rev-list -1 HEAD -- "../${path}")"
   echo ">>> ${application} image tag: ${image_tag}"
   yq -i ".${component}.imageTag = \"${image_tag}\"" values.yaml.tmp
 done

@@ -1,0 +1,86 @@
+{{- if eq .Values.global.edition "ee" }}
+---
+# RBAC EE API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rbac-ee-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "rbac-ee-api"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+
+---
+# RBAC EE Groups API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rbac-groups-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "rbac-groups-api"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+
+---
+# RBAC EE Okta API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rbac-okta-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "rbac-okta-api"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+
+---
+# RBAC EE Okta SAML HTTP API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rbac-okta-saml-http-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "rbac-okta-http-api"
+  ports:
+    - name: http
+      port: 4001
+      targetPort: 4001
+      protocol: TCP
+
+---
+# RBAC EE Okta SCIM HTTP API Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: "rbac-okta-scim-http-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "rbac-okta-http-api"
+  ports:
+    - name: http
+      port: 4002
+      targetPort: 4002
+      protocol: TCP
+{{- end }}

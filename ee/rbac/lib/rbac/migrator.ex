@@ -6,6 +6,7 @@ defmodule Rbac.Release do
   def create_and_migrate do
     createdb()
     migrate()
+    seed_data()
   end
 
   def createdb do
@@ -65,5 +66,14 @@ defmodule Rbac.Release do
 
   defp path do
     Application.fetch_env!(@app, :migrations_path)
+  end
+
+  defp seed_data do
+    IO.puts("Seeding data - Inserting scopes...")
+    %Rbac.Repo.Scope{scope_name: "org_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
+    %Rbac.Repo.Scope{scope_name: "project_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
+
+    IO.puts("Seeding data - Inserting permissions...")
+    Rbac.Repo.Permission.insert_default_permissions()
   end
 end

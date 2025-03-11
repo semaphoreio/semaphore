@@ -1,14 +1,16 @@
+{{- if eq .Values.global.edition "ce" }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: "{{ .Chart.Name }}"
+  name: "rbac"
   namespace: {{ .Release.Namespace }}
 spec:
   type: NodePort
   selector:
-    app: "{{ .Chart.Name }}-api"
+    app: "rbac-api"
   ports:
     - name: grpc
       port: 50051
       targetPort: 50051
       protocol: TCP
+{{- end }}
