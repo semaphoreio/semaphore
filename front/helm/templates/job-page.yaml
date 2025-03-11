@@ -122,8 +122,13 @@ spec:
               value: {{ .Values.workflowTemplates.mountPath | quote }}
             - name: "SKIP_VELOCITY"
               value: "true"
+{{- if eq .Values.global.edition "ee" }}
+            - name: "HIDE_PROMOTIONS"
+              value: "false"
+{{- else }}
             - name: "HIDE_PROMOTIONS"
               value: "true"
+{{- end }}
             - name: "CE_ROLES"
               value: "true"
             - name: "SINGLE_TENANT"
