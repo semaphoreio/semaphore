@@ -10,9 +10,10 @@ defmodule Rbac.GrpcServers.OktaServer do
     GenerateScimTokenResponse,
     ListResponse,
     ListUsersResponse,
-    SetUpGroupMappingResponse,
-    DescribeGroupMappingResponse,
-    GroupMapping
+    SetUpMappingResponse,
+    DescribeMappingResponse,
+    GroupMapping,
+    RoleMapping
   }
 
   @manage_okta_permission "organization.okta.manage"
@@ -128,69 +129,89 @@ defmodule Rbac.GrpcServers.OktaServer do
     end)
   end
 
-  def set_up_group_mapping(req, _stream) do
-    observe("set_up_group_mapping", fn ->
+  def set_up_mapping(req, _stream) do
+    observe("set_up_mapping", fn ->
       validate_uuid!(req.org_id)
 
-      mappings =
-        Enum.map(req.mappings, fn mapping ->
+      group_mappings =
+        Enum.map(req.group_mapping, fn mapping ->
           %{
             idp_group_id: mapping.okta_group_id,
             semaphore_group_id: mapping.semaphore_group_id
           }
         end)
 
-      case Rbac.Okta.IdpGroupMapping.create_or_update(req.org_id, mappings, req.default_role_id) do
+      role_mappings =
+        Enum.map(req.role_mapping, fn mapping ->
+          %{
+            idp_role_id: mapping.okta_role_id,
+            semaphore_role_id: mapping.semaphore_role_id
+          }
+        end)
+
+      case Rbac.Okta.IdpGroupMapping.create_or_update(
+             req.org_id,
+             group_mappings,
+             role_mappings,
+             req.default_role_id
+           ) do
         {:ok, _mapping} ->
-          Logger.info("Group mappings created/updated for org #{req.org_id}")
-          %SetUpGroupMappingResponse{}
+          Logger.info("Group and role mappings created/updated for org #{req.org_id}")
+          %SetUpMappingResponse{}
 
         {:error, %Ecto.Changeset{} = changeset} ->
           Logger.error(
-            "Error while setting up group mappings for org #{req.org_id}: #{inspect(changeset)}"
+            "Error while setting up mappings for org #{req.org_id}: #{inspect(changeset)}"
           )
 
           grpc_error!(
             :failed_precondition,
-            "Failed to save group mappings: Invalid"
+            "Failed to save mappings: Invalid"
           )
 
         error ->
-          Logger.error("Unknown error while setting up group mappings: #{inspect(error)}")
-          grpc_error!(:unknown, "Unknown error while setting up group mappings")
+          Logger.error("Unknown error while setting up mappings: #{inspect(error)}")
+          grpc_error!(:unknown, "Unknown error while setting up mappings")
       end
     end)
   end
 
-  def describe_group_mapping(req, _stream) do
-    observe("list_group_mappings", fn ->
+  def describe_mapping(req, _stream) do
+    observe("describe_mapping", fn ->
       validate_uuid!(req.org_id)
 
       case Rbac.Okta.IdpGroupMapping.get_for_organization(req.org_id) do
-        {:ok, idp_group_mapping} ->
+        {:ok, idp_mapping} ->
           # Convert from our internal format to protobuf messages
           group_mapping =
-            Enum.map(idp_group_mapping.group_mapping, fn mapping ->
+            Enum.map(idp_mapping.group_mapping, fn mapping ->
               %GroupMapping{
                 okta_group_id: mapping.idp_group_id,
                 semaphore_group_id: mapping.semaphore_group_id
               }
             end)
 
-          %DescribeGroupMappingResponse{
-            mappings: group_mapping,
-            default_role_id: idp_group_mapping.default_role_id
+          role_mapping =
+            Enum.map(idp_mapping.role_mapping || [], fn mapping ->
+              %RoleMapping{
+                okta_role_id: mapping.idp_role_id,
+                semaphore_role_id: mapping.semaphore_role_id
+              }
+            end)
+
+          %DescribeMappingResponse{
+            group_mapping: group_mapping,
+            role_mapping: role_mapping,
+            default_role_id: idp_mapping.default_role_id
           }
 
         {:error, :not_found} ->
-          %DescribeGroupMappingResponse{mappings: []}
+          %DescribeMappingResponse{group_mapping: [], role_mapping: []}
 
         error ->
-          Logger.error(
-            "Error while listing group mappings for org #{req.org_id}: #{inspect(error)}"
-          )
+          Logger.error("Error while describing mappings for org #{req.org_id}: #{inspect(error)}")
 
-          grpc_error!(:unknown, "Unknown error while listing group mappings")
+          grpc_error!(:unknown, "Unknown error while describing mappings")
       end
     end)
   end

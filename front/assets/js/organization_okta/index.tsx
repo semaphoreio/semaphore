@@ -21,7 +21,8 @@ export class State {
   defaultRoleId: string;
   saveUrl: string;
   cancelUrl: string;
-  mappings: any[];
+  group_mapping: any[];
+  role_mapping: any[];
 
   static fromJSON(configJSON: any): State {
     const config = State.default();
@@ -43,7 +44,8 @@ export class State {
     config.saveUrl = configJSON.saveUrl;
     config.cancelUrl = configJSON.cancelUrl;
     config.defaultRoleId = configJSON.defaultRoleId;
-    config.mappings = configJSON.mappings || [];
+    config.group_mapping = configJSON.group_mapping || [];
+    config.role_mapping = configJSON.role_mapping || [];
 
     return config;
   }
@@ -62,32 +64,32 @@ export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, 
   );
 }
 
-interface GroupMapping {
-  idpGroupId: string;
-  semaphoreGroupId: string;
+interface Mapping {
+  idpId: string;
+  semaphoreId: string;
 }
 
-const App = () => {
-  const config = useContext(Config);
-  const [mappings, setMappings] = useState<GroupMapping[]>([
-    { idpGroupId: ``, semaphoreGroupId: `` },
-    { idpGroupId: ``, semaphoreGroupId: `` }
-  ]);
-  const [defaultRole, setDefaultRole] = useState(config.defaultRoleId || ``);
+interface MappingSectionProps {
+  mappings: Mapping[];
+  setMappings: (mappings: Mapping[]) => void;
+  options: { id: string, name: string, }[];
+  leftLabel: string;
+  rightLabel: string;
+  leftPlaceholder: (index: number) => string;
+  rightErrorCondition: (id: string) => boolean;
+}
 
-  useEffect(() => {
-    // Initialize mappings from the server data if available
-    if (config.mappings && config.mappings.length > 0) {
-      const initialMappings = config.mappings.map((mapping: any) => ({
-        idpGroupId: mapping.okta_group_id || ``,
-        semaphoreGroupId: mapping.semaphore_group_id || ``
-      }));
-      setMappings(initialMappings);
-    }
-  }, [config.mappings]);
-
+const MappingSection = ({
+  mappings,
+  setMappings,
+  options,
+  leftLabel,
+  rightLabel,
+  leftPlaceholder,
+  rightErrorCondition,
+}: MappingSectionProps) => {
   const addMapping = () => {
-    setMappings([...mappings, { idpGroupId: ``, semaphoreGroupId: `` }]);
+    setMappings([...mappings, { idpId: ``, semaphoreId: `` }]);
   };
 
   const removeMapping = (index: number) => {
@@ -96,22 +98,122 @@ const App = () => {
     setMappings(newMappings);
   };
 
-  const updateMapping = (index: number, field: keyof GroupMapping, value: string) => {
+  const updateMapping = (index: number, field: keyof Mapping, value: string) => {
     const newMappings = [...mappings];
     newMappings[index] = { ...newMappings[index], [field]: value };
     setMappings(newMappings);
   };
+
+  return (
+    <div className="mb4">
+      <div className="flex mb3">
+        <div className="w-50 tc">{leftLabel}</div>
+        <div className="gray f4 mh3">→</div>
+        <div className="w-50 tc">{rightLabel}</div>
+        <div className="w3 ml3">&nbsp;</div> {/* Invisible spacer matching width of remove button */}
+      </div>
+      
+      {mappings.map((mapping, index) => (
+        <div key={index}>
+          {mapping.semaphoreId && rightErrorCondition(mapping.semaphoreId) && (
+            <div className="f5 b mv1 red">Selected {rightLabel.toLowerCase()} is deleted</div>
+          )}
+          <div className="flex items-center mb3">
+            <input 
+              type="text" 
+              className="form-control w-100"
+              value={mapping.idpId} 
+              onChange={(e) => updateMapping(index, `idpId`, e.currentTarget.value)}
+              placeholder={leftPlaceholder(index)}
+            />
+            <div className="gray f4 mh3">→</div>
+            <select
+              className={`form-control w-100 ${mapping.semaphoreId && rightErrorCondition(mapping.semaphoreId) ? `form-control-error` : ``}`}
+              value={mapping.semaphoreId}
+              onChange={(e) => updateMapping(index, `semaphoreId`, e.currentTarget.value)}
+            >
+              <option value="">Select a {rightLabel.toLowerCase()}</option>
+              {options.map(item => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+            </select>
+            <button 
+              className="btn btn-secondary w3 ml3" 
+              name="remove-btn"
+              onClick={() => removeMapping(index)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ))}
+      
+      <div className="mt2">
+        <button 
+          className="btn bn br2 ph3 pv2 pointer fw6 blue ba b--blue bg-white" 
+          onClick={addMapping}
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const App = () => {
+  const config = useContext(Config);
+  const [groupMappings, setGroupMappings] = useState<Mapping[]>([
+    { idpId: ``, semaphoreId: `` },
+    { idpId: ``, semaphoreId: `` }
+  ]);
+  
+  const [roleMappings, setRoleMappings] = useState<Mapping[]>([
+    { idpId: ``, semaphoreId: `` },
+    { idpId: ``, semaphoreId: `` }
+  ]);
+  
+  const memberRole = config.roles.find(role => role.name === `Member`);
+  const firstRole = config.roles.length > 0 ? config.roles[0].id : ``;
+  const [defaultRole, setDefaultRole] = useState(config.defaultRoleId || memberRole?.id || firstRole || ``);
+
+  useEffect(() => {
+    if (config.group_mapping && config.group_mapping.length > 0) {
+      const initialGroupMappings = config.group_mapping.map((mapping: any) => ({
+        idpId: mapping.okta_id || mapping.okta_group_id || ``,
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``
+      }));
+      setGroupMappings(initialGroupMappings);
+    }
+    
+    if (config.role_mapping && config.role_mapping.length > 0) {
+      const initialRoleMappings = config.role_mapping.map((mapping: any) => ({
+        idpId: mapping.okta_id || mapping.okta_group_id || ``,
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``
+      }));
+      setRoleMappings(initialRoleMappings);
+    }
+  }, [config.group_mapping, config.role_mapping]);
 
   const handleSave = () => {
     // Create form data
     const formData = new FormData();
     formData.append(`default_role_id`, defaultRole);
     
-    // Add mappings
-    mappings.forEach((mapping, index) => {
-      if (mapping.idpGroupId && mapping.semaphoreGroupId) {
-        formData.append(`mappings[${index}][okta_group_id]`, mapping.idpGroupId);
-        formData.append(`mappings[${index}][semaphore_group_id]`, mapping.semaphoreGroupId);
+    // Add group mappings
+    groupMappings.forEach((mapping, index) => {
+      if (mapping.idpId && mapping.semaphoreId) {
+        formData.append(`group_mapping[${index}][okta_id]`, mapping.idpId);
+        formData.append(`group_mapping[${index}][semaphore_id]`, mapping.semaphoreId);
+      }
+    });
+    
+    // Add role mappings
+    roleMappings.forEach((mapping, index) => {
+      if (mapping.idpId && mapping.semaphoreId) {
+        formData.append(`role_mapping[${index}][okta_id]`, mapping.idpId);
+        formData.append(`role_mapping[${index}][semaphore_id]`, mapping.semaphoreId);
       }
     });
     
@@ -137,60 +239,29 @@ const App = () => {
 
   return (
     <div className="mw7 center">
-      <div className="mb4">
-        <div className="flex mb3">
-          <div className="w-50 tc">IdP group</div>
-          <div className="gray f4 mh3">→</div>
-          <div className="w-50 tc">Semaphore group</div>
-          <div className="w3 ml3">&nbsp;</div> {/* Invisible spacer matching width of remove button */}
-        </div>
-        
-        {mappings.map((mapping, index) => (
-          <div key={index}>
-            {mapping.semaphoreGroupId && !config.groups.some(g => g.id === mapping.semaphoreGroupId) && (
-              <div className="f5 b mv1 red">Selected semaphore group is deleted</div>
-            )}
-            <div className="flex items-center mb3">
-              <input 
-                type="text" 
-                className="form-control w-100"
-                value={mapping.idpGroupId} 
-                onChange={(e) => updateMapping(index, `idpGroupId`, e.currentTarget.value)}
-                placeholder={`id-of-group${index + 1}`}
-              />
-              <div className="gray f4 mh3">→</div>
-              <select
-                className={`form-control w-100 ${mapping.semaphoreGroupId && !config.groups.some(g => g.id === mapping.semaphoreGroupId) ? `form-control-error` : ``}`}
-                value={mapping.semaphoreGroupId}
-                onChange={(e) => updateMapping(index, `semaphoreGroupId`, e.currentTarget.value)}
-              >
-                <option value="">Select a group</option>
-                {config.groups.map(group => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-              <button 
-                className="btn btn-secondary w3 ml3" 
-                name="remove-btn"
-                onClick={() => removeMapping(index)}
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        ))}
-        
-        <div className="mt2">
-          <button 
-            className="btn bn br2 ph3 pv2 pointer fw6 blue ba b--blue bg-white" 
-            onClick={addMapping}
-          >
-            Add
-          </button>
-        </div>
-      </div>
+      <h4 className="mb4">Group Mapping</h4>
+      <MappingSection
+        mappings={groupMappings}
+        setMappings={setGroupMappings}
+        options={config.groups}
+        leftLabel="IdP group"
+        rightLabel="Semaphore group"
+        leftPlaceholder={(index) => `id-of-group-${index + 1}`}
+        rightErrorCondition={(id) => !config.groups.some(g => g.id === id)}
+      />
+      
+      <hr className="bb b--light-gray mv4"/>
+      
+      <h4 className="mb4">Role Mapping</h4>
+      <MappingSection
+        mappings={roleMappings}
+        setMappings={setRoleMappings}
+        options={config.roles}
+        leftLabel="IdP role"
+        rightLabel="Semaphore role"
+        leftPlaceholder={(index) => `id-of-role-${index + 1}`}
+        rightErrorCondition={(id) => !config.roles.some(r => r.id === id)}
+      />
 
       <hr className="bb b--light-gray mv4"/>
 

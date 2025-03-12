@@ -52,23 +52,34 @@ defmodule InternalApi.Okta.GenerateScimTokenResponse do
   field(:token, 1, type: :string)
 end
 
-defmodule InternalApi.Okta.SetUpGroupMappingRequest do
+defmodule InternalApi.Okta.SetUpMappingRequest do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:default_role_id, 2, type: :string, json_name: "defaultRoleId")
-  field(:mappings, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
+
+  field(:group_mapping, 3,
+    repeated: true,
+    type: InternalApi.Okta.GroupMapping,
+    json_name: "groupMapping"
+  )
+
+  field(:role_mapping, 4,
+    repeated: true,
+    type: InternalApi.Okta.RoleMapping,
+    json_name: "roleMapping"
+  )
 end
 
-defmodule InternalApi.Okta.SetUpGroupMappingResponse do
+defmodule InternalApi.Okta.SetUpMappingResponse do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 end
 
-defmodule InternalApi.Okta.DescribeGroupMappingRequest do
+defmodule InternalApi.Okta.DescribeMappingRequest do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
@@ -76,13 +87,24 @@ defmodule InternalApi.Okta.DescribeGroupMappingRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
 
-defmodule InternalApi.Okta.DescribeGroupMappingResponse do
+defmodule InternalApi.Okta.DescribeMappingResponse do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:default_role_id, 1, type: :string, json_name: "defaultRoleId")
-  field(:mappings, 2, repeated: true, type: InternalApi.Okta.GroupMapping)
+
+  field(:group_mapping, 2,
+    repeated: true,
+    type: InternalApi.Okta.GroupMapping,
+    json_name: "groupMapping"
+  )
+
+  field(:role_mapping, 3,
+    repeated: true,
+    type: InternalApi.Okta.RoleMapping,
+    json_name: "roleMapping"
+  )
 end
 
 defmodule InternalApi.Okta.GroupMapping do
@@ -92,6 +114,15 @@ defmodule InternalApi.Okta.GroupMapping do
 
   field(:semaphore_group_id, 1, type: :string, json_name: "semaphoreGroupId")
   field(:okta_group_id, 2, type: :string, json_name: "oktaGroupId")
+end
+
+defmodule InternalApi.Okta.RoleMapping do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:semaphore_role_id, 1, type: :string, json_name: "semaphoreRoleId")
+  field(:okta_role_id, 2, type: :string, json_name: "oktaRoleId")
 end
 
 defmodule InternalApi.Okta.ListRequest do
@@ -160,16 +191,12 @@ defmodule InternalApi.Okta.Okta.Service do
 
   rpc(:Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse)
 
-  rpc(
-    :SetUpGroupMapping,
-    InternalApi.Okta.SetUpGroupMappingRequest,
-    InternalApi.Okta.SetUpGroupMappingResponse
-  )
+  rpc(:SetUpMapping, InternalApi.Okta.SetUpMappingRequest, InternalApi.Okta.SetUpMappingResponse)
 
   rpc(
-    :DescribeGroupMapping,
-    InternalApi.Okta.DescribeGroupMappingRequest,
-    InternalApi.Okta.DescribeGroupMappingResponse
+    :DescribeMapping,
+    InternalApi.Okta.DescribeMappingRequest,
+    InternalApi.Okta.DescribeMappingResponse
   )
 end
 
