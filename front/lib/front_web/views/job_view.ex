@@ -63,12 +63,6 @@ defmodule FrontWeb.JobView do
     end
   end
 
-  def job_status_badge(nil), do: ""
-
-  def job_status_badge(job),
-    do:
-      "<span class='#{job_state_color(job.state)} white br1 ph2'>#{String.capitalize(job.state)}</span>"
-
   defp job_state_color("pending"), do: "bg-orange"
   defp job_state_color("running"), do: "bg-indigo"
   defp job_state_color("passed"), do: "bg-green"

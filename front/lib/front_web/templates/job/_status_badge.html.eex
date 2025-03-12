@@ -4,5 +4,7 @@
   data-poll-state="<%= @badge_pollman.state %>"
   data-poll-href="<%= @badge_pollman.href %>"
 >
-  <%= raw job_status_badge(@job) %>
+  <span class="<%= job_state_color(@job.state) %> white br1 ph2">
+    <%= String.capitalize(@job.state) %>
+  </span>
 </div>
