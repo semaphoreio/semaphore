@@ -120,17 +120,14 @@ spec:
               value: {{ .Values.gettingStarted.mountPath | quote }}
             - name: WORKFLOW_TEMPLATES_YAMLS_PATH
               value: {{ .Values.workflowTemplates.mountPath | quote }}
-            - name: "SKIP_VELOCITY"
-              value: "true"
-{{- if eq .Values.global.edition "ee" }}
-            - name: "HIDE_PROMOTIONS"
-              value: "false"
-{{- else }}
+{{- if eq .Values.global.edition "ce" }}
             - name: "HIDE_PROMOTIONS"
               value: "true"
-{{- end }}
             - name: "CE_ROLES"
               value: "true"
+            - name: "SKIP_VELOCITY"
+              value: "true"
+{{- end }}
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME
