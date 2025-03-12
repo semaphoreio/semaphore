@@ -93,6 +93,10 @@ build:
       custom:
         buildCommand: "APP_ENV=prod make build.skaffold"
       context: keycloak/setup
+    - image: ghcr.io/semaphoreio/keycloak
+      custom:
+        buildCommand: "APP_ENV=prod make build.skaffold"
+      context: keycloak/image
 #manifests:
 #  helm:
 #    releases:
@@ -108,9 +112,9 @@ deploy:
         valuesFiles:
           - helm-chart/values.yaml
         setValues:
-          #keycloak-setup.imageTag: "{{ .IMAGE_TAG_ghcr_io_semaphoreio_keycloak_setup }}"
-          global.domain.name: "localhost"
-          ingress.className: "traefik"
+          global.domain.name: "semaphoredev"
+          global.domain.ip: "192.168.49.2"
+          ingress.className: "nginx"
           ingress.ssl.type: "custom"
         version: 0.1.0
     flags:

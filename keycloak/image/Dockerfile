@@ -34,6 +34,7 @@ RUN set -x \
   && chown -R keycloak:keycloak /opt/keycloak
 
 COPY --chown=keycloak:keycloak --from=base /usr/bin/createdb /usr/bin/createdb
+COPY --chown=keycloak:keycloak --from=base /usr/bin/dropdb /usr/bin/dropdb
 COPY --chown=keycloak:keycloak --from=base /usr/lib64/ /usr/lib64/
 COPY --chown=keycloak:keycloak --from=base /app/docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=keycloak:keycloak --from=builder /opt/keycloak/ /opt/keycloak/
