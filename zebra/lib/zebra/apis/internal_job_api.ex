@@ -39,24 +39,24 @@ defmodule Zebra.Apis.InternalJobApi do
         spec: spec
       }
 
-       with {:ok, job_params} <- Validator.validate_job(job_params),
-            {:secrets, {:ok, true}} <-
+      with {:ok, job_params} <- Validator.validate_job(job_params),
+           {:secrets, {:ok, true}} <-
              {:secrets,
               Secrets.validate_job_secrets(
                 org_id,
                 job_params.spec,
                 :debug
               )},
-            {:ok, job} <- Job.create(job_params),
-            serialized_job <- Serializer.serialize_job(job) do
-              Resp.new(status: grpc_status_ok(), job: serialized_job)
+           {:ok, job} <- Job.create(job_params),
+           serialized_job <- Serializer.serialize_job(job) do
+        Resp.new(status: grpc_status_ok(), job: serialized_job)
       else
         {:error, :validation, message} ->
           Resp.new(status: grpc_status_bad_param(message))
 
         {:secrets, {:ok, false}} ->
-            message = "Some secrets used in this job are blocking this operation."
-            Resp.new(status: grpc_status_bad_param(message))
+          message = "Some secrets used in this job are blocking this operation."
+          Resp.new(status: grpc_status_bad_param(message))
 
         {:secrets, {:error, message}} ->
           raise GRPC.RPCError, status: :internal, message: message

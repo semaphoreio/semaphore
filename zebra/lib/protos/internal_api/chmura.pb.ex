@@ -8,8 +8,8 @@ defmodule InternalApi.Chmura.OccupyAgentRequest do
         }
   defstruct [:request_id, :machine]
 
-  field :request_id, 1, type: :string
-  field :machine, 2, type: InternalApi.Chmura.Agent.Machine
+  field(:request_id, 1, type: :string)
+  field(:machine, 2, type: InternalApi.Chmura.Agent.Machine)
 end
 
 defmodule InternalApi.Chmura.OccupyAgentResponse do
@@ -21,7 +21,7 @@ defmodule InternalApi.Chmura.OccupyAgentResponse do
         }
   defstruct [:agent]
 
-  field :agent, 2, type: InternalApi.Chmura.Agent
+  field(:agent, 2, type: InternalApi.Chmura.Agent)
 end
 
 defmodule InternalApi.Chmura.Agent do
@@ -38,12 +38,12 @@ defmodule InternalApi.Chmura.Agent do
         }
   defstruct [:id, :machine, :ip_address, :ctrl_port, :ssh_port, :auth_token]
 
-  field :id, 1, type: :string
-  field :machine, 2, type: InternalApi.Chmura.Agent.Machine
-  field :ip_address, 3, type: :string
-  field :ctrl_port, 4, type: :int32
-  field :ssh_port, 5, type: :int32
-  field :auth_token, 6, type: :string
+  field(:id, 1, type: :string)
+  field(:machine, 2, type: InternalApi.Chmura.Agent.Machine)
+  field(:ip_address, 3, type: :string)
+  field(:ctrl_port, 4, type: :int32)
+  field(:ssh_port, 5, type: :int32)
+  field(:auth_token, 6, type: :string)
 end
 
 defmodule InternalApi.Chmura.Agent.Machine do
@@ -56,8 +56,8 @@ defmodule InternalApi.Chmura.Agent.Machine do
         }
   defstruct [:type, :os_image]
 
-  field :type, 1, type: :string
-  field :os_image, 2, type: :string
+  field(:type, 1, type: :string)
+  field(:os_image, 2, type: :string)
 end
 
 defmodule InternalApi.Chmura.ReleaseAgentRequest do
@@ -69,7 +69,7 @@ defmodule InternalApi.Chmura.ReleaseAgentRequest do
         }
   defstruct [:agent_id]
 
-  field :agent_id, 1, type: :string
+  field(:agent_id, 1, type: :string)
 end
 
 defmodule InternalApi.Chmura.ReleaseAgentResponse do
@@ -83,11 +83,13 @@ defmodule InternalApi.Chmura.Chmura.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Chmura.Chmura"
 
-  rpc :OccupyAgent, InternalApi.Chmura.OccupyAgentRequest, InternalApi.Chmura.OccupyAgentResponse
+  rpc(:OccupyAgent, InternalApi.Chmura.OccupyAgentRequest, InternalApi.Chmura.OccupyAgentResponse)
 
-  rpc :ReleaseAgent,
-      InternalApi.Chmura.ReleaseAgentRequest,
-      InternalApi.Chmura.ReleaseAgentResponse
+  rpc(
+    :ReleaseAgent,
+    InternalApi.Chmura.ReleaseAgentRequest,
+    InternalApi.Chmura.ReleaseAgentResponse
+  )
 end
 
 defmodule InternalApi.Chmura.Chmura.Stub do

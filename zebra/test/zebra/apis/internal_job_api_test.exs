@@ -1043,7 +1043,7 @@ defmodule Zebra.Api.InternalJobApiTest do
             epilogue_on_pass_commands: [],
             epilogue_on_fail_commands: [],
             priority: 0,
-            execution_time_limit: 0,
+            execution_time_limit: 0
           }
         )
 
@@ -1072,11 +1072,14 @@ defmodule Zebra.Api.InternalJobApiTest do
         containers: [],
         image_pull_secrets: []
       }
+
       spec = %{valid_request.job_spec | agent: agent}
       request = %{valid_request | job_spec: spec}
       assert {:ok, reply} = Stub.create(channel, request)
       assert reply.status.code == InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
-      assert reply.status.message == "The 'agent -> machine ->type' field value must be a non-empty string."
+
+      assert reply.status.message ==
+               "The 'agent -> machine ->type' field value must be a non-empty string."
     end
 
     test "when all params are ok => return job" do
@@ -1126,17 +1129,17 @@ defmodule Zebra.Api.InternalJobApiTest do
       assert reply.status.code == InternalApi.ResponseStatus.Code.value(:OK)
 
       assert %Job{
-        index: 0,
-        is_debug_job: false,
-        machine_os_image: "ubuntu2204",
-        machine_type: "e2-standard-2",
-        name: "RSpec 1/3",
-        organization_id: ^organization_id,
-        ppl_id: "",
-        priority: 50,
-        project_id: ^project_id,
-        self_hosted: false,
-      } = reply.job
+               index: 0,
+               is_debug_job: false,
+               machine_os_image: "ubuntu2204",
+               machine_type: "e2-standard-2",
+               name: "RSpec 1/3",
+               organization_id: ^organization_id,
+               ppl_id: "",
+               priority: 50,
+               project_id: ^project_id,
+               self_hosted: false
+             } = reply.job
     end
   end
 end

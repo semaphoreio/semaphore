@@ -9,9 +9,9 @@ defmodule InternalApi.RBAC.ListUserPermissionsRequest do
         }
   defstruct [:user_id, :org_id, :project_id]
 
-  field :user_id, 1, type: :string
-  field :org_id, 2, type: :string
-  field :project_id, 3, type: :string
+  field(:user_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsResponse do
@@ -26,10 +26,10 @@ defmodule InternalApi.RBAC.ListUserPermissionsResponse do
         }
   defstruct [:user_id, :org_id, :project_id, :permissions]
 
-  field :user_id, 1, type: :string
-  field :org_id, 2, type: :string
-  field :project_id, 3, type: :string
-  field :permissions, 4, repeated: true, type: :string
+  field(:user_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:permissions, 4, repeated: true, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListExistingPermissionsRequest do
@@ -41,7 +41,7 @@ defmodule InternalApi.RBAC.ListExistingPermissionsRequest do
         }
   defstruct [:scope]
 
-  field :scope, 1, type: InternalApi.RBAC.Scope, enum: true
+  field(:scope, 1, type: InternalApi.RBAC.Scope, enum: true)
 end
 
 defmodule InternalApi.RBAC.ListExistingPermissionsResponse do
@@ -53,7 +53,7 @@ defmodule InternalApi.RBAC.ListExistingPermissionsResponse do
         }
   defstruct [:permissions]
 
-  field :permissions, 1, repeated: true, type: InternalApi.RBAC.Permission
+  field(:permissions, 1, repeated: true, type: InternalApi.RBAC.Permission)
 end
 
 defmodule InternalApi.RBAC.AssignRoleRequest do
@@ -66,8 +66,8 @@ defmodule InternalApi.RBAC.AssignRoleRequest do
         }
   defstruct [:role_assignment, :requester_id]
 
-  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment
-  field :requester_id, 2, type: :string
+  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment)
+  field(:requester_id, 2, type: :string)
 end
 
 defmodule InternalApi.RBAC.AssignRoleResponse do
@@ -87,8 +87,8 @@ defmodule InternalApi.RBAC.RetractRoleRequest do
         }
   defstruct [:role_assignment, :requester_id]
 
-  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment
-  field :requester_id, 2, type: :string
+  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment)
+  field(:requester_id, 2, type: :string)
 end
 
 defmodule InternalApi.RBAC.RetractRoleResponse do
@@ -107,7 +107,7 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesRequest do
         }
   defstruct [:role_assignments]
 
-  field :role_assignments, 1, repeated: true, type: InternalApi.RBAC.RoleAssignment
+  field(:role_assignments, 1, repeated: true, type: InternalApi.RBAC.RoleAssignment)
 end
 
 defmodule InternalApi.RBAC.SubjectsHaveRolesResponse do
@@ -119,7 +119,7 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesResponse do
         }
   defstruct [:has_roles]
 
-  field :has_roles, 1, repeated: true, type: InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole
+  field(:has_roles, 1, repeated: true, type: InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole)
 end
 
 defmodule InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole do
@@ -132,8 +132,8 @@ defmodule InternalApi.RBAC.SubjectsHaveRolesResponse.HasRole do
         }
   defstruct [:role_assignment, :has_role]
 
-  field :role_assignment, 1, type: InternalApi.RBAC.RoleAssignment
-  field :has_role, 2, type: :bool
+  field(:role_assignment, 1, type: InternalApi.RBAC.RoleAssignment)
+  field(:has_role, 2, type: :bool)
 end
 
 defmodule InternalApi.RBAC.ListRolesRequest do
@@ -146,8 +146,8 @@ defmodule InternalApi.RBAC.ListRolesRequest do
         }
   defstruct [:org_id, :scope]
 
-  field :org_id, 1, type: :string
-  field :scope, 2, type: InternalApi.RBAC.Scope, enum: true
+  field(:org_id, 1, type: :string)
+  field(:scope, 2, type: InternalApi.RBAC.Scope, enum: true)
 end
 
 defmodule InternalApi.RBAC.ListRolesResponse do
@@ -159,7 +159,7 @@ defmodule InternalApi.RBAC.ListRolesResponse do
         }
   defstruct [:roles]
 
-  field :roles, 1, repeated: true, type: InternalApi.RBAC.Role
+  field(:roles, 1, repeated: true, type: InternalApi.RBAC.Role)
 end
 
 defmodule InternalApi.RBAC.DescribeRoleRequest do
@@ -172,8 +172,8 @@ defmodule InternalApi.RBAC.DescribeRoleRequest do
         }
   defstruct [:org_id, :role_id]
 
-  field :org_id, 1, type: :string
-  field :role_id, 2, type: :string
+  field(:org_id, 1, type: :string)
+  field(:role_id, 2, type: :string)
 end
 
 defmodule InternalApi.RBAC.DescribeRoleResponse do
@@ -185,7 +185,7 @@ defmodule InternalApi.RBAC.DescribeRoleResponse do
         }
   defstruct [:role]
 
-  field :role, 1, type: InternalApi.RBAC.Role
+  field(:role, 1, type: InternalApi.RBAC.Role)
 end
 
 defmodule InternalApi.RBAC.ModifyRoleRequest do
@@ -198,8 +198,8 @@ defmodule InternalApi.RBAC.ModifyRoleRequest do
         }
   defstruct [:role, :requester_id]
 
-  field :role, 1, type: InternalApi.RBAC.Role
-  field :requester_id, 2, type: :string
+  field(:role, 1, type: InternalApi.RBAC.Role)
+  field(:requester_id, 2, type: :string)
 end
 
 defmodule InternalApi.RBAC.ModifyRoleResponse do
@@ -211,7 +211,7 @@ defmodule InternalApi.RBAC.ModifyRoleResponse do
         }
   defstruct [:role]
 
-  field :role, 1, type: InternalApi.RBAC.Role
+  field(:role, 1, type: InternalApi.RBAC.Role)
 end
 
 defmodule InternalApi.RBAC.DestroyRoleRequest do
@@ -225,9 +225,9 @@ defmodule InternalApi.RBAC.DestroyRoleRequest do
         }
   defstruct [:org_id, :role_id, :requester_id]
 
-  field :org_id, 1, type: :string
-  field :role_id, 2, type: :string
-  field :requester_id, 3, type: :string
+  field(:org_id, 1, type: :string)
+  field(:role_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
 end
 
 defmodule InternalApi.RBAC.DestroyRoleResponse do
@@ -239,7 +239,7 @@ defmodule InternalApi.RBAC.DestroyRoleResponse do
         }
   defstruct [:role_id]
 
-  field :role_id, 1, type: :string
+  field(:role_id, 1, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListMembersRequest do
@@ -256,12 +256,12 @@ defmodule InternalApi.RBAC.ListMembersRequest do
         }
   defstruct [:org_id, :project_id, :member_name_contains, :page, :member_has_role, :member_type]
 
-  field :org_id, 1, type: :string
-  field :project_id, 2, type: :string
-  field :member_name_contains, 3, type: :string
-  field :page, 4, type: InternalApi.RBAC.ListMembersRequest.Page
-  field :member_has_role, 5, type: :string
-  field :member_type, 6, type: InternalApi.RBAC.SubjectType, enum: true
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:member_name_contains, 3, type: :string)
+  field(:page, 4, type: InternalApi.RBAC.ListMembersRequest.Page)
+  field(:member_has_role, 5, type: :string)
+  field(:member_type, 6, type: InternalApi.RBAC.SubjectType, enum: true)
 end
 
 defmodule InternalApi.RBAC.ListMembersRequest.Page do
@@ -274,8 +274,8 @@ defmodule InternalApi.RBAC.ListMembersRequest.Page do
         }
   defstruct [:page_no, :page_size]
 
-  field :page_no, 1, type: :int32
-  field :page_size, 2, type: :int32
+  field(:page_no, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
 end
 
 defmodule InternalApi.RBAC.ListMembersResponse do
@@ -288,8 +288,8 @@ defmodule InternalApi.RBAC.ListMembersResponse do
         }
   defstruct [:members, :total_pages]
 
-  field :members, 1, repeated: true, type: InternalApi.RBAC.ListMembersResponse.Member
-  field :total_pages, 2, type: :int32
+  field(:members, 1, repeated: true, type: InternalApi.RBAC.ListMembersResponse.Member)
+  field(:total_pages, 2, type: :int32)
 end
 
 defmodule InternalApi.RBAC.ListMembersResponse.Member do
@@ -302,8 +302,8 @@ defmodule InternalApi.RBAC.ListMembersResponse.Member do
         }
   defstruct [:subject, :subject_role_bindings]
 
-  field :subject, 1, type: InternalApi.RBAC.Subject
-  field :subject_role_bindings, 3, repeated: true, type: InternalApi.RBAC.SubjectRoleBinding
+  field(:subject, 1, type: InternalApi.RBAC.Subject)
+  field(:subject_role_bindings, 3, repeated: true, type: InternalApi.RBAC.SubjectRoleBinding)
 end
 
 defmodule InternalApi.RBAC.CountMembersRequest do
@@ -315,7 +315,7 @@ defmodule InternalApi.RBAC.CountMembersRequest do
         }
   defstruct [:org_id]
 
-  field :org_id, 1, type: :string
+  field(:org_id, 1, type: :string)
 end
 
 defmodule InternalApi.RBAC.CountMembersResponse do
@@ -327,7 +327,7 @@ defmodule InternalApi.RBAC.CountMembersResponse do
         }
   defstruct [:members]
 
-  field :members, 1, type: :int32
+  field(:members, 1, type: :int32)
 end
 
 defmodule InternalApi.RBAC.SubjectRoleBinding do
@@ -341,9 +341,9 @@ defmodule InternalApi.RBAC.SubjectRoleBinding do
         }
   defstruct [:role, :source, :role_assigned_at]
 
-  field :role, 1, type: InternalApi.RBAC.Role
-  field :source, 2, type: InternalApi.RBAC.RoleBindingSource, enum: true
-  field :role_assigned_at, 3, type: Google.Protobuf.Timestamp
+  field(:role, 1, type: InternalApi.RBAC.Role)
+  field(:source, 2, type: InternalApi.RBAC.RoleBindingSource, enum: true)
+  field(:role_assigned_at, 3, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.RBAC.ListAccessibleOrgsRequest do
@@ -355,7 +355,7 @@ defmodule InternalApi.RBAC.ListAccessibleOrgsRequest do
         }
   defstruct [:user_id]
 
-  field :user_id, 1, type: :string
+  field(:user_id, 1, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListAccessibleOrgsResponse do
@@ -367,7 +367,7 @@ defmodule InternalApi.RBAC.ListAccessibleOrgsResponse do
         }
   defstruct [:org_ids]
 
-  field :org_ids, 1, repeated: true, type: :string
+  field(:org_ids, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListAccessibleProjectsRequest do
@@ -380,8 +380,8 @@ defmodule InternalApi.RBAC.ListAccessibleProjectsRequest do
         }
   defstruct [:user_id, :org_id]
 
-  field :user_id, 1, type: :string
-  field :org_id, 2, type: :string
+  field(:user_id, 1, type: :string)
+  field(:org_id, 2, type: :string)
 end
 
 defmodule InternalApi.RBAC.ListAccessibleProjectsResponse do
@@ -393,7 +393,7 @@ defmodule InternalApi.RBAC.ListAccessibleProjectsResponse do
         }
   defstruct [:project_ids]
 
-  field :project_ids, 1, repeated: true, type: :string
+  field(:project_ids, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.RBAC.RoleAssignment do
@@ -408,10 +408,10 @@ defmodule InternalApi.RBAC.RoleAssignment do
         }
   defstruct [:role_id, :subject, :org_id, :project_id]
 
-  field :role_id, 1, type: :string
-  field :subject, 2, type: InternalApi.RBAC.Subject
-  field :org_id, 3, type: :string
-  field :project_id, 4, type: :string
+  field(:role_id, 1, type: :string)
+  field(:subject, 2, type: InternalApi.RBAC.Subject)
+  field(:org_id, 3, type: :string)
+  field(:project_id, 4, type: :string)
 end
 
 defmodule InternalApi.RBAC.Subject do
@@ -425,9 +425,9 @@ defmodule InternalApi.RBAC.Subject do
         }
   defstruct [:subject_type, :subject_id, :display_name]
 
-  field :subject_type, 1, type: InternalApi.RBAC.SubjectType, enum: true
-  field :subject_id, 2, type: :string
-  field :display_name, 3, type: :string
+  field(:subject_type, 1, type: InternalApi.RBAC.SubjectType, enum: true)
+  field(:subject_id, 2, type: :string)
+  field(:display_name, 3, type: :string)
 end
 
 defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
@@ -439,7 +439,7 @@ defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
         }
   defstruct [:org_id]
 
-  field :org_id, 1, type: :string
+  field(:org_id, 1, type: :string)
 end
 
 defmodule InternalApi.RBAC.RefreshCollaboratorsResponse do
@@ -478,16 +478,16 @@ defmodule InternalApi.RBAC.Role do
     :readonly
   ]
 
-  field :id, 1, type: :string
-  field :name, 2, type: :string
-  field :org_id, 3, type: :string
-  field :scope, 4, type: InternalApi.RBAC.Scope, enum: true
-  field :description, 5, type: :string
-  field :permissions, 6, repeated: true, type: :string
-  field :rbac_permissions, 7, repeated: true, type: InternalApi.RBAC.Permission
-  field :inherited_role, 8, type: InternalApi.RBAC.Role
-  field :maps_to, 9, type: InternalApi.RBAC.Role
-  field :readonly, 10, type: :bool
+  field(:id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:org_id, 3, type: :string)
+  field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
+  field(:description, 5, type: :string)
+  field(:permissions, 6, repeated: true, type: :string)
+  field(:rbac_permissions, 7, repeated: true, type: InternalApi.RBAC.Permission)
+  field(:inherited_role, 8, type: InternalApi.RBAC.Role)
+  field(:maps_to, 9, type: InternalApi.RBAC.Role)
+  field(:readonly, 10, type: :bool)
 end
 
 defmodule InternalApi.RBAC.Permission do
@@ -502,79 +502,91 @@ defmodule InternalApi.RBAC.Permission do
         }
   defstruct [:id, :name, :description, :scope]
 
-  field :id, 1, type: :string
-  field :name, 2, type: :string
-  field :description, 3, type: :string
-  field :scope, 4, type: InternalApi.RBAC.Scope, enum: true
+  field(:id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:description, 3, type: :string)
+  field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
 end
 
 defmodule InternalApi.RBAC.SubjectType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :USER, 0
-  field :GROUP, 1
+  field(:USER, 0)
+  field(:GROUP, 1)
 end
 
 defmodule InternalApi.RBAC.Scope do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :SCOPE_UNSPECIFIED, 0
-  field :SCOPE_ORG, 1
-  field :SCOPE_PROJECT, 2
+  field(:SCOPE_UNSPECIFIED, 0)
+  field(:SCOPE_ORG, 1)
+  field(:SCOPE_PROJECT, 2)
 end
 
 defmodule InternalApi.RBAC.RoleBindingSource do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :ROLE_BINDING_SOURCE_UNSPECIFIED, 0
-  field :ROLE_BINDING_SOURCE_MANUALLY, 1
-  field :ROLE_BINDING_SOURCE_GITHUB, 2
-  field :ROLE_BINDING_SOURCE_BITBUCKET, 3
-  field :ROLE_BINDING_SOURCE_GITLAB, 4
-  field :ROLE_BINDING_SOURCE_SCIM, 5
-  field :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6
+  field(:ROLE_BINDING_SOURCE_UNSPECIFIED, 0)
+  field(:ROLE_BINDING_SOURCE_MANUALLY, 1)
+  field(:ROLE_BINDING_SOURCE_GITHUB, 2)
+  field(:ROLE_BINDING_SOURCE_BITBUCKET, 3)
+  field(:ROLE_BINDING_SOURCE_GITLAB, 4)
+  field(:ROLE_BINDING_SOURCE_SCIM, 5)
+  field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
 end
 
 defmodule InternalApi.RBAC.RBAC.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RBAC.RBAC"
 
-  rpc :ListUserPermissions,
-      InternalApi.RBAC.ListUserPermissionsRequest,
-      InternalApi.RBAC.ListUserPermissionsResponse
+  rpc(
+    :ListUserPermissions,
+    InternalApi.RBAC.ListUserPermissionsRequest,
+    InternalApi.RBAC.ListUserPermissionsResponse
+  )
 
-  rpc :ListExistingPermissions,
-      InternalApi.RBAC.ListExistingPermissionsRequest,
-      InternalApi.RBAC.ListExistingPermissionsResponse
+  rpc(
+    :ListExistingPermissions,
+    InternalApi.RBAC.ListExistingPermissionsRequest,
+    InternalApi.RBAC.ListExistingPermissionsResponse
+  )
 
-  rpc :AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse
-  rpc :RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse
+  rpc(:AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse)
+  rpc(:RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse)
 
-  rpc :SubjectsHaveRoles,
-      InternalApi.RBAC.SubjectsHaveRolesRequest,
-      InternalApi.RBAC.SubjectsHaveRolesResponse
+  rpc(
+    :SubjectsHaveRoles,
+    InternalApi.RBAC.SubjectsHaveRolesRequest,
+    InternalApi.RBAC.SubjectsHaveRolesResponse
+  )
 
-  rpc :ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse
-  rpc :DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse
-  rpc :ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse
-  rpc :DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse
-  rpc :ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse
-  rpc :CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse
+  rpc(:ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse)
+  rpc(:DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse)
+  rpc(:ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse)
+  rpc(:DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse)
+  rpc(:ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse)
+  rpc(:CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse)
 
-  rpc :ListAccessibleOrgs,
-      InternalApi.RBAC.ListAccessibleOrgsRequest,
-      InternalApi.RBAC.ListAccessibleOrgsResponse
+  rpc(
+    :ListAccessibleOrgs,
+    InternalApi.RBAC.ListAccessibleOrgsRequest,
+    InternalApi.RBAC.ListAccessibleOrgsResponse
+  )
 
-  rpc :ListAccessibleProjects,
-      InternalApi.RBAC.ListAccessibleProjectsRequest,
-      InternalApi.RBAC.ListAccessibleProjectsResponse
+  rpc(
+    :ListAccessibleProjects,
+    InternalApi.RBAC.ListAccessibleProjectsRequest,
+    InternalApi.RBAC.ListAccessibleProjectsResponse
+  )
 
-  rpc :RefreshCollaborators,
-      InternalApi.RBAC.RefreshCollaboratorsRequest,
-      InternalApi.RBAC.RefreshCollaboratorsResponse
+  rpc(
+    :RefreshCollaborators,
+    InternalApi.RBAC.RefreshCollaboratorsRequest,
+    InternalApi.RBAC.RefreshCollaboratorsResponse
+  )
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do
