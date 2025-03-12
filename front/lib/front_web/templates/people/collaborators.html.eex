@@ -60,12 +60,13 @@
           <% end %>
           <p>Or add them from the collaborators list below</p>
         </div>
-
-        <div class="flex-shrink-0 pl3-m mb3 mb0-m tr-m">
-          <button class="btn btn-secondary" refresh-gh-collaborators>
-            Refresh
-          </button>
-        </div>
+        <%= unless Application.get_env(:hide_refresh_collaborators) do %>
+          <div class="flex-shrink-0 pl3-m mb3 mb0-m tr-m">
+            <button class="btn btn-secondary" refresh-gh-collaborators>
+              Refresh
+            </button>
+          </div>
+        <% end %>
       </div>
 
       <%= if Enum.any?(@collaborators) do %>
