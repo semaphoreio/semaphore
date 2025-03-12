@@ -60,7 +60,7 @@
           <% end %>
           <p>Or add them from the collaborators list below</p>
         </div>
-        <%= unless Application.get_env(:hide_refresh_collaborators) do %>
+        <%= unless Application.get_env(:front, :hide_refresh_collaborators) do %>
           <div class="flex-shrink-0 pl3-m mb3 mb0-m tr-m">
             <button class="btn btn-secondary" refresh-gh-collaborators>
               Refresh
