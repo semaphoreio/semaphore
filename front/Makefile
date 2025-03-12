@@ -43,6 +43,7 @@ CONTAINER_CE_ENV_VARS =\
 	 -e SEED_CE_FEATURES=true \
 	 -e SEED_PROJECTS="simple_project,multi_block_project,scheduled_project" \
 	 -e HIDE_PROMOTIONS=true \
+	 -e HIDE_REFRESH_COLLABORATORS=true \
 	 -e WORKFLOW_TEMPLATES_YAMLS_PATH="/app/workflow_templates/ce" \
 	 -e EXCLUDE_STUBS="GoferMock" \
 	 -e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \

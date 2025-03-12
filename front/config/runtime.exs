@@ -171,6 +171,10 @@ config :front,
        System.get_env("HIDE_PROMOTIONS") == "true"
 
 config :front,
+       :hide_refresh_collaborators,
+       System.get_env("HIDE_REFRESH_COLLABORATORS") == "true"
+
+config :front,
        :workflow_templates_path,
        System.fetch_env!("WORKFLOW_TEMPLATES_YAMLS_PATH")
 
