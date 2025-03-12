@@ -155,11 +155,11 @@ spec:
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
+            - name: "CE_ROLES"
+              value: "true"
 {{- end }}
             - name: "CE_VERSION"
               value: {{ .Chart.Version }}
-            - name: "CE_ROLES"
-              value: "true"
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME

@@ -125,9 +125,9 @@ spec:
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
-{{- end }}
             - name: "CE_ROLES"
               value: "true"
+{{- end }}
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME
