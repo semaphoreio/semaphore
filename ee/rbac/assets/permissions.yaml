@@ -70,6 +70,8 @@ permissions:
       description: "View the existing dashboards within the organization."
     - name: "organization.dashboards.manage"
       description: "Create new dashboard views."
+    - name: "organization.instance_git_integration.manage"
+      description: "Manage the instance Git integration settings."
   project:
     - name: "project.view"
       description: "Access the project. This permission is needed to see any page within the project."
