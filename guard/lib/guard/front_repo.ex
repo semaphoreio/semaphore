@@ -3,18 +3,6 @@ defmodule Guard.FrontRepo do
     otp_app: :guard,
     adapter: Ecto.Adapters.Postgres
 
-  defmodule Quota do
-    use Ecto.Schema
-
-    @primary_key {:id, :binary_id, autogenerate: true}
-
-    schema "quotas" do
-      field(:type, :string)
-      field(:value, :integer)
-      field(:organization_id, :binary_id)
-    end
-  end
-
   defmodule OauthConnection do
     use Ecto.Schema
 
