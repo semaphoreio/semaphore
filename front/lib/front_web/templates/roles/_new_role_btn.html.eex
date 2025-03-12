@@ -1,4 +1,5 @@
 <%= Phoenix.HTML.Link.button to: roles_path(@conn, :new, @scope),
+  method: "get",
   class: "btn btn-primary flex items-center",
   title: new_role_btn_tooltip(@conn, @feature_enabled?),
   disabled: !can_create_new_role?(@conn, @feature_enabled?) do %>
