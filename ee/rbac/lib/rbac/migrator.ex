@@ -9,12 +9,16 @@ defmodule Rbac.Release do
     seed_data()
   end
 
-  def createdb do
+  defp ensure_all_started do
     # Start postgrex and ecto
     IO.puts("Starting dependencies...")
 
     # Start apps necessary for executing migrations
     Enum.each(@start_apps, &Application.ensure_all_started/1)
+  end
+
+  def createdb do
+    ensure_all_started()
 
     create_db_for(@app)
   end
@@ -47,6 +51,7 @@ defmodule Rbac.Release do
 
     for repo <- get_repos() do
       path = priv_path_for(repo, "migrations")
+
       {:ok, _, _} =
         Ecto.Migrator.with_repo(
           repo,
@@ -80,11 +85,17 @@ defmodule Rbac.Release do
   end
 
   def seed_data do
+    ensure_all_started()
+
     {:ok, _} = Rbac.Repo.start_link(pool_size: 2)
 
     IO.puts("Seeding data - Inserting scopes...")
-    %Rbac.Repo.Scope{scope_name: "org_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
-    %Rbac.Repo.Scope{scope_name: "project_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
+
+    {:ok, _} =
+      %Rbac.Repo.Scope{scope_name: "org_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
+
+    {:ok, _} =
+      %Rbac.Repo.Scope{scope_name: "project_scope"} |> Rbac.Repo.insert(on_conflict: :nothing)
 
     IO.puts("Seeding data - Inserting permissions...")
     Rbac.Repo.Permission.insert_default_permissions()

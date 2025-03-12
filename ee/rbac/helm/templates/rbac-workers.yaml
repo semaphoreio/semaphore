@@ -81,7 +81,7 @@ spec:
             - name: START_RBAC_WORKERS
               value: "true"
             - name: RABBIT_CONSUMER
-              value: "false"
+              value: "true"
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
