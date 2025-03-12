@@ -4,37 +4,68 @@ metadata:
   name: features
   namespace: {{ .Release.Namespace }}
 data:
+{{- if eq .Values.global.edition "ce" }}
   features.yml: |-
     activity_monitor:
       enabled: true
-    advanced_deployment_targets:
-      enabled: false
     artifacts:
       enabled: true
-    audit_logs:
-      enabled: false
-    audit_streaming:
-      enabled: false
     badges:
       enabled: true
-    billing:
-      enabled: false
     bitbucket:
       enabled: true
     gitlab:
       enabled: true
-    github_oauth_token:
-      enabled: false
+    just_run:
+      enabled: true
+    max_paralellism_in_org:
+      quantity: 500
+    max_people_in_organization:
+      quantity: 600
+    max_projects_in_org:
+      quantity: 10000
+    parameterized_promotions:
+      enabled: true
+    project_level_secrets:
+      enabled: true
+    scheduler_hook:
+      enabled: true
+    self_hosted_agents:
+      quantity: 1000
+    toggle_skipped_blocks:
+      enabled: true
+    instance_git_integration:
+      enabled: true
+    get_started:
+      enabled: true
+    ui_agent_page:
+      enabled: true
+    new_project_onboarding:
+      enabled: true
+    advanced_deployment_targets:
+      enabled: true
+{{- else }}
+  features.yml: |-
+    advanced_deployment_targets:
+      enabled: true
+    audit_logs:
+      enabled: true
+    audit_streaming:
+      enabled: true
+    activity_monitor:
+      enabled: true
+    artifacts:
+      enabled: true
+    badges:
+      enabled: true
+    bitbucket:
+      enabled: true
+    gitlab:
+      enabled: true
     deployment_targets:
-      enabled: false
-    expose_cloud_agent_types:
-      enabled: false
-    feedback:
-      enabled: false
-    help:
-      enabled: false
+      enabled: true
     ip_allow_list:
-      enabled: false
+      enabled: true
     just_run:
       enabled: true
     max_paralellism_in_org:
@@ -46,37 +77,39 @@ data:
     multiple_organizations:
       enabled: false
     okta:
-      enabled: false
+      enabled: true
     open_id_connect:
-      enabled: false
+      enabled: true
     open_id_connect_aws_tags:
-      enabled: false
+      enabled: true
     organization_health:
-      enabled: false
+      enabled: true
     parameterized_promotions:
       enabled: true
     permission_patrol:
-      enabled: false
+      enabled: true
     pipeline_summaries:
-      enabled: false
+      enabled: true
     pre_flight_checks:
-      enabled: false
+      enabled: true
     project_level_roles:
-      enabled: false
+      enabled: true
     project_level_secrets:
       enabled: true
     rbac__groups:
-      enabled: false
+      enabled: true
     rbac__saml:
-      enabled: false
+      enabled: true
+    rbac__custom_roles:
+      enabled: true
     rbac__project_roles:
-      enabled: false
+      enabled: true
     restrict_job_ssh_access:
-      enabled: false
+      enabled: true
     scheduler_hook:
       enabled: true
     secrets_access_policy:
-      enabled: false
+      enabled: true
     secrets_exposed_content:
       enabled: false
     self_hosted_agents:
@@ -86,8 +119,6 @@ data:
     test_explorer:
       enabled: false
     test_results:
-      enabled: false
-    tmp_rbac_test:
       enabled: false
     toggle_skipped_blocks:
       enabled: true
@@ -99,3 +130,4 @@ data:
       enabled: true
     new_project_onboarding:
       enabled: true
+{{- end }}
