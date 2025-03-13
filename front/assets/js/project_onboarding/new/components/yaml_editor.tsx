@@ -22,13 +22,13 @@ export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, h
     monacoRef.current = editorInstance;
   };
 
+  // Expose monaco editor instance via ref
   useImperativeHandle(ref, () => monacoRef.current);
 
   return (
     <div className="br3 bg-white shadow-1 mt2 pa3">
       <Editor
         height={height}
-        ref={ref}
         defaultLanguage="yaml"
         value={value}
         onChange={handleEditorChange}
