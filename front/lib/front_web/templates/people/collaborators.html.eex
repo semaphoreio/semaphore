@@ -60,7 +60,7 @@
           <% end %>
           <p>Or add them from the collaborators list below</p>
         </div>
-        <%= unless Application.get_env(:front, :hide_refresh_collaborators) do %>
+        <%= if FeatureProvider.feature_enabled?(:ui_show_refresh_collaborators, param: @conn.assigns[:organization_id]) do %>
           <div class="flex-shrink-0 pl3-m mb3 mb0-m tr-m">
             <button class="btn btn-secondary" refresh-gh-collaborators>
               Refresh
