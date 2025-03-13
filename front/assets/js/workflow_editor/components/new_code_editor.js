@@ -2,29 +2,34 @@ import { render } from 'preact';
 import { YamlEditor } from '../../project_onboarding/new/components/yaml_editor';
 import { MarkerSeverity, editor } from 'monaco-editor';
 
-var GUTTER_ID = "CodeMirror-lint-markers";
+const GUTTER_ID = "CodeMirror-lint-markers";
 
 export class CodeEditor {
+
   constructor(outputDivSelector) {
     this.outputDivSelector = outputDivSelector;
+
+    this.editorRef = null; // Store Monaco editor reference
 
     this.state = {
       value: '', 
       readOnly: false,
-      errors: []
     };
 
     this.handleChange = this.handleChange.bind(this);
-
-    this.renderEditor();
+    this.initEditor();
+    this.registerPanelSizeHandler();
   }
 
-  renderEditor() {
+  initEditor() {
     const container = document.querySelector(this.outputDivSelector);
 
     if (container) {
       render(
         <YamlEditor
+          ref={(ref) => {
+            this.editorRef = ref; // Store Monaco editor reference
+          }}
           value={this.state.value}
           onChange={this.handleChange}
           readOnly={this.state.readOnly}
@@ -36,20 +41,24 @@ export class CodeEditor {
 
   handleChange(newValue) {
     this.state.value = newValue;
+    this.activePipeline.updateYaml(this.state.value);
 
-    // Trigger error rendering after every change
+    // Only update markers, not re-render the component
     this.renderErrorMarks();
   }
 
   show(pipeline) {
+    this.activePipeline = pipeline;
     this.state.value = pipeline.toYaml();
-    this.renderEditor();
+
+    // Directly update Monaco's value
+    this.editorRef?.setValue(this.state.value);
   }
 
   renderErrorMarks() {
     if (!this.activePipeline) return;
 
-    const errors = this.activePipeline.getYamlErrors(); // Your old logic to get YAML errors
+    const errors = this.activePipeline.getYamlErrors(); // Same logic from CodeMirror
 
     const markers = errors.map(error => ({
       severity: MarkerSeverity.Error,
@@ -60,14 +69,14 @@ export class CodeEditor {
       endColumn: 100,
     }));
 
-    const model = editor.getModels()[0]; // Monaco's current editor model
-    editor.setModelMarkers(model, GUTTER_ID, markers);
+    const model = this.editorRef?.getModel();
+    if (model) {
+      editor.setModelMarkers(model, GUTTER_ID, markers);
+    }
   }
 
   update() {
-    if (!this.isVisible) return;
-    this.renderEditor();
-    this.renderErrorMarks(); // Re-render markers on update
+    this.renderErrorMarks();
   }
 
   hide() {
@@ -75,5 +84,19 @@ export class CodeEditor {
     if (container) {
       render(null, container);
     }
+  }
+
+  registerPanelSizeHandler() {
+    window.addEventListener("resize", () => this.updatePanelSize());
+  }
+
+  updatePanelSize() {
+    const container = document.querySelector(this.outputDivSelector);
+    if (!container) return;
+
+    const height = window.innerHeight - container.offsetTop;
+
+    const layoutInfo = this.editorRef.getLayoutInfo();
+    this.editorRef.layout({ width: layoutInfo.width, height });
   }
 }

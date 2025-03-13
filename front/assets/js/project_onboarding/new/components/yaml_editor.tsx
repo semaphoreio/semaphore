@@ -1,14 +1,14 @@
-
 import { forwardRef } from "preact/compat";
 import Editor from '@monaco-editor/react';
 
 interface YamlEditorProps {
   value: string;
   onChange?: (value: string) => void;
+  height?: string;
   readOnly?: boolean;
 }
 
-export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, readOnly = false }, ref) => {
+export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, readOnly = false }, ref) => {
   const handleEditorChange = (value: string | undefined) => {
     if (onChange && value) {
       onChange(value);
@@ -18,7 +18,7 @@ export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, r
   return (
     <div className="br3 bg-white shadow-1 mt2 pa3">
       <Editor
-        height="208px"
+        height={height}
         ref={ref}
         defaultLanguage="yaml"
         value={value}
