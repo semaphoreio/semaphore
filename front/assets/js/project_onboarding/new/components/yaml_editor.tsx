@@ -10,7 +10,7 @@ interface YamlEditorProps {
 }
 
 export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, readOnly = false }, ref) => {
-  const monacoRef = useRef(null);
+  const monacoRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   const handleEditorChange = (value: string | undefined) => {
     if (onChange && value) {
