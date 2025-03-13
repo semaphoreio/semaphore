@@ -28,6 +28,7 @@ export class CodeEditor {
       render(
         <YamlEditor
           ref={(ref) => {
+            console.log('Assigning ref', ref);
             this.editorRef = ref; // Store Monaco editor reference
           }}
           value={this.state.value}
@@ -56,23 +57,30 @@ export class CodeEditor {
   }
 
   renderErrorMarks() {
-    if (!this.activePipeline) return;
+    if (!this.activePipeline || !this.editorRef) return;
 
-    const errors = this.activePipeline.getYamlErrors(); // Same logic from CodeMirror
+    this.editorRef?.removeAllMarkers(GUTTER_ID);
 
-    const markers = errors.map(error => ({
-      severity: MarkerSeverity.Error,
-      message: error.reason,
-      startLineNumber: error.mark.line + 1,
-      startColumn: 1,
-      endLineNumber: error.mark.line + 1,
-      endColumn: 100,
-    }));
+    if(this.activePipeline.hasInvalidYaml()) {
+        const line = this.activePipeline.yamlError.mark.line + 1;
+        const column = this.activePipeline.yamlError.mark.column + 1;
+        const message = this.activePipeline.yamlError.reason;
 
-    const model = this.editorRef?.getModel();
-    if (model) {
-      editor.setModelMarkers(model, GUTTER_ID, markers);
-    }
+        const markers = [{
+          severity: MarkerSeverity.Error,
+          message: message,
+          startLineNumber: line,
+          startColumn: column,
+          endLineNumber: line,
+          endColumn: column,
+        }];
+
+        const model = this.editorRef?.getModel();
+
+        if (model) {
+          editor.setModelMarkers(model, GUTTER_ID, markers);
+        }
+    }   
   }
 
   update() {
@@ -92,7 +100,7 @@ export class CodeEditor {
 
   updatePanelSize() {
     const container = document.querySelector(this.outputDivSelector);
-    if (!container) return;
+    if (!container || !this.editorRef) return;
 
     const height = window.innerHeight - container.offsetTop;
 
