@@ -27,6 +27,9 @@ kubectl apply -f github-app-secret.yaml
 kubectl apply -f bitbucket-app-secret.yaml
 kubectl apply -f gitlab-app-secret.yaml
 
+# Set default edition to ce if not specified
+SEMAPHORE_EDITION=${SEMAPHORE_EDITION:-ce}
+
 args=(
   "--set"
   "global.domain.ip=${IP}"
@@ -52,6 +55,8 @@ args=(
   "global.telemetry.cron=* * * * *"
   "--set"
   "global.telemetry.endpoint=https://telemetry.sxmoon.com/ingest"
+  "--set"
+  "global.edition=${SEMAPHORE_EDITION}"
 )
 
 #
