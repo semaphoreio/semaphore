@@ -154,8 +154,6 @@ spec:
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
-            - name: "HIDE_REFRESH_COLLABORATORS"
-              value: "true"
             - name: "CE_VERSION"
               value: {{ .Chart.Version }}
             - name: "CE_ROLES"
