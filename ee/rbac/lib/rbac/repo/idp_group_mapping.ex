@@ -7,6 +7,7 @@ defmodule Rbac.Repo.IdpGroupMapping do
   @required_fields [
     :organization_id,
     :group_mapping,
+    :role_mapping,
     :default_role_id
   ]
 
