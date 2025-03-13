@@ -751,7 +751,8 @@ defmodule InternalApi.Repository.CreateRequest do
           only_public: boolean,
           integration_type: integer,
           commit_status: InternalApi.Projecthub.Project.Spec.Repository.Status.t(),
-          whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t()
+          whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t(),
+          default_branch: String.t()
         }
   defstruct [
     :project_id,
@@ -762,7 +763,8 @@ defmodule InternalApi.Repository.CreateRequest do
     :only_public,
     :integration_type,
     :commit_status,
-    :whitelist
+    :whitelist,
+    :default_branch
   ]
 
   field(:project_id, 1, type: :string)
@@ -774,6 +776,7 @@ defmodule InternalApi.Repository.CreateRequest do
   field(:integration_type, 7, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
   field(:commit_status, 8, type: InternalApi.Projecthub.Project.Spec.Repository.Status)
   field(:whitelist, 9, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist)
+  field(:default_branch, 10, type: :string)
 end
 
 defmodule InternalApi.Repository.CreateResponse do
@@ -822,9 +825,18 @@ defmodule InternalApi.Repository.UpdateRequest do
           pipeline_file: String.t(),
           integration_type: integer,
           commit_status: InternalApi.Projecthub.Project.Spec.Repository.Status.t(),
-          whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t()
+          whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t(),
+          default_branch: String.t()
         }
-  defstruct [:repository_id, :url, :pipeline_file, :integration_type, :commit_status, :whitelist]
+  defstruct [
+    :repository_id,
+    :url,
+    :pipeline_file,
+    :integration_type,
+    :commit_status,
+    :whitelist,
+    :default_branch
+  ]
 
   field(:repository_id, 1, type: :string)
   field(:url, 2, type: :string)
@@ -832,6 +844,7 @@ defmodule InternalApi.Repository.UpdateRequest do
   field(:integration_type, 4, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
   field(:commit_status, 5, type: InternalApi.Projecthub.Project.Spec.Repository.Status)
   field(:whitelist, 6, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist)
+  field(:default_branch, 7, type: :string)
 end
 
 defmodule InternalApi.Repository.UpdateResponse do
@@ -858,6 +871,36 @@ defmodule InternalApi.Repository.RemoteRepositoryChanged do
 
   field(:remote_id, 1, type: :string)
   field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Repository.VerifyWebhookSignatureRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          repository_id: String.t(),
+          payload: String.t(),
+          signature: String.t()
+        }
+  defstruct [:organization_id, :repository_id, :payload, :signature]
+
+  field(:organization_id, 1, type: :string)
+  field(:repository_id, 2, type: :string)
+  field(:payload, 3, type: :string)
+  field(:signature, 4, type: :string)
+end
+
+defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          valid: boolean
+        }
+  defstruct [:valid]
+
+  field(:valid, 1, type: :bool)
 end
 
 defmodule InternalApi.Repository.RepositoryService.Service do
@@ -947,6 +990,12 @@ defmodule InternalApi.Repository.RepositoryService.Service do
     :DescribeRevision,
     InternalApi.Repository.DescribeRevisionRequest,
     InternalApi.Repository.DescribeRevisionResponse
+  )
+
+  rpc(
+    :VerifyWebhookSignature,
+    InternalApi.Repository.VerifyWebhookSignatureRequest,
+    InternalApi.Repository.VerifyWebhookSignatureResponse
   )
 end
 

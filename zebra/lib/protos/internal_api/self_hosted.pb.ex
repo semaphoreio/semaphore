@@ -8,9 +8,18 @@ defmodule InternalApi.SelfHosted.AgentType do
           total_agent_count: integer,
           requester_id: String.t(),
           created_at: Google.Protobuf.Timestamp.t(),
-          updated_at: Google.Protobuf.Timestamp.t()
+          updated_at: Google.Protobuf.Timestamp.t(),
+          agent_name_settings: InternalApi.SelfHosted.AgentNameSettings.t()
         }
-  defstruct [:organization_id, :name, :total_agent_count, :requester_id, :created_at, :updated_at]
+  defstruct [
+    :organization_id,
+    :name,
+    :total_agent_count,
+    :requester_id,
+    :created_at,
+    :updated_at,
+    :agent_name_settings
+  ]
 
   field(:organization_id, 1, type: :string)
   field(:name, 2, type: :string)
@@ -18,6 +27,7 @@ defmodule InternalApi.SelfHosted.AgentType do
   field(:requester_id, 4, type: :string)
   field(:created_at, 5, type: Google.Protobuf.Timestamp)
   field(:updated_at, 6, type: Google.Protobuf.Timestamp)
+  field(:agent_name_settings, 7, type: InternalApi.SelfHosted.AgentNameSettings)
 end
 
 defmodule InternalApi.SelfHosted.Agent do
@@ -37,7 +47,8 @@ defmodule InternalApi.SelfHosted.Agent do
           arch: String.t(),
           disabled_at: Google.Protobuf.Timestamp.t(),
           disabled: boolean,
-          type_name: String.t()
+          type_name: String.t(),
+          organization_id: String.t()
         }
   defstruct [
     :name,
@@ -52,7 +63,8 @@ defmodule InternalApi.SelfHosted.Agent do
     :arch,
     :disabled_at,
     :disabled,
-    :type_name
+    :type_name,
+    :organization_id
   ]
 
   field(:name, 1, type: :string)
@@ -68,6 +80,7 @@ defmodule InternalApi.SelfHosted.Agent do
   field(:disabled_at, 11, type: Google.Protobuf.Timestamp)
   field(:disabled, 12, type: :bool)
   field(:type_name, 13, type: :string)
+  field(:organization_id, 14, type: :string)
 end
 
 defmodule InternalApi.SelfHosted.Agent.State do
@@ -85,13 +98,58 @@ defmodule InternalApi.SelfHosted.CreateRequest do
   @type t :: %__MODULE__{
           organization_id: String.t(),
           name: String.t(),
-          requester_id: String.t()
+          requester_id: String.t(),
+          agent_name_settings: InternalApi.SelfHosted.AgentNameSettings.t()
         }
-  defstruct [:organization_id, :name, :requester_id]
+  defstruct [:organization_id, :name, :requester_id, :agent_name_settings]
 
   field(:organization_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:requester_id, 3, type: :string)
+  field(:agent_name_settings, 4, type: InternalApi.SelfHosted.AgentNameSettings)
+end
+
+defmodule InternalApi.SelfHosted.AgentNameSettings do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          assignment_origin: integer,
+          aws: InternalApi.SelfHosted.AgentNameSettings.AWS.t(),
+          release_after: integer
+        }
+  defstruct [:assignment_origin, :aws, :release_after]
+
+  field(:assignment_origin, 1,
+    type: InternalApi.SelfHosted.AgentNameSettings.AssignmentOrigin,
+    enum: true
+  )
+
+  field(:aws, 2, type: InternalApi.SelfHosted.AgentNameSettings.AWS)
+  field(:release_after, 3, type: :int64)
+end
+
+defmodule InternalApi.SelfHosted.AgentNameSettings.AWS do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          account_id: String.t(),
+          role_name_patterns: String.t()
+        }
+  defstruct [:account_id, :role_name_patterns]
+
+  field(:account_id, 2, type: :string)
+  field(:role_name_patterns, 3, type: :string)
+end
+
+defmodule InternalApi.SelfHosted.AgentNameSettings.AssignmentOrigin do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:ASSIGNMENT_ORIGIN_UNSPECIFIED, 0)
+  field(:ASSIGNMENT_ORIGIN_AGENT, 1)
+  field(:ASSIGNMENT_ORIGIN_AWS_STS, 2)
 end
 
 defmodule InternalApi.SelfHosted.CreateResponse do
@@ -106,6 +164,36 @@ defmodule InternalApi.SelfHosted.CreateResponse do
 
   field(:agent_type, 1, type: InternalApi.SelfHosted.AgentType)
   field(:agent_registration_token, 2, type: :string)
+end
+
+defmodule InternalApi.SelfHosted.UpdateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          name: String.t(),
+          requester_id: String.t(),
+          agent_type: InternalApi.SelfHosted.AgentType.t()
+        }
+  defstruct [:organization_id, :name, :requester_id, :agent_type]
+
+  field(:organization_id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:requester_id, 3, type: :string)
+  field(:agent_type, 4, type: InternalApi.SelfHosted.AgentType)
+end
+
+defmodule InternalApi.SelfHosted.UpdateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          agent_type: InternalApi.SelfHosted.AgentType.t()
+        }
+  defstruct [:agent_type]
+
+  field(:agent_type, 1, type: InternalApi.SelfHosted.AgentType)
 end
 
 defmodule InternalApi.SelfHosted.DescribeRequest do
@@ -190,6 +278,36 @@ defmodule InternalApi.SelfHosted.ListResponse do
   field(:total_count, 2, type: :int32)
   field(:total_pages, 3, type: :int32)
   field(:page, 4, type: :int32)
+end
+
+defmodule InternalApi.SelfHosted.ListKeysetRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          cursor: String.t(),
+          page_size: integer
+        }
+  defstruct [:organization_id, :cursor, :page_size]
+
+  field(:organization_id, 1, type: :string)
+  field(:cursor, 2, type: :string)
+  field(:page_size, 3, type: :int32)
+end
+
+defmodule InternalApi.SelfHosted.ListKeysetResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          agent_types: [InternalApi.SelfHosted.AgentType.t()],
+          next_page_cursor: String.t()
+        }
+  defstruct [:agent_types, :next_page_cursor]
+
+  field(:agent_types, 1, repeated: true, type: InternalApi.SelfHosted.AgentType)
+  field(:next_page_cursor, 2, type: :string)
 end
 
 defmodule InternalApi.SelfHosted.ListAgentsRequest do
@@ -410,6 +528,7 @@ defmodule InternalApi.SelfHosted.SelfHostedAgents.Service do
   use GRPC.Service, name: "InternalApi.SelfHosted.SelfHostedAgents"
 
   rpc(:Create, InternalApi.SelfHosted.CreateRequest, InternalApi.SelfHosted.CreateResponse)
+  rpc(:Update, InternalApi.SelfHosted.UpdateRequest, InternalApi.SelfHosted.UpdateResponse)
   rpc(:Describe, InternalApi.SelfHosted.DescribeRequest, InternalApi.SelfHosted.DescribeResponse)
 
   rpc(
@@ -419,6 +538,12 @@ defmodule InternalApi.SelfHosted.SelfHostedAgents.Service do
   )
 
   rpc(:List, InternalApi.SelfHosted.ListRequest, InternalApi.SelfHosted.ListResponse)
+
+  rpc(
+    :ListKeyset,
+    InternalApi.SelfHosted.ListKeysetRequest,
+    InternalApi.SelfHosted.ListKeysetResponse
+  )
 
   rpc(
     :ListAgents,

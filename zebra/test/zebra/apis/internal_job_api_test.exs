@@ -1003,4 +1003,143 @@ defmodule Zebra.Api.InternalJobApiTest do
       assert message == "Job with id: '#{@job_id}' not found"
     end
   end
+
+  describe ".create" do
+    test "when params are invalid => return error message" do
+      alias InternalApi.ServerFarm.Job.Job
+      alias InternalApi.ServerFarm.Job.JobSpec
+      alias InternalApi.ServerFarm.Job.CreateRequest, as: Request
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      organization_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+
+      valid_request =
+        Request.new(
+          requester_id: Ecto.UUID.generate(),
+          organization_id: organization_id,
+          project_id: project_id,
+          branch_name: "master",
+          commit_sha: "",
+          job_spec: %JobSpec{
+            job_name: "RSpec 1/3",
+            agent: %JobSpec.Agent{
+              machine: %JobSpec.Agent.Machine{
+                os_image: "ubuntu2204",
+                type: "e2-standard-2"
+              },
+              containers: [],
+              image_pull_secrets: []
+            },
+            secrets: [],
+            env_vars: [],
+            files: [],
+            commands: [
+              "echo 1234"
+            ],
+            epilogue_always_commands: [],
+            epilogue_on_pass_commands: [],
+            epilogue_on_fail_commands: [],
+            priority: 0,
+            execution_time_limit: 0
+          }
+        )
+
+      request = %{valid_request | project_id: ""}
+      assert {:ok, reply} = Stub.create(channel, request)
+      assert reply.status.code == InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+      assert reply.status.message == "Invalid parameter 'project_id' - must be a valid UUID."
+
+      spec = %{valid_request.job_spec | job_name: ""}
+      request = %{valid_request | job_spec: spec}
+      assert {:ok, reply} = Stub.create(channel, request)
+      assert reply.status.code == InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+      assert reply.status.message == "The 'job_name' field value must be a non-empty string."
+
+      spec = %{valid_request.job_spec | commands: []}
+      request = %{valid_request | job_spec: spec}
+      assert {:ok, reply} = Stub.create(channel, request)
+      assert reply.status.code == InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+      assert reply.status.message == "The 'commands' list must contain at least one command."
+
+      agent = %JobSpec.Agent{
+        machine: %JobSpec.Agent.Machine{
+          os_image: "",
+          type: ""
+        },
+        containers: [],
+        image_pull_secrets: []
+      }
+
+      spec = %{valid_request.job_spec | agent: agent}
+      request = %{valid_request | job_spec: spec}
+      assert {:ok, reply} = Stub.create(channel, request)
+      assert reply.status.code == InternalApi.ResponseStatus.Code.value(:BAD_PARAM)
+
+      assert reply.status.message ==
+               "The 'agent -> machine ->type' field value must be a non-empty string."
+    end
+
+    test "when all params are ok => return job" do
+      alias InternalApi.ServerFarm.Job.Job
+      alias InternalApi.ServerFarm.Job.JobSpec
+      alias InternalApi.ServerFarm.Job.CreateRequest, as: Request
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      organization_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+
+      request =
+        Request.new(
+          requester_id: Ecto.UUID.generate(),
+          organization_id: organization_id,
+          project_id: project_id,
+          branch_name: "master",
+          commit_sha: "",
+          job_spec: %JobSpec{
+            job_name: "RSpec 1/3",
+            agent: %JobSpec.Agent{
+              machine: %JobSpec.Agent.Machine{
+                os_image: "ubuntu2204",
+                type: "e2-standard-2"
+              },
+              containers: [],
+              image_pull_secrets: []
+            },
+            secrets: [],
+            env_vars: [],
+            files: [],
+            commands: [
+              "echo 1234"
+            ],
+            epilogue_always_commands: [],
+            epilogue_on_pass_commands: [],
+            epilogue_on_fail_commands: [],
+            priority: 200,
+            execution_time_limit: 0
+          }
+        )
+
+      assert {:ok, reply} = Stub.create(channel, request)
+
+      assert reply.status.code == InternalApi.ResponseStatus.Code.value(:OK)
+
+      assert %Job{
+               index: 0,
+               is_debug_job: false,
+               machine_os_image: "ubuntu2204",
+               machine_type: "e2-standard-2",
+               name: "RSpec 1/3",
+               organization_id: ^organization_id,
+               ppl_id: "",
+               priority: 50,
+               project_id: ^project_id,
+               self_hosted: false
+             } = reply.job
+    end
+  end
 end

@@ -126,32 +126,6 @@ defmodule InternalApi.Organization.CreateResponse do
   field(:organization, 2, type: InternalApi.Organization.Organization)
 end
 
-defmodule InternalApi.Organization.CreateWithQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          organization: InternalApi.Organization.Organization.t(),
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-  defstruct [:organization, :quotas]
-
-  field(:organization, 1, type: InternalApi.Organization.Organization)
-  field(:quotas, 2, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.CreateWithQuotasResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          organization: InternalApi.Organization.Organization.t()
-        }
-  defstruct [:organization]
-
-  field(:organization, 1, type: InternalApi.Organization.Organization)
-end
-
 defmodule InternalApi.Organization.UpdateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -557,7 +531,7 @@ defmodule InternalApi.Organization.Organization do
           allowed_id_providers: [String.t()],
           deny_member_workflows: boolean,
           deny_non_member_workflows: boolean,
-          quotas: [InternalApi.Organization.Quota.t()]
+          settings: [InternalApi.Organization.OrganizationSetting.t()]
         }
   defstruct [
     :org_username,
@@ -574,7 +548,7 @@ defmodule InternalApi.Organization.Organization do
     :allowed_id_providers,
     :deny_member_workflows,
     :deny_non_member_workflows,
-    :quotas
+    :settings
   ]
 
   field(:org_username, 1, type: :string)
@@ -591,7 +565,7 @@ defmodule InternalApi.Organization.Organization do
   field(:allowed_id_providers, 13, repeated: true, type: :string)
   field(:deny_member_workflows, 14, type: :bool)
   field(:deny_non_member_workflows, 15, type: :bool)
-  field(:quotas, 8, repeated: true, type: InternalApi.Organization.Quota)
+  field(:settings, 16, repeated: true, type: InternalApi.Organization.OrganizationSetting)
 end
 
 defmodule InternalApi.Organization.Suspension do
@@ -665,84 +639,18 @@ defmodule InternalApi.Organization.Member.Role do
   field(:ADMIN, 2)
 end
 
-defmodule InternalApi.Organization.Quota do
+defmodule InternalApi.Organization.OrganizationSetting do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          type: integer,
-          value: non_neg_integer
+          key: String.t(),
+          value: String.t()
         }
-  defstruct [:type, :value]
+  defstruct [:key, :value]
 
-  field(:type, 1, type: InternalApi.Organization.Quota.Type, enum: true)
-  field(:value, 2, type: :uint32)
-end
-
-defmodule InternalApi.Organization.Quota.Type do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:MAX_PEOPLE_IN_ORG, 0)
-  field(:MAX_PARALELLISM_IN_ORG, 1)
-  field(:MAX_PROJECTS_IN_ORG, 7)
-  field(:MAX_PARALLEL_E1_STANDARD_2, 2)
-  field(:MAX_PARALLEL_E1_STANDARD_4, 3)
-  field(:MAX_PARALLEL_E1_STANDARD_8, 4)
-  field(:MAX_PARALLEL_A1_STANDARD_4, 5)
-  field(:MAX_PARALLEL_A1_STANDARD_8, 6)
-end
-
-defmodule InternalApi.Organization.GetQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          types: [integer]
-        }
-  defstruct [:org_id, :types]
-
-  field(:org_id, 1, type: :string)
-  field(:types, 2, repeated: true, type: InternalApi.Organization.Quota.Type, enum: true)
-end
-
-defmodule InternalApi.Organization.GetQuotaResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-  defstruct [:quotas]
-
-  field(:quotas, 1, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.UpdateQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-  defstruct [:org_id, :quotas]
-
-  field(:org_id, 1, type: :string)
-  field(:quotas, 2, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.UpdateQuotasResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-  defstruct [:quotas]
-
-  field(:quotas, 1, repeated: true, type: InternalApi.Organization.Quota)
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.Organization.RepositoryIntegratorsRequest do
@@ -854,6 +762,56 @@ defmodule InternalApi.Organization.OrganizationContact.ContactType do
   field(:CONTACT_TYPE_MAIN, 1)
   field(:CONTACT_TYPE_FINANCES, 2)
   field(:CONTACT_TYPE_SECURITY, 3)
+end
+
+defmodule InternalApi.Organization.FetchOrganizationSettingsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.Organization.FetchOrganizationSettingsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          settings: [InternalApi.Organization.OrganizationSetting.t()]
+        }
+  defstruct [:settings]
+
+  field(:settings, 1, repeated: true, type: InternalApi.Organization.OrganizationSetting)
+end
+
+defmodule InternalApi.Organization.ModifyOrganizationSettingsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          settings: [InternalApi.Organization.OrganizationSetting.t()]
+        }
+  defstruct [:org_id, :settings]
+
+  field(:org_id, 1, type: :string)
+  field(:settings, 2, repeated: true, type: InternalApi.Organization.OrganizationSetting)
+end
+
+defmodule InternalApi.Organization.ModifyOrganizationSettingsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          settings: [InternalApi.Organization.OrganizationSetting.t()]
+        }
+  defstruct [:settings]
+
+  field(:settings, 1, repeated: true, type: InternalApi.Organization.OrganizationSetting)
 end
 
 defmodule InternalApi.Organization.OrganizationCreated do
@@ -1022,13 +980,6 @@ defmodule InternalApi.Organization.OrganizationService.Service do
 
   rpc(:List, InternalApi.Organization.ListRequest, InternalApi.Organization.ListResponse)
   rpc(:Create, InternalApi.Organization.CreateRequest, InternalApi.Organization.CreateResponse)
-
-  rpc(
-    :CreateWithQuotas,
-    InternalApi.Organization.CreateWithQuotasRequest,
-    InternalApi.Organization.CreateWithQuotasResponse
-  )
-
   rpc(:Update, InternalApi.Organization.UpdateRequest, InternalApi.Organization.UpdateResponse)
   rpc(:IsValid, InternalApi.Organization.Organization, InternalApi.Organization.IsValidResponse)
 
@@ -1082,18 +1033,6 @@ defmodule InternalApi.Organization.OrganizationService.Service do
     InternalApi.Organization.ListSuspensionsResponse
   )
 
-  rpc(
-    :UpdateQuotas,
-    InternalApi.Organization.UpdateQuotasRequest,
-    InternalApi.Organization.UpdateQuotasResponse
-  )
-
-  rpc(
-    :GetQuotas,
-    InternalApi.Organization.GetQuotasRequest,
-    InternalApi.Organization.GetQuotaResponse
-  )
-
   rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
 
   rpc(
@@ -1112,6 +1051,18 @@ defmodule InternalApi.Organization.OrganizationService.Service do
     :ModifyOrganizationContact,
     InternalApi.Organization.ModifyOrganizationContactRequest,
     InternalApi.Organization.ModifyOrganizationContactResponse
+  )
+
+  rpc(
+    :FetchOrganizationSettings,
+    InternalApi.Organization.FetchOrganizationSettingsRequest,
+    InternalApi.Organization.FetchOrganizationSettingsResponse
+  )
+
+  rpc(
+    :ModifyOrganizationSettings,
+    InternalApi.Organization.ModifyOrganizationSettingsRequest,
+    InternalApi.Organization.ModifyOrganizationSettingsResponse
   )
 end
 

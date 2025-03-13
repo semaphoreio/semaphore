@@ -7,6 +7,67 @@ defmodule Zebra.Apis.InternalJobApi do
   alias InternalApi.ServerFarm.Job.Job.State
   alias InternalApi.ServerFarm.Job.StopResponse
 
+  def create(req, _) do
+    Watchman.benchmark("internal_job_api.create_job.duration", fn ->
+      alias InternalApi.ServerFarm.Job.CreateResponse, as: Resp
+      alias Zebra.Apis.InternalJobApi.Serializer, as: Serializer
+      alias Zebra.Apis.InternalJobApi.Validator
+      alias Zebra.Models.Job
+      alias Zebra.Workers.JobRequestFactory.Secrets
+
+      project_id = req.project_id
+      org_id = req.organization_id
+      user_id = req.requester_id
+
+      Logger.info("Creating job org: #{org_id} user: #{user_id} project: #{project_id}")
+
+      spec =
+        req.job_spec
+        |> Map.put(:project_id, project_id)
+        |> Map.put(:epilogue_commands, [])
+        |> Map.drop([:job_name, :execution_time_limit, :priority])
+
+      job_params = %{
+        organization_id: org_id,
+        project_id: project_id,
+        index: 0,
+        machine_type: req.job_spec.agent.machine.type,
+        machine_os_image: req.job_spec.agent.machine.os_image,
+        execution_time_limit: req.job_spec.execution_time_limit,
+        priority: req.job_spec.priority,
+        name: req.job_spec.job_name,
+        spec: spec
+      }
+
+      with {:ok, job_params} <- Validator.validate_job(job_params),
+           {:secrets, {:ok, true}} <-
+             {:secrets,
+              Secrets.validate_job_secrets(
+                org_id,
+                job_params.spec,
+                :debug
+              )},
+           {:ok, job} <- Job.create(job_params),
+           serialized_job <- Serializer.serialize_job(job) do
+        Resp.new(status: grpc_status_ok(), job: serialized_job)
+      else
+        {:error, :validation, message} ->
+          Resp.new(status: grpc_status_bad_param(message))
+
+        {:secrets, {:ok, false}} ->
+          message = "Some secrets used in this job are blocking this operation."
+          Resp.new(status: grpc_status_bad_param(message))
+
+        {:secrets, {:error, message}} ->
+          raise GRPC.RPCError, status: :internal, message: message
+
+        {:error, message} ->
+          Logger.error("Create unexpected error: #{inspect(message)}")
+          raise GRPC.RPCError, status: :internal, message: "Internal error"
+      end
+    end)
+  end
+
   def list(req, _) do
     Watchman.benchmark("internal_job_api.list.duration", fn ->
       alias Zebra.Apis.InternalJobApi.Lister, as: Lister
