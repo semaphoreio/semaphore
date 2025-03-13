@@ -1,6 +1,6 @@
 import { render } from 'preact';
 import { YamlEditor } from '../../project_onboarding/new/components/yaml_editor';
-import * as monaco from 'monaco-editor';
+import { MarkerSeverity, editor } from 'monaco-editor';
 
 var GUTTER_ID = "CodeMirror-lint-markers";
 
@@ -52,7 +52,7 @@ export class CodeEditor {
     const errors = this.activePipeline.getYamlErrors(); // Your old logic to get YAML errors
 
     const markers = errors.map(error => ({
-      severity: monaco.MarkerSeverity.Error,
+      severity: MarkerSeverity.Error,
       message: error.reason,
       startLineNumber: error.mark.line + 1,
       startColumn: 1,
@@ -60,8 +60,8 @@ export class CodeEditor {
       endColumn: 100,
     }));
 
-    const model = monaco.editor.getModels()[0]; // Monaco's current editor model
-    monaco.editor.setModelMarkers(model, GUTTER_ID, markers);
+    const model = editor.getModels()[0]; // Monaco's current editor model
+    editor.setModelMarkers(model, GUTTER_ID, markers);
   }
 
   update() {
