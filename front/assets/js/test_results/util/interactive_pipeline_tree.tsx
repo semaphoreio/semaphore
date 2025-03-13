@@ -101,7 +101,7 @@ export const InteractivePipelineTree = (props: Props) => {
           </div>
           <span className="b" dangerouslySetInnerHTML={{ __html: pipelineName }}></span>
         </div>
-        <img className="ml1" src="/projects/assets/images/icn-arrow-down.svg"/>
+        <img className="ml1" src="https://storage.googleapis.com/semaphore-design/release-43d4043/images/icn-arrow-down.svg"/>
       </div>
 
       <div className="pv2 ph3 f5 bg-white br2 pa2 tooltip" ref={tooltipEl} style={{ "zIndex": 200, boxShadow: ``, display: expanded ? `` : `none` }}>

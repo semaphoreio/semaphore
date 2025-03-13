@@ -34,12 +34,12 @@ export const Reliability = ({ metrics, branchName, pipelineFileName }: Props) =>
       <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
         <div className="flex items-center">
           {/*this icon needs to be loaded dynamically */}
-          <img src="/projects/assets/images/icn-branch.svg"
+          <img src="https://storage.googleapis.com/semaphore-design/release-55dc031/images/icn-branch.svg"
             className="flex-shrink-0 mr2 dn db-l" width="16" height="16" alt="branch icon"/>
           <label className="mr2">{branchName}</label>
 
           {/*this icon needs to be loaded dynamically */}
-          <img src="/projects/assets/images/icn-commit.svg"
+          <img src="https://storage.googleapis.com/semaphore-design/release-55dc031/images/icn-commit.svg"
             className="flex-shrink-0 mr2 dn db-l"
             width="16" height="16" alt="pipeline icon"/>
           <label className="mr2">{pipelineFileName}</label>

@@ -3,6 +3,19 @@ defmodule Front.Browser.AccountTest do
   alias Support.Stubs
 
   setup %{session: session} do
+    #
+    # Setting the js_errors to false as the subdomain has no access to fonts and raises
+    # an annoying JS error:
+    #
+    # ** (Wallaby.JSError) There was an uncaught JavaScript error:
+    #   http://me.localhost:4001/account/welcome/okta - Access to font at
+    #   'https://storage.googleapis.com/semaphore-design/release-55dc031/fonts/Fakt-Normal.woff2'
+    #   from origin 'http://me.localhost:4001'
+    #   has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is
+    #   present on the requested resource.
+    #
+    Application.put_env(:wallaby, :js_errors, false)
+
     Stubs.init()
     Stubs.build_shared_factories()
     Stubs.PermissionPatrol.allow_everything()

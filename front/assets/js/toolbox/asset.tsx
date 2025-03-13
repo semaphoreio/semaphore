@@ -9,6 +9,6 @@ export default function ({
   path: path,
   ...props
 }: AssetProps) {
-  const url = new URL(`${assetPath}/${path}`, `${location.origin}/`).href;
+  const url = new URL(`./${path}`, `${assetPath}/`).href;
   return <img src={url} {...props}/>;
 }

@@ -169,7 +169,8 @@ defmodule Front.Models.SchedulerTest do
                        default_value: "value1"
                      }
                    ],
-                   triggerer_avatar_url: "/projects/assets/images/profile-bot.svg",
+                   triggerer_avatar_url:
+                     "https://storage.googleapis.com/semaphore-design/release-d5272d8/images/profile-bot.svg",
                    triggerer_name: "scheduler"
                  )
                ]
@@ -179,7 +180,8 @@ defmodule Front.Models.SchedulerTest do
 
   defp expected_desc_list do
     params = [
-      triggerer_avatar_url: "/projects/assets/images/profile-bot.svg",
+      triggerer_avatar_url:
+        "https://storage.googleapis.com/semaphore-design/release-d5272d8/images/profile-bot.svg",
       triggerer_name: "scheduler"
     ]
 

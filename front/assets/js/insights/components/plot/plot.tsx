@@ -266,7 +266,7 @@ const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.S
     <Fragment>
       <div className="flex items-center justify-center br3" style={containerStyle}>
         <div className="flex items-center">
-          <img src="/projects/assets/images/spinner-2.svg" style="width: 20px; height: 20px;"/>
+          <img src="https://storage.googleapis.com/semaphore-design/release-ea43aa5/images/spinner-2.svg" style="width: 20px; height: 20px;"/>
           <span className="ml1 gray">Chart data is loading, please wait&hellip;</span>
         </div>
       </div>

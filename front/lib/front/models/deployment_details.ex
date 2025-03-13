@@ -6,6 +6,8 @@ defmodule Front.Models.DeploymentDetails do
   defmodule Deployment do
     use TypedStruct
 
+    @default_avatar_url "#{Application.compile_env(:front, :assets_path)}/images/semaphore-logo-sign-black.svg"
+
     typedstruct do
       field(:id, String.t())
       field(:state, atom())
@@ -52,7 +54,7 @@ defmodule Front.Models.DeploymentDetails do
     end
 
     def preload_triggerer(deployment = %__MODULE__{triggered_by: "Pipeline Done request"}, nil) do
-      avatar_url = "#{FrontWeb.SharedHelpers.assets_path()}/images/profile-bot.svg"
+      avatar_url = "#{Application.get_env(:front, :assets_path)}/images/profile-bot.svg"
       %__MODULE__{deployment | author_name: "Auto-promotion", author_avatar_url: avatar_url}
     end
 
@@ -64,7 +66,7 @@ defmodule Front.Models.DeploymentDetails do
       %__MODULE__{
         deployment
         | author_name: Application.get_env(:front, :default_user_name),
-          author_avatar_url: FrontWeb.SharedHelpers.assets_path()
+          author_avatar_url: @default_avatar_url
       }
     end
   end

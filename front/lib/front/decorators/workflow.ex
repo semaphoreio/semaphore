@@ -172,7 +172,7 @@ defmodule Front.Decorators.Workflow do
   def author_avatar_url(workflow) do
     case workflow.triggered_by do
       :HOOK -> workflow.hook.repo_host_avatar_url
-      :SCHEDULE -> "#{FrontWeb.SharedHelpers.assets_path()}/images/profile-bot.svg"
+      :SCHEDULE -> "#{Application.get_env(:front, :assets_path)}/images/profile-bot.svg"
       :API -> workflow.requester.avatar_url
       :MANUAL_RUN -> workflow.requester.avatar_url
     end
@@ -181,7 +181,7 @@ defmodule Front.Decorators.Workflow do
       Logger.error("Failed to get avatar_url for workflow, using default instead as a fallback")
       Logger.error(inspect(workflow))
 
-      "#{FrontWeb.SharedHelpers.assets_path()}/images/semaphore-logo-sign-black.svg"
+      "#{Application.get_env(:front, :assets_path)}/images/semaphore-logo-sign-black.svg"
   end
 
   def sort_by_done_at(pipelines) do

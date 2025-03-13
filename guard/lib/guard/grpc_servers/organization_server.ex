@@ -588,7 +588,9 @@ defmodule Guard.GrpcServers.OrganizationServer do
   defp add_if_enabled(integrations, _type, false), do: integrations
   defp add_if_enabled(integrations, type, true), do: [type | integrations]
 
-  defp avatar_url(username), do: "/projects/assets/images/org-#{String.first(username)}.svg"
+  defp avatar_url(username),
+    do:
+      "https://storage.googleapis.com/semaphore-design/release-d5272d8/images/org-#{String.first(username)}.svg"
 
   defp grpc_timestamp(nil), do: nil
 
