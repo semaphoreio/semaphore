@@ -1,5 +1,6 @@
-import { forwardRef } from "preact/compat";
-import Editor from '@monaco-editor/react';
+import { forwardRef, useImperativeHandle, useRef } from "preact/compat";
+import Editor, { Monaco } from '@monaco-editor/react';
+import { editor } from 'monaco-editor';
 
 interface YamlEditorProps {
   value: string;
@@ -9,11 +10,19 @@ interface YamlEditorProps {
 }
 
 export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, readOnly = false }, ref) => {
+  const monacoRef = useRef(null);
+
   const handleEditorChange = (value: string | undefined) => {
     if (onChange && value) {
       onChange(value);
     }
   };
+
+  const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, _monaco: Monaco) => {
+    monacoRef.current = editorInstance;
+  };
+
+  useImperativeHandle(ref, () => monacoRef.current);
 
   return (
     <div className="br3 bg-white shadow-1 mt2 pa3">
@@ -35,6 +44,7 @@ export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, h
             horizontal: `auto`,
           },
         }}
+        onMount={handleEditorDidMount}
       />
     </div>
   );
