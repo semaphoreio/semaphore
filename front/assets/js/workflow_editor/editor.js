@@ -9,7 +9,7 @@ import { Agent    } from "./models/agent"
 import { Promotion } from "./models/promotion";
 
 import { Tabs         } from "./components/tabs"
-import { CodeEditor   } from "./components/code_editor"
+import { CodeEditor   } from "./components/new_code_editor"
 import { Diagram      } from "./components/diagram"
 import { CommitPanel  } from "./components/commit_panel"
 import { Configurator } from "./components/configurator"
