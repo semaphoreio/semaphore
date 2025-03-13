@@ -10,7 +10,7 @@
         <p class="mb0">How to <a href="https://docs.semaphoreci.com/account-management/organizations/#transferring-ownership-of-an-organization" target="_blank" rel="noopener">Transfer the ownership</a>?</p>
       </div>
       <div class="flex items-center">
-        <%= unless Application.get_env(:front, :hide_refresh_organizations) do %>
+        <%= unless Application.get_env(:front, :hide_refresh_collaborators) do %>
           <div class="app-sync-people" data-config="<%= Poison.encode!(sync_people_config(@conn)) %>"></div>
         <% end %>
         <%= link to: roles_path(@conn, :index), class: "pointer flex items-center btn-secondary btn nowrap ml2" do %>
