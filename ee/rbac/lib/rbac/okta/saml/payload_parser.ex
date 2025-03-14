@@ -44,6 +44,9 @@ defmodule Rbac.Okta.Saml.PayloadParser do
 
   defp construct_attributes_map(attributes) do
     Enum.reduce(attributes, %{}, fn {name, value}, acc ->
+      <<first::utf8, rest::binary>> = name |> Atom.to_string() |> String.trim("/")
+      name = <<String.downcase(<<first::utf8>>)::binary, rest::binary>>
+
       value = to_string(value)
       Map.update(acc, name, [value], &(&1 ++ [value]))
     end)

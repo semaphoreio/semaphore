@@ -70,7 +70,6 @@ defmodule Rbac.Repo.IdpGroupMapping do
       message: "Organization already has IDP group mappings"
     )
     |> validate_group_mapping_uniqueness()
-    |> validate_group_mapping_not_empty()
     |> validate_role_mapping_uniqueness()
   end
 
@@ -122,23 +121,6 @@ defmodule Rbac.Repo.IdpGroupMapping do
         else
           changeset
         end
-    end
-  end
-
-  defp validate_group_mapping_not_empty(changeset) do
-    case get_change(changeset, :group_mapping) do
-      nil ->
-        case get_field(changeset, :group_mapping) do
-          nil -> add_error(changeset, :group_mapping, "must be provided")
-          [] -> add_error(changeset, :group_mapping, "cannot be empty")
-          _ -> changeset
-        end
-
-      [] ->
-        add_error(changeset, :group_mapping, "cannot be empty")
-
-      _ ->
-        changeset
     end
   end
 
