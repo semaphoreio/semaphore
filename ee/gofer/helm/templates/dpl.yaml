@@ -104,8 +104,13 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.internalApi.configMapName }}
                   key: INTERNAL_API_URL_SECRETHUB
+{{- if eq .Values.global.edition "ee" }}
+            - name: ROLES_CACHE_ENABLED
+              value: "true"
+{{- else }}
             - name: ROLES_CACHE_ENABLED
               value: "false"
+{{- end }}
             - name: ROLES_CACHE_EXPIRATION_TTL
               value: "120"
             - name: ROLES_CACHE_EXPIRATION_INTERVAL

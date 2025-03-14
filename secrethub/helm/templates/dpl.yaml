@@ -91,12 +91,12 @@ spec:
             - key: features.yml
               path: features.yml
 {{- if eq .Values.global.edition "ee" }}
-        - name: openid-connect-secrets
+        - name: openid-secrets
           secret:
-            secretName: openid
-        - name: vault-keys
+            secretName: {{ include "secrets.openid.name" . }}
+        - name: vault-secrets
           secret:
-            secretName: vault
+            secretName: {{ include "secrets.vault.name" . }}
 {{- end }}
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
@@ -111,11 +111,11 @@ spec:
               readOnly: true
               subPath: features.yml
 {{- if eq .Values.global.edition "ee" }}
-            - name: openid-connect-secrets
-              mountPath: "/var/open_id_secrets"
+            - name: openid-secrets
+              mountPath: "/var/openid_secrets"
               readOnly: true
-            - name: vault-keys
-              mountPath: "/var/key_vault"
+            - name: vault-secrets
+              mountPath: "/var/vault_secrets"
               readOnly: true
 {{- end }}
           ports:
@@ -149,14 +149,16 @@ spec:
             - name: START_OPENID_KEY_MANAGER
               value: "true"
             - name: OPENID_KEYS_PATH
-              value: "/var/open_id_secrets"
+              value: "/var/openid_secrets"
             - name: KEY_VAULT_PATH
-              value: "/var/key_vault"
+              value: "/var/vault_secrets"
 {{- else }}
             - name: START_OPENID_CONNECT_HTTP_API
               value: "false"
             - name: START_OPENID_KEY_MANAGER
               value: "false"
+            - name: OPENID_KEYS_PATH
+              value: "/var/open_id_secrets"
 {{- end }}
             - name: START_ENCRYPTOR_WORKER
               value: "false"
@@ -178,8 +180,6 @@ spec:
                   key: amqp-url
             - name: ENCRYPTOR_URL
               value: "localhost:50052"
-            - name: OPENID_KEYS_PATH
-              value: "/var/open_id_secrets"
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
