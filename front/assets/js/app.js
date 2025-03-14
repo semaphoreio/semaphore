@@ -5,6 +5,7 @@ import $ from "jquery";
 import { install } from '@github/hotkey';
 import { Userpilot } from "userpilot"
 
+import { defineTimeAgoElement } from "./time_ago";
 import { Tippy } from "./tippy";
 import { JumpTo } from "./jump_to/jump_to";
 import { Pollman } from "./pollman";
@@ -475,10 +476,7 @@ export var App = {
       })
     }
 
-    // This has to be required at the bottom of the body element
-    // therefore we require it within App.run() function
-    require("time-elements");
-
+    defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
     maybeEnableUserpilot()

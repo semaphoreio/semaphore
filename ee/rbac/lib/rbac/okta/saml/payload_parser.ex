@@ -14,10 +14,10 @@ defmodule Rbac.Okta.Saml.PayloadParser do
          {:ok, payload} <- extract_saml_response(params),
          {:ok, decoded} <- decode_payload(payload),
          {:ok, assertion} <- validate_assertion(decoded, sp) do
-      subject = esaml_assertion(assertion, :subject)
-      email = esaml_subject(subject, :name)
+      email = esaml_assertion(assertion, :subject) |> esaml_subject(:name)
+      attributes = esaml_assertion(assertion, :attributes) |> construct_attributes_map()
 
-      {:ok, to_string(email)}
+      {:ok, to_string(email), attributes}
     end
   end
 
@@ -40,6 +40,13 @@ defmodule Rbac.Okta.Saml.PayloadParser do
 
     :exit, e ->
       {:error, :invalid_xml, e}
+  end
+
+  defp construct_attributes_map(attributes) do
+    Enum.reduce(attributes, %{}, fn {name, value}, acc ->
+      value = to_string(value)
+      Map.update(acc, name, [value], &(&1 ++ [value]))
+    end)
   end
 
   defp validate_assertion(saml, sp) do

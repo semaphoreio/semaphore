@@ -73,6 +73,20 @@ defmodule InternalApi.InstanceConfig.ModifyConfigResponse do
   defstruct []
 end
 
+defmodule InternalApi.InstanceConfig.ConfigModified do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: integer,
+          timestamp: Google.Protobuf.Timestamp.t()
+        }
+
+  defstruct [:type, :timestamp]
+  field(:type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true)
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.InstanceConfig.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -99,20 +113,6 @@ defmodule InternalApi.InstanceConfig.ConfigType do
   field(:CONFIG_TYPE_BITBUCKET_APP, 3)
 
   field(:CONFIG_TYPE_GITLAB_APP, 4)
-end
-
-defmodule InternalApi.InstanceConfig.ConfigModified do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          type: integer,
-          timestamp: Google.Protobuf.Timestamp.t() | nil
-        }
-
-  defstruct [:type, :timestamp]
-  field(:type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.InstanceConfig.InstanceConfigService.Service do

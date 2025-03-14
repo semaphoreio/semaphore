@@ -15,15 +15,7 @@
         <div class="w-10"><%= audit_file_size(e.file_size) %></div>
 
         <div class="w-10">
-          <relative-time
-              datetime="<%= DateTime.from_unix!(e.timestamp.seconds) %>"
-              month="short"
-              day="numeric"
-              year="numeric"
-              hour="numeric"
-              minute="numeric"
-              second="numeric"
-              ></relative-time>
+          <time-ago datetime="<%= DateTime.from_unix!(e.timestamp.seconds) %>" ></time-ago>
         </div>
 
         <div class="w-30 tr">

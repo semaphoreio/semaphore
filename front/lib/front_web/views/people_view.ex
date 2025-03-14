@@ -148,15 +148,32 @@ defmodule FrontWeb.PeopleView do
     binding_source = InternalApi.RBAC.RoleBindingSource.key(role_binding.source)
 
     case binding_source do
-      :ROLE_BINDING_SOURCE_MANUALLY ->
+      source
+      when source in [
+             :ROLE_BINDING_SOURCE_GITHUB,
+             :ROLE_BINDING_SOURCE_GITLAB,
+             :ROLE_BINDING_SOURCE_BITBUCKET
+           ] ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white">#{escape_unsafe_string(role_binding.role.name)}</span>
+          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+            data-tippy-content="This role is automatically assigned through sync with Git repository.">
+              #{git_icon(binding_source)}
+              <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
+          </span>
         """
 
       :ROLE_BINDING_SOURCE_SCIM ->
         """
           <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
             data-tippy-content="This role is automatically assigned through sync with your SCIM provider.">
+              <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
+          </span>
+        """
+
+      :ROLE_BINDING_SOURCE_SAML_JIT ->
+        """
+          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
+            data-tippy-content="This role is automatically assigned through SAML JIT provisioning settings.">
               <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
           </span>
         """
@@ -171,11 +188,7 @@ defmodule FrontWeb.PeopleView do
 
       _ ->
         """
-          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white bg-pattern-wave flex items-center"
-            data-tippy-content="This role is automatically assigned through sync with Git repository.">
-              #{git_icon(binding_source)}
-              <span class="ml1">#{escape_unsafe_string(role_binding.role.name)}</span>
-          </span>
+          <span class= "f6 normal ml1 ph1 br2 bg-#{map_role_to_colour(role_binding.role.name)} white">#{escape_unsafe_string(role_binding.role.name)}</span>
         """
     end
     |> raw()

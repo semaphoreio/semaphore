@@ -630,6 +630,7 @@ defmodule FrontWeb.Router do
     # Job Page
     get("/jobs/:id", JobController, :show)
     get("/jobs/:id/status", JobController, :status)
+    get("/jobs/:id/status_badge", JobController, :status_badge)
     get("/jobs/:id/summary", TestResultsController, :job_summary)
     get("/jobs/:id/logs", JobController, :logs)
 

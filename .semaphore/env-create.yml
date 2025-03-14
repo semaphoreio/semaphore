@@ -1,5 +1,5 @@
 version: v1.0
-name: Cloud environment - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+name: Cloud environment - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}} - ${{parameters.SEMAPHORE_EDITION}}
 agent:
   machine:
     type: f1-standard-2
@@ -10,6 +10,8 @@ global_job_config:
       value: "test.sonprem.com"
     - name: ROLE_ARN
       value: "arn:aws:iam::451765615567:role/sem-install-dns-update-role"
+    - name: SEMAPHORE_EDITION
+      value: ${{parameters.SEMAPHORE_EDITION}}
   prologue:
     commands:
       - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
@@ -105,3 +107,6 @@ promotions:
           options:
             - gke
             - single-vm
+        - name: SEMAPHORE_EDITION
+          required: true
+          default_value: ${{parameters.SEMAPHORE_EDITION}}
