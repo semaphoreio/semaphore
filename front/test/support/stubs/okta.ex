@@ -23,10 +23,11 @@ defmodule Support.Stubs.Okta do
       :user_id
     ])
 
-    DB.add_table(:okta_group_mappings, [
+    DB.add_table(:okta_mappings, [
       :org_id,
       :default_role_id,
-      :mappings
+      :group_mappings,
+      :role_mappings
     ])
 
     __MODULE__.Grpc.init()
@@ -38,8 +39,8 @@ defmodule Support.Stubs.Okta do
       GrpcMock.stub(OktaMock, :list, &__MODULE__.list/2)
       GrpcMock.stub(OktaMock, :list_users, &__MODULE__.list_users/2)
       GrpcMock.stub(OktaMock, :generate_scim_token, &__MODULE__.generate_scim_token/2)
-      GrpcMock.stub(OktaMock, :describe_group_mapping, &__MODULE__.describe_group_mapping/2)
-      GrpcMock.stub(OktaMock, :set_up_group_mapping, &__MODULE__.set_up_group_mapping/2)
+      GrpcMock.stub(OktaMock, :describe_mapping, &__MODULE__.describe_mapping/2)
+      GrpcMock.stub(OktaMock, :set_up_mapping, &__MODULE__.set_up_mapping/2)
     end
 
     def set_up(req, _) do
@@ -87,61 +88,74 @@ defmodule Support.Stubs.Okta do
       InternalApi.Okta.GenerateScimTokenResponse.new(token: token)
     end
 
-    def describe_group_mapping(req, _) do
+    def describe_mapping(req, _) do
       org_id = req.org_id
 
-      group_mapping = DB.find_by(:okta_group_mappings, :org_id, org_id)
+      mapping = DB.find_by(:okta_mappings, :org_id, org_id)
 
-      if group_mapping do
-        # Return the existing mapping
-        mappings =
-          Enum.map(group_mapping.mappings, fn mapping ->
+      if mapping do
+        group_mappings =
+          Enum.map(mapping.group_mappings || [], fn mapping ->
             InternalApi.Okta.GroupMapping.new(
               semaphore_group_id: mapping.semaphore_group_id,
               okta_group_id: mapping.okta_group_id
             )
           end)
 
-        InternalApi.Okta.DescribeGroupMappingResponse.new(
-          default_role_id: group_mapping.default_role_id,
-          mappings: mappings
+        role_mappings =
+          Enum.map(mapping.role_mappings || [], fn mapping ->
+            InternalApi.Okta.RoleMapping.new(
+              semaphore_role_id: mapping.semaphore_role_id,
+              okta_role_id: mapping.okta_role_id
+            )
+          end)
+
+        InternalApi.Okta.DescribeMappingResponse.new(
+          default_role_id: mapping.default_role_id,
+          group_mapping: group_mappings,
+          role_mapping: role_mappings
         )
       else
-        # Return empty mapping
-        InternalApi.Okta.DescribeGroupMappingResponse.new(
+        InternalApi.Okta.DescribeMappingResponse.new(
           default_role_id: "",
-          mappings: []
+          group_mapping: [],
+          role_mapping: []
         )
       end
     end
 
-    def set_up_group_mapping(req, _) do
+    def set_up_mapping(req, _) do
       org_id = req.org_id
       default_role_id = req.default_role_id
 
-      # Convert the protobuf mappings to a simpler map structure for storage
-      mappings =
-        Enum.map(req.mappings, fn mapping ->
+      group_mappings =
+        Enum.map(req.group_mapping || [], fn mapping ->
           %{
             semaphore_group_id: mapping.semaphore_group_id,
             okta_group_id: mapping.okta_group_id
           }
         end)
 
-      # Delete any existing mapping for this org
-      DB.delete(:okta_group_mappings, fn mapping -> mapping.org_id == org_id end)
+      role_mappings =
+        Enum.map(req.role_mapping || [], fn mapping ->
+          %{
+            semaphore_role_id: mapping.semaphore_role_id,
+            okta_role_id: mapping.okta_role_id
+          }
+        end)
 
-      # Insert the new mapping
-      DB.insert(:okta_group_mappings, %{
+      DB.delete(:okta_mappings, fn mapping -> mapping.org_id == org_id end)
+
+      DB.insert(:okta_mappings, %{
         org_id: org_id,
         default_role_id: default_role_id,
-        mappings: mappings
+        group_mappings: group_mappings,
+        role_mappings: role_mappings
       })
 
-      Logger.info("[stub] Set up Okta group mapping for org: #{org_id}")
+      Logger.info("[stub] Set up Okta mappings for org: #{org_id}")
 
-      # Return empty response
-      InternalApi.Okta.SetUpGroupMappingResponse.new()
+      InternalApi.Okta.SetUpMappingResponse.new()
     end
 
     defp serialize(integration) do
