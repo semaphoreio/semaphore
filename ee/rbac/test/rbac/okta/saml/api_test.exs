@@ -68,7 +68,7 @@ defmodule Rbac.Okta.Saml.Api.Test do
       with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
         {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
         assert response.status_code == 200
-        assert response.body == "User provisioning, try again in a minute"
+        assert response.body == "User provisioning started, try again in a minute"
       end
 
       {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))

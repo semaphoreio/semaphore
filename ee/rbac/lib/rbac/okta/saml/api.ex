@@ -141,7 +141,7 @@ defmodule Rbac.Okta.Saml.Api do
 
           conn
           |> put_resp_content_type("text/plain")
-          |> send_resp(200, "User provisioning, try again in a minute")
+          |> send_resp(200, "User provisioning started, try again in a minute")
         else
           raise e
         end
