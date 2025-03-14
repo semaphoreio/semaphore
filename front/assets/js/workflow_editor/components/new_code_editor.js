@@ -2,7 +2,7 @@ import { render } from 'preact';
 import { YamlEditor } from '../../project_onboarding/new/components/yaml_editor';
 import { MarkerSeverity, editor } from 'monaco-editor';
 
-const GUTTER_ID = "CodeMirror-lint-markers";
+const MODEL_OWNER_ID = "CodeMirror-lint-markers";
 
 export class CodeEditor {
   constructor(outputDivSelector) {
@@ -56,7 +56,7 @@ export class CodeEditor {
     console.log('Rendering error marks');
     if (!this.activePipeline || !this.editorRef) return;
     console.log('Removing markers');
-    this.editorRef?.removeAllMarkers(GUTTER_ID);
+    editor.removeAllMarkers(MODEL_OWNER_ID);
 
     if (this.activePipeline.hasInvalidYaml()) {
       console.log('Adding markers');
@@ -75,7 +75,7 @@ export class CodeEditor {
 
       const model = this.editorRef?.getModel();
       if (model) {
-        editor.setModelMarkers(model, GUTTER_ID, markers);
+        editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
       }
     }
   }

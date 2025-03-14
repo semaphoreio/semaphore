@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from "preact/compat";
+import { forwardRef, useImperativeHandle, useRef, useState } from "preact/compat";
 import Editor from '@monaco-editor/react';
 import { editor } from 'monaco-editor';
 
@@ -10,6 +10,7 @@ interface YamlEditorProps {
 }
 
 export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, readOnly = false }, ref) => {
+  const [isMounted, setIsMounted] = useState(false);
   const monacoRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   const handleEditorChange = (value: string | undefined) => {
@@ -20,10 +21,10 @@ export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, h
 
   const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor) => {
     monacoRef.current = editorInstance;
+    setIsMounted(true);
   };
 
-  // Expose monaco editor instance via ref
-  useImperativeHandle(ref, () => monacoRef.current);
+  useImperativeHandle(ref, () => monacoRef.current, [isMounted]);
 
   return (
     <div className="br3 bg-white shadow-1 mt2 pa3">
