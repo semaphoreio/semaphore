@@ -1,43 +1,30 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from "preact/compat";
-import Editor, { Monaco } from '@monaco-editor/react';
-import { editor } from 'monaco-editor';
+import { forwardRef } from "preact/compat";
+import Editor, { OnMount } from '@monaco-editor/react';
 
 interface YamlEditorProps {
   value: string;
   onChange?: (value: string) => void;
   height?: string;
   readOnly?: boolean;
+  onMount?: OnMount;
 }
 
-interface MonacoInstances {
-  editor: editor.IStandaloneCodeEditor | null;
-  monaco: Monaco;
-}
-
-export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, readOnly = false }, ref) => {
-  const [isMounted, setIsMounted] = useState(false);
-  const monacoRef = useRef<MonacoInstances>(null);
-
+export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, height, onMount, readOnly = false }, ref) => {
   const handleEditorChange = (value: string | undefined) => {
     if (onChange && value) {
       onChange(value);
     }
   };
 
-  const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, monaco: Monaco) => {
-    monacoRef.current = { editor: editorInstance, monaco: monaco };
-    setIsMounted(true);
-  };
-
-  useImperativeHandle(ref, () => monacoRef.current, [isMounted]);
-
   return (
     <div className="br3 bg-white shadow-1 mt2 pa3">
       <Editor
+        ref={ref}
         height={height}
         defaultLanguage="yaml"
         value={value}
         onChange={handleEditorChange}
+        onMount={onMount}
         options={{
           minimap: { enabled: false },
           scrollBeyondLastLine: false,
@@ -50,7 +37,6 @@ export const YamlEditor = forwardRef<any, YamlEditorProps>(({ value, onChange, h
             horizontal: `auto`,
           },
         }}
-        onMount={handleEditorDidMount}
       />
     </div>
   );

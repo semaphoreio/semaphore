@@ -26,12 +26,9 @@ export class CodeEditor {
     if (container && !this.isRendered) {
       render(
         <YamlEditor
-          ref={(ref) => {
-            if (ref) {
-              this.editor = ref.editor;
-              this.monaco = ref.monaco;
-            }
-
+          onMount={(editor, monaco) => {
+            this.editor = editor;
+            this.monaco = monaco;
             this.updatePanelSize();
           }}
           value={this.state.value}
