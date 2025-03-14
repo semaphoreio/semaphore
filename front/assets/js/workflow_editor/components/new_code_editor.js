@@ -9,7 +9,7 @@ export class CodeEditor {
     this.outputDivSelector = outputDivSelector;
     this.editor = null;
     this.monaco = null;
-    this.isMounted = false;
+    this.isRendered = false;
 
     this.state = {
       value: '', 
@@ -23,21 +23,21 @@ export class CodeEditor {
 
   renderEditor() {
     const container = document.querySelector(this.outputDivSelector);
-    if (container && !this.isMounted) {
+    if (container && !this.isRendered) {
       render(
         <YamlEditor
-        ref={(ref) => {
-          this.editor = ref.editor;
-          this.monaco = ref.monaco;
+          ref={(ref) => {
+            this.editor = ref.editor;
+            this.monaco = ref.monaco;
 
-          this.updatePanelSize();
-        }}
+            this.updatePanelSize();
+          }}
           value={this.state.value}
           onChange={this.handleChange}
         />,
         container
       );
-      this.isMounted = true;
+      this.isRendered = true;
     }
   }
 
@@ -54,7 +54,7 @@ export class CodeEditor {
   }
 
   renderErrorMarks() {
-    if (!this.activePipeline || !this.editor) return;
+    if (!this.activePipeline || !this.editor || !this.monaco) return;
     const model = this.editor.getModel();
     console.log("Model:", model)
 
@@ -86,7 +86,7 @@ export class CodeEditor {
   }
 
   update() {
-    if (!this.activePipeline || !this.editor) return;
+    if (!this.activePipeline || !this.editor || !this.monaco) return;
 
     const pipelineYaml = this.activePipeline.toYaml();
     if (this.state.value !== pipelineYaml) {
@@ -97,9 +97,9 @@ export class CodeEditor {
 
   hide() {
     const container = document.querySelector(this.outputDivSelector);
-    if (container && this.isMounted) {
+    if (container && this.isRendered) {
       render(null, container);
-      this.isMounted = false;
+      this.isRendered = false;
     }
   }
 
