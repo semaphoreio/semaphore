@@ -55,14 +55,12 @@ export class CodeEditor {
   renderErrorMarks() {
     if (!this.activePipeline || !this.editor || !this.monaco) return;
     const model = this.editor.getModel();
-    console.log("Model:", model)
 
     this.monaco.editor.removeAllMarkers(MODEL_OWNER_ID);
 
     if (this.activePipeline.hasInvalidYaml()) {
       
       const yamlError = this.activePipeline.yamlError;
-      console.log(yamlError);
 
       const line = yamlError.mark.line + 1;
       const startColumn = 1;
@@ -79,7 +77,6 @@ export class CodeEditor {
         endColumn: endColumn,
       }];
 
-      console.log("Markers:", markers);
       this.monaco.editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
     }
   }
