@@ -92,7 +92,7 @@ const NavBarItem = ({ className, report }: { className?: string, report: Report,
   return (
     <div className={className + ` ${itemClass(summary)}`} onClick={setActiveReport}>
       <div className={`b word-wrap ${shouldTruncate() ? `truncate` : ``}`}>
-        <span className={`mr1 ${dotClass(summary)}`}>●</span>
+        <span className={`mr1 ${dotClass(summary)} select-none`}>●</span>
         {report.name}
       </div>
       <div className="f6">{report.summary.formattedResults()}</div>
