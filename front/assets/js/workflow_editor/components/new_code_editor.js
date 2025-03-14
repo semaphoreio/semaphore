@@ -1,13 +1,14 @@
 import { render } from 'preact';
 import { YamlEditor } from '../../project_onboarding/new/components/yaml_editor';
-import { MarkerSeverity, editor } from 'monaco-editor';
+import { MarkerSeverity } from 'monaco-editor';
 
-const MODEL_OWNER_ID = "CodeMirror-lint-markers";
+const MODEL_OWNER_ID = "WorkflowCodeEditor";
 
 export class CodeEditor {
   constructor(outputDivSelector) {
     this.outputDivSelector = outputDivSelector;
-    this.editorRef = null;
+    this.editor = null;
+    this.monaco = null;
     this.isMounted = false;
 
     this.state = {
@@ -26,7 +27,9 @@ export class CodeEditor {
       render(
         <YamlEditor
         ref={(ref) => {
-          this.editorRef = ref; // Store Monaco editor reference
+          this.editor = ref.editor;
+          this.monaco = ref.monaco;
+
           this.updatePanelSize();
         }}
           value={this.state.value}
@@ -51,11 +54,11 @@ export class CodeEditor {
   }
 
   renderErrorMarks() {
-    if (!this.activePipeline || !this.editorRef) return;
-    const model = this.editorRef.getModel();
+    if (!this.activePipeline || !this.editor) return;
+    const model = this.editor.getModel();
     console.log("Model:", model)
 
-    editor.removeAllMarkers(MODEL_OWNER_ID);
+    this.monaco.editor.removeAllMarkers(MODEL_OWNER_ID);
 
     if (this.activePipeline.hasInvalidYaml()) {
       
@@ -76,14 +79,14 @@ export class CodeEditor {
         startColumn: startColumn,
         endColumn: endColumn,
       }];
-      
+
       console.log("Markers:", markers);
-      editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
+      this.monaco.editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
     }
   }
 
   update() {
-    if (!this.activePipeline || !this.editorRef) return;
+    if (!this.activePipeline || !this.editor) return;
 
     const pipelineYaml = this.activePipeline.toYaml();
     if (this.state.value !== pipelineYaml) {
@@ -106,25 +109,10 @@ export class CodeEditor {
 
   updatePanelSize() {
     const container = document.querySelector(this.outputDivSelector);
-    if (!container || !this.editorRef) return;
+    if (!container || !this.editor) return;
 
     const height = window.innerHeight - container.offsetTop - 60;
-    const layoutInfo = this.editorRef.getLayoutInfo();
-    this.editorRef.layout({ width: layoutInfo.width, height });
-  }
-
-  getEndOfLineIndex(str, line, fromIndex = 0) {
-    let count = 0;
-  
-    for (let i = fromIndex; i < str.length; i++) {
-      if (str[i] === '\n') {
-        count++;
-        if (count === line) {
-          return i;
-        }
-      }
-    }
-  
-    return -1; // If not found
+    const layoutInfo = this.editor.getLayoutInfo();
+    this.editor.layout({ width: layoutInfo.width, height });
   }
 }
