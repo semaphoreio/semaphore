@@ -17,11 +17,11 @@ export class CodeEditor {
     };
 
     this.handleChange = this.handleChange.bind(this);
-    this.initEditor();
+    this.renderEditor();
     this.registerPanelSizeHandler();
   }
 
-  initEditor() {
+  renderEditor() {
     const container = document.querySelector(this.outputDivSelector);
 
     if (container) {
@@ -44,13 +44,13 @@ export class CodeEditor {
     this.state.value = newValue;
     this.activePipeline.updateYaml(this.state.value);
 
-    // Only update markers, not re-render the component
     this.renderErrorMarks();
   }
 
   show(pipeline) {
     this.activePipeline = pipeline;
     this.state.value = pipeline.toYaml();
+    this.renderEditor();
 
     // Directly update Monaco's value
     this.editorRef?.setValue(this.state.value);
@@ -84,6 +84,7 @@ export class CodeEditor {
   }
 
   update() {
+    this.renderEditor();
     this.renderErrorMarks();
   }
 
