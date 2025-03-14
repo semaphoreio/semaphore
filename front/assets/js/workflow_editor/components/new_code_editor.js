@@ -8,6 +8,7 @@ export class CodeEditor {
   constructor(outputDivSelector) {
     this.outputDivSelector = outputDivSelector;
     this.editorRef = null;
+    this.isMounted = false;
 
     this.state = {
       value: '', 
@@ -22,7 +23,7 @@ export class CodeEditor {
   renderEditor() {
     const container = document.querySelector(this.outputDivSelector);
     console.log('Rendering editor', container);
-    if (container) {
+    if (container && !this.isMounted) {
       render(
         <YamlEditor
         ref={(ref) => {
@@ -35,6 +36,7 @@ export class CodeEditor {
         />,
         container
       );
+      this.isMounted = true;
     }
   }
 
@@ -94,8 +96,9 @@ export class CodeEditor {
   hide() {
     console.log('Hiding editor');
     const container = document.querySelector(this.outputDivSelector);
-    if (container) {
+    if (container && this.isMounted) {
       render(null, container);
+      this.isMounted = false;
     }
   }
 
@@ -108,7 +111,7 @@ export class CodeEditor {
     const container = document.querySelector(this.outputDivSelector);
     if (!container || !this.editorRef) return;
 
-    const height = window.innerHeight - container.offsetTop;
+    const height = window.innerHeight - container.offsetTop - 60;
     const layoutInfo = this.editorRef.getLayoutInfo();
     this.editorRef.layout({ width: layoutInfo.width, height });
   }
