@@ -104,60 +104,73 @@ defmodule Front.Models.OktaIntegration do
 
   Returns a tuple with the default role ID and a list of group mappings.
   """
-  @spec get_group_mappings(String.t()) ::
-          {:ok, {String.t(), [%{semaphore_group_id: String.t(), okta_group_id: String.t()}]}}
+  @spec get_mapping(String.t()) ::
+          {:ok,
+           {String.t(), [%{semaphore_id: String.t(), okta_id: String.t()}],
+            %{semaphore_id: String.t(), okta_id: String.t()}}}
           | {:error, term()}
-  def get_group_mappings(org_id) do
+  def get_mapping(org_id) do
     endpoint = Application.fetch_env!(:front, :okta_grpc_endpoint)
-    req = InternalApi.Okta.DescribeGroupMappingRequest.new(org_id: org_id)
+    req = InternalApi.Okta.DescribeMappingRequest.new(org_id: org_id)
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
-      case InternalApi.Okta.Okta.Stub.describe_group_mapping(channel, req) do
+      case InternalApi.Okta.Okta.Stub.describe_mapping(channel, req) do
         {:ok, response} ->
-          mappings =
-            Enum.map(response.mappings, fn mapping ->
-              %{
-                semaphore_group_id: mapping.semaphore_group_id,
-                okta_group_id: mapping.okta_group_id
-              }
-            end)
-
-          {:ok, {response.default_role_id, mappings}}
+          {:ok,
+           {
+             response.default_role_id,
+             mapping(response.group_mapping),
+             mapping(response.role_mapping)
+           }}
 
         error ->
-          Logger.error("Failed to get Okta group mappings: #{inspect(error)}")
+          Logger.error("Failed to get Okta mappings: #{inspect(error)}")
           error
       end
     end
   end
 
+  def set_mapping(org_id, params) do
+    {default_role_id, group_mappings, role_mappings} = parse_mapping_params(params)
+    set_mapping(org_id, default_role_id, group_mappings, role_mappings)
+  end
+
   @doc """
-  Sets up group mappings for an organization.
+  Sets up mappings for an organization.
 
   Takes the organization ID, default role ID, and a list of mappings.
-  Each mapping should have semaphore_group_id and okta_group_id.
+  Each mapping should have semaphore_id and okta_id.
   """
-  @spec set_group_mappings(String.t(), String.t(), [map()]) :: :ok | {:error, term()}
-  def set_group_mappings(org_id, default_role_id, mappings) do
+  @spec set_mapping(String.t(), String.t(), [map()], [map()]) :: :ok | {:error, term()}
+  def set_mapping(org_id, default_role_id, group_mappings, role_mappings) do
     endpoint = Application.fetch_env!(:front, :okta_grpc_endpoint)
 
     group_mappings =
-      Enum.map(mappings, fn mapping ->
+      Enum.map(group_mappings, fn mapping ->
         InternalApi.Okta.GroupMapping.new(
-          semaphore_group_id: mapping.semaphore_group_id,
-          okta_group_id: mapping.okta_group_id
+          semaphore_group_id: mapping.semaphore_id,
+          okta_group_id: mapping.okta_id
+        )
+      end)
+
+    role_mappings =
+      Enum.map(role_mappings, fn mapping ->
+        InternalApi.Okta.RoleMapping.new(
+          semaphore_role_id: mapping.semaphore_id,
+          okta_role_id: mapping.okta_id
         )
       end)
 
     req =
-      InternalApi.Okta.SetUpGroupMappingRequest.new(
+      InternalApi.Okta.SetUpMappingRequest.new(
         org_id: org_id,
         default_role_id: default_role_id,
-        mappings: group_mappings
+        group_mapping: group_mappings,
+        role_mapping: role_mappings
       )
 
     with {:ok, channel} <- GRPC.Stub.connect(endpoint) do
-      case InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, req) do
+      case InternalApi.Okta.Okta.Stub.set_up_mapping(channel, req) do
         {:ok, _response} ->
           :ok
 
@@ -168,57 +181,65 @@ defmodule Front.Models.OktaIntegration do
     end
   end
 
+  def mapping(mapping) do
+    Enum.map(mapping, fn
+      %{semaphore_group_id: semaphore_id, okta_group_id: okta_id} ->
+        %{
+          semaphore_id: semaphore_id,
+          okta_id: okta_id
+        }
+
+      %{semaphore_role_id: semaphore_id, okta_role_id: okta_id} ->
+        %{
+          semaphore_id: semaphore_id,
+          okta_id: okta_id
+        }
+    end)
+  end
+
   @doc """
   Parses and validates group mapping parameters from the controller.
 
-  Returns a list of valid mappings and the default role ID.
+  Returns a tuple with the default role ID, group mappings, and role mappings.
   """
-  @spec parse_mapping_params(map()) :: {String.t(), [map()]}
+  @spec parse_mapping_params(map()) :: {String.t(), [map()], [map()]}
   def parse_mapping_params(params) do
     default_role_id = params["default_role_id"]
+    group_mappings = process_mappings(params["group_mapping"])
+    role_mappings = process_mappings(params["role_mapping"])
 
-    mappings =
-      params
-      |> Map.get("mappings", [])
-      |> Enum.flat_map(fn
-        # Handle when mappings come as a list of maps
-        mapping when is_map(mapping) ->
-          if mapping["semaphore_group_id"] != nil &&
-               mapping["okta_group_id"] != nil &&
-               mapping["semaphore_group_id"] != "" &&
-               mapping["okta_group_id"] != "" do
-            [
-              %{
-                semaphore_group_id: mapping["semaphore_group_id"],
-                okta_group_id: mapping["okta_group_id"]
-              }
-            ]
-          else
+    {default_role_id, group_mappings, role_mappings}
+  end
+
+  defp process_mappings(mapping_data) do
+    case mapping_data do
+      mapping when is_map(mapping) ->
+        mapping
+        |> Enum.flat_map(fn
+          # Handle when mappings come as {index, map} tuples (from form data)
+          {_index, mapping} when is_map(mapping) ->
+            if mapping["semaphore_id"] != nil &&
+                 mapping["okta_id"] != nil &&
+                 mapping["semaphore_id"] != "" &&
+                 mapping["okta_id"] != "" do
+              [
+                %{
+                  semaphore_id: mapping["semaphore_id"],
+                  okta_id: mapping["okta_id"]
+                }
+              ]
+            else
+              []
+            end
+
+          # Skip anything else
+          _ ->
             []
-          end
+        end)
 
-        # Handle when mappings come as {index, map} tuples (from form data)
-        {_index, mapping} when is_map(mapping) ->
-          if mapping["semaphore_group_id"] != nil &&
-               mapping["okta_group_id"] != nil &&
-               mapping["semaphore_group_id"] != "" &&
-               mapping["okta_group_id"] != "" do
-            [
-              %{
-                semaphore_group_id: mapping["semaphore_group_id"],
-                okta_group_id: mapping["okta_group_id"]
-              }
-            ]
-          else
-            []
-          end
-
-        # Skip anything else
-        _ ->
-          []
-      end)
-
-    {default_role_id, mappings}
+      _ ->
+        []
+    end
   end
 
   def changeset(schema, params \\ %{}) do

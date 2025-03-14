@@ -27,6 +27,9 @@ kubectl apply -f github-app-secret.yaml
 kubectl apply -f bitbucket-app-secret.yaml
 kubectl apply -f gitlab-app-secret.yaml
 
+# Set default edition to ce if not specified
+SEMAPHORE_EDITION=${SEMAPHORE_EDITION:-ce}
+
 args=(
   "--set"
   "global.domain.ip=${IP}"
@@ -52,7 +55,19 @@ args=(
   "global.telemetry.cron=* * * * *"
   "--set"
   "global.telemetry.endpoint=https://telemetry.sxmoon.com/ingest"
+  "--set"
+  "global.edition=${SEMAPHORE_EDITION}"
 )
+
+# if edition is ee, add arguments for agent to support pre-flight-checks
+if [ "$SEMAPHORE_EDITION" = "ee" ]; then
+  args+=(
+    "--set"
+    "controller.agent.defaultImage=hexpm/elixir:1.12.3-erlang-24.3.4.13-ubuntu-focal-20230126"
+    "--set"
+    "controller.agent.defaultPodSpec.preJobHook.customScript=$(cat agent-pre-job-hook.sh | base64 -w 0)"
+  )
+fi
 
 #
 # Generate diff of chart being applied

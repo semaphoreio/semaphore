@@ -367,20 +367,21 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
     end
   end
 
-  describe "set_up_group_mapping" do
+  describe "set_up_mapping" do
     setup do
       {:ok, integration} = create_integration()
       %{integration: integration}
     end
 
     test "invalid org_id format" do
-      request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: "not-a-valid-uuid",
-        mappings: []
+        group_mapping: [],
+        role_mapping: []
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, err} = InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, request)
+      assert {:error, err} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
 
       assert err == %GRPC.RPCError{
                message: "Invalid uuid passed as an argument where uuid v4 was expected.",
@@ -388,12 +389,13 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
              }
     end
 
-    test "can create and update group mappings with default_role_id", %{integration: integration} do
+    test "can create and update mappings with default_role_id", %{integration: integration} do
       semaphore_group_id_1 = Ecto.UUID.generate()
       semaphore_group_id_2 = Ecto.UUID.generate()
+      semaphore_role_id_1 = Ecto.UUID.generate()
       default_role_id = Ecto.UUID.generate()
 
-      mappings = [
+      group_mapping = [
         %InternalApi.Okta.GroupMapping{
           okta_group_id: "okta_group_1",
           semaphore_group_id: semaphore_group_id_1
@@ -404,37 +406,52 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         }
       ]
 
-      request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      role_mapping = [
+        %InternalApi.Okta.RoleMapping{
+          okta_role_id: "okta_role_1",
+          semaphore_role_id: semaphore_role_id_1
+        }
+      ]
+
+      request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: mappings,
+        group_mapping: group_mapping,
+        role_mapping: role_mapping,
         default_role_id: default_role_id
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:ok, response} = InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, request)
-      assert %InternalApi.Okta.SetUpGroupMappingResponse{} = response
+      assert {:ok, response} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
+      assert %InternalApi.Okta.SetUpMappingResponse{} = response
 
-      {:ok, idp_group_mapping} =
+      {:ok, idp_mapping} =
         Rbac.Okta.IdpGroupMapping.get_for_organization(integration.org_id)
 
-      assert length(idp_group_mapping.group_mapping) == 2
-      assert idp_group_mapping.default_role_id == default_role_id
+      assert length(idp_mapping.group_mapping) == 2
+      assert length(idp_mapping.role_mapping) == 1
+      assert idp_mapping.default_role_id == default_role_id
 
-      assert Enum.any?(idp_group_mapping.group_mapping, fn mapping ->
+      assert Enum.any?(idp_mapping.group_mapping, fn mapping ->
                mapping.idp_group_id == "okta_group_1" &&
                  mapping.semaphore_group_id == semaphore_group_id_1
              end)
 
-      assert Enum.any?(idp_group_mapping.group_mapping, fn mapping ->
+      assert Enum.any?(idp_mapping.group_mapping, fn mapping ->
                mapping.idp_group_id == "okta_group_2" &&
                  mapping.semaphore_group_id == semaphore_group_id_2
+             end)
+
+      assert Enum.any?(idp_mapping.role_mapping, fn mapping ->
+               mapping.idp_role_id == "okta_role_1" &&
+                 mapping.semaphore_role_id == semaphore_role_id_1
              end)
 
       # Update with a new default_role_id
       new_default_role_id = Ecto.UUID.generate()
       semaphore_group_id_3 = Ecto.UUID.generate()
+      semaphore_role_id_2 = Ecto.UUID.generate()
 
-      updated_mappings = [
+      updated_group_mapping = [
         %InternalApi.Okta.GroupMapping{
           okta_group_id: "okta_group_1",
           semaphore_group_id: semaphore_group_id_3
@@ -445,55 +462,96 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         }
       ]
 
-      update_request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      updated_role_mapping = [
+        %InternalApi.Okta.RoleMapping{
+          okta_role_id: "okta_role_2",
+          semaphore_role_id: semaphore_role_id_2
+        }
+      ]
+
+      update_request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: updated_mappings,
+        group_mapping: updated_group_mapping,
+        role_mapping: updated_role_mapping,
         default_role_id: new_default_role_id
       }
 
       assert {:ok, update_response} =
-               InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, update_request)
+               InternalApi.Okta.Okta.Stub.set_up_mapping(channel, update_request)
 
-      assert %InternalApi.Okta.SetUpGroupMappingResponse{} = update_response
+      assert %InternalApi.Okta.SetUpMappingResponse{} = update_response
 
-      {:ok, updated_idp_group_mapping} =
+      {:ok, updated_idp_mapping} =
         Rbac.Okta.IdpGroupMapping.get_for_organization(integration.org_id)
 
-      assert length(updated_idp_group_mapping.group_mapping) == 2
-      assert updated_idp_group_mapping.default_role_id == new_default_role_id
+      assert length(updated_idp_mapping.group_mapping) == 2
+      assert length(updated_idp_mapping.role_mapping) == 1
+      assert updated_idp_mapping.default_role_id == new_default_role_id
 
-      assert Enum.any?(updated_idp_group_mapping.group_mapping, fn mapping ->
+      assert Enum.any?(updated_idp_mapping.group_mapping, fn mapping ->
                mapping.idp_group_id == "okta_group_1" &&
                  mapping.semaphore_group_id == semaphore_group_id_3
              end)
 
-      assert Enum.any?(updated_idp_group_mapping.group_mapping, fn mapping ->
+      assert Enum.any?(updated_idp_mapping.group_mapping, fn mapping ->
                mapping.idp_group_id == "okta_group_2" &&
                  mapping.semaphore_group_id == semaphore_group_id_2
+             end)
+
+      assert Enum.any?(updated_idp_mapping.role_mapping, fn mapping ->
+               mapping.idp_role_id == "okta_role_2" &&
+                 mapping.semaphore_role_id == semaphore_role_id_2
              end)
     end
 
     test "fails with invalid group mappings", %{integration: integration} do
-      mappings = [
+      group_mapping = [
         %InternalApi.Okta.GroupMapping{
           okta_group_id: "okta_group_1",
           semaphore_group_id: nil
         }
       ]
 
-      request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: mappings
+        group_mapping: group_mapping,
+        default_role_id: Ecto.UUID.generate()
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, request)
+      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
+    end
+
+    test "fails with invalid role mappings", %{integration: integration} do
+      group_mapping = [
+        %InternalApi.Okta.GroupMapping{
+          okta_group_id: "okta_group_1",
+          semaphore_group_id: Ecto.UUID.generate()
+        }
+      ]
+
+      role_mapping = [
+        %InternalApi.Okta.RoleMapping{
+          okta_role_id: "okta_role_1",
+          semaphore_role_id: nil
+        }
+      ]
+
+      request = %InternalApi.Okta.SetUpMappingRequest{
+        org_id: integration.org_id,
+        group_mapping: group_mapping,
+        role_mapping: role_mapping,
+        default_role_id: Ecto.UUID.generate()
+      }
+
+      assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
     end
 
     test "fails with duplicate group mappings", %{integration: integration} do
       semaphore_group_id = Ecto.UUID.generate()
 
-      mappings = [
+      group_mapping = [
         %InternalApi.Okta.GroupMapping{
           okta_group_id: "same_okta_group",
           semaphore_group_id: semaphore_group_id
@@ -504,68 +562,103 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         }
       ]
 
-      request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: mappings
+        group_mapping: group_mapping,
+        default_role_id: Ecto.UUID.generate()
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, request)
+      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
+    end
+
+    test "fails with duplicate role mappings", %{integration: integration} do
+      semaphore_group_id = Ecto.UUID.generate()
+      semaphore_role_id = Ecto.UUID.generate()
+
+      group_mapping = [
+        %InternalApi.Okta.GroupMapping{
+          okta_group_id: "okta_group_1",
+          semaphore_group_id: semaphore_group_id
+        }
+      ]
+
+      role_mapping = [
+        %InternalApi.Okta.RoleMapping{
+          okta_role_id: "same_okta_role",
+          semaphore_role_id: semaphore_role_id
+        },
+        %InternalApi.Okta.RoleMapping{
+          okta_role_id: "same_okta_role",
+          semaphore_role_id: semaphore_role_id
+        }
+      ]
+
+      request = %InternalApi.Okta.SetUpMappingRequest{
+        org_id: integration.org_id,
+        group_mapping: group_mapping,
+        role_mapping: role_mapping,
+        default_role_id: Ecto.UUID.generate()
+      }
+
+      assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+      assert {:error, _} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
     end
 
     test "fails when default role id not present", %{integration: integration} do
       semaphore_group_id_1 = Ecto.UUID.generate()
 
       # First set up with a default_role_id
-      initial_mappings = [
+      initial_group_mapping = [
         %InternalApi.Okta.GroupMapping{
           okta_group_id: "okta_group_1",
           semaphore_group_id: semaphore_group_id_1
         }
       ]
 
-      initial_request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      initial_request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: initial_mappings
+        group_mapping: initial_group_mapping
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       assert {:error, error} =
-               InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, initial_request)
+               InternalApi.Okta.Okta.Stub.set_up_mapping(channel, initial_request)
 
       assert error.message =~ "Invalid"
     end
 
     test "fails when group mapping is empty", %{integration: integration} do
       # Try to set up with empty mappings
-      request = %InternalApi.Okta.SetUpGroupMappingRequest{
+      request = %InternalApi.Okta.SetUpMappingRequest{
         org_id: integration.org_id,
-        mappings: [],
+        group_mapping: [],
+        role_mapping: [],
         default_role_id: Ecto.UUID.generate()
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, error} = InternalApi.Okta.Okta.Stub.set_up_group_mapping(channel, request)
+      assert {:error, error} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
 
       # Verify the error message indicates the empty group mappings
       assert error.message =~ "Invalid"
     end
   end
 
-  describe "describe_group_mapping" do
+  describe "describe_mapping" do
     setup do
       {:ok, integration} = create_integration()
       %{integration: integration}
     end
 
     test "invalid org_id format" do
-      request = %InternalApi.Okta.DescribeGroupMappingRequest{
+      request = %InternalApi.Okta.DescribeMappingRequest{
         org_id: "not-a-valid-uuid"
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, err} = InternalApi.Okta.Okta.Stub.describe_group_mapping(channel, request)
+      assert {:error, err} = InternalApi.Okta.Okta.Stub.describe_mapping(channel, request)
 
       assert err == %GRPC.RPCError{
                message: "Invalid uuid passed as an argument where uuid v4 was expected.",
@@ -573,24 +666,26 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
              }
     end
 
-    test "returns empty list when no mappings exist", %{integration: integration} do
-      request = %InternalApi.Okta.DescribeGroupMappingRequest{
+    test "returns empty mappings when no mappings exist", %{integration: integration} do
+      request = %InternalApi.Okta.DescribeMappingRequest{
         org_id: integration.org_id
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_group_mapping(channel, request)
+      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_mapping(channel, request)
 
-      assert %InternalApi.Okta.DescribeGroupMappingResponse{} = res
-      assert Enum.empty?(res.mappings)
+      assert %InternalApi.Okta.DescribeMappingResponse{} = res
+      assert Enum.empty?(res.group_mapping)
+      assert Enum.empty?(res.role_mapping)
     end
 
     test "returns mappings when they exist", %{integration: integration} do
       semaphore_group_id_1 = Ecto.UUID.generate()
       semaphore_group_id_2 = Ecto.UUID.generate()
+      semaphore_role_id_1 = Ecto.UUID.generate()
       default_role_id = Ecto.UUID.generate()
 
-      mappings = [
+      group_mappings = [
         %{
           idp_group_id: "okta_group_1",
           semaphore_group_id: semaphore_group_id_1
@@ -601,39 +696,57 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         }
       ]
 
-      {:ok, _} =
-        Rbac.Okta.IdpGroupMapping.create_or_update(integration.org_id, mappings, default_role_id)
+      role_mappings = [
+        %{
+          idp_role_id: "okta_role_1",
+          semaphore_role_id: semaphore_role_id_1
+        }
+      ]
 
-      list_request = %InternalApi.Okta.DescribeGroupMappingRequest{
+      {:ok, _} =
+        Rbac.Okta.IdpGroupMapping.create_or_update(
+          integration.org_id,
+          group_mappings,
+          role_mappings,
+          default_role_id
+        )
+
+      list_request = %InternalApi.Okta.DescribeMappingRequest{
         org_id: integration.org_id
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_group_mapping(channel, list_request)
+      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_mapping(channel, list_request)
 
-      assert %InternalApi.Okta.DescribeGroupMappingResponse{} = res
-      assert length(res.mappings) == 2
+      assert %InternalApi.Okta.DescribeMappingResponse{} = res
+      assert length(res.group_mapping) == 2
+      assert length(res.role_mapping) == 1
       assert res.default_role_id == default_role_id
 
-      assert Enum.any?(res.mappings, fn m ->
+      assert Enum.any?(res.group_mapping, fn m ->
                m.okta_group_id == "okta_group_1" && m.semaphore_group_id == semaphore_group_id_1
              end)
 
-      assert Enum.any?(res.mappings, fn m ->
+      assert Enum.any?(res.group_mapping, fn m ->
                m.okta_group_id == "okta_group_2" && m.semaphore_group_id == semaphore_group_id_2
+             end)
+
+      assert Enum.any?(res.role_mapping, fn m ->
+               m.okta_role_id == "okta_role_1" && m.semaphore_role_id == semaphore_role_id_1
              end)
     end
 
-    test "returns empty list for non-existent organization" do
-      request = %InternalApi.Okta.DescribeGroupMappingRequest{
+    test "returns empty lists for non-existent organization" do
+      request = %InternalApi.Okta.DescribeMappingRequest{
         org_id: Ecto.UUID.generate()
       }
 
       assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_group_mapping(channel, request)
+      assert {:ok, res} = InternalApi.Okta.Okta.Stub.describe_mapping(channel, request)
 
-      assert %InternalApi.Okta.DescribeGroupMappingResponse{} = res
-      assert Enum.empty?(res.mappings)
+      assert %InternalApi.Okta.DescribeMappingResponse{} = res
+      assert Enum.empty?(res.group_mapping)
+      assert Enum.empty?(res.role_mapping)
     end
   end
 

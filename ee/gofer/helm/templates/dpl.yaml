@@ -1,3 +1,4 @@
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -158,5 +159,6 @@ spec:
 {{- if .Values.statsd.resources }}
           resources:
 {{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
 {{- end }}
 {{- end }}
