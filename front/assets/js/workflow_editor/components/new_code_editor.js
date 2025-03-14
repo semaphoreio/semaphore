@@ -1,5 +1,5 @@
 import { render } from 'preact';
-import { YamlEditor } from '../../project_onboarding/new/components/yaml_editor';
+import { YamlEditor } from '../../toolbox/yaml_editor';
 import { MarkerSeverity } from 'monaco-editor';
 
 const MODEL_OWNER_ID = "WorkflowCodeEditor";
