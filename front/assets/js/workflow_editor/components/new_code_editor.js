@@ -22,12 +22,10 @@ export class CodeEditor {
 
   renderEditor() {
     const container = document.querySelector(this.outputDivSelector);
-    console.log('Rendering editor', container);
     if (container && !this.isMounted) {
       render(
         <YamlEditor
         ref={(ref) => {
-          console.log('Assigning ref', ref);
           this.editorRef = ref; // Store Monaco editor reference
           this.updatePanelSize();
         }}
@@ -41,13 +39,11 @@ export class CodeEditor {
   }
 
   handleChange(newValue) {
-    console.log('Handling change', newValue);
     this.state.value = newValue;
     this.activePipeline.updateYaml(this.state.value);
   }
 
   show(pipeline) {
-    console.log('Showing editor', pipeline);
     this.activePipeline = pipeline;
 
     this.state.value = pipeline.toYaml();
@@ -55,13 +51,10 @@ export class CodeEditor {
   }
 
   renderErrorMarks() {
-    console.log('Rendering error marks');
     if (!this.activePipeline || !this.editorRef) return;
-    console.log('Removing markers');
     editor.removeAllMarkers(MODEL_OWNER_ID);
 
     if (this.activePipeline.hasInvalidYaml()) {
-      console.log('Adding markers');
       const line = this.activePipeline.yamlError.mark.line + 1;
       const column = this.activePipeline.yamlError.mark.column + 1;
       const message = this.activePipeline.yamlError.reason;
@@ -83,7 +76,6 @@ export class CodeEditor {
   }
 
   update() {
-    console.log('Updating editor');
     if (!this.activePipeline || !this.editorRef) return;
 
     const pipelineYaml = this.activePipeline.toYaml();
@@ -94,7 +86,6 @@ export class CodeEditor {
   }
 
   hide() {
-    console.log('Hiding editor');
     const container = document.querySelector(this.outputDivSelector);
     if (container && this.isMounted) {
       render(null, container);
@@ -107,7 +98,6 @@ export class CodeEditor {
   }
 
   updatePanelSize() {
-    console.log('Updating panel size');
     const container = document.querySelector(this.outputDivSelector);
     if (!container || !this.editorRef) return;
 
