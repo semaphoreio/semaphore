@@ -52,26 +52,33 @@ export class CodeEditor {
 
   renderErrorMarks() {
     if (!this.activePipeline || !this.editorRef) return;
+    const model = this.editorRef.getModel();
+    console.log("Model:", model)
+
     editor.removeAllMarkers(MODEL_OWNER_ID);
 
     if (this.activePipeline.hasInvalidYaml()) {
-      const line = this.activePipeline.yamlError.mark.line + 1;
-      const column = this.activePipeline.yamlError.mark.column + 1;
-      const message = this.activePipeline.yamlError.reason;
+      
+      const yamlError = this.activePipeline.yamlError;
+      console.log(yamlError);
+
+      const line = yamlError.mark.line + 1;
+      const startColumn = 1;
+      const endColumn = model.getLineLength(line) + 1;
+      
+      const message = yamlError.reason;
 
       const markers = [{
         severity: MarkerSeverity.Error,
         message: message,
         startLineNumber: line,
-        startColumn: column,
         endLineNumber: line,
-        endColumn: column,
+        startColumn: startColumn,
+        endColumn: endColumn,
       }];
-
-      const model = this.editorRef?.getModel();
-      if (model) {
-        editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
-      }
+      
+      console.log("Markers:", markers);
+      editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
     }
   }
 
@@ -104,5 +111,20 @@ export class CodeEditor {
     const height = window.innerHeight - container.offsetTop - 60;
     const layoutInfo = this.editorRef.getLayoutInfo();
     this.editorRef.layout({ width: layoutInfo.width, height });
+  }
+
+  getEndOfLineIndex(str, line, fromIndex = 0) {
+    let count = 0;
+  
+    for (let i = fromIndex; i < str.length; i++) {
+      if (str[i] === '\n') {
+        count++;
+        if (count === line) {
+          return i;
+        }
+      }
+    }
+  
+    return -1; // If not found
   }
 }
