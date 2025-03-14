@@ -12,7 +12,6 @@ defmodule Rbac.Repo.IdpGroupMapping do
   ]
 
   @updatable_fields [
-    :organization_id,
     :default_role_id
   ]
 
@@ -62,7 +61,7 @@ defmodule Rbac.Repo.IdpGroupMapping do
   def changeset(idp_group_mapping, params \\ %{}) do
     idp_group_mapping
     |> cast(params, @updatable_fields)
-    |> cast_embed(:group_mapping, with: &GroupMapping.changeset/2, required: true)
+    |> cast_embed(:group_mapping, with: &GroupMapping.changeset/2, required: false)
     |> cast_embed(:role_mapping, with: &RoleMapping.changeset/2, required: false)
     |> validate_required(@required_fields)
     |> unique_constraint(:organization_id,
