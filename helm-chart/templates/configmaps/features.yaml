@@ -149,13 +149,13 @@ data:
     open_id_connect_aws_tags:
       enabled: false
     organization_health:
-      enabled: false
+      enabled: true
     parameterized_promotions:
       enabled: true
     permission_patrol:
       enabled: false
     pipeline_summaries:
-      enabled: false
+      enabled: true
     pre_flight_checks:
       enabled: true
     project_level_roles:
