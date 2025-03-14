@@ -204,7 +204,7 @@ spec:
   host_regex: true
   bypass_auth: true
   prefix: /
-  rewrite: "" 
+  rewrite: ""
   service: guard-id-http-api.{{ .Release.Namespace }}:80
 ---
 apiVersion: getambassador.io/v3alpha1
@@ -518,6 +518,20 @@ spec:
   rewrite: ""
   service: secrethub-http.{{ .Release.Namespace }}:4000
   precedence: 100
+{{- if eq .Values.global.edition "ee" }}
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: secrethub-openid-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /.well-known/
+  rewrite: ""
+  service: secrethub-openid-connect-http.{{ .Release.Namespace }}:5000
+  precedence: 100
+{{- end }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping

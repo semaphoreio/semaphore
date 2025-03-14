@@ -1,3 +1,18 @@
+{{- if eq .Values.global.edition "ee"}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-openid-connect-http"
+spec:
+  type: ClusterIP
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -75,6 +90,14 @@ spec:
             items:
             - key: features.yml
               path: features.yml
+{{- if eq .Values.global.edition "ee" }}
+        - name: openid-connect-secrets
+          secret:
+            secretName: openid
+        - name: vault-keys
+          secret:
+            secretName: vault
+{{- end }}
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
       containers:
@@ -87,6 +110,14 @@ spec:
               mountPath: "/app/features.yml"
               readOnly: true
               subPath: features.yml
+{{- if eq .Values.global.edition "ee" }}
+            - name: openid-connect-secrets
+              mountPath: "/var/open_id_secrets"
+              readOnly: true
+            - name: vault-keys
+              mountPath: "/var/key_vault"
+              readOnly: true
+{{- end }}
           ports:
             - name: http-port
               containerPort: 4000
@@ -112,10 +143,21 @@ spec:
               value: "true"
             - name: START_HTTP_API
               value: "true"
+{{- if eq .Values.global.edition "ee" }}
+            - name: START_OPENID_CONNECT_HTTP_API
+              value: "true"
+            - name: START_OPENID_KEY_MANAGER
+              value: "true"
+            - name: OPENID_KEYS_PATH
+              value: "/var/open_id_secrets"
+            - name: KEY_VAULT_PATH
+              value: "/var/key_vault"
+{{- else }}
             - name: START_OPENID_CONNECT_HTTP_API
               value: "false"
             - name: START_OPENID_KEY_MANAGER
               value: "false"
+{{- end }}
             - name: START_ENCRYPTOR_WORKER
               value: "false"
             - name: BASE_DOMAIN
