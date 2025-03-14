@@ -59,6 +59,16 @@ args=(
   "global.edition=${SEMAPHORE_EDITION}"
 )
 
+# if edition is ee, add arguments for agent to support pre-flight-checks
+if [ "$SEMAPHORE_EDITION" = "ee" ]; then
+  args+=(
+    "--set"
+    "controller.agent.defaultImage=hexpm/elixir:1.12.3-erlang-24.3.4.13-ubuntu-focal-20230126"
+    "--set"
+    "controller.agent.defaultPodSpec.preJobHook.customScript=$(cat agent-pre-job-hook.sh | base64 -w 0)"
+  )
+fi
+
 #
 # Generate diff of chart being applied
 #

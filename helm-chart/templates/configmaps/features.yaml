@@ -4,6 +4,7 @@ metadata:
   name: features
   namespace: {{ .Release.Namespace }}
 data:
+{{- if eq .Values.global.edition "ce" }}
   features.yml: |-
     activity_monitor:
       enabled: true
@@ -99,3 +100,100 @@ data:
       enabled: true
     new_project_onboarding:
       enabled: true
+{{- else }}
+  features.yml: |-
+    activity_monitor:
+      enabled: true
+    advanced_deployment_targets:
+      enabled: false
+    artifacts:
+      enabled: true
+    audit_logs:
+      enabled: false
+    audit_streaming:
+      enabled: false
+    badges:
+      enabled: true
+    billing:
+      enabled: false
+    bitbucket:
+      enabled: true
+    gitlab:
+      enabled: true
+    github_oauth_token:
+      enabled: false
+    deployment_targets:
+      enabled: false
+    expose_cloud_agent_types:
+      enabled: false
+    feedback:
+      enabled: false
+    help:
+      enabled: false
+    ip_allow_list:
+      enabled: false
+    just_run:
+      enabled: true
+    max_paralellism_in_org:
+      quantity: 500
+    max_people_in_organization:
+      quantity: 600
+    max_projects_in_org:
+      quantity: 10000
+    multiple_organizations:
+      enabled: false
+    okta:
+      enabled: false
+    open_id_connect:
+      enabled: false
+    open_id_connect_aws_tags:
+      enabled: false
+    organization_health:
+      enabled: false
+    parameterized_promotions:
+      enabled: true
+    permission_patrol:
+      enabled: false
+    pipeline_summaries:
+      enabled: false
+    pre_flight_checks:
+      enabled: true
+    project_level_roles:
+      enabled: false
+    project_level_secrets:
+      enabled: true
+    rbac__groups:
+      enabled: false
+    rbac__saml:
+      enabled: false
+    rbac__project_roles:
+      enabled: false
+    restrict_job_ssh_access:
+      enabled: false
+    scheduler_hook:
+      enabled: true
+    secrets_access_policy:
+      enabled: false
+    secrets_exposed_content:
+      enabled: false
+    self_hosted_agents:
+      quantity: 1000
+    superjerry_tests:
+      enabled: false
+    test_explorer:
+      enabled: false
+    test_results:
+      enabled: false
+    tmp_rbac_test:
+      enabled: false
+    toggle_skipped_blocks:
+      enabled: true
+    instance_git_integration:
+      enabled: true
+    get_started:
+      enabled: true
+    ui_agent_page:
+      enabled: true
+    new_project_onboarding:
+      enabled: true
+{{- end }}
