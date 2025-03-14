@@ -6,7 +6,8 @@
             saveUrl: organization_okta_path(@conn, :update_group_mapping),
             cancelUrl: organization_okta_path(@conn, :show),
             defaultRoleId: @default_role_id,
-            mappings: @mappings
+            group_mapping: @group_mapping,
+            role_mapping: @role_mapping
         }
     ) %>;
 </script>

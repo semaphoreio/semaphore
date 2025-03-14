@@ -122,8 +122,18 @@ defmodule FrontWeb.OrganizationOktaController do
            {:ok, {groups, _}} <-
              Front.RBAC.Members.list_org_members(org_id, member_type: "group"),
            {:ok, roles} <- Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope"),
-           {:ok, {default_role_id, mappings}} <- OktaIntegration.get_group_mappings(org_id) do
-        render_group_mapping(conn, integration, groups, roles, params, default_role_id, mappings)
+           {:ok, {default_role_id, group_mapping, role_mapping}} <-
+             OktaIntegration.get_mapping(org_id) do
+        render_group_mapping(
+          conn,
+          integration,
+          groups,
+          roles,
+          params,
+          default_role_id,
+          group_mapping,
+          role_mapping
+        )
       else
         {:okta_integration, {:error, :not_found}} ->
           conn
@@ -149,9 +159,7 @@ defmodule FrontWeb.OrganizationOktaController do
 
       org_id = conn.assigns.organization_id
 
-      {default_role_id, mappings} = OktaIntegration.parse_mapping_params(params)
-
-      case OktaIntegration.set_group_mappings(org_id, default_role_id, mappings) do
+      case OktaIntegration.set_mapping(org_id, params) do
         :ok ->
           conn
           |> put_flash(:notice, "Okta group mappings successfully updated")
@@ -313,9 +321,16 @@ defmodule FrontWeb.OrganizationOktaController do
     )
   end
 
-  defp render_group_mapping(conn, integration, groups, roles, params, default_role_id, mappings) do
-    Logger.info("render_group_mapping, groups: #{inspect(groups)}, roles: #{inspect(roles)}")
-
+  defp render_group_mapping(
+         conn,
+         integration,
+         groups,
+         roles,
+         params,
+         default_role_id,
+         group_mapping,
+         role_mapping
+       ) do
     render(conn, "group_mapping.html",
       js: :organization_okta,
       permissions: conn.assigns.permissions,
@@ -324,7 +339,8 @@ defmodule FrontWeb.OrganizationOktaController do
       groups: groups,
       roles: roles,
       default_role_id: default_role_id,
-      mappings: mappings,
+      group_mapping: group_mapping,
+      role_mapping: role_mapping,
       title: "Okta・#{params.organization.name}",
       notice: get_flash(conn, :notice),
       alert: get_flash(conn, :alert)
