@@ -47,14 +47,13 @@ args=(
 )
 
 # if edition is ee, add arguments for agent to support pre-flight-checks
+cp resources/agent-pre-job-hook.sh agent-pre-job-hook.sh
 if [ "$SEMAPHORE_EDITION" = "ee" ]; then
   args+=(
     "--set"
     "controller.agent.defaultImage=hexpm/elixir:1.12.3-erlang-24.3.4.13-ubuntu-focal-20230126"
     "--set"
-    "controller.agent.defaultPodSpec.preJobHook.enabled=true"
-    "--set-file"
-    "controller.agent.defaultPodSpec.preJobHook.customScript=./resources/agent-pre-job-hook.sh"
+    "controller.agent.defaultPodSpec.preJobHook.customScript=$(cat agent-pre-job-hook.sh | base64 -w 0)"
   )
 fi
 
@@ -138,6 +137,7 @@ if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "single-vm" ]]; then
     "bitbucket-app-secret.yaml"
     "gitlab-app-secret.yaml"
     "vm-install.sh"
+    "agent-pre-job-hook.sh"
   )
 
   for file in "${files[@]}"; do
