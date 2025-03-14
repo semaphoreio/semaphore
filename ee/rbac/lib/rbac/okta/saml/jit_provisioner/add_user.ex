@@ -40,11 +40,11 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       {:ok, saml_jit_user} <- SamlJitUser.connect_user(saml_jit_user, user.id),
       {:ok, role_id} <- fetch_role_to_be_assigned(saml_jit_user),
       :ok <- assign_role(user.id, saml_jit_user.org_id, role_id),
-      {:ok, _saml_jit_user} <- SamlJitUser.mark_as_processed(saml_jit_user)
+      {:ok, saml_jit_user} <- SamlJitUser.mark_as_processed(saml_jit_user)
     ) do
       info("Provisioning #{saml_jit_user.id} done.")
 
-      :ok
+      {:ok, saml_jit_user}
     else
       err ->
         log_provisioning_error(saml_jit_user, err)
@@ -98,14 +98,11 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
 
   def org_default_role_id(org_id) do
     case Rbac.Okta.IdpGroupMapping.get_for_organization(org_id) do
-      {:error, e} ->
-        fetch_default_role_id(org_id)
-
-      {:ok, %{default_role_id: default_role_id}} when default_role_id in [nil, ""] ->
-        fetch_default_role_id(org_id)
-
-      {:ok, %{default_role_id: default_role_id}} ->
+      {:ok, %{default_role_id: default_role_id}} when default_role_id not in [nil, ""] ->
         {:ok, default_role_id}
+
+      _ ->
+        fetch_default_role_id(org_id)
     end
   end
 
