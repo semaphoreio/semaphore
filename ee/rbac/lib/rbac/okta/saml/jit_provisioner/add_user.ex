@@ -11,6 +11,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   """
 
   require Logger
+  import Logger, only: [info: 1, error: 1]
 
   alias Rbac.Repo.{SamlJitUser, RbacRole}
   alias Rbac.RoleBindingIdentification
@@ -32,7 +33,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       org_id: saml_jit_user.org_id
     }
 
-    Logger.info("Provisioning #{saml_jit_user.id}")
+    info("Provisioning #{saml_jit_user.id}")
 
     with(
       {:ok, user} <- find_or_create_user(idempotency_token, user_params),
@@ -41,7 +42,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       :ok <- assign_role(user.id, saml_jit_user.org_id, role_id),
       {:ok, _saml_jit_user} <- SamlJitUser.mark_as_processed(saml_jit_user)
     ) do
-      Logger.info("Provisioning #{saml_jit_user.id} done.")
+      info("Provisioning #{saml_jit_user.id} done.")
 
       :ok
     else
@@ -56,11 +57,11 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       nil ->
         case Rbac.Store.RbacUser.fetch_by_email(user_params.email) do
           {:error, :not_found} ->
-            Logger.info("[Sam lJIT Provisioner] Creating new user #{inspect(user_params)}")
+            info("[Sam lJIT Provisioner] Creating new user #{inspect(user_params)}")
             Rbac.User.Actions.create(user_params)
 
           {:ok, user} ->
-            Logger.info(
+            info(
               "[Saml JIT Provisioner] Adding idempotency token to existing user #{inspect(user_params)}"
             )
 
@@ -84,29 +85,33 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   end
 
   defp fetch_role_to_be_assigned(jit_user) do
-    # If no role mappings are specified in the SAML request, just use empty list
     case Rbac.Okta.IdpGroupMapping.map_roles(jit_user.org_id, jit_user.attributes["role"] || []) do
-      {:ok, roles_to_be_assigned} ->
-        {:ok, roles_to_be_assigned |> List.first() || org_default_role_id(jit_user.org_id)}
+      {:ok, roles} when is_list(roles) and length(roles) > 0 ->
+        {:ok, roles |> List.first()}
 
-      {:error, :not_found} ->
-        Logger.info("[Saml JIT Provisioner] No role mappings for #{jit_user.org_id} integration")
-        {:ok, org_default_role_id(jit_user.org_id)}
+      e ->
+        info("[Saml JIT Provisioner] Response from IdpGroupMapping.map_roles #{inspect(e)}")
 
-      {:error, e} ->
-        Logger.error("[Saml JIT Provisioner] Error while fetching role mappings #{inspect(e)}")
-        {:ok, org_default_role_id(jit_user.org_id)}
+        org_default_role_id(jit_user.org_id)
     end
   end
 
   def org_default_role_id(org_id) do
     case Rbac.Okta.IdpGroupMapping.get_for_organization(org_id) do
       {:error, e} ->
-        RbacRole.get_role_by_name(@default_role_, "org_scope", org_id)
+        fetch_default_role_id(org_id)
 
-      {:ok, mapping} ->
-        mapping.default_role_id || RbacRole.get_role_by_name(@default_role, "org_scope", org_id)
+      {:ok, %{default_role_id: default_role_id}} when default_role_id in [nil, ""] ->
+        fetch_default_role_id(org_id)
+
+      {:ok, %{default_role_id: default_role_id}} ->
+        {:ok, default_role_id}
     end
+  end
+
+  defp fetch_default_role_id(org_id) do
+    {:ok, role} = RbacRole.get_role_by_name(@default_role, "org_scope", org_id)
+    {:ok, role.id}
   end
 
   defp assign_role(user_id, org_id, role_id) do
@@ -114,7 +119,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       :ok
     else
       {:ok, rbi} = RoleBindingIdentification.new(user_id: user_id, org_id: org_id)
-      {:ok, nil} = RoleManagement.assign_role(rbi, role.id, :saml_jit)
+      {:ok, nil} = RoleManagement.assign_role(rbi, role_id, :saml_jit)
 
       Rbac.Events.UserJoinedOrganization.publish(user_id, org_id)
       :ok
@@ -124,6 +129,6 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   defp log_provisioning_error(okta_user, err) do
     inspects = "okta user: #{inspect(okta_user)} error: #{inspect(err)}"
 
-    Logger.error("SamlJIT Provisioner: Failed to provision #{inspects}")
+    error("SamlJIT Provisioner: Failed to provision #{inspects}")
   end
 end
