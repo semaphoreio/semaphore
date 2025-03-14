@@ -16,7 +16,7 @@
         <div class="f3 b">+ Create new</div>
         <div class="f4">Add new organization</div>
         <div class="tr" style="margin-top: -72px; margin-right: -40px">
-          <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-guy-thumbup.svg" %> alt="">
+          <img src=<%= "#{assets_path()}/images/ill-guy-thumbup.svg" %> alt="">
         </div>
       <% end %>
     <% else %>
@@ -27,7 +27,7 @@
         <div class="f3 b">+ Create new</div>
         <div class="f4">Add new organization</div>
         <div class="tr" style="margin-top: -72px; margin-right: -40px">
-          <img src=<%= "#{Application.get_env(:front, :assets_path)}/images/ill-guy-thumbup.svg" %> alt="">
+          <img src=<%= "#{assets_path()}/images/ill-guy-thumbup.svg" %> alt="">
         </div>
       </a>
     <% end %>
