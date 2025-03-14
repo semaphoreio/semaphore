@@ -6,6 +6,7 @@ import { default as Pluralize } from "./pluralize";
 import { AccessProvider } from "./access_provider";
 import { FeatureProvider } from "./feature_provider";
 import { Modal } from "./modal";
+import { YamlEditor } from "./yaml_editor";
 import * as URLState from "./url_state";
 import * as Formatter from "./formatter";
 import * as ChartHelpers from "./chart_helpers";
@@ -24,4 +25,5 @@ export {
   AccessProvider,
   FeatureProvider,
   Modal,
+  YamlEditor
 };

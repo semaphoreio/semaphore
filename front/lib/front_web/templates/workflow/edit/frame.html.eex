@@ -22,6 +22,6 @@
     </div>
   </div>
 
-  <div id="workflow-editor-code-editor" class="code-mirror-style-semaphore bg-white f5 lh-title bg-white relative b--lighter-gray ba mt3 mt4-m">
+  <div id="workflow-editor-code-editor" class="code-mirror-style-semaphore bg-white f5 lh-title bg-white relative mt3 mt4-m <%= code_editor_border_classes(@org_id) %>">
   </div>
 </div>

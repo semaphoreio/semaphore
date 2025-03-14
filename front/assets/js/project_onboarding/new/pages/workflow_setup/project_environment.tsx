@@ -195,7 +195,7 @@ export const Projectenvironment = () => {
             <div className="mt3">
               <p className="f4 f3-m mb0">Initial Pipeline Configuration</p>
               <p className="f6 gray mb1">Base YAML configuration with selected agent. The rest of the pipeline will be configured in the next step.</p>
-              <components.YamlEditor value={envState.yamlContent} readOnly={true}/>
+              <toolbox.YamlEditor value={envState.yamlContent} readOnly={true} height="208px"/>
             </div>
             <div className="mt3">
               <div className="flex justify-between items-center">
