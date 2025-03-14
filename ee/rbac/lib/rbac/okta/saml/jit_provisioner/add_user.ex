@@ -16,7 +16,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
   alias Rbac.RoleBindingIdentification
   alias Rbac.RoleManagement
 
-  @role_name "Member"
+  @default_role "Member"
 
   def run(saml_jit_user) do
     idempotency_token = "okta-user-#{saml_jit_user.id}"
@@ -37,7 +37,8 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
     with(
       {:ok, user} <- find_or_create_user(idempotency_token, user_params),
       {:ok, saml_jit_user} <- SamlJitUser.connect_user(saml_jit_user, user.id),
-      :ok <- assign_role(user.id, saml_jit_user.org_id, @role_name),
+      {:ok, role_id} <- fetch_role_to_be_assigned(saml_jit_user),
+      :ok <- assign_role(user.id, saml_jit_user.org_id, role_id),
       {:ok, _saml_jit_user} <- SamlJitUser.mark_as_processed(saml_jit_user)
     ) do
       Logger.info("Provisioning #{saml_jit_user.id} done.")
@@ -82,17 +83,41 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
     end
   end
 
-  defp assign_role(user_id, org_id, role_name) do
+  defp fetch_role_to_be_assigned(jit_user) do
+    # If no role mappings are specified in the SAML request, just use empty list
+    case Rbac.Okta.IdpGroupMapping.map_roles(jit_user.org_id, jit_user.attributes["role"] || []) do
+      {:ok, roles_to_be_assigned} ->
+        {:ok, roles_to_be_assigned |> List.first() || org_default_role_id(jit_user.org_id)}
+
+      {:error, :not_found} ->
+        Logger.info("[Saml JIT Provisioner] No role mappings for #{jit_user.org_id} integration")
+        {:ok, org_default_role_id(jit_user.org_id)}
+
+      {:error, e} ->
+        Logger.error("[Saml JIT Provisioner] Error while fetching role mappings #{inspect(e)}")
+        {:ok, org_default_role_id(jit_user.org_id)}
+    end
+  end
+
+  def org_default_role_id(org_id) do
+    case Rbac.Okta.IdpGroupMapping.get_for_organization(org_id) do
+      {:error, e} ->
+        RbacRole.get_role_by_name(@default_role_, "org_scope", org_id)
+
+      {:ok, mapping} ->
+        mapping.default_role_id || RbacRole.get_role_by_name(@default_role, "org_scope", org_id)
+    end
+  end
+
+  defp assign_role(user_id, org_id, role_id) do
     if RoleManagement.user_part_of_org?(user_id, org_id) do
       :ok
     else
-      with {:ok, rbi} <- RoleBindingIdentification.new(user_id: user_id, org_id: org_id),
-           {:ok, role} <- RbacRole.get_role_by_name(role_name, "org_scope", org_id) do
-        {:ok, nil} = RoleManagement.assign_role(rbi, role.id, :saml_jit)
+      {:ok, rbi} = RoleBindingIdentification.new(user_id: user_id, org_id: org_id)
+      {:ok, nil} = RoleManagement.assign_role(rbi, role.id, :saml_jit)
 
-        Rbac.Events.UserJoinedOrganization.publish(user_id, org_id)
-        :ok
-      end
+      Rbac.Events.UserJoinedOrganization.publish(user_id, org_id)
+      :ok
     end
   end
 
