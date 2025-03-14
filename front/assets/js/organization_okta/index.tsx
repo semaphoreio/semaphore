@@ -21,8 +21,8 @@ export class State {
   defaultRoleId: string;
   saveUrl: string;
   cancelUrl: string;
-  group_mapping: any[];
-  role_mapping: any[];
+  groupMapping: any[];
+  roleMapping: any[];
 
   static fromJSON(configJSON: any): State {
     const config = State.default();
@@ -44,8 +44,8 @@ export class State {
     config.saveUrl = configJSON.saveUrl;
     config.cancelUrl = configJSON.cancelUrl;
     config.defaultRoleId = configJSON.defaultRoleId;
-    config.group_mapping = configJSON.group_mapping || [];
-    config.role_mapping = configJSON.role_mapping || [];
+    config.groupMapping = configJSON.group_mapping || [];
+    config.roleMapping = configJSON.role_mapping || [];
 
     return config;
   }
@@ -179,22 +179,22 @@ const App = () => {
   const [defaultRole, setDefaultRole] = useState(config.defaultRoleId || memberRole?.id || firstRole || ``);
 
   useEffect(() => {
-    if (config.group_mapping && config.group_mapping.length > 0) {
-      const initialGroupMappings = config.group_mapping.map((mapping: any) => ({
+    if (config.groupMapping && config.groupMapping.length > 0) {
+      const initialGroupMappings = config.groupMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
         semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``
       }));
       setGroupMappings(initialGroupMappings);
     }
     
-    if (config.role_mapping && config.role_mapping.length > 0) {
-      const initialRoleMappings = config.role_mapping.map((mapping: any) => ({
+    if (config.roleMapping && config.roleMapping.length > 0) {
+      const initialRoleMappings = config.roleMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
         semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``
       }));
       setRoleMappings(initialRoleMappings);
     }
-  }, [config.group_mapping, config.role_mapping]);
+  }, [config.groupMapping, config.roleMapping]);
 
   const handleSave = () => {
     // Create form data
