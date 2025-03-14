@@ -6,8 +6,6 @@ defmodule Rbac.Okta.Saml.Api.Test do
   @host "http://localhost:#{@port}"
   @org_id Ecto.UUID.generate()
   @org_username "testing123"
-  @creator_id Ecto.UUID.generate()
-  @sso_url "http://www.okta.com/sso_endpoint"
   @okta_issuer "http://www.okta.com/exk207czditgMeFGI697"
 
   @headers [
@@ -39,18 +37,7 @@ defmodule Rbac.Okta.Saml.Api.Test do
 
   describe "/okta/auth" do
     setup do
-      {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
-
-      {:ok, integration} =
-        Rbac.Okta.Integration.create_or_update(
-          @org_id,
-          @creator_id,
-          @sso_url,
-          @okta_issuer,
-          cert,
-          false
-        )
-
+      {:ok, integration} = Support.Factories.OktaIntegration.insert(org_id: @org_id)
       {:ok, %{integration: integration}}
     end
 
@@ -68,7 +55,7 @@ defmodule Rbac.Okta.Saml.Api.Test do
       with_mocks [{UserJoinedOrganization, [], [publish: fn _, _ -> :ok end]}] do
         {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
         assert response.status_code == 200
-        assert response.body == "User provisioning, try again in a minute"
+        assert response.body == "User provisioning started, try again in a minute"
       end
 
       {:ok, response} = post("/okta/auth", saml_payload("denis@example.com"))
