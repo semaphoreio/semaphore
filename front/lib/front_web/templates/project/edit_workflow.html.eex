@@ -14,7 +14,7 @@
 	</div>
 </div>
 
-<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+<%= render FrontWeb.WorkflowView, "edit/frame.html", org_id: @conn.assigns.organization_id %>
 
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.ProjectName = "<%= @project.name %>";

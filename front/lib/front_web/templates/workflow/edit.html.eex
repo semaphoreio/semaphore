@@ -1,6 +1,6 @@
 <%= render FrontWeb.WorkflowView, "edit/style.html" %>
 <%= render FrontWeb.WorkflowView, "edit/navigation.html", conn: @conn, project: @project, workflow: @workflow, hook: @hook %>
-<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+<%= render FrontWeb.WorkflowView, "edit/frame.html", org_id: @conn.assigns.organization_id %>
 
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.ProjectName = "<%= @project.name %>"
