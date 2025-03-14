@@ -1,3 +1,18 @@
+{{- if eq .Values.global.edition "ee"}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-openid-connect-http"
+spec:
+  type: ClusterIP
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: http
+      port: 5000
+      targetPort: 5000
+---
+{{- end }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -75,6 +90,14 @@ spec:
             items:
             - key: features.yml
               path: features.yml
+{{- if eq .Values.global.edition "ee" }}
+        - name: openid-secrets
+          secret:
+            secretName: {{ include "secrets.openid.name" . }}
+        - name: vault-secrets
+          secret:
+            secretName: {{ include "secrets.vault.name" . }}
+{{- end }}
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
       containers:
@@ -87,6 +110,14 @@ spec:
               mountPath: "/app/features.yml"
               readOnly: true
               subPath: features.yml
+{{- if eq .Values.global.edition "ee" }}
+            - name: openid-secrets
+              mountPath: "/var/openid_secrets"
+              readOnly: true
+            - name: vault-secrets
+              mountPath: "/var/vault_secrets"
+              readOnly: true
+{{- end }}
           ports:
             - name: http-port
               containerPort: 4000
@@ -112,10 +143,23 @@ spec:
               value: "true"
             - name: START_HTTP_API
               value: "true"
+{{- if eq .Values.global.edition "ee" }}
+            - name: START_OPENID_CONNECT_HTTP_API
+              value: "true"
+            - name: START_OPENID_KEY_MANAGER
+              value: "true"
+            - name: OPENID_KEYS_PATH
+              value: "/var/openid_secrets"
+            - name: KEY_VAULT_PATH
+              value: "/var/vault_secrets"
+{{- else }}
             - name: START_OPENID_CONNECT_HTTP_API
               value: "false"
             - name: START_OPENID_KEY_MANAGER
               value: "false"
+            - name: OPENID_KEYS_PATH
+              value: "/var/open_id_secrets"
+{{- end }}
             - name: START_ENCRYPTOR_WORKER
               value: "false"
             - name: BASE_DOMAIN
@@ -136,8 +180,6 @@ spec:
                   key: amqp-url
             - name: ENCRYPTOR_URL
               value: "localhost:50052"
-            - name: OPENID_KEYS_PATH
-              value: "/var/open_id_secrets"
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}

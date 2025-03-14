@@ -144,6 +144,12 @@ global:
   gitlabApp:
     secretName: ""
 
+  openid:
+    secretName: ""
+
+  vault:
+    secretName: ""
+
 toolbox:
   version: "v1.22.5"
 
