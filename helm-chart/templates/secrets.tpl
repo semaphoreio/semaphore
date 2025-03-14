@@ -21,3 +21,19 @@
 {{- .Values.global.encryption.secretName }}
 {{- end }}
 {{- end }}
+
+{{- define "secrets.openid.name" }}
+{{- if eq .Values.global.openid.secretName "" }}
+{{- printf "%s-openid" .Release.Name }}
+{{- else }}
+{{- .Values.global.openid.secretName }}
+{{- end }}
+{{- end }}
+
+{{- define "secrets.vault.name" }}
+{{- if eq .Values.global.vault.secretName "" }}
+{{- printf "%s-vault" .Release.Name }}
+{{- else }}
+{{- .Values.global.vault.secretName }}
+{{- end }}
+{{- end }}
