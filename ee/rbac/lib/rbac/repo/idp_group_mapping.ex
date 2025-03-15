@@ -12,7 +12,8 @@ defmodule Rbac.Repo.IdpGroupMapping do
   ]
 
   @updatable_fields [
-    :default_role_id
+    :default_role_id,
+    :organization_id
   ]
 
   defmodule GroupMapping do
@@ -59,8 +60,13 @@ defmodule Rbac.Repo.IdpGroupMapping do
   end
 
   def changeset(idp_group_mapping, params \\ %{}) do
+    fields_to_cast =
+      if idp_group_mapping.id,
+        do: @updatable_fields,
+        else: @updatable_fields ++ [:organization_id]
+
     idp_group_mapping
-    |> cast(params, @updatable_fields)
+    |> cast(params, fields_to_cast)
     |> cast_embed(:group_mapping, with: &GroupMapping.changeset/2, required: false)
     |> cast_embed(:role_mapping, with: &RoleMapping.changeset/2, required: false)
     |> validate_required(@required_fields)
