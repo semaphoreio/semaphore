@@ -19,7 +19,7 @@ defmodule Rbac.Okta.IdpGroupMapping do
     * `{:ok, mapping}` - The created or updated mapping
     * `{:error, changeset}` - Error with changeset containing validation errors
   """
-  def create_or_update(organization_id, group_mapping, role_mapping \\ [], default_role_id)
+  def create_or_update(organization_id, group_mapping, role_mapping, default_role_id)
       when is_list(group_mapping) and is_list(role_mapping) do
     require Logger
 

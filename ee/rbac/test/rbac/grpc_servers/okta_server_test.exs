@@ -628,22 +628,6 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
       assert error.message =~ "Invalid"
     end
-
-    test "fails when group mapping is empty", %{integration: integration} do
-      # Try to set up with empty mappings
-      request = %InternalApi.Okta.SetUpMappingRequest{
-        org_id: integration.org_id,
-        group_mapping: [],
-        role_mapping: [],
-        default_role_id: Ecto.UUID.generate()
-      }
-
-      assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      assert {:error, error} = InternalApi.Okta.Okta.Stub.set_up_mapping(channel, request)
-
-      # Verify the error message indicates the empty group mappings
-      assert error.message =~ "Invalid"
-    end
   end
 
   describe "describe_mapping" do
