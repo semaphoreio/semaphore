@@ -42,8 +42,12 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
   end
 
   test "YAML validation errors in monaco code editor", %{session: session} do
-    organization = Support.Stubs.Organization.default()
-    Support.Stubs.Feature.enable_feature(organization.id, :ui_monaco_workflow_code_editor)
+    stubs = Support.Browser.ProjectSettings.create_project()
+    org = Support.Stubs.Organization.default()
+    user = Support.Stubs.User.default()
+
+    Support.Stubs.Feature.enable_feature(stubs.org.id, :ui_monaco_workflow_code_editor)
+    Support.Stubs.PermissionPatrol.allow_everything(org.id, user.id)
 
     workflow = Editor.get_workflow()
     page = Editor.open(session, workflow.id)
