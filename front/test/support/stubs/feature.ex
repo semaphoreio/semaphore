@@ -81,7 +81,7 @@ defmodule Support.Stubs.Feature do
       {"superjerry_tests", state: :ENABLED, quantity: 1},
       {"rbac__groups", state: :ENABLED, quantity: 1},
       {"experimental_userpilot", state: :HIDDEN, quantity: 0},
-      {"ui_monaco_workflow_code_editor", state: :HIDDEN, quantity: 0}
+      {"ui_monaco_workflow_code_editor", state: :ENABLED, quantity: 1}
     ]
   end
 
