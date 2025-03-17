@@ -106,7 +106,7 @@ export class WorkflowEditor {
 
     this.layout = Layout.handle(divs.diagram, divs.config)
 
-    const codeEditor = Features.isEnabled("uiNewWorkflowCodeEditor") ?
+    const codeEditor = Features.isEnabled("uiMonacoWorkflowCodeEditor") ?
       new MonacoCodeEditor(divs.code) :
       new CodeEditor(divs.code)
 

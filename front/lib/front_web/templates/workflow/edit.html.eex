@@ -10,7 +10,7 @@
     "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, param: @conn.assigns.organization_id),
     "hidePromotions" => @hide_promotions,
     "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id),
-    "uiNewWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_new_workflow_code_editor, param: @conn.assigns.organization_id)
+    "uiMonacoWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id)
   }) %>;
 
   window.InjectedDataByBackend.OrgSecretNameList = <%= raw Poison.encode!(
