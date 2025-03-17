@@ -42,8 +42,6 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
   end
 
   test "YAML validation errors in monaco code editor", %{session: session} do
-    alias Support.FakeServices
-
     organization = Support.Stubs.Organization.default()
     Support.Stubs.Feature.enable_feature(organization.id, :ui_monaco_workflow_code_edtor)
 
