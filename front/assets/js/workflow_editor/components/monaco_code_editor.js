@@ -48,6 +48,7 @@ export class MonacoCodeEditor {
   changeContent(content) {
     this.editor.setValue(content);
     this.state.value = content;
+    this.renderErrorMarks();
   }
 
   show(pipeline) {
