@@ -1,5 +1,6 @@
 import _ from "lodash"
 import yaml from "js-yaml"
+import Ajv from "ajv"
 
 import { Agent } from "./agent"
 import { Block } from "./block"
@@ -17,13 +18,13 @@ import { LineEndings } from "../line_endings"
 import { Paths } from "../paths"
 
 export class Pipeline {
-  static fromYaml(workflow, yamlContent, path, createdInEditor) {
-    let pipeline = new Pipeline(workflow, yamlContent, path, createdInEditor)
+  static fromYaml(workflow, yamlContent, path, createdInEditor, schema) {
+    let pipeline = new Pipeline(workflow, yamlContent, path, createdInEditor, schema)
 
     return pipeline
   }
 
-  constructor(workflow, yamlContent, path, createdInEditor) {
+  constructor(workflow, yamlContent, path, createdInEditor, schema = null) {
     //
     // Saving the initial values for the path and content. In case the user
     // renames the file or changes the content, we can always look up the
@@ -32,6 +33,8 @@ export class Pipeline {
     this.initialYaml = yamlContent
     this.initialFilePath = path
     this.createdInEditor = !!createdInEditor
+    this.schema = schema
+    this.schemaErrors = []
 
     //
     // The line ending of the initialYAML is used while generating new YAML(s)
@@ -107,6 +110,10 @@ export class Pipeline {
     return this.yamlError !== null
   }
 
+  hasSchemaErrors() {
+    return this.schemaErrors.length > 0;
+  }
+
   validate() {
     if(this.hasInvalidYaml()) {
       return
@@ -119,6 +126,71 @@ export class Pipeline {
     if(this.name === "") {
       this.errors.add("name", "Pipeline name can't be blank.")
     }
+
+    this.validateSchema()
+  }
+
+  validateSchema() {
+    this.schemaErrors = []
+
+    if (!this.schema) return;
+
+    const ajv = new Ajv({
+      allErrors: true
+    })
+    const schemaValidator = ajv.compile(this.schema)
+    const valid = schemaValidator(this.structure)
+
+    if (!valid) {
+      const errors = schemaValidator.errors;
+      let yamlString = ""
+      try {
+        yamlString = yaml.safeDump(this.structure);
+      } catch (error) {
+        return;
+      }
+      const yamlLines = yamlString.split("\n");
+
+      this.schemaErrors = errors
+        .map(err => {
+          const location = this.findLineColumn(err.instancePath, err.params, yamlLines);
+          if (!location) return null;
+          return { ...err, line: location.line, column: location.column };
+        })
+        .filter(e => e);
+    }
+  }
+
+  findLineColumn(instancePath, wrongParams, yamlLines) {
+    let keys = instancePath.split("/").filter(k => k);
+    let indent = 0;
+    let foundLastKey = false;
+
+    const inRoot = keys.length === 0;
+    const lastKey = keys[keys.length - 1];
+    const wrongParam = wrongParams.additionalProperty || wrongParams.missingProperty;
+
+    for (let i = 0; i < yamlLines.length; i++) {
+        let line = yamlLines[i];
+        let trimmed = line.trim();
+        let key = keys[indent];
+
+        if (trimmed.startsWith(key + ":")) {
+            indent++;
+            if (trimmed.startsWith(lastKey)) {
+                foundLastKey = true;
+            }
+        }
+
+        if ((foundLastKey || inRoot) && trimmed.startsWith(wrongParam)) {
+          const column = line.indexOf(wrongParam) + 1;
+          return { line: i + 1, column };
+        }
+
+        if (indent >= keys.length + 1) break;
+    }
+
+    return null;
   }
 
   createNewBlock() {

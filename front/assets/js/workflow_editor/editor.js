@@ -33,6 +33,7 @@ export class WorkflowEditor {
       workflowData: InjectedDataByBackend.WorkflowData,
       agentTypes: InjectedDataByBackend.AgentTypes,
       deploymentTargets: InjectedDataByBackend.DeploymentTargetsList,
+      workflowSchema: InjectedDataByBackend.WorkflowSchema,
       commitInfo: {
         paths: {
           dismiss: InjectedDataByBackend.CommitForm.DismissPath,
@@ -95,7 +96,7 @@ export class WorkflowEditor {
   // Every time a model changes, the components are updated.
   //
   setUpModelComponentEventLoop() {
-    this.workflow = new Workflow(this.config.workflowData)
+    this.workflow = new Workflow(this.config.workflowData, this.config.workflowSchema)
 
     let divs = {
       tabs: "#workflow-editor-tabs",
