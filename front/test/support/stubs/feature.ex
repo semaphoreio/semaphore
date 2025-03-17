@@ -80,7 +80,8 @@ defmodule Support.Stubs.Feature do
       {"organization_health", state: :ENABLED, quantity: 1},
       {"superjerry_tests", state: :ENABLED, quantity: 1},
       {"rbac__groups", state: :ENABLED, quantity: 1},
-      {"experimental_userpilot", state: :HIDDEN, quantity: 0}
+      {"experimental_userpilot", state: :HIDDEN, quantity: 0},
+      {"ui_monaco_workflow_code_editor", state: :HIDDEN, quantity: 0}
     ]
   end
 
@@ -105,7 +106,7 @@ defmodule Support.Stubs.Feature do
       {"test_results", state: :HIDDEN, quantity: 0},
       {"ip_allow_list", state: :HIDDEN, quantity: 0},
       {"superjerry_tests", state: :HIDDEN, quantity: 1},
-
+      {"ui_monaco_workflow_code_editor", state: :ENABLED, quantity: 1},
       # features enabled only in CE
       {"instance_git_integration", state: :ENABLED, quantity: 1}
     ]
