@@ -58,25 +58,39 @@ export class MonacoCodeEditor {
 
     this.monaco.editor.removeAllMarkers(MODEL_OWNER_ID);
 
-    if (this.activePipeline.hasInvalidYaml()) {
-      
-      const yamlError = this.activePipeline.yamlError;
+    const markers = [];
 
+    if (this.activePipeline.hasInvalidYaml()) {
+      const yamlError = this.activePipeline.yamlError;
       const line = yamlError.mark.line + 1;
       const startColumn = 1;
       const endColumn = model.getLineLength(line) + 1;
-      
       const message = yamlError.reason;
 
-      const markers = [{
+      markers.push({
         severity: MarkerSeverity.Error,
         message: message,
         startLineNumber: line,
         endLineNumber: line,
         startColumn: startColumn,
         endColumn: endColumn,
-      }];
+      });
+    }
 
+    if (this.activePipeline.hasSchemaErrors()) {
+      this.activePipeline.schemaErrors.forEach(error => {
+        markers.push({
+          severity: MarkerSeverity.Error,
+          message: error.message,
+          startLineNumber: error.line,
+          endLineNumber: error.line,
+          startColumn: error.column,
+          endColumn: model.getLineLength(error.line) + 1,
+        });
+      });
+    }
+    
+    if (markers.length > 0) {
       this.monaco.editor.setModelMarkers(model, MODEL_OWNER_ID, markers);
     }
   }
