@@ -45,6 +45,11 @@ export class MonacoCodeEditor {
     this.activePipeline.updateYaml(this.state.value);
   }
 
+  changeContent(content) {
+    this.editor.setValue(content);
+    this.state.value = content;
+  }
+
   show(pipeline) {
     this.activePipeline = pipeline;
 

@@ -41,6 +41,22 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
     |> refute_has(css(".CodeMirror-lint-marker-error"))
   end
 
+  test "YAML validation errors in monaco code editor" do
+    alias Support.FakeServices
+
+    organization = Support.Stubs.Organization.default()
+    Support.Stubs.Feature.enable_feature(organization.id, :ui_monaco_workflow_code_edtor)
+
+    workflow = Editor.get_workflow()
+    page = Editor.open(session, workflow.id)
+
+    page
+    |> Editor.change_code_in_editor("semaphore.yml", @broken_yaml)
+    |> assert_has(css(".squiggly-error"))
+    |> Editor.change_code_in_editor("semaphore.yml", @good_yaml)
+    |> refute_has(css(".squiggly-error"))
+  end
+
   test "YAML validation errors on diagram", %{page: page} do
     error_message = "bad indentation of a mapping entry"
     error_title = "Invalid YAML syntax in .semaphore/semaphore.yml"
