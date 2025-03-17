@@ -4,7 +4,7 @@ import { MarkerSeverity } from 'monaco-editor';
 
 const MODEL_OWNER_ID = "WorkflowCodeEditor";
 
-export class CodeEditor {
+export class MonacoCodeEditor {
   constructor(outputDivSelector) {
     this.outputDivSelector = outputDivSelector;
     this.editor = null;

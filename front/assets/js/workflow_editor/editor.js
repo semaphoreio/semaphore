@@ -9,7 +9,7 @@ import { Agent    } from "./models/agent"
 import { Promotion } from "./models/promotion";
 
 import { Tabs         } from "./components/tabs"
-import { CodeEditor as NewCodeEditor } from "./components/new_code_editor"
+import { MonacoCodeEditor } from "./components/monaco_code_editor"
 import { CodeEditor    } from "./components/code_editor"
 import { Diagram       } from "./components/diagram"
 import { CommitPanel   } from "./components/commit_panel"
@@ -107,7 +107,7 @@ export class WorkflowEditor {
     this.layout = Layout.handle(divs.diagram, divs.config)
 
     const codeEditor = Features.isEnabled("uiNewWorkflowCodeEditor") ?
-      new NewCodeEditor(divs.code) :
+      new MonacoCodeEditor(divs.code) :
       new CodeEditor(divs.code)
 
     this.components = {
