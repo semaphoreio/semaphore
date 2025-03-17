@@ -16,6 +16,10 @@
 
 <%= render FrontWeb.WorkflowView, "edit/frame.html", org_id: @conn.assigns.organization_id %>
 
+<% require Logger
+  Logger.info("Is feature enabled?: #{FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id)}")
+ %>
+
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.ProjectName = "<%= @project.name %>";
 
