@@ -30,7 +30,7 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
 
     page = Editor.open(session, workflow.id)
 
-    {:ok, %{page: page}}
+    {:ok, %{page: page, session: session}}
   end
 
   test "YAML validation errors in code editor", %{page: page} do
@@ -41,7 +41,7 @@ defmodule Front.Browser.WorkflowEditor.CodeEditorTest do
     |> refute_has(css(".CodeMirror-lint-marker-error"))
   end
 
-  test "YAML validation errors in monaco code editor" do
+  test "YAML validation errors in monaco code editor", %{session: session} do
     alias Support.FakeServices
 
     organization = Support.Stubs.Organization.default()
