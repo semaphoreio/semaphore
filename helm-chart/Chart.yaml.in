@@ -15,6 +15,9 @@ dependencies:
   - name: artifacthub
     version: "@chartVersion@"
     repository: "file://../artifacthub/helm"
+  - name: audit
+    version: "@chartVersion@"
+    repository: "file://../ee/audit/helm"
   - name: auth
     version: "@chartVersion@"
     repository: "file://../auth/helm"

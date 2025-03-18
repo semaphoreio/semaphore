@@ -128,6 +128,10 @@ spec:
             - name: "CE_ROLES"
               value: "true"
 {{- end }}
+{{- if eq .Values.global.edition "ee" }}
+            - name: "AUDIT_LOGGING"
+              value: "true"
+{{- end }}
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME

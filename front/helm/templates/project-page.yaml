@@ -158,6 +158,10 @@ spec:
             - name: "CE_ROLES"
               value: "true"
 {{- end }}
+{{- if eq .Values.global.edition "ee" }}
+            - name: "AUDIT_LOGGING"
+              value: "true"
+{{- end }}
             - name: "CE_VERSION"
               value: {{ .Chart.Version }}
             - name: "SINGLE_TENANT"

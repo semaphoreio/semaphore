@@ -24,6 +24,7 @@ blocks:
                 - "APIv1alpha"
                 - "APIv2"
                 - "ArtifactHub"
+                - "Audit"
                 - "Auth"
                 - "Badge"
                 - "BranchHub"

@@ -30,6 +30,7 @@ applications=(
   "APIv1alpha"
   "APIv2"
   "ArtifactHub"
+  "Audit"
   "Auth"
   "Badge"
   "Bootstrapper"
