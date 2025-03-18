@@ -84,6 +84,8 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
+            - name: ENCRYPTOR_URL
+              value: "localhost:50052"
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
@@ -113,6 +115,32 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
+        - name: {{ .Chart.Name }}-encryptor
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.sidecarEncryptor.image }}:{{ .Values.global.sidecarEncryptor.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50052
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: START_API
+              value: "yes"
+            - name: GRPC_API_PORT
+              value: "50052"
+            - name: ENCRYPTOR_AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.encryption.name" . }}
+                  key: key
+{{- if .Values.sidecarEncryptor.resources }}
+          resources:
+{{ toYaml .Values.sidecarEncryptor.resources | indent 12 }}
+{{- end }}
 
 {{- if .Values.global.statsd.enabled }}
         - name: {{ .Chart.Name }}-statsd

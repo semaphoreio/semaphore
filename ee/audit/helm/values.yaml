@@ -15,6 +15,15 @@ api:
       cpu: "0.2"
       memory: 150Mi
 
+sidecarEncryptor:
+  resources:
+    limits:
+      cpu: 20m
+      memory: 50Mi
+    requests:
+      cpu: 5m
+      memory: 25Mi
+
 statsd:
   resources:
     limits:
