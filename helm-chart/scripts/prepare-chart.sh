@@ -105,7 +105,7 @@ for application in "${applications[@]}"; do
   # If this is an application used as a sidecar,
   # there's no need to generate any chart for it.
   #
-  if printf '%s\0' "${sidecars[@]}" | grep -Fxqz -- "${application}"; then
+  if printf '%s\n' "${sidecars[@]}" | grep -Fxq -- "${application}"; then
     echo ">>> ${application} is used as a sidecar - skipping chart generation for it..."
     continue
   fi

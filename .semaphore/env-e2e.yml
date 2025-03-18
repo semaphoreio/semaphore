@@ -1,5 +1,5 @@
 version: v1.0
-name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}}
+name: E2E Tests - ${{parameters.CLOUD_TEST_ENV_PREFIX}} - ${{parameters.CLOUD_TEST_ENVIRONMENT_TYPE}} - ${{parameters.SEMAPHORE_EDITION}}
 agent:
   machine:
     type: f1-standard-2
@@ -8,6 +8,9 @@ global_job_config:
   secrets:
     - name: e2e-test-github-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
     - name: e2e-test-gitlab-app-${{parameters.CLOUD_TEST_ENV_PREFIX}}
+  env_vars:
+    - name: SEMAPHORE_EDITION
+      value: ${{parameters.SEMAPHORE_EDITION}}
   prologue:
     commands:
       - checkout && cd e2e

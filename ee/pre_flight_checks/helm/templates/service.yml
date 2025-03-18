@@ -1,3 +1,4 @@
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -10,3 +11,4 @@ spec:
     - name: grpc
       protocol: TCP
       port: 50051
+{{- end }}

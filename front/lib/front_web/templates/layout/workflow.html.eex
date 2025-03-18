@@ -32,7 +32,7 @@
     <div class="bb b--lighter-gray pv2">
       <div class="flex-m nh2">
         <div class="ph2">
-          <%= "by #{@hook.repo_host_username}, #{Timex.Format.DateTime.Formatters.Relative.format!(@workflow.created_at, "{relative}")}" %>
+          <%= "by #{@hook.repo_host_username}, #{Front.Utils.decorate_relative(@workflow.created_at)}" %>
         </div>
         <%= if @hook.type == "pr" do %>
           <div class="flex items-center ph2">

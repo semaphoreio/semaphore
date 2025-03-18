@@ -5,6 +5,7 @@ import $ from "jquery";
 import { install } from '@github/hotkey';
 import { Userpilot } from "userpilot"
 
+import { defineTimeAgoElement } from "./time_ago";
 import { Tippy } from "./tippy";
 import { JumpTo } from "./jump_to/jump_to";
 import { Pollman } from "./pollman";
@@ -31,6 +32,7 @@ import { ChangeRoleDropdown } from "./people/change_role_dropdown";
 import { RetractRole } from "./people/retract_role";
 import { AddToProject } from "./people/add_to_project.js";
 import { GroupManagement } from "./groups/group_management.js";
+import { OrganizationOktaGroupMappingApp } from "./organization_okta";
 import { OrganizationSecrets } from "./organization_secrets";
 import { ProjectSecrets } from "./project_settings/secrets";
 import { ProjectArtifactsSettings } from "./project_settings/artifacts.js";
@@ -299,6 +301,12 @@ export var App = {
       })
     });
   },
+  organization_okta: function () {
+    OrganizationOktaGroupMappingApp({
+      dom: document.getElementById("group-mapping-container"),
+      config: window.InjectedDataByBackend.OrganizationOktaConfig
+    });
+  },
   organization_secrets: function () {
     OrganizationSecrets.init(InjectedDataByBackend); // njsscan-ignore: node_secret
   },
@@ -468,10 +476,7 @@ export var App = {
       })
     }
 
-    // This has to be required at the bottom of the body element
-    // therefore we require it within App.run() function
-    require("time-elements");
-
+    defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
     maybeEnableUserpilot()

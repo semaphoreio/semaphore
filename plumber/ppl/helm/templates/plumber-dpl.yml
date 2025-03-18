@@ -48,8 +48,10 @@ spec:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
           env:
+{{- if eq .Values.global.edition "ce" }}
             - name: SKIP_PFC
               value: "true"
+{{- end }}
             - name: SKIP_PROMOTIONS
               value: "true"
             - name: REPO_PROXY_NEW_GRPC_URL

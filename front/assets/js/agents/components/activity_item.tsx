@@ -117,7 +117,7 @@ const PipelineActivity = (props: ActivityProps) => {
               height="32"
             />
             <div className="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">
-              <relative-time dateTime={item.createdAt}/>
+              <time-ago datetime={item.createdAt}/>
               <br/> by {item.userName}
             </div>
           </div>
@@ -227,7 +227,7 @@ export const DebugActivity = (props: ActivityProps) => {
               height="32"
             />
             <div className="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">
-              <relative-time dateTime={props.item.createdAt}/>
+              <time-ago datetime={props.item.createdAt}/>
               <br/> by {props.item.userName}
             </div>
           </div>
