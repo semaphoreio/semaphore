@@ -4,7 +4,7 @@ import { Pipeline }          from "./pipeline"
 import { SelectionRegister } from "../selection_register"
 
 export class Workflow {
-  constructor(structure, schema = null) {
+  constructor(structure) {
     this.modelName = "workflow"
 
     //
@@ -23,14 +23,13 @@ export class Workflow {
     // }
     //
     this.structure = structure
-    this.schema = schema
 
     this.initialYAMLPath = structure.initialYAML
 
     this.pipelines = Object.keys(this.structure.yamls).map((path) => {
       let yaml = this.structure.yamls[path]
 
-      return Pipeline.fromYaml(this, yaml, path, this.structure.createdInEditor, this.schema)
+      return Pipeline.fromYaml(this, yaml, path, this.structure.createdInEditor)
     })
 
     //
@@ -169,7 +168,7 @@ blocks:
             - echo "job 1"
 `
 
-    this.pipelines.push(Pipeline.fromYaml(this, yaml, filePath, true, this.schema))
+    this.pipelines.push(Pipeline.fromYaml(this, yaml, filePath, true))
 
     this.afterUpdate()
   }

@@ -24,7 +24,7 @@ export class Pipeline {
     return pipeline
   }
 
-  constructor(workflow, yamlContent, path, createdInEditor, schema = null) {
+  constructor(workflow, yamlContent, path, createdInEditor) {
     //
     // Saving the initial values for the path and content. In case the user
     // renames the file or changes the content, we can always look up the
@@ -33,7 +33,6 @@ export class Pipeline {
     this.initialYaml = yamlContent
     this.initialFilePath = path
     this.createdInEditor = !!createdInEditor
-    this.schema = schema
     this.schemaErrors = []
 
     //
@@ -132,8 +131,6 @@ export class Pipeline {
 
   validateSchema() {
     this.schemaErrors = []
-
-    if (!this.schema) return;
 
     const valid = schemaValidator(this.structure)
 
