@@ -11,41 +11,41 @@ defmodule Zebra.Models.JobTest do
   describe ".create" do
     test "empty name => error" do
       assert {:error, "name: can't be blank"} =
-        Zebra.Models.Job.create(
-          organization_id: @org_id,
-          project_id: @project_id,
-          index: 0,
-          priority: 75,
-          spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
-          machine_type: "e1-standard-2",
-          machine_os_image: "ubuntu1804"
-        )
+               Zebra.Models.Job.create(
+                 organization_id: @org_id,
+                 project_id: @project_id,
+                 index: 0,
+                 priority: 75,
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
     end
 
     test "empty organization_id => error" do
       assert {:error, "organization_id: can't be blank"} =
-        Zebra.Models.Job.create(
-          project_id: @project_id,
-          index: 0,
-          priority: 75,
-          name: "Test",
-          spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
-          machine_type: "e1-standard-2",
-          machine_os_image: "ubuntu1804"
-        )
+               Zebra.Models.Job.create(
+                 project_id: @project_id,
+                 index: 0,
+                 priority: 75,
+                 name: "Test",
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
     end
 
     test "empty project_id => error" do
       assert {:error, "project_id: can't be blank"} =
-        Zebra.Models.Job.create(
-          organization_id: @org_id,
-          index: 0,
-          priority: 75,
-          name: "Test",
-          spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
-          machine_type: "e1-standard-2",
-          machine_os_image: "ubuntu1804"
-        )
+               Zebra.Models.Job.create(
+                 organization_id: @org_id,
+                 index: 0,
+                 priority: 75,
+                 name: "Test",
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
     end
 
     test "creates a new job" do

@@ -97,14 +97,14 @@ defmodule Zebra.Models.Job do
     params = set_machine_type_if_empty(params)
 
     changeset(%__MODULE__{}, params)
-      |> LegacyRepo.insert()
-      |> case do
-        {:ok, job} ->
-          {:ok, job}
+    |> LegacyRepo.insert()
+    |> case do
+      {:ok, job} ->
+        {:ok, job}
 
-        {:error, changeset} ->
-          {:error, readable_changeset_errors(changeset)}
-      end
+      {:error, changeset} ->
+        {:error, readable_changeset_errors(changeset)}
+    end
   end
 
   def update(job, params \\ %{}) do

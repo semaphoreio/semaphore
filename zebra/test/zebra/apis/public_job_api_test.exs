@@ -545,17 +545,18 @@ defmodule Zebra.Api.PublicJobApiTest do
       job =
         Semaphore.Jobs.V1alpha.Job.new(
           metadata: Semaphore.Jobs.V1alpha.Job.Metadata.new(name: ""),
-          spec: Semaphore.Jobs.V1alpha.Job.Spec.new(
-            agent:
-              Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
-                machine:
-                  Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
-                    type: "e1-standard-2",
-                    os_image: "ubuntu1804"
-                  )
-              ),
-            project_id: hd(@authorized_projects)
-          )
+          spec:
+            Semaphore.Jobs.V1alpha.Job.Spec.new(
+              agent:
+                Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+                  machine:
+                    Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                      type: "e1-standard-2",
+                      os_image: "ubuntu1804"
+                    )
+                ),
+              project_id: hd(@authorized_projects)
+            )
         )
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
