@@ -1,0 +1,34 @@
+image: audit
+imageTag: latest
+imagePullSecrets: []
+
+logging: info
+
+api:
+  replicas: 1
+  dbPoolSize: 2
+  resources:
+    limits:
+      cpu: "0.2"
+      memory: 300Mi
+    requests:
+      cpu: "0.2"
+      memory: 150Mi
+
+sidecarEncryptor:
+  resources:
+    limits:
+      cpu: 20m
+      memory: 50Mi
+    requests:
+      cpu: 5m
+      memory: 25Mi
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"
