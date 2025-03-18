@@ -1,6 +1,6 @@
 import _ from "lodash"
 import yaml from "js-yaml"
-import Ajv from "ajv"
+import schemaValidator from "./pipeline_schema_validator"
 
 import { Agent } from "./agent"
 import { Block } from "./block"
@@ -135,10 +135,6 @@ export class Pipeline {
 
     if (!this.schema) return;
 
-    const ajv = new Ajv({
-      allErrors: true
-    })
-    const schemaValidator = ajv.compile(this.schema)
     const valid = schemaValidator(this.structure)
 
     if (!valid) {
