@@ -42,6 +42,8 @@ defmodule Zebra.Models.Job do
 
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
+  @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -94,14 +96,34 @@ defmodule Zebra.Models.Job do
     params = %{params | spec: encode_spec(params.spec)}
     params = set_machine_type_if_empty(params)
 
-    changeset(%__MODULE__{}, params) |> LegacyRepo.insert()
+    changeset(%__MODULE__{}, params)
+      |> LegacyRepo.insert()
+      |> case do
+        {:ok, job} ->
+          {:ok, job}
+
+        {:error, changeset} ->
+          {:error, readable_changeset_errors(changeset)}
+      end
   end
 
   def update(job, params \\ %{}) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
     params = params |> Map.merge(%{updated_at: now})
 
-    changeset(job, params) |> LegacyRepo.update()
+    changeset(job, params)
+    |> LegacyRepo.update()
+    |> case do
+      {:ok, job} ->
+        {:ok, job}
+
+      {:error, changeset} ->
+        {:error, readable_changeset_errors(changeset)}
+    end
+  end
+
+  defp readable_changeset_errors(changeset) do
+    Enum.map_join(changeset.errors, ", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
   end
 
   defp set_machine_type_if_empty(params) do
@@ -272,7 +294,16 @@ defmodule Zebra.Models.Job do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     Zebra.Models.Job
-    |> select([:id, :request])
+    |> select([
+      :id,
+      :name,
+      :project_id,
+      :organization_id,
+      :created_at,
+      :machine_type,
+      :spec,
+      :request
+    ])
     |> where([j], j.id in ^job_ids)
     |> Zebra.LegacyRepo.all()
     |> Enum.each(fn j ->
@@ -429,7 +460,8 @@ defmodule Zebra.Models.Job do
         aasm_state: state_finished(),
         finished_at: now,
         result: result_stopped(),
-        request: JobRequest.sanitize(job.request)
+        request: JobRequest.sanitize(job.request),
+        machine_type: job.machine_type || ""
       }
 
       case update(job, params) do
@@ -523,37 +555,8 @@ defmodule Zebra.Models.Job do
 
   def changeset(job, params \\ %{}) do
     job
-    |> cast(params, [
-      :build_id,
-      :organization_id,
-      :project_id,
-      :deployment_target_id,
-      :repository_id,
-      :aasm_state,
-      :created_at,
-      :updated_at,
-      :enqueued_at,
-      :scheduled_at,
-      :started_at,
-      :finished_at,
-      :spec,
-      :request,
-      :index,
-      :port,
-      :name,
-      :machine_type,
-      :machine_os_image,
-      :failure_reason,
-      :result,
-      :agent_id,
-      :agent_name,
-      :agent_ip_address,
-      :agent_ctrl_port,
-      :agent_auth_token,
-      :private_ssh_key,
-      :execution_time_limit,
-      :priority
-    ])
+    |> cast(params, @required_fields ++ @optional_fields)
+    |> validate_required(@required_fields)
     |> validate_inclusion(:aasm_state, valid_states())
     |> validate_inclusion(:result, valid_results())
   end

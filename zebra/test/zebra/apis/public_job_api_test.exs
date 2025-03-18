@@ -122,11 +122,11 @@ defmodule Zebra.Api.PublicJobApiTest do
                %Semaphore.Jobs.V1alpha.Job{
                  metadata: %Semaphore.Jobs.V1alpha.Job.Metadata{
                    create_time: DateTime.to_unix(job.created_at),
+                   update_time: DateTime.to_unix(job.updated_at),
                    finish_time: 0,
                    id: job.id,
                    name: "RSpec 1/3",
-                   start_time: 0,
-                   update_time: 0
+                   start_time: 0
                  },
                  spec: %Semaphore.Jobs.V1alpha.Job.Spec{
                    agent:
@@ -216,11 +216,11 @@ defmodule Zebra.Api.PublicJobApiTest do
       assert reply == %Semaphore.Jobs.V1alpha.Job{
                metadata: %Semaphore.Jobs.V1alpha.Job.Metadata{
                  create_time: DateTime.to_unix(job.created_at),
+                 update_time: DateTime.to_unix(job.updated_at),
                  finish_time: 0,
                  id: job.id,
                  name: "RSpec 1/3",
-                 start_time: 0,
-                 update_time: 0
+                 start_time: 0
                },
                spec: %Semaphore.Jobs.V1alpha.Job.Spec{
                  agent:
@@ -539,6 +539,35 @@ defmodule Zebra.Api.PublicJobApiTest do
   end
 
   describe ".create_job" do
+    alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
+
+    test "empty name => raise error" do
+      job =
+        Semaphore.Jobs.V1alpha.Job.new(
+          metadata: Semaphore.Jobs.V1alpha.Job.Metadata.new(name: ""),
+          spec: Semaphore.Jobs.V1alpha.Job.Spec.new(
+            agent:
+              Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+                machine:
+                  Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                    type: "e1-standard-2",
+                    os_image: "ubuntu1804"
+                  )
+              ),
+            project_id: hd(@authorized_projects)
+          )
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:error, reply} = channel |> Stub.create_job(job, @options)
+
+      assert reply == %GRPC.RPCError{
+               message: "name: can't be blank",
+               status: 3
+             }
+    end
+
     test "when the user can't create a pipeline => raise error" do
       GrpcMock.stub(Support.FakeServers.RBAC, :list_user_permissions, fn req, _ ->
         InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -548,8 +577,6 @@ defmodule Zebra.Api.PublicJobApiTest do
           permissions: ["project.random.permission"]
         )
       end)
-
-      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
 
       job =
         Semaphore.Jobs.V1alpha.Job.new(
@@ -579,8 +606,6 @@ defmodule Zebra.Api.PublicJobApiTest do
     end
 
     test "when the user can access the project => creates job" do
-      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
-
       job =
         Semaphore.Jobs.V1alpha.Job.new(
           metadata: Semaphore.Jobs.V1alpha.Job.Metadata.new(name: "RSpec 1/3"),
@@ -609,8 +634,6 @@ defmodule Zebra.Api.PublicJobApiTest do
     end
 
     test "when a self-hosted agent type is used => raise error" do
-      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
-
       job =
         Semaphore.Jobs.V1alpha.Job.new(
           metadata: Semaphore.Jobs.V1alpha.Job.Metadata.new(name: "RSpec 1/3"),

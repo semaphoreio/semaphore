@@ -14,7 +14,7 @@ defmodule Zebra.Apis.PublicJobApi.SerializerTest do
     assert serialized_job.metadata.name == job.name
     assert serialized_job.metadata.id == job.id
     assert serialized_job.metadata.create_time == DateTime.to_unix(job.created_at)
-    assert serialized_job.metadata.update_time == 0
+    assert serialized_job.metadata.update_time == DateTime.to_unix(job.updated_at)
     assert serialized_job.metadata.start_time == DateTime.to_unix(job.started_at)
     assert serialized_job.metadata.finish_time == DateTime.to_unix(job.finished_at)
 
