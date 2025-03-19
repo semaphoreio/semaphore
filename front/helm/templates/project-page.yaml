@@ -156,6 +156,10 @@ spec:
 {{- end }}
             - name: "HIDE_PROMOTIONS"
               value: "true"
+{{- if eq .Values.global.edition "ee" }}
+            - name: "AUDIT_LOGGING"
+              value: "true"
+{{- end }}
             - name: "CE_VERSION"
               value: {{ .Chart.Version }}
             - name: "CE_ROLES"

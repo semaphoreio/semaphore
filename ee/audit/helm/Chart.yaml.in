@@ -1,0 +1,6 @@
+apiVersion: v2
+name: audit
+description: Audit service for Semaphore CI/CD
+type: application
+version: "@chartVersion@"
+appVersion: ""
