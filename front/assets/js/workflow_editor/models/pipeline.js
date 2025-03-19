@@ -18,8 +18,8 @@ import { LineEndings } from "../line_endings"
 import { Paths } from "../paths"
 
 export class Pipeline {
-  static fromYaml(workflow, yamlContent, path, createdInEditor, schema) {
-    let pipeline = new Pipeline(workflow, yamlContent, path, createdInEditor, schema)
+  static fromYaml(workflow, yamlContent, path, createdInEditor) {
+    let pipeline = new Pipeline(workflow, yamlContent, path, createdInEditor)
 
     return pipeline
   }

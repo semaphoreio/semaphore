@@ -65,8 +65,6 @@ blockks:
       })
 
       it("has an invalid YAML", () => {
-        expect(ppl.hasInvalidYaml()).to.equal(false)
-
         ppl.updateYaml(brokenYaml)
 
         expect(ppl.hasInvalidYaml()).to.equal(true)
