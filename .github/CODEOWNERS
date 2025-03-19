@@ -1,35 +1,40 @@
-* @DamjanBecirovic @lucaspin @radwo
-/artifacthub/ @lucaspin @radwo @dexyk
-/ee/audit/ @radwo @hamir-suspect @dexyk
-/auth/ @radwo @VeljkoMaksimovic @lucaspin
-/badge/ @radwo @VeljkoMaksimovic @skipi
-/branch_hub/ @radwo @skipi @lucaspin
-/dashboardhub/ @radwo @hamir-suspect
-/front/ @radwo @hamir-suspect @skipi
-/github_hooks/ @radwo @VeljkoMaksimovic @skipi @darkofabijan
-/github_notifier/ @radwo @VeljkoMaksimovic @hamir-suspect
-/ee/gofer/ @DamjanBecirovic @dexyk
-/guard/ @VeljkoMaksimovic @forestileao @lucaspin
-/hooks_processor/ @radwo @hamir-suspect @DamjanBecirovic
-/hooks_receiver/ @radwo @hamir-suspect @DamjanBecirovic
-/keycloak/ @radwo @skipi @hamir-suspect
-/loghub2/ @lucaspin @hamir-suspect @DamjanBecirovic
-/notifications/ @hamir-suspect @radwo @VeljkoMaksimovic
-/periodic_scheduler/ @DamjanBecirovic @dexyk
-/plumber/ @DamjanBecirovic @dexyk
-/ee/pre_flight_checks/ @DamjanBecirovic @VeljkoMaksimovic
-/projecthub-rest-api/ @hamir-suspect @radwo @lucaspin
-/projecthub/ @skipi @radwo @hamir-suspect
-/public-api-gateway/ @hamir-suspect @radwo
-/public-api/v2 @hamir-suspect @DamjanBecirovic
-/public-api/v1alpha @hamir-suspect @DamjanBecirovic
-/rbac/ @VeljkoMaksimovic @radwo @lucaspin
+* @DamjanBecirovic @lucaspin @skipi
+/artifacthub/ @lucaspin @dexyk @DamjanBecirovic
+/auth/ @VeljkoMaksimovic @lucaspin @forestileao
+/badge/ @VeljkoMaksimovic @skipi @forestileao
+/bootstrapper/ @VeljkoMaksimovic @lucaspin @forestileao
+/branch_hub/ @skipi @lucaspin @forestileao
+/dashboardhub/ @hamir-suspect @skipi @forestileao
+/ee/audit/ @hamir-suspect @dexyk @lucaspin
+/ee/gofer/ @DamjanBecirovic @dexyk @lucaspin
+/ee/pre_flight_checks/ @DamjanBecirovic @VeljkoMaksimovic @skipi
 /ee/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
+/ee/velocity/ @skipi @dexyk @lucaspin
+/encryptor/ @VeljkoMaksimovic @lucaspin @forestileao
+/ephemeral_environment/ @VeljkoMaksimovic @lucaspin @hamir-suspect
+/feature_provider/ @skipi @hamir-suspect @dexyk
+/front/ @hamir-suspect @skipi @VeljkoMaksimovic
+/github_hooks/ @VeljkoMaksimovic @skipi @darkofabijan
+/github_notifier/ @VeljkoMaksimovic @hamir-suspect @skipi
+/guard/ @VeljkoMaksimovic @forestileao @lucaspin
+/helm-chart/ @lucaspin @dexyk @DamjanBecirovic
+/hooks_processor/ @hamir-suspect @DamjanBecirovic @forestileao
+/hooks_receiver/ @hamir-suspect @DamjanBecirovic @forestileao
+/keycloak/ @skipi @hamir-suspect @VeljkoMaksimovic
+/loghub2/ @lucaspin @hamir-suspect @DamjanBecirovic
+/notifications/ @hamir-suspect @VeljkoMaksimovic @DamjanBecirovic
+/periodic_scheduler/ @DamjanBecirovic @dexyk @skipi
+/plumber/ @DamjanBecirovic @dexyk @skipi
+/projecthub-rest-api/ @hamir-suspect @lucaspin @forestileao
+/projecthub/ @skipi @hamir-suspect @forestileao
+/public-api-gateway/ @hamir-suspect @lucaspin
+/public-api/v2 @hamir-suspect @DamjanBecirovic @dexyk
+/public-api/v1alpha @hamir-suspect @DamjanBecirovic @dexyk
 /rbac/ @VeljkoMaksimovic @forestileao @lucaspin
-/repohub/ @radwo @skipi @lucaspin
-/repository_hub/ @skipi @radwo @hamir-suspect
+/repohub/ @skipi @lucaspin @DamjanBecirovic
+/repository_hub/ @skipi @hamir-suspect @forestileao
+/scouter/ @skipi @hamir-suspect @forestileao
 /secrethub/ @hamir-suspect @lucaspin @VeljkoMaksimovic
 /self_hosted_hub/ @lucaspin @dexyk @VeljkoMaksimovic
 /statsd/ @hamir-suspect @dexyk @DamjanBecirovic
-/ee/velocity/ @skipi @dexyk
-/zebra/ @lucaspin @radwo @hamir-suspect
+/zebra/ @lucaspin @hamir-suspect @DamjanBecirovic
