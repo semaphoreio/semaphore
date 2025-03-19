@@ -115,7 +115,7 @@ defmodule Rbac.Store.Group do
     |> where([_, g], g.org_id == ^org_id)
     |> select([ugb, _], ugb.group_id)
     |> Rbac.Repo.all()
-    |> Enum.each(&Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, "remove"))
+    |> Enum.each(&Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, :remove))
   end
 
   def modify_metadata(group_id, "", ""), do: fetch_group(group_id)
