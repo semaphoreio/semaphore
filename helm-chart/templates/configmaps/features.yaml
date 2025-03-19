@@ -109,9 +109,9 @@ data:
     artifacts:
       enabled: true
     audit_logs:
-      enabled: false
+      enabled: true
     audit_streaming:
-      enabled: false
+      enabled: true
     badges:
       enabled: true
     billing:
