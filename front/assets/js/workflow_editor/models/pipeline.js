@@ -155,34 +155,40 @@ export class Pipeline {
   }
 
   findLineColumn(instancePath, wrongParams, yamlLines) {
-    let keys = instancePath.split("/").filter(k => k);
-    let indent = 0;
+    const keys = instancePath.split("/").filter(Boolean);
+    const isMissingKey = !!wrongParams.missingProperty;
+    const wrongParam = isMissingKey ? wrongParams.missingProperty : wrongParams.additionalProperty;
+    let depth = 0;
     let foundLastKey = false;
 
-    const inRoot = keys.length === 0;
-    const lastKey = keys[keys.length - 1];
-    const wrongParam = wrongParams.additionalProperty || wrongParams.missingProperty;
-
-    for (let i = 0; i < yamlLines.length; i++) {
-        let line = yamlLines[i];
-        let trimmed = line.trim();
-        let key = keys[indent];
-
-        if (trimmed.startsWith(key + ":")) {
-            indent++;
-            if (trimmed.startsWith(lastKey)) {
-                foundLastKey = true;
-            }
-        }
-
-        if ((foundLastKey || inRoot) && trimmed.startsWith(wrongParam)) {
-          const column = line.indexOf(wrongParam) + 1;
-          return { line: i + 1, column };
-        }
-
-        if (indent >= keys.length + 1) break;
+    if (isMissingKey && instancePath === '') {
+      return { line: -1, column: -1 };
     }
-
+  
+    for (let i = 0; i < yamlLines.length; i++) {
+      const line = yamlLines[i];
+      const trimmed = line.trim();
+      const key = keys[depth];
+      const indentSize = line.length - trimmed.length;
+      const isNumericKey = Number.isInteger(Number(key));
+      const isListKey = isNumericKey && line.startsWith(" ".repeat(indentSize) + "-");
+      
+      if (trimmed.startsWith(`${key}:`) || isListKey) {
+        depth++;
+        if (depth >= keys.length - 1) {
+          foundLastKey = true;
+          if (isMissingKey) return { line: i + 1, column: line.indexOf(key) + 1 };
+        }
+      }
+  
+      if ((foundLastKey || keys.length === 0) &&
+          (trimmed.startsWith(`${wrongParam}:`) || trimmed.startsWith(`- ${wrongParam}:`))) {
+        return { line: i + 1, column: line.indexOf(wrongParam) + 1 };
+      }
+  
+      if (depth >= keys.length + 1) break;
+    }
+  
     return null;
   }
 

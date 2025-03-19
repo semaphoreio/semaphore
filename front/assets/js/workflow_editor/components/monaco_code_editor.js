@@ -79,13 +79,23 @@ export class MonacoCodeEditor {
 
     if (this.activePipeline.hasSchemaErrors()) {
       this.activePipeline.schemaErrors.forEach(error => {
+        let startLine = error.line;
+        let startColumn = error.column;
+        let endLine = error.line;
+        
+        if (startLine === -1 || startColumn === -1) {
+          startLine = 1;
+          startColumn = 1;
+          endLine = model.getLineCount();
+        }
+
         markers.push({
           severity: MarkerSeverity.Error,
           message: error.message,
-          startLineNumber: error.line,
-          endLineNumber: error.line,
-          startColumn: error.column,
-          endColumn: model.getLineLength(error.line) + 1,
+          startLineNumber: startLine,
+          endLineNumber: endLine,
+          startColumn: startColumn,
+          endColumn: model.getLineLength(endLine) + 1,
         });
       });
     }
