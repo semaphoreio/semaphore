@@ -73,7 +73,10 @@ blockks:
       })
 
       it ("has invalid Schema", () => {
+        expect(ppl.hasSchemaErrors()).to.equal(false)
+
         ppl.updateYaml(wrongSchemaYaml)
+        ppl.validateSchema()
 
         expect(ppl.hasSchemaErrors()).to.equal(true)
       })
