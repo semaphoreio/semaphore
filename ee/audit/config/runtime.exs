@@ -45,13 +45,9 @@ config :sentry,
 config :audit, :migrations_path, System.get_env("MIGRATIONS_PATH") || "/app/priv/repo/migrations"
 
 feature_provider =
-  System.get_env("ON_PREM")
+  System.get_env("FEATURE_YAML_PATH")
   |> case do
-    "true" ->
-      {FeatureProvider.YamlProvider,
-       [yaml_path: System.get_env("FEATURE_YAML_PATH", agent_name: :feature_provider_agent)]}
-
-    _ ->
+    nil ->
       {
         Audit.FeatureHubProvider,
         [
@@ -60,6 +56,9 @@ feature_provider =
              name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
         ]
       }
+
+    path ->
+      {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
   end
 
 config :audit, :feature_provider, feature_provider

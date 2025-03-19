@@ -1,68 +1,14 @@
-{{- if eq .Values.global.edition "ee"}}
-apiVersion: v1
-kind: Service
-metadata:
-  name: "{{ .Chart.Name }}-openid-connect-http"
-spec:
-  type: ClusterIP
-  selector:
-    app: "{{ .Chart.Name }}"
-  ports:
-    - name: http
-      port: 5000
-      targetPort: 5000
----
-{{- end }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: "{{ .Chart.Name }}-grpc"
-spec:
-  type: NodePort
-  selector:
-    app: "{{ .Chart.Name }}"
-  ports:
-    - name: grpc
-      port: 50051
-      targetPort: 50051
-      protocol: TCP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "secrets-v1beta-public-grpc-api"
-spec:
-  type: NodePort
-  selector:
-    app: "{{ .Chart.Name }}"
-  ports:
-    - name: grpc
-      port: 50051
-      targetPort: 50051
-      protocol: TCP
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: "{{ .Chart.Name }}-http"
-spec:
-  type: ClusterIP
-  selector:
-    app: "{{ .Chart.Name }}"
-  ports:
-    - name: http
-      port: 4000
-      targetPort: 4000
----
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ .Chart.Name }}"
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: "{{ .Chart.Name }}"
-  replicas: {{ .Values.replicas }}
+      app: {{ .Chart.Name }}
+  replicas: {{ .Values.api.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -70,9 +16,9 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
-      name: "{{ .Chart.Name }}"
+      name: {{ .Chart.Name }}
       labels:
-        app: "{{ .Chart.Name }}"
+        app: {{ .Chart.Name }}
         product: semaphoreci
     spec:
 {{- if .Values.imagePullSecrets }}
@@ -90,39 +36,18 @@ spec:
             items:
             - key: features.yml
               path: features.yml
-{{- if eq .Values.global.edition "ee" }}
-        - name: openid-secrets
-          secret:
-            secretName: {{ include "secrets.openid.name" . }}
-        - name: vault-secrets
-          secret:
-            secretName: {{ include "secrets.vault.name" . }}
-{{- end }}
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
+      priorityClassName: medium-priority
       containers:
-        - name: "{{ .Chart.Name }}"
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          imagePullPolicy: Always
           command: ["/bin/sh", "-c"]
-          args: ["bin/secrethub eval \"Secrethub.Release.create_and_migrate()\" && bin/secrethub start"]
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/app/features.yml"
-              readOnly: true
-              subPath: features.yml
-{{- if eq .Values.global.edition "ee" }}
-            - name: openid-secrets
-              mountPath: "/var/openid_secrets"
-              readOnly: true
-            - name: vault-secrets
-              mountPath: "/var/vault_secrets"
-              readOnly: true
-{{- end }}
+          args: ["bin/audit eval \"Audit.Release.create_and_migrate()\" && bin/audit start"]
           ports:
-            - name: http-port
-              containerPort: 4000
-            - name: grpc-port
-              containerPort: 50051
+          - name: grpc
+            containerPort: 50051
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -130,6 +55,11 @@ spec:
             capabilities:
               drop:
                 - ALL
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
@@ -137,42 +67,18 @@ spec:
             {{- include "env.db.elixir" . | indent 12 }}
             - name: FEATURE_YAML_PATH
               value: "/app/features.yml"
-            - name: START_INTERNAL_GRPC_API
+            - name: PORT
+              value: "50051"
+            - name: START_GRPC_API
               value: "true"
-            - name: START_PUBLIC_GRPC_API
+            - name: START_CONSUMER
               value: "true"
-            - name: START_HTTP_API
+            - name: START_STREAMER
               value: "true"
-{{- if eq .Values.global.edition "ee" }}
-            - name: START_OPENID_CONNECT_HTTP_API
-              value: "true"
-            - name: START_OPENID_KEY_MANAGER
-              value: "true"
-            - name: OPENID_KEYS_PATH
-              value: "/var/openid_secrets"
-            - name: KEY_VAULT_PATH
-              value: "/var/vault_secrets"
-{{- else }}
-            - name: START_OPENID_CONNECT_HTTP_API
-              value: "false"
-            - name: START_OPENID_KEY_MANAGER
-              value: "false"
-            - name: OPENID_KEYS_PATH
-              value: "/var/open_id_secrets"
-{{- end }}
-            - name: START_ENCRYPTOR_WORKER
-              value: "false"
-            - name: BASE_DOMAIN
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.domain.configMapName }}
-                  key: BASE_DOMAIN
-            - name: POSTGRES_DB_SSL
-              value: {{ .Values.global.database.ssl | quote }}
             - name: POSTGRES_DB_NAME
-              value: {{ .Values.db.name | quote }}
+              value: "audit"
             - name: POSTGRES_DB_POOL_SIZE
-              value: {{ .Values.db.poolSize | quote }}
+              value: {{ .Values.api.dbPoolSize | quote }}
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
@@ -183,11 +89,12 @@ spec:
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
+            - name: METRICS_SERVICE
+              value: "audit"
 {{- end }}
-
-{{- if .Values.resources }}
+{{- if .Values.api.resources }}
           resources:
-{{ toYaml .Values.resources | indent 12 }}
+{{ toYaml .Values.api.resources | indent 12 }}
 {{- end }}
 
           startupProbe:
@@ -200,12 +107,15 @@ spec:
             grpc:
               port: 50051
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
           livenessProbe:
             grpc:
               port: 50051
             periodSeconds: 10
-
-        - name: secrethub-encryptor
+            timeoutSeconds: 3
+            failureThreshold: 3
+        - name: {{ .Chart.Name }}-encryptor
           image: "{{ .Values.global.image.registry }}/{{ .Values.global.sidecarEncryptor.image }}:{{ .Values.global.sidecarEncryptor.imageTag }}"
           ports:
             - name: grpc-port
@@ -250,5 +160,6 @@ spec:
 {{- if .Values.statsd.resources }}
           resources:
 {{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
 {{- end }}
 {{- end }}
