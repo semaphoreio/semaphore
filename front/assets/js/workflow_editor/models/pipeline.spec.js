@@ -65,18 +65,18 @@ blockks:
       })
 
       it("has an invalid YAML", () => {
+        expect(ppl.hasInvalidYaml()).to.equal(false)
+
         ppl.updateYaml(brokenYaml)
 
         expect(ppl.hasInvalidYaml()).to.equal(true)
       })
 
       it ("has invalid Schema", () => {
-        expect(ppl.hasSchemaErrors()).to.equal(false)
-
         ppl.updateYaml(wrongSchemaYaml)
 
         expect(ppl.hasSchemaErrors()).to.equal(true)
-      });
+      })
 
       it("sets yamlError", () => {
         expect(ppl.yamlError).to.equal(null)
