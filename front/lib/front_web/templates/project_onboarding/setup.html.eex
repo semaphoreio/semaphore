@@ -12,7 +12,7 @@
 	</div>
 </div>
 
-<%= render FrontWeb.WorkflowView, "edit/frame.html" %>
+<%= render FrontWeb.WorkflowView, "edit/frame.html", org_id: @conn.assigns.organization_id %>
 
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
   window.InjectedDataByBackend.ProjectName = "<%= @project.name %>"
@@ -21,7 +21,8 @@
   window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
     "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, param: @conn.assigns.organization_id),
     "hidePromotions" => @hide_promotions,
-    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id)
+    "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id),
+    "uiMonacoWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id)
   }) %>;
 
   window.InjectedDataByBackend.OrgSecretNameList = <%= raw Poison.encode!(

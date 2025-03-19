@@ -12,6 +12,15 @@ PUBLIC_API_BRANCH ?= master
 APP_DESIGN_BRANCH ?= master
 
 #
+# Schema validator
+#
+SCHEMA_YAML_DIR=$(PWD)/../plumber/spec/priv
+SCHEMA_YAML_FILE=v1.0
+NODE_DOCKER_IMAGE=node:20
+YQ_DOCKER_IMAGE=mikefarah/yq
+SCHEMA_VALIDATOR_OUTPUT_DIR=$(PWD)/assets/js/workflow_editor/models/
+
+#
 # Environment variables required for application to run
 #
 CACHE_PREFIX=front/
@@ -108,6 +117,28 @@ ifeq ($(CI),)
 else
 	docker run --rm -v $(PWD)/out:/app/out $(VOLUME_BIND) $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) ash -c "cd assets && npm run coverage"
 endif
+
+#
+# Schema validator generation
+#
+schema.validator.gen:
+	# Convert YAML to JSON
+	docker run --rm -v $(SCHEMA_YAML_DIR):/app -w /app $(YQ_DOCKER_IMAGE) e 'del(.["$$schema"]) | del(.version)' -o=json $(SCHEMA_YAML_FILE).yml > $(SCHEMA_YAML_FILE).json
+
+	# Install ajv-cli and compile JSON schema
+	docker run --rm -v $(PWD):/app -w /app $(NODE_DOCKER_IMAGE) \
+		sh -c "\
+			npm install -g ajv-cli && \
+			ajv compile -s $(SCHEMA_YAML_FILE).json -o pipeline_schema_validator.js --all-errors && \
+			echo '// This is a generated file using make schema.validator.gen' > temp.js && \
+			echo '// This is a pre-compiled schema validator using Ajv.' >> temp.js && \
+			echo '// It is included to prevent Eval errors in the browser,' >> temp.js && \
+			echo '// as Ajv requires schema compilation.' >> temp.js && \
+			echo '// Reference: https://ajv.js.org/standalone.html' >> temp.js && \
+			cat pipeline_schema_validator.js >> temp.js"
+	mv temp.js pipeline_schema_validator.js
+	mv pipeline_schema_validator.js $(SCHEMA_VALIDATOR_OUTPUT_DIR)
+	rm -f $(SCHEMA_YAML_FILE).json
 
 compile.ts: build
 ifeq ($(CI),)
