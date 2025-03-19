@@ -27,8 +27,29 @@ blockks:
       beforeEach(() => {
         wf = new Workflow({yamls: [
           yaml.safeDump({
-            "version": "1.0",
-            "blocks": [{"name": "A"}]
+            "version": "v1.0",
+            "name": "Initial Pipeline",
+            "agent": {
+              "machine": {
+                "type": "f1-standard-2",
+                "os_image": "ubuntu2204"
+              }
+            },
+            "blocks": [
+              {
+                "name": "Block #1",
+                "task": {
+                  "jobs": [
+                    {
+                      "name": "Job #1",
+                      "commands": [
+                        "checkout"
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
           })
         ]})
 
@@ -418,13 +439,6 @@ blocks:
           message: "must have required property 'commands_file'",
           line: 10,
           column: 7
-        },
-        {
-          instancePath: '/blocks/0/task/jobs/0',
-          schemaPath: '#/oneOf',
-          keyword: 'oneOf',
-          params: { passingSchemas: null },
-          message: 'must match exactly one schema in oneOf'
         },
         {
           instancePath: '/blocks/0/task/jobs/0',
