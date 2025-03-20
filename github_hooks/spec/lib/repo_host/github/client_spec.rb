@@ -108,6 +108,19 @@ RSpec.describe RepoHost::Github::Client do
       end
     end
 
+    context "when unhandled octokit exception occurs" do
+      before do
+        allow_any_instance_of(Octokit::Client).to receive(:pull_request)
+          .and_raise(Octokit::TooManyLoginAttempts)
+      end
+
+      it "raises semaphore's RepoHost::RemoteException::NotFound" do
+        expect do
+          @client.pull_request
+        end.to raise_error(RepoHost::RemoteException::Unknown)
+      end
+    end
+
     context "when repository hook already exists on GitHub" do
       before do
         allow_any_instance_of(Octokit::Client).to receive(:create_hook)

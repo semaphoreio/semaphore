@@ -179,31 +179,35 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     end
 
     if workflow.payload.pull_request?
-      state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
+      begin
+        state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
+        case state
+        when :not_found
+          logger.info("pr-not-found #{msg}")
+          workflow.update(:state => Workflow::STATE_PR_NOT_FOUND)
 
-      case state
-      when :not_found
-        logger.info("pr-not-found #{msg}")
-        workflow.update(:state => Workflow::STATE_PR_NOT_FOUND)
+          return
+        when :non_mergeable
+          update_pull_request_mergeable(workflow, meta[:mergeable])
 
-        return
-      when :non_mergeable
-        update_pull_request_mergeable(workflow, meta[:mergeable])
+          logger.info("pr-non-mergeable")
+          workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
 
-        logger.info("pr-non-mergeable")
-        workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
+          return
+        when :skip_ci
+          logger.info("request-is-filtered")
+          workflow.update(:state => Workflow::STATE_SKIP_CI)
 
-        return
-      when :skip_ci
-        logger.info("request-is-filtered")
-        workflow.update(:state => Workflow::STATE_SKIP_CI)
-
-        return
-      when :without_reference
-        logger.info("without-reference")
-        workflow.update(:commit_author => meta[:commit_author])
-      else
-        workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
+          return
+        when :without_reference
+          logger.info("without-reference")
+          workflow.update(:commit_author => meta[:commit_author])
+        else
+          workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
+        end
+      rescue RepoHost::RemoteException::Unknown => e
+        logger.error("Unknown error", error: e)
+        raise e.class, e.message
       end
     end
 
