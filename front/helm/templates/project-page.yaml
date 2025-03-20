@@ -153,17 +153,17 @@ spec:
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
               value: "true"
-{{- end }}
+            - name: "CE_ROLES"
+              value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
+{{- end }}
 {{- if eq .Values.global.edition "ee" }}
             - name: "AUDIT_LOGGING"
               value: "true"
 {{- end }}
             - name: "CE_VERSION"
               value: {{ .Chart.Version }}
-            - name: "CE_ROLES"
-              value: "true"
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME
