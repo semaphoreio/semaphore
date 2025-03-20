@@ -1,3 +1,4 @@
+{{- include "semaphore.validateEdition" . -}}
 {{- $domainName := .Values.global.domain.name | required ".Values.global.domain.name is required." -}}
 {{- $ip := .Values.global.domain.ip -}}
 
