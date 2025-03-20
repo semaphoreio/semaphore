@@ -384,6 +384,11 @@ defmodule Guard.GrpcServers.UserServer do
           "Token for #{user.id} is #{if is_valid, do: "valid", else: "invalid"}. Updating revoke status."
         )
 
+        unless is_valid do
+          cache_key = Guard.Utils.OAuth.token_cache_key(repo_account)
+          Cachex.del(:token_cache, cache_key)
+        end
+
         FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
 
       {:error, _} ->
@@ -745,8 +750,15 @@ defmodule Guard.GrpcServers.UserServer do
     end)
   end
 
-  defp get_token(%{token: token, repo_host: "github"}, _opts) do
-    {token, nil}
+  defp get_token(%{repo_host: "github"} = repo_host_account, user_id: user_id) do
+    case FrontRepo.RepoHostAccount.get_github_token(repo_host_account) do
+      {:error, _} ->
+        Logger.error("Token for User: '#{user_id}' and 'GITHUB' not found.")
+        grpc_error!(:not_found, "Token for not found.")
+
+      {:ok, {token, expires_at}} ->
+        {token, expires_at}
+    end
   end
 
   defp get_token(%{repo_host: "bitbucket"} = repo_host_account, user_id: user_id) do

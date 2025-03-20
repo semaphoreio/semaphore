@@ -3,6 +3,11 @@ defmodule Guard.Api.Github do
 
   use Tesla
 
+  alias Guard.Utils.OAuth
+
+  @oauth_base_url "https://github.com"
+  @oauth_path "/login/oauth/access_token"
+
   plug(Tesla.Middleware.BaseUrl, "https://api.github.com")
   plug(Tesla.Middleware.JSON)
 
@@ -29,16 +34,56 @@ defmodule Guard.Api.Github do
     end
   end
 
+  @doc """
+  Fetch or refresh access token
+  """
+  def user_token(repo_host_account) do
+    case validate_token(repo_host_account.token) do
+      {:ok, true} -> {:ok, {repo_host_account.token, nil}}
+      _ -> handle_fetch_token(repo_host_account)
+    end
+  end
+
+  defp handle_fetch_token(repo_host_account) do
+    {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:github)
+
+    query_params = [
+      grant_type: "refresh_token",
+      refresh_token: repo_host_account.refresh_token,
+      client_id: client_id,
+      client_secret: client_secret
+    ]
+
+    client = build_token_client()
+
+    case Tesla.post(client, @oauth_path, nil, query: query_params) do
+      {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
+        OAuth.handle_ok_token_response(repo_host_account, body, cache: false)
+
+      {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
+        Logger.warning("Failed to refresh github token, account might be revoked")
+        {:error, :revoked}
+
+      {:ok, %Tesla.Env{status: _status}} ->
+        {:error, :failed}
+
+      {:error, error} ->
+        Logger.error("Error fetching github token: #{inspect(error)}")
+        {:error, :network_error}
+    end
+  end
+
+  defp build_token_client do
+    Tesla.client([
+      {Tesla.Middleware.BaseUrl, @oauth_base_url},
+      Tesla.Middleware.JSON
+    ])
+  end
+
   def validate_token(""), do: false
 
   def validate_token(token) do
-    {:ok, {client_id, client_secret}} = Guard.GitProviderCredentials.get(:github)
-
-    body = %{"access_token" => token}
-
-    case post("/applications/#{client_id}/token", body,
-           headers: authorization_headers(client_id, client_secret)
-         ) do
+    case get("", headers: authorization_headers(token)) do
       {:ok, res} ->
         is_valid = res.status in 200..299
 
@@ -56,11 +101,9 @@ defmodule Guard.Api.Github do
     end
   end
 
-  defp authorization_headers(client_id, client_secret) do
+  defp authorization_headers(token) do
     [
-      {"Accept", "application/vnd.github+json"},
-      {"Authorization", "Basic " <> Base.encode64("#{client_id}:#{client_secret}")},
-      {"X-GitHub-Api-Version", "2022-11-28"}
+      {"Authorization", "token #{token}"}
     ]
   end
 end

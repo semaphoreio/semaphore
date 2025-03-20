@@ -1,5 +1,6 @@
 import _ from "lodash"
 import yaml from "js-yaml"
+import schemaValidator from "./pipeline_schema_validator"
 
 import { Agent } from "./agent"
 import { Block } from "./block"
@@ -32,6 +33,7 @@ export class Pipeline {
     this.initialYaml = yamlContent
     this.initialFilePath = path
     this.createdInEditor = !!createdInEditor
+    this.schemaErrors = []
 
     //
     // The line ending of the initialYAML is used while generating new YAML(s)
@@ -107,6 +109,10 @@ export class Pipeline {
     return this.yamlError !== null
   }
 
+  hasSchemaErrors() {
+    return this.schemaErrors.length > 0;
+  }
+
   validate() {
     if(this.hasInvalidYaml()) {
       return
@@ -119,6 +125,71 @@ export class Pipeline {
     if(this.name === "") {
       this.errors.add("name", "Pipeline name can't be blank.")
     }
+
+    this.validateSchema()
+  }
+
+  validateSchema() {
+    this.schemaErrors = []
+
+    const valid = schemaValidator(this.structure)
+
+    if (!valid) {
+      const errors = schemaValidator.errors;
+      let yamlString = ""
+      try {
+        yamlString = yaml.safeDump(this.structure);
+      } catch (error) {
+        return;
+      }
+      const yamlLines = yamlString.split("\n");
+
+      this.schemaErrors = errors
+        .map(err => {
+          const location = this.findLineColumn(err.instancePath, err.params, yamlLines);
+          if (!location) return null;
+          return { ...err, line: location.line, column: location.column };
+        })
+        .filter(e => e);
+    }
+  }
+
+  findLineColumn(instancePath, wrongParams, yamlLines) {
+    const keys = instancePath.split("/").filter(Boolean);
+    const isMissingKey = !!wrongParams.missingProperty;
+    const wrongParam = isMissingKey ? wrongParams.missingProperty : wrongParams.additionalProperty;
+    let depth = 0;
+    let foundLastKey = false;
+
+    if (isMissingKey && instancePath === '') {
+      return { line: -1, column: -1 };
+    }
+  
+    for (let i = 0; i < yamlLines.length; i++) {
+      const line = yamlLines[i];
+      const trimmed = line.trim();
+      const key = keys[depth];
+      const indentSize = line.length - trimmed.length;
+      const isNumericKey = Number.isInteger(Number(key));
+      const isListKey = isNumericKey && line.startsWith(" ".repeat(indentSize) + "-");
+      
+      if (trimmed.startsWith(`${key}:`) || isListKey) {
+        depth++;
+        if (depth >= keys.length - 1) {
+          foundLastKey = true;
+          if (isMissingKey) return { line: i + 1, column: line.indexOf(key) + 1 };
+        }
+      }
+  
+      if ((foundLastKey || keys.length === 0) &&
+          (trimmed.startsWith(`${wrongParam}:`) || trimmed.startsWith(`- ${wrongParam}:`))) {
+        return { line: i + 1, column: line.indexOf(wrongParam) + 1 };
+      }
+  
+      if (depth >= keys.length + 1) break;
+    }
+  
+    return null;
   }
 
   createNewBlock() {

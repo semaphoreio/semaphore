@@ -38,7 +38,7 @@
             <div><%= event.description %></div>
             </div>
             <div class="tr">
-              <relative-time datetime="<%= DateTime.from_unix!(event.timestamp) %>" month="short" day="numeric" year="numeric" hour="numeric" minute="numeric" second="numeric" ></relative-time>
+              <time-ago datetime="<%= DateTime.from_unix!(event.timestamp) %>" ></time-ago>
               <div><span><%= event.medium %> &middot; <%= event.ip_address %></span></div>
             </div>
           </div>

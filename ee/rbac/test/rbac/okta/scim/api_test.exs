@@ -76,7 +76,8 @@ defmodule Rbac.Okta.Scim.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)
@@ -147,7 +148,8 @@ defmodule Rbac.Okta.Scim.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)
@@ -189,7 +191,8 @@ defmodule Rbac.Okta.Scim.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)
@@ -286,7 +289,8 @@ defmodule Rbac.Okta.Scim.Api.Test do
           @creator_id,
           @sso_url,
           @okta_issuer,
-          cert
+          cert,
+          false
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)

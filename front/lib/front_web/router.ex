@@ -566,6 +566,8 @@ defmodule FrontWeb.Router do
     # Okta Integration Settings
     get("/settings/okta", OrganizationOktaController, :show)
     get("/settings/okta/form", OrganizationOktaController, :form)
+    get("/settings/okta/group_mapping", OrganizationOktaController, :group_mapping)
+    post("/settings/okta/group_mapping", OrganizationOktaController, :update_group_mapping)
 
     get(
       "/settings/okta/disconnect_notice/:integration_id",
@@ -628,6 +630,7 @@ defmodule FrontWeb.Router do
     # Job Page
     get("/jobs/:id", JobController, :show)
     get("/jobs/:id/status", JobController, :status)
+    get("/jobs/:id/status_badge", JobController, :status_badge)
     get("/jobs/:id/summary", TestResultsController, :job_summary)
     get("/jobs/:id/logs", JobController, :logs)
 

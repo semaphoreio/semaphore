@@ -62,4 +62,17 @@ defmodule Front.UtilsTest do
              "/nch2/"
            ]
   end
+
+  test "decorate relative" do
+    two_days_ago = Timex.now() |> Timex.shift(days: -2) |> Timex.to_unix()
+    three_days_ago = Timex.now() |> Timex.shift(days: -3) |> Timex.to_unix()
+    assert Front.Utils.decorate_relative(0) == ""
+    assert Front.Utils.decorate_relative(nil) == ""
+    assert Front.Utils.decorate_relative(DateTime.utc_now()) == "now"
+    assert Front.Utils.decorate_relative(two_days_ago) == "2 days ago"
+    assert Front.Utils.decorate_relative(three_days_ago) == "3 days ago"
+
+    assert Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z]) ==
+             "on Wed 05th Mar 2025"
+  end
 end

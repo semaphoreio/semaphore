@@ -1,3 +1,4 @@
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -83,4 +84,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

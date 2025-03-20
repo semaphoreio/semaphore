@@ -268,8 +268,6 @@ defmodule Guard.Store.User do
             repo.delete_all(
               from(c in Repo.OrganizationContact, where: c.organization_id == ^org.id)
             )
-
-            repo.delete_all(from(q in Repo.Quota, where: q.organization_id == ^org.id))
           end)
 
           {:ok, :deleted_related_data}
