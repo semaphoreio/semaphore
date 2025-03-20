@@ -1,161 +1,129 @@
 # Semaphore CI/CD configuration for Go project
+# This file defines the complete CI/CD pipeline for a Go application
+
+# Version and name of the pipeline
 version: v1.0
 name: "\U0001F439 Go CI Pipeline"
 
 # Agent configuration - defines the execution environment
 agent:
-  # Kubernetes-based machine type
+  # Kubernetes-based machine type with templated values that will be filled at runtime
   machine:
-    type: {{ machine_type }}
-    os_image: {{ os_image }}  # Empty for Docker compose style pipeline
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
+    os_image: {{ os_image }}  # Empty for Docker compose style pipeline, will be set at runtime
   containers:
     - name: main
-      # Use CircleCI's Go 1.21 image for consistent builds
-      image: 'cimg/go:1.21'
+      image: 'golang:1.23'  # Using Golang 1.23 as the base Docker image
 
-# Fail fast configuration to stop unnecessary builds
+# Controls if the pipeline should stop on failure for the main branch
 fail_fast:
-  # Stop the pipeline if not on the main branch
   stop:
-    when: branch != 'main'
+    when: branch = 'main'  # Stop all jobs if any job fails on main branch
 
-# Auto-cancel configuration to optimize CI resources
+# Defines auto-cancellation behavior for running and queued pipelines
 auto_cancel:
-  # Cancel running jobs for non-main branches
   running:
-    when: branch != 'main'
-  # Queue jobs only for the main branch
+    when: branch != 'main'  # Cancel running pipelines when a new commit is pushed (except on main)
   queued:
-    when: branch = 'main'
+    when: branch = 'main'  # Cancel queued pipelines for main branch when a new commit is pushed
 
-# Global job configuration applied to all blocks
+# Global configuration applied to all jobs
 global_job_config:
   prologue:
     commands:
-      # Checkout the source code
-      - checkout
-      # Verify Go version
-      - go version
-      # Clean up and download dependencies
-      - go mod tidy
-      - go mod download
-      # Restore cached dependencies and build artifacts
-      - cache restore go-mod-$(checksum go.sum)
-      - cache restore go-build-$(checksum go.sum)
-      - cache restore go-tools
-      # Ensure tools are in PATH
-      - export PATH=$PATH:~/go/bin
+      - checkout  # Clone the repository
+      - 'export PATH=$PATH:/usr/local/go/bin:/go/bin'  # Add Go binaries to PATH
+      - 'export PATH=$PATH:/usr/local/go/bin:$(go env GOPATH)/bin'  # Add Go package binaries to PATH
+      - cache restore  # Restore cached dependencies from previous runs
+      - go mod download  # Download Go module dependencies
+      - which go  # Verify Go installation path
 
-# CI/CD Pipeline Blocks
+# Pipeline blocks (stages) definition
 blocks:
-  # First block: Setup and dependency installation
+  # Setup block - installs and caches dependencies
   - name: "\U0001F6E0 Setup and Cache"
-    dependencies: []
+    dependencies: []  # No dependencies, runs first
     task:
       jobs:
         - name: Install Dependencies
           commands:
-            # Install golangci-lint using official installation script
-            - curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
-            # Install additional development and testing tools
-            - go install gotest.tools/gotestsum@latest      # Test runner
-            - go install honnef.co/go/tools/cmd/staticcheck@latest  # Static analysis
-            - go install golang.org/x/vuln/cmd/govulncheck@latest  # Vulnerability scanner
-            - go install github.com/sonatype-nexus-community/nancy@latest  # Dependency scanner
-            # Cache dependencies and tools for future jobs
-            - cache store go-mod-$(checksum go.sum) ~/go/pkg/mod
-            - cache store go-build-$(checksum go.sum) ~/.cache/go-build
-            - cache store go-tools ~/go/bin
+            - go install github.com/securego/gosec/v2/cmd/gosec@latest  # Install security scanner
+            - go install github.com/mgechev/revive@latest  # Install linter
+            - cache store  # Store the downloaded modules and tools in cache
 
-  # Code quality check block
+  # Code Quality block - runs linters and code formatters
   - name: "\U0001F50D Code Quality"
     dependencies:
-      - "\U0001F6E0 Setup and Cache"
+      - "\U0001F6E0 Setup and Cache"  # Depends on setup block
     task:
       jobs:
-        - name: Lint and Static Analysis
+        - name: Lint and Vet
           commands:
-            # Verify golangci-lint installation
-            - golangci-lint version
-            # Run linters with a 5-minute timeout
-            - golangci-lint run --timeout=5m
-            # Run Go vet for additional static analysis
-            - go vet ./...
-            # Run staticcheck for advanced static analysis
-            - staticcheck ./...
-            # Ensure code is properly formatted
-            - test -z "$(go fmt ./...)"
+            - revive ./...  # Run revive linter on all packages
+            - go vet ./...  # Run Go's built-in static analyzer
+            - gosec ./...  # Run security scanner
+            - go fmt ./...  # Format code according to Go standards
+      prologue:
+        commands:
+          - go install github.com/securego/gosec/v2/cmd/gosec@latest  # Install security scanner (redundant but ensures availability)
+          - go install github.com/mgechev/revive@latest  # Install linter (redundant but ensures availability)
+      epilogue:
+        always:
+          commands:
+            - echo $(go env GOPATH)/bin  # Debug: show Go bin path
+            - ls $(go env GOPATH)/bin | grep revive  # Debug: verify revive installation
+            - which revive  # Debug: find revive binary location
 
-  # Security scanning block
+  # Security Checks block - runs vulnerability scanning
   - name: "\U0001F510 Security Checks"
     dependencies:
-      - "\U0001F6E0 Setup and Cache"
+      - "\U0001F6E0 Setup and Cache"  # Depends on setup block
     task:
       jobs:
         - name: Security Scan
           commands:
-            # Scan for known vulnerabilities in the code
-            - govulncheck ./...
-            # Scan dependencies for known security issues
-            - go list -json -m all | nancy sleuth
+            - go install golang.org/x/vuln/cmd/govulncheck@latest  # Install vulnerability checker
+            - govulncheck ./...  # Check for known vulnerabilities in dependencies
 
-  # Testing block
+  # Test Suite block - runs unit tests and generates reports
   - name: "\U0001F9EA Test Suite"
     dependencies:
-      - "\U0001F50D Code Quality"
+      - "\U0001F6E0 Setup and Cache"  # Depends on setup block
     task:
-      # Environment variables for testing
       env_vars:
-        - name: GO_TEST_TIMEOUT
-          value: 5m
         - name: GO_TEST_REPORT
-          value: test-results.xml
+          value: test-results.xml  # File to store test results
       jobs:
         - name: "\U0001F7E2 Go Test"
-          # Parallelize tests across 4 jobs
-          parallelism: 4
           commands:
-            # Prepare test packages, excluding vendor directory
-            - go list ./... | grep -v /vendor/ > packages.txt
-            # Split packages across parallel jobs
-            - split -n l/$SEMAPHORE_JOB_COUNT --numeric-suffixes=1 packages.txt packages.
-            - PACKAGE_FILE=packages.$(($SEMAPHORE_JOB_INDEX))
-            # Run tests with coverage and race condition detection
-            - gotestsum --junitfile=$GO_TEST_REPORT --packages-file $PACKAGE_FILE -- -race -coverprofile=coverage.txt -covermode=atomic
-            # Generate coverage report
-            - go tool cover -func=coverage.txt
-      # Always run these commands after tests
+            - go install gotest.tools/gotestsum@latest  # Install test runner with JUnit output support
+            - 'export PATH=$PATH:$(go env GOPATH)/bin'  # Add Go package binaries to PATH
+            - gotestsum --junitfile=$GO_TEST_REPORT -- -coverprofile=coverage.txt -covermode=atomic ./...  # Run tests with coverage
+            - go tool cover -func=coverage.txt  # Display function coverage summary
       epilogue:
         always:
           commands:
-            # Publish test results
-            - test-results publish $GO_TEST_REPORT
-            # Upload coverage to Codecov (only on first job)
-            - |
-              if [ "$SEMAPHORE_JOB_INDEX" = "1" ]; then
-                bash <(curl -s https://codecov.io/bash) -f coverage.txt
-              fi
+            - test-results publish $GO_TEST_REPORT  # Upload test results to Semaphore
 
-  # Build block
+  # Build block - compiles application for different platforms
   - name: "\U0001F4E6 Build"
     dependencies:
-      - "\U0001F9EA Test Suite"
+      - "\U0001F50D Code Quality"  # Depends on code quality checks
+      - "\U0001F510 Security Checks"  # Depends on security checks
+      - "\U0001F9EA Test Suite"  # Depends on tests passing
     task:
       jobs:
         - name: "\U0001F528 Build Binary"
           commands:
-            # Create output directory
-            - mkdir -p bin
-            # Build binaries for multiple platforms
-            - GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o bin/app
-            - GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o bin/app-darwin
-            - GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o bin/app.exe
+            - GOOS=linux GOARCH=amd64 go build -o bin/app  # Build for Linux
+            - artifact push workflow bin/app  # Store Linux binary as artifact
+            - GOOS=darwin GOARCH=amd64 go build -o bin/app-darwin  # Build for MacOS
+            - artifact push workflow bin/app-darwin  # Store MacOS binary as artifact
 
-# Post-pipeline task
+# Actions to perform after all pipeline blocks are completed
 after_pipeline:
   task:
     jobs:
       - name: "Merge Reports \U0001F4CA"
         commands:
-          # Generate a consolidated pipeline report
-          - test-results gen-pipeline-report
+          - test-results gen-pipeline-report  # Generate consolidated test report

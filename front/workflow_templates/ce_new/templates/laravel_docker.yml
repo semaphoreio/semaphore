@@ -8,114 +8,115 @@ name: "🚀 Laravel CI Pipeline"  # Pipeline display name
 # Define the machine type, OS image, and containers
 agent:
   machine:
-    type: {{ machine_type }}
-    os_image: {{ os_image }}
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
+    os_image: {{ os_image }}  # Will be set at runtime based on environment configuration
 
   containers:
     - name: main
-      image: 'registry.semaphoreci.com/php:8.3-apache'  # PHP 8.3 with Apache
-    - name: postgres
-      image: 'registry.semaphoreci.com/postgres:17'  # PostgreSQL 17 for database operations
-    - name: redis
-      image: 'registry.semaphoreci.com/redis:7.0'  # Redis 7.0 for caching
+      image: 'webdevops/php-apache:8.3'  # Using PHP 8.3 with Apache as base container
 
-# Configure when to stop the pipeline early
+# Controls if the pipeline should stop on failure for non-main branches
 fail_fast:
   stop:
-    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+    when: branch != 'main'  # Stop all jobs if any job fails on branches other than main
+
+# Defines auto-cancellation behavior for running and queued pipelines
 auto_cancel:
   running:
-    when: branch != 'main'  # Cancel running pipelines on non-main branches
+    when: branch != 'main'  # Cancel running pipelines when a new commit is pushed (except on main)
   queued:
-    when: branch = 'main'   # Cancel queued pipelines on main branch
+    when: branch = 'main'  # Cancel queued pipelines for main branch when a new commit is pushed
 
-# Commands to run before each job
+# Global configuration applied to all jobs
 global_job_config:
   prologue:
     commands:
-      - checkout                    # Get the code from repository
-      - cache restore             # Restore cached dependencies      
-      - composer install           # Install PHP dependencies
-      - npm ci                     # Install Node.js dependencies
-      
-# Pipeline blocks represent groups of jobs that can run in parallel
+      - apt-get update  # Update package lists
+      - apt-get install -y git nodejs npm  # Install Git, Node.js and NPM for all jobs
+
+# Pipeline blocks (stages) definition
 blocks:
-  # Block for setting up dependencies and caching
-  - name: "🛠 Setup and Cache"
-    dependencies: []
-    task:
-      jobs:
-        - name: Install Dependencies
-          commands:
-            - cache store  # Cache dependencies for future runs
-
-  # Block for asset compilation
-  - name: "🎨 Assets"
-    dependencies: ["🛠 Setup and Cache"]
-    task:
-      jobs:
-        - name: Compile Assets
-          commands:
-            - npm run build        # Build frontend assets
-
-  # Block for code quality checks
-  - name: "🔍 Code Quality"
-    dependencies: ["🛠 Setup and Cache"]
-    task:
-      jobs:
-        - name: Lint and Format
-          commands:
-            - ./vendor/bin/pint --test  # Check code style
-            - ./vendor/bin/phpstan analyze  # Static analysis
-            - npm run lint               # Check JavaScript code
-
-  # Block for security checks
-  - name: "🔐 Security Checks"
-    dependencies: ["🛠 Setup and Cache"]
-    task:
-      jobs:
-        - name: Security Scan
-          commands:
-            - composer audit       # Check PHP dependencies
-            - npm audit           # Check Node.js dependencies
-
-  # Block for running tests
-  - name: "🧪 Test Suite"
-    dependencies: ["🛠 Setup and Cache"]
+  # Dependencies Installation block - sets up the Laravel environment
+  - name: "📦 Install Dependencies"
     task:
       env_vars:
         - name: APP_ENV
-          value: testing
-        - name: DB_CONNECTION
-          value: pgsql
-        - name: DB_HOST
-          value: postgres  # PostgreSQL container name
-        - name: REDIS_HOST
-          value: redis    # Redis container name
+          value: prod  # Set Laravel environment to production
       jobs:
-        - name: "🟢 PHPUnit Tests"
-          parallelism: 4  # Run tests in parallel
+        - name: composer
           commands:
-            - php artisan test --parallel --coverage-clover=report.xml  # Run tests with coverage and generate JUnit report
-      epilogue:
-        always:
-          commands:
-            - '[[ -f report.xml ]] && test-results publish report.xml'  # Publish test results if available           
+            - checkout  # Clone the repository
+            - cache restore  # Restore dependencies from cache
+            - composer install  # Install PHP dependencies
+            - npm install  # Install JavaScript dependencies
+            - cache store  # Store dependencies in cache for future runs
+            - cp .env.example .env  # Create environment configuration
+            - 'php artisan key:generate'  # Generate application encryption key
 
-  # Block for browser tests
-  - name: "🌐 Browser Tests"
-    dependencies: ["🧪 Test Suite"]
+  # Code Analysis block - runs static code analyzers
+  - name: "🔍 Run Code Analysis"
+    task:
+      prologue:
+        commands:
+          - checkout  # Clone the repository
+          - cache restore  # Restore dependencies from cache
+          - composer install  # Install PHP dependencies
+          - npm install  # Install JavaScript dependencies
+      jobs:
+        - name: phpmd
+          commands:
+            - php vendor/bin/phpmd app/ text phpmd_ruleset.xml  # PHP Mess Detector - checks for code quality issues
+
+        - name: phpcs
+          commands:
+            - php vendor/bin/phpcs app --report-full --standard=PSR2  # PHP CodeSniffer - checks coding standards compliance
+
+        - name: phpcpd
+          commands:
+            - 'curl -L https://phar.phpunit.de/phpcpd.phar -o phpcpd.phar'  # Download PHP Copy/Paste Detector
+            - php phpcpd.phar app/ --min-lines=50  # Check for duplicate code with minimum 50 lines
+
+  # Unit Testing block - runs PHPUnit tests
+  - name: "🧪 Run Unit tests"
     task:
       jobs:
-        - name: Dusk Tests
+        - name: phpunit
           commands:
-            - php artisan dusk:chrome-driver  # Install Chrome driver
-            - php artisan serve & sleep 5     # Start test server
-            - php artisan dusk               # Run browser tests
-            
-after_pipeline:
-  task:
-    jobs:
-      - name: "Merge Reports 📊"
-        commands:
-          - test-results gen-pipeline-report  # Generate a summary of the test results
+            - checkout  # Clone the repository
+            - cache restore  # Restore dependencies from cache
+            - composer install  # Install PHP dependencies
+            - npm install  # Install JavaScript dependencies
+            - ./vendor/bin/phpunit  # Run unit tests with PHPUnit
+
+  # Browser Testing block - runs Laravel Dusk tests
+  - name: "🖥️ Run Browser tests"
+    task:
+      jobs:
+        - name: laravel dusk
+          commands:
+            - checkout  # Clone the repository
+            - cp .env.example .env  # Create environment configuration
+            - touch database/database.sqlite  # Create SQLite database file for testing
+            - cache restore  # Restore dependencies from cache
+            - composer install  # Install PHP dependencies
+            - npm install  # Install JavaScript dependencies
+            - 'php artisan key:generate'  # Generate application encryption key
+            - apt-get install -y libgtk-3-0 libnotify-dev libgconf-2-4 libnss3 libxss1 libasound2 libxtst6 xauth xvfb  # Install Chrome dependencies
+            - 'php artisan dusk:update --detect'  # Update Chrome driver
+            - php artisan serve --env=dusk.local --port=8010 &  # Start Laravel development server
+            - php artisan dusk  # Run browser tests with Laravel Dusk
+
+  # Security Testing block - runs security checks
+  - name: "🔒 Run Security Tests"
+    task:
+      jobs:
+        - name: security-checker
+          commands:
+            - checkout  # Clone the repository
+            - apt-get install -y apt-transport-https ca-certificates curl gnupg lsb-release  # Install prerequisites for Docker
+            - curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg  # Add Docker GPG key
+            - echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null  # Add Docker repository
+            - apt-get update  # Update package lists with Docker repository
+            - apt-get install -y docker-ce docker-ce-cli containerd.io  # Install Docker
+            - 'docker pull solune/symfony:7.4-cli'  # Pull Symfony security checker Docker image
+            - 'docker run --rm -v $(pwd):$(pwd) -w $(pwd) solune/symfony:7.4-cli symfony check:security'  # Run security check against dependencies

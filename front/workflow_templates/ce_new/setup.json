@@ -22,14 +22,6 @@
         {
           "value": "docker",
           "label": "Docker"
-        },
-        {
-          "value": "linux",
-          "label": "Linux"
-        },
-        {
-          "value": "macos",
-          "label": "Mac OS"
         }
       ]
     },
