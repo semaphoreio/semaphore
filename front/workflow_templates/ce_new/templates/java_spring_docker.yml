@@ -1,0 +1,84 @@
+# Semaphore CI/CD configuration for Java Spring project
+# This file defines the complete CI/CD pipeline for a Spring Boot application
+
+# Version and name of the pipeline
+version: v1.0
+name: "☕ Java Spring CI Pipeline"
+
+# Agent configuration - defines the execution environment
+agent:
+  machine:
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
+    os_image: {{ os_image }}  # Will be set at runtime based on environment configuration
+  containers:
+    - name: main
+      image: 'maven:3.9.6-eclipse-temurin-17'  # Using Maven with Eclipse Temurin JDK 17
+
+# Controls if the pipeline should stop on failure for non-main branches
+fail_fast:
+  stop:
+    when: branch != 'main'  # Stop all jobs if any job fails on branches other than main
+
+# Defines auto-cancellation behavior for running and queued pipelines
+auto_cancel:
+  running:
+    when: branch != 'main'  # Cancel running pipelines when a new commit is pushed (except on main)
+  queued:
+    when: branch = 'main'  # Cancel queued pipelines for main branch when a new commit is pushed
+
+# Global configuration applied to all jobs
+global_job_config:
+  prologue:
+    commands:
+      - apt-get update  # Update package lists
+      - apt-get install -y openssh-client git  # Install required tools for all jobs
+  env_vars:
+    - name: MAVEN_OPTS
+      value: '-Dmaven.repo.local=.m2'  # Configure Maven to use local .m2 directory for better caching
+
+# Pipeline blocks (stages) definition
+blocks:
+  # Build block - compiles the application and configures JMeter
+  - name: "🏗️ Build"
+    task:
+      jobs:
+        - name: Build
+          commands:
+            - checkout  # Clone the repository
+            - cache restore m2  # Restore Maven dependencies from cache
+            - 'mvn -q package jmeter:configure -Dmaven.test.skip=true'  # Package application and configure JMeter without running tests
+            - cache store m2 ~/.m2  # Store Maven dependencies in cache for future runs
+
+  # Test block - runs unit and integration tests
+  - name: "🧪 Test"
+    task:
+      prologue:
+        commands:
+          - checkout  # Clone the repository
+          - cache restore m2  # Restore Maven dependencies from cache
+          - mvn -q test-compile -Dmaven.test.skip=true  # Compile test classes without running tests
+      jobs:
+        - name: Unit tests
+          commands:
+            - mvn test  # Run unit tests
+
+        - name: Integration tests
+          commands:
+            - mvn test -Pintegration-testing  # Run integration tests using dedicated Maven profile
+
+  # Performance tests block - runs JMeter performance benchmarks
+  - name: "⚡ Performance tests"
+    task:
+      prologue:
+        commands:
+          - checkout  # Clone the repository
+          - cache restore m2  # Restore Maven dependencies from cache
+          - 'mvn -q package jmeter:configure -Dmaven.test.skip=true'  # Package application and configure JMeter
+      jobs:
+        - name: Benchmark
+          commands:
+            - java -version  # Output Java version for debugging
+            - java -jar target/spring-pipeline-demo.jar > /dev/null &  # Start the Spring application in background
+            - sleep 20  # Wait for application to initialize
+            - 'mvn -q jmeter:jmeter'  # Run JMeter performance tests
+            - 'mvn jmeter:results'  # Generate JMeter results reports

@@ -1,6 +1,6 @@
 {
   "title": "Elixir - ETL",
-  "description": "Run ETL pipeline in Docker with PostgreSQL support and push images to AWS ECR. Includes code quality checks and test coverage. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-yellow white'>AWS</span></div>",
+  "description": "Run ETL pipeline in Docker with PostgreSQL support and push images to AWS ECR. Includes code quality checks and test coverage. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-yellow white'>AWS ECR</span></div>",
   "short_description": "Run an Elixir ETL pipeline",
   "group": "ci",
   "language": "Elixir",
