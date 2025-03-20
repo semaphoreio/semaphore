@@ -4,7 +4,7 @@
     <div class="tc mt6 mb4">
         <img decoding="async" width="164" height="23" src="https://semaphoreci.com/wp-content/uploads/2024/04/semaphore-logo.svg" alt="" class="wp-image-23606">
     </div>
-    <div class="mw6 center br4 pa4" style="background:linear-gradient(43deg,rgb(199,218,255) 0%,rgb(194,240,215) 100%);">
+    <div class="mw6 center br4 pa4" style="background:#d7e3fc">
         <div class="bg-white ba pa3 br4" style="border-color: #ccc;">
             <div class="gray tc f4 mt2">
                 Log in to Semaphore
