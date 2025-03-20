@@ -45,7 +45,8 @@ defmodule Support.Factories.Job do
             name: "RSpec 1/3",
             spec: Job.encode_spec(spec()),
             aasm_state: Atom.to_string(state),
-            created_at: @timestamp
+            created_at: @timestamp,
+            updated_at: @timestamp
           },
           params
         )
@@ -72,6 +73,7 @@ defmodule Support.Factories.Job do
             spec: Job.encode_spec(spec()),
             aasm_state: Atom.to_string(state),
             created_at: @timestamp,
+            updated_at: @timestamp,
             enqueued_at: now
           },
           params
@@ -98,6 +100,7 @@ defmodule Support.Factories.Job do
             spec: Job.encode_spec(spec()),
             aasm_state: Atom.to_string(state),
             created_at: @timestamp,
+            updated_at: @timestamp,
             enqueued_at: @timestamp,
             scheduled_at: @timestamp
           },
@@ -125,6 +128,7 @@ defmodule Support.Factories.Job do
             spec: Job.encode_spec(spec()),
             aasm_state: Atom.to_string(state),
             created_at: @timestamp,
+            updated_at: @timestamp,
             enqueued_at: @timestamp,
             scheduled_at: @timestamp
           },
@@ -156,6 +160,7 @@ defmodule Support.Factories.Job do
             agent_auth_token: "lol",
             aasm_state: Atom.to_string(state),
             created_at: @timestamp,
+            updated_at: @timestamp,
             enqueued_at: @timestamp,
             scheduled_at: @timestamp,
             started_at: @timestamp
@@ -189,6 +194,7 @@ defmodule Support.Factories.Job do
             spec: Job.encode_spec(spec()),
             aasm_state: Atom.to_string(state),
             created_at: @timestamp,
+            updated_at: @timestamp,
             enqueued_at: @timestamp,
             scheduled_at: @timestamp,
             dispatched_at: @timestamp,
