@@ -1,0 +1,13 @@
+version: v1.0
+name: Initial Pipeline
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+blocks:
+  - name: 'Block #1'
+    task:
+      jobs:
+        - name: 'Job #1'
+          commands:
+            - checkout

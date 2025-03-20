@@ -3,7 +3,7 @@ defmodule Rbac.Repo.SubjectRoleBinding do
   alias Rbac.Repo.{RbacRole, Subject}
   import Ecto.Query, only: [where: 3]
 
-  @binding_sources ~w(github bitbucket gitlab manually_assigned okta inherited_from_org_role saml_jit)a
+  @binding_sources ~w(github bitbucket gitlab manually_assigned okta inherited_from_org_role)a
 
   schema "subject_role_bindings" do
     belongs_to(:role, RbacRole)
