@@ -206,7 +206,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           workflow.update(:commit_author => meta[:commit_author], :commit_sha => meta[:merge_commit_sha], :git_ref => meta[:ref])
         end
       rescue RepoHost::RemoteException::Unknown => e
-        logger.error("Unknown error", error: e)
+        logger.error("Unknown error", error: e.message)
         raise e.class, e.message
       end
     end

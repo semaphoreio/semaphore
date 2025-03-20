@@ -110,13 +110,13 @@ RSpec.describe RepoHost::Github::Client do
 
     context "when unhandled octokit exception occurs" do
       before do
-        allow_any_instance_of(Octokit::Client).to receive(:pull_request)
+        allow_any_instance_of(Octokit::Client).to receive(:repositories)
           .and_raise(Octokit::TooManyLoginAttempts)
       end
 
       it "raises semaphore's RepoHost::RemoteException::NotFound" do
         expect do
-          @client.pull_request
+          @client.repositories
         end.to raise_error(RepoHost::RemoteException::Unknown)
       end
     end

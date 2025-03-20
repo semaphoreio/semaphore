@@ -316,10 +316,10 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
                                                                  "Oops")
           end
 
-          it "logs the error and raises again again" do
+          it "logs the error and raises again" do
             expect(@logger).to receive(:error).with("Unknown error", error: "Oops")
 
-            expect(described_class.run(@workflow, @logger)).to raise_error('Oops')
+            expect(described_class.run(@workflow, @logger)).to raise_error("Oops")
           end
         end
 
