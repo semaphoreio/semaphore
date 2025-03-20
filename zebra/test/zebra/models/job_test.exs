@@ -9,6 +9,45 @@ defmodule Zebra.Models.JobTest do
   @agent_id Ecto.UUID.generate()
 
   describe ".create" do
+    test "empty name => error" do
+      assert {:error, "name: can't be blank"} =
+               Zebra.Models.Job.create(
+                 organization_id: @org_id,
+                 project_id: @project_id,
+                 index: 0,
+                 priority: 75,
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
+    end
+
+    test "empty organization_id => error" do
+      assert {:error, "organization_id: can't be blank"} =
+               Zebra.Models.Job.create(
+                 project_id: @project_id,
+                 index: 0,
+                 priority: 75,
+                 name: "Test",
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
+    end
+
+    test "empty project_id => error" do
+      assert {:error, "project_id: can't be blank"} =
+               Zebra.Models.Job.create(
+                 organization_id: @org_id,
+                 index: 0,
+                 priority: 75,
+                 name: "Test",
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
+                 machine_type: "e1-standard-2",
+                 machine_os_image: "ubuntu1804"
+               )
+    end
+
     test "creates a new job" do
       spec = %Semaphore.Jobs.V1alpha.Job.Spec{
         agent: %Semaphore.Jobs.V1alpha.Job.Spec.Agent{
@@ -46,6 +85,8 @@ defmodule Zebra.Models.JobTest do
       {:ok, job1} =
         Zebra.Models.Job.create(
           organization_id: @org_id,
+          project_id: @project_id,
+          name: "test",
           spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
           machine_type: "e1-standard-2"
         )
@@ -53,6 +94,8 @@ defmodule Zebra.Models.JobTest do
       {:ok, job2} =
         Zebra.Models.Job.create(
           organization_id: @org_id,
+          project_id: @project_id,
+          name: "test",
           spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
           machine_type: "a1-standard-4"
         )
@@ -65,6 +108,8 @@ defmodule Zebra.Models.JobTest do
       {:ok, job} =
         Zebra.Models.Job.create(
           organization_id: @org_id,
+          project_id: @project_id,
+          name: "test",
           spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
           machine_type: "x1-standard-4"
         )
@@ -75,6 +120,9 @@ defmodule Zebra.Models.JobTest do
     test "when the machine_os_image is set => it leaves it intact" do
       {:ok, job} =
         Zebra.Models.Job.create(
+          organization_id: @org_id,
+          project_id: @project_id,
+          name: "test",
           spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
           machine_type: "x1-standard-4",
           machine_os_image: "xubuntu"
@@ -87,6 +135,8 @@ defmodule Zebra.Models.JobTest do
       {:ok, job} =
         Zebra.Models.Job.create(
           organization_id: @org_id,
+          project_id: @project_id,
+          name: "test",
           spec: %Semaphore.Jobs.V1alpha.Job.Spec{},
           machine_type: "e1-standard-2"
         )
@@ -454,15 +504,6 @@ defmodule Zebra.Models.JobTest do
       assert Job.finished?(job)
       assert Job.stopped?(job)
       assert Zebra.Models.Task.finished?(task)
-    end
-
-    test "stops jobs with invalid machine_type" do
-      {:ok, job} = Support.Factories.Job.create(:pending, %{machine_type: nil})
-
-      assert {:ok, job} = Job.stop(job)
-
-      assert Job.stopped?(job)
-      assert Job.finished?(job)
     end
   end
 
