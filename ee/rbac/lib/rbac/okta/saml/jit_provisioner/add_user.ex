@@ -116,7 +116,9 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       :ok
     else
       {:ok, rbi} = RoleBindingIdentification.new(user_id: user_id, org_id: org_id)
-      {:ok, nil} = RoleManagement.assign_role(rbi, role_id, :saml_jit)
+      # Although this role is assigned through saml_jit, it can be updated and
+      # removed manually, hence it is marked as "manually_assigned"
+      {:ok, nil} = RoleManagement.assign_role(rbi, role_id, :manually_assigned)
 
       Rbac.Events.UserJoinedOrganization.publish(user_id, org_id)
       :ok
