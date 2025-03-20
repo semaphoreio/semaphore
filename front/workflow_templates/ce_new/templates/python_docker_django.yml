@@ -1,97 +1,144 @@
+# Semaphore CI/CD configuration for Django project
+# This file defines the complete CI/CD pipeline for a Django application using Docker
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+# Version and name of the pipeline
 version: v1.0
 name: "🐍 Django CI Pipeline (Docker)"
 
+# Agent configuration - defines the execution environment
 agent:
   machine:
-    type: {{ machine_type }}
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
     os_image: {{ os_image }}  # Empty for Docker compose style pipeline
 
   containers:
-  - name: main
-    image: 'registry.semaphoreci.com/python:3.8-node-browsers'
-    user: root # Explicitly run as root
-  - name: mysql
-    image: 'registry.semaphoreci.com/mysql:8.0'
-    env_vars:
-      - name: MYSQL_ROOT_PASSWORD
-        value: root
+    - name: main
+      image: 'python:3.8'  # Using Python 3.8 as the main container
+      user: root  # Run as root user for full system access
+    - name: mysql
+      image: 'mysql:8.0'  # MySQL 8.0 container for database
+      env_vars:
+        - name: MYSQL_ROOT_PASSWORD
+          value: root  # Setting MySQL root password
+        - name: MYSQL_DATABASE
+          value: pydjango  # Setting default database name
+        - name: MYSQL_ROOT_HOST
+          value: '%'  # Allow connections from any host
 
+# Controls if the pipeline should stop on failure for non-master branches
 fail_fast:
   stop:
-    when: branch != 'master' # Stop execution early for non-master branches
+    when: branch != 'master'  # Stop all jobs if any job fails on branches other than master
 
+# Defines auto-cancellation behavior for running and queued pipelines
 auto_cancel:
   running:
-    when: branch != 'master' # Auto-cancel running pipelines on non-master branches
+    when: branch != 'master'  # Cancel running pipelines when a new commit is pushed (except on master)
   queued:
-    when: branch = 'master' # Auto-cancel queued pipelines for master branch
+    when: branch = 'master'  # Cancel queued pipelines for master branch when a new commit is pushed
 
+# Global configuration applied to all jobs
 global_job_config:
   prologue:
     commands:
-      - checkout # Fetch the latest code from the repository
-      - pip install -r requirements.txt --cache-dir .pip_cache # Install project dependencies
-      - cache restore # Restore cached dependencies
+      - checkout  # Clone the repository
+      - pip install -r requirements.txt --cache-dir .pip_cache  # Install Python dependencies with cache
+      - cache restore  # Restore cached dependencies from previous runs
+  env_vars:
+    - name: DB_HOST
+      value: mysql  # Set database host environment variable
+    - name: DB_USER
+      value: root  # Set database user environment variable
+    - name: DB_PASSWORD
+      value: root  # Set database password environment variable
+    - name: DB_NAME
+      value: pydjango  # Set database name environment variable
 
+# Pipeline blocks (stages) definition
 blocks:
-  - name: "🛠️ Install Dependencies"
-    dependencies: [] # No dependencies; runs at the start
+  # Dependencies Installation block - installs and caches project dependencies
+  - name: "\U0001F6E0️ Install Dependencies"
+    dependencies: []  # No dependencies, runs first
     task:
       jobs:
-        - name: "📦 Install Python Dependencies"
+        - name: "\U0001F4E6 Install Python Dependencies"
           commands:
-            # Try multiple strategies to overcome apt-get lock issues
-            - sudo rm -f /var/lib/apt/lists/lock
-            - sudo rm -f /var/cache/apt/archives/lock
-            - sudo rm -f /var/lib/dpkg/lock*
-            - sudo apt-get clean
-            - sudo apt-get update -y
-            - sudo apt-get install -y python3-dev
-            - sudo apt-get install -y default-libmysqlclient-dev
-            - pip download --cache-dir .pip_cache -r requirements.txt
-            - pip install pylint pylint-django # Install Pylint and Django plugin
-            - cache store
+            - rm -f /var/lib/apt/lists/lock  # Remove potential apt locks
+            - rm -f /var/cache/apt/archives/lock  # Remove potential apt locks
+            - rm -f /var/lib/dpkg/lock*  # Remove potential dpkg locks
+            - apt-get clean  # Clean apt cache
+            - apt-get update -y  # Update package lists
+            - apt-get install -y python3-dev  # Install Python development headers
+            - apt-get install -y default-libmysqlclient-dev  # Install MySQL client development libraries
+            - apt-get install -y default-mysql-client  # Install MySQL client for database access
+            - pip download --cache-dir .pip_cache -r requirements.txt  # Download dependencies to cache
+            - pip install pylint pylint-django  # Install linting tools
+            - cache store  # Store dependencies in cache for future runs
 
-  - name: "🔍 Run Code Analysis"
-    dependencies: 
-      - "🛠️ Install Dependencies" # Ensure dependencies are installed
-    task:
-      jobs:
-        - name: "🛡️ Pylint Analysis"
-          commands:
-            - pylint $(git ls-files | grep -v 'migrations' | grep -v 'settings.py' | grep -v 'manage.py' | grep -E '.py$') -E --load-plugins=pylint_django
-
-  - name: "🧪 Run Unit Tests"
+  # Code Analysis block - runs static code analysis
+  - name: "\U0001F50D Run Code Analysis"
     dependencies:
-      - "🛠️ Install Dependencies" # Ensure dependencies are installed
+      - "\U0001F6E0️ Install Dependencies"  # Depends on dependency installation
     task:
       jobs:
-        - name: "🔎 Test Models"
+        - name: "\U0001F6E1️ Pylint Analysis"
           commands:
-            - python manage.py test tasks.tests.test_models
+            - pylint $(git ls-files | grep -v 'migrations' | grep -v 'settings.py' | grep -v 'manage.py' | grep -E '.py$') -E --load-plugins=pylint_django  # Run Pylint on Python files excluding migrations, settings and manage.py
 
-        - name: "🔎 Test Views"
-          commands:
-            - python manage.py test tasks.tests.test_views
-
-  - name: "🌐 Run Browser Tests"
+  # Unit Tests block - runs Django unit tests
+  - name: "\U0001F9EA Run Unit Tests"
     dependencies:
-      - "🧪 Run Unit Tests" # Ensure unit tests pass first
+      - "\U0001F6E0️ Install Dependencies"  # Depends on dependency installation
     task:
-      env_vars:
-        - name: DB_NAME
-          value: pydjango # Database name for testing
       jobs:
-        - name: "🎭 Browser Tests"
+        - name: "\U0001F50E Test Models"
           commands:
-            - mysql --host=mysql -uroot -proot -e "create database $DB_NAME"
-            - 'nohup python manage.py runserver 0.0.0.0:8000 &'
-            - python manage.py test tasks.tests.test_browser
+            - python manage.py test tasks.tests.test_models  # Run model-specific tests
 
-  - name: "🔐 Run Security Tests"
-    dependencies: [] # Runs independently in parallel
+        - name: "\U0001F50E Test Views"
+          commands:
+            - python manage.py test tasks.tests.test_views  # Run view-specific tests
+
+  # Browser Tests block - runs browser-based integration tests
+  - name: "\U0001F310 Run Browser Tests"
+    dependencies:
+      - "\U0001F9EA Run Unit Tests"  # Depends on unit tests passing
+    task:
+      prologue:
+        commands:
+          - apt-get update  # Update package lists
+          - apt-get install -y default-mysql-client  # Install MySQL client
+          - |
+            # Wait for MySQL to be ready
+            echo "Waiting for MySQL to be ready..."
+            max_attempts=30
+            counter=0
+            while ! mysql --host=mysql -uroot -proot -e "SELECT 1" >/dev/null 2>&1
+            do
+              counter=$((counter+1))
+              if [ $counter -gt $max_attempts ]; then
+                echo "MySQL failed to start in time"
+                exit 1
+              fi
+              echo "MySQL not ready yet. Waiting..."
+              sleep 2
+            done
+            echo "MySQL is ready!"  # Script to wait for MySQL to be available
+      jobs:
+        - name: "\U0001F3AD Browser Tests"
+          commands:
+            - mysql --host=mysql -uroot -proot -e "create database IF NOT EXISTS $DB_NAME"  # Create database if not exists
+            - 'nohup python manage.py runserver 0.0.0.0:8000 &'  # Start Django development server in background
+            - sleep 5  # Wait for server to start
+            - python manage.py test tasks.tests.test_browser  # Run browser tests
+
+  # Security Tests block - runs Django deployment security checks
+  - name: "\U0001F510 Run Security Tests"
+    dependencies: []  # No dependencies, can run in parallel with other blocks
     task:
       jobs:
-        - name: "✅ Deployment Checklist"
+        - name: ✅ Deployment Checklist
           commands:
-            - python manage.py check --deploy --fail-level ERROR
+            - python manage.py check --deploy --fail-level ERROR  # Run Django deployment checklist to identify security issues
