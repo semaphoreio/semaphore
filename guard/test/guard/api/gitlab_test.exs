@@ -2,7 +2,6 @@ defmodule Guard.Api.GitlabTest do
   use Guard.RepoCase
 
   alias Guard.Api.Gitlab
-  alias Guard.Utils.OAuth
 
   setup do
     {:ok, user} = Support.Factories.RbacUser.insert()
@@ -57,9 +56,5 @@ defmodule Guard.Api.GitlabTest do
 
       assert updated_rha.token == "new_token"
     end
-  end
-
-  defp valid_expires_at do
-    (DateTime.utc_now() |> DateTime.to_unix()) + 3600
   end
 end

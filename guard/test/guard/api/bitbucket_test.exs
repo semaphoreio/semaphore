@@ -2,7 +2,6 @@ defmodule Guard.Api.BitbucketTest do
   use Guard.RepoCase
 
   alias Guard.Api.Bitbucket
-  alias Guard.Utils.OAuth
 
   setup do
     {:ok, user} = Support.Factories.RbacUser.insert()
