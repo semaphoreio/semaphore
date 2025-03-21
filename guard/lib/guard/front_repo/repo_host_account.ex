@@ -46,6 +46,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:permission_scope, :string)
     field(:token, :string)
     field(:refresh_token, :string)
+    field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
     timestamps(inserted_at: :created_at, updated_at: :updated_at, type: :utc_datetime)
