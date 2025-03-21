@@ -61,7 +61,7 @@ defmodule Rbac.Okta.Saml.Provisioner.AddUser.Test do
       {:ok, jit_user} =
         Factories.SamlJitUser.insert(
           org_id: @org_id,
-          attributes: %{"memberOf" => ["g1", "g2", "unmapped_group"]}
+          attributes: %{"member" => ["g1", "g2", "unmapped_group"]}
         )
 
       {:ok, group1} = Factories.Group.insert(organization_id: @org_id)
