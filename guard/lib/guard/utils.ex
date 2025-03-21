@@ -45,7 +45,7 @@ defmodule Guard.Utils do
 end
 
 defmodule Guard.Utils.OAuth do
-  def handle_ok_token_response(repo_host_account, body, opts \\ [cache: true]) do
+  def handle_ok_token_response(repo_host_account, body) do
     body =
       if is_binary(body) do
         Jason.decode!(body)
@@ -89,9 +89,10 @@ defmodule Guard.Utils.OAuth do
   ## Options
     - nil_valid: In case expires_at is nil, set token is valid
   """
-  def valid_token?(nil, opts \\ []), do: opts[:nil_valid] == true
+  def valid_token?(expires_at, opts \\ [])
+  def valid_token?(nil, opts), do: opts[:nil_valid] == true
 
-  def valid_token?(expires_at, _opts \\ []) do
+  def valid_token?(expires_at, _opts) do
     current_time = DateTime.utc_now() |> DateTime.to_unix()
     # 5 minutes before expiration
     expires_at - 300 > current_time

@@ -58,7 +58,7 @@ defmodule Guard.Api.Github do
 
     case Tesla.post(client, @oauth_path, nil, query: query_params) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
-        OAuth.handle_ok_token_response(repo_host_account, body, cache: false)
+        OAuth.handle_ok_token_response(repo_host_account, body)
 
       {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
         Logger.warning("Failed to refresh github token, account might be revoked")
