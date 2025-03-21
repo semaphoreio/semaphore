@@ -147,7 +147,7 @@ data:
     multiple_organizations:
       enabled: false
     okta:
-      enabled: false
+      enabled: true
     open_id_connect:
       enabled: true
     open_id_connect_aws_tags:
@@ -163,15 +163,17 @@ data:
     pre_flight_checks:
       enabled: true
     project_level_roles:
-      enabled: false
+      enabled: true
     project_level_secrets:
       enabled: true
+    rbac__custom_roles:
+      enabled: true
     rbac__groups:
-      enabled: false
+      enabled: true
     rbac__saml:
-      enabled: false
+      enabled: true
     rbac__project_roles:
-      enabled: false
+      enabled: true
     restrict_job_ssh_access:
       enabled: false
     scheduler_hook:

@@ -22,12 +22,10 @@ data:
   INTERNAL_API_URL_JOB: zebra-job-api:50051
   INTERNAL_API_URL_LOGHUB2: loghub2-internal-api:50051
   INTERNAL_API_URL_NOTIFICATION: notifications-v1alpha-public-grpc-api:50051
-  INTERNAL_API_URL_OKTA: guard-okta-internal-api:50051
   INTERNAL_API_URL_ORGANIZATION: guard-organization-api:50051
   INTERNAL_API_URL_PFC: pre-flight-checks-hub:50051
   INTERNAL_API_URL_PLUMBER: ppl:50053
   INTERNAL_API_URL_PROJECT: projecthub-grpc:50051
-  INTERNAL_API_URL_RBAC: rbac:50051
   INTERNAL_API_URL_REPOHUB: repohub-internal-api:50051
   INTERNAL_API_URL_REPOSITORY: repository-hub:50051
   INTERNAL_API_URL_REPOSITORY_INTEGRATOR: github-hooks-repo-proxy-api:50051
@@ -40,3 +38,11 @@ data:
   INTERNAL_API_URL_TASK: zebra-task-api:50051
   INTERNAL_API_URL_USER: guard-user-api:50051
   INTERNAL_API_URL_VELOCITY: velocity-hub:50051
+{{- if eq .Values.global.edition "ce" }}
+  INTERNAL_API_URL_RBAC: rbac:50051
+  INTERNAL_API_URL_OKTA: guard-okta-internal-api:50051
+{{- else if .Values.global.edition }}
+  INTERNAL_API_URL_GROUPS: rbac-groups-api:50051
+  INTERNAL_API_URL_OKTA: rbac-okta-api:50051
+  INTERNAL_API_URL_RBAC: rbac-ee-api:50051
+{{- end }}

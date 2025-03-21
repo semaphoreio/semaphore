@@ -10,8 +10,7 @@ FROM ${BUILDER_IMAGE} AS base
 ARG BUILD_ENV=prod
 ENV MIX_ENV=$BUILD_ENV
 
-ARG APP_NAME
-ENV APP_NAME=${APP_NAME}
+ENV APP_NAME="rbac"
 
 RUN echo "Build of $APP_NAME for $MIX_ENV environment started"
 
@@ -81,8 +80,7 @@ ENV LC_ALL=en_US.UTF-8
 WORKDIR "/app"
 RUN chown nobody /app
 
-ARG APP_NAME
-ENV APP_NAME=${APP_NAME}
+ENV APP_NAME="rbac"
 # set runner ENV
 ENV MIX_ENV="prod"
 
