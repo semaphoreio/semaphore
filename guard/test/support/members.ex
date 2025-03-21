@@ -44,4 +44,14 @@ defmodule Support.Members do
 
     FrontRepo.insert(user)
   end
+
+  def valid_expires_at do
+    DateTime.utc_now()
+    |> DateTime.add(3600)
+  end
+
+  def invalid_expires_at do
+    DateTime.utc_now()
+    |> DateTime.add(-3600)
+  end
 end

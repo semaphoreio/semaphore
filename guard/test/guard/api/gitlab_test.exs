@@ -23,6 +23,7 @@ defmodule Guard.Api.GitlabTest do
         refresh_token: "example_refresh_token",
         user_id: user.id,
         token: "token",
+        token_expires_at: Support.Members.valid_expires_at(),
         revoked: false,
         permission_scope: "repo"
       )
@@ -31,14 +32,14 @@ defmodule Guard.Api.GitlabTest do
   end
 
   describe "user_token/1" do
-    test "returns cached token when valid", %{repo_host_account: rha} do
-      cache_key = OAuth.token_cache_key(rha)
-      Cachex.put(:token_cache, cache_key, {"cached_token", valid_expires_at()})
-
-      assert {:ok, {"cached_token", _}} = Gitlab.user_token(rha)
+    test "returns current token when valid", %{repo_host_account: rha} do
+      assert {:ok, {token, _}} = Gitlab.user_token(rha)
+      assert token == rha.token
     end
 
-    test "refreshes token when cache is expired", %{repo_host_account: rha} do
+    test "refreshes token when current one is expired", %{repo_host_account: rha} do
+      rha = Map.update!(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://gitlab.com/oauth/token"} ->
           {:ok,
