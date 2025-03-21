@@ -1,0 +1,74 @@
+image: rbac_ee
+imageTag: latest
+imagePullSecrets: []
+
+logLevel: debug
+
+db:
+  name: guard
+  frontName: front
+
+rbacEEApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: "0.6"
+      memory: 600Mi
+    requests:
+      cpu: "0.3"
+      memory: 300Mi
+  dbPoolSize: 2
+
+rbacEEGroupsApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: "0.6"
+      memory: 600Mi
+    requests:
+      cpu: "0.3"
+      memory: 300Mi
+  dbPoolSize: 2
+
+rbacEEOktaApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 200Mi
+  dbPoolSize: 2
+
+rbacEEOktaHttpApi:
+  replicas: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 300Mi
+    requests:
+      cpu: 25m
+      memory: 200Mi
+  dbPoolSize: 2
+
+rbacEEWorkers:
+  replicas: 1
+  resources:
+    limits:
+      cpu: "0.2"
+      memory: 400Mi
+    requests:
+      cpu: "0.03"
+      memory: 250Mi
+  dbPoolSize: 2
+
+statsd:
+  resources:
+    limits:
+      cpu: "20m"
+      memory: "50Mi"
+    requests:
+      cpu: "5m"
+      memory: "25Mi"
+

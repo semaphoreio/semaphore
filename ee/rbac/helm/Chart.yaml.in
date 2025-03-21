@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rbac_ee
+description: A Helm chart for deploying Semaphore RBAC Enterprise Edition
+type: application
+version: "@chartVersion@"
+appVersion: ""
