@@ -39,12 +39,7 @@ defmodule Rbac.Services.UserDeletedTest do
       :timer.sleep(300)
 
       refute Rbac.Store.RbacUser.fetch(user.id)
-
-      # Reload the saml_jit user to see its current state
-      saml_jit_user_after_deletion = Rbac.Repo.get(Rbac.Repo.SamlJitUser, saml_jit_user.id)
-
-      assert saml_jit_user_after_deletion != nil
-      assert saml_jit_user_after_deletion.user_id == nil
+      refute Rbac.Repo.get(Rbac.Repo.SamlJitUser, saml_jit_user.id)
     end
   end
 
