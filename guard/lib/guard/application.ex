@@ -145,10 +145,6 @@ defmodule Guard.Application do
         active: true
       },
       %{
-        worker: Supervisor.child_spec({Cachex, :token_cache}, id: :token_cache),
-        active: true
-      },
-      %{
         worker:
           Supervisor.child_spec({Cachex, :feature_provider_cache}, id: :feature_provider_cache),
         active: true

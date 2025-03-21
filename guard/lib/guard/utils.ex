@@ -58,20 +58,22 @@ defmodule Guard.Utils.OAuth do
     refresh_token = body["refresh_token"]
 
     expires_at = calc_expires_at(expires_in)
+    nil_valid = repo_host_account.repo_host == "github"
 
-    if valid_token?(expires_at) do
-      update_token_pair(repo_host_account, token, refresh_token)
-    end
-
-    if opts[:cache] do
-      Cachex.put(:token_cache, token_cache_key(repo_host_account), {token, expires_at})
+    if valid_token?(expires_at, nil_valid: nil_valid) do
+      update_token(repo_host_account, token, refresh_token, expires_at)
     end
 
     {:ok, {token, expires_at}}
   end
 
-  defp update_token_pair(repo_host_account, token, refresh_token) do
-    Guard.FrontRepo.RepoHostAccount.update_token_pair(repo_host_account, token, refresh_token)
+  defp update_token(repo_host_account, token, refresh_token, expires_at) do
+    Guard.FrontRepo.RepoHostAccount.update_token(
+      repo_host_account,
+      token,
+      refresh_token,
+      expires_at
+    )
   end
 
   def calc_expires_at(nil), do: nil
@@ -81,16 +83,19 @@ defmodule Guard.Utils.OAuth do
     current_time + expires_in
   end
 
-  # Case where the token never expires
-  def valid_token?(nil), do: true
+  @doc """
+  Validate token
 
-  def valid_token?(expires_at) do
+  ## Options
+    - nil_valid: In case expires_at is nil, set token is valid
+  """
+  def valid_token?(nil, opts \\ []), do: opts[:nil_valid] == true
+
+  def valid_token?(expires_at, _opts \\ []) do
     current_time = DateTime.utc_now() |> DateTime.to_unix()
     # 5 minutes before expiration
     expires_at - 300 > current_time
   end
-
-  def token_cache_key(%{repo_host: repo_host, id: id}), do: "#{repo_host}_token_#{id}"
 end
 
 defmodule Guard.Utils.Http do

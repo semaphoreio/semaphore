@@ -35,18 +35,10 @@ defmodule Guard.Api.Bitbucket do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = OAuth.token_cache_key(repo_host_account)
-
-    case Cachex.get(:token_cache, cache_key) do
-      {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
-        if OAuth.valid_token?(expires_at) do
-          {:ok, {token, expires_at}}
-        else
-          fetch_and_cache_token(repo_host_account)
-        end
-
-      _ ->
-        fetch_and_cache_token(repo_host_account)
+    if OAuth.valid_token?(repo_host_account.token_expires_at, nil_valid: false) do
+      {:ok, {repo_host_account.token, repo_host_account.token_expires_at}}
+    else
+      fetch_token(repo_host_account)
     end
   end
 
@@ -63,7 +55,7 @@ defmodule Guard.Api.Bitbucket do
     end
   end
 
-  defp fetch_and_cache_token(repo_host_account) do
+  defp fetch_token(repo_host_account) do
     body_params = %{
       "grant_type" => "refresh_token",
       "refresh_token" => repo_host_account.refresh_token
