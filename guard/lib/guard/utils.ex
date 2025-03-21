@@ -72,7 +72,7 @@ defmodule Guard.Utils.OAuth do
       repo_host_account,
       token,
       refresh_token,
-      expires_at
+      expires_at |> DateTime.from_unix(:second)
     )
   end
 
