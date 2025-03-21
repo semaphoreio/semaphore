@@ -92,6 +92,10 @@ defmodule Guard.Utils.OAuth do
   def valid_token?(expires_at, opts \\ [])
   def valid_token?(nil, opts), do: opts[:nil_valid] == true
 
+  def valid_token?(%DateTime{} = expires_at, _opts) do
+    expires_at |> DateTime.to_unix() |> valid_token?()
+  end
+
   def valid_token?(expires_at, _opts) do
     current_time = DateTime.utc_now() |> DateTime.to_unix()
     # 5 minutes before expiration

@@ -38,7 +38,7 @@ defmodule Guard.Api.BitbucketTest do
     end
 
     test "refreshes token when current one is expired", %{repo_host_account: rha} do
-      rha = Map.update!(rha, :token_expires_at, Support.Members.invalid_expires_at())
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
 
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
