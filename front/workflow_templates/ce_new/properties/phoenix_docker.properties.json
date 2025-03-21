@@ -1,6 +1,6 @@
 {
   "title": "Elixir - Phoenix",
-  "description": "Run tests and build Docker images for your Phoenix app with PostgreSQL and Redis support. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Redis</span></div>",
+  "description": "Run tests and build Docker images for your Phoenix app with PostgreSQL and Redis support. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-purple white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Redis</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span></div>",
   "short_description": "Containerized CI/CD pipeline for Phoenix web applications",
   "group": "ci",
   "language": "Elixir",

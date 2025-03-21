@@ -458,3 +458,10 @@ sem-popover {
     flex-shrink: 0.2;
     flex-grow: 1;
 }
+
+.select-none {
+  -webkit-user-select: none;
+     -moz-user-select: none;
+      -ms-user-select: none;
+          user-select: none;
+}

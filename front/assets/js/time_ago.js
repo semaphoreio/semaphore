@@ -69,5 +69,5 @@ class TimeAgo extends HTMLElement {
 }
 
 export function defineTimeAgoElement() {
-    customElements.define("time-ago", TimeAgo);
+    !customElements.get('time-ago') && customElements.define("time-ago", TimeAgo);
 }

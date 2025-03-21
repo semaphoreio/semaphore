@@ -815,6 +815,92 @@ defmodule InternalApi.Secrethub.UpdateEncryptedResponse do
   field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
 end
 
+defmodule InternalApi.Secrethub.GetJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t()
+        }
+  defstruct [:org_id, :project_id]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+end
+
+defmodule InternalApi.Secrethub.GetJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t(),
+          claims: [InternalApi.Secrethub.ClaimConfig.t()],
+          is_active: boolean
+        }
+  defstruct [:org_id, :project_id, :claims, :is_active]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
+  field(:is_active, 4, type: :bool)
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t(),
+          claims: [InternalApi.Secrethub.ClaimConfig.t()],
+          is_active: boolean
+        }
+  defstruct [:org_id, :project_id, :claims, :is_active]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
+  field(:is_active, 4, type: :bool)
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t()
+        }
+  defstruct [:org_id, :project_id]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+end
+
+defmodule InternalApi.Secrethub.ClaimConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t(),
+          is_active: boolean,
+          is_mandatory: boolean,
+          is_aws_tag: boolean,
+          is_system_claim: boolean
+        }
+  defstruct [:name, :description, :is_active, :is_mandatory, :is_aws_tag, :is_system_claim]
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+  field(:is_active, 3, type: :bool)
+  field(:is_mandatory, 4, type: :bool)
+  field(:is_aws_tag, 5, type: :bool)
+  field(:is_system_claim, 6, type: :bool)
+end
+
 defmodule InternalApi.Secrethub.SecretService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Secrethub.SecretService"
@@ -864,6 +950,18 @@ defmodule InternalApi.Secrethub.SecretService.Service do
     :CheckoutMany,
     InternalApi.Secrethub.CheckoutManyRequest,
     InternalApi.Secrethub.CheckoutManyResponse
+  )
+
+  rpc(
+    :GetJWTConfig,
+    InternalApi.Secrethub.GetJWTConfigRequest,
+    InternalApi.Secrethub.GetJWTConfigResponse
+  )
+
+  rpc(
+    :UpdateJWTConfig,
+    InternalApi.Secrethub.UpdateJWTConfigRequest,
+    InternalApi.Secrethub.UpdateJWTConfigResponse
   )
 end
 
