@@ -57,9 +57,9 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
   test "valid SAML XML with attributes => returns a parsed SamlPayload" do
     # When processing assertions, '/' should be trimmerd, and first character should always be lowercase
     attributes = [
-      {"member", "group1"},
-      {"member", "group2"},
-      {"/Role/", "user"}
+      {"member", "group1/"},
+      {"member", "/group2"},
+      {"/Role/", "User"}
     ]
 
     payload =
