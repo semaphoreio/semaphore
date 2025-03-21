@@ -89,10 +89,21 @@ defmodule Front.Models.Artifacthub do
     end)
   end
 
-  def signed_url(project_id, source_kind, source_id, relative_path, method \\ "GET") do
+  def fetch_file(store_id, source_kind, source_id, relative_path) do
+    with {:ok, url} <- signed_url_with_store_id(store_id, source_kind, source_id, relative_path),
+         {:ok, response} <- HTTPoison.get(url),
+         %{status_code: 200, body: content} <- response do
+      {:ok, content}
+    else
+      %{status_code: 404, body: error} -> {:error, {:not_found, error}}
+      error = {:error, _e} -> error
+      error -> {:error, error}
+    end
+  end
+
+  def signed_url_with_store_id(store_id, source_kind, source_id, relative_path, method \\ "GET") do
     Watchman.benchmark("artifacthub.get_signed_url_request.duration", fn ->
       with req_path <- Resource.request_path(source_kind, source_id, relative_path),
-           {:ok, store_id} <- get_artifact_store_id(project_id),
            {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
            request <-
              GetSignedURLRequest.new(artifact_id: store_id, path: req_path, method: method),
@@ -106,6 +117,19 @@ defmodule Front.Models.Artifacthub do
           {:error, :grpc_req_failed}
       end
     end)
+  end
+
+  def signed_url(project_id, source_kind, source_id, relative_path, method \\ "GET") do
+    case get_artifact_store_id(project_id) do
+      {:ok, store_id} ->
+        signed_url_with_store_id(store_id, source_kind, source_id, relative_path, method)
+
+      e ->
+        Watchman.increment("artifacthub.get_signed_url.failed")
+        Logger.error("Failed to get url: #{inspect(e)}")
+
+        {:error, :grpc_req_failed}
+    end
   end
 
   defp parse_list_response(response, source_kind, source_id, path) do

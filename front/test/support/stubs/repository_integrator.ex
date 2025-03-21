@@ -33,11 +33,23 @@ defmodule Support.Stubs.RepositoryIntegrator do
     GrpcMock.stub(RepositoryIntegratorMock, :get_repositories, get_repositories_response)
     GrpcMock.stub(RepositoryIntegratorMock, :check_token, check_token_response)
     GrpcMock.stub(RepositoryIntegratorMock, :get_file, get_file_response)
+    GrpcMock.stub(RepositoryIntegratorMock, :get_token, &__MODULE__.get_token/2)
 
     GrpcMock.stub(
       RepositoryIntegratorMock,
       :github_installation_info,
       github_installation_info_response
     )
+  end
+
+  def get_token(request, _) do
+    if request.user_id == "invalid_response" do
+      raise GRPC.RPCError, status: :invalid_argument, message: "Invalid request."
+    else
+      %InternalApi.RepositoryIntegrator.GetTokenResponse{
+        token: "valid_token_value",
+        expires_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+      }
+    end
   end
 end

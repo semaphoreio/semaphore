@@ -232,7 +232,7 @@ function renderCommitPanel(workflow, commiterAvatar, initialBranch, pushBranch) 
     </a>
   </div>`
 
-  let commitNote = `<p class="f6 measure-narrow mb1">
+  let commitNote = `<p class="f6 w-100 w-two-thirds-m mb1" id=workflow-editor-commit-dialog-note>
     This will commit and push the configuration to repository and trigger the run on Semaphore.
   </p>`
 
