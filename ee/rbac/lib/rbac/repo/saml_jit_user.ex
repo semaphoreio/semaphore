@@ -49,8 +49,18 @@ defmodule Rbac.Repo.SamlJitUser do
     end
   end
 
-  def connect_user(%__MODULE__{} = user, user_id) do
-    changeset(user, %{user_id: user_id}) |> Repo.update()
+  def find_by_user_id(user_id) do
+    __MODULE__
+    |> where([u], u.user_id == ^user_id)
+    |> Repo.all()
+  end
+
+  def connect_user(%__MODULE__{} = saml_jit_user, user_id) do
+    changeset(saml_jit_user, %{user_id: user_id}) |> Repo.update()
+  end
+
+  def disconnect_user(%__MODULE__{} = saml_jit_user) do
+    changeset(saml_jit_user, %{user_id: nil}) |> Repo.update()
   end
 
   def construct_name(%__MODULE__{} = user) do
