@@ -543,6 +543,7 @@ defmodule InternalApi.Projecthub.Project.Status.State do
   field(:INITIALIZING, 0)
   field(:READY, 1)
   field(:ERROR, 2)
+  field(:ONBOARDING, 3)
 end
 
 defmodule InternalApi.Projecthub.ListRequest do
@@ -577,6 +578,56 @@ defmodule InternalApi.Projecthub.ListResponse do
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
   field(:pagination, 2, type: InternalApi.Projecthub.PaginationResponse)
   field(:projects, 3, repeated: true, type: InternalApi.Projecthub.Project)
+end
+
+defmodule InternalApi.Projecthub.ListKeysetRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          metadata: InternalApi.Projecthub.RequestMeta.t(),
+          page_size: integer,
+          page_token: String.t(),
+          direction: integer,
+          owner_id: String.t(),
+          repo_url: String.t(),
+          created_after: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:metadata, :page_size, :page_token, :direction, :owner_id, :repo_url, :created_after]
+
+  field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
+  field(:page_size, 2, type: :int32)
+  field(:page_token, 3, type: :string)
+  field(:direction, 4, type: InternalApi.Projecthub.ListKeysetRequest.Direction, enum: true)
+  field(:owner_id, 5, type: :string)
+  field(:repo_url, 6, type: :string)
+  field(:created_after, 7, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Projecthub.ListKeysetRequest.Direction do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
+end
+
+defmodule InternalApi.Projecthub.ListKeysetResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          metadata: InternalApi.Projecthub.ResponseMeta.t(),
+          projects: [InternalApi.Projecthub.Project.t()],
+          next_page_token: String.t(),
+          previous_page_token: String.t()
+        }
+  defstruct [:metadata, :projects, :next_page_token, :previous_page_token]
+
+  field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
+  field(:projects, 2, repeated: true, type: InternalApi.Projecthub.Project)
+  field(:next_page_token, 3, type: :string)
+  field(:previous_page_token, 4, type: :string)
 end
 
 defmodule InternalApi.Projecthub.DescribeRequest do
@@ -645,12 +696,14 @@ defmodule InternalApi.Projecthub.CreateRequest do
 
   @type t :: %__MODULE__{
           metadata: InternalApi.Projecthub.RequestMeta.t(),
-          project: InternalApi.Projecthub.Project.t()
+          project: InternalApi.Projecthub.Project.t(),
+          skip_onboarding: boolean
         }
-  defstruct [:metadata, :project]
+  defstruct [:metadata, :project, :skip_onboarding]
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
+  field(:skip_onboarding, 3, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.CreateResponse do
@@ -673,12 +726,14 @@ defmodule InternalApi.Projecthub.UpdateRequest do
 
   @type t :: %__MODULE__{
           metadata: InternalApi.Projecthub.RequestMeta.t(),
-          project: InternalApi.Projecthub.Project.t()
+          project: InternalApi.Projecthub.Project.t(),
+          omit_schedulers_and_tasks: boolean
         }
-  defstruct [:metadata, :project]
+  defstruct [:metadata, :project, :omit_schedulers_and_tasks]
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
+  field(:omit_schedulers_and_tasks, 3, type: :bool)
 end
 
 defmodule InternalApi.Projecthub.UpdateResponse do
@@ -989,6 +1044,32 @@ defmodule InternalApi.Projecthub.GithubAppSwitchResponse do
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
 
+defmodule InternalApi.Projecthub.FinishOnboardingRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          metadata: InternalApi.Projecthub.RequestMeta.t(),
+          id: String.t()
+        }
+  defstruct [:metadata, :id]
+
+  field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
+  field(:id, 2, type: :string)
+end
+
+defmodule InternalApi.Projecthub.FinishOnboardingResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          metadata: InternalApi.Projecthub.ResponseMeta.t()
+        }
+  defstruct [:metadata]
+
+  field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
+end
+
 defmodule InternalApi.Projecthub.ProjectCreated do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -1056,6 +1137,13 @@ defmodule InternalApi.Projecthub.ProjectService.Service do
   use GRPC.Service, name: "InternalApi.Projecthub.ProjectService"
 
   rpc(:List, InternalApi.Projecthub.ListRequest, InternalApi.Projecthub.ListResponse)
+
+  rpc(
+    :ListKeyset,
+    InternalApi.Projecthub.ListKeysetRequest,
+    InternalApi.Projecthub.ListKeysetResponse
+  )
+
   rpc(:Describe, InternalApi.Projecthub.DescribeRequest, InternalApi.Projecthub.DescribeResponse)
 
   rpc(
@@ -1109,6 +1197,12 @@ defmodule InternalApi.Projecthub.ProjectService.Service do
     :GithubAppSwitch,
     InternalApi.Projecthub.GithubAppSwitchRequest,
     InternalApi.Projecthub.GithubAppSwitchResponse
+  )
+
+  rpc(
+    :FinishOnboarding,
+    InternalApi.Projecthub.FinishOnboardingRequest,
+    InternalApi.Projecthub.FinishOnboardingResponse
   )
 end
 
