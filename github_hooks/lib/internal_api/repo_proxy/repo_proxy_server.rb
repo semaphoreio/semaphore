@@ -51,11 +51,11 @@ module InternalApi
         end
       end
 
-      define_rpc :create do |req|
+      define_rpc :create do |req, logger|
         project = ::Project.find(req.project_id)
 
         if project.repository.integration_type.include?("github")
-          create_for_github_project(req)
+          create_for_github_project(req, logger)
         else
           create_via_hooks_api(req)
         end
@@ -66,7 +66,7 @@ module InternalApi
         client.create(req)
       end
 
-      def create_for_github_project(req)
+      def create_for_github_project(req, logger)
         project = ::Project.find(req.project_id)
         user    = ::User.find(req.requester_id)
 
@@ -155,6 +155,9 @@ module InternalApi
       rescue ::RepoHost::RemoteException::NotFound
         workflow.update(:state => Workflow::STATE_NOT_FOUND_REPO)
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
+      rescue ::RepoHost::RemoteException::Unknown => e
+        logger.error("Unknown error", error: e.message)
+        raise GRPC::Unknown, "Unknown error"
       rescue ::ActiveRecord::RecordNotFound => e
         if e.model == User
           raise GRPC::NotFound, "Requester not found #{req.requester_id}"

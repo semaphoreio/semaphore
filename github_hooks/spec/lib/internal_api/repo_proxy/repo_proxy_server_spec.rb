@@ -217,6 +217,32 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     end
   end
 
+  describe "#create" do
+    before "when unknown remote error is raised" do
+      allow(InternalApi::RepoProxy::PayloadFactory).to receive(
+        :create
+      ).and_raise(RepoHost::RemoteException::Unknown, "Oops")
+
+      owner = FactoryBot.create(:user, :github_connection)
+      repository = FactoryBot.create(:repository, :name => "sandbox", :owner => "renderedtext",
+                                                  :integration_type => "github_app")
+      project = FactoryBot.create(:project, :repository => repository)
+      @req = InternalApi::RepoProxy::CreateRequest.new(
+        :project_id => project.id,
+        :requester_id => owner.id,
+        :git => InternalApi::RepoProxy::CreateRequest::Git.new(
+          reference: "refs/pull/123"
+        )
+      )
+    end
+
+    it "returns an unknown error" do
+      expect do
+        server.create(@req, call)
+      end.to raise_error(GRPC::Unknown)
+    end
+  end
+
   describe "#schedule_blocked_hook" do
     context "when the hook is present" do
       before do
