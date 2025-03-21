@@ -48,10 +48,12 @@ defmodule Support.Members do
   def valid_expires_at do
     DateTime.utc_now()
     |> DateTime.add(3600)
+    |> DateTime.to_unix()
   end
 
   def invalid_expires_at do
     DateTime.utc_now()
     |> DateTime.add(-3600)
+    |> DateTime.to_unix()
   end
 end
