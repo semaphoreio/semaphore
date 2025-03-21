@@ -248,9 +248,9 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       }
 
       {:ok, _} = state.grpc_channel |> Stub.modify_group(request)
-      assert_request_created(user1.id, state.group.id, "add")
-      assert_request_created(user2.id, state.group.id, "add")
-      assert_request_created(user3.id, state.group.id, "remove")
+      assert_request_created(user1.id, state.group.id, :add)
+      assert_request_created(user2.id, state.group.id, :add)
+      assert_request_created(user3.id, state.group.id, :remove)
       assert Rbac.Repo.GroupManagementRequest |> Rbac.Repo.aggregate(:count, :id) == 3
     end
   end

@@ -26,10 +26,10 @@ defmodule Rbac.Workers.GroupManagement do
         {:ok, group} = Rbac.Store.Group.fetch_group(req.group_id)
 
         case req.action do
-          "add" ->
+          :add ->
             :ok = Rbac.Store.Group.add_to_group(group, req.user_id)
 
-          "remove" ->
+          :remove ->
             :ok = Rbac.Store.Group.remove_from_group(group, req.user_id)
 
           other ->

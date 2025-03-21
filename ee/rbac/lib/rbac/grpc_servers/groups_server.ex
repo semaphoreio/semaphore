@@ -27,7 +27,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
         Rbac.TempSync.assign_org_member_role(created_group.id, org_id)
 
         Enum.each(group.member_ids, fn member_id ->
-          Rbac.Repo.GroupManagementRequest.create_new_request(member_id, created_group.id, "add")
+          Rbac.Repo.GroupManagementRequest.create_new_request(member_id, created_group.id, :add)
         end)
 
         %Groups.CreateGroupResponse{group: construct_grpc_group(created_group)}
@@ -73,8 +73,8 @@ defmodule Rbac.GrpcServers.GroupsServer do
     with {:ok, _} <- Group.fetch_group(req.group.id),
          {:ok, group} <-
            Group.modify_metadata(req.group.id, req.group.name, req.group.description) do
-      GroupManagementRequest.create_new_request(req.members_to_remove, group.id, "remove")
-      GroupManagementRequest.create_new_request(req.members_to_add, group.id, "add")
+      GroupManagementRequest.create_new_request(req.members_to_remove, group.id, :remove)
+      GroupManagementRequest.create_new_request(req.members_to_add, group.id, :add)
       %Groups.ModifyGroupResponse{group: construct_grpc_group(group)}
     else
       {:error, :not_found} ->

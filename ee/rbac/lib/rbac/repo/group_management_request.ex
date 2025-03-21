@@ -8,7 +8,7 @@ defmodule Rbac.Repo.GroupManagementRequest do
     field(:state, Ecto.Enum, values: [:pending, :processing, :done, :failed], default: :pending)
     field(:user_id, :binary_id)
     field(:group_id, :binary_id)
-    field(:action, :string)
+    field(:action, Ecto.Enum, values: [:add, :remove])
     field(:retries, :integer, default: 0)
 
     timestamps()

@@ -13,9 +13,9 @@ defmodule Rbac.Services.UserDeleted do
 
       log(event.user_id, "Processing started")
 
-      if Rbac.OIDC.enabled?() do
-        handle_oidc_sync(event.user_id)
-      end
+      delete_oidc_user(event.user_id)
+      disconnect_okta_user(event.user_id)
+      delete_saml_jit_user(event.user_id)
 
       Rbac.Store.RbacUser.delete(event.user_id)
 
@@ -23,7 +23,7 @@ defmodule Rbac.Services.UserDeleted do
     end)
   end
 
-  defp handle_oidc_sync(user_id) do
+  defp delete_oidc_user(user_id) do
     case Rbac.Store.OIDCUser.fetch_by_user_id(user_id) do
       {:ok, oidc_user} ->
         log(user_id, "OIDC user exists, deleting")
@@ -33,6 +33,30 @@ defmodule Rbac.Services.UserDeleted do
       {:error, :not_found} ->
         log(user_id, "OIDC user does not exist, not syncing")
     end
+  end
+
+  defp disconnect_okta_user(user_id) do
+    okta_users = Rbac.Repo.OktaUser.find_by_user_id(user_id)
+
+    if Enum.empty?(okta_users) do
+      log(user_id, "No Okta users found, not syncing")
+    else
+      log(user_id, "Found #{length(okta_users)} Okta users, disconnecting")
+
+      Enum.each(okta_users, fn okta_user ->
+        Rbac.Repo.OktaUser.disconnect_user(okta_user)
+      end)
+    end
+  end
+
+  defp delete_saml_jit_user(user_id) do
+    saml_users = Rbac.Repo.SamlJitUser.find_by_user_id(user_id)
+
+    log(user_id, "Found #{length(saml_users)} SAML JIT users, deleting")
+
+    Enum.each(saml_users, fn saml_user ->
+      Rbac.Repo.SamlJitUser.delete(saml_user)
+    end)
   end
 
   defp log(level \\ :info, user_id, message) do

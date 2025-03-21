@@ -71,6 +71,12 @@ defmodule Rbac.Repo.OktaUser do
     end
   end
 
+  def find_by_user_id(user_id) do
+    __MODULE__
+    |> where([u], u.user_id == ^user_id)
+    |> Repo.all()
+  end
+
   @spec list(Rbac.Repo.OktaIntegration.t(), integer(), integer(), [Rbac.Okta.SCIM.Filter.t()]) ::
           any()
   def list(integration, start_index, count, filters) do
@@ -155,6 +161,10 @@ defmodule Rbac.Repo.OktaUser do
 
   def connect_user(okta_user, user_id) do
     changeset(okta_user, %{user_id: user_id}) |> Repo.update()
+  end
+
+  def disconnect_user(okta_user) do
+    changeset(okta_user, %{user_id: nil}) |> Repo.update()
   end
 
   def reload_with_lock_and_transaction(okta_user_id, fun) do

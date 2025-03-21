@@ -44,12 +44,15 @@ defmodule Rbac.Okta.Saml.PayloadParser do
 
   defp construct_attributes_map(attributes) do
     Enum.reduce(attributes, %{}, fn {name, value}, acc ->
-      <<first::utf8, rest::binary>> = name |> Atom.to_string() |> String.trim("/")
-      name = <<String.downcase(<<first::utf8>>)::binary, rest::binary>>
-
-      value = to_string(value)
+      name = name |> Atom.to_string() |> sanitize_string()
+      value = to_string(value) |> sanitize_string()
       Map.update(acc, name, [value], &(&1 ++ [value]))
     end)
+  end
+
+  defp sanitize_string(string) do
+    <<first::utf8, rest::binary>> = string |> String.trim("/")
+    <<String.downcase(<<first::utf8>>)::binary, rest::binary>>
   end
 
   defp validate_assertion(saml, sp) do

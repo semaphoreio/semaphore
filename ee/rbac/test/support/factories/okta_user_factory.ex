@@ -13,7 +13,7 @@ defmodule Support.Factories.OktaUser do
   def insert(options \\ []) do
     %OktaUser{
       org_id: get_id(options[:org_id]),
-      integration_id: get_id(options[:integration_id]),
+      integration_id: get_integration_id(options[:integration_id]),
       payload: get_payload(options[:payload]),
       state: get_state(options[:state]),
       user_id: get_id(options[:user_id]),
@@ -24,6 +24,11 @@ defmodule Support.Factories.OktaUser do
 
   defp get_id(nil), do: UUID.generate()
   defp get_id(id), do: id
+
+  defp get_integration_id(nil),
+    do: Support.Factories.OktaIntegration.insert() |> elem(1) |> Map.get(:id)
+
+  defp get_integration_id(id), do: id
 
   defp get_string(nil), do: for(_ <- 1..10, into: "", do: <<Enum.random(~c"abcdefghijk")>>)
   defp get_string(string), do: string
