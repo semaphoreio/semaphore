@@ -51,10 +51,16 @@ defmodule FrontWeb.TestResultsController do
       {:ok, org} = Async.await(fetch_organization)
       {:ok, {:ok, junit_json_url}} = Async.await(fetch_junit_json_url)
 
+      badge_pollman = %{
+        state: job.state,
+        href: "/jobs/#{job.id}/status_badge"
+      }
+
       assigns = %{
         js: "testResults",
         job_id: job.id,
-        json_artifacts_url: junit_json_url
+        json_artifacts_url: junit_json_url,
+        badge_pollman: badge_pollman
       }
 
       case conn.assigns.authorization do

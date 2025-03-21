@@ -5,7 +5,6 @@ import { DuplicateWarning } from './duplicate_warning';
 import { ProjectStatus } from './project_status';
 import { ProviderProvider } from './provider_provider';
 import { ScopeContent } from './scope_content';
-import { YamlEditor } from './yaml_editor';
 import { ProgressBar } from './progress_bar';
 import { FilterButton } from './filter_button';
 import { PipelinePreview } from './pipeline_preview';
@@ -19,7 +18,6 @@ export {
   ProjectStatus,
   ProviderProvider,
   ScopeContent,
-  YamlEditor,
   ProgressBar,
   FilterButton,
   PipelinePreview,

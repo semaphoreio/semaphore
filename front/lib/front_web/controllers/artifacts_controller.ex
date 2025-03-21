@@ -111,6 +111,11 @@ defmodule FrontWeb.ArtifactsController do
       source_kind = "jobs"
       source_id = job.id
 
+      badge_pollman = %{
+        state: job.state,
+        href: "/jobs/#{job.id}/status_badge"
+      }
+
       block =
         Enum.find(pipeline.blocks, fn block ->
           Enum.any?(block.jobs, fn job -> job.id == source_id end)
@@ -126,6 +131,7 @@ defmodule FrontWeb.ArtifactsController do
             |> Map.put(:workflow_name, hook.commit_message |> String.split("\n") |> hd)
             |> Map.put(:pipeline, pipeline)
             |> Map.put(:block, block)
+            |> Map.put(:badge_pollman, badge_pollman)
             |> Map.put(:title, "Job Artifacts・#{project.name}・#{organization.name}")
             |> Front.Breadcrumbs.Artifacts.construct(conn, source_kind)
 

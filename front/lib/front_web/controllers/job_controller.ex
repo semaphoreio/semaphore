@@ -103,6 +103,11 @@ defmodule FrontWeb.JobController do
       href: "/jobs/#{job_id}/status"
     }
 
+    badge_pollman = %{
+      state: pollman_state,
+      href: "/jobs/#{conn.assigns.job.id}/status_badge"
+    }
+
     log_state = %{
       dark: memory["logDark"],
       wrap: memory["logWrap"],
@@ -117,6 +122,7 @@ defmodule FrontWeb.JobController do
     assigns =
       %{
         pollman: pollman,
+        badge_pollman: badge_pollman,
         log_state: log_state,
         finished_job: finished_job,
         token: token,
@@ -185,6 +191,22 @@ defmodule FrontWeb.JobController do
       |> put_layout(false)
       |> render("_state.html", data)
     end)
+  end
+
+  def status_badge(conn, _params) do
+    pollman_state = extract_state(conn.assigns.job.state)
+
+    badge_pollman = %{
+      state: pollman_state,
+      href: "/jobs/#{conn.assigns.job.id}/status_badge"
+    }
+
+    data = [badge_pollman: badge_pollman]
+
+    conn
+    |> put_view(FrontWeb.JobView)
+    |> put_layout(false)
+    |> render("_status_badge.html", data)
   end
 
   def stop(conn, _params) do

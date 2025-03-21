@@ -24,6 +24,7 @@ blocks:
                 - "APIv1alpha"
                 - "APIv2"
                 - "ArtifactHub"
+                - "Audit"
                 - "Auth"
                 - "Badge"
                 - "BranchHub"
@@ -112,3 +113,11 @@ promotions:
           options:
             - gke
             - single-vm
+        - name: SEMAPHORE_EDITION
+          required: true
+          options:
+            - ce
+            - ee
+          default_value: ce
+          description: "The edition of Semaphore to install - Community (ce) or Enterprise (ee)."
+

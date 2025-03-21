@@ -1,0 +1,12 @@
+{
+  "title": "Laravel",
+  "description": "Laravel CI pipeline running on PHP 8.3 with Apache. Features dependency installation, code analysis with PHPMD/PHPCS/PHPCPD, unit testing with PHPUnit, browser testing with Laravel Dusk, and security scanning. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>PHP</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Laravel</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>PHPUnit</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Dusk</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Docker</span></div>",
+  "short_description": "Containerized CI/CD pipeline for Laravel applications",
+  "group": "ci",
+  "language": "php",
+  "environment": "docker",
+  "use_case": "ci_pipeline",
+  "icon": "lang-php.svg",
+  "template_path": "templates/laravel_docker.yml",
+  "workflow_tip": "none"
+}

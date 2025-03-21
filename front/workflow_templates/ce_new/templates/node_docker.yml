@@ -1,0 +1,78 @@
+# Semaphore CI/CD configuration for Node.js project
+# This file defines the complete CI/CD pipeline for a Node.js application
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+# Version and name of the pipeline
+version: v1.0
+name: "\U0001F4AB Node - CI Pipeline"
+
+# Agent configuration - defines the execution environment
+agent:
+  machine:
+    type: s1-kubernetes  # Using Kubernetes-based machine type
+    os_image: ''  # No specific OS image, using container defaults
+  containers:
+    - name: main
+      image: 'node:18'  # Using Node.js 18 as the main container
+    - name: postgres
+      image: 'postgres:15'  # PostgreSQL 15 container for database testing
+      env_vars:
+        - name: POSTGRES_PASSWORD
+          value: postgres  # Setting PostgreSQL connection credentials
+        - name: POSTGRES_USER
+          value: postgres  # Database username
+        - name: POSTGRES_DB
+          value: app_test  # Test database name
+    - name: redis
+      image: 'redis:7.0'  # Redis 7.0 container for caching/session store
+
+# Global configuration applied to all jobs
+global_job_config:
+  prologue:
+    commands:
+      - checkout  # Clone the repository
+      - npm install  # Install dependencies for all jobs
+
+# Pipeline blocks (stages) definition
+blocks:
+  # Lint & Code Quality block - enforces code standards
+  - name: "\U0001F50D Lint & Code Quality"
+    task:
+      jobs:
+        - name: Lint
+          commands:
+            - npm run lint  # Run ESLint or other linting tools
+
+  # Security Scan block - checks for vulnerabilities
+  - name: "\U0001F512 Security Scan"
+    task:
+      jobs:
+        - name: NPM Audit
+          commands:
+            - npm audit --production  # Audit production dependencies for security issues
+        - name: Node Check Outdated
+          commands:
+            - npm outdated  # Check for outdated packages that may need updates
+
+  # Tests block - runs various test suites in parallel
+  - name: "\U0001F9EA Tests in Parallel"
+    task:
+      jobs:
+        - name: API Tests
+          commands:
+            - 'npm run test:api'  # Run API-specific tests
+        - name: Integration Tests
+          commands:
+            - 'npm run test:integration'  # Run integration tests
+        - name: E2E Tests
+          commands:
+            - 'npm run test:e2e'  # Run end-to-end tests
+
+  # Documentation block - generates project documentation
+  - name: "\U0001F4DD Documentation"
+    task:
+      jobs:
+        - name: Generate Docs
+          commands:
+            - 'if npm run | grep -q "docs"; then npm run docs; elif npm run | grep -q "doc"; then npm run doc; else echo "No docs script found, skipping documentation generation"; fi'  # Flexible documentation generation that checks for doc scripts

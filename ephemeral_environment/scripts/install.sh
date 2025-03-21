@@ -22,6 +22,9 @@ echo "Using DOMAIN: $DOMAIN"
 
 # Base args
 
+# Set default edition to ce if not specified
+SEMAPHORE_EDITION=${SEMAPHORE_EDITION:-ce}
+
 args=(
   "--set"
   "global.rootUser.githubLogin=on-prem-tester"
@@ -39,7 +42,20 @@ args=(
   "global.domain.name=${DOMAIN}"
   "--set"
   "ingress.ssl.certName=${CERT_NAME}"
+  "--set"
+  "global.edition=${SEMAPHORE_EDITION}"
 )
+
+# if edition is ee, add arguments for agent to support pre-flight-checks
+cp resources/agent-pre-job-hook.sh agent-pre-job-hook.sh
+if [ "$SEMAPHORE_EDITION" = "ee" ]; then
+  args+=(
+    "--set"
+    "controller.agent.defaultImage=hexpm/elixir:1.12.3-erlang-24.3.4.13-ubuntu-focal-20230126"
+    "--set"
+    "controller.agent.defaultPodSpec.preJobHook.customScript=$(cat agent-pre-job-hook.sh | base64 -w 0)"
+  )
+fi
 
 # Provider-specific base args
 
@@ -118,9 +134,10 @@ if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "single-vm" ]]; then
     "cert.fullchain.cer"
     "cert.key"
     "github-app-secret.yaml"
-    "bitbucket-app-secret.yaml" 
+    "bitbucket-app-secret.yaml"
     "gitlab-app-secret.yaml"
     "vm-install.sh"
+    "agent-pre-job-hook.sh"
   )
 
   for file in "${files[@]}"; do
@@ -132,7 +149,7 @@ if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "single-vm" ]]; then
   #
   gcloud compute ssh \
     --ssh-key-file private-ssh-key test-${CLOUD_TEST_ENV_PREFIX} \
-    --command "bash ~/vm-install.sh ${IP} ${DOMAIN} ${package_name}"
+    --command "SEMAPHORE_EDITION=${SEMAPHORE_EDITION} bash ~/vm-install.sh ${IP} ${DOMAIN} ${package_name}"
 
 elif [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" =~ ^(gke|eks)$ ]]; then
   if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "gke" ]]; then

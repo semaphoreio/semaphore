@@ -15,6 +15,9 @@ dependencies:
   - name: artifacthub
     version: "@chartVersion@"
     repository: "file://../artifacthub/helm"
+  - name: audit
+    version: "@chartVersion@"
+    repository: "file://../ee/audit/helm"
   - name: auth
     version: "@chartVersion@"
     repository: "file://../auth/helm"
@@ -27,8 +30,6 @@ dependencies:
   - name: gofer
     version: "@chartVersion@"
     repository: "file://../ee/gofer/helm"
-    tags:
-      - enterprise
   - name: secrethub
     version: "@chartVersion@"
     repository: "file://../secrethub/helm"
@@ -110,10 +111,6 @@ dependencies:
   - name: pre-flight-checks-hub
     version: "@chartVersion@"
     repository: "file://../ee/pre_flight_checks/helm"
-    tags:
-      - enterprise
   - name: velocity-hub
     version: "@chartVersion@"
     repository: "file://../ee/velocity/helm"
-    tags:
-      - enterprise

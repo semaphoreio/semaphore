@@ -1,0 +1,111 @@
+# Semaphore CI/CD configuration for Ruby project
+# This file defines the complete CI/CD pipeline for a Ruby application
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+# Version and name of the pipeline
+version: v1.0
+name: "💎 Ruby CI Pipeline"
+
+# Agent configuration - defines the execution environment
+agent:
+  machine:
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
+    os_image: {{ os_image }}  # Empty for Docker compose style pipeline
+  containers:
+    - name: main
+      image: 'ruby:3.4.2'  # Using Ruby 3.4.2 as the main container
+    - name: postgres
+      image: 'postgres:17'  # PostgreSQL 17 container for database
+      env_vars:
+        - name: POSTGRES_PASSWORD
+          value: postgres  # Setting PostgreSQL password
+        - name: POSTGRES_DB
+          value: myapp_test  # Test database name
+
+# Controls if the pipeline should stop on failure for non-master branches
+fail_fast:
+  stop:
+    when: branch != 'master'  # Stop all jobs if any job fails on branches other than master
+
+# Defines auto-cancellation behavior for running and queued pipelines
+auto_cancel:
+  running:
+    when: branch != 'master'  # Cancel running pipelines when a new commit is pushed (except on master)
+  queued:
+    when: branch = 'master'  # Cancel queued pipelines for master branch when a new commit is pushed
+
+# Pipeline blocks (stages) definition
+blocks:
+  # Setup block - installs and caches dependencies
+  - name: ⚙️ Setup
+    dependencies: []  # No dependencies, runs first
+    task:
+      jobs:
+        - name: bundle
+          commands:
+            - checkout  # Clone the repository
+            - cache restore  # Restore cached dependencies from previous runs
+            - bundle install  # Install Ruby gems
+            - cache store  # Store dependencies in cache for future runs
+
+  # Code scanning block - runs static analysis tools
+  - name: "\U0001F50D Code scanning"
+    dependencies:
+      - ⚙️ Setup  # Depends on setup block
+    task:
+      jobs:
+        - name: check style + security
+          commands:
+            - checkout  # Clone the repository
+            - cache restore  # Restore cached dependencies
+            - bundle install  # Install Ruby gems
+            - cache store  # Store dependencies in cache
+            - bundle exec rubocop  # Run Ruby style checker
+            - bundle exec brakeman  # Run security scanner for Rails applications
+
+  # Unit tests block - runs model and controller tests
+  - name: "\U0001F9EA Unit tests"
+    dependencies:
+      - "\U0001F50D Code scanning"  # Depends on code scanning passing
+    task:
+      prologue:
+        commands:
+          - checkout  # Clone the repository
+          - cache restore  # Restore cached dependencies
+          - bundle install  # Install Ruby gems
+          - cache store  # Store dependencies in cache
+          - 'bundle exec rake db:setup'  # Set up database for tests
+      jobs:
+        - name: RSpec - model tests
+          commands:
+            - bundle exec rspec spec/models  # Run RSpec tests for models
+
+        - name: RSpec - controller tests
+          commands:
+            - bundle exec rspec spec/controllers  # Run RSpec tests for controllers
+      epilogue:
+        always:
+          commands:
+            - "[[ -f junit.xml ]] && test-results publish --name \"\U0001F9EA Unit tests\" junit.xml"  # Publish test results if JUnit XML exists
+
+  # Integration tests block - runs feature specs
+  - name: "\U0001F3D7️ Integration tests"
+    dependencies:
+      - "\U0001F9EA Unit tests"  # Depends on unit tests passing
+    task:
+      prologue:
+        commands:
+          - checkout  # Clone the repository
+          - cache restore  # Restore cached dependencies
+          - bundle install  # Install Ruby gems
+          - cache store  # Store dependencies in cache
+      jobs:
+        - name: RSpec - feature specs
+          commands:
+            - 'bundle exec rake db:setup'  # Set up database for tests
+            - bundle exec rspec spec/features  # Run RSpec feature/integration tests
+      epilogue:
+        always:
+          commands:
+            - "[[ -f junit.xml ]] && test-results publish --name \"\U0001F9EA Integration tests\" junit.xml"  # Publish test results if JUnit XML exists

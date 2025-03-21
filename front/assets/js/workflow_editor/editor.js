@@ -9,12 +9,15 @@ import { Agent    } from "./models/agent"
 import { Promotion } from "./models/promotion";
 
 import { Tabs         } from "./components/tabs"
-import { CodeEditor   } from "./components/code_editor"
-import { Diagram      } from "./components/diagram"
-import { CommitPanel  } from "./components/commit_panel"
-import { Configurator } from "./components/configurator"
+import { MonacoCodeEditor } from "./components/monaco_code_editor"
+import { CodeEditor    } from "./components/code_editor"
+import { Diagram       } from "./components/diagram"
+import { CommitPanel   } from "./components/commit_panel"
+import { Configurator  } from "./components/configurator"
 
 import { SelectionRegister } from "./selection_register"
+
+import { Features } from "../features";
 
 function assertKey(object, key, errMessage) {
   if(!_.has(object, key) || object[key] === undefined) { throw errMessage }
@@ -103,9 +106,13 @@ export class WorkflowEditor {
 
     this.layout = Layout.handle(divs.diagram, divs.config)
 
+    const codeEditor = Features.isEnabled("uiMonacoWorkflowCodeEditor") ?
+      new MonacoCodeEditor(divs.code) :
+      new CodeEditor(divs.code)
+
     this.components = {
       tabs: new Tabs(this, divs.tabs, this.config.canDismissAndExit),
-      codeEditor: new CodeEditor(divs.code),
+      codeEditor: codeEditor,
       diagram: new Diagram(this, this.workflow, divs.diagram),
       configurator: new Configurator(this, this.workflow, divs.config),
       commitPanel: new CommitPanel(this, this.workflow, this.config.commitInfo)

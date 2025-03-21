@@ -1,7 +1,8 @@
 <%= Phoenix.HTML.Link.button to: roles_path(@conn, :new, @scope),
   class: "btn btn-primary flex items-center",
   title: new_role_btn_tooltip(@conn, @feature_enabled?),
-  disabled: !can_create_new_role?(@conn, @feature_enabled?) do %>
+  disabled: !can_create_new_role?(@conn, @feature_enabled?),
+  method: :get do %>
     <span class="material-symbols-outlined mr2">add_circle</span>
     New Role
 <% end %>

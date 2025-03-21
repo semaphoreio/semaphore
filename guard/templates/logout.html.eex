@@ -54,7 +54,7 @@
                           </figure>
                           <div style="height:100px" aria-hidden="true" class="wp-block-spacer is-style-spacer-medium"></div>
                           <div class="wp-block-group is-layout-constrained wp-container-core-group-is-layout-3 wp-block-group-is-layout-constrained">
-                              <div class="wp-block-group has-background is-layout-flow wp-block-group-is-layout-flow" style="border-radius:20px;background:linear-gradient(43deg,rgb(199,218,255) 0%,rgb(194,240,215) 100%);padding-top:2%;padding-right:2%;padding-bottom:2%;padding-left:2%">
+                              <div class="wp-block-group has-background is-layout-flow wp-block-group-is-layout-flow" style="border-radius:20px;background:#d7e3fc;padding-top:2%;padding-right:2%;padding-bottom:2%;padding-left:2%">
                                   <div class="wp-block-group has-border-color has-v-8-stroke-border-color has-v-8-white-background-color has-background is-layout-flow wp-block-group-is-layout-flow" style="border-width:1px;border-radius:20px;padding-top:6%;padding-right:6%;padding-bottom:6%;padding-left:6%">
                                       <p style="text-align: center; font-size: 1.25rem; color: #202B30; margin-bottom: 0px">
                                           Confirm Logout

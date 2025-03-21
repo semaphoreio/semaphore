@@ -7,31 +7,36 @@ defmodule Rbac.Okta.IdpGroupMapping do
   alias Rbac.Repo.IdpGroupMapping
 
   @doc """
-  Creates or updates group mappings for an organization.
+  Creates or updates mappings for an organization.
 
   ## Parameters
     * organization_id - The ID of the organization
     * group_mappings - A list of maps with idp_group_id and semaphore_group_id keys
-    * default_role_id - The default role ID to use when no group mapping matches
+    * role_mappings - A list of maps with idp_role_id and semaphore_role_id keys
+    * default_role_id - The default role ID to use when no mappings match
 
   ## Returns
     * `{:ok, mapping}` - The created or updated mapping
     * `{:error, changeset}` - Error with changeset containing validation errors
   """
-  def create_or_update(organization_id, group_mapping, default_role_id)
-      when is_list(group_mapping) do
+  def create_or_update(organization_id, group_mapping, role_mapping, default_role_id)
+      when is_list(group_mapping) and is_list(role_mapping) do
     require Logger
-    Logger.info("req: group_mapping: #{inspect(group_mapping)}")
+
+    Logger.info(
+      "req: group_mapping: #{inspect(group_mapping)}, role_mapping: #{inspect(role_mapping)}"
+    )
 
     IdpGroupMapping.insert_or_update(
       organization_id: organization_id,
       group_mapping: group_mapping,
+      role_mapping: role_mapping,
       default_role_id: default_role_id
     )
   end
 
   @doc """
-  Retrieves group mappings for an organization.
+  Retrieves mappings for an organization.
 
   ## Parameters
     * organization_id - The ID of the organization
@@ -61,7 +66,7 @@ defmodule Rbac.Okta.IdpGroupMapping do
       {:ok, mapping} ->
         # Create a lookup map for faster search
         lookup_map =
-          Enum.reduce(mapping.group_mappings, %{}, fn m, acc ->
+          Enum.reduce(mapping.group_mapping, %{}, fn m, acc ->
             Map.put(acc, m.idp_group_id, m.semaphore_group_id)
           end)
 
@@ -77,6 +82,44 @@ defmodule Rbac.Okta.IdpGroupMapping do
           |> Enum.uniq()
 
         {:ok, mapped_groups, mapping.default_role_id}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Maps IDP roles to Semaphore roles.
+
+  ## Parameters
+    * organization_id - The ID of the organization
+    * idp_roles - List of IDP role identifiers
+
+  ## Returns
+    * `{:ok, semaphore_roles}` - List of mapped Semaphore role IDs
+    * `{:error, :not_found}` - No mapping found for the organization
+  """
+  def map_roles(organization_id, idp_roles) when is_list(idp_roles) do
+    case get_for_organization(organization_id) do
+      {:ok, mapping} ->
+        # Create a lookup map for faster search
+        lookup_map =
+          Enum.reduce(mapping.role_mapping || [], %{}, fn m, acc ->
+            Map.put(acc, m.idp_role_id, m.semaphore_role_id)
+          end)
+
+        # Find matching semaphore roles
+        mapped_roles =
+          idp_roles
+          |> Enum.reduce([], fn idp_role, acc ->
+            case Map.get(lookup_map, idp_role) do
+              nil -> acc
+              semaphore_role -> [semaphore_role | acc]
+            end
+          end)
+          |> Enum.uniq()
+
+        {:ok, mapped_roles}
 
       error ->
         error

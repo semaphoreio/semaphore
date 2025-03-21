@@ -62,4 +62,10 @@ defmodule FrontWeb.JobView do
       "The job is waiting on #{job.machine_type} quota."
     end
   end
+
+  defp job_state_color("pending"), do: "bg-orange"
+  defp job_state_color("running"), do: "bg-indigo"
+  defp job_state_color("passed"), do: "bg-green"
+  defp job_state_color("failed"), do: "bg-red"
+  defp job_state_color("stopped"), do: "bg-gray"
 end

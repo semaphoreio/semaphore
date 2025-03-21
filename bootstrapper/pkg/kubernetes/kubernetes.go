@@ -55,6 +55,7 @@ func (c *KubernetesClient) UpsertSecretWithLabels(secretName string, data map[st
 	if err != nil {
 		log.Infof("Secret %s does not exist in namespace %s - creating a new one", secretName, c.Namespace)
 		secret := &corev1.Secret{
+			Type:       corev1.SecretTypeOpaque,
 			StringData: data,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      secretName,
@@ -89,6 +90,9 @@ func (c *KubernetesClient) UpsertSecretWithLabels(secretName string, data map[st
 	for key, value := range labels {
 		secret.Labels[key] = value
 	}
+
+	// Ensure secret type is set
+	secret.Type = corev1.SecretTypeOpaque
 
 	_, err = c.Clientset.CoreV1().
 		Secrets(c.Namespace).

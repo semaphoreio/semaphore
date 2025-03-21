@@ -102,12 +102,18 @@ spec:
               value: {{ .Values.gettingStarted.mountPath | quote }}
             - name: WORKFLOW_TEMPLATES_YAMLS_PATH
               value: {{ .Values.workflowTemplates.mountPath | quote }}
+{{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
               value: "true"
+{{- end }}
             - name: "HIDE_PROMOTIONS"
               value: "true"
             - name: "CE_ROLES"
               value: "true"
+{{- if eq .Values.global.edition "ee" }}
+            - name: "AUDIT_LOGGING"
+              value: "true"
+{{- end }}
             - name: "SINGLE_TENANT"
               value: "true"
             - name: COOKIE_NAME

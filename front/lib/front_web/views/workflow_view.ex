@@ -50,4 +50,12 @@ defmodule FrontWeb.WorkflowView do
   def termination_author_span(user),
     do:
       "<span class='mh1'>·</span><span class='gray'>Stopped by #{escape_unsafe_string(user.name)}</span>"
+
+  def code_editor_border_classes(org_id) do
+    if FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: org_id) do
+      ""
+    else
+      "b--lighter-gray ba"
+    end
+  end
 end

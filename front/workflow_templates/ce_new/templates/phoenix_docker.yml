@@ -1,184 +1,223 @@
+# Semaphore CI/CD configuration for Phoenix (Elixir) project
+# This file defines the complete CI/CD pipeline for a Phoenix application
+# For more information about Semaphore configuration visit:
+# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+
+# Version and name of the pipeline
 version: v1.0
 name: "🔥 Phoenix CI Pipeline"
+
+# Agent configuration - defines the execution environment
 agent:
   machine:
-    type: {{ machine_type }}
+    type: {{ machine_type }}  # Will be replaced with actual machine type from environment variables
     os_image: {{ os_image }}  # Empty for Docker compose style pipeline
   containers:
     - name: main
-      image: 'elixir:1.15'  # Official Elixir 1.15 image from Docker Hub
+      image: 'elixir:1.18'  # Using Elixir 1.18 as the main container
     - name: postgres
-      image: 'postgres:17'  # PostgreSQL 17 for database operations
+      image: 'postgres:17'  # PostgreSQL 17 container for database
       env_vars:
         - name: POSTGRES_PASSWORD
-          value: postgres  # Set PostgreSQL password
+          value: postgres  # Setting PostgreSQL connection credentials
         - name: POSTGRES_USER
-          value: postgres  # Set PostgreSQL user
+          value: postgres  # Database username
         - name: POSTGRES_DB
-          value: app_test  # Set default database name
+          value: app_test  # Test database name
     - name: redis
-      image: 'redis:7.0'  # Redis 7.0 for caching, pub/sub, etc.
+      image: 'redis:7.0'  # Redis 7.0 container for caching/session store
+
+# Controls if the pipeline should stop on failure for non-main branches
 fail_fast:
   stop:
-    when: branch != 'main'  # Stop pipeline early on failures for non-main branches
+    when: branch != 'main'  # Stop all jobs if any job fails on branches other than main
+
+# Defines auto-cancellation behavior for running and queued pipelines
 auto_cancel:
   running:
-    when: branch != 'main'  # Cancel running pipelines on new commits for non-main branches
+    when: branch != 'main'  # Cancel running pipelines when a new commit is pushed (except on main)
   queued:
-    when: branch = 'main'   # Cancel queued pipelines for main branch
+    when: branch = 'main'  # Cancel queued pipelines for main branch when a new commit is pushed
+
+# Global configuration applied to all jobs
 global_job_config:
   prologue:
     commands:
-      - checkout  # Get the latest code from the repository
+      - checkout  # Clone the repository
       - mix local.hex --force  # Install Hex package manager
-      - mix local.rebar --force  # Install rebar (Erlang build tool)
-      - cache restore mix-deps-$(checksum mix.lock)  # Restore cached dependencies based on mix.lock checksum
-      - cache restore build-$(checksum mix.lock)  # Restore cached build artifacts
-      - cache restore npm-modules-$(checksum assets/package-lock.json)  # Restore cached npm modules
-      - cache restore plt-cache  # Restore cached Dialyzer PLT files
-      - mix deps.get  # Download project dependencies
+      - mix local.rebar --force  # Install rebar for Erlang dependencies
+      - cache restore mix-deps-$(checksum mix.lock)  # Restore cached Elixir dependencies
+      - cache restore build-$(checksum mix.lock)  # Restore compiled code
+      - cache restore npm-modules-$(checksum assets/package-lock.json)  # Restore JavaScript dependencies
+      - cache restore plt-cache  # Restore Dialyzer PLT cache
+      - mix deps.get  # Get any missing dependencies
+
+# Pipeline blocks (stages) definition
 blocks:
-  - name: "🛠️ Setup and Cache"
-    dependencies: []  # No dependencies for the first block
+  # Setup and Cache block - prepares the environment and caches dependencies
+  - name: "\U0001F6E0️ Setup and Cache"
+    dependencies: []  # No dependencies, runs first
     task:
       jobs:
-        - name: "📦 Install Dependencies"
+        - name: "\U0001F4E6 Install Dependencies"
           commands:
-            - mix deps.compile  # Compile all dependencies
-            - mix compile  # Compile the project
+            - mix deps.compile  # Compile Elixir dependencies
+            - mix compile  # Compile project code
             - cd assets && npm ci  # Install frontend dependencies
-            - cache store mix-deps-$(checksum mix.lock) deps  # Cache deps directory
-            - cache store build-$(checksum mix.lock) _build  # Cache _build directory
-            - cache store npm-modules-$(checksum assets/package-lock.json) assets/node_modules  # Cache node_modules
-            - mkdir -p priv/plts  # Create directory for Dialyzer PLT files
-            - cache store plt-cache priv/plts  # Cache PLT files for faster Dialyzer runs
-  - name: "🎨 Assets"
+            - cache store mix-deps-$(checksum mix.lock) deps  # Cache Elixir dependencies
+            - cache store build-$(checksum mix.lock) _build  # Cache compiled code
+            - cache store npm-modules-$(checksum assets/package-lock.json) assets/node_modules  # Cache frontend dependencies
+            - mkdir -p priv/plts  # Create directory for Dialyzer PLTs
+            - cache store plt-cache priv/plts  # Cache Dialyzer PLTs
+
+  # Assets block - compiles and processes frontend assets
+  - name: "\U0001F3A8 Assets"
     dependencies:
-      - "🛠️ Setup and Cache"  # This block depends on Setup and Cache
+      - "\U0001F6E0️ Setup and Cache"  # Depends on setup block
     task:
       jobs:
-        - name: "🖌️ Compile Assets"
+        - name: "\U0001F58C️ Compile Assets"
           commands:
-            - cd assets && npm run deploy  # Build and minify frontend assets
-            - mix phx.digest  # Create digested versions of static files
-  - name: "🔍 Code Quality"
+            - cd assets && npm run deploy  # Build frontend assets
+            - mix phx.digest  # Process and hash static assets for production
+
+  # Code Quality block - runs linters and formatters
+  - name: "\U0001F50D Code Quality"
     dependencies:
-      - "🛠️ Setup and Cache"  # This block depends on Setup and Cache
+      - "\U0001F6E0️ Setup and Cache"  # Depends on setup block
     task:
       jobs:
-        - name: "✨ Lint and Format"
+        - name: ✨ Lint and Format
           commands:
-            - mix format --check-formatted  # Verify code formatting
+            - mix format --check-formatted  # Check code formatting
             - mix credo --strict  # Run Credo for code quality analysis
-            - cd assets && npm run lint  # Lint JavaScript code
-  - name: "🔐 Security Checks"
+            - cd assets && npm run lint  # Run JavaScript linters
+
+  # Security Checks block - runs security audits
+  - name: "\U0001F510 Security Checks"
     dependencies:
-      - "🛠️ Setup and Cache"  # This block depends on Setup and Cache
+      - "\U0001F6E0️ Setup and Cache"  # Depends on setup block
     task:
       jobs:
-        - name: "🛡️ Security Scan"
+        - name: "\U0001F6E1️ Security Scan"
           commands:
-            - mix deps.audit  # Check dependencies for vulnerabilities
-            - mix sobelow --config  # Run Sobelow for security analysis
-            - cd assets && npm audit --production  # Audit npm dependencies (production only)
-  - name: "📊 Dialyzer"
+            - mix deps.audit  # Audit Elixir dependencies for vulnerabilities
+            - mix sobelow --config  # Run Sobelow security scanner for Phoenix
+            - cd assets && npm audit --production  # Audit JavaScript dependencies
+
+  # Dialyzer block - runs type checking
+  - name: "\U0001F4CA Dialyzer"
     dependencies:
-      - "🛠️ Setup and Cache"  # This block depends on Setup and Cache
+      - "\U0001F6E0️ Setup and Cache"  # Depends on setup block
     task:
       jobs:
-        - name: "🔎 Type Checking"
+        - name: "\U0001F50E Type Checking"
           commands:
-            - mix dialyzer --plt  # Run Dialyzer type checking (PLT phase)
-  - name: "🧪 Test Suite"
+            - mix dialyzer --plt  # Run Dialyzer for static type checking
+
+  # Test Suite block - runs ExUnit tests
+  - name: "\U0001F9EA Test Suite"
     dependencies:
-      - "🛠️ Setup and Cache"  # This block depends on Setup and Cache
-      - "🎨 Assets"  # This block also depends on Assets
+      - "\U0001F3A8 Assets"  # Depends on assets compilation
+      - "\U0001F4CA Dialyzer"  # Depends on type checking
+      - "\U0001F50D Code Quality"  # Depends on code quality checks
+      - "\U0001F510 Security Checks"  # Depends on security checks
+      - "\U0001F6E0️ Setup and Cache"  # Depends on setup block
     task:
       env_vars:
         - name: MIX_ENV
-          value: test  # Set environment to test
+          value: test  # Set Elixir environment to test
         - name: DATABASE_URL
-          value: 'postgresql://postgres:postgres@localhost:5432/app_test'  # Database connection string
+          value: 'postgresql://postgres:postgres@postgres:5432/app_test'  # Database connection string
         - name: PGHOST
-          value: localhost  # PostgreSQL host
+          value: postgres  # PostgreSQL host
         - name: PGUSER
           value: postgres  # PostgreSQL user
         - name: PGPASSWORD
           value: postgres  # PostgreSQL password
         - name: REDIS_URL
-          value: 'redis://localhost:6379'  # Redis connection string
+          value: 'redis://redis:6379'  # Redis connection string
       jobs:
-        - name: "🟢 ExUnit Tests"
-          parallelism: 4  # Run tests in parallel across 4 jobs
+        - name: "\U0001F7E2 ExUnit Tests"
+          parallelism: 4  # Run tests in 4 parallel jobs
           commands:
-            - mix ecto.create  # Create the test database
+            - mix ecto.create  # Create test database
             - mix ecto.migrate  # Run migrations
-            - mix test --cover --partitions $SEMAPHORE_JOB_COUNT --partition $SEMAPHORE_JOB_INDEX  # Run tests with coverage
+            - mix test --cover --partitions $SEMAPHORE_JOB_COUNT --partition $SEMAPHORE_JOB_INDEX  # Run tests with coverage and partitioning
       epilogue:
         always:
           commands:
-            - mix coveralls.json || true  # Generate coverage report (continue on error)
-            - test-results publish coverage.json || true  # Publish coverage results (continue on error)
-  - name: "🌐 Browser Tests"
+            - mix coveralls.json || true  # Generate coverage report in JSON format
+            - test-results publish coverage.json || true  # Publish coverage results
+
+  # Browser Tests block - runs end-to-end tests
+  - name: "\U0001F310 Browser Tests"
     dependencies:
-      - "🧪 Test Suite"  # This block depends on Test Suite
+      - "\U0001F9EA Test Suite"  # Depends on unit tests passing
     task:
       env_vars:
         - name: MIX_ENV
-          value: test  # Set environment to test
+          value: test  # Set Elixir environment to test
         - name: DATABASE_URL
-          value: 'postgresql://postgres:postgres@localhost:5432/app_test'  # Database connection string
+          value: 'postgresql://postgres:postgres@postgres:5432/app_test'  # Database connection string
         - name: PGHOST
-          value: localhost  # PostgreSQL host
+          value: postgres  # PostgreSQL host
         - name: PGUSER
           value: postgres  # PostgreSQL user
         - name: PGPASSWORD
           value: postgres  # PostgreSQL password
         - name: REDIS_URL
-          value: 'redis://localhost:6379'  # Redis connection string
+          value: 'redis://redis:6379'  # Redis connection string
       jobs:
-        - name: "🎭 Wallaby Tests"
+        - name: "\U0001F3AD Wallaby Tests"
           commands:
-            - apt-get update && apt-get install -y wget gnupg ca-certificates  # Install tools for Chrome installation
-            - wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -  # Add Chrome repository key
-            - echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list  # Add Chrome repository
-            - apt-get update && apt-get install -y google-chrome-stable  # Install Chrome
-            - mix wallaby.install chrome  # Install Chrome driver for Wallaby
-            - 'mix test --only browser:true'  # Run only browser tests
-  - name: "🚀 Deploy Checks"
+            - apt-get update && apt-get install -y wget gnupg ca-certificates  # Install prerequisites for Chrome
+            - 'wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -'  # Add Google Chrome repository key
+            - 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google.list'  # Add Chrome repository
+            - apt-get update && apt-get install -y google-chrome-stable  # Install Chrome for browser testing
+            - 'mix test --only browser:true'  # Run only browser tests with Wallaby
+
+  # Deploy Checks block - verifies deployment readiness
+  - name: "\U0001F680 Deploy Checks"
     dependencies:
-      - "🧪 Test Suite"  # This block depends on Test Suite
+      - "\U0001F310 Browser Tests"  # Depends on browser tests passing
     task:
       env_vars:
         - name: MIX_ENV
-          value: prod  # Set environment to production
+          value: prod  # Set Elixir environment to production
         - name: DATABASE_URL
-          value: 'postgresql://postgres:postgres@localhost:5432/app_test'  # Database connection string
+          value: 'postgresql://postgres:postgres@postgres:5432/app_test'  # Database connection string
         - name: PGHOST
-          value: localhost  # PostgreSQL host
+          value: postgres  # PostgreSQL host
         - name: PGUSER
           value: postgres  # PostgreSQL user
         - name: PGPASSWORD
           value: postgres  # PostgreSQL password
       jobs:
-        - name: "🔄 Migration Safety"
+        - name: "\U0001F504 Migration Safety"
           commands:
-            - mix ecto.migrations  # List pending migrations
-            - mix phx.routes  # List all routes
-        - name: "📦 Release Build"
+            - mix ecto.migrations  # Check migrations status
+            - mix phx.routes  # View Phoenix routes for verification
+        - name: "\U0001F4E6 Release Build"
           commands:
-            - MIX_ENV=prod mix release --dry-run  # Test building a release
-  - name: "🐳 Docker"
+            - MIX_ENV=prod mix release --dry-run  # Test release build process without actual build
+
+  # Docker block - builds and pushes Docker image
+  - name: "\U0001F433 Docker"
     dependencies:
-      - "🚀 Deploy Checks"
+      - "\U0001F680 Deploy Checks"  # Depends on deploy checks passing
     task:
-      secrets:
-        - name: dockerhub-credentials
+      env_vars:
+        - name: DOCKER_USERNAME
+          value: example_only  # Example Docker Hub username
+        - name: DOCKER_PASSWORD
+          value: EXAMPLE ONLY - use Semaphore secrets instead for sensitive data  # Example Docker Hub password
       jobs:
-        - name: "📦 Build and Push"
+        - name: "\U0001F4E6 Build and Push"
           commands:
-            - 'echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin'
-            - 'docker build -t "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}" .'
-            - 'docker tag "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}" "${DOCKER_USERNAME}/phoenix-app:latest"'
-            - 'docker push "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}"'
-            - 'docker push "${DOCKER_USERNAME}/phoenix-app:latest"'
+            - echo "You should use Semaphore Secret to store credentials and other sensitive data"  # Reminder about secrets
+            - 'echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin'  # Log in to Docker Hub
+            - 'docker build -t "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}" .'  # Build Docker image with commit SHA tag
+            - 'docker tag "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}" "${DOCKER_USERNAME}/phoenix-app:latest"'  # Tag image as latest
+            - 'docker push "${DOCKER_USERNAME}/phoenix-app:${SEMAPHORE_GIT_SHA:0:7}"'  # Push image with commit SHA tag
+            - 'docker push "${DOCKER_USERNAME}/phoenix-app:latest"'  # Push image with latest tag

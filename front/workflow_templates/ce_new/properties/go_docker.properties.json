@@ -1,7 +1,7 @@
 {
   "title": "Go",
-  "description": "Run quality checks and tests for your Go app in Docker using gotestsum for enhanced test reporting. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>gotestsum</span></div>",
-  "short_description": "Run your Go suite",
+  "description": "Go CI pipeline featuring setup, code quality checks with Revive and go vet, security scanning with govulncheck, test suite execution with coverage reporting, and cross-platform binary building for Linux and macOS. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Revive</span><span class='f6 normal mr1 ph1 br2 bg-red white'>GoSec</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Gotestsum</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Cross-platform</span></div>",
+  "short_description": "Containerized CI/CD pipeline for Go applications",
   "group": "ci",
   "language": "Go",
   "environment": "docker",
