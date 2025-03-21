@@ -1,6 +1,7 @@
 import $ from "jquery";
 
 import { CommitDialogTemplate } from "../templates/commit/dialog"
+import { Features } from "../../features";
 
 function newDialogDiv() {
   return $("<div style='display=none'>")[0]
@@ -97,6 +98,7 @@ export class CommitPanel {
     body.append("_csrf_token", csrf)
     body.append("branch", branch)
     body.append("commit_message", message)
+    body.append("initial_branch", this.initialBranch)
 
     // if this is part of project onboarding, we need to also make sure 
     // that the project onboarding finished signal is sent
@@ -146,7 +148,11 @@ export class CommitPanel {
       console.log(data)
 
       if (data.wait)
-        this.afterCommitHandler(branch, data.commit_sha);
+        if(Features.isEnabled("useCommitJob"))          
+          this.commitJobHandler(branch, data.job_id);
+        else {
+          this.afterCommitHandler(branch, data.commit_sha);
+        }
       else {
         this.dialog.innerHTML = CommitDialogTemplate.renderCommited(this.paths.dismiss);
       }
@@ -157,6 +163,33 @@ export class CommitPanel {
       e.currentTarget.classList.remove("btn-working");
       e.currentTarget.disabled = false;
     })
+  }
+
+  commitJobHandler(branch, job_id) {
+    var url   = this.paths.checkWorkflow + `?job_id=${job_id}` 
+
+    console.log(`Checking commit job ${url}`)
+
+    fetch(url)
+    .then((res) => {
+      var contentType = res.headers.get("content-type");
+
+      if(contentType && contentType.includes("application/json")) {
+        return res.json();
+      } else {
+        throw new Error(res.statusText);
+      }
+    })
+    .then((data) => {
+      if(data.commit_sha === "") {
+        setTimeout(this.commitJobHandler.bind(this, branch, job_id), 1000)
+      } else {
+        this.afterCommitHandler(branch, data.commit_sha);
+      }
+    })
+    .catch(
+      (reason) => { console.log(reason); }
+    )
   }
 
   afterCommitHandler(branch, commitSha) {
