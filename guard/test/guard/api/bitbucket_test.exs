@@ -2,7 +2,6 @@ defmodule Guard.Api.BitbucketTest do
   use Guard.RepoCase
 
   alias Guard.Api.Bitbucket
-  alias Guard.Utils.OAuth
 
   setup do
     {:ok, user} = Support.Factories.RbacUser.insert()
@@ -23,6 +22,7 @@ defmodule Guard.Api.BitbucketTest do
         refresh_token: "example_refresh_token",
         user_id: user.id,
         token: "token",
+        token_expires_at: Support.Members.valid_expires_at(),
         revoked: false,
         permission_scope: "repo"
       )
@@ -31,14 +31,14 @@ defmodule Guard.Api.BitbucketTest do
   end
 
   describe "user_token/1" do
-    test "returns cached token when valid", %{repo_host_account: rha} do
-      cache_key = OAuth.token_cache_key(rha)
-      Cachex.put(:token_cache, cache_key, {"cached_token", valid_expires_at()})
-
-      assert {:ok, {"cached_token", _}} = Bitbucket.user_token(rha)
+    test "returns current token when valid", %{repo_host_account: rha} do
+      assert {:ok, {stored_token, _}} = Bitbucket.user_token(rha)
+      assert stored_token == rha.token
     end
 
-    test "refreshes token when cache is expired", %{repo_host_account: rha} do
+    test "refreshes token when current one is expired", %{repo_host_account: rha} do
+      rha = Map.put(rha, :token_expires_at, Support.Members.invalid_expires_at())
+
       Tesla.Mock.mock_global(fn
         %{method: :post, url: "https://bitbucket.org/site/oauth2/access_token"} ->
           {:ok,
@@ -59,9 +59,5 @@ defmodule Guard.Api.BitbucketTest do
 
       assert updated_rha.token == "new_token"
     end
-  end
-
-  defp valid_expires_at do
-    (DateTime.utc_now() |> DateTime.to_unix()) + 3600
   end
 end

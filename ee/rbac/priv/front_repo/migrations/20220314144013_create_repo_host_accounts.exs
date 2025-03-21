@@ -13,6 +13,7 @@ defmodule Rbac.FrontRepo.Migrations.CreateRepoHostAccounts do
       add :permission_scope, :string
       add :revoked, :boolean, default: false, null: false
       add :refresh_token, :string
+      add :token_expires_at, :utc_datetime
       add :created_at, :utc_datetime
       add :updated_at, :utc_datetime
     end

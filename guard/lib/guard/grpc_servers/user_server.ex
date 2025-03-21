@@ -384,11 +384,6 @@ defmodule Guard.GrpcServers.UserServer do
           "Token for #{user.id} is #{if is_valid, do: "valid", else: "invalid"}. Updating revoke status."
         )
 
-        unless is_valid do
-          cache_key = Guard.Utils.OAuth.token_cache_key(repo_account)
-          Cachex.del(:token_cache, cache_key)
-        end
-
         FrontRepo.RepoHostAccount.update_revoke_status(repo_account, not is_valid)
 
       {:error, _} ->
