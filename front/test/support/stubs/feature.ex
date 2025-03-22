@@ -135,7 +135,8 @@ defmodule Support.Stubs.Feature do
       {"get_started", state: :ENABLED, quantity: 1},
       {"ui_agent_page", state: :ENABLED, quantity: 1},
       {"new_project_onboarding", state: :ENABLED, quantity: 1},
-      {"open_id_connect_filter", state: :ENABLED, quantity: 1}
+      {"open_id_connect_filter", state: :ENABLED, quantity: 1},
+      {"wf_editor_via_jobs", state: :HIDDEN, quantity: 0}
     ]
   end
 

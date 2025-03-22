@@ -96,4 +96,24 @@ defmodule Front.Models.UserTest do
       assert User.regenerate_token(user.id) == {:error, "Oops"}
     end
   end
+
+  describe ".get_repository_token" do
+    test "returns token when valid response is received from server" do
+      project_stub = Support.Stubs.DB.first(:projects)
+      project = Front.Models.Project.find(project_stub.id, project_stub.org_id)
+      user_id = UUID.uuid4()
+
+      assert {:ok, token} = User.get_repository_token(project, user_id)
+      assert token == "valid_token_value"
+    end
+
+    test "returns error when server responds with error" do
+      project_stub = Support.Stubs.DB.first(:projects)
+      project = Front.Models.Project.find(project_stub.id, project_stub.org_id)
+      user_id = "invalid_response"
+
+      assert {:error, error} = User.get_repository_token(project, user_id)
+      assert error == %GRPC.RPCError{status: 3, message: "Invalid request."}
+    end
+  end
 end

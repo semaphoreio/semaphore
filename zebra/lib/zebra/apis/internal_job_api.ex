@@ -21,6 +21,8 @@ defmodule Zebra.Apis.InternalJobApi do
 
       Logger.info("Creating job org: #{org_id} user: #{user_id} project: #{project_id}")
 
+      req.job_spec |> IO.inspect(label: "Job spec in request")
+
       spec =
         req.job_spec
         |> Map.put(:project_id, project_id)
@@ -47,7 +49,7 @@ defmodule Zebra.Apis.InternalJobApi do
                 job_params.spec,
                 :debug
               )},
-           {:ok, job} <- Job.create(job_params),
+           {:ok, job} <- Job.create(job_params) |> IO.inspect(label: "Created Job in database:"),
            serialized_job <- Serializer.serialize_job(job) do
         Resp.new(status: grpc_status_ok(), job: serialized_job)
       else

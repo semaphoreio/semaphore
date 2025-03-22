@@ -293,6 +293,8 @@ defmodule FrontWeb.Router do
 
     post("/projects/:name_or_id/commit_config", ProjectController, :commit_config)
 
+    get("/projects/:name_or_id/check_commit_job", ProjectController, :check_commit_job)
+
     # Project Onboarding
 
     get("/new_project", ProjectOnboardingController, :new)

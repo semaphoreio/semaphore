@@ -135,6 +135,16 @@ defmodule Support.Stubs.Artifacthub do
     end
 
     def get_signed_url(req, _) do
+      {_base_paths, file_path} = split_path(req.path)
+
+      if Path.join(file_path) == "dir/non-existing-file.txt" do
+        raise GRPC.RPCError, status: :not_found, message: "Requested file was not found."
+      else
+        get_signed_url_(req)
+      end
+    end
+
+    def get_signed_url_(req) do
       alias InternalApi.Artifacthub, as: Api
 
       {base_paths, file_path} = split_path(req.path)
