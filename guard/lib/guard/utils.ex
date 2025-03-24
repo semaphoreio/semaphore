@@ -58,6 +58,8 @@ defmodule Guard.Utils.OAuth do
     refresh_token = body["refresh_token"]
 
     expires_at = calc_expires_at(expires_in)
+
+    # By default, GitHub don't expires, so the expires_at is nil
     nil_valid = repo_host_account.repo_host == "github"
 
     if valid_token?(expires_at, nil_valid: nil_valid) do

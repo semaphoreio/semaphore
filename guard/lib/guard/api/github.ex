@@ -36,6 +36,11 @@ defmodule Guard.Api.Github do
 
   @doc """
   Fetch or refresh access token
+
+  # Important Considerations:
+  - By default, GitHub tokens do not expire unless the optional setting in the GitHub app is changed.
+  - If altered, the expires_in and refresh_token will not be null.
+  - That's why we have refresh token logic for GitHub, even if it's not typically used.
   """
   def user_token(repo_host_account) do
     case validate_token(repo_host_account.token) do
