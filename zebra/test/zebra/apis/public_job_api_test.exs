@@ -186,7 +186,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       assert Enum.map(reply.jobs, & &1.metadata.id) == [job1.id]
     end
 
-    test "if a job is restircted do not return configuration in spec" do
+    test "if a job is restricted do not return configuration in spec" do
       alias Semaphore.Jobs.V1alpha.ListJobsRequest, as: Request
       alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
 
@@ -338,7 +338,7 @@ defmodule Zebra.Api.PublicJobApiTest do
       assert reply == %GRPC.RPCError{message: "Job #{job.id} not found", status: 5}
     end
 
-    test "if a job is restircted do not return configuration in spec" do
+    test "if a job is restricted do not return configuration in spec" do
       {:ok, job} =
         Support.Factories.Job.create(:pending, %{
           project_id: hd(@authorized_projects),
