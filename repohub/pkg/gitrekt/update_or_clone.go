@@ -240,7 +240,7 @@ func (o *UpdateOrCloneOperation) parseError(output []byte, err error) error {
 		}
 	}
 
-	return err
+	return fmt.Errorf("err: %s: %v", output, err)
 }
 
 func cleanupDirectory(o *UpdateOrCloneOperation) {
