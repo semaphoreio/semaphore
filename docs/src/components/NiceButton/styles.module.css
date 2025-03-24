@@ -1,0 +1,172 @@
+/* Light mode variables (apply when data-theme="light") */
+:root[data-theme='light'] {
+  --button-bg: white;
+  --button-border: #e5e7eb;
+  --button-hover-bg: #f9fafb;
+  --button-title: #374151;
+  --button-title-hover: #1f2937;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --shimmer-color: rgba(255, 255, 255, 0.6);
+}
+
+/* Dark mode variables (apply when data-theme="dark") */
+:root[data-theme='dark'] {
+  --button-bg: #1f2937;
+  --button-border: #374151;
+  --button-hover-bg: #2d3748;
+  --button-title: #e5e7eb;
+  --button-title-hover: #f9fafb;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --shimmer-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Base styles */
+.niceButton {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  margin: 0.5rem;
+  border: 1px solid var(--button-border);
+  border-radius: 0.5rem;
+  min-width: 8rem;
+  title-decoration: none;
+  cursor: pointer;
+  background-color: var(--button-bg);
+  color: var(--button-title);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Enhanced hover effects */
+.niceButton:hover {
+  background-color: var(--button-hover-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px var(--shadow-color),
+              0 2px 4px -1px var(--shadow-color);
+}
+
+.niceButton::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    var(--shimmer-color),
+    transparent
+  );
+  transform: translateX(-100%);
+}
+
+.niceButton:hover::after {
+  transition: transform 0.8s;
+  transform: translateX(100%);
+}
+
+.niceButtonIcon {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.5rem;
+  transition: transform 0.3s ease;
+}
+
+.niceButton:hover .niceButtonIcon {
+  transform: scale(1.1);
+}
+
+.niceButtonTitle {
+  font-size: 0.875rem;
+  color: var(--button-title);
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.niceButtonSubtitle {
+  font-size: 0.6rem;
+  color: var(--button-title);
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.niceButton:hover .niceButtonTitle .niceButtonSubtitle {
+  color: var(--button-title-hover);
+}
+
+/* Container styles */
+.buttonContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  width: 100%;
+  padding: 1rem;
+}
+
+/* Responsive styles */
+@media (max-width: 640px) {
+  .buttonContainer {
+    gap: 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .niceButton {
+    min-width: calc(50% - 1rem);
+    padding: 0.75rem;
+    margin: 0.25rem;
+  }
+
+  .niceButtonIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  .niceButtonTitle {
+    font-size: 0.75rem;
+  }
+
+  .niceButtonSubtitle {
+    font-size: 0.6rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .niceButton {
+    min-width: 100%;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 1rem;
+  }
+
+  .niceButtonIcon {
+    margin-bottom: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .buttonContainer {
+    justify-content: flex-start;
+  }
+
+  .niceButton {
+    min-width: 10rem;
+  }
+
+  .niceButtonIcon {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
+
+  .niceButtonTitle {
+    font-size: 1rem;
+  }
+
+  .niceButtonSubtitle {
+    font-size: 0.7rem;
+  }
+}

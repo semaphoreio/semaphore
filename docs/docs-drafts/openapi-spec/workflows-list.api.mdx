@@ -1,0 +1,755 @@
+---
+id: workflows-list
+title: "List workflows"
+description: "List workflows using project id."
+sidebar_label: "List workflows"
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "get api-method"
+info_path: docs/openapi-spec/semaphore-public-api
+custom_edit_url: null
+---
+
+import ApiTabs from "@theme/ApiTabs";
+import DiscriminatorTabs from "@theme/DiscriminatorTabs";
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import SecuritySchemes from "@theme/ApiExplorer/SecuritySchemes";
+import MimeTabs from "@theme/MimeTabs";
+import ParamsItem from "@theme/ParamsItem";
+import ResponseSamples from "@theme/ResponseSamples";
+import SchemaItem from "@theme/SchemaItem";
+import SchemaTabs from "@theme/SchemaTabs";
+import Markdown from "@theme/Markdown";
+import Heading from "@theme/Heading";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"List workflows"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/workflows"}
+>
+  
+</MethodEndpoint>
+
+
+
+List workflows using project id.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<details
+  style={{"marginBottom":"1rem"}}
+  className={"openapi-markdown__details"}
+  data-collapsed={false}
+  open={true}
+>
+  <summary
+    style={{}}
+  >
+    <h3
+      className={"openapi-markdown__details-summary-header-params"}
+    >
+      Query Parameters
+    </h3>
+  </summary><div>
+    <ul>
+      <ParamsItem
+        className={"paramsItem"}
+        param={{"description":"The id of the project to list the workflows for","in":"query","name":"project_id","required":true,"schema":{"format":"uuid","type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Branch name","example":"main","in":"query","name":"branch_name","required":false,"schema":{"type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Return only workflows created before this timestamp","example":"2021-01-01T00:00:00Z","in":"query","name":"created_before","required":true,"schema":{"format":"date-time","type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Return only workflows created after this timestamp","example":"2021-01-01T00:00:00Z","in":"query","name":"created_after","required":true,"schema":{"format":"date-time","type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Return only workflows with given label (label is branch/tag name, PR number, snapshot generated label etc.)","example":"v2","in":"query","name":"label","required":false,"schema":{"type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Type of git reference for which workflow is initiated.","example":"BRANCH","in":"query","name":"git_ref_type","required":false,"schema":{"enum":["BRANCH","TAG","PR"],"type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Direction of the list from the provided token","in":"query","name":"direction","required":false,"schema":{"default":"NEXT","description":"Use NEXT with value of next_page_token to get next page of results,\n              use PREVIOUS with value of previous_page_token to get previous page of results.","enum":["NEXT","PREVIOUS"],"type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Starting point for listing, if you are fetching first page leave it empty","in":"query","name":"page_token","required":false,"schema":{"default":"","type":"string"}}}
+      >
+        
+      </ParamsItem><ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Page size","in":"query","name":"page_size","required":false,"schema":{"default":20,"maximum":100,"minimum":1,"title":"PageSize","type":"integer"}}}
+      >
+        
+      </ParamsItem>
+    </ul>
+  </div>
+</details><div>
+  <div>
+    <ApiTabs
+      label={undefined}
+      id={undefined}
+    >
+      <TabItem
+        label={"200"}
+        value={"200"}
+      >
+        <div>
+          
+          
+          List of workflows in a project
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <li>
+                        <div
+                          style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                        >
+                          Array [
+                        </div>
+                      </li><SchemaItem
+                        collapsible={false}
+                        name={"branch_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"ID of a Branch","example":"76ee0686-789f-4930-a5c5-ac72d93815c8","format":"uuid","title":"Branch.ID","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"commit_sha"}
+                        required={false}
+                        schemaName={"sha-1"}
+                        qualifierMessage={undefined}
+                        schema={{"format":"sha-1","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"created_at"}
+                        required={false}
+                        schemaName={"date-time"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"Timestamp in ISO 8601 format","format":"date-time","title":"Timestamp","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"hook_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"ID of a Hook","example":"0380850a-ac70-4f95-93b5-dc89ebdf48fb","format":"uuid","title":"Hook.ID","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"initial_ppl_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"The ID of the initial pipeline that was ran by this workflow","format":"uuid","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"project_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"ID of a Project","example":"cdbad08d-903b-43c5-8e9a-99c5b74a89aa","format":"uuid","title":"Project.ID","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"requester_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"ID of a User","example":"5df2cadb-310f-4c14-8784-e27289133a78","format":"uuid","title":"User.ID","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"triggered_by"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={"**Possible values:** [`HOOK`, `SCHEDULE`, `API`, `MANUAL_RUN`]"}
+                        schema={{"enum":["HOOK","SCHEDULE","API","MANUAL_RUN"],"type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"wf_id"}
+                        required={false}
+                        schemaName={"uuid"}
+                        qualifierMessage={undefined}
+                        schema={{"description":"ID of a Workflow","example":"f850cdcf-d3de-4d50-91bf-b6190fa5f9c0","format":"uuid","title":"Workflow.ID","type":"string"}}
+                      >
+                        
+                      </SchemaItem><li>
+                        <div
+                          style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                        >
+                          ]
+                        </div>
+                      </li>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"[\n  {\n    \"branch_id\": \"76ee0686-789f-4930-a5c5-ac72d93815c8\",\n    \"commit_sha\": \"string\",\n    \"created_at\": \"2024-07-12T11:02:50.072Z\",\n    \"hook_id\": \"0380850a-ac70-4f95-93b5-dc89ebdf48fb\",\n    \"initial_ppl_id\": \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n    \"project_id\": \"cdbad08d-903b-43c5-8e9a-99c5b74a89aa\",\n    \"requester_id\": \"5df2cadb-310f-4c14-8784-e27289133a78\",\n    \"triggered_by\": \"HOOK\",\n    \"wf_id\": \"f850cdcf-d3de-4d50-91bf-b6190fa5f9c0\"\n  }\n]"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"400"}
+        value={"400"}
+      >
+        <div>
+          
+          
+          Bad Request
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"401"}
+        value={"401"}
+      >
+        <div>
+          
+          
+          Unauthorized
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"404"}
+        value={"404"}
+      >
+        <div>
+          
+          
+          Not Found
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"422"}
+        value={"422"}
+      >
+        <div>
+          
+          
+          Validation Failed
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                errors
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object[]
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                              >
+                                Array [
+                              </div>
+                            </li><SchemaItem
+                              collapsible={false}
+                              name={"field"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"message"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                              >
+                                ]
+                              </div>
+                            </li>
+                          </div>
+                        </details>
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"errors\": [\n    {\n      \"field\": \"string\",\n      \"message\": \"string\"\n    }\n  ],\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"500"}
+        value={"500"}
+      >
+        <div>
+          
+          
+          Internal Server Error
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem>
+    </ApiTabs>
+  </div>
+</div>
+      

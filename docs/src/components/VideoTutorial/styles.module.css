@@ -1,0 +1,65 @@
+/* Styling for the details element that contains the video */
+.details {
+  border: 1px solid #ddd; 
+  border-radius: 0.2rem;
+  margin: 0.2rem 0 0.8rem;
+  background: #f9f9f9; 
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  overflow: hidden; 
+  transition: max-height 0.5s ease-out, padding 0.5s ease-out; 
+  max-height: 5rem;
+  padding: 0.2rem; 
+}
+
+/* Styling when details is opened */
+.details[open] {
+  max-height: 1000px; 
+}
+
+/* Styling for the summary element */
+.summary {
+  color: #333;
+  width: 100%;
+  text-align: left;
+  outline: none;
+  position: relative; 
+  display: flex;
+  align-items: center;
+  cursor: pointer; 
+  user-select: none; 
+}
+
+  
+
+/* Styling for the content element */
+.content {
+  margin-top: 0.2rem; 
+  transition: opacity 0.5s ease-out; 
+  opacity: 0; 
+  max-height: 0; 
+  overflow: hidden; 
+}
+
+.icon {
+  margin-right: 0.2rem ;
+  margin-left: 0.2rem ;
+  display: inline-block;
+  background-size: cover; 
+  transform: translateY(0.2rem);
+}
+
+
+/* Styling when details is opened */
+.details[open] .content {
+  opacity: 1; 
+  max-height: 100%; 
+}
+
+/* Responsive iframe styling */
+.iframe {
+  width: 100%; 
+  max-width: 560px; 
+  height: 315px; 
+  border: none; 
+  border-radius: 0.2rem; 
+}

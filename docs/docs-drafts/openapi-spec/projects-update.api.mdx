@@ -1,0 +1,1554 @@
+---
+id: projects-update
+title: "Update a project settings"
+description: "Update a project."
+sidebar_label: "Update a project settings"
+hide_title: true
+hide_table_of_contents: true
+api: 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
+sidebar_class_name: "put api-method"
+info_path: docs/openapi-spec/semaphore-public-api
+custom_edit_url: null
+---
+
+import ApiTabs from "@theme/ApiTabs";
+import DiscriminatorTabs from "@theme/DiscriminatorTabs";
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import SecuritySchemes from "@theme/ApiExplorer/SecuritySchemes";
+import MimeTabs from "@theme/MimeTabs";
+import ParamsItem from "@theme/ParamsItem";
+import ResponseSamples from "@theme/ResponseSamples";
+import SchemaItem from "@theme/SchemaItem";
+import SchemaTabs from "@theme/SchemaTabs";
+import Markdown from "@theme/Markdown";
+import Heading from "@theme/Heading";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Update a project settigns"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"put"}
+  path={"/projects/{project_id_or_name}"}
+>
+  
+</MethodEndpoint>
+
+
+
+Update a project.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<details
+  style={{"marginBottom":"1rem"}}
+  className={"openapi-markdown__details"}
+  data-collapsed={false}
+  open={true}
+>
+  <summary
+    style={{}}
+  >
+    <h3
+      className={"openapi-markdown__details-summary-header-params"}
+    >
+      Path Parameters
+    </h3>
+  </summary><div>
+    <ul>
+      <ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Id or name of the project","in":"path","name":"project_id_or_name","required":true,"schema":{"anyOf":[{"description":"ID of a Project","example":"e9fc91f4-ad27-47d3-8f0a-e12c7946bff0","format":"uuid","title":"Project.ID","type":"string"},{"description":"Project name must match the regex","example":"my-project","minLength":1,"pattern":"\\A[\\w\\-\\.]+\\z","title":"Project.Name","type":"string"}]}}}
+      >
+        
+      </ParamsItem>
+    </ul>
+  </div>
+</details><MimeTabs
+  className={"openapi-tabs__mime"}
+>
+  <TabItem
+    label={"application/json"}
+    value={"application/json-schema"}
+  >
+    <details
+      style={{}}
+      className={"openapi-markdown__details mime"}
+      data-collapsed={false}
+      open={true}
+    >
+      <summary
+        style={{}}
+        className={"openapi-markdown__details-summary-mime"}
+      >
+        <h3
+          className={"openapi-markdown__details-summary-header-body"}
+        >
+          Body
+        </h3>
+      </summary><div
+        style={{"textAlign":"left","marginLeft":"1rem"}}
+      >
+        <div
+          style={{"marginTop":"1rem","marginBottom":"1rem"}}
+        >
+          
+          
+          Updated secret, only spec can be updated
+          
+          
+        </div>
+      </div><ul
+        style={{"marginLeft":"1rem"}}
+      >
+        <SchemaItem
+          collapsible={true}
+          className={"schemaItem"}
+        >
+          <details
+            style={{}}
+            className={"openapi-markdown__details"}
+          >
+            <summary
+              style={{}}
+            >
+              <span
+                className={"openapi-schema__container"}
+              >
+                <strong
+                  className={"openapi-schema__property"}
+                >
+                  spec
+                </strong><span
+                  className={"openapi-schema__name"}
+                >
+                   object
+                </span><span
+                  className={"openapi-schema__divider"}
+                >
+                  
+                </span><span
+                  className={"openapi-schema__required"}
+                >
+                  required
+                </span>
+              </span>
+            </summary><div
+              style={{"marginLeft":"1rem"}}
+            >
+              <div
+                style={{"marginTop":".5rem","marginBottom":".5rem"}}
+              >
+                
+                
+                Specification of the project
+                
+                
+              </div><SchemaItem
+                collapsible={false}
+                name={"description"}
+                required={false}
+                schemaName={"string"}
+                qualifierMessage={undefined}
+                schema={{"description":"Description of the project","type":"string"}}
+              >
+                
+              </SchemaItem><SchemaItem
+                collapsible={false}
+                name={"name"}
+                required={true}
+                schemaName={"Project.Name (string)"}
+                qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `\\A[\\w\\-\\.]+\\z`"}
+                schema={{"description":"Project name must match the regex","example":"my-project","minLength":1,"pattern":"\\A[\\w\\-\\.]+\\z","title":"Project.Name","type":"string"}}
+              >
+                
+              </SchemaItem><SchemaItem
+                collapsible={true}
+                className={"schemaItem"}
+              >
+                <details
+                  style={{}}
+                  className={"openapi-markdown__details"}
+                >
+                  <summary
+                    style={{}}
+                  >
+                    <span
+                      className={"openapi-schema__container"}
+                    >
+                      <strong
+                        className={"openapi-schema__property"}
+                      >
+                        repository
+                      </strong><span
+                        className={"openapi-schema__name"}
+                      >
+                         object
+                      </span><span
+                        className={"openapi-schema__divider"}
+                      >
+                        
+                      </span><span
+                        className={"openapi-schema__required"}
+                      >
+                        required
+                      </span>
+                    </span>
+                  </summary><div
+                    style={{"marginLeft":"1rem"}}
+                  >
+                    <div
+                      style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                    >
+                      
+                      
+                      Repository settings for the project
+                      
+                      
+                    </div><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              forked_pull_requests
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            Whether to include forked pull requests in the project, read more [here](https://docs.semaphoreci.com/essentials/project-workflow-trigger-options/#exposing-secrets-in-forked-pull-requests).
+                            
+                            
+                          </div><SchemaItem
+                            collapsible={false}
+                            name={"allowed_contributors"}
+                            required={false}
+                            schemaName={"Contributor (string)[]"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"List of contributors that can create workflows from forked PRs. Empty list means that everyone can.","example":[],"items":{"description":"Contributor handle","title":"Contributor","type":"string"},"type":"array"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"allowed_secrets"}
+                            required={false}
+                            schemaName={"Secret.Name (string)[]"}
+                            qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[@: -._a-zA-Z0-9]+$`"}
+                            schema={{"description":"The allowed_secrets property specifies the array of secrets names that are allowed to be exported into jobs triggered by forked-pull-requests. If the array is empty, no secrets will be exported.","items":{"description":"Secret name must match the regex","example":"my-secret","minLength":1,"pattern":"^[@: -._a-zA-Z0-9]+$","title":"Secret.Name","type":"string"},"type":"array"}}
+                          >
+                            
+                          </SchemaItem>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"integration_type"}
+                      required={true}
+                      schemaName={"string"}
+                      qualifierMessage={"**Possible values:** [`GITHUB_APP`, `GITHUB_OAUTH_TOKEN`, `BITBUCKET`]"}
+                      schema={{"description":"Provider of the repository and authentication method","enum":["GITHUB_APP","GITHUB_OAUTH_TOKEN","BITBUCKET"],"type":"string"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"pipeline_file"}
+                      required={false}
+                      schemaName={"string"}
+                      qualifierMessage={undefined}
+                      schema={{"default":".semaphore/semaphore.yml","description":"Path to the pipeline file to run the projec pipelines with","type":"string"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"run_on"}
+                      required={true}
+                      schemaName={"Projects.RunType (string)[]"}
+                      qualifierMessage={"**Possible values:** [`BRANCHES`, `TAGS`, `PULL_REQUESTS`, `FORKED_PULL_REQUESTS`]"}
+                      schema={{"description":"Which event will trigger the pipelines for this project. In most cases it is useful set to [\"BRANCHES\"]","items":{"enum":["BRANCHES","TAGS","PULL_REQUESTS","FORKED_PULL_REQUESTS"],"title":"Projects.RunType","type":"string"},"type":"array"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              status
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            The status property is used to specify which Semaphore pipeline(s) will submit a status check on GitHub pull requests.
+                                            A pipeline can create a single status check as a result of a whole pipeline. Or each block in a pipeline can create its own status check.
+                                            For most of the projects `path: ".semaphore/semaphore.yml", level: "PIPELINE"` will be suitable. **If left empty default value assumed.** 
+                            
+                            
+                          </div><SchemaItem
+                            collapsible={true}
+                            className={"schemaItem"}
+                          >
+                            <details
+                              style={{}}
+                              className={"openapi-markdown__details"}
+                            >
+                              <summary
+                                style={{}}
+                              >
+                                <span
+                                  className={"openapi-schema__container"}
+                                >
+                                  <strong
+                                    className={"openapi-schema__property"}
+                                  >
+                                    pipeline_files
+                                  </strong><span
+                                    className={"openapi-schema__name"}
+                                  >
+                                     object[]
+                                  </span>
+                                </span>
+                              </summary><div
+                                style={{"marginLeft":"1rem"}}
+                              >
+                                <li>
+                                  <div
+                                    style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                  >
+                                    Array [
+                                  </div>
+                                </li><SchemaItem
+                                  collapsible={false}
+                                  name={"level"}
+                                  required={true}
+                                  schemaName={"string"}
+                                  qualifierMessage={"**Possible values:** [`BLOCK`, `PIPELINE`]"}
+                                  schema={{"description":"Level of the status check","enum":["BLOCK","PIPELINE"],"type":"string"}}
+                                >
+                                  
+                                </SchemaItem><SchemaItem
+                                  collapsible={false}
+                                  name={"path"}
+                                  required={true}
+                                  schemaName={"string"}
+                                  qualifierMessage={undefined}
+                                  schema={{"default":".semaphore/semaphore.yml","description":"Path to the pipeline file","type":"string"}}
+                                >
+                                  
+                                </SchemaItem><li>
+                                  <div
+                                    style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                  >
+                                    ]
+                                  </div>
+                                </li>
+                              </div>
+                            </details>
+                          </SchemaItem>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"url"}
+                      required={true}
+                      schemaName={"string"}
+                      qualifierMessage={undefined}
+                      schema={{"description":"URL of the repository","example":"git@github.com:semaphoreci/toolbox.git","type":"string"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              whitelist
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            Whitelist of branches and tags that can be built using this project
+                            
+                            
+                          </div><SchemaItem
+                            collapsible={false}
+                            name={"branches"}
+                            required={false}
+                            schemaName={"string[]"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"List of branches that can be build. Regular expressions allowed. Empty list means that all branches can. Used only when RunType BRANCHES is included.","items":{"type":"string"},"type":"array"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"tags"}
+                            required={false}
+                            schemaName={"string[]"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"List of tags that can be build. Regular expressions allowed. Empty list means that all tags can. Used only when RunType TAGS is included.","items":{"type":"string"},"type":"array"}}
+                          >
+                            
+                          </SchemaItem>
+                        </div>
+                      </details>
+                    </SchemaItem>
+                  </div>
+                </details>
+              </SchemaItem><SchemaItem
+                collapsible={false}
+                name={"visibility"}
+                required={false}
+                schemaName={"string"}
+                qualifierMessage={"**Possible values:** [`PUBLIC`, `PRIVATE`]"}
+                schema={{"description":"Visibility of the project","enum":["PUBLIC","PRIVATE"],"type":"string"}}
+              >
+                
+              </SchemaItem>
+            </div>
+          </details>
+        </SchemaItem>
+      </ul>
+    </details>
+  </TabItem>
+</MimeTabs><div>
+  <div>
+    <ApiTabs
+      label={undefined}
+      id={undefined}
+    >
+      <TabItem
+        label={"200"}
+        value={"200"}
+      >
+        <div>
+          
+          
+          Updated secret
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"apiVersion"}
+                        required={true}
+                        schemaName={"ApiVersion (string)"}
+                        qualifierMessage={undefined}
+                        schema={{"default":"v2","description":"ApiVersion defines the versioned schema of this representation of an object.\n        Servers should convert recognized schemas to the latest internal value, and may reject\n        unrecognized values.","example":"v2","readOnly":true,"title":"ApiVersion","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"kind"}
+                        required={true}
+                        schemaName={"Kind (string)"}
+                        qualifierMessage={undefined}
+                        schema={{"default":"Project","description":"Kind is a string value representing the REST resource this object represents.\n        Servers may infer this from the endpoint the client submits requests to. Cannot be\n        updated. In CamelCase.","example":"Project","readOnly":true,"title":"Kind","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                metadata
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object
+                              </span><span
+                                className={"openapi-schema__divider"}
+                              >
+                                
+                              </span><span
+                                className={"openapi-schema__required"}
+                              >
+                                required
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <div
+                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                            >
+                              
+                              
+                              Metadata of the project, all fields are read only
+                              
+                              
+                            </div><SchemaItem
+                              collapsible={false}
+                              name={"connected"}
+                              required={false}
+                              schemaName={"boolean"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Connection status between Semaphore and repository.","type":"boolean"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"created_at"}
+                              required={false}
+                              schemaName={"date-time"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Timestamp in ISO 8601 format","format":"date-time","title":"Timestamp","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      created_by
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <SchemaItem
+                                    collapsible={false}
+                                    name={"id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a User","example":"18b40eaf-ce10-49c3-93f2-e4fe72d5160b","format":"uuid","title":"User.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"description"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Description of the project","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"id"}
+                              required={true}
+                              schemaName={"uuid"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"ID of a Project","example":"ed12ab59-9224-45c8-82d6-79bf158aaae6","format":"uuid","title":"Project.ID","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"name"}
+                              required={true}
+                              schemaName={"Secret.Name (string)"}
+                              qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[@: -._a-zA-Z0-9]+$`"}
+                              schema={{"description":"Secret name must match the regex","example":"my-secret","minLength":1,"pattern":"^[@: -._a-zA-Z0-9]+$","title":"Secret.Name","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"org_id"}
+                              required={false}
+                              schemaName={"uuid"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"ID of a Organization","example":"ff19729a-a8d5-4a62-8c5c-9bdbabf6607e","format":"uuid","title":"Organization.ID","type":"string"}}
+                            >
+                              
+                            </SchemaItem>
+                          </div>
+                        </details>
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                spec
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object
+                              </span><span
+                                className={"openapi-schema__divider"}
+                              >
+                                
+                              </span><span
+                                className={"openapi-schema__required"}
+                              >
+                                required
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <div
+                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                            >
+                              
+                              
+                              Specification of the project
+                              
+                              
+                            </div><SchemaItem
+                              collapsible={false}
+                              name={"description"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Description of the project","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"name"}
+                              required={true}
+                              schemaName={"Project.Name (string)"}
+                              qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `\\A[\\w\\-\\.]+\\z`"}
+                              schema={{"description":"Project name must match the regex","example":"my-project","minLength":1,"pattern":"\\A[\\w\\-\\.]+\\z","title":"Project.Name","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      repository
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span><span
+                                      className={"openapi-schema__divider"}
+                                    >
+                                      
+                                    </span><span
+                                      className={"openapi-schema__required"}
+                                    >
+                                      required
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    Repository settings for the project
+                                    
+                                    
+                                  </div><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            forked_pull_requests
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <div
+                                          style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                        >
+                                          
+                                          
+                                          Whether to include forked pull requests in the project, read more [here](https://docs.semaphoreci.com/essentials/project-workflow-trigger-options/#exposing-secrets-in-forked-pull-requests).
+                                          
+                                          
+                                        </div><SchemaItem
+                                          collapsible={false}
+                                          name={"allowed_contributors"}
+                                          required={false}
+                                          schemaName={"Contributor (string)[]"}
+                                          qualifierMessage={undefined}
+                                          schema={{"description":"List of contributors that can create workflows from forked PRs. Empty list means that everyone can.","example":[],"items":{"description":"Contributor handle","title":"Contributor","type":"string"},"type":"array"}}
+                                        >
+                                          
+                                        </SchemaItem><SchemaItem
+                                          collapsible={false}
+                                          name={"allowed_secrets"}
+                                          required={false}
+                                          schemaName={"Secret.Name (string)[]"}
+                                          qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[@: -._a-zA-Z0-9]+$`"}
+                                          schema={{"description":"The allowed_secrets property specifies the array of secrets names that are allowed to be exported into jobs triggered by forked-pull-requests. If the array is empty, no secrets will be exported.","items":{"description":"Secret name must match the regex","example":"my-secret","minLength":1,"pattern":"^[@: -._a-zA-Z0-9]+$","title":"Secret.Name","type":"string"},"type":"array"}}
+                                        >
+                                          
+                                        </SchemaItem>
+                                      </div>
+                                    </details>
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"integration_type"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** [`GITHUB_APP`, `GITHUB_OAUTH_TOKEN`, `BITBUCKET`]"}
+                                    schema={{"description":"Provider of the repository and authentication method","enum":["GITHUB_APP","GITHUB_OAUTH_TOKEN","BITBUCKET"],"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"pipeline_file"}
+                                    required={false}
+                                    schemaName={"string"}
+                                    qualifierMessage={undefined}
+                                    schema={{"default":".semaphore/semaphore.yml","description":"Path to the pipeline file to run the projec pipelines with","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"run_on"}
+                                    required={true}
+                                    schemaName={"Projects.RunType (string)[]"}
+                                    qualifierMessage={"**Possible values:** [`BRANCHES`, `TAGS`, `PULL_REQUESTS`, `FORKED_PULL_REQUESTS`]"}
+                                    schema={{"description":"Which event will trigger the pipelines for this project. In most cases it is useful set to [\"BRANCHES\"]","items":{"enum":["BRANCHES","TAGS","PULL_REQUESTS","FORKED_PULL_REQUESTS"],"title":"Projects.RunType","type":"string"},"type":"array"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            status
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <div
+                                          style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                        >
+                                          
+                                          
+                                          The status property is used to specify which Semaphore pipeline(s) will submit a status check on GitHub pull requests.
+                                                          A pipeline can create a single status check as a result of a whole pipeline. Or each block in a pipeline can create its own status check.
+                                                          For most of the projects `path: ".semaphore/semaphore.yml", level: "PIPELINE"` will be suitable. **If left empty default value assumed.** 
+                                          
+                                          
+                                        </div><SchemaItem
+                                          collapsible={true}
+                                          className={"schemaItem"}
+                                        >
+                                          <details
+                                            style={{}}
+                                            className={"openapi-markdown__details"}
+                                          >
+                                            <summary
+                                              style={{}}
+                                            >
+                                              <span
+                                                className={"openapi-schema__container"}
+                                              >
+                                                <strong
+                                                  className={"openapi-schema__property"}
+                                                >
+                                                  pipeline_files
+                                                </strong><span
+                                                  className={"openapi-schema__name"}
+                                                >
+                                                   object[]
+                                                </span>
+                                              </span>
+                                            </summary><div
+                                              style={{"marginLeft":"1rem"}}
+                                            >
+                                              <li>
+                                                <div
+                                                  style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                                >
+                                                  Array [
+                                                </div>
+                                              </li><SchemaItem
+                                                collapsible={false}
+                                                name={"level"}
+                                                required={true}
+                                                schemaName={"string"}
+                                                qualifierMessage={"**Possible values:** [`BLOCK`, `PIPELINE`]"}
+                                                schema={{"description":"Level of the status check","enum":["BLOCK","PIPELINE"],"type":"string"}}
+                                              >
+                                                
+                                              </SchemaItem><SchemaItem
+                                                collapsible={false}
+                                                name={"path"}
+                                                required={true}
+                                                schemaName={"string"}
+                                                qualifierMessage={undefined}
+                                                schema={{"default":".semaphore/semaphore.yml","description":"Path to the pipeline file","type":"string"}}
+                                              >
+                                                
+                                              </SchemaItem><li>
+                                                <div
+                                                  style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                                >
+                                                  ]
+                                                </div>
+                                              </li>
+                                            </div>
+                                          </details>
+                                        </SchemaItem>
+                                      </div>
+                                    </details>
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"url"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"URL of the repository","example":"git@github.com:semaphoreci/toolbox.git","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            whitelist
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <div
+                                          style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                        >
+                                          
+                                          
+                                          Whitelist of branches and tags that can be built using this project
+                                          
+                                          
+                                        </div><SchemaItem
+                                          collapsible={false}
+                                          name={"branches"}
+                                          required={false}
+                                          schemaName={"string[]"}
+                                          qualifierMessage={undefined}
+                                          schema={{"description":"List of branches that can be build. Regular expressions allowed. Empty list means that all branches can. Used only when RunType BRANCHES is included.","items":{"type":"string"},"type":"array"}}
+                                        >
+                                          
+                                        </SchemaItem><SchemaItem
+                                          collapsible={false}
+                                          name={"tags"}
+                                          required={false}
+                                          schemaName={"string[]"}
+                                          qualifierMessage={undefined}
+                                          schema={{"description":"List of tags that can be build. Regular expressions allowed. Empty list means that all tags can. Used only when RunType TAGS is included.","items":{"type":"string"},"type":"array"}}
+                                        >
+                                          
+                                        </SchemaItem>
+                                      </div>
+                                    </details>
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"visibility"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={"**Possible values:** [`PUBLIC`, `PRIVATE`]"}
+                              schema={{"description":"Visibility of the project","enum":["PUBLIC","PRIVATE"],"type":"string"}}
+                            >
+                              
+                            </SchemaItem>
+                          </div>
+                        </details>
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"apiVersion\": \"v2\",\n  \"kind\": \"Project\",\n  \"metadata\": {\n    \"connected\": true,\n    \"created_at\": \"2024-07-12T11:02:50.032Z\",\n    \"created_by\": {\n      \"id\": \"18b40eaf-ce10-49c3-93f2-e4fe72d5160b\"\n    },\n    \"description\": \"string\",\n    \"id\": \"ed12ab59-9224-45c8-82d6-79bf158aaae6\",\n    \"name\": \"my-secret\",\n    \"org_id\": \"ff19729a-a8d5-4a62-8c5c-9bdbabf6607e\"\n  },\n  \"spec\": {\n    \"description\": \"string\",\n    \"name\": \"my-project\",\n    \"repository\": {\n      \"forked_pull_requests\": {\n        \"allowed_contributors\": [],\n        \"allowed_secrets\": [\n          \"my-secret\"\n        ]\n      },\n      \"integration_type\": \"GITHUB_APP\",\n      \"pipeline_file\": \".semaphore/semaphore.yml\",\n      \"run_on\": [\n        \"BRANCHES\"\n      ],\n      \"status\": {\n        \"pipeline_files\": [\n          {\n            \"level\": \"BLOCK\",\n            \"path\": \".semaphore/semaphore.yml\"\n          }\n        ]\n      },\n      \"url\": \"git@github.com:semaphoreci/toolbox.git\",\n      \"whitelist\": {\n        \"branches\": [\n          \"string\"\n        ],\n        \"tags\": [\n          \"string\"\n        ]\n      }\n    },\n    \"visibility\": \"PUBLIC\"\n  }\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"400"}
+        value={"400"}
+      >
+        <div>
+          
+          
+          Bad Request
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"401"}
+        value={"401"}
+      >
+        <div>
+          
+          
+          Unauthorized
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"404"}
+        value={"404"}
+      >
+        <div>
+          
+          
+          Not Found
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"422"}
+        value={"422"}
+      >
+        <div>
+          
+          
+          Validation Failed
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                errors
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object[]
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                              >
+                                Array [
+                              </div>
+                            </li><SchemaItem
+                              collapsible={false}
+                              name={"field"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"message"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                              >
+                                ]
+                              </div>
+                            </li>
+                          </div>
+                        </details>
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"errors\": [\n    {\n      \"field\": \"string\",\n      \"message\": \"string\"\n    }\n  ],\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"500"}
+        value={"500"}
+      >
+        <div>
+          
+          
+          Internal Server Error
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem>
+    </ApiTabs>
+  </div>
+</div>
+      
