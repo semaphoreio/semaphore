@@ -49,6 +49,7 @@ blocks:
                 - "ProjectHub"
                 - "ProjectHub REST API"
                 - "RBAC CE"
+                - "RBAC EE"
                 - "Repohub"
                 - "RepositoryHub"
                 - "Scouter"

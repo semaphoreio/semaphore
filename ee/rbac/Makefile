@@ -2,7 +2,7 @@ export MIX_ENV?=dev
 
 include ../../Makefile
 
-APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
+APP_NAME=rbac_ee
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
