@@ -98,6 +98,10 @@ data:
       enabled: true
     ui_agent_page:
       enabled: true
+    ui_show_refresh_collaborators:
+      enabled: false
+    ui_monaco_workflow_code_editor:
+      enabled: true
     new_project_onboarding:
       enabled: true
 {{- else }}
@@ -105,13 +109,13 @@ data:
     activity_monitor:
       enabled: true
     advanced_deployment_targets:
-      enabled: false
+      enabled: true
     artifacts:
       enabled: true
     audit_logs:
-      enabled: false
+      enabled: true
     audit_streaming:
-      enabled: false
+      enabled: true
     badges:
       enabled: true
     billing:
@@ -123,7 +127,7 @@ data:
     github_oauth_token:
       enabled: false
     deployment_targets:
-      enabled: false
+      enabled: true
     expose_cloud_agent_types:
       enabled: false
     feedback:
@@ -143,11 +147,11 @@ data:
     multiple_organizations:
       enabled: false
     okta:
-      enabled: false
+      enabled: true
     open_id_connect:
-      enabled: false
+      enabled: true
     open_id_connect_aws_tags:
-      enabled: false
+      enabled: true
     organization_health:
       enabled: true
     parameterized_promotions:
@@ -159,15 +163,17 @@ data:
     pre_flight_checks:
       enabled: true
     project_level_roles:
-      enabled: false
+      enabled: true
     project_level_secrets:
       enabled: true
+    rbac__custom_roles:
+      enabled: true
     rbac__groups:
-      enabled: false
+      enabled: true
     rbac__saml:
-      enabled: false
+      enabled: true
     rbac__project_roles:
-      enabled: false
+      enabled: true
     restrict_job_ssh_access:
       enabled: false
     scheduler_hook:
@@ -193,6 +199,10 @@ data:
     get_started:
       enabled: true
     ui_agent_page:
+      enabled: true
+    ui_show_refresh_collaborators:
+      enabled: true
+    ui_monaco_workflow_code_editor:
       enabled: true
     new_project_onboarding:
       enabled: true

@@ -1,0 +1,12 @@
+{
+  "title": "Node",
+  "description": "Go CI pipeline featuring setup, code quality checks with Revive and go vet, security scanning with govulncheck, test suite execution with coverage reporting, and cross-platform binary building for Linux and macOS. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Revive</span><span class='f6 normal mr1 ph1 br2 bg-red white'>GoSec</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Gotestsum</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Cross-platform</span></div>",
+  "group": "ci",
+  "short_description": "Run your Node suite",
+  "language": "Node",
+  "environment": "docker",
+  "use_case": "ci_pipeline",
+  "icon": "lang-nodejs.svg",
+  "template_path": "templates/node_docker.yml",
+  "workflow_tip": "none"
+}

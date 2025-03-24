@@ -54,10 +54,7 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
 
   field(:valid, 1, type: :bool)
 
-  field(:integration_scope, 2,
-    type: InternalApi.RepositoryIntegrator.IntegrationScope,
-    enum: true
-  )
+  field(:integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true)
 end
 
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
@@ -132,6 +129,20 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   field(:installation_url, 3, type: :string)
 end
 
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -185,6 +196,8 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   field(:GITHUB_OAUTH_TOKEN, 0)
   field(:GITHUB_APP, 1)
   field(:BITBUCKET, 2)
+  field(:GITLAB, 3)
+  field(:GIT, 4)
 end
 
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
@@ -228,6 +241,12 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
     :GithubInstallationInfo,
     InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
     InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
+  )
+
+  rpc(
+    :InitGithubInstallation,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
   )
 
   rpc(

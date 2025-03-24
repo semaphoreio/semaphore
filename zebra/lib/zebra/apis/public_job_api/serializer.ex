@@ -9,7 +9,13 @@ defmodule Zebra.Apis.PublicJobApi.Serializer do
     Job.Metadata.new(
       [
         id: job.id,
-        name: job.name
+
+        #
+        # We didn't require names to be non-empty before (we do now),
+        # so we need to default to empty string here to avoid throwing
+        # a Protobuf.InvalidError error here.
+        #
+        name: job.name || ""
       ] ++
         encode_timestamps(
           create_time: job.created_at,

@@ -1,17 +1,21 @@
 version: v1.0
 name: "💫 Elixir Insight ETL - CI Pipeline"
-
 agent:
   machine:
     type: {{ machine_type }}  # Define the machine type (e.g., e1-standard-2 for cost-efficiency)
     os_image: {{ os_image }}  # Specify the OS image (e.g., ubuntu2004 for compatibility)
-
   containers:
     - name: main
-      image: 'registry.semaphoreci.com/elixir:1.15.7'  # Elixir 1.15.7 with Erlang/OTP 26
+      image: 'registry.semaphoreci.com/elixir:1.18'  # Elixir 1.18 with Erlang/OTP 26
     - name: postgres
       image: 'registry.semaphoreci.com/postgres:17'  # PostgreSQL 17 for database operations
-      
+      env_vars:
+        - name: POSTGRES_PASSWORD
+          value: postgres
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_DB
+          value: app_test
 fail_fast:
   stop:
     when: branch != 'main'  # Stop execution early for non-main branches to save resources
@@ -59,7 +63,7 @@ blocks:
         - name: "Run Tests and Generate Coverage"
           env_vars:
             - name: DATABASE_URL
-              value: 'ecto://postgres:@0.0.0.0:5432/sema_test'  # Database connection URL
+              value: 'ecto://postgres:@postgres:5432/app_test'  # Database connection URL
             - name: MIX_ENV
               value: test  # Set the environment to test
           commands:
@@ -68,11 +72,10 @@ blocks:
 
   - name: "📦 Build Docker Image"
     task:
-      secrets:
-        - name: ecr-push-secrets  # AWS ECR credentials for pushing images
       prologue:
         commands:
-          - eval $(aws ecr get-login --no-include-email)  # Authenticate with AWS ECR
+          - echo 'For this job to work, you would need to create and attach Semaphore secret containing AWS credentials'
+          - echo 'eval $(aws ecr get-login --no-include-email)'  # Example of authenticating with AWS ECR
       jobs:
         - name: "Build and Push Docker Image"
           commands:

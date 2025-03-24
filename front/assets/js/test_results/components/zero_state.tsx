@@ -16,7 +16,7 @@ export const ZeroState = () => {
         <div className="bg-white pa3 br3" style="box-shadow: inset 0 1px 3px 0 rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 20%);">
           <div className="flex justify-between mv1">
             <h4 className="f4 mb0 pointer">
-              <span className="red">●</span>
+              <span className="red select-none">●</span>
                 Example Test Suite
               <span className="f6 normal gray ph1">2 Failed, 4 Passed</span>
             </h4>

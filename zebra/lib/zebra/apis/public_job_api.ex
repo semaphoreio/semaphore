@@ -111,6 +111,9 @@ defmodule Zebra.Apis.PublicJobApi do
 
         {:error, :internal, message} ->
           raise GRPC.RPCError, status: :internal, message: message
+
+        {:error, message} ->
+          raise GRPC.RPCError, status: :invalid_argument, message: message
       end
     end)
   end

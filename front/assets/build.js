@@ -41,6 +41,7 @@ const buildOptions = {
     '.tsx': 'tsx',
     '.ts': 'ts',
     '.js': 'jsx',
+    '.ttf': 'file'
   },
   jsxImportSource: 'preact',
   jsx: 'automatic',

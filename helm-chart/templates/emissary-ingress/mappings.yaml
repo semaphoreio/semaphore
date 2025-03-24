@@ -204,33 +204,35 @@ spec:
   host_regex: true
   bypass_auth: true
   prefix: /
-  rewrite: "" 
+  rewrite: ""
   service: guard-id-http-api.{{ .Release.Namespace }}:80
 ---
+{{- if eq .Values.global.edition "ee" }}
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: guard-okta-saml-http-api
+  name: rbac-okta-saml-http-api
   namespace: {{ .Release.Namespace }}
 spec:
   hostname: "*"
   prefix: /okta/auth
   rewrite: ""
-  service: guard-okta-saml-http-api.{{ .Release.Namespace }}:4001
+  service: rbac-okta-saml-http-api.{{ .Release.Namespace }}:4001
   precedence: 100
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: guard-okta-scim-http-api
+  name: rbac-okta-scim-http-api
   namespace: {{ .Release.Namespace }}
 spec:
   hostname: "*"
   prefix: /okta/scim/
   rewrite: ""
-  service: guard-okta-scim-http-api.{{ .Release.Namespace }}:4002
+  service: rbac-okta-scim-http-api.{{ .Release.Namespace }}:4002
   precedence: 100
 ---
+{{- end }}
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
@@ -518,6 +520,20 @@ spec:
   rewrite: ""
   service: secrethub-http.{{ .Release.Namespace }}:4000
   precedence: 100
+{{- if eq .Values.global.edition "ee" }}
+---
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: secrethub-openid-mapping
+  namespace: {{ .Release.Namespace }}
+spec:
+  hostname: "*"
+  prefix: /.well-known/
+  rewrite: ""
+  service: secrethub-openid-connect-http.{{ .Release.Namespace }}:5000
+  precedence: 100
+{{- end }}
 ---
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
