@@ -12,10 +12,10 @@ import (
 	"github.com/renderedtext/go-watchman"
 )
 
-func UpdateOrClone(repo *Repository) (string, error) {
+func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone", []string{repo.HttpURL})
 
-	op := NewUpdateOrCloneOperation(repo)
+	op := NewUpdateOrCloneOperation(repo, revision)
 	err := op.Run()
 
 	log.Printf("UpdateOrClone took %f seconds", op.Duration())
@@ -29,12 +29,13 @@ func UpdateOrClone(repo *Repository) (string, error) {
 
 type UpdateOrCloneOperation struct {
 	Repository *Repository
+	Revision   *Revision
 	Started    time.Time
 	Finished   time.Time
 }
 
-func NewUpdateOrCloneOperation(repo *Repository) *UpdateOrCloneOperation {
-	return &UpdateOrCloneOperation{Repository: repo}
+func NewUpdateOrCloneOperation(repo *Repository, revision *Revision) *UpdateOrCloneOperation {
+	return &UpdateOrCloneOperation{Repository: repo, Revision: revision}
 }
 
 func (o *UpdateOrCloneOperation) Duration() float64 {
@@ -63,8 +64,14 @@ func (o *UpdateOrCloneOperation) Update() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 
-	log.Printf("fetching from remotes %s", o.Repository.Path())
-	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	var cmd *exec.Cmd
+	if o.Revision != nil {
+		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Revision)
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", o.Revision.Reference)
+	} else {
+		log.Printf("fetching from remotes %s without revision", o.Repository.Path())
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin")
+	}
 
 	cmd.Dir = o.Repository.Path()
 	cmd.Env = append(cmd.Env, "GIT_ASKPASS=/app/git-ask-pass.sh")

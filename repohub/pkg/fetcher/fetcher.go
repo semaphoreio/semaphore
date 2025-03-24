@@ -97,7 +97,7 @@ func (f *Fetcher) Sync(index int, totalRepoCount int, r *models.Repository) bool
 		Password: token,
 	}
 
-	op := gitrekt.NewUpdateOrCloneOperation(repo)
+	op := gitrekt.NewUpdateOrCloneOperation(repo, nil)
 
 	log.Printf("Syncing repo %d/%d START: Repo %s from %s",
 		index,
