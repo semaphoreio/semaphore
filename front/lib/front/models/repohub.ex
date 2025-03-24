@@ -8,10 +8,11 @@ defmodule Front.Models.Repohub do
       request =
         InternalApi.Repository.GetFilesRequest.new(
           repository_id: repository_id,
-          revision: InternalApi.Repository.Revision.new(
-            commit_sha: commit_sha,
-            reference: reference
-          ),
+          revision:
+            InternalApi.Repository.Revision.new(
+              commit_sha: commit_sha,
+              reference: reference
+            ),
           selectors: extract_selectors(initial_yaml),
           include_content: true
         )

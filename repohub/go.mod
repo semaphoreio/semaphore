@@ -1,6 +1,6 @@
 module github.com/semaphoreio/semaphore/repohub
 
-go 1.21
+go 1.22
 
 require (
 	github.com/bmatcuk/doublestar v1.1.5
