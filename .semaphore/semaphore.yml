@@ -586,6 +586,42 @@ blocks:
         - name: "\U0001F9EA Test"
           commands:
             - make test.ex
+  # Docs
+  - name: Docs cache
+    dependencies: []
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
+    task:
+      jobs:
+        - name: Preheat cache
+          commands:
+            - checkout
+            - sem-version node 20.12
+            - cd docs
+            - cache restore
+            - npm install
+            - cache store
+  - name: Docs build
+    dependencies: [Docs cache]
+    task:
+      prologue:
+        commands:
+          - checkout
+          - sem-version node 20.12
+          - cd docs
+          - cache restore
+          - npm install
+      jobs:
+        - name: Lint
+          commands:
+            - npm run lint
+        - name: Build
+          commands:
+            - npm run build
+        - name: Build image
+          commands:
+            - make nginx.build
+            - make nginx.test
   # Front
   - name: "Front: \U0001F5BC️ Provision Test Image"
     dependencies: []
