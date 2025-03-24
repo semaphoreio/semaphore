@@ -367,5 +367,5 @@ func Test__GetFiles__WithReferenceThatDoesExist(t *testing.T) {
 	}
 
 	_, err := client.GetFiles(context.Background(), &req)
-	assert.ErrorContains(t, err, "couldn't find remote ref refs/remotes/origin/does-not-exist")
+	assert.ErrorContains(t, err, "couldn't find remote ref refs/heads/does-not-exist")
 }
