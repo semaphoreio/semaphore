@@ -118,9 +118,9 @@ defmodule FrontWeb.WorkflowController do
 
   defp fetch_yaml_files(repo_id, hook, initial_yaml) do
     if hook.type == "pr" do
-      Repohub.fetch_sempahore_files(repo_id, initial_yaml, hook.pr_sha)
+      Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.pr_sha, "")
     else
-      Repohub.fetch_sempahore_files(repo_id, initial_yaml, hook.head_commit_sha)
+      Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.head_commit_sha, "refs/heads/#{hook.branch_name}")
     end
   end
 

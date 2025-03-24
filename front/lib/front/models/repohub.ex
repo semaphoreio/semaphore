@@ -3,12 +3,15 @@ defmodule Front.Models.Repohub do
 
   alias InternalApi.Repository.RepositoryService.Stub
 
-  def fetch_sempahore_files(repository_id, initial_yaml, commit_sha \\ "") do
+  def fetch_semaphore_files(repository_id, initial_yaml, commit_sha \\ "", reference \\ "") do
     Watchman.benchmark("external.repohub.find_all_yaml_files.duration", fn ->
       request =
         InternalApi.Repository.GetFilesRequest.new(
           repository_id: repository_id,
-          revision: InternalApi.Repository.Revision.new(commit_sha: commit_sha),
+          revision: InternalApi.Repository.Revision.new(
+            commit_sha: commit_sha,
+            reference: reference
+          ),
           selectors: extract_selectors(initial_yaml),
           include_content: true
         )

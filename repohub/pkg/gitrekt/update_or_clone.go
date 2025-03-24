@@ -66,6 +66,7 @@ func (o *UpdateOrCloneOperation) Update() error {
 
 	var cmd *exec.Cmd
 	if o.Revision != nil {
+		// #nosec G204
 		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Revision)
 		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", o.Revision.Reference)
 	} else {

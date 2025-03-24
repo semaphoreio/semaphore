@@ -186,7 +186,7 @@ defmodule FrontWeb.ProjectController do
 
     fetch_yaml_files =
       Async.run(
-        fn -> Repohub.fetch_sempahore_files(project.repo_id, project.initial_pipeline_file) end,
+        fn -> Repohub.fetch_semaphore_files(project.repo_id, project.initial_pipeline_file) end,
         metric: "workflow.edit.load_all_yaml_files"
       )
 
