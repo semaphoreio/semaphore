@@ -321,6 +321,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :revoked,
           :token,
           :refresh_token,
+          :token_expires_at,
           :permission_scope
         ]
       )
