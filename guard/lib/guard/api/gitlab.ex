@@ -32,6 +32,11 @@ defmodule Guard.Api.Gitlab do
     end
   end
 
+  defp handle_fetch_token(%{refresh_token: refresh_token}) when refresh_token in [nil, ""] do
+    Logger.warning("No refresh token found for GitLab repo host account, account is revoked")
+    {:error, :revoked}
+  end
+
   defp handle_fetch_token(repo_host_account) do
     body_params = %{
       "grant_type" => "refresh_token",

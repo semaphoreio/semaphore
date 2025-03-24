@@ -55,6 +55,11 @@ defmodule Guard.Api.Bitbucket do
     end
   end
 
+  defp fetch_token(%{refresh_token: refresh_token}) when refresh_token in [nil, ""] do
+    Logger.warning("No refresh token found for Bitbucket repo host account, account is revoked")
+    {:error, :revoked}
+  end
+
   defp fetch_token(repo_host_account) do
     body_params = %{
       "grant_type" => "refresh_token",
