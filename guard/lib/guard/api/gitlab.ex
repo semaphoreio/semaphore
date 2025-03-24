@@ -11,18 +11,10 @@ defmodule Guard.Api.Gitlab do
   Fetch or refresh access token
   """
   def user_token(repo_host_account) do
-    cache_key = OAuth.token_cache_key(repo_host_account)
-
-    case Cachex.get(:token_cache, cache_key) do
-      {:ok, {token, expires_at}} when not is_nil(token) and token != "" ->
-        if OAuth.valid_token?(expires_at) do
-          {:ok, {token, expires_at}}
-        else
-          handle_fetch_and_cache_token(repo_host_account)
-        end
-
-      _ ->
-        handle_fetch_and_cache_token(repo_host_account)
+    if OAuth.valid_token?(repo_host_account.token_expires_at, nil_valid: false) do
+      {:ok, {repo_host_account.token, repo_host_account.token_expires_at}}
+    else
+      handle_fetch_token(repo_host_account)
     end
   end
 
@@ -32,7 +24,7 @@ defmodule Guard.Api.Gitlab do
     case Tesla.get(client, @oauth_token_info_path) do
       {:ok, res} ->
         expires_at = OAuth.calc_expires_at(res.body["expires_in"])
-        {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at)}
+        {:ok, res.status in 200..299 && OAuth.valid_token?(expires_at, nil_valid: false)}
 
       {:error, error} ->
         Logger.error("Error validating token: #{inspect(error)}")
@@ -40,7 +32,12 @@ defmodule Guard.Api.Gitlab do
     end
   end
 
-  defp handle_fetch_and_cache_token(repo_host_account) do
+  defp handle_fetch_token(%{refresh_token: refresh_token}) when refresh_token in [nil, ""] do
+    Logger.warning("No refresh token found for GitLab repo host account, account is revoked")
+    {:error, :revoked}
+  end
+
+  defp handle_fetch_token(repo_host_account) do
     body_params = %{
       "grant_type" => "refresh_token",
       "refresh_token" => repo_host_account.refresh_token,
