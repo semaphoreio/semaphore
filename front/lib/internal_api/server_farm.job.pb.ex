@@ -552,9 +552,18 @@ defmodule InternalApi.ServerFarm.Job.CreateRequest do
           project_id: String.t(),
           branch_name: String.t(),
           commit_sha: String.t(),
-          job_spec: InternalApi.ServerFarm.Job.JobSpec.t()
+          job_spec: InternalApi.ServerFarm.Job.JobSpec.t(),
+          restricted_job: boolean
         }
-  defstruct [:requester_id, :organization_id, :project_id, :branch_name, :commit_sha, :job_spec]
+  defstruct [
+    :requester_id,
+    :organization_id,
+    :project_id,
+    :branch_name,
+    :commit_sha,
+    :job_spec,
+    :restricted_job
+  ]
 
   field(:requester_id, 1, type: :string)
   field(:organization_id, 2, type: :string)
@@ -562,6 +571,7 @@ defmodule InternalApi.ServerFarm.Job.CreateRequest do
   field(:branch_name, 4, type: :string)
   field(:commit_sha, 5, type: :string)
   field(:job_spec, 6, type: InternalApi.ServerFarm.Job.JobSpec)
+  field(:restricted_job, 7, type: :bool)
 end
 
 defmodule InternalApi.ServerFarm.Job.CreateResponse do

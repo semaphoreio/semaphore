@@ -481,6 +481,7 @@ defmodule FrontWeb.ProjectController do
          {:ok, creds} <- CommitJob.get_git_credentials(params.project, params.user_id),
          {:user, user} when user != nil <- {:user, User.find(params.user_id)},
          params <- Map.put(params, :user, user),
+         params <- Map.put(params, :restricted_job, true),
          {:ok, job_spec} <- CommitJob.create_job_spec(agent, creds, params),
          {:ok, job} <- Job.create(job_spec, params) do
       {:ok, job.id}

@@ -1023,6 +1023,7 @@ defmodule Zebra.Api.InternalJobApiTest do
           project_id: project_id,
           branch_name: "master",
           commit_sha: "",
+          restricted_job: false,
           job_spec: %JobSpec{
             job_name: "RSpec 1/3",
             agent: %JobSpec.Agent{
@@ -1100,6 +1101,7 @@ defmodule Zebra.Api.InternalJobApiTest do
           project_id: project_id,
           branch_name: "master",
           commit_sha: "",
+          restricted_job: false,
           job_spec: %JobSpec{
             job_name: "RSpec 1/3",
             agent: %JobSpec.Agent{

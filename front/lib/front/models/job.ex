@@ -117,6 +117,7 @@ defmodule Front.Models.Job do
           organization_id: params.project.organization_id,
           project_id: params.project.id,
           branch_name: params.target_branch,
+          restricted_job: params.restricted_job,
           commit_sha: "",
           job_spec: job_spec
         )

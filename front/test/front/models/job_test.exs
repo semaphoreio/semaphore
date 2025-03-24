@@ -16,7 +16,8 @@ defmodule Front.Models.JobTest do
       params = %{
         user_id: "valid_response",
         project: %{id: UUID.uuid4(), organization_id: UUID.uuid4()},
-        target_branch: "master"
+        target_branch: "master",
+        restricted_job: true
       }
 
       assert {:ok, job} = Job.create(job_spec, params)
@@ -31,7 +32,8 @@ defmodule Front.Models.JobTest do
       params = %{
         user_id: "error_response",
         project: %{id: UUID.uuid4(), organization_id: UUID.uuid4()},
-        target_branch: "master"
+        target_branch: "master",
+        restricted_job: true
       }
 
       assert {:error, message} = Job.create(job_spec, params)
@@ -44,7 +46,8 @@ defmodule Front.Models.JobTest do
       params = %{
         user_id: "raise_response",
         project: %{id: UUID.uuid4(), organization_id: UUID.uuid4()},
-        target_branch: "master"
+        target_branch: "master",
+        restricted_job: true
       }
 
       assert {:error, :grpc_req_failed} = Job.create(job_spec, params)
