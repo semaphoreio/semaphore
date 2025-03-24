@@ -65,7 +65,7 @@ func (o *UpdateOrCloneOperation) Update() error {
 	defer cancel()
 
 	var cmd *exec.Cmd
-	if o.Revision != nil {
+	if o.Revision != nil && o.Revision.Reference != "" {
 		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Revision)
 
 		// #nosec G204
