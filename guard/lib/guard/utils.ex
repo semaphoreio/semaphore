@@ -68,11 +68,13 @@ defmodule Guard.Utils.OAuth do
   end
 
   defp update_token(repo_host_account, token, refresh_token, expires_at) do
+    {:ok, parsed_expires_at} = expires_at |> DateTime.from_unix(:second)
+
     Guard.FrontRepo.RepoHostAccount.update_token(
       repo_host_account,
       token,
       refresh_token,
-      expires_at |> DateTime.from_unix(:second)
+      parsed_expires_at
     )
   end
 
