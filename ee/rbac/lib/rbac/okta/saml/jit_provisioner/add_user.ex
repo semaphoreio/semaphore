@@ -40,6 +40,8 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       {:ok, saml_jit_user} <- SamlJitUser.connect_user(saml_jit_user, user.id),
       {:ok, role_id} <- fetch_role_to_be_assigned(saml_jit_user),
       :ok <- assign_role(user.id, saml_jit_user.org_id, role_id),
+      {:ok, group_ids} <- fetch_groups_to_be_assigned(saml_jit_user),
+      :ok <- assign_groups(user.id, group_ids),
       {:ok, saml_jit_user} <- SamlJitUser.mark_as_processed(saml_jit_user)
     ) do
       info("Provisioning #{saml_jit_user.id} done.")
@@ -123,6 +125,29 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       Rbac.Events.UserJoinedOrganization.publish(user_id, org_id)
       :ok
     end
+  end
+
+  defp fetch_groups_to_be_assigned(jit_user) do
+    member_of = jit_user.attributes["member"] || []
+    info("[Saml JIT Provisioner] User member groups: #{inspect(member_of)}")
+
+    case Rbac.Okta.IdpGroupMapping.map_groups(jit_user.org_id, member_of) do
+      {:ok, groups, _default_role_id} when is_list(groups) ->
+        info("[Saml JIT Provisioner] Mapped Semaphore groups: #{inspect(groups)}")
+        {:ok, groups}
+
+      e ->
+        info("[Saml JIT Provisioner] Response from IdpGroupMapping.map_groups #{inspect(e)}")
+        {:ok, []}
+    end
+  end
+
+  defp assign_groups(user_id, group_ids) when is_list(group_ids) do
+    Enum.each(group_ids, fn group_id ->
+      Rbac.Repo.GroupManagementRequest.create_new_request(user_id, group_id, :add)
+    end)
+
+    :ok
   end
 
   defp log_provisioning_error(okta_user, err) do
