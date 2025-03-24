@@ -80,7 +80,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
     end
   end
 
-  def construct_triggerer(wf_id, ppl_id, job_id, env_vars, :project_debug_job), do: ""
+  def construct_triggerer(_wf_id, _ppl_id, _job_id, _env_vars, :project_debug_job), do: ""
 
   def construct_triggerer(wf_id, ppl_id, job_id, env_vars, job_type) do
     case wf_triggerer(wf_id, ppl_id, job_id, env_vars, job_type) do

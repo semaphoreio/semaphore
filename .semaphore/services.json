@@ -178,7 +178,7 @@
     "RBAC EE": [
       {
         "path": "ee/rbac",
-        "component": "rbac"
+        "component": "rbac_ee"
       }
     ],
     "Repohub": [

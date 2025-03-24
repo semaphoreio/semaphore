@@ -118,7 +118,7 @@ export class AgentPoller {
           <div>
             <div class="flex-l items-center justify-between">
               <h3 class="f4 mb1">
-                <span class="green">●</span>
+                <span class="green select-none">●</span>
                 ${agent.name}
               </h3>
               <div class="f5 gray mb0">

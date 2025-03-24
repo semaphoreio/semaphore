@@ -54,6 +54,7 @@ applications=(
   "ProjectHub REST API"
   "PreFlightChecks"
   "RBAC CE"
+  "RBAC EE"
   "PublicApiGateway"
   "Repohub"
   "RepositoryHub"
