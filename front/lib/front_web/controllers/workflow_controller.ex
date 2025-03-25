@@ -119,16 +119,36 @@ defmodule FrontWeb.WorkflowController do
   defp fetch_yaml_files(repo_id, hook, initial_yaml) do
     cond do
       hook.type == "pr" and hook.forked_pr ->
-        Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.pr_sha, "refs/pulls/#{hook.pr_number}/head")
+        Repohub.fetch_semaphore_files(
+          repo_id,
+          initial_yaml,
+          hook.pr_sha,
+          "refs/pulls/#{hook.pr_number}/head"
+        )
 
       hook.type == "pr" and !hook.forked_pr ->
-        Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.pr_sha, "refs/heads/#{hook.pr_branch_name}")
+        Repohub.fetch_semaphore_files(
+          repo_id,
+          initial_yaml,
+          hook.pr_sha,
+          "refs/heads/#{hook.pr_branch_name}"
+        )
 
       hook.type == "branch" ->
-        Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.pr_sha, "refs/heads/#{hook.branch_name}")
+        Repohub.fetch_semaphore_files(
+          repo_id,
+          initial_yaml,
+          hook.pr_sha,
+          "refs/heads/#{hook.branch_name}"
+        )
 
       hook.type == "tag" ->
-        Repohub.fetch_semaphore_files(repo_id, initial_yaml, hook.pr_sha, "refs/tags/#{hook.tag_name}")
+        Repohub.fetch_semaphore_files(
+          repo_id,
+          initial_yaml,
+          hook.pr_sha,
+          "refs/tags/#{hook.tag_name}"
+        )
     end
   end
 
