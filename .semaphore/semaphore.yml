@@ -634,7 +634,7 @@ blocks:
       jobs:
         - name: Lint
           commands:
-            - npm run lint
+            - make lint
         - name: Test
           commands:
             - make test
