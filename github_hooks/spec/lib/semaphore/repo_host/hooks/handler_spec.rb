@@ -309,6 +309,22 @@ RSpec.describe Semaphore::RepoHost::Hooks::Handler do
           end
         end
 
+        context "and the pull-request get throws unknown error" do
+          before do
+            allow(repo_host).to receive(:validate_token_presence!)
+            allow(repo_host).to receive(:pull_request).and_raise(::RepoHost::RemoteException::Unknown,
+                                                                 "Oops")
+          end
+
+          it "logs the error and raises again" do
+            expect(@logger).to receive(:error).with("Unknown error", error: "Oops")
+
+            expect do
+              described_class.run(@workflow, @logger)
+            end.to raise_error(RepoHost::RemoteException::Unknown)
+          end
+        end
+
         context "and the pull-request is eventually found, but non mergeable" do
           before do
             allow(repo_host).to receive(:validate_token_presence!)

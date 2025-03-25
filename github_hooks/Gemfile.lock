@@ -221,7 +221,7 @@ GEM
     net-smtp (0.5.0)
       net-protocol
     nio4r (2.7.4)
-    nokogiri (1.18.3)
+    nokogiri (1.18.5)
       mini_portile2 (~> 2.8.2)
       racc (~> 1.4)
     octokit (4.20.0)
@@ -246,7 +246,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (2.2.12)
+    rack (2.2.13)
     rack-session (1.0.2)
       rack (< 3)
     rack-test (2.1.0)
@@ -466,7 +466,7 @@ DEPENDENCIES
   kaminari (~> 1.2.2)
   lograge
   net-http
-  nokogiri (~> 1.18.3)
+  nokogiri (~> 1.18.4)
   octokit
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)

@@ -262,7 +262,11 @@ defmodule Zebra.Apis.PublicJobApi do
   end
 
   defp can_create_debug_job?(org_id, job) do
-    DebugPermissions.check(org_id, job, :debug)
+    if job.spec["restricted_job"] do
+      {:error, :permission_denied, "The debug session is blocked for this job."}
+    else
+      DebugPermissions.check(org_id, job, :debug)
+    end
   end
 
   defp can_create_debug_project?(org_id, project) do
@@ -273,9 +277,13 @@ defmodule Zebra.Apis.PublicJobApi do
     if Job.self_hosted?(job.machine_type) do
       {:error, :permission_denied, "SSH keys are not available for self-hosted jobs"}
     else
-      operation = operation(job)
+      if job.spec["restricted_job"] do
+        {:error, :permission_denied, "Attaching to this job is blocked."}
+      else
+        operation = operation(job)
 
-      DebugPermissions.check(org_id, job, operation)
+        DebugPermissions.check(org_id, job, operation)
+      end
     end
   end
 

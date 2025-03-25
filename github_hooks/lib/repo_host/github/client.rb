@@ -244,6 +244,8 @@ module RepoHost::Github
         raise ::RepoHost::RemoteException::MaximumNumberOfStatuses, exception.message
       elsif hook_exists?(exception)
         raise ::RepoHost::RemoteException::HookExistsOnRepository, exception.message
+      else
+        raise ::RepoHost::RemoteException::Unknown, exception.message
       end
     end
 

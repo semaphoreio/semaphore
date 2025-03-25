@@ -6,7 +6,8 @@ defmodule Front.Models.Job do
     CanAttachRequest,
     CanDebugRequest,
     DescribeRequest,
-    StopRequest
+    StopRequest,
+    CreateRequest
   }
 
   alias InternalApi.Loghub2.GenerateTokenRequest
@@ -104,6 +105,35 @@ defmodule Front.Models.Job do
         e ->
           Logger.info("CanAttach Request failed: #{job_id}, #{inspect(e)}")
           {:error, false, ""}
+      end
+    end)
+  end
+
+  def create(job_spec, params) do
+    Watchman.benchmark("jobs.create.duration", fn ->
+      request =
+        CreateRequest.new(
+          requester_id: params.user_id,
+          organization_id: params.project.organization_id,
+          project_id: params.project.id,
+          branch_name: params.target_branch,
+          restricted_job: params.restricted_job,
+          commit_sha: "",
+          job_spec: job_spec
+        )
+
+      with {:ok, channel} <- GRPC.Stub.connect(internal_endpoint()),
+           {:ok, response} <- Stub.create(channel, request, timeout: 30_000) do
+        if response.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
+          {:ok, construct(response.job)}
+        else
+          Logger.info("Creating a job failed: #{inspect(response.status)}")
+          {:error, response.status.message}
+        end
+      else
+        e ->
+          Logger.info("Creating a job failed: #{inspect(e)}")
+          {:error, :grpc_req_failed}
       end
     end)
   end
