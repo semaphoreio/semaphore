@@ -23,7 +23,7 @@ configure.gcloud:
 	gcloud auth activate-service-account $(GCP_REGISTRY_WRITER_EMAIL) --key-file ~/gce-registry-writer-key.json
 	gcloud --quiet auth configure-docker
 
-build:
+build: npm.build
 	docker build --cache-from $(IMAGE):latest -t $(IMAGE) . -f Dockerfile
 
 test:
