@@ -32,7 +32,7 @@ FROM builder AS dev
 WORKDIR /app
 
 ADD default.conf /etc/nginx/conf.d/default.conf
-COPY build/ /usr/share/nginx/html/
+COPY --from=builder /app/build/ /usr/share/nginx/html/
 
 # Runner
 FROM ${RUNNER_IMAGE} AS runner
