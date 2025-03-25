@@ -601,6 +601,7 @@ blocks:
             - checkout
             - cd docs
             - make build
+            - make push
   - name: "Docs: \U0001F5BC️ Build test image"
     dependencies: []
     run:
@@ -615,6 +616,7 @@ blocks:
             - checkout
             - cd docs
             - make build
+            - make push
   - name: "Docs: \U0001F9EA QA"
     dependencies: ["Docs: \U0001F5BC️ Build test image"]
     run:
