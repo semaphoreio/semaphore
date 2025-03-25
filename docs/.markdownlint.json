@@ -1,0 +1,16 @@
+{
+    "default": true,
+    "line-length": false,
+    "single-trailing-newline": false,
+    "no-trailing-punctuation": false,
+    "no-duplicate-heading": false,
+    "no-trailing-spaces": false,
+    "blanks-around-fences": false,
+    "blanks-around-lists": false,
+    "no-multiple-blanks": false,
+    "no-inline-html": false,
+    "code-block-style": false,
+    "no-bare-urls": false,
+    "emphasis-style": false,
+    "single-title": { "front_matter_title": "$disable" }
+}

@@ -1,0 +1,95 @@
+/**
+ * CSS files with the .module.css suffix will be treated as CSS modules
+ * and scoped locally.
+ */
+
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(42deg,
+  rgb(194, 240, 215) 0%,
+  rgb(199, 218, 255) 100%
+  );
+  color: black;
+  font-family: Inter, sans-serif;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+ 
+}
+
+
+.indexCtas {
+  --ifm-button-size-multiplier: 1.6;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 24px;
+
+}
+
+main {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+  padding: 2rem;
+  margin: 0 auto;
+}
+
+.indexCtas a,
+.indexCtas a:hover {
+  color: black;
+}
+
+.indexCtas a:last-of-type {
+  margin: 20px 36px;
+}
+
+.indexCtasGitHubButtonWrapper {
+  display: flex;
+  margin-left: 20px;
+}
+
+.indexCtasGitHubButton {
+  overflow: hidden;
+}
+
+.indexCtaTryNowButton:hover {
+  color: var(--ifm-color-primary);
+}
+
+/* Wraps all buttons in a row and centers them horizontally. */
+.buttonsWrapper {
+  display: flex;
+  justify-content: center; 
+  gap: 2rem; /* spacing between each button container */
+  flex-wrap: wrap; /* optional: allows wrapping on smaller screens */
+}
+
+/* Centers each button and its legend vertically. */
+.buttonContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* A simple style for each legend. Customize as needed. */
+.legend {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  text-align: center;
+  /* You can also change color, weight, etc. */
+}
+

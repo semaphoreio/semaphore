@@ -1,0 +1,2351 @@
+---
+id: deployment-targets-create
+title: "Create a project deployment targets"
+description: "Create a deployment target for the project."
+sidebar_label: "Create a project deployment targets"
+hide_title: true
+hide_table_of_contents: true
+api: eJztXG1z2zYS/isY9j5ce6Iky3r1N8d27zxN7YztdKZn+WwQXEo4kwALgE4Uj//7zQKkSImU4jTpzXWO/hKJAhaLB4vF7uIJnz1G4zig7FF7R88vHS+EVAGjBkLvKKKxBnykmeKp4VJ4R96JAmqAUBJCGstVAsIQQ9UCDImkImYJJFXy38BM1+t4MgVFsed56B15p+suN7aH7jppXsdLqaIJGFDaO7p93hrzPCRSEUETIDKqDuF1PI4NUmqWXsfDFvjN/XjPw3up7u3Djqfgt4wrnJZRGXQ8zZaQUO/o2aNidRk1jXqKo1Hybj0WfKRJGuMQbDZg/f5s6o+mw4E/nI4nfjAIZ34IU0rhYNQfhQOv40VSJdR4R16W8dDreIYb2z0X2T0/xYerFJ9po7hYeC+dbT3yxm7+SaYNSahhS4uDggV83NAsWfklOAkXb0EszNI7OkCMjQGFIufz49v5/MN87s/n3bu/zeefGpS7cMBtqXf38nLn0ARt3shwhRAyKQwIY9FM05gzu+a9f2ucwHMF61ShRRgOaG5eaUL3zoTqTWjKfwGluRMUQkSzGAF9Qng3cTpeNyUhRFyAthA9uWcQEqeGMyGuiUJT1yCMVdautSAysHOfC5L/XYNCCUQvZRaHhEnxBMoQBUwuBP+0FquJkXa8mBrQhnCBWNOYPNE4gw6hIiQJXREFOEApPxMVUbat7m4sqJ2pAhpeinhVWG+xVuWcGwzJe+Qi3IRtewfWQPyJi5BwTShxYpxKJVb4CGd5dXZ9QxRomSkGDk8HXdlUN6CICHARgXJdIiUTKw5EmEqOrmQJhMUcvYrOgoQbXCdrawhwl5xQIaQhAVQQTEP0V11yLsgJTSA+oRo2MWyY9i5EEYAmLBMwNKSGOjyrkP2c/1L4pppj1B1C45hEHOJQE6oQThoSiaN3tuydWYcY3lNTH+iGJ6ANTVLCBTm/viTTcf+A5D6m4mwQDt9wt3vzaa37Ns2tGDRY1TcgD+uKFJ7xvQa1gfPBNBj2gUY+g4O+P5yxQ392GA18GEYwGYSjg3E/2OMWUV6jT3zZbFM2cDbnvWyZ8bbCp+W3navUBMy+yTfYVAnEjE0mk2A88gcHh5E/jODAD9g48CeDSThgYQizSbgHiG3ZzQeFF1Nt7suJ1HU9rk5zybWRakW4gQT9mKFc4O6K4YkKQ0IwlMea0EBmptJPE6P4YgEKQnvCN5z8uNlEFsc0QO3dftq0IhBP909U6bqKZ+KJKymstCeqOMrQ+xYJ1W+W8wtVtf3kQoLtxheVUAIaFNhYy59/vb8+O7k6u6kdqLUFsc6yPtwv1oe+djwNTEH99K5viTKkufXyKMcpcFda0rUVprvu3+4apdr+yR9Qpejq9aa/oTjtDwfD4WDiR9Fg6g+jycSn09mh34/CaBSN+uxw2n+V0e8wd6n4gov7lKcQcwH3+1R8lzfa3JWTgI5G4YE/64cTf9gPZj4dhKEfhEHYHxxOZ8Fo2qDgtmmvA6V8jB3q/n49achGdDCO/GF/MvGHk4D503AY+SwYDseTaMAO+offTk9tMASvnzZLIPanwnDR21R35J49CiJL0CrfnV2cnl/83et41zfHVzdnOP6Px+dvz06tjTZqcp+A1nSxQ6P8x9+hU20098ve1dnr44d0BrN+/8AfT/qH/nB6MPJn7GDmQziAGUzZdAL06318rmWzH0NEqmnR6+ZduPP/bpBRDvvnDTNedi+f7v7Dna/nBpImB9u8gjUxlTQvAJIJ/hseHaLIeEkMTxB3tvNA28kmg0fk4V+3x/4/qf+p78/uu/7d3/7ysIFeqmSYMeNyhl0ZYlXGfN6dz1HOHuvVO9JF9NqLvXvsUi2o4J9orlCpZ38QTNhoMPWDfnTgDwfjsT+FEfgH/WASzKZDmIz37a+q3F0eel0o2OOgG7L/yWAcBhCFfnDYZ/6QTft+wGbUZ/3xweFsPKUDtk+zvdn/Lnd8XXXF9QhsLohPHq5/vTg5v/j7A/Errou4FSIursDkTq8EWyop+CcuFq7n++vjN2/PmjtiOsgMfwKbxDIqrGVqsFWZRIY84hDmYi4+I4hJpbLUQFjIctncDnEnl1enlxdnp83illSTAECg0NBm+CgzBKssJjRzQSqHUQ6O1/GcjvjhYv2xGKrxYMpTzP+uwywG/VO7y+00uxqzuqDFuY3KVrxrcJ46BdawJ1JgPMqrTfvOwK2akjXmV0Q8NVEdgrMgvPYz1wQNuTDEEopAyhiowDkEUj4mVD3eV2udu050Xal0JtLOr+zWJb/KzG5ELDYp3Dx56SjvpaHSGgtTEY+xYTWr46IhOezuTrC2Y40GxRrrJvTjuRN4aE+b/Eu/nnH8IRn8t0o8O7Zcg6C5Ysm6KrUHsTYl/bYpacRjaID5R/6tFw4l1itzZY17s3VANYyHBASTIdgKsamkIqg0sWWTJBwRtgT2qLOkMRrBS4y9doGyuuSNNEtCAy3jzLgjWUFM7fmMIlyFkcax/ADhZhm0h7/3jOxFboJfspr5FUuBwu71zMH77Gr+38bDFpF7lTUa84kUEV9kCsiHJWdLEigq2BJ0hxi60GhI7660df15PrVRj6tU3PHvhx/OIxJDZAgkqVnZKvQXCvzhh9pGKCTgZymg8e7sGM1PVwa0tyMNA1Tis+O3b6tmVUe0ljFfWiivshi6b+wo3eM4fsWNGh5l+dKiXs5s6ALroe4GItc592BfpdHPKPwGFdreAl85V5fA6M37nYvLi7P6xVi5GHiNKsXaoeDSv25hOk50U3CMdvRKWzB08Ucbwg1dfCsrQG2/ygRQlz9g/W9oHnzXouRsr2+Zi6p3kfu8SJPnyDQGk3s8xVzUQ22x2jDQRkpBYSBiZcewp2VmpF9GmDtspmMjcYzIrW2bJShi526PQL4QUuVJ4ef1bwzZUY2GW5Vc3w0d7UYKoLwsaRSoZOPKoCnGXNugwTbBD05fs6SmeqLvxGLT9du/YEVy5NfHpZOO8h6ugIagHjrk4UQKo3iQGakeLFwPx2HCxUPHXVQmUgG5XYKCu78ujUn1Ua8XSqa7GhKaLqUCxrtMJj0NLFPcrHr5qL4drfddPrj7+n23QdMrGRd5D+rGqAbChQahOQY2X5CW4BibUU9ldo11ya24xMK+f4m+bGWquu/imqB0TLuLWWQun66l5K9waQuOlRERxrAlbJvIsb0NtzsrsqVPDawmH5SpuBm891dvC2m70rWmBKJeDdhqRasUiEd3e2/LBV/kX5siVhds3hv5CA0ZqV0yF446joQtYVH0Y4SHkKTSgGArYrtXbP7cYoBmozCujQ1P4zIrIR+4cSGsRqMmD1UlHtZZPqY0LiNQaJICyAeOsZZNyxloDWHFIeCWdmwhbdYNQ64VLKjCnCXITNEglUKX0gb9Prn8CWdlax5SVzXFSayHIzpj+CnK4tiWEfav7Qa2nQYm0N7Vc7SxK6dJQ91pu5pQEVGQ1Zy3zpkP7owoltOtWI0zZmfg8LF7edDvfwX3qSU2tcSmltjUEptaYlNLbGqJTS2xqSU2tcSmltjUEptaYtOf5iKnJTa1xKaW2NQSm1piU0tsaolNbUraEptaYtP/czzcEptaYlNLbGqJTS2xqSU2tcSmltjUEpv+J4lNdXbMSc6CqSeeLx1v+FU0l1CyLCmoKPc5hqUJ7911NOU9UEoqHxMQ3Qto6Ks156c0IcWbeQ3r25bd5Z0zFP8aiN7QkBR8IwvKQQuK917QzCylQoqPQ2XYouJdSEN+lJlwkAwGXwTJpqirgof0RGMeumpgRHlsD+H/FfRsT1e8LU6DTdUsP6gB3M8B/7lE+/XL1v1ljd9rVrBsTX50aL90vFHrB7EWX7D/HPGNuI4v62zptn4k4XmVgFlKfAVgKq3SriTk9fIASvee6y/te+nVWKEaj0DHuLOxhsVxDd4z3sjZno0QWr7huiBqE7u8/WaqafOizVlXr9xc5vRiX4NXxIVWmcIXOjM7ur2rtrhGu8hTh812tZAC2acuBlvJjNgXKyKbcD0lcksZkxkSCcEgb1GX0WsC9am7xt93yxckbmqQvwvRBvRAVTWkQrF2cdG8r8p3/p0VhrvjHX7FrUZxIeGuSBrvCW4Lc6yFbfnzaqn7tigybxSK80pwUcxF2POK6m1lv5by1sZXLRpir/L9kWXdbLuqVRaJ8vKBLVUU9Qm3CewvTWmrzRrzVNGlYPnlkcuebjdC+rt1yH7rHUZ0OorGQ380OZj4w9F44AeHEfMHbDY+jMZjGtExLmQOZRGuVrf6Jpu9ygUUUUMuiJHt9drk3mVBzBk5fnfuOLTIko2y2D5w6YJLHdFijXQcYcqMY7OXYk7Oeyen3bn47jtyXLXBudj4imPgdRN54pQ4m8xJ2ev7IRkgy49Q9xwTwieOKZVYoA7q9+6RubDKvaMLLpwqdgYxF49kadNKPRdnlC1dypR7YaKzNJXKaJKuO3bJW9ciZ4wTLlichfjm1NuKuEriSQ01irJHUF0OJupKtcDzoLc0SdxTERvNptPvNFjD9Effl/9ToBwUcxFkJ7+t6FswIomAj6ZDUgVPXGa6k//fgXWJPe/qVevf9eXH7VbQ1pHBjbU6qU1CRXkDVL4jtkjO68zhbRdb3ahf9orZ3FUZ+Gh6aUy5qCRrbqffFpewOOpR49thG06au463xMPq6NZ7fsarkPcqfnnBx79loNDl35XHict8ucbPO96cW53hX6/yPO97su/dto1TK6Igsaq4PswQYdX87tsXdAfOGKyaruGJU8bPK3iFoFpMg7m463HMGKRmb9vqSf/u8hqdc5C/IjaRIfZR9ANy1OkHp7S04FjfaJ89ezEVi8zGK56TiX//ARfmhM8=
+sidebar_class_name: "post api-method"
+info_path: docs/openapi-spec/semaphore-public-api
+custom_edit_url: null
+---
+
+import ApiTabs from "@theme/ApiTabs";
+import DiscriminatorTabs from "@theme/DiscriminatorTabs";
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import SecuritySchemes from "@theme/ApiExplorer/SecuritySchemes";
+import MimeTabs from "@theme/MimeTabs";
+import ParamsItem from "@theme/ParamsItem";
+import ResponseSamples from "@theme/ResponseSamples";
+import SchemaItem from "@theme/SchemaItem";
+import SchemaTabs from "@theme/SchemaTabs";
+import Markdown from "@theme/Markdown";
+import Heading from "@theme/Heading";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Create a project deployment targets"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/projects/{project_id_or_name}/deployment_targets"}
+>
+  
+</MethodEndpoint>
+
+
+
+Create a deployment target for the project.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+  children={"Request"}
+>
+</Heading>
+
+<details
+  style={{"marginBottom":"1rem"}}
+  className={"openapi-markdown__details"}
+  data-collapsed={false}
+  open={true}
+>
+  <summary
+    style={{}}
+  >
+    <h3
+      className={"openapi-markdown__details-summary-header-params"}
+    >
+      Path Parameters
+    </h3>
+  </summary><div>
+    <ul>
+      <ParamsItem
+        className={"paramsItem"}
+        param={{"description":"Id or name of the project","in":"path","name":"project_id_or_name","required":true,"schema":{"anyOf":[{"description":"ID of a Project","example":"c92c0098-5842-4867-b2d9-de8aae1505d2","format":"uuid","title":"Project.ID","type":"string"},{"description":"Project name must match the regex","example":"my-project","minLength":1,"pattern":"\\A[\\w\\-\\.]+\\z","title":"Project.Name","type":"string"}]}}}
+      >
+        
+      </ParamsItem>
+    </ul>
+  </div>
+</details><MimeTabs
+  className={"openapi-tabs__mime"}
+>
+  <TabItem
+    label={"application/json"}
+    value={"application/json-schema"}
+  >
+    <details
+      style={{}}
+      className={"openapi-markdown__details mime"}
+      data-collapsed={false}
+      open={true}
+    >
+      <summary
+        style={{}}
+        className={"openapi-markdown__details-summary-mime"}
+      >
+        <h3
+          className={"openapi-markdown__details-summary-header-body"}
+        >
+          Body
+        </h3><strong
+          className={"openapi-schema__required"}
+        >
+          required
+        </strong>
+      </summary><div
+        style={{"textAlign":"left","marginLeft":"1rem"}}
+      >
+        <div
+          style={{"marginTop":"1rem","marginBottom":"1rem"}}
+        >
+          
+          
+          Deployment target to be created and a unique token.
+          
+          
+        </div>
+      </div><ul
+        style={{"marginLeft":"1rem"}}
+      >
+        <SchemaItem
+          collapsible={true}
+          className={"schemaItem"}
+        >
+          <details
+            style={{}}
+            className={"openapi-markdown__details"}
+          >
+            <summary
+              style={{}}
+            >
+              <span
+                className={"openapi-schema__container"}
+              >
+                <strong
+                  className={"openapi-schema__property"}
+                >
+                  deployment_target
+                </strong><span
+                  className={"openapi-schema__name"}
+                >
+                   object
+                </span><span
+                  className={"openapi-schema__divider"}
+                >
+                  
+                </span><span
+                  className={"openapi-schema__required"}
+                >
+                  required
+                </span>
+              </span>
+            </summary><div
+              style={{"marginLeft":"1rem"}}
+            >
+              <SchemaItem
+                collapsible={true}
+                className={"schemaItem"}
+              >
+                <details
+                  style={{}}
+                  className={"openapi-markdown__details"}
+                >
+                  <summary
+                    style={{}}
+                  >
+                    <span
+                      className={"openapi-schema__container"}
+                    >
+                      <strong
+                        className={"openapi-schema__property"}
+                      >
+                        spec
+                      </strong><span
+                        className={"openapi-schema__name"}
+                      >
+                         object
+                      </span><span
+                        className={"openapi-schema__divider"}
+                      >
+                        
+                      </span><span
+                        className={"openapi-schema__required"}
+                      >
+                        required
+                      </span>
+                    </span>
+                  </summary><div
+                    style={{"marginLeft":"1rem"}}
+                  >
+                    <div
+                      style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                    >
+                      
+                      
+                      Specification of the deployment target
+                      
+                      
+                    </div><SchemaItem
+                      collapsible={false}
+                      name={"active"}
+                      required={false}
+                      schemaName={"boolean"}
+                      qualifierMessage={undefined}
+                      schema={{"description":"The state of the deployment target, true if the deployment is not cordoned","type":"boolean"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"bookmark_parameters"}
+                      required={false}
+                      schemaName={"string[]"}
+                      qualifierMessage={"**Possible values:** `<= 3`"}
+                      schema={{"description":"The names of the promotion parameters. You can later use values of these parameters to filter deployments in deployment history.","items":{"description":"The name of the promotion parameter","type":"string"},"maxItems":3,"minItems":0,"type":"array"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"description"}
+                      required={false}
+                      schemaName={"string"}
+                      qualifierMessage={undefined}
+                      schema={{"description":"Description of the deployment target","type":"string"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              env_vars
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object[]
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            Environment variables of the deployment target, only in create requests.
+                            
+                            
+                          </div><li>
+                            <div
+                              style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                            >
+                              Array [
+                            </div>
+                          </li><SchemaItem
+                            collapsible={false}
+                            name={"name"}
+                            required={true}
+                            schemaName={"string"}
+                            qualifierMessage={"**Possible values:** `non-empty`"}
+                            schema={{"description":"Name of the environment variable","example":"MY_SECRET","minLength":1,"type":"string"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"value"}
+                            required={true}
+                            schemaName={"string"}
+                            qualifierMessage={"**Possible values:** `non-empty`"}
+                            schema={{"description":"Value of the environment variable","example":"secret","minLength":1,"type":"string"}}
+                          >
+                            
+                          </SchemaItem><li>
+                            <div
+                              style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                            >
+                              ]
+                            </div>
+                          </li>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              files
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object[]
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            Files of the deployment target, only in create requests.
+                            
+                            
+                          </div><li>
+                            <div
+                              style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                            >
+                              Array [
+                            </div>
+                          </li><SchemaItem
+                            collapsible={false}
+                            name={"content"}
+                            required={true}
+                            schemaName={"string"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"base64 encoded content of the file or a md5 checksum","type":"string"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"path"}
+                            required={true}
+                            schemaName={"string"}
+                            qualifierMessage={"**Possible values:** `non-empty`"}
+                            schema={{"description":"Name of the file. Both absolute and relative paths are allowed.","example":"/path/to/file","minLength":1,"type":"string"}}
+                          >
+                            
+                          </SchemaItem><li>
+                            <div
+                              style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                            >
+                              ]
+                            </div>
+                          </li>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"name"}
+                      required={true}
+                      schemaName={"DeploymentTargets.Name (string)"}
+                      qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[A-Za-z0-9_\\.\\-]+$`"}
+                      schema={{"description":"DeploymentTargets name must be unique on project level, must match the name regex: `^[A-Za-z0-9_.-]+$`","example":"production","minLength":1,"pattern":"^[A-Za-z0-9_\\.\\-]+$","title":"DeploymentTargets.Name","type":"string"}}
+                    >
+                      
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              object_rules
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            Configure which branches, tags or PRs can trigger a deployment.
+                                        **If left empty all branches, tags or PRs can trigger a deployment.**
+                            
+                            
+                          </div><SchemaItem
+                            collapsible={true}
+                            className={"schemaItem"}
+                          >
+                            <details
+                              style={{}}
+                              className={"openapi-markdown__details"}
+                            >
+                              <summary
+                                style={{}}
+                              >
+                                <strong>
+                                  branches
+                                </strong><span
+                                  style={{"opacity":"0.6"}}
+                                >
+                                   object
+                                </span>
+                              </summary><div
+                                style={{"marginLeft":"1rem"}}
+                              >
+                                
+                              </div><div>
+                                <span
+                                  className={"badge badge--info"}
+                                >
+                                  oneOf
+                                </span><SchemaTabs>
+                                  <TabItem
+                                    label={"DeploymentTargets.DeploymentTarget.ObjectRule.Branch.All"}
+                                    value={"0-item-properties"}
+                                  >
+                                    <div
+                                      style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                    >
+                                      
+                                      
+                                      string
+                                      
+                                      <div
+                                        style={{"paddingTop":"1rem"}}
+                                      >
+                                        
+                                        
+                                        **Possible values:** [`ALL`]
+                                        
+                                        
+                                      </div>
+                                    </div>
+                                  </TabItem><TabItem
+                                    label={"DeploymentTargets.DeploymentTarget.ObjectRule.Branch.MatchType"}
+                                    value={"1-item-properties"}
+                                  >
+                                    <li>
+                                      <div
+                                        style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                      >
+                                        Array [
+                                      </div>
+                                    </li><SchemaItem
+                                      collapsible={false}
+                                      name={"match_mode"}
+                                      required={false}
+                                      schemaName={"string"}
+                                      qualifierMessage={"**Possible values:** [`EXACT`, `REGEX`]"}
+                                      schema={{"description":"Indicates how pattern is matched.","enum":["EXACT","REGEX"],"type":"string"}}
+                                    >
+                                      
+                                    </SchemaItem><SchemaItem
+                                      collapsible={false}
+                                      name={"pattern"}
+                                      required={false}
+                                      schemaName={"string"}
+                                      qualifierMessage={undefined}
+                                      schema={{"description":"The pattern to match against branch the name.\n                    If `match_mode` is `EXACT`, the pattern must match exactly.\n                    If `match_mode` is `REGEX`, the pattern must be a valid regex.","type":"string"}}
+                                    >
+                                      
+                                    </SchemaItem><li>
+                                      <div
+                                        style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                      >
+                                        ]
+                                      </div>
+                                    </li>
+                                  </TabItem>
+                                </SchemaTabs>
+                              </div>
+                            </details>
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"prs"}
+                            required={false}
+                            schemaName={"string"}
+                            qualifierMessage={"**Possible values:** [`ALL`, `NONE`]"}
+                            schema={{"default":"NONE","description":"Allows all or none of the PRs to trigger a deployment","enum":["ALL","NONE"],"type":"string"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={true}
+                            className={"schemaItem"}
+                          >
+                            <details
+                              style={{}}
+                              className={"openapi-markdown__details"}
+                            >
+                              <summary
+                                style={{}}
+                              >
+                                <strong>
+                                  tags
+                                </strong><span
+                                  style={{"opacity":"0.6"}}
+                                >
+                                   object
+                                </span>
+                              </summary><div
+                                style={{"marginLeft":"1rem"}}
+                              >
+                                
+                              </div><div>
+                                <span
+                                  className={"badge badge--info"}
+                                >
+                                  oneOf
+                                </span><SchemaTabs>
+                                  <TabItem
+                                    label={"DeploymentTargets.DeploymentTarget.ObjectRule.Tag.All"}
+                                    value={"0-item-properties"}
+                                  >
+                                    <div
+                                      style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                    >
+                                      
+                                      
+                                      string
+                                      
+                                      <div
+                                        style={{"paddingTop":"1rem"}}
+                                      >
+                                        
+                                        
+                                        **Possible values:** [`ALL`]
+                                        
+                                        
+                                      </div>
+                                    </div>
+                                  </TabItem><TabItem
+                                    label={"DeploymentTargets.DeploymentTarget.ObjectRule.Tag.MatchType"}
+                                    value={"1-item-properties"}
+                                  >
+                                    <li>
+                                      <div
+                                        style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                      >
+                                        Array [
+                                      </div>
+                                    </li><SchemaItem
+                                      collapsible={false}
+                                      name={"match_mode"}
+                                      required={false}
+                                      schemaName={"string"}
+                                      qualifierMessage={"**Possible values:** [`EXACT`, `REGEX`]"}
+                                      schema={{"description":"Indicates how pattern is matched.","enum":["EXACT","REGEX"],"type":"string"}}
+                                    >
+                                      
+                                    </SchemaItem><SchemaItem
+                                      collapsible={false}
+                                      name={"pattern"}
+                                      required={false}
+                                      schemaName={"string"}
+                                      qualifierMessage={undefined}
+                                      schema={{"description":"The pattern to match against tag the name.\n                    If `match_mode` is `EXACT`, the pattern must match exactly.\n                    If `match_mode` is `REGEX`, the pattern must be a valid regex.","type":"string"}}
+                                    >
+                                      
+                                    </SchemaItem><li>
+                                      <div
+                                        style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                      >
+                                        ]
+                                      </div>
+                                    </li>
+                                  </TabItem>
+                                </SchemaTabs>
+                              </div>
+                            </details>
+                          </SchemaItem>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={true}
+                      className={"schemaItem"}
+                    >
+                      <details
+                        style={{}}
+                        className={"openapi-markdown__details"}
+                      >
+                        <summary
+                          style={{}}
+                        >
+                          <span
+                            className={"openapi-schema__container"}
+                          >
+                            <strong
+                              className={"openapi-schema__property"}
+                            >
+                              subject_rules
+                            </strong><span
+                              className={"openapi-schema__name"}
+                            >
+                               object
+                            </span>
+                          </span>
+                        </summary><div
+                          style={{"marginLeft":"1rem"}}
+                        >
+                          <div
+                            style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                          >
+                            
+                            
+                            
+                            Configure who can trigger a deployment.
+                            **If left empty all users can trigger a deployment.**
+                            
+                            
+                            
+                          </div><SchemaItem
+                            collapsible={false}
+                            name={"any"}
+                            required={false}
+                            schemaName={"boolean"}
+                            qualifierMessage={undefined}
+                            schema={{"default":false,"description":"Allows any user or auto-promotion to trigger a deployment, if true all other rules are ignored and all users can trigger a deployment","type":"boolean"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"auto"}
+                            required={false}
+                            schemaName={"boolean"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"Allows auto-promotions to be triggered","type":"boolean"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={false}
+                            name={"roles"}
+                            required={false}
+                            schemaName={"string[]"}
+                            qualifierMessage={undefined}
+                            schema={{"description":"The list of roles of users that are allowed to trigger a deployment,\n                 by default project roles are `Reader`, `Contributor` and `Admin`, read more [here](https://docs.semaphoreci.com/security/default-roles/#project-roles).\n                 Role names are case insensitive.","items":{"description":"The name of the role.","example":"Contributor","type":"string"},"type":"array"}}
+                          >
+                            
+                          </SchemaItem><SchemaItem
+                            collapsible={true}
+                            className={"schemaItem"}
+                          >
+                            <details
+                              style={{}}
+                              className={"openapi-markdown__details"}
+                            >
+                              <summary
+                                style={{}}
+                              >
+                                <span
+                                  className={"openapi-schema__container"}
+                                >
+                                  <strong
+                                    className={"openapi-schema__property"}
+                                  >
+                                    users
+                                  </strong><span
+                                    className={"openapi-schema__name"}
+                                  >
+                                     object[]
+                                  </span>
+                                </span>
+                              </summary><div
+                                style={{"marginLeft":"1rem"}}
+                              >
+                                <div
+                                  style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                >
+                                  
+                                  
+                                  The list of users that are allowed to trigger a deployment
+                                  
+                                  
+                                </div><li>
+                                  <div
+                                    style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                  >
+                                    Array [
+                                  </div>
+                                </li><div>
+                                  <span
+                                    className={"badge badge--info"}
+                                  >
+                                    anyOf
+                                  </span><SchemaTabs>
+                                    <TabItem
+                                      label={"MOD1"}
+                                      value={"0-item-properties"}
+                                    >
+                                      <div
+                                        style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                      >
+                                        
+                                        
+                                        string
+                                        
+                                        
+                                      </div>
+                                    </TabItem><TabItem
+                                      label={"MOD2"}
+                                      value={"1-item-properties"}
+                                    >
+                                      <div
+                                        style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                      >
+                                        
+                                        
+                                        string
+                                        
+                                        
+                                      </div>
+                                    </TabItem>
+                                  </SchemaTabs>
+                                </div><li>
+                                  <div
+                                    style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                  >
+                                    ]
+                                  </div>
+                                </li>
+                              </div>
+                            </details>
+                          </SchemaItem>
+                        </div>
+                      </details>
+                    </SchemaItem><SchemaItem
+                      collapsible={false}
+                      name={"url"}
+                      required={false}
+                      schemaName={"string"}
+                      qualifierMessage={undefined}
+                      schema={{"description":"The URL of the target","type":"string"}}
+                    >
+                      
+                    </SchemaItem>
+                  </div>
+                </details>
+              </SchemaItem>
+            </div>
+          </details>
+        </SchemaItem><SchemaItem
+          collapsible={false}
+          name={"unique_token"}
+          required={true}
+          schemaName={"string"}
+          qualifierMessage={undefined}
+          schema={{"description":"The unique value used as an idempotency token.\n        If there are multiple requests with the same  `unique_token` values only the first one will be processed,\n        and the rest will be disregarded but the response will be 200 OK as if those requests were processed successfully.","type":"string"}}
+        >
+          
+        </SchemaItem>
+      </ul>
+    </details>
+  </TabItem>
+</MimeTabs><div>
+  <div>
+    <ApiTabs
+      label={undefined}
+      id={undefined}
+    >
+      <TabItem
+        label={"200"}
+        value={"200"}
+      >
+        <div>
+          
+          
+          Created deployment target
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"apiVersion"}
+                        required={true}
+                        schemaName={"ApiVersion (string)"}
+                        qualifierMessage={undefined}
+                        schema={{"default":"v2","description":"ApiVersion defines the versioned schema of this representation of an object.\n        Servers should convert recognized schemas to the latest internal value, and may reject\n        unrecognized values.","example":"v2","readOnly":true,"title":"ApiVersion","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"kind"}
+                        required={true}
+                        schemaName={"Kind (string)"}
+                        qualifierMessage={undefined}
+                        schema={{"default":"DeploymentTarget","description":"Kind is a string value representing the REST resource this object represents.\n        Servers may infer this from the endpoint the client submits requests to. Cannot be\n        updated. In CamelCase.","example":"DeploymentTarget","readOnly":true,"title":"Kind","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                metadata
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <div
+                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                            >
+                              
+                              
+                              Metadata of the deployment targets, all fields are read only
+                              
+                              
+                            </div><SchemaItem
+                              collapsible={false}
+                              name={"created_at"}
+                              required={false}
+                              schemaName={"date-time"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Timestamp in ISO 8601 format","format":"date-time","title":"Timestamp","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      created_by
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <SchemaItem
+                                    collapsible={false}
+                                    name={"id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a User","example":"18b40eaf-ce10-49c3-93f2-e4fe72d5160b","format":"uuid","title":"User.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"description"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Description of the deployment target","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"id"}
+                              required={true}
+                              schemaName={"uuid"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"ID of a DeploymentTarget","example":"9c777b65-213f-4fe1-bc6b-727d2cdde97d","format":"uuid","title":"DeploymentTarget.ID","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      last_deployment
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span><span
+                                      className={"openapi-schema__divider"}
+                                    >
+                                      
+                                    </span><span
+                                      className={"openapi-schema__nullable"}
+                                    >
+                                      nullable
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    A deployment history item contains relevant details about deployments triggered for a deployment target.
+                                    
+                                    
+                                  </div><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            env_vars
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object[]
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <div
+                                          style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                        >
+                                          
+                                          
+                                          Environment variables of the deployment target
+                                          
+                                          
+                                        </div><li>
+                                          <div
+                                            style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                          >
+                                            Array [
+                                          </div>
+                                        </li><SchemaItem
+                                          collapsible={false}
+                                          name={"name"}
+                                          required={true}
+                                          schemaName={"string"}
+                                          qualifierMessage={"**Possible values:** `non-empty`"}
+                                          schema={{"description":"Name of the environment variable","example":"MY_SECRET","minLength":1,"type":"string"}}
+                                        >
+                                          
+                                        </SchemaItem><SchemaItem
+                                          collapsible={false}
+                                          name={"value"}
+                                          required={true}
+                                          schemaName={"string"}
+                                          qualifierMessage={"**Possible values:** `non-empty`"}
+                                          schema={{"description":"Value of the environment variable","example":"secret","minLength":1,"type":"string"}}
+                                        >
+                                          
+                                        </SchemaItem><li>
+                                          <div
+                                            style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                          >
+                                            ]
+                                          </div>
+                                        </li>
+                                      </div>
+                                    </details>
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a Deployment","example":"a0424427-ff28-4f77-a893-0fdf5f50c380","format":"uuid","title":"Deployment.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"origin_pipeline_id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a Pipeline","example":"97ba55d1-90d7-40b9-a2dd-bdbd02389b58","format":"uuid","nullable":true,"title":"Pipeline.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"pipeline_id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a Pipeline","example":"adc5a26f-4077-47bc-8d4f-cb4467f2c103","format":"uuid","nullable":true,"title":"Pipeline.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"state"}
+                                    required={false}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** [`PENDING`, `STARTED`, `FAILED`]"}
+                                    schema={{"description":"The state of the last deployment of the deployment target","enum":["PENDING","STARTED","FAILED"],"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"state_message"}
+                                    required={false}
+                                    schemaName={"string"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"The message of the last deployment of the deployment target","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"target_id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a DeploymentTarget","example":"4a9e9001-6703-4815-9c19-ed2e9e8c87ea","format":"uuid","title":"DeploymentTarget.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"target_name"}
+                                    required={false}
+                                    schemaName={"string"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"The name of the deployment target","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"triggered_at"}
+                                    required={false}
+                                    schemaName={"date-time"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"Timestamp in ISO 8601 format","format":"date-time","title":"Timestamp","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            triggered_by
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <SchemaItem
+                                          collapsible={false}
+                                          name={"id"}
+                                          required={false}
+                                          schemaName={"uuid"}
+                                          qualifierMessage={undefined}
+                                          schema={{"description":"ID of a User","example":"18b40eaf-ce10-49c3-93f2-e4fe72d5160b","format":"uuid","title":"User.ID","type":"string"}}
+                                        >
+                                          
+                                        </SchemaItem>
+                                      </div>
+                                    </details>
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"name"}
+                              required={true}
+                              schemaName={"DeploymentTargets.Name (string)"}
+                              qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[A-Za-z0-9_\\.\\-]+$`"}
+                              schema={{"description":"DeploymentTargets name must be unique on project level, must match the name regex: `^[A-Za-z0-9_.-]+$`","example":"production","minLength":1,"pattern":"^[A-Za-z0-9_\\.\\-]+$","title":"DeploymentTargets.Name","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"org_id"}
+                              required={false}
+                              schemaName={"uuid"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"ID of a Organization","example":"02b7c528-b0f1-4266-8e5e-10b7b984e76a","format":"uuid","title":"Organization.ID","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"project_id"}
+                              required={true}
+                              schemaName={"uuid"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"ID of a Project","example":"726dbefd-b30c-4c80-bc9a-c0613968a2ca","format":"uuid","title":"Project.ID","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"state"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={"**Possible values:** [`SYNCING`, `USABLE`, `UNUSABLE`, `CORDONED`]"}
+                              schema={{"description":"State of the deployment target.\n - `SYNCING` - Deployment Target secret is synchronizing\n - `USABLE` - Deployment Target is active and can be used or modified\n - `UNUSABLE` - Deployment Target is corrupted and cannot be used or modified\n - `CORDONED` - Deployment Target has been cordoned and deactivated\n ","enum":["SYNCING","USABLE","UNUSABLE","CORDONED"],"type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"updated_at"}
+                              required={false}
+                              schemaName={"date-time"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Timestamp in ISO 8601 format","format":"date-time","title":"Timestamp","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      updated_by
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <SchemaItem
+                                    collapsible={false}
+                                    name={"id"}
+                                    required={false}
+                                    schemaName={"uuid"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"ID of a User","example":"18b40eaf-ce10-49c3-93f2-e4fe72d5160b","format":"uuid","title":"User.ID","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem>
+                          </div>
+                        </details>
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                spec
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object
+                              </span><span
+                                className={"openapi-schema__divider"}
+                              >
+                                
+                              </span><span
+                                className={"openapi-schema__required"}
+                              >
+                                required
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <div
+                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                            >
+                              
+                              
+                              Specification of the deployment target
+                              
+                              
+                            </div><SchemaItem
+                              collapsible={false}
+                              name={"active"}
+                              required={false}
+                              schemaName={"boolean"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"The state of the deployment target, true if the deployment is not cordoned","type":"boolean"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"bookmark_parameters"}
+                              required={false}
+                              schemaName={"string[]"}
+                              qualifierMessage={"**Possible values:** `<= 3`"}
+                              schema={{"description":"The names of the promotion parameters. You can later use values of these parameters to filter deployments in deployment history.","items":{"description":"The name of the promotion parameter","type":"string"},"maxItems":3,"minItems":0,"type":"array"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"description"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"Description of the deployment target","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      env_vars
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object[]
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    Environment variables of the deployment target, only in create requests.
+                                    
+                                    
+                                  </div><li>
+                                    <div
+                                      style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                    >
+                                      Array [
+                                    </div>
+                                  </li><SchemaItem
+                                    collapsible={false}
+                                    name={"name"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** `non-empty`"}
+                                    schema={{"description":"Name of the environment variable","example":"MY_SECRET","minLength":1,"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"value"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** `non-empty`"}
+                                    schema={{"description":"Value of the environment variable","example":"secret","minLength":1,"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><li>
+                                    <div
+                                      style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                    >
+                                      ]
+                                    </div>
+                                  </li>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      files
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object[]
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    Files of the deployment target, only in create requests.
+                                    
+                                    
+                                  </div><li>
+                                    <div
+                                      style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                    >
+                                      Array [
+                                    </div>
+                                  </li><SchemaItem
+                                    collapsible={false}
+                                    name={"content"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"base64 encoded content of the file or a md5 checksum","type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"path"}
+                                    required={true}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** `non-empty`"}
+                                    schema={{"description":"Name of the file. Both absolute and relative paths are allowed.","example":"/path/to/file","minLength":1,"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><li>
+                                    <div
+                                      style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                    >
+                                      ]
+                                    </div>
+                                  </li>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"name"}
+                              required={true}
+                              schemaName={"DeploymentTargets.Name (string)"}
+                              qualifierMessage={"**Possible values:** `non-empty`, Value must match regular expression `^[A-Za-z0-9_\\.\\-]+$`"}
+                              schema={{"description":"DeploymentTargets name must be unique on project level, must match the name regex: `^[A-Za-z0-9_.-]+$`","example":"production","minLength":1,"pattern":"^[A-Za-z0-9_\\.\\-]+$","title":"DeploymentTargets.Name","type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      object_rules
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    Configure which branches, tags or PRs can trigger a deployment.
+                                                **If left empty all branches, tags or PRs can trigger a deployment.**
+                                    
+                                    
+                                  </div><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <strong>
+                                          branches
+                                        </strong><span
+                                          style={{"opacity":"0.6"}}
+                                        >
+                                           object
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        
+                                      </div><div>
+                                        <span
+                                          className={"badge badge--info"}
+                                        >
+                                          oneOf
+                                        </span><SchemaTabs>
+                                          <TabItem
+                                            label={"DeploymentTargets.DeploymentTarget.ObjectRule.Branch.All"}
+                                            value={"0-item-properties"}
+                                          >
+                                            <div
+                                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                            >
+                                              
+                                              
+                                              string
+                                              
+                                              <div
+                                                style={{"paddingTop":"1rem"}}
+                                              >
+                                                
+                                                
+                                                **Possible values:** [`ALL`]
+                                                
+                                                
+                                              </div>
+                                            </div>
+                                          </TabItem><TabItem
+                                            label={"DeploymentTargets.DeploymentTarget.ObjectRule.Branch.MatchType"}
+                                            value={"1-item-properties"}
+                                          >
+                                            <li>
+                                              <div
+                                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                              >
+                                                Array [
+                                              </div>
+                                            </li><SchemaItem
+                                              collapsible={false}
+                                              name={"match_mode"}
+                                              required={false}
+                                              schemaName={"string"}
+                                              qualifierMessage={"**Possible values:** [`EXACT`, `REGEX`]"}
+                                              schema={{"description":"Indicates how pattern is matched.","enum":["EXACT","REGEX"],"type":"string"}}
+                                            >
+                                              
+                                            </SchemaItem><SchemaItem
+                                              collapsible={false}
+                                              name={"pattern"}
+                                              required={false}
+                                              schemaName={"string"}
+                                              qualifierMessage={undefined}
+                                              schema={{"description":"The pattern to match against branch the name.\n                    If `match_mode` is `EXACT`, the pattern must match exactly.\n                    If `match_mode` is `REGEX`, the pattern must be a valid regex.","type":"string"}}
+                                            >
+                                              
+                                            </SchemaItem><li>
+                                              <div
+                                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                              >
+                                                ]
+                                              </div>
+                                            </li>
+                                          </TabItem>
+                                        </SchemaTabs>
+                                      </div>
+                                    </details>
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"prs"}
+                                    required={false}
+                                    schemaName={"string"}
+                                    qualifierMessage={"**Possible values:** [`ALL`, `NONE`]"}
+                                    schema={{"default":"NONE","description":"Allows all or none of the PRs to trigger a deployment","enum":["ALL","NONE"],"type":"string"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <strong>
+                                          tags
+                                        </strong><span
+                                          style={{"opacity":"0.6"}}
+                                        >
+                                           object
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        
+                                      </div><div>
+                                        <span
+                                          className={"badge badge--info"}
+                                        >
+                                          oneOf
+                                        </span><SchemaTabs>
+                                          <TabItem
+                                            label={"DeploymentTargets.DeploymentTarget.ObjectRule.Tag.All"}
+                                            value={"0-item-properties"}
+                                          >
+                                            <div
+                                              style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                            >
+                                              
+                                              
+                                              string
+                                              
+                                              <div
+                                                style={{"paddingTop":"1rem"}}
+                                              >
+                                                
+                                                
+                                                **Possible values:** [`ALL`]
+                                                
+                                                
+                                              </div>
+                                            </div>
+                                          </TabItem><TabItem
+                                            label={"DeploymentTargets.DeploymentTarget.ObjectRule.Tag.MatchType"}
+                                            value={"1-item-properties"}
+                                          >
+                                            <li>
+                                              <div
+                                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                              >
+                                                Array [
+                                              </div>
+                                            </li><SchemaItem
+                                              collapsible={false}
+                                              name={"match_mode"}
+                                              required={false}
+                                              schemaName={"string"}
+                                              qualifierMessage={"**Possible values:** [`EXACT`, `REGEX`]"}
+                                              schema={{"description":"Indicates how pattern is matched.","enum":["EXACT","REGEX"],"type":"string"}}
+                                            >
+                                              
+                                            </SchemaItem><SchemaItem
+                                              collapsible={false}
+                                              name={"pattern"}
+                                              required={false}
+                                              schemaName={"string"}
+                                              qualifierMessage={undefined}
+                                              schema={{"description":"The pattern to match against tag the name.\n                    If `match_mode` is `EXACT`, the pattern must match exactly.\n                    If `match_mode` is `REGEX`, the pattern must be a valid regex.","type":"string"}}
+                                            >
+                                              
+                                            </SchemaItem><li>
+                                              <div
+                                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                              >
+                                                ]
+                                              </div>
+                                            </li>
+                                          </TabItem>
+                                        </SchemaTabs>
+                                      </div>
+                                    </details>
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={true}
+                              className={"schemaItem"}
+                            >
+                              <details
+                                style={{}}
+                                className={"openapi-markdown__details"}
+                              >
+                                <summary
+                                  style={{}}
+                                >
+                                  <span
+                                    className={"openapi-schema__container"}
+                                  >
+                                    <strong
+                                      className={"openapi-schema__property"}
+                                    >
+                                      subject_rules
+                                    </strong><span
+                                      className={"openapi-schema__name"}
+                                    >
+                                       object
+                                    </span>
+                                  </span>
+                                </summary><div
+                                  style={{"marginLeft":"1rem"}}
+                                >
+                                  <div
+                                    style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                  >
+                                    
+                                    
+                                    
+                                    Configure who can trigger a deployment.
+                                    **If left empty all users can trigger a deployment.**
+                                    
+                                    
+                                    
+                                  </div><SchemaItem
+                                    collapsible={false}
+                                    name={"any"}
+                                    required={false}
+                                    schemaName={"boolean"}
+                                    qualifierMessage={undefined}
+                                    schema={{"default":false,"description":"Allows any user or auto-promotion to trigger a deployment, if true all other rules are ignored and all users can trigger a deployment","type":"boolean"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"auto"}
+                                    required={false}
+                                    schemaName={"boolean"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"Allows auto-promotions to be triggered","type":"boolean"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={false}
+                                    name={"roles"}
+                                    required={false}
+                                    schemaName={"string[]"}
+                                    qualifierMessage={undefined}
+                                    schema={{"description":"The list of roles of users that are allowed to trigger a deployment,\n                 by default project roles are `Reader`, `Contributor` and `Admin`, read more [here](https://docs.semaphoreci.com/security/default-roles/#project-roles).\n                 Role names are case insensitive.","items":{"description":"The name of the role.","example":"Contributor","type":"string"},"type":"array"}}
+                                  >
+                                    
+                                  </SchemaItem><SchemaItem
+                                    collapsible={true}
+                                    className={"schemaItem"}
+                                  >
+                                    <details
+                                      style={{}}
+                                      className={"openapi-markdown__details"}
+                                    >
+                                      <summary
+                                        style={{}}
+                                      >
+                                        <span
+                                          className={"openapi-schema__container"}
+                                        >
+                                          <strong
+                                            className={"openapi-schema__property"}
+                                          >
+                                            users
+                                          </strong><span
+                                            className={"openapi-schema__name"}
+                                          >
+                                             object[]
+                                          </span>
+                                        </span>
+                                      </summary><div
+                                        style={{"marginLeft":"1rem"}}
+                                      >
+                                        <div
+                                          style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                        >
+                                          
+                                          
+                                          The list of users that are allowed to trigger a deployment
+                                          
+                                          
+                                        </div><li>
+                                          <div
+                                            style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                                          >
+                                            Array [
+                                          </div>
+                                        </li><div>
+                                          <span
+                                            className={"badge badge--info"}
+                                          >
+                                            anyOf
+                                          </span><SchemaTabs>
+                                            <TabItem
+                                              label={"MOD1"}
+                                              value={"0-item-properties"}
+                                            >
+                                              <div
+                                                style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                              >
+                                                
+                                                
+                                                string
+                                                
+                                                
+                                              </div>
+                                            </TabItem><TabItem
+                                              label={"MOD2"}
+                                              value={"1-item-properties"}
+                                            >
+                                              <div
+                                                style={{"marginTop":".5rem","marginBottom":".5rem"}}
+                                              >
+                                                
+                                                
+                                                string
+                                                
+                                                
+                                              </div>
+                                            </TabItem>
+                                          </SchemaTabs>
+                                        </div><li>
+                                          <div
+                                            style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                                          >
+                                            ]
+                                          </div>
+                                        </li>
+                                      </div>
+                                    </details>
+                                  </SchemaItem>
+                                </div>
+                              </details>
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"url"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"description":"The URL of the target","type":"string"}}
+                            >
+                              
+                            </SchemaItem>
+                          </div>
+                        </details>
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"apiVersion\": \"v2\",\n  \"kind\": \"DeploymentTarget\",\n  \"metadata\": {\n    \"created_at\": \"2024-07-12T11:02:50.069Z\",\n    \"created_by\": {\n      \"id\": \"18b40eaf-ce10-49c3-93f2-e4fe72d5160b\"\n    },\n    \"description\": \"string\",\n    \"id\": \"9c777b65-213f-4fe1-bc6b-727d2cdde97d\",\n    \"last_deployment\": {\n      \"env_vars\": [\n        {\n          \"name\": \"MY_SECRET\",\n          \"value\": \"secret\"\n        }\n      ],\n      \"id\": \"a0424427-ff28-4f77-a893-0fdf5f50c380\",\n      \"origin_pipeline_id\": \"97ba55d1-90d7-40b9-a2dd-bdbd02389b58\",\n      \"pipeline_id\": \"adc5a26f-4077-47bc-8d4f-cb4467f2c103\",\n      \"state\": \"PENDING\",\n      \"state_message\": \"string\",\n      \"target_id\": \"4a9e9001-6703-4815-9c19-ed2e9e8c87ea\",\n      \"target_name\": \"string\",\n      \"triggered_at\": \"2024-07-12T11:02:50.069Z\",\n      \"triggered_by\": {\n        \"id\": \"18b40eaf-ce10-49c3-93f2-e4fe72d5160b\"\n      }\n    },\n    \"name\": \"production\",\n    \"org_id\": \"02b7c528-b0f1-4266-8e5e-10b7b984e76a\",\n    \"project_id\": \"726dbefd-b30c-4c80-bc9a-c0613968a2ca\",\n    \"state\": \"SYNCING\",\n    \"updated_at\": \"2024-07-12T11:02:50.069Z\",\n    \"updated_by\": {\n      \"id\": \"18b40eaf-ce10-49c3-93f2-e4fe72d5160b\"\n    }\n  },\n  \"spec\": {\n    \"active\": true,\n    \"bookmark_parameters\": [\n      \"string\"\n    ],\n    \"description\": \"string\",\n    \"env_vars\": [\n      {\n        \"name\": \"MY_SECRET\",\n        \"value\": \"secret\"\n      }\n    ],\n    \"files\": [\n      {\n        \"content\": \"string\",\n        \"path\": \"/path/to/file\"\n      }\n    ],\n    \"name\": \"production\",\n    \"object_rules\": {\n      \"branches\": \"ALL\",\n      \"prs\": \"NONE\",\n      \"tags\": \"ALL\"\n    },\n    \"subject_rules\": {\n      \"any\": false,\n      \"auto\": true,\n      \"roles\": [\n        \"Contributor\"\n      ],\n      \"users\": [\n        \"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\n        \"string\"\n      ]\n    },\n    \"url\": \"string\"\n  }\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"400"}
+        value={"400"}
+      >
+        <div>
+          
+          
+          Bad Request
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"401"}
+        value={"401"}
+      >
+        <div>
+          
+          
+          Unauthorized
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"404"}
+        value={"404"}
+      >
+        <div>
+          
+          
+          Not Found
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"422"}
+        value={"422"}
+      >
+        <div>
+          
+          
+          Validation Failed
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={true}
+                        className={"schemaItem"}
+                      >
+                        <details
+                          style={{}}
+                          className={"openapi-markdown__details"}
+                        >
+                          <summary
+                            style={{}}
+                          >
+                            <span
+                              className={"openapi-schema__container"}
+                            >
+                              <strong
+                                className={"openapi-schema__property"}
+                              >
+                                errors
+                              </strong><span
+                                className={"openapi-schema__name"}
+                              >
+                                 object[]
+                              </span>
+                            </span>
+                          </summary><div
+                            style={{"marginLeft":"1rem"}}
+                          >
+                            <li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem","paddingBottom":".5rem"}}
+                              >
+                                Array [
+                              </div>
+                            </li><SchemaItem
+                              collapsible={false}
+                              name={"field"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><SchemaItem
+                              collapsible={false}
+                              name={"message"}
+                              required={false}
+                              schemaName={"string"}
+                              qualifierMessage={undefined}
+                              schema={{"type":"string"}}
+                            >
+                              
+                            </SchemaItem><li>
+                              <div
+                                style={{"fontSize":"var(--ifm-code-font-size)","opacity":"0.6","marginLeft":"-.5rem"}}
+                              >
+                                ]
+                              </div>
+                            </li>
+                          </div>
+                        </details>
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"errors\": [\n    {\n      \"field\": \"string\",\n      \"message\": \"string\"\n    }\n  ],\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem><TabItem
+        label={"500"}
+        value={"500"}
+      >
+        <div>
+          
+          
+          Internal Server Error
+          
+          
+        </div><div>
+          <MimeTabs
+            className={"openapi-tabs__mime"}
+            schemaType={"response"}
+          >
+            <TabItem
+              label={"application/json"}
+              value={"application/json"}
+            >
+              <SchemaTabs
+                className={"openapi-tabs__schema"}
+              >
+                <TabItem
+                  label={"Schema"}
+                  value={"Schema"}
+                >
+                  <details
+                    style={{}}
+                    className={"openapi-markdown__details response"}
+                    data-collapsed={false}
+                    open={true}
+                  >
+                    <summary
+                      style={{}}
+                      className={"openapi-markdown__details-summary-response"}
+                    >
+                      <strong>
+                        Schema
+                      </strong>
+                    </summary><div
+                      style={{"textAlign":"left","marginLeft":"1rem"}}
+                    >
+                      
+                    </div><ul
+                      style={{"marginLeft":"1rem"}}
+                    >
+                      <SchemaItem
+                        collapsible={false}
+                        name={"documentation_url"}
+                        required={false}
+                        schemaName={"uri"}
+                        qualifierMessage={undefined}
+                        schema={{"example":"https://docs.semaphoreci.com/api/error-codes/bad-request","format":"uri","type":"string"}}
+                      >
+                        
+                      </SchemaItem><SchemaItem
+                        collapsible={false}
+                        name={"message"}
+                        required={false}
+                        schemaName={"string"}
+                        qualifierMessage={undefined}
+                        schema={{"type":"string"}}
+                      >
+                        
+                      </SchemaItem>
+                    </ul>
+                  </details>
+                </TabItem><TabItem
+                  label={"Example (from schema)"}
+                  value={"Example (from schema)"}
+                >
+                  <ResponseSamples
+                    responseExample={"{\n  \"documentation_url\": \"https://docs.semaphoreci.com/api/error-codes/bad-request\",\n  \"message\": \"string\"\n}"}
+                    language={"json"}
+                  >
+                    
+                  </ResponseSamples>
+                </TabItem>
+              </SchemaTabs>
+            </TabItem>
+          </MimeTabs>
+        </div>
+      </TabItem>
+    </ApiTabs>
+  </div>
+</div>
+      

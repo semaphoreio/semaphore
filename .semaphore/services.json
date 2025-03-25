@@ -48,6 +48,12 @@
         "component": "dashboardhub"
       }
     ],
+    "Docs": [
+      {
+        "path": "docs",
+        "component": "docs-v2"
+      }
+    ],
     "Encryptor": [
       {
         "path": "encryptor",

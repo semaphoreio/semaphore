@@ -1,0 +1,71 @@
+.stepsContainer {
+  position: relative;
+  padding-left: 45px;
+  counter-reset: step-counter;
+}
+
+.stepsContainer > ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.stepsContainer > ol > li {
+  position: relative;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+}
+
+.stepsContainer > ol > li::before {
+  content: counter(step-counter);
+  counter-increment: step-counter;
+  position: absolute;
+  top: -5px;
+  left: -48px;
+  width: 30px;
+  height: 30px;
+  background-color: var(--step-bg, #fff);
+  border: 2px solid var(--ifm-color-primary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: var(--step-color, initial);
+  z-index: 1;
+}
+
+.stepsContainer > ol > li::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  bottom: -15px;
+  left: -32px;
+  width: 2px;
+  background-color: var(--line-color, #e0e0e0);
+}
+
+.stepsContainer > ol > li:last-child::after {
+  display: none;
+}
+
+/* Reset styles for nested lists */
+.stepsContainer ol ol,
+.stepsContainer ol ul {
+  list-style: initial;
+  margin-left: 20px;
+}
+
+.stepsContainer ul {
+  list-style: disc;
+}
+
+/* Dark mode adjustments */
+[data-theme='dark'] .stepsContainer > ol > li::before {
+  --step-bg: var(--ifm-background-color);
+  --step-color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .stepsContainer > ol > li::after {
+  --line-color: var(--ifm-color-emphasis-300);
+}

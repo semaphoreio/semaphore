@@ -1,0 +1,29 @@
+/* .logo {
+    width: 1.5rem;
+    margin-right: 0.2rem ;
+} */
+
+.semaphore {
+    font-family: inter, sans-serif;
+}
+
+.plans
+{
+  background-color: rgba(10, 17, 32, 0.7);
+  cursor: pointer;
+  padding: 0.3rem;
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: 0.3rem;
+}
+
+.plans a {
+  text-decoration: none !important;
+  color: white;
+}
+
+.plans:hover
+{
+  background-color: rgb(40, 79, 196);
+}
+

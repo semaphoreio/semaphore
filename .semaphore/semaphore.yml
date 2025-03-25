@@ -586,6 +586,58 @@ blocks:
         - name: "\U0001F9EA Test"
           commands:
             - make test.ex
+  # Docs
+  - name: "Docs: \U0001F5BC️ Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: APP_ENV
+          value: prod
+      jobs:
+        - name: "Image Build"
+          commands:
+            - checkout
+            - cd docs
+            - make build
+            - make push
+  - name: "Docs: \U0001F5BC️ Build test image"
+    dependencies: []
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: APP_ENV
+          value: dev
+      jobs:
+        - name: "Image Build"
+          commands:
+            - checkout
+            - cd docs
+            - make build
+            - make push
+  - name: "Docs: \U0001F9EA QA"
+    dependencies: ["Docs: \U0001F5BC️ Build test image"]
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: APP_ENV
+          value: dev
+      prologue:
+        commands:
+          - checkout
+          - cd docs
+          - make pull
+          - make build
+      jobs:
+        - name: Lint
+          commands:
+            - make lint
+        - name: Test
+          commands:
+            - make test
   # Front
   - name: "Front: \U0001F5BC️ Provision Test Image"
     dependencies: []
