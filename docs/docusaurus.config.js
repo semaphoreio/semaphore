@@ -54,7 +54,7 @@ const config = {
           routeBasePath: '/', // move docs to the website root
           sidebarPath: './sidebars.js',
           docItemComponent: "@theme/ApiItem", // Derived from docusaurus-theme-openapi
-          editUrl: 'https://github.com/semaphoreci/semaphore/tree/main/docs/',
+          editUrl: 'https://github.com/semaphoreio/semaphore/tree/main/docs/',
 
           /* Versioned Docs */
           lastVersion: 'current',
