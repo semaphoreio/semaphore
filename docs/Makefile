@@ -8,7 +8,7 @@ dev:
 test:
 	npm run lint
 
-build:
+npm.build:
 	npm run build
 
 image.build:
