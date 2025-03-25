@@ -27,6 +27,17 @@ defmodule Zebra.Apis.PublicJobApi.Serializer do
   end
 
   def spec(job) do
+    # for restricted jobs we do not want to expose their environment
+    if job.spec["restricted_job"] do
+      full_spec = spec_(job)
+
+      %{full_spec | files: [], env_vars: [], secrets: []}
+    else
+      spec_(job)
+    end
+  end
+
+  defp spec_(job) do
     if job.spec do
       env_vars = request_git_vars(job.request)
 

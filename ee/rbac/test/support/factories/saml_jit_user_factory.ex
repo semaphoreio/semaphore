@@ -13,6 +13,7 @@ defmodule Support.Factories.SamlJitUser do
   def insert(options \\ []) do
     %SamlJitUser{
       org_id: get_id(options[:org_id]),
+      user_id: get_id(options[:user_id]),
       integration_id: get_integration_id(options[:integration_id]),
       attributes: get_attributes(options[:attributes]),
       state: get_state(options[:state]),

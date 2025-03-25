@@ -24,6 +24,7 @@ defmodule Zebra.Apis.InternalJobApi do
       spec =
         req.job_spec
         |> Map.put(:project_id, project_id)
+        |> Map.put(:restricted_job, req.restricted_job)
         |> Map.put(:epilogue_commands, [])
         |> Map.drop([:job_name, :execution_time_limit, :priority])
 

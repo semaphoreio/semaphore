@@ -22,7 +22,8 @@
     "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, param: @conn.assigns.organization_id),
     "hidePromotions" => @hide_promotions,
     "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id),
-    "uiMonacoWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id)
+    "uiMonacoWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id),
+    "useCommitJob" => FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: @conn.assigns.organization_id)
   }) %>;
 
   window.InjectedDataByBackend.OrgSecretNameList = <%= raw Poison.encode!(
@@ -47,6 +48,7 @@
     "CommitPath" => project_path(@conn, :commit_config, @project.name),
     "DismissPath" => "",
     "CheckWorkflowPath" => project_path(@conn, :check_workflow, @project.name),
+    "CheckCommitJobPath" => project_path(@conn, :check_commit_job, @project.name),
     "PushBranch" => "set-up-semaphore",
     "InitialBranch" => "set-up-semaphore",
     "Avatar" => @commiter_avatar

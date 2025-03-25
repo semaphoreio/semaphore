@@ -232,4 +232,51 @@ defmodule Front.Models.ArtifacthubTest do
       assert Artifacthub.construct(artifact, "jobs", job_id) == expected
     end
   end
+
+  describe ".fetch_file" do
+    test "returns content of the file for existing files", %{job_id: job_id} do
+      path = "dir/subdir/README.md"
+      expected_url = "http://some/path/dir/subdir/README.md"
+
+      with_mock HTTPoison, get: fn url -> mocked_get(url, expected_url) end do
+        assert Artifacthub.fetch_file("store_id", "jobs", job_id, path) == {:ok, "Hello world"}
+      end
+    end
+
+    test "returns error if the file does not exist" do
+      path = "dir/non-existing-file.txt"
+
+      assert {:error, :grpc_req_failed} =
+               Artifacthub.fetch_file("store_id", "jobs", UUID.uuid4(), path)
+    end
+
+    test "returns error if fetching the file from signed url fails", %{job_id: job_id} do
+      path = "dir/subdir/README.md"
+
+      with_mock HTTPoison, get: fn _ -> {:error, "Server is temporarry unavaialble."} end do
+        assert error = Artifacthub.fetch_file("store_id", "jobs", job_id, path)
+        assert error == {:error, "Server is temporarry unavaialble."}
+      end
+    end
+
+    test "returns not_found error if fetching from signed url returns 404 error", %{
+      job_id: job_id
+    } do
+      path = "dir/some_other_file.txt"
+      expected_url = "http://some/path/dir/subdir/README.md"
+
+      with_mock HTTPoison, get: fn url -> mocked_get(url, expected_url) end do
+        assert error = Artifacthub.fetch_file("store_id", "jobs", job_id, path)
+        assert error == {:error, {:not_found, "Invalid url"}}
+      end
+    end
+  end
+
+  defp mocked_get(url, expected_url) do
+    if url == expected_url do
+      {:ok, %{status_code: 200, body: "Hello world"}}
+    else
+      {:ok, %{status_code: 404, body: "Invalid url"}}
+    end
+  end
 end
