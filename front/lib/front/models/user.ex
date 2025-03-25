@@ -129,6 +129,28 @@ defmodule Front.Models.User do
     |> merge_provider(gitlab_provider, "gitlab")
   end
 
+  def get_repository_token(project, user_id) do
+    alias InternalApi.User.UserService.Stub
+    alias InternalApi.RepositoryIntegrator.IntegrationType
+
+    req =
+      InternalApi.User.GetRepositoryTokenRequest.new(
+        user_id: user_id,
+        integration_type: IntegrationType.value(project.integration_type)
+      )
+
+    {:ok, channel} = build_user_channel(organization_id: project.organization_id)
+
+    case Stub.get_repository_token(channel, req, timeout: 30_000) do
+      {:ok, res} ->
+        {:ok, res.token}
+
+      {:error, msg} ->
+        Logger.error("[User Model] Error while fetching repository token #{inspect(msg)}")
+        {:error, msg}
+    end
+  end
+
   def star(user_id, organization_id, favorite_id, kind, metadata \\ nil) do
     Watchman.benchmark("create_favorite.duration", fn ->
       kind =

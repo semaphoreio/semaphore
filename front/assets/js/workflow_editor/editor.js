@@ -37,7 +37,8 @@ export class WorkflowEditor {
         paths: {
           dismiss: InjectedDataByBackend.CommitForm.DismissPath,
           commit: InjectedDataByBackend.CommitForm.CommitPath,
-          checkWorkflow: InjectedDataByBackend.CommitForm.CheckWorkflowPath
+          checkWorkflow: InjectedDataByBackend.CommitForm.CheckWorkflowPath,
+          checkCommitJob: InjectedDataByBackend.CommitForm.CheckCommitJobPath
         },
         pushBranch: InjectedDataByBackend.CommitForm.PushBranch,
         initialBranch: InjectedDataByBackend.CommitForm.InitialBranch,
@@ -56,6 +57,7 @@ export class WorkflowEditor {
     assertKey(config.commitInfo.paths, "dismiss", "Dismiss path is not configured")
     assertKey(config.commitInfo.paths, "commit",  "Commit path is not configured")
     assertKey(config.commitInfo.paths, "checkWorkflow", "Check Workflow path is not configured")
+    assertKey(config.commitInfo.paths, "checkCommitJob", "Check Job path is not configured")
 
     //
     // If everything is cocher, start the editor.

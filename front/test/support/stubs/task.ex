@@ -10,6 +10,7 @@ defmodule Support.Stubs.Task do
   def init do
     DB.add_table(:tasks, [:id, :api_model, :project_id, :branch_id])
     DB.add_table(:jobs, [:id, :task_id, :api_model])
+    DB.add_table(:job_specs, [:id, :job_spec])
 
     __MODULE__.Grpc.init()
     __MODULE__.Grpc.Job.init()
@@ -178,11 +179,52 @@ defmodule Support.Stubs.Task do
       GrpcMock.stub(InternalJobMock, :list, &__MODULE__.list/2)
       GrpcMock.stub(InternalJobMock, :can_debug, &__MODULE__.can_debug/2)
       GrpcMock.stub(InternalJobMock, :can_attach, &__MODULE__.can_attach/2)
+      GrpcMock.stub(InternalJobMock, :create, &__MODULE__.create/2)
+    end
+
+    def create(req, _) do
+      alias InternalApi.ServerFarm.Job.DescribeResponse
+      alias InternalApi.ServerFarm.Job.Job
+
+      case req.requester_id do
+        "error_response" ->
+          DescribeResponse.new(status: bad_param())
+
+        "raise_response" ->
+          raise GRPC.RPCError, status: :internal, message: "Internal error"
+
+        _ ->
+          job_id = UUID.gen()
+
+          DB.insert(:job_specs, %{
+            id: job_id,
+            job_spec: req.job_spec
+          })
+
+          DescribeResponse.new(
+            status: ok(),
+            job:
+              Job.new(
+                id: job_id,
+                project_id: req.project_id,
+                branch_id: UUID.gen(),
+                hook_id: "",
+                ppl_id: "",
+                timeline: Job.Timeline.new(),
+                state: Job.State.value(:STARTED),
+                machine_type: req.job_spec.agent.machine.type,
+                self_hosted: false,
+                name: req.job_spec.job_name,
+                index: 0
+              )
+          )
+      end
     end
 
     def describe(req, _) do
       alias InternalApi.ServerFarm.Job.DescribeResponse
       alias InternalApi.ServerFarm.Job.Job
+      alias InternalApi.Task.Task
 
       job = DB.find(:jobs, req.job_id)
       task = DB.find(:tasks, job.task_id)
@@ -198,13 +240,25 @@ defmodule Support.Stubs.Task do
             hook_id: task.api_model.hook_id,
             ppl_id: task.api_model.ppl_id,
             timeline: Job.Timeline.new(),
-            state: Job.State.value(:STARTED),
+            state: to_job_state(Task.Job.State.key(task_job.state)),
+            result: task_job.result,
             machine_type: "e1-standard-2",
             self_hosted: false,
             name: task_job.name,
             index: task_job.index
           )
       )
+    end
+
+    defp to_job_state(task_state) do
+      alias InternalApi.ServerFarm.Job.Job
+
+      cond do
+        task_state == :ENQUEUED -> Job.State.value(:ENQUEUED)
+        task_state == :RUNNING -> Job.State.value(:STARTED)
+        task_state == :STOPPING -> Job.State.value(:STARTED)
+        task_state == :FINISHED -> Job.State.value(:FINISHED)
+      end
     end
 
     def list_debug_sessions(_, _) do
@@ -233,6 +287,13 @@ defmodule Support.Stubs.Task do
 
     defp ok do
       InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+    end
+
+    defp bad_param do
+      InternalApi.ResponseStatus.new(
+        code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM),
+        message: "Invalid parameters."
+      )
     end
   end
 end

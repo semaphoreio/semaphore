@@ -148,6 +148,7 @@ defmodule Support.Stubs.User do
       GrpcMock.stub(UserMock, :create_favorite, &__MODULE__.create_favorite/2)
       GrpcMock.stub(UserMock, :delete_favorite, &__MODULE__.delete_favorite/2)
       GrpcMock.stub(UserMock, :check_github_token, &__MODULE__.check_github_token/2)
+      GrpcMock.stub(UserMock, :get_repository_token, &__MODULE__.get_repository_token/2)
 
       GrpcMock.stub(
         UserMock,
@@ -258,6 +259,17 @@ defmodule Support.Stubs.User do
         repo: true,
         public_repo: true
       )
+    end
+
+    def get_repository_token(request, _) do
+      if request.user_id == "invalid_response" do
+        raise GRPC.RPCError, status: :invalid_argument, message: "Invalid request."
+      else
+        %InternalApi.User.GetRepositoryTokenResponse{
+          token: "valid_token_value",
+          expires_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+        }
+      end
     end
 
     def refresh_repository_provider(req, _) do
