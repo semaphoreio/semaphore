@@ -1,9 +1,7 @@
-ARG BUILDER_IMAGE=node
 ARG RUNNER_IMAGE=nginx
 
-
 # Build stage
-FROM ${BUILDER_IMAGE} AS builder
+FROM node AS builder
 WORKDIR /app
 
 COPY package.json package.json
@@ -25,13 +23,19 @@ RUN npm install --frozen-lockfile
 RUN npm run clear
 RUN npm run build
 
-# Dev stage
+# Dev stage with both Node.js and Nginx
 FROM builder AS dev
 
 WORKDIR /app
 
-ADD default.conf /etc/nginx/conf.d/default.conf
+RUN apt-get update && apt-get install --no-install-recommends -y nginx \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app /app
+COPY default.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/build/ /usr/share/nginx/html/
+
+CMD ["nginx", "-g", "daemon off;"]
 
 # Runner
 FROM ${RUNNER_IMAGE} AS runner

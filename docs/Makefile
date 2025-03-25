@@ -1,7 +1,7 @@
 include ../Makefile
 
 APP_NAME=docs-v2
-APP_ENV?=prod
+APP_ENV?=dev
 
 npm.dev:
 	npm start
