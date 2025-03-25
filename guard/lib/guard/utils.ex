@@ -182,8 +182,8 @@ defmodule Guard.Utils.Http do
     Logger.debug("Putting state value into cookie for key: #{key}")
 
     value = :erlang.term_to_binary(value)
-
-    Plug.Conn.put_resp_cookie(conn, key, value, @state_cookie_options)
+    opts = @state_cookie_options ++ [domain: "." <> domain()]
+    Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 
   def delete_state_value(conn, key) do
