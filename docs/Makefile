@@ -1,8 +1,6 @@
-.PHONY: build dev test image.build image.run
+include ../Makefile
 
-BRANCH=$(shell echo "$(SEMAPHORE_GIT_BRANCH)" | sed 's/[^a-z]//g')
-IMAGE="us.gcr.io/semaphore2-prod/docs-v2"
-IMAGE_TAG="$(BRANCH)-$(SEMAPHORE_WORKFLOW_ID)-sha-$(SEMAPHORE_GIT_SHA)"
+APP_NAME=docs-v2
 
 dev:
 	npm start
@@ -25,13 +23,13 @@ configure.gcloud:
 	gcloud auth activate-service-account $(GCP_REGISTRY_WRITER_EMAIL) --key-file ~/gce-registry-writer-key.json
 	gcloud --quiet auth configure-docker
 
-nginx.build: build
+build:
 	docker build --cache-from $(IMAGE):latest -t $(IMAGE) . -f Dockerfile
 
-nginx.test:
+test:
 	docker run --rm -t -a stdout $(IMAGE) nginx -c /etc/nginx/nginx.conf -t
 
-nginx.push:
+push:
 	docker tag $(IMAGE):latest $(IMAGE):$(IMAGE_TAG)
 	docker push $(IMAGE):$(IMAGE_TAG)
 	docker push $(IMAGE):latest
