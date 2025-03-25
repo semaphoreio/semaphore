@@ -125,6 +125,11 @@ func (s *RepoService) GetFiles(ctx context.Context, request *ia_repository.GetFi
 		options,
 	)
 
+	if err != nil {
+		log.Printf("Error getting files for %s: %v", id, err)
+		return nil, status.Error(codes.Unknown, err.Error())
+	}
+
 	response := &ia_repository.GetFilesResponse{
 		Files: s.serializeFiles(files),
 	}

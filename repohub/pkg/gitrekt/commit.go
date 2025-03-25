@@ -100,7 +100,7 @@ func (op *CommitOperation) Run() (*Revision, error) {
 	err := op.Validate()
 	check(err, "Invalid parameters")
 
-	repoPath, err := UpdateOrClone(op.Repository)
+	repoPath, err := UpdateOrClone(op.Repository, nil)
 	check(err, "Failed to clone repository")
 
 	r, err := git.OpenRepository(repoPath)

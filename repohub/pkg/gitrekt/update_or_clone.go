@@ -12,10 +12,12 @@ import (
 	"github.com/renderedtext/go-watchman"
 )
 
-func UpdateOrClone(repo *Repository) (string, error) {
+func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone", []string{repo.HttpURL})
 
-	op := NewUpdateOrCloneOperation(repo)
+	reference := extractReference(revision)
+
+	op := NewUpdateOrCloneOperation(repo, reference)
 	err := op.Run()
 
 	log.Printf("UpdateOrClone took %f seconds", op.Duration())
@@ -29,12 +31,13 @@ func UpdateOrClone(repo *Repository) (string, error) {
 
 type UpdateOrCloneOperation struct {
 	Repository *Repository
+	Reference  string
 	Started    time.Time
 	Finished   time.Time
 }
 
-func NewUpdateOrCloneOperation(repo *Repository) *UpdateOrCloneOperation {
-	return &UpdateOrCloneOperation{Repository: repo}
+func NewUpdateOrCloneOperation(repo *Repository, reference string) *UpdateOrCloneOperation {
+	return &UpdateOrCloneOperation{Repository: repo, Reference: reference}
 }
 
 func (o *UpdateOrCloneOperation) Duration() float64 {
@@ -63,8 +66,16 @@ func (o *UpdateOrCloneOperation) Update() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
 
-	log.Printf("fetching from remotes %s", o.Repository.Path())
-	cmd := exec.CommandContext(ctx, "git", "fetch", "origin")
+	var cmd *exec.Cmd
+	if o.Reference != "" {
+		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Reference)
+
+		// #nosec G204
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", o.Reference)
+	} else {
+		log.Printf("fetching from remotes %s without revision", o.Repository.Path())
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin")
+	}
 
 	cmd.Dir = o.Repository.Path()
 	cmd.Env = append(cmd.Env, "GIT_ASKPASS=/app/git-ask-pass.sh")
@@ -231,7 +242,7 @@ func (o *UpdateOrCloneOperation) parseError(output []byte, err error) error {
 		}
 	}
 
-	return err
+	return fmt.Errorf("err: %s: %v", output, err)
 }
 
 func cleanupDirectory(o *UpdateOrCloneOperation) {
@@ -239,4 +250,18 @@ func cleanupDirectory(o *UpdateOrCloneOperation) {
 	if err != nil {
 		log.Printf("(err) Failed to remove directory %s, err: %s", o.Repository.Path(), err.Error())
 	}
+}
+
+func extractReference(r *Revision) string {
+	if r == nil {
+		return ""
+	}
+
+	ref := r.Reference
+
+	if strings.HasPrefix(r.Reference, "refs/remotes/origin/") {
+		ref = "refs/heads/" + strings.TrimPrefix(r.Reference, "refs/remotes/origin/")
+	}
+
+	return ref
 }

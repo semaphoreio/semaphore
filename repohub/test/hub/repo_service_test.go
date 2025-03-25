@@ -344,3 +344,28 @@ func Test__GetFiles__ContentRegex(t *testing.T) {
 	assert.Equal(t, res.Files[0].Path, "scripts/deploy/a.sh")
 	assert.Equal(t, res.Files[0].Content, "AAA !\n\nA is the best!\n")
 }
+
+func Test__GetFiles__WithReferenceThatDoesExist(t *testing.T) {
+	support.PurgeDB()
+
+	repo := support.CreateRepository()
+	client := ia_repository.NewRepositoryServiceClient(testConn)
+
+	req := ia_repository.GetFilesRequest{
+		RepositoryId: repo.ID.String(),
+
+		Revision: &ia_repository.Revision{
+			CommitSha: "5f4138948b165a491b7034d3e95ce023a1a098c5",
+			Reference: "refs/heads/does-not-exist",
+		},
+
+		Selectors: []*ia_repository.GetFilesRequest_Selector{
+			&ia_repository.GetFilesRequest_Selector{
+				Glob: "*.txt",
+			},
+		},
+	}
+
+	_, err := client.GetFiles(context.Background(), &req)
+	assert.ErrorContains(t, err, "couldn't find remote ref refs/heads/does-not-exist")
+}

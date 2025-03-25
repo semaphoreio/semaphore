@@ -31,7 +31,7 @@ func Search(repo *Repository, rev Revision, options *SearchOptions) ([]*File, er
 		rev,
 	)
 
-	repoPath, err := UpdateOrClone(repo)
+	repoPath, err := UpdateOrClone(repo, &rev)
 	if err != nil {
 		return nil, err
 	}

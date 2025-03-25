@@ -1,10 +1,10 @@
 module github.com/semaphoreio/semaphore/repohub
 
-go 1.21
+go 1.22
 
 require (
 	github.com/bmatcuk/doublestar v1.1.5
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.4
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.2.0
 	github.com/jinzhu/gorm v1.9.16

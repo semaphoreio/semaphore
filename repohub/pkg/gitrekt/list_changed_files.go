@@ -22,7 +22,7 @@ func ListChangedFiles(repo *Repository, base Revision, head Revision, comparison
 
 	log.Printf("ListChangedFiles Started. Repo: %s", repo.HttpURL)
 
-	repoPath, err := UpdateOrClone(repo)
+	repoPath, err := UpdateOrClone(repo, nil)
 	if err != nil {
 		return nil, err
 	}
