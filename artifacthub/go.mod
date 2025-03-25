@@ -7,7 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.44.316
 	github.com/blendle/zapdriver v1.3.1
 	github.com/bmatcuk/doublestar/v4 v4.6.0
-	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/golang-jwt/jwt/v5 v5.2.2
 	github.com/golang/protobuf v1.5.3
 	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.1.0
 	github.com/renderedtext/go-tackle v0.0.0-20231218124313-26ee274af69d
