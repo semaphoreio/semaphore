@@ -26,13 +26,20 @@ RUN npm install --frozen-lockfile
 RUN npm run clear
 RUN npm run build
 
-# Common runner base
-FROM ${RUNNER_IMAGE} AS base-runner
+# Dev stage
+FROM builder AS dev
+
+WORKDIR /app
+
+ADD default.conf /etc/nginx/conf.d/default.conf
+COPY build/ /usr/share/nginx/html/
+
+# Runner
+FROM ${RUNNER_IMAGE} AS runner
+
 WORKDIR /app
 
 ADD default.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/build/ /usr/share/nginx/html/
 
-# Aliases
-FROM base-runner AS dev
-FROM base-runner AS runner
+
