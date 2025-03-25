@@ -31,7 +31,17 @@ defmodule Rbac.Utils.Http do
   end
 
   def fetch_redirect_value(conn, default) do
-    case conn |> fetch_state_value(@redirect_cookie_key) do
+    Logger.info("FETCH REDIRECT VALUE")
+
+    # Fetch all cookies from the connection
+    conn_with_cookies = Plug.Conn.fetch_cookies(conn)
+
+    # Get cookie names and log them
+    cookie_names = Map.keys(conn_with_cookies.cookies)
+    Logger.info("All present cookies: #{inspect(cookie_names)}")
+
+    # Continue with original functionality
+    case conn_with_cookies |> fetch_state_value(@redirect_cookie_key) do
       {:ok, redirect_to, _conn} ->
         validate_url(redirect_to, default)
 

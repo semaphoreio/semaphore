@@ -160,6 +160,7 @@ defmodule Guard.Utils.Http do
   end
 
   def store_redirect_info(conn, url) do
+    Logger.info("STORE REDIRECT INFO #{inspect(url)}")
     conn |> put_state_value(@redirect_cookie_key, url)
   end
 
