@@ -9,12 +9,24 @@ defmodule FrontWeb.ProjectController do
   alias Front.Decorators
   alias Front.MemoryCookie
   alias Front.Models
-  alias Front.Models.{AgentType, Deployments, Organization, Repohub, Secret}
+
+  alias Front.Models.{
+    AgentType,
+    Deployments,
+    Organization,
+    Repohub,
+    Secret,
+    Job,
+    Artifacthub,
+    CommitJob,
+    User
+  }
+
   alias FrontWeb.Plugs.{FetchPermissions, Header, PageAccess, PublicPageAccess, PutProjectAssigns}
 
   @org_pages ~w(index)a
   @public_proj_pages ~w(show workflows queues)a
-  @edit_workflows ~w(edit_workflow blocked build_blocked commit_config)a
+  @edit_workflows ~w(edit_workflow blocked build_blocked commit_config check_commit_job)a
   @skip_for_page_authorization @org_pages ++ @public_proj_pages
 
   plug(FetchPermissions, [scope: "org"] when action in @org_pages)
@@ -186,7 +198,7 @@ defmodule FrontWeb.ProjectController do
 
     fetch_yaml_files =
       Async.run(
-        fn -> Repohub.fetch_sempahore_files(project.repo_id, project.initial_pipeline_file) end,
+        fn -> Repohub.fetch_semaphore_files(project.repo_id, project.initial_pipeline_file) end,
         metric: "workflow.edit.load_all_yaml_files"
       )
 
@@ -390,40 +402,196 @@ defmodule FrontWeb.ProjectController do
         end
       end
 
-      request =
-        InternalApi.Repository.CommitRequest.new(
-          repository_id: repository_id,
+      if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: project.organization_id) do
+        job_params = %{
+          project: project,
           user_id: user_id,
-          branch_name: branch,
+          initial_branch: params["initial_branch"],
+          target_branch: branch,
           commit_message: commit_message,
           changes: to_commit_request_changes(params)
-        )
+        }
 
-      case Repohub.commit(request) do
-        {:ok, res} ->
-          Front.Async.run(maybe_finish_onboarding)
+        case start_commit_job(job_params) do
+          {:ok, job_id} ->
+            Front.Async.run(maybe_finish_onboarding)
 
-          msg = "Config committed. Waiting for Workflow to start."
+            msg = "Commiting changes to git repository."
 
-          conn
-          |> put_status(201)
-          |> json(%{
-            message: msg,
-            branch: branch,
-            wait:
-              should_wait(
-                project.build_branches,
-                project.whitelist_branches,
-                project.branch_whitelist,
-                branch
-              ),
-            commit_sha: res.revision.commit_sha
-          })
+            conn
+            |> put_status(201)
+            |> json(%{
+              message: msg,
+              branch: branch,
+              wait:
+                should_wait(
+                  project.build_branches,
+                  project.whitelist_branches,
+                  project.branch_whitelist,
+                  branch
+                ),
+              commit_sha: "",
+              job_id: job_id
+            })
 
-        {:error, message} ->
-          conn |> put_status(422) |> json(%{error: message})
+          error ->
+            send_response(error, conn)
+        end
+      else
+        request =
+          InternalApi.Repository.CommitRequest.new(
+            repository_id: repository_id,
+            user_id: user_id,
+            branch_name: branch,
+            commit_message: commit_message,
+            changes: to_commit_request_changes(params)
+          )
+
+        case Repohub.commit(request) do
+          {:ok, res} ->
+            Front.Async.run(maybe_finish_onboarding)
+
+            msg = "Config committed. Waiting for Workflow to start."
+
+            conn
+            |> put_status(201)
+            |> json(%{
+              message: msg,
+              branch: branch,
+              wait:
+                should_wait(
+                  project.build_branches,
+                  project.whitelist_branches,
+                  project.branch_whitelist,
+                  branch
+                ),
+              commit_sha: res.revision.commit_sha,
+              job_id: ""
+            })
+
+          {:error, message} ->
+            conn |> put_status(422) |> json(%{error: message})
+        end
       end
     end)
+  end
+
+  defp start_commit_job(params) do
+    with {:ok, agent} <- CommitJob.get_agent(params.project),
+         {:ok, creds} <- CommitJob.get_git_credentials(params.project, params.user_id),
+         {:user, user} when user != nil <- {:user, User.find(params.user_id)},
+         params <- Map.put(params, :user, user),
+         params <- Map.put(params, :restricted_job, true),
+         {:ok, job_spec} <- CommitJob.create_job_spec(agent, creds, params),
+         {:ok, job} <- Job.create(job_spec, params) do
+      {:ok, job.id}
+    else
+      error ->
+        Logger.error(
+          Enum.join(
+            [
+              "Could not create commit job",
+              "project: #{params.project.id}",
+              "branch: #{params.target_branch}",
+              "commit_message: #{params.commit_message}",
+              "user: #{params.user_id}",
+              "error: #{inspect(error)}"
+            ],
+            ", "
+          )
+        )
+
+        {:error, :commit_job_failed}
+    end
+  end
+
+  def check_commit_job(conn, params) do
+    project = conn.assigns.project
+    job_id = params["job_id"]
+
+    job_id
+    |> find_job(project)
+    |> fetch_commit_sha(project)
+    |> send_response(conn)
+  end
+
+  defp find_job(job_id, project) do
+    case Job.find(job_id) do
+      nil ->
+        Logger.error(
+          Enum.join(
+            [
+              "Could not find commit job with given job id",
+              "project: #{project.id}",
+              "commit job id: #{job_id}"
+            ],
+            ", "
+          )
+        )
+
+        {:error, :commit_job_failed}
+
+      {:error, :grpc_req_failed} ->
+        {:error, :commit_job_failed}
+
+      job ->
+        {:ok, job}
+    end
+  end
+
+  defp fetch_commit_sha({:ok, %{id: job_id, state: "passed"}}, project) do
+    path = ".workflow_editor/commit_sha.val"
+
+    case Artifacthub.fetch_file(project.artifact_store_id, "jobs", job_id, path) do
+      {:ok, content} ->
+        {:ok, String.trim(content)}
+
+      {:error, er_msg} ->
+        Logger.error(
+          Enum.join(
+            [
+              "Failed to fetch commit_sha from artifacts",
+              "project: #{project.id}",
+              "commit job id: #{job_id}",
+              "error: #{inspect(er_msg)}"
+            ],
+            ", "
+          )
+        )
+
+        {:error, :commit_job_failed}
+    end
+  end
+
+  defp fetch_commit_sha({:ok, %{id: job_id, state: state}}, project)
+       when state in ["failed", "stopped"] do
+    Logger.error(
+      Enum.join(
+        [
+          "Commit job has failed",
+          "project: #{project.id}",
+          "commit job id: #{job_id}"
+        ],
+        ", "
+      )
+    )
+
+    {:error, :commit_job_failed}
+  end
+
+  defp fetch_commit_sha({:ok, _job}, _project), do: {:ok, ""}
+
+  defp fetch_commit_sha(error = {:error, _}, _project), do: error
+
+  defp send_response({:ok, commit_sha}, conn) do
+    conn |> put_status(200) |> json(%{commit_sha: commit_sha})
+  end
+
+  defp send_response({:error, :commit_job_failed}, conn) do
+    message = "Failed to commit changes to git repository."
+    message = message <> " Please, contact support."
+
+    conn |> put_status(422) |> json(%{error: message})
   end
 
   def check_workflow(conn, params) do
@@ -708,8 +876,6 @@ defmodule FrontWeb.ProjectController do
   # sobelow_skip ["Traversal.FileModule"]
   defp to_commit_request_changes(params) do
     alias InternalApi.Repository.CommitRequest.Change
-
-    Logger.info(inspect(params))
 
     added =
       Enum.map(params["added_files"] || [], fn f ->

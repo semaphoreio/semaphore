@@ -185,6 +185,61 @@ defmodule Zebra.Api.PublicJobApiTest do
 
       assert Enum.map(reply.jobs, & &1.metadata.id) == [job1.id]
     end
+
+    test "if a job is restricted do not return configuration in spec" do
+      alias Semaphore.Jobs.V1alpha.ListJobsRequest, as: Request
+      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
+
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          project_id: hd(@authorized_projects),
+          organization_id: @org_id,
+          spec: restricted_job_spec()
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      request = Request.new(states: [Semaphore.Jobs.V1alpha.Job.Status.State.value(:PENDING)])
+
+      {:ok, reply} = channel |> Stub.list_jobs(request, @options)
+
+      assert reply.jobs == [
+               %Semaphore.Jobs.V1alpha.Job{
+                 metadata: %Semaphore.Jobs.V1alpha.Job.Metadata{
+                   create_time: DateTime.to_unix(job.created_at),
+                   update_time: DateTime.to_unix(job.updated_at),
+                   finish_time: 0,
+                   id: job.id,
+                   name: "RSpec 1/3",
+                   start_time: 0
+                 },
+                 spec: %Semaphore.Jobs.V1alpha.Job.Spec{
+                   agent:
+                     Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+                       machine:
+                         Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                           type: "e2-standard-2",
+                           os_image: "ubuntu2204"
+                         )
+                     ),
+                   commands: ["echo 1234"],
+                   env_vars: [],
+                   files: [],
+                   secrets: [],
+                   epilogue_commands: [],
+                   epilogue_always_commands: [],
+                   epilogue_on_pass_commands: [],
+                   epilogue_on_fail_commands: [],
+                   project_id: ""
+                 },
+                 status: %Semaphore.Jobs.V1alpha.Job.Status{
+                   agent: nil,
+                   result: Semaphore.Jobs.V1alpha.Job.Status.Result.value(:NONE),
+                   state: Semaphore.Jobs.V1alpha.Job.Status.State.value(:PENDING)
+                 }
+               }
+             ]
+    end
   end
 
   describe ".get_job" do
@@ -281,6 +336,56 @@ defmodule Zebra.Api.PublicJobApiTest do
       {:error, reply} = channel |> Stub.get_job(request, @options)
 
       assert reply == %GRPC.RPCError{message: "Job #{job.id} not found", status: 5}
+    end
+
+    test "if a job is restricted do not return configuration in spec" do
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          project_id: hd(@authorized_projects),
+          organization_id: @org_id,
+          spec: restricted_job_spec()
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      request = Request.new(job_id: job.id)
+
+      {:ok, reply} = channel |> Stub.get_job(request, @options)
+
+      assert reply == %Semaphore.Jobs.V1alpha.Job{
+               metadata: %Semaphore.Jobs.V1alpha.Job.Metadata{
+                 create_time: DateTime.to_unix(job.created_at),
+                 update_time: DateTime.to_unix(job.updated_at),
+                 finish_time: 0,
+                 id: job.id,
+                 name: "RSpec 1/3",
+                 start_time: 0
+               },
+               spec: %Semaphore.Jobs.V1alpha.Job.Spec{
+                 agent:
+                   Semaphore.Jobs.V1alpha.Job.Spec.Agent.new(
+                     machine:
+                       Semaphore.Jobs.V1alpha.Job.Spec.Agent.Machine.new(
+                         type: "e2-standard-2",
+                         os_image: "ubuntu2204"
+                       )
+                   ),
+                 commands: ["echo 1234"],
+                 files: [],
+                 secrets: [],
+                 env_vars: [],
+                 epilogue_commands: [],
+                 epilogue_always_commands: [],
+                 epilogue_on_pass_commands: [],
+                 epilogue_on_fail_commands: [],
+                 project_id: ""
+               },
+               status: %Semaphore.Jobs.V1alpha.Job.Status{
+                 agent: nil,
+                 result: Semaphore.Jobs.V1alpha.Job.Status.Result.value(:NONE),
+                 state: Semaphore.Jobs.V1alpha.Job.Status.State.value(:PENDING)
+               }
+             }
     end
   end
 
@@ -534,6 +639,30 @@ defmodule Zebra.Api.PublicJobApiTest do
       assert reply == %GRPC.RPCError{
                message: "Job's debug SSH is only available while the job is running",
                status: 9
+             }
+    end
+
+    test "when the job is restricted => raise error" do
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:started, %{
+          project_id: hd(@authorized_projects),
+          private_ssh_key: Zebra.RSA.generate().private_key,
+          organization_id: @org_id,
+          build_id: task.id,
+          spec: restricted_job_spec() |> Map.put(:secrets, [])
+        })
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      request = Request.new(job_id: job.id)
+
+      {:error, reply} = channel |> Stub.get_job_debug_ssh_key(request, @options)
+
+      assert reply == %GRPC.RPCError{
+               message: "Attaching to this job is blocked.",
+               status: 7
              }
     end
   end
@@ -984,6 +1113,31 @@ defmodule Zebra.Api.PublicJobApiTest do
       assert reply.spec.agent.machine.type == job.machine_type
       assert reply.spec.agent.machine.os_image == job.machine_os_image
     end
+
+    test "when the original job is restricted => raise error" do
+      alias Semaphore.Jobs.V1alpha.JobsApi.Stub, as: Stub
+
+      {:ok, task} = Support.Factories.Task.create()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:pending, %{
+          project_id: hd(@authorized_projects),
+          organization_id: @org_id,
+          build_id: task.id,
+          spec: restricted_job_spec() |> Map.put(:secrets, [])
+        })
+
+      req = Semaphore.Jobs.V1alpha.CreateDebugJobRequest.new(job_id: job.id)
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      {:error, reply} = channel |> Stub.create_debug_job(req, @options)
+
+      assert reply == %GRPC.RPCError{
+               message: "The debug session is blocked for this job.",
+               status: 7
+             }
+    end
   end
 
   describe ".create_debug_project" do
@@ -1385,5 +1539,26 @@ defmodule Zebra.Api.PublicJobApiTest do
              message: "Job's debug SSH is only available while the job is running",
              status: 9
            }
+  end
+
+  def restricted_job_spec do
+    %{
+      job_name: "RSpec 1/3",
+      agent: %{
+        machine: %{
+          os_image: "ubuntu2204",
+          type: "e2-standard-2"
+        },
+        containers: [],
+        image_pull_secrets: []
+      },
+      secrets: [%{name: "my-secret"}],
+      env_vars: [%{name: "ENV_VAR_1", value: "secret-value"}],
+      files: [%{path: "my-file.txt", content: "secret-content"}],
+      commands: [
+        "echo 1234"
+      ],
+      restricted_job: true
+    }
   end
 end

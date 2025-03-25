@@ -57,9 +57,9 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
   test "valid SAML XML with attributes => returns a parsed SamlPayload" do
     # When processing assertions, '/' should be trimmerd, and first character should always be lowercase
     attributes = [
-      {"memberOf", "group1"},
-      {"memberOf", "group2"},
-      {"/Role/", "user"}
+      {"member", "group1/"},
+      {"member", "/group2"},
+      {"/Role/", "User"}
     ]
 
     payload =
@@ -74,7 +74,7 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
         :jump_cloud
       )
 
-    assert {:ok, @email, %{"role" => ["user"], "memberOf" => ["group2", "group1"]}} =
+    assert {:ok, @email, %{"role" => ["user"], "member" => ["group2", "group1"]}} =
              Parser.parse(
                integration(@jump_cloud_issuer),
                URI.decode_query(payload),

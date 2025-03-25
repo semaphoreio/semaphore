@@ -1,6 +1,7 @@
 import $ from "jquery";
 
 import { CommitDialogTemplate } from "../templates/commit/dialog"
+import { Features } from "../../features";
 
 function newDialogDiv() {
   return $("<div style='display=none'>")[0]
@@ -79,7 +80,7 @@ export class CommitPanel {
 
   _commit(e) {
     let branch = null;
-    let message = null;
+    let commitMessage = null;
 
     var url = this.paths.commit;
 
@@ -88,15 +89,21 @@ export class CommitPanel {
     $("[data-action=editorCommit]").addClass("btn-working");
     $("[data-action=editorCommit]").disabled = true;
 
+    var message = 'We are committing the changes to your git repository. ';
+    message = message + 'This can take up to a few minutes.';
+    $("#workflow-editor-commit-dialog-note").text(message);
+    $("#workflow-editor-commit-dialog-note").addClass("dark-indigo");
+
     let csrf = $("meta[name='csrf-token']").attr("content")
 
     branch = $("#workflow-editor-commit-dialog-branch").val()
-    message = $("#workflow-editor-commit-dialog-summary").val()
+    commitMessage = $("#workflow-editor-commit-dialog-summary").val()
 
     var body = new FormData();
     body.append("_csrf_token", csrf)
     body.append("branch", branch)
-    body.append("commit_message", message)
+    body.append("commit_message", commitMessage)
+    body.append("initial_branch", this.initialBranch)
 
     // if this is part of project onboarding, we need to also make sure 
     // that the project onboarding finished signal is sent
@@ -146,7 +153,11 @@ export class CommitPanel {
       console.log(data)
 
       if (data.wait)
-        this.afterCommitHandler(branch, data.commit_sha);
+        if(Features.isEnabled("useCommitJob"))          
+          this.commitJobHandler(branch, data.job_id);
+        else {
+          this.afterCommitHandler(branch, data.commit_sha);
+        }
       else {
         this.dialog.innerHTML = CommitDialogTemplate.renderCommited(this.paths.dismiss);
       }
@@ -154,9 +165,61 @@ export class CommitPanel {
     .catch(function(reason) {
       console.log(reason)
 
-      e.currentTarget.classList.remove("btn-working");
-      e.currentTarget.disabled = false;
+      this.resetButtonAndShowErrorMessage();
     })
+  }
+
+  resetButtonAndShowErrorMessage() {
+    $("[data-action=editorCommit]").removeClass("btn-working");
+    $("[data-action=editorCommit]").disabled = false;
+
+    var message = "There was an issue with committing the changes to your git repository. "
+    message = message + 'Please try again and contact support if the issue persists.';
+    $("#workflow-editor-commit-dialog-note").text(message);
+    $("#workflow-editor-commit-dialog-note").removeClass("dark-indigo");
+    $("#workflow-editor-commit-dialog-note").addClass("red");
+  }
+
+  commitJobHandler(branch, job_id) {
+    var url   = this.paths.checkCommitJob + `?job_id=${job_id}` 
+
+    console.log(`Checking commit job ${url}`)
+
+    fetch(url)
+    .then((res) => {
+      var contentType = res.headers.get("content-type");
+
+      if(contentType && contentType.includes("application/json")) {
+        return res.json();
+      } else {
+        throw new Error(res.statusText);
+      }
+    })
+    .then((res) => {
+      if(res.error) {
+        throw new Error(res.error);
+      } else {
+        return res;
+      }
+    })
+    .then((data) => {
+      if(data.commit_sha === "") {
+        setTimeout(this.commitJobHandler.bind(this, branch, job_id), 1000)
+      } else {
+        var message = 'The changes have been successfully committed. ';
+        message = message + 'We will soon navigate you to the new workflow.';
+        $("#workflow-editor-commit-dialog-note").text(message);
+
+        this.afterCommitHandler(branch, data.commit_sha);
+      }
+    })
+    .catch(
+      (reason) => { 
+        console.log(reason); 
+
+        this.resetButtonAndShowErrorMessage();
+      }
+    )
   }
 
   afterCommitHandler(branch, commitSha) {
