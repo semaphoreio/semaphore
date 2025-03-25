@@ -13,8 +13,8 @@ npm.build:
 	npm run build
 
 lint:
-	docker run --rm -t -a stdout $(IMAGE):dev npm run lint
+	docker run --rm -t -a stdout $(IMAGE):$(IMAGE_TAG) npm run lint
 
 test:
-	docker run --rm -t -a stdout $(IMAGE) nginx -c /etc/nginx/nginx.conf -t
+	docker run --rm -t -a stdout $(IMAGE):$(IMAGE_TAG) nginx -c /etc/nginx/nginx.conf -t
 

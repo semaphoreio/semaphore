@@ -5,7 +5,6 @@ ARG RUNNER_IMAGE=nginx
 # Build stage
 FROM ${BUILDER_IMAGE} AS builder
 WORKDIR /app
-ENV LOCALE en
 
 COPY package.json package.json
 COPY package-lock.json package-lock.json
