@@ -135,7 +135,6 @@ defmodule Guard.Utils.Http do
 
   @redirect_cookie_key "semaphore_redirect_to"
   @state_cookie_options [
-    encrypt: true,
     max_age: 30 * 60,
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.
@@ -185,7 +184,8 @@ defmodule Guard.Utils.Http do
     value = :erlang.term_to_binary(value)
     opts = @state_cookie_options ++ [domain: "." <> domain()]
     Logger.info("OPTS: #{inspect(opts)}")
-    Plug.Conn.put_resp_cookie(conn, key, value, opts)
+    Logger.info("KEY #{inspect(key)}")
+    Plug.Conn.put_resp_cookie(conn, key, "TEST", opts)
   end
 
   def delete_state_value(conn, key) do

@@ -3,12 +3,11 @@ defmodule Rbac.Utils.Http do
 
   @redirect_cookie_key "semaphore_redirect_to"
   @state_cookie_options [
-    encrypt: true,
     max_age: 30 * 60,
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.
     same_site: "Lax",
-    path: "/", 
+    path: "/",
     secure: true,
     http_only: true
   ]
@@ -34,15 +33,57 @@ defmodule Rbac.Utils.Http do
   def fetch_redirect_value(conn, default) do
     Logger.info("FETCH REDIRECT VALUE")
 
-    # Fetch all cookies from the connection
-    conn_with_cookies = Plug.Conn.fetch_cookies(conn)
+    # First try only regular cookies
+    conn_with_regular =
+      try do
+        regular_conn = Plug.Conn.fetch_cookies(conn)
+        Logger.info("Regular cookies fetched successfully")
+        regular_conn
+      rescue
+        e ->
+          Logger.error("Error fetching regular cookies: #{inspect(e)}")
+          conn
+      end
 
-    # Get cookie names and log them
-    cookie_names = Map.keys(conn_with_cookies.cookies)
-    Logger.info("All present cookies: #{inspect(cookie_names)}")
+    # Then try signed cookies
+    conn_with_signed =
+      try do
+        signed_conn = Plug.Conn.fetch_cookies(conn_with_regular, :signed)
+        Logger.info("Signed cookies fetched successfully")
+        signed_conn
+      rescue
+        e ->
+          Logger.error("Error fetching signed cookies: #{inspect(e)}")
+          conn_with_regular
+      end
+
+    # Finally try encrypted cookies
+    conn_with_all =
+      try do
+        encrypted_conn = Plug.Conn.fetch_cookies(conn_with_signed, :encrypted)
+        Logger.info("Encrypted cookies fetched successfully")
+        encrypted_conn
+      rescue
+        e ->
+          Logger.error("Error fetching encrypted cookies: #{inspect(e)}")
+          conn_with_signed
+      end
+
+    Logger.info("TEST1 #{inspect(conn_with_all)}")
+
+    all_cookies =
+      Map.merge(
+        conn_with_all.cookies || %{},
+        Map.merge(
+          conn_with_all.signed_cookies || %{},
+          conn_with_all.encrypted_cookies || %{}
+        )
+      )
+
+    Logger.info("All cookies (regular, signed, encrypted): #{inspect(Map.keys(all_cookies))}")
 
     # Continue with original functionality
-    case conn_with_cookies |> fetch_state_value(@redirect_cookie_key) do
+    case conn_with_all |> fetch_state_value(@redirect_cookie_key) do
       {:ok, redirect_to, _conn} ->
         validate_url(redirect_to, default)
 
