@@ -587,40 +587,54 @@ blocks:
           commands:
             - make test.ex
   # Docs
-  - name: Docs cache
+  - name: "Docs: \U0001F5BC️ Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/docs', {default_branch: 'main'})"
     task:
+      env_vars:
+        - name: APP_ENV
+          value: prod
       jobs:
-        - name: Preheat cache
+        - name: "Image Build"
           commands:
             - checkout
-            - sem-version node 20.12
             - cd docs
-            - cache restore
-            - npm install
-            - cache store
-  - name: Docs build
-    dependencies: [Docs cache]
+            - make build
+  - name: "Docs: \U0001F5BC️ Build test image"
+    dependencies: []
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
     task:
+      env_vars:
+        - name: APP_ENV
+          value: dev
+      jobs:
+        - name: "Image Build"
+          commands:
+            - checkout
+            - cd docs
+            - make build
+  - name: "Docs: \U0001F9EA QA"
+    dependencies: ["Docs: \U0001F5BC️ Build test image"]
+    run:
+      when: "change_in('/docs', {default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: APP_ENV
+          value: dev
       prologue:
         commands:
           - checkout
-          - sem-version node 20.12
           - cd docs
-          - cache restore
-          - npm install
+          - make pull
+          - make build
       jobs:
         - name: Lint
           commands:
             - npm run lint
-        - name: Build
+        - name: Test
           commands:
-            - npm run build
-        - name: Build image
-          commands:
-            - make build
             - make test
   # Front
   - name: "Front: \U0001F5BC️ Provision Test Image"
