@@ -298,14 +298,24 @@ defmodule Front.Utils do
   end
 
   def decorate_relative(date) do
-    if Timex.diff(DateTime.utc_now(), date, :days) > 3 do
-      unssufixed_date = Timex.format!(date, "%a %d %b %Y", :strftime)
-      [weekday, day, month, year] = String.split(unssufixed_date, " ")
+    now = DateTime.utc_now()
+    diff_days = Timex.diff(now, date, :days)
+    diff_hours = Timex.diff(now, date, :hours)
 
-      suffixed_day = day <> ordinal_suffix(String.to_integer(day))
-      "on #{weekday} #{suffixed_day} #{month} #{year}"
-    else
-      Timex.format!(date, "{relative}", :relative)
+    unssufixed_date = Timex.format!(date, "%a %d %b %Y", :strftime)
+    [weekday, day, month, year] = String.split(unssufixed_date, " ")
+    suffixed_day = day <> ordinal_suffix(String.to_integer(day))
+
+    cond do
+      diff_days > 3 ->
+        "on #{weekday} #{suffixed_day} #{month} #{year}"
+
+      diff_hours >= 1 and diff_days <= 3 ->
+        time_part = Timex.format!(date, "%H:%M", :strftime)
+        "on #{weekday} #{suffixed_day} #{month} #{year} at #{time_part}"
+
+      true ->
+        Timex.format!(date, "{relative}", :relative)
     end
   end
 

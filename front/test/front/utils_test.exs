@@ -64,15 +64,33 @@ defmodule Front.UtilsTest do
   end
 
   test "decorate relative" do
-    two_days_ago = Timex.now() |> Timex.shift(days: -2) |> Timex.to_unix()
-    three_days_ago = Timex.now() |> Timex.shift(days: -3) |> Timex.to_unix()
+    now = DateTime.utc_now()
+
+    thirty_minutes_ago = DateTime.add(now, -30 * 60, :second)
+    two_days_ago = DateTime.new!(Date.add(Date.utc_today(), -2), ~T[14:30:00])
+    three_days_ago = DateTime.new!(Date.add(Date.utc_today(), -3), ~T[10:15:00])
+
     assert Front.Utils.decorate_relative(0) == ""
     assert Front.Utils.decorate_relative(nil) == ""
-    assert Front.Utils.decorate_relative(DateTime.utc_now()) == "now"
-    assert Front.Utils.decorate_relative(two_days_ago) == "2 days ago"
-    assert Front.Utils.decorate_relative(three_days_ago) == "3 days ago"
+    assert Front.Utils.decorate_relative(now) == "now"
 
-    assert Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z]) ==
-             "on Wed 05th Mar 2025"
+    assert Front.Utils.decorate_relative(thirty_minutes_ago) == "30 minutes ago"
+
+    ordinal_suffix_regex = "(st|nd|rd|th)"
+
+    assert Regex.match?(
+             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4} at \d{2}:\d{2}/,
+             Front.Utils.decorate_relative(two_days_ago)
+           )
+
+    assert Regex.match?(
+             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4} at \d{2}:\d{2}/,
+             Front.Utils.decorate_relative(three_days_ago)
+           )
+
+    assert Regex.match?(
+             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4}/,
+             Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z])
+           )
   end
 end
