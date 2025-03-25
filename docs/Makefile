@@ -2,10 +2,10 @@ include ../Makefile
 
 APP_NAME=docs-v2
 
-dev:
+npm.dev:
 	npm start
 
-test:
+npm.test:
 	npm run lint
 
 npm.build:

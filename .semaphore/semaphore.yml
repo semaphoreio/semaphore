@@ -620,7 +620,7 @@ blocks:
             - npm run build
         - name: Build image
           commands:
-            - make build
+            - make npm.build
             - make test
   # Front
   - name: "Front: \U0001F5BC️ Provision Test Image"
