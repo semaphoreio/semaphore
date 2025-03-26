@@ -232,7 +232,6 @@ defmodule Guard.Id.Api do
       org ->
         cond do
           Enum.member?(org.allowed_id_providers, "okta") ->
-            Logger.info("OKTA is allowed for #{inspect(org)}")
             conn |> saml_login_page(org.org_id)
 
           Enum.member?(org.allowed_id_providers, "oidc") ->
@@ -253,7 +252,6 @@ defmodule Guard.Id.Api do
         )
 
       sso_url ->
-        Logger.info("Found sso url #{inspect(sso_url)}")
         conn |> Guard.Utils.Http.redirect_to_url(sso_url)
     end
   end

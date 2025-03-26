@@ -32,15 +32,8 @@ defmodule Rbac.Utils.Http do
   end
 
   def fetch_redirect_value(conn, default) do
-    Logger.info("FETCH REDIRECT VALUE")
-
-    conn = Plug.Conn.fetch_cookies(conn)
-
-    Logger.info("TEST1 #{inspect(conn)}")
-
     case conn |> fetch_state_value(@redirect_cookie_key) do
       {:ok, redirect_to, _conn} ->
-        Logger.info("REDIRECT TO #{inspect(redirect_to)}")
         validate_url(redirect_to, default)
 
       _ ->
@@ -85,11 +78,8 @@ defmodule Rbac.Utils.Http do
   def fetch_state_value(conn, key) do
     conn = Plug.Conn.fetch_cookies(conn, encrypted: [key])
 
-    Logger.info("Fetched cookie #{inspect(conn)}")
-
     case Map.fetch(conn.cookies, key) do
       {:ok, encoded_state} ->
-        Logger.info("fetched #{encoded_state}")
         {:ok, Plug.Crypto.non_executable_binary_to_term(encoded_state, [:safe]), conn}
 
       :error ->
