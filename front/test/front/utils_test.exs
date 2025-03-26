@@ -67,8 +67,10 @@ defmodule Front.UtilsTest do
     now = DateTime.utc_now()
 
     thirty_minutes_ago = DateTime.add(now, -30 * 60, :second)
-    two_days_ago = DateTime.new!(Date.add(Date.utc_today(), -2), ~T[14:30:00])
-    three_days_ago = DateTime.new!(Date.add(Date.utc_today(), -3), ~T[10:15:00])
+
+    fake_today = ~U[2025-03-20 12:00:00.000000Z]
+    two_days_ago = DateTime.new!(Date.add(fake_today, -2), ~T[14:30:00])
+    three_days_ago = DateTime.new!(Date.add(fake_today, -3), ~T[10:15:00])
 
     assert Front.Utils.decorate_relative(0) == ""
     assert Front.Utils.decorate_relative(nil) == ""
@@ -78,15 +80,11 @@ defmodule Front.UtilsTest do
 
     ordinal_suffix_regex = "(st|nd|rd|th)"
 
-    assert Regex.match?(
-             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4} at \d{2}:\d{2}/,
-             Front.Utils.decorate_relative(two_days_ago)
-           )
+    assert Front.Utils.decorate_relative(fake_today, two_days_ago) ==
+             "on Wed 18th Mar 2025 at 14:30"
 
-    assert Regex.match?(
-             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4} at \d{2}:\d{2}/,
-             Front.Utils.decorate_relative(three_days_ago)
-           )
+    assert Front.Utils.decorate_relative(fake_today, three_days_ago) ==
+             "on Tue 19th Mar 2025 at 10:15"
 
     assert Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z]) ==
              "on Wed 05th Mar 2025"

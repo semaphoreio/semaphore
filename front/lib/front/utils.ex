@@ -297,12 +297,13 @@ defmodule Front.Utils do
     |> decorate_relative()
   end
 
-  def decorate_relative(date) do
-    now = DateTime.utc_now()
-    diff_days = Timex.diff(now, date, :days)
-    diff_hours = Timex.diff(now, date, :hours)
+  def decorate_relative(date), do: decorate_relative(DateTime.utc_now(), date)
 
-    unssufixed_date = Timex.format!(date, "%a %d %b %Y", :strftime)
+  def decorate_relative(from, until) do
+    diff_days = Timex.diff(from, until, :days)
+    diff_hours = Timex.diff(from, until, :hours)
+
+    unssufixed_date = Timex.format!(until, "%a %d %b %Y", :strftime)
     [weekday, day, month, year] = String.split(unssufixed_date, " ")
     suffixed_day = day <> ordinal_suffix(String.to_integer(day))
 
@@ -311,11 +312,11 @@ defmodule Front.Utils do
         "on #{weekday} #{suffixed_day} #{month} #{year}"
 
       diff_hours >= 1 and diff_days <= 3 ->
-        time_part = Timex.format!(date, "%H:%M", :strftime)
+        time_part = Timex.format!(until, "%H:%M", :strftime)
         "on #{weekday} #{suffixed_day} #{month} #{year} at #{time_part}"
 
       true ->
-        Timex.format!(date, "{relative}", :relative)
+        Timex.format!(until, "{relative}", :relative)
     end
   end
 
