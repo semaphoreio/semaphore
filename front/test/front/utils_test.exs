@@ -78,8 +78,6 @@ defmodule Front.UtilsTest do
 
     assert Front.Utils.decorate_relative(thirty_minutes_ago) == "30 minutes ago"
 
-    ordinal_suffix_regex = "(st|nd|rd|th)"
-
     assert Front.Utils.decorate_relative(fake_today, two_days_ago) ==
              "on Wed 18th Mar 2025 at 14:30"
 
