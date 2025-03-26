@@ -88,9 +88,7 @@ defmodule Front.UtilsTest do
              Front.Utils.decorate_relative(three_days_ago)
            )
 
-    assert Regex.match?(
-             ~r/on \w{3} \d{2}#{ordinal_suffix_regex} \w{3} \d{4}/,
-             Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z])
-           )
+    assert Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z]) ==
+             "on Wed 05th Mar 2025"
   end
 end
