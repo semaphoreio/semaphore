@@ -137,9 +137,8 @@ defmodule Guard.Utils.Http do
   @state_cookie_options [
     encrypt: true,
     max_age: 30 * 60,
-    # If `same_site` is set to `Strict` then the cookie will not be sent on
-    # IdP callback redirects, which will break the auth flow.
-    same_site: "Lax",
+    same_site: "Strict",
+    path: "/",
     secure: true,
     http_only: true
   ]
@@ -159,9 +158,7 @@ defmodule Guard.Utils.Http do
     end
   end
 
-  def store_redirect_info(conn, url) do
-    conn |> put_state_value(@redirect_cookie_key, url)
-  end
+  def store_redirect_info(conn, url), do: conn |> put_state_value(@redirect_cookie_key, url)
 
   def fetch_redirect_value(conn, default) do
     case conn |> fetch_state_value(@redirect_cookie_key) do
@@ -182,7 +179,19 @@ defmodule Guard.Utils.Http do
 
     value = :erlang.term_to_binary(value)
 
-    Plug.Conn.put_resp_cookie(conn, key, value, @state_cookie_options)
+    opts =
+      if key == @redirect_cookie_key do
+        # If `same_site` is set to `Strict` then the cookie will not be sent on
+        # IdP callback redirects, which will break the auth flow.
+        Keyword.merge(@state_cookie_options,
+          same_site: "None",
+          domain: "." <> domain()
+        )
+      else
+        @state_cookie_options
+      end
+
+    Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 
   def delete_state_value(conn, key) do
