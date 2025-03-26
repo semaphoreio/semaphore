@@ -15,14 +15,14 @@ const (
 	ListChangedFilesComparisonTypeHeadToMergeBase ListChangedFilesComparisonType = 1
 )
 
-func ListChangedFiles(repo *Repository, base Revision, head Revision, comparison ListChangedFilesComparisonType) ([]string, error) {
+func ListChangedFiles(projectID string, repo *Repository, base Revision, head Revision, comparison ListChangedFilesComparisonType) ([]string, error) {
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.ListChangedFiles", []string{
 		repo.HttpURL,
 	})
 
 	log.Printf("ListChangedFiles Started. Repo: %s", repo.HttpURL)
 
-	repoPath, err := UpdateOrClone(repo, nil)
+	repoPath, err := UpdateOrClone(projectID, repo, nil)
 	if err != nil {
 		return nil, err
 	}

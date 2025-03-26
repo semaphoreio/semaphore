@@ -58,6 +58,7 @@ func Commit(repo *Repository, payload CommitPayload) (rev *Revision, err error) 
 //
 
 type CommitOperation struct {
+	ProjectID  string
 	Repository *Repository
 	Payload    CommitPayload
 
@@ -100,7 +101,7 @@ func (op *CommitOperation) Run() (*Revision, error) {
 	err := op.Validate()
 	check(err, "Invalid parameters")
 
-	repoPath, err := UpdateOrClone(op.Repository, nil)
+	repoPath, err := UpdateOrClone(op.ProjectID, op.Repository, nil)
 	check(err, "Failed to clone repository")
 
 	r, err := git.OpenRepository(repoPath)

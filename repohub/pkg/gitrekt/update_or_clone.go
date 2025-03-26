@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -12,15 +14,15 @@ import (
 	"github.com/renderedtext/go-watchman"
 )
 
-func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
+func UpdateOrClone(projectID string, repo *Repository, revision *Revision) (string, error) {
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone", []string{repo.HttpURL})
 
 	reference := extractReference(revision)
 
-	op := NewUpdateOrCloneOperation(repo, reference)
+	op := NewUpdateOrCloneOperation(projectID, repo, reference)
 	err := op.Run()
 
-	log.Printf("UpdateOrClone took %f seconds", op.Duration())
+	log.Printf("UpdateOrClone took %f seconds for %s %s (%s)", op.Duration(), repo.Name, projectID, repo.HttpURL)
 
 	return op.Repository.Path(), err
 }
@@ -30,14 +32,19 @@ func UpdateOrClone(repo *Repository, revision *Revision) (string, error) {
 //
 
 type UpdateOrCloneOperation struct {
+	ProjectID  string
 	Repository *Repository
 	Reference  string
 	Started    time.Time
 	Finished   time.Time
 }
 
-func NewUpdateOrCloneOperation(repo *Repository, reference string) *UpdateOrCloneOperation {
-	return &UpdateOrCloneOperation{Repository: repo, Reference: reference}
+func NewUpdateOrCloneOperation(projectID string, repo *Repository, reference string) *UpdateOrCloneOperation {
+	return &UpdateOrCloneOperation{
+		ProjectID:  projectID,
+		Repository: repo,
+		Reference:  reference,
+	}
 }
 
 func (o *UpdateOrCloneOperation) Duration() float64 {
@@ -91,7 +98,60 @@ func (o *UpdateOrCloneOperation) Update() error {
 	return nil
 }
 
+func (o *UpdateOrCloneOperation) sparseClone() error {
+	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.SparseClone", []string{o.Repository.HttpURL})
+
+	var err error
+	log.Printf("Sparse cloning %s", o.Repository.Path())
+
+	err = o.gitCloneSparse()
+	if err != nil {
+		cleanupDirectory(o)
+
+		return err
+	}
+
+	err = o.gitSparseCheckoutInit()
+	if err != nil {
+		cleanupDirectory(o)
+
+		return err
+	}
+
+	err = o.gitSparseSet()
+	if err != nil {
+		cleanupDirectory(o)
+
+		return err
+	}
+
+	err = o.Update()
+	if err != nil {
+		cleanupDirectory(o)
+		return err
+	}
+
+	return nil
+}
+
 func (o *UpdateOrCloneOperation) Clone() error {
+	envValue := os.Getenv("USE_SPARSE_CLONES_FOR")
+	if envValue == "" {
+		log.Printf("Using bare clone for %s", o.ProjectID)
+		return o.bareClone()
+	}
+
+	projectIDs := strings.Split(envValue, ",")
+	if slices.Contains(projectIDs, o.ProjectID) {
+		log.Printf("Using sparse clone for %s", o.ProjectID)
+		return o.sparseClone()
+	} else {
+		log.Printf("Using bare clone for %s", o.ProjectID)
+		return o.bareClone()
+	}
+}
+
+func (o *UpdateOrCloneOperation) bareClone() error {
 	var err error
 
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.UpdateOrClone.Clone", []string{o.Repository.HttpURL})
@@ -126,6 +186,63 @@ func (o *UpdateOrCloneOperation) Clone() error {
 	if err != nil {
 		cleanupDirectory(o)
 		return err
+	}
+
+	return nil
+}
+
+func (o *UpdateOrCloneOperation) gitCloneSparse() error {
+	log.Printf("initializing bare repo %s", o.Repository.Path())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(
+		ctx,
+		"git",
+		"clone",
+		"--no-checkout",
+		"--filter=blob:none",
+		o.Repository.Path(),
+		o.Repository.HttpURL,
+	)
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Error sparse cloning repo %s, out: %s, err: %s", o.Repository.HttpURL, string(out), err.Error())
+		return o.parseError(out, err)
+	}
+
+	return nil
+}
+
+func (o *UpdateOrCloneOperation) gitSparseCheckoutInit() error {
+	log.Printf("initializing sparse for %s", o.Repository.Path())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sparse-checkout", "init", "--cone")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Error on sparse checkout init for %s, out: %s, err: %s", o.Repository.HttpURL, string(out), err.Error())
+		return o.parseError(out, err)
+	}
+
+	return nil
+}
+
+func (o *UpdateOrCloneOperation) gitSparseSet() error {
+	log.Printf("initializing sparse for %s", o.Repository.Path())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "sparse-checkout", "set", ".semaphore")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Error on sparse checkout init for %s, out: %s, err: %s", o.Repository.HttpURL, string(out), err.Error())
+		return o.parseError(out, err)
 	}
 
 	return nil

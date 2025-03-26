@@ -20,7 +20,7 @@ type SearchOptions struct {
 	IncludeContent bool
 }
 
-func Search(repo *Repository, rev Revision, options *SearchOptions) ([]*File, error) {
+func Search(projectID string, repo *Repository, rev Revision, options *SearchOptions) ([]*File, error) {
 	defer watchman.BenchmarkWithTags(time.Now(), "gitrekt.Search", []string{
 		repo.HttpURL,
 	})
@@ -31,7 +31,7 @@ func Search(repo *Repository, rev Revision, options *SearchOptions) ([]*File, er
 		rev,
 	)
 
-	repoPath, err := UpdateOrClone(repo, &rev)
+	repoPath, err := UpdateOrClone(projectID, repo, &rev)
 	if err != nil {
 		return nil, err
 	}

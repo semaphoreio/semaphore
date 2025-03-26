@@ -120,6 +120,7 @@ func (s *RepoService) GetFiles(ctx context.Context, request *ia_repository.GetFi
 	revision := s.ensureRevision(request.Revision, repo.DefaultBranch)
 
 	files, err := gitrekt.Search(
+		repo.ProjectID.String(),
 		s.toGitRektRepository(repo, token),
 		s.toGitRektRevision(revision),
 		options,
@@ -244,6 +245,7 @@ func (s *RepoService) GetChangedFilePaths(ctx context.Context, request *ia_repos
 	headRev := s.ensureRevision(request.HeadRev, "")
 
 	files, err := gitrekt.ListChangedFiles(
+		repo.ProjectID.String(),
 		s.toGitRektRepository(repo, token),
 		s.toGitRektRevision(baseRev),
 		s.toGitRektRevision(headRev),

@@ -34,7 +34,7 @@ func Test__Github__ListChangedFiles__HeadToHead(t *testing.T) {
 	head := gitrekt.Revision{Reference: "refs/remotes/origin/test-head"}
 	comparison := gitrekt.ListChangedFilesComparisonTypeHeadToHead
 
-	files, err := gitrekt.ListChangedFiles(repo, base, head, comparison)
+	files, err := gitrekt.ListChangedFiles("projectA", repo, base, head, comparison)
 	assert.Nil(t, err)
 
 	assert.Equal(t, 2, len(files))
@@ -50,7 +50,7 @@ func Test__Github__ListChangedFiles__MergeBase(t *testing.T) {
 	head := gitrekt.Revision{Reference: "refs/remotes/origin/test-head"}
 	comparison := gitrekt.ListChangedFilesComparisonTypeHeadToMergeBase
 
-	files, err := gitrekt.ListChangedFiles(repo, base, head, comparison)
+	files, err := gitrekt.ListChangedFiles("projectA", repo, base, head, comparison)
 	assert.Nil(t, err)
 
 	assert.Equal(t, 1, len(files))
@@ -69,7 +69,7 @@ func Test__Github__ListChangedFiles__WithCarrots(t *testing.T) {
 	head := gitrekt.Revision{CommitSha: "f70145864b843158d75c3eb6e217a4aba40853f0^"}
 	comparison := gitrekt.ListChangedFilesComparisonTypeHeadToMergeBase
 
-	files, err := gitrekt.ListChangedFiles(repo, base, head, comparison)
+	files, err := gitrekt.ListChangedFiles("projectA", repo, base, head, comparison)
 	assert.Nil(t, err)
 
 	assert.Equal(t, 7, len(files))
