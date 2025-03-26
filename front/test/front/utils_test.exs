@@ -79,10 +79,10 @@ defmodule Front.UtilsTest do
     assert Front.Utils.decorate_relative(thirty_minutes_ago) == "30 minutes ago"
 
     assert Front.Utils.decorate_relative(fake_today, two_days_ago) ==
-             "on Wed 18th Mar 2025 at 14:30"
+             "on Tue 18th Mar 2025 at 14:30"
 
     assert Front.Utils.decorate_relative(fake_today, three_days_ago) ==
-             "on Tue 19th Mar 2025 at 10:15"
+             "on Mon 17th Mar 2025 at 10:15"
 
     assert Front.Utils.decorate_relative(~U[2025-03-05 22:05:26.833945Z]) ==
              "on Wed 05th Mar 2025"
