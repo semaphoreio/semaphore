@@ -57,7 +57,9 @@
                 <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
                 </div>
                 <% else %>
-                <%= link "Connect…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :email]), method: :post %>
+                <div>
+                  <%= link "Connect…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :email]), method: :post %>
+                </div>
                 <% end %>
                 <% end %>
               <% {:NONE, _} -> %>
@@ -106,7 +108,7 @@
             <% end %>
           </div>
           <%= if FeatureProvider.feature_enabled?(:bitbucket, param: @conn.assigns[:organization_id]) do %>
-          <div class="pa2">
+          <div class="pa2 bt b--lighter-gray">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
               <% {:NONE, nil} -> %>
