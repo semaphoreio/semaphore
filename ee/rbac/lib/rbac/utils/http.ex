@@ -5,9 +5,7 @@ defmodule Rbac.Utils.Http do
   @state_cookie_options [
     encrypt: true,
     max_age: 30 * 60,
-    # If `same_site` is set to `Strict` then the cookie will not be sent on
-    # IdP callback redirects, which will break the auth flow.
-    same_site: "None",
+    same_site: "Strict",
     path: "/",
     secure: true,
     http_only: true
@@ -49,7 +47,19 @@ defmodule Rbac.Utils.Http do
     Logger.debug("Putting state value into cookie for key: #{key}")
 
     value = :erlang.term_to_binary(value)
-    opts = @state_cookie_options ++ [domain: "." <> domain()]
+
+    opts =
+      if key == @redirect_cookie_key do
+        # If `same_site` is set to `Strict` then the cookie will not be sent on
+        # IdP callback redirects, which will break the auth flow.
+        Keyword.merge(@state_cookie_options,
+          same_site: "None",
+          domain: "." <> domain()
+        )
+      else
+        @state_cookie_options
+      end
+
     Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 

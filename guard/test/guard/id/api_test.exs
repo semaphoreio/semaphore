@@ -472,7 +472,7 @@ defmodule Guard.Id.Api.Test do
       {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
 
       assert cookie =~ "semaphore_auth_state="
-      assert cookie =~ "secure; HttpOnly; SameSite=Lax"
+      assert cookie =~ "secure; HttpOnly; SameSite=Strict"
 
       assert response.body =~ "/protocol/openid-connect/auth"
       assert response.body =~ "localhost"

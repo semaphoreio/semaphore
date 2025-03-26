@@ -181,7 +181,6 @@ defmodule Guard.Utils.Http do
 
     opts =
       if key == @redirect_cookie_key do
-        Logger.info("ONE")
         # If `same_site` is set to `Strict` then the cookie will not be sent on
         # IdP callback redirects, which will break the auth flow.
         Keyword.merge(@state_cookie_options,
@@ -189,11 +188,9 @@ defmodule Guard.Utils.Http do
           domain: "." <> domain()
         )
       else
-        Logger.info("TWO")
         @state_cookie_options
       end
 
-    Logger.info("OPTS #{inspect(opts)}")
     Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 
