@@ -36,12 +36,22 @@ defmodule Guard.Api.Github do
 
   @doc """
   Fetch or refresh access token
+
+  # Important Considerations:
+  - By default, GitHub tokens do not expire unless the optional setting in the GitHub app is changed.
+  - If altered, the expires_in and refresh_token will not be null.
+  - That's why we have refresh token logic for GitHub, even if it's not typically used.
   """
   def user_token(repo_host_account) do
     case validate_token(repo_host_account.token) do
       {:ok, true} -> {:ok, {repo_host_account.token, nil}}
       _ -> handle_fetch_token(repo_host_account)
     end
+  end
+
+  defp handle_fetch_token(%{refresh_token: refresh_token}) when refresh_token in [nil, ""] do
+    Logger.warning("No refresh token found for GitHub repo host account, account is revoked")
+    {:error, :revoked}
   end
 
   defp handle_fetch_token(repo_host_account) do
@@ -58,7 +68,7 @@ defmodule Guard.Api.Github do
 
     case Tesla.post(client, @oauth_path, nil, query: query_params) do
       {:ok, %Tesla.Env{status: status, body: body}} when status in 200..299 ->
-        OAuth.handle_ok_token_response(repo_host_account, body, cache: false)
+        OAuth.handle_ok_token_response(repo_host_account, body)
 
       {:ok, %Tesla.Env{status: status}} when status in 400..499 ->
         Logger.warning("Failed to refresh github token, account might be revoked")

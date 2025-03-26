@@ -46,6 +46,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     field(:permission_scope, :string)
     field(:token, :string)
     field(:refresh_token, :string)
+    field(:token_expires_at, :utc_datetime)
     field(:revoked, :boolean, default: false)
 
     timestamps(inserted_at: :created_at, updated_at: :updated_at, type: :utc_datetime)
@@ -184,8 +185,14 @@ defmodule Guard.FrontRepo.RepoHostAccount do
     end
   end
 
-  def update_token_pair(rha, token, refresh_token) do
-    update_account(%{token: token, refresh_token: refresh_token}, rha)
+  def update_token(rha, token, refresh_token, expires_at) do
+    params = %{
+      token: token,
+      refresh_token: refresh_token,
+      token_expires_at: expires_at
+    }
+
+    update_account(params, rha)
   end
 
   @spec get_uid_by_login(String.t(), String.t()) :: {:ok, String.t()} | {:error, :not_found}
@@ -314,6 +321,7 @@ defmodule Guard.FrontRepo.RepoHostAccount do
           :revoked,
           :token,
           :refresh_token,
+          :token_expires_at,
           :permission_scope
         ]
       )
