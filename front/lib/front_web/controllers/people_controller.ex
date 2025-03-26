@@ -951,7 +951,7 @@ defmodule FrontWeb.PeopleController do
 
       conn
       |> json(%{
-        message: "Successfully triggered refreshing collaborators."
+        message: "Sync with repository triggered successfully"
       })
     end)
   end
