@@ -71,10 +71,10 @@ func (o *UpdateOrCloneOperation) Update() error {
 		log.Printf("fetching from remotes %s with revision %v", o.Repository.Path(), o.Reference)
 
 		// #nosec G204
-		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", o.Reference)
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", o.Reference, "--depth=1")
 	} else {
 		log.Printf("fetching from remotes %s without revision", o.Repository.Path())
-		cmd = exec.CommandContext(ctx, "git", "fetch", "origin")
+		cmd = exec.CommandContext(ctx, "git", "fetch", "origin", "--depth=1")
 	}
 
 	cmd.Dir = o.Repository.Path()
