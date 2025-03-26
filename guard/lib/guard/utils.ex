@@ -135,6 +135,7 @@ defmodule Guard.Utils.Http do
 
   @redirect_cookie_key "semaphore_redirect_to"
   @state_cookie_options [
+    encrypt: true,
     max_age: 30 * 60,
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.

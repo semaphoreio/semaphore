@@ -3,6 +3,7 @@ defmodule Rbac.Utils.Http do
 
   @redirect_cookie_key "semaphore_redirect_to"
   @state_cookie_options [
+    encrypt: true,
     max_age: 30 * 60,
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.
@@ -73,10 +74,10 @@ defmodule Rbac.Utils.Http do
 
     all_cookies =
       Map.merge(
-        conn_with_all.cookies || %{},
+        conn_with_all["cookies"] || %{},
         Map.merge(
-          conn_with_all.signed_cookies || %{},
-          conn_with_all.encrypted_cookies || %{}
+          conn_with_all["signed_cookies"] || %{},
+          conn_with_all["encrypted_cookies"] || %{}
         )
       )
 
@@ -85,6 +86,7 @@ defmodule Rbac.Utils.Http do
     # Continue with original functionality
     case conn_with_all |> fetch_state_value(@redirect_cookie_key) do
       {:ok, redirect_to, _conn} ->
+        Logger.info("REDIRECT TO #{inspect(redirect_to)}")
         validate_url(redirect_to, default)
 
       _ ->
