@@ -33,9 +33,12 @@ class TimeAgo extends HTMLElement {
     decorateRelative(date) {
         const now = new Date();
         const diffInSeconds = Math.floor((now - date) / 1000);
+        const diffInHours = Math.floor(diffInSeconds / 3600);
         const daysDifference = Math.floor(diffInSeconds / 86400);
 
-        return daysDifference > 3 ? this.formatFullDate(date) : this.formatRelativeTime(diffInSeconds);
+        if (daysDifference > 3) return this.formatFullDate(date);
+        if (diffInHours >= 1) return this.formatDateWithTime(date);
+        return this.formatRelativeTime(diffInSeconds);
     }
 
     formatRelativeTime(seconds) {
@@ -43,8 +46,7 @@ class TimeAgo extends HTMLElement {
 
         if (Math.abs(seconds) < 60) return rtf.format(-seconds, "second");
         if (Math.abs(seconds) < 3600) return rtf.format(-Math.floor(seconds / 60), "minute");
-        if (Math.abs(seconds) < 86400) return rtf.format(-Math.floor(seconds / 3600), "hour");
-        return rtf.format(-Math.floor(seconds / 86400), "day");
+        return rtf.format(-Math.floor(seconds / 3600), "hour");
     }
 
     formatFullDate(date) {
@@ -55,6 +57,17 @@ class TimeAgo extends HTMLElement {
         const suffixedDay = day + this.ordinalSuffix(parseInt(day, 10));
         
         return `on ${weekday} ${suffixedDay} ${month} ${year}`;
+    }
+
+    formatDateWithTime(date) {
+        const options = { weekday: "short", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false };
+        const formattedDate = date.toLocaleDateString(this.locale, options);
+        const time = date.toLocaleTimeString(this.locale, { hour: "2-digit", minute: "2-digit", hour12: false });
+        
+        const [weekday, month, day, year] = formattedDate.replaceAll(",", "").split(" ");
+        const suffixedDay = day + this.ordinalSuffix(parseInt(day, 10));
+        
+        return `${weekday} ${suffixedDay} ${month} ${year} at ${time}`;
     }
 
     ordinalSuffix(day) {
