@@ -34,57 +34,11 @@ defmodule Rbac.Utils.Http do
   def fetch_redirect_value(conn, default) do
     Logger.info("FETCH REDIRECT VALUE")
 
-    # First try only regular cookies
-    conn_with_regular =
-      try do
-        regular_conn = Plug.Conn.fetch_cookies(conn)
-        Logger.info("Regular cookies fetched successfully")
-        regular_conn
-      rescue
-        e ->
-          Logger.error("Error fetching regular cookies: #{inspect(e)}")
-          conn
-      end
+    conn = Plug.Conn.fetch_cookies(conn)
 
-    # Then try signed cookies
-    conn_with_signed =
-      try do
-        signed_conn = Plug.Conn.fetch_cookies(conn_with_regular, :signed)
-        Logger.info("Signed cookies fetched successfully")
-        signed_conn
-      rescue
-        e ->
-          Logger.error("Error fetching signed cookies: #{inspect(e)}")
-          conn_with_regular
-      end
+    Logger.info("TEST1 #{inspect(conn)}")
 
-    # Finally try encrypted cookies
-    conn_with_all =
-      try do
-        encrypted_conn = Plug.Conn.fetch_cookies(conn_with_signed, :encrypted)
-        Logger.info("Encrypted cookies fetched successfully")
-        encrypted_conn
-      rescue
-        e ->
-          Logger.error("Error fetching encrypted cookies: #{inspect(e)}")
-          conn_with_signed
-      end
-
-    Logger.info("TEST1 #{inspect(conn_with_all)}")
-
-    all_cookies =
-      Map.merge(
-        conn_with_all["cookies"] || %{},
-        Map.merge(
-          conn_with_all["signed_cookies"] || %{},
-          conn_with_all["encrypted_cookies"] || %{}
-        )
-      )
-
-    Logger.info("All cookies (regular, signed, encrypted): #{inspect(Map.keys(all_cookies))}")
-
-    # Continue with original functionality
-    case conn_with_all |> fetch_state_value(@redirect_cookie_key) do
+    case conn |> fetch_state_value(@redirect_cookie_key) do
       {:ok, redirect_to, _conn} ->
         Logger.info("REDIRECT TO #{inspect(redirect_to)}")
         validate_url(redirect_to, default)
@@ -103,7 +57,6 @@ defmodule Rbac.Utils.Http do
 
     value = :erlang.term_to_binary(value)
     opts = @state_cookie_options ++ [domain: "." <> domain()]
-    Logger.info("OPTS: #{inspect(opts)}")
     Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 
@@ -132,8 +85,11 @@ defmodule Rbac.Utils.Http do
   def fetch_state_value(conn, key) do
     conn = Plug.Conn.fetch_cookies(conn, encrypted: [key])
 
+    Logger.info("Fetched cookie #{inspect(conn)}")
+
     case Map.fetch(conn.cookies, key) do
       {:ok, encoded_state} ->
+        Logger.info("fetched #{encoded_state}")
         {:ok, Plug.Crypto.non_executable_binary_to_term(encoded_state, [:safe]), conn}
 
       :error ->

@@ -140,7 +140,7 @@ defmodule Guard.Utils.Http do
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.
     same_site: "None",
-    path: "/", 
+    path: "/",
     secure: true,
     http_only: true
   ]
@@ -160,10 +160,7 @@ defmodule Guard.Utils.Http do
     end
   end
 
-  def store_redirect_info(conn, url) do
-    Logger.info("STORE REDIRECT INFO #{inspect(url)}")
-    conn |> put_state_value(@redirect_cookie_key, url)
-  end
+  def store_redirect_info(conn, url), do: conn |> put_state_value(@redirect_cookie_key, url)
 
   def fetch_redirect_value(conn, default) do
     case conn |> fetch_state_value(@redirect_cookie_key) do
@@ -184,9 +181,7 @@ defmodule Guard.Utils.Http do
 
     value = :erlang.term_to_binary(value)
     opts = @state_cookie_options ++ [domain: "." <> domain()]
-    Logger.info("OPTS: #{inspect(opts)}")
-    Logger.info("KEY #{inspect(key)}")
-    Plug.Conn.put_resp_cookie(conn, key, "TEST", opts)
+    Plug.Conn.put_resp_cookie(conn, key, value, opts)
   end
 
   def delete_state_value(conn, key) do
