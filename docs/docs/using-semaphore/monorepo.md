@@ -448,35 +448,35 @@ See the [change_in conditions DSL reference](../reference/conditions-dsl#change-
 This section shows examples of common change detection scenarios.
 
 ```text title="When a directory changes"
-change_in("/backend/", {default_branch: "master"})
+change_in('/backend/', {default_branch: 'master'})
 ```
 
 ```text title="When a directory in a list changes"
-change_in(["/web-app/","/lib/"])
+change_in(['/web-app/','/lib/'])
 ```
 
 ```text title="When a file changes"
-change_in("./Gemfile.lock", {default_branch: "master"})
+change_in('./Gemfile.lock', {default_branch: 'master'})
 ```
 
 ```text title="Trunk is main instead of master"
-change_in("/backend/", {default_branch: "main"})
+change_in('/backend/', {default_branch: 'main'})
 ```
 
 ```text title="Ignoring pipeline file changes"
-change_in("/backend/", {pipeline_file: "ignore", default_branch: "main"})
+change_in('/backend/', {pipeline_file: 'ignore', default_branch: 'main'})
 ```
 
 ```text title="When any file changes, except files in the docs folder"
-change_in("/", {exclude: ["/docs"], default_branch: "main"})
+change_in('/', {exclude: ['/docs'], default_branch: 'main'})
 ```
 
 ```text title="Changes in /backend/ folder for branches master or staging"
-(branch = "staging" OR branch = "main") and change_in("/backend/", default_branch: "main")
+(branch = 'staging' OR branch = 'main') and change_in('/backend/', {default_branch: 'main'})
 ```
 
 ```text title="Changes on /backend/ folder for any branch starting with 'hotfix/'"
-branch =~ "^hotfix/" and change_in("/backend/", default_branch: "main") 
+branch =~ '^hotfix/' and change_in('/backend/', {default_branch: 'main'}) 
 ```
 
 ## Demo project {#demo}
