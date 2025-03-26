@@ -5,30 +5,11 @@ defmodule Rbac.Utils.Http do
   @state_cookie_options [
     encrypt: true,
     max_age: 30 * 60,
-    # If `same_site` is set to `Strict` then the cookie will not be sent on
-    # IdP callback redirects, which will break the auth flow.
-    same_site: "Lax",
+    same_site: "Strict",
+    path: "/",
     secure: true,
     http_only: true
   ]
-
-  def store_redirect_info(conn) do
-    [
-      conn.query_params["redirect_path"],
-      conn.query_params["redirect_to"]
-    ]
-    |> Enum.filter(fn item -> item not in [nil, ""] end)
-    |> List.last("")
-    |> URI.decode()
-    |> validate_url("")
-    |> case do
-      "" ->
-        conn
-
-      url ->
-        conn |> put_state_value(@redirect_cookie_key, url)
-    end
-  end
 
   def fetch_redirect_value(conn, default) do
     case conn |> fetch_state_value(@redirect_cookie_key) do
@@ -42,14 +23,6 @@ defmodule Rbac.Utils.Http do
 
   def clear_redirect_value(conn) do
     delete_state_value(conn, @redirect_cookie_key)
-  end
-
-  def put_state_value(conn, key, value) do
-    Logger.debug("Putting state value into cookie for key: #{key}")
-
-    value = :erlang.term_to_binary(value)
-
-    Plug.Conn.put_resp_cookie(conn, key, value, @state_cookie_options)
   end
 
   def delete_state_value(conn, key) do
