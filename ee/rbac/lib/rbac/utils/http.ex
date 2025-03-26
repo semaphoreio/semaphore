@@ -6,7 +6,7 @@ defmodule Rbac.Utils.Http do
     max_age: 30 * 60,
     # If `same_site` is set to `Strict` then the cookie will not be sent on
     # IdP callback redirects, which will break the auth flow.
-    same_site: "Lax",
+    same_site: "None",
     path: "/",
     secure: true,
     http_only: true
