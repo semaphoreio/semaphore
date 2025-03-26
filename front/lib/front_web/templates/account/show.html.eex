@@ -33,7 +33,9 @@
                 <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
                 </div>
                 <% else %>
-                <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                <div>
+                  <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                </div>
                 <% end %>
               <% {:NONE, _} -> %>
                 <span class="red">Not Connected</span>
@@ -75,7 +77,7 @@
             <% end %>
           </div>
           <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
-          <div class="pa2">
+          <div class="pa2 bt b--lighter-gray">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
               <% {:NONE, nil} -> %>
