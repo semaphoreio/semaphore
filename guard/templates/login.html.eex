@@ -60,7 +60,7 @@
                                  <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
                                    <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button" href="<%= @github %>" style="border-color:#CCCCCC;border-width:1px;border-radius:8px">
                                     <img decoding="async" width="22" height="22" class="wp-image-23604" style="width: 22px;" src="https://semaphoreci.com/wp-content/uploads/2024/04/github.svg" alt="">
-                                    <strong>Login with Github</strong>
+                                    <strong>Login with GitHub</strong>
                                    </a>
                                  </div>
                                  <% end %>
