@@ -203,9 +203,13 @@ func (o *UpdateOrCloneOperation) gitCloneSparse() error {
 		"clone",
 		"--no-checkout",
 		"--filter=blob:none",
-		o.Repository.Path(),
 		o.Repository.HttpURL,
+		o.Repository.Path(),
 	)
+
+	cmd.Env = append(cmd.Env, "GIT_ASKPASS=/app/git-ask-pass.sh")
+	cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_USERNAME=%s", o.Repository.Credentials.Username))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_PASSWORD=%s", o.Repository.Credentials.Password))
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -223,6 +227,7 @@ func (o *UpdateOrCloneOperation) gitSparseCheckoutInit() error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sparse-checkout", "init", "--cone")
+	cmd.Dir = o.Repository.Path()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Error on sparse checkout init for %s, out: %s, err: %s", o.Repository.HttpURL, string(out), err.Error())
@@ -239,6 +244,7 @@ func (o *UpdateOrCloneOperation) gitSparseSet() error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, "sparse-checkout", "set", ".semaphore")
+	cmd.Dir = o.Repository.Path()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("Error on sparse checkout init for %s, out: %s, err: %s", o.Repository.HttpURL, string(out), err.Error())
