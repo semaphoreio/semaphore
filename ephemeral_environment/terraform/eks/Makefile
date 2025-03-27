@@ -1,10 +1,12 @@
 -include ../../Makefile
 
-export GOOGLE_APPLICATION_CREDENTIALS ?= /home/semaphore/creds.json
+export AWS_REGION ?= us-east-1
 
 auth:
-	gcloud config set project ${GOOGLE_PROJECT_NAME} --quiet
-	gcloud auth login --cred-file=${GOOGLE_APPLICATION_CREDENTIALS}
+	aws configure set aws_access_key_id ${AWS_SA_ACCESS_KEY_ID}
+	aws configure set aws_secret_access_key ${AWS_SA_SECRET_ACCESS_KEY}
+	aws configure set region ${AWS_REGION}
+	aws configure set output json
 
 terraform.plan:
 	terraform plan \

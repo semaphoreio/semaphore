@@ -24,9 +24,6 @@ blocks:
       jobs:
         - name: terraform apply
           commands:
-            - echo $AWS_SA_ACCESS_KEY_ID
-            - echo $AWS_SA_SECRET_ACCESS_KEY
-            - return 1
             - make auth
             - terraform init
             - make terraform.prepare
