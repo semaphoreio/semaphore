@@ -25,13 +25,13 @@ resource "aws_subnet" "public" {
   count                   = 2
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.${count.index + 1}.0/24"
-  availability_zone = "${data.aws_region.current_region.name}${count.index == 0 ? "a" : "b"}"
+  availability_zone       = "${data.aws_region.current_region.name}${count.index == 0 ? "a" : "b"}"
   map_public_ip_on_launch = true
 
   tags = {
     "kubernetes.io/cluster/${var.cluster_name}" = "shared"
-    "kubernetes.io/role/elb"                   = "1"
-    "kubernetes.io/role/internal-elb"          = "1"
+    "kubernetes.io/role/elb"                    = "1"
+    "kubernetes.io/role/internal-elb"           = "1"
   }
 }
 
@@ -182,7 +182,7 @@ resource "aws_iam_role_policy_attachment" "external_dns" {
 ###################################################
 
 resource "aws_eks_cluster" "cluster" {
-  name     = "${var.cluster_name}"
+  name     = var.cluster_name
   role_arn = aws_iam_role.eks_role.arn
   version  = "1.29"
 
@@ -273,7 +273,7 @@ resource "helm_release" "external_dns" {
   namespace  = "kube-system"
 
   set {
-    name  = "provider"
+    name  = "provider.name"
     value = "aws"
   }
 
