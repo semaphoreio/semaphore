@@ -12,6 +12,7 @@ import (
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/installation"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/kubernetes"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/organization"
+	"github.com/semaphoreio/semaphore/bootstrapper/pkg/telemetry"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/user"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/utils"
 	log "github.com/sirupsen/logrus"
@@ -52,9 +53,15 @@ var initOrgCmd = &cobra.Command{
 		}
 
 		if os.Getenv("CONFIGURE_INSTALLATION_DEFAULTS") == "true" {
-			if err := installation.ConfigureInstallationDefaults(instanceConfigClient, orgId); err != nil {
+			telemetryClient := telemetry.NewTelemetryClient(os.Getenv("CHART_VERSION"))
+
+			installation_defaults, err := installation.ConfigureInstallationDefaults(instanceConfigClient, orgId)
+			if err != nil {
 				log.Errorf("Failed to configure installation defaults: %v", err)
+
+				telemetryClient.SendTelemetryInstallationData(installation_defaults)
 			}
+
 		}
 
 		if os.Getenv("CONFIGURE_GITHUB_APP") == "true" {
