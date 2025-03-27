@@ -3,6 +3,7 @@ package telemetry
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
@@ -47,8 +48,13 @@ func (c *TelemetryClient) SendTelemetryInstallationData(installationDefaults map
 		return
 	}
 
-	// Make HTTP request
-	resp, err := http.Post(endpoint, "application/json", bytes.NewBuffer(jsonData))
+	req, err := buildPostRequest(endpoint, bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Errorf("Failed to build request: %v", err)
+		return
+	}
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Errorf("Failed to send request: %v", err)
 		return
@@ -61,4 +67,15 @@ func (c *TelemetryClient) SendTelemetryInstallationData(installationDefaults map
 	}
 
 	log.Info("Successfully sent telemetry installation data")
+}
+
+func buildPostRequest(uri string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(http.MethodPost, uri, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	return req, nil
 }

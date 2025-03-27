@@ -55,11 +55,11 @@ var initOrgCmd = &cobra.Command{
 		if os.Getenv("CONFIGURE_INSTALLATION_DEFAULTS") == "true" {
 			telemetryClient := telemetry.NewTelemetryClient(os.Getenv("CHART_VERSION"))
 
-			installation_defaults, err := installation.ConfigureInstallationDefaults(instanceConfigClient, orgId)
+			installationDefaults, err := installation.ConfigureInstallationDefaults(instanceConfigClient, orgId)
 			if err != nil {
 				log.Errorf("Failed to configure installation defaults: %v", err)
 
-				telemetryClient.SendTelemetryInstallationData(installation_defaults)
+				telemetryClient.SendTelemetryInstallationData(installationDefaults)
 			}
 
 		}
