@@ -24,6 +24,9 @@ blocks:
       jobs:
         - name: terraform apply
           commands:
+            - echo $AWS_SA_ACCESS_KEY_ID
+            - echo $AWS_SA_SECRET_ACCESS_KEY
+            - return 1
             - make auth
             - terraform init
             - make terraform.prepare
@@ -85,6 +88,7 @@ promotions:
           options:
             - gke
             - single-vm
+            - eks
   - name: E2E
     pipeline_file: env-e2e.yml
     deployment_target: provision-test-env
@@ -107,6 +111,7 @@ promotions:
           options:
             - gke
             - single-vm
+            - eks
         - name: SEMAPHORE_EDITION
           required: true
           default_value: ${{parameters.SEMAPHORE_EDITION}}

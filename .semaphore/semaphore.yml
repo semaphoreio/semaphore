@@ -3797,6 +3797,7 @@ promotions:
           options:
             - gke
             - single-vm
+            - eks
           default_value: single-vm
   - name: Cloud Environment - E2E
     pipeline_file: env-e2e.yml
@@ -3820,6 +3821,7 @@ promotions:
           options:
             - gke
             - single-vm
+            - eks
           default_value: single-vm
         - name: SEMAPHORE_EDITION
           required: true

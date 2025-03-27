@@ -114,6 +114,7 @@ promotions:
           options:
             - gke
             - single-vm
+            - eks
         - name: SEMAPHORE_EDITION
           required: true
           options:
