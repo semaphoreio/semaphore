@@ -46,12 +46,17 @@ defmodule Front.Models.Artifacthub do
     end)
   end
 
-  def list(project_id, source_kind, source_id, path \\ "") do
+  def list(project_id, source_kind, source_id, path \\ "", unwrap_directories \\ false) do
     Watchman.benchmark("artifacthub.list_request.duration", fn ->
       with req_path <- Resource.request_path(source_kind, source_id, path),
            {:ok, store_id} <- get_artifact_store_id(project_id),
            {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
-           request <- ListRequest.new(artifact_id: store_id, path: req_path),
+           request <-
+             ListRequest.new(
+               artifact_id: store_id,
+               path: req_path,
+               unwrap_directories: unwrap_directories
+             ),
            {:ok, response} <- Stub.list_path(channel, request, timeout: 30_000),
            {:ok, artifacts} <- parse_list_response(response, source_kind, source_id, req_path) do
         {:ok, artifacts}
@@ -117,6 +122,24 @@ defmodule Front.Models.Artifacthub do
           {:error, :grpc_req_failed}
       end
     end)
+  end
+
+  def list_and_sign_urls(project_id, source_kind, source_id, relative_path) do
+    case list(project_id, source_kind, source_id, relative_path, true) do
+      {:ok, artifacts} ->
+        Enum.reduce_while(artifacts, {:ok, []}, fn artifact, {_, urls} ->
+          case signed_url(project_id, source_kind, source_id, artifact.path) do
+            {:ok, url} ->
+              {:cont, {:ok, urls ++ [url]}}
+
+            e ->
+              {:halt, {:error, "error generating signed URL for #{artifact.path}: #{inspect(e)}"}}
+          end
+        end)
+
+      e ->
+        e
+    end
   end
 
   def signed_url(project_id, source_kind, source_id, relative_path, method \\ "GET") do
