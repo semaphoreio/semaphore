@@ -10,24 +10,24 @@ auth:
 
 terraform.plan:
 	terraform plan \
-		-var="project_name=${GOOGLE_PROJECT_NAME}" \
-		-var="branch=${CLOUD_TEST_ENV_PREFIX}" \
-		-var="path_to_private_key=./cert.key" \
-		-var="path_to_fullchain_cer=./cert.fullchain.cer" \
+		-var="aws_region=${AWS_REGION}" \
+		-var="cluster_name=${CLOUD_TEST_ENV_PREFIX}" \
+		-var="domain=${DOMAIN}" \
+		-var="route53_zone_id=${ZONE_ID}" \
 
 terraform.apply:
 	terraform apply \
-		-var="project_name=${GOOGLE_PROJECT_NAME}" \
-		-var="branch=${CLOUD_TEST_ENV_PREFIX}" \
-		-var="path_to_private_key=./cert.key" \
-		-var="path_to_fullchain_cer=./cert.fullchain.cer" \
+		-var="aws_region=${AWS_REGION}" \
+		-var="cluster_name=${CLOUD_TEST_ENV_PREFIX}" \
+		-var="domain=${DOMAIN}" \
+		-var="route53_zone_id=${ZONE_ID}" \
 		-auto-approve
 
 terraform.destroy:
 	terraform destroy \
-		-var="project_name=${GOOGLE_PROJECT_NAME}" \
-		-var="branch=${CLOUD_TEST_ENV_PREFIX}" \
-		-var="path_to_private_key=./cert.key" \
-		-var="path_to_fullchain_cer=./cert.fullchain.cer" \
+		-var="aws_region=${AWS_REGION}" \
+		-var="cluster_name=${CLOUD_TEST_ENV_PREFIX}" \
+		-var="domain=${DOMAIN}" \
+		-var="route53_zone_id=${ZONE_ID}" \
 		-input=false \
 		-auto-approve

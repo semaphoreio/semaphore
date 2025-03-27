@@ -29,6 +29,9 @@ blocks:
             - make terraform.prepare
             - make terraform.plan
             - make terraform.apply
+      env_vars:
+        - name: ZONE_ID
+          value: "Z05198331K5V9MQ90PUK2"
       epilogue:
         always:
           commands:
@@ -53,6 +56,12 @@ blocks:
       jobs:
         - name: Point DNS to new cluster
           commands:
+            - |
+              if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "eks" ]]; then
+                echo "No need to manually update DNS for the AWS env"
+                export SEMAPHORE_JOB_RESULT=passed
+                exit 130
+              fi
             - export SESSION_NAME="semaphore-job-${SEMAPHORE_JOB_ID}"
             - eval $(aws sts assume-role-with-web-identity --role-arn $ROLE_ARN --role-session-name $SESSION_NAME --web-identity-token $SEMAPHORE_OIDC_TOKEN --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" | jq -r '"export AWS_ACCESS_KEY_ID=\(.[0]) AWS_SECRET_ACCESS_KEY=\(.[1]) AWS_SESSION_TOKEN=\(.[2])"')
             - artifact pull project environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tfstate -d terraform.tfstate
