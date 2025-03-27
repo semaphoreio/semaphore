@@ -605,7 +605,7 @@ blocks:
   - name: "Docs: \U0001F5BC️ Build test image"
     dependencies: []
     run:
-      when: "change_in('/docs', {pipeline_file: ,default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -620,7 +620,7 @@ blocks:
   - name: "Docs: \U0001F9EA QA"
     dependencies: ["Docs: \U0001F5BC️ Build test image"]
     run:
-      when: "change_in('/docs', {pipeline_file: ,default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: APP_ENV
