@@ -226,7 +226,7 @@ func (o *UpdateOrCloneOperation) gitSparseCheckoutInit() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "sparse-checkout", "init", "--cone")
+	cmd := exec.CommandContext(ctx, "git", "sparse-checkout", "init", "--cone")
 	cmd.Dir = o.Repository.Path()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -238,12 +238,12 @@ func (o *UpdateOrCloneOperation) gitSparseCheckoutInit() error {
 }
 
 func (o *UpdateOrCloneOperation) gitSparseSet() error {
-	log.Printf("initializing sparse for %s", o.Repository.Path())
+	log.Printf("Configuring directory for sparse clone for %s", o.Repository.Path())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "sparse-checkout", "set", ".semaphore")
+	cmd := exec.CommandContext(ctx, "git", "sparse-checkout", "set", ".semaphore")
 	cmd.Dir = o.Repository.Path()
 	out, err := cmd.CombinedOutput()
 	if err != nil {
