@@ -65,7 +65,7 @@ const config = {
               banner: "none",
             },
             "CE": {
-              label: 'Community Edition (1.0)',
+              label: 'Community Edition (1.1)',
               path: 'CE',
               banner: "none"
             }

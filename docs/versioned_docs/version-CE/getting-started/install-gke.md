@@ -278,8 +278,8 @@ ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
 Run the following to install Semaphore:
 
 ```shell title="Install Semaphore"
-helm upgrade --install --debug semaphore oci://ghcr.io/semaphoreio/semaphore \
-  --version v1.0.1 \
+helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+  --version v1.1.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name="${DOMAIN}" \
@@ -370,6 +370,29 @@ Once your have Semaphore up and running, check out the following pages to finish
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
+
+## How to Upgrade Semaphore {#upgrade}
+
+To upgrade Semaphore from version `v1.0.x`, follow these steps:
+
+<Steps>
+
+1. Connect to your Google project (see [Step 2](#setup))
+2. Check that you can access the Kubernetes cluster:
+
+    ```shell
+    kubectl get nodes
+    ```
+
+3. Run the following command to upgrade to `v1.1.0`
+
+    ```shell
+    helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+      --version v1.1.0 \
+      --reuse-values
+    ```
+
+</Steps>
 
 ## How to Uninstall Semaphore from GKE
 
