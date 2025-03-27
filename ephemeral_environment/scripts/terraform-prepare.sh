@@ -9,9 +9,9 @@ artifact pull project "certs/${CLOUD_TEST_ENV_PREFIX}/${CLOUD_TEST_ENV_PREFIX}.k
 artifact pull project "certs/${CLOUD_TEST_ENV_PREFIX}/${CLOUD_TEST_ENV_PREFIX}.fullchain.cer" -d cert.fullchain.cer || { echo "Failed to pull certificate key file; please generate certificates"; exit 1; }
 
 #
-# If we are using GKE, we don't need to create a SSH key
+# If we are using GKE or EKS, we don't need to create a SSH key
 #
-if [[ "$CLOUD_TEST_ENVIRONMENT_TYPE" == "gke" ]]; then
+if [[ " gke eks " =~ " $CLOUD_TEST_ENVIRONMENT_TYPE " ]]; then
   exit 0
 fi
 
