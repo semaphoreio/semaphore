@@ -59,7 +59,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
       nil ->
         case Rbac.Store.RbacUser.fetch_by_email(user_params.email) do
           {:error, :not_found} ->
-            info("[Sam lJIT Provisioner] Creating new user #{inspect(user_params)}")
+            info("[Saml JIT Provisioner] Creating new user #{inspect(user_params)}")
             Rbac.User.Actions.create(user_params)
 
           {:ok, user} ->
