@@ -97,7 +97,7 @@ func DeleteArtifactPath(ctx context.Context, client storage.Client, artifactID, 
 }
 
 // ListTransferPath returns bucket contents for a given directory prefix, and transfer type.
-func ListTransferPath(ctx context.Context, client storage.Client, artifact *models.Artifact, path string) ([]*artifacthub.ListItem, error) {
+func ListTransferPath(ctx context.Context, client storage.Client, artifact *models.Artifact, path string, wrapDirectories bool) ([]*artifacthub.ListItem, error) {
 	bucket := client.GetBucket(storage.BucketOptions{
 		Name:       artifact.BucketName,
 		PathPrefix: artifact.IdempotencyToken,
@@ -106,7 +106,7 @@ func ListTransferPath(ctx context.Context, client storage.Client, artifact *mode
 	result := make([]*artifacthub.ListItem, 0)
 
 	err := retry.OnFailure(ctx, "Listing Bucket path", func() error {
-		iterator, err := bucket.ListPath(storage.ListOptions{Path: path, WrapSubDirectories: true})
+		iterator, err := bucket.ListPath(storage.ListOptions{Path: path, WrapSubDirectories: wrapDirectories})
 		if err != nil {
 			return err
 		}
@@ -173,14 +173,14 @@ func CountCategoryPath(ctx context.Context, client storage.Client, category arti
 }
 
 // ListArtifactPath returns bucket contents for a given directory prefix.
-func ListArtifactPath(ctx context.Context, client storage.Client, artifactID, p string) ([]*artifacthub.ListItem, error) {
+func ListArtifactPath(ctx context.Context, client storage.Client, artifactID, p string, wrapDirectories bool) ([]*artifacthub.ListItem, error) {
 	a, err := models.FindArtifactByID(artifactID)
 	if err != nil {
 		return nil, err
 	}
 
 	ctx, _ = ctxutil.SetBucketName(ctx, a.BucketName)
-	return ListTransferPath(ctx, client, a, p)
+	return ListTransferPath(ctx, client, a, p, wrapDirectories)
 }
 
 func GetSignedURL(ctx context.Context, client storage.Client, artifactID, p, m string) (string, error) {
