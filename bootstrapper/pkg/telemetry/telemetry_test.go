@@ -14,7 +14,6 @@ import (
 )
 
 func TestSendTelemetryInstallationData(t *testing.T) {
-	orgId := uuid.New().String()
 	instId := uuid.New().String()
 
 	// Create a mock HTTP server
@@ -31,7 +30,6 @@ func TestSendTelemetryInstallationData(t *testing.T) {
 		err = json.Unmarshal(body, &requestPayload)
 		require.NoError(t, err)
 
-		assert.Equal(t, orgId, requestPayload.OrganizationId)
 		assert.Equal(t, instId, requestPayload.InstallationId)
 		assert.Equal(t, "v1.23.0+k3s1", requestPayload.KubeVersion)
 		assert.Equal(t, "1.0.0", requestPayload.Version)
@@ -48,7 +46,6 @@ func TestSendTelemetryInstallationData(t *testing.T) {
 	client := telemetry.NewTelemetryClient("1.0.0")
 	installationDefaults := map[string]string{
 		"telemetry_endpoint": server.URL,
-		"organization_id":    orgId,
 		"installation_id":    instId,
 		"kube_version":       "v1.23.0+k3s1",
 	}

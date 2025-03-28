@@ -10,7 +10,6 @@ import (
 )
 
 type RequestPayload struct {
-	OrganizationId  string `json:"organization_id"`
 	InstallationId  string `json:"installation_id"`
 	KubeVersion     string `json:"kube_version"`
 	Version         string `json:"version"`
@@ -33,7 +32,6 @@ func (c *TelemetryClient) SendTelemetryInstallationData(installationDefaults map
 	endpoint := installationDefaults["telemetry_endpoint"]
 
 	request := RequestPayload{
-		OrganizationId:  installationDefaults["organization_id"],
 		InstallationId:  installationDefaults["installation_id"],
 		KubeVersion:     installationDefaults["kube_version"],
 		Version:         c.chartVersion,
