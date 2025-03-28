@@ -311,6 +311,89 @@ defmodule FrontWeb.ProjectControllerTest do
     end
   end
 
+  describe "GET fetch_yaml_artifacts" do
+    test "returns signed URLs to artifacts if the job has passed",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :finished, :passed)
+
+      Support.Stubs.Artifacthub.create(job.id,
+        path: ".workflow_editor/.semaphore/semaphore.yml",
+        scope: "jobs",
+        url: "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml"
+      )
+
+      Support.Stubs.Artifacthub.create(job.id,
+        path: ".workflow_editor/.semaphore/release.yml",
+        scope: "jobs",
+        url: "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
+      )
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 200)
+
+      assert response["signed_urls"] == [
+               "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml",
+               "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
+             ]
+    end
+
+    test "returns error if job can not be found",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job_id = UUID.uuid4()
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job_id}")
+
+      assert response = json_response(conn, 422)
+
+      message = "Failed to fetch Semaphore YAML files from the git repository."
+      message = message <> " Please, contact support."
+      assert response["error"] == message
+    end
+
+    test "returns error if fetch yaml job fails",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :finished, :failed)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 422)
+
+      message = "Failed to fetch Semaphore YAML files from the git repository."
+      message = message <> " Please, contact support."
+      assert response["error"] == message
+    end
+
+    test "if job is still running, return empty list of signed URLs",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :running)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 200)
+      assert response["signed_urls"] == []
+    end
+  end
+
   describe "POST commit_config" do
     test "if commit via job feature is on the commit job is created",
          %{conn: conn, project: project, organization: organization, user: user} do

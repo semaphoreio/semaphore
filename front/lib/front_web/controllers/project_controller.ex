@@ -26,7 +26,7 @@ defmodule FrontWeb.ProjectController do
 
   @org_pages ~w(index)a
   @public_proj_pages ~w(show workflows queues)a
-  @edit_workflows ~w(edit_workflow blocked build_blocked commit_config check_commit_job)a
+  @edit_workflows ~w(edit_workflow blocked build_blocked commit_config check_commit_job fetch_yaml_artifacts)a
   @skip_for_page_authorization @org_pages ++ @public_proj_pages
 
   plug(FetchPermissions, [scope: "org"] when action in @org_pages)
@@ -515,6 +515,30 @@ defmodule FrontWeb.ProjectController do
     |> send_response(conn)
   end
 
+  def fetch_yaml_artifacts(conn, params) do
+    project = conn.assigns.project
+    job_id = params["job_id"]
+
+    find_job(job_id, project)
+    |> fetch_yamls_for_job(project.id)
+    |> case do
+      {:ok, urls} ->
+        conn
+        |> put_status(200)
+        |> json(%{signed_urls: urls})
+
+      {:error, e} ->
+        Logger.error(
+          "Failed to fetch YAMLs for job #{job_id}, project #{project.id}: #{inspect(e)}"
+        )
+
+        message = "Failed to fetch Semaphore YAML files from the git repository."
+        message = message <> " Please, contact support."
+
+        conn |> put_status(422) |> json(%{error: message})
+    end
+  end
+
   defp find_job(job_id, project) do
     case Job.find(job_id) do
       nil ->
@@ -593,6 +617,18 @@ defmodule FrontWeb.ProjectController do
 
     conn |> put_status(422) |> json(%{error: message})
   end
+
+  defp fetch_yamls_for_job({:ok, %{id: job_id, state: "passed"}}, project_id) do
+    Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, ".workflow-editor/.semaphore")
+  end
+
+  defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["pending", "running"],
+    do: {:ok, []}
+
+  defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["failed", "stopped"],
+    do: {:error, "Job for fetching YAMLs failed"}
+
+  defp fetch_yamls_for_job(e, _), do: e
 
   def check_workflow(conn, params) do
     project = conn.assigns.project
