@@ -10,9 +10,10 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ConfigureInstallationDefaults(instanceConfigClient *clients.InstanceConfigClient, orgId string) error {
-	return retry.WithConstantWait("Installation Defaults configuration", 5, 10*time.Second, func() error {
-		err := instanceConfigClient.ConfigureInstallationDefaults(installationDefaultsParams(orgId))
+func ConfigureInstallationDefaults(instanceConfigClient *clients.InstanceConfigClient, orgId string) (map[string]string, error) {
+	installationDefaults := installationDefaultsParams(orgId)
+	err := retry.WithConstantWait("Installation Defaults configuration", 5, 10*time.Second, func() error {
+		err := instanceConfigClient.ConfigureInstallationDefaults(installationDefaults)
 		if err == nil {
 			log.Info("Successfully configured Installation Defaults")
 			return nil
@@ -20,6 +21,8 @@ func ConfigureInstallationDefaults(instanceConfigClient *clients.InstanceConfigC
 
 		return err
 	})
+
+	return installationDefaults, err
 }
 
 func installationDefaultsParams(orgId string) map[string]string {
