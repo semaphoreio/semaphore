@@ -307,6 +307,22 @@ func Test__ListPath(t *testing.T) {
 				{Name: "artifacts/projects/first/dir/", IsDirectory: true},
 			}, response.Items)
 		})
+
+		t.Run(backend+" list path unwrapping directories", func(t *testing.T) {
+			request := &artifacthub.ListPathRequest{
+				ArtifactId:        artifactId,
+				Path:              "artifacts/projects/first/",
+				UnwrapDirectories: true,
+			}
+
+			response, err := server.ListPath(context.TODO(), request)
+			assert.Nil(t, err)
+			assert.Equal(t, []*artifacthub.ListItem{
+				{Name: "artifacts/projects/first/dir/subfile1.txt", IsDirectory: false},
+				{Name: "artifacts/projects/first/dir/subfile2.txt", IsDirectory: false},
+				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false},
+			}, response.Items)
+		})
 	})
 }
 
