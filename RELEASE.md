@@ -41,7 +41,7 @@ yq e -i '(.blocks.[].run.when) |= (. | sub("main", "release/v1.0.x"))' .semaphor
 Use [git-cliff](https://github.com/orhun/git-cliff), using the previous release tag and this one:
 
 ```bash
-git-cliff <previous-version>..v1.0.0
+git cliff --github-repo "semaphoreio/semaphore" -c cliff.toml <previous-version>..v1.0.0
 ```
 
 A few notes here:
