@@ -80,6 +80,8 @@ spec:
               value: "true"
             - name: TELEMETRY_ENDPOINT
               value: {{ .Values.global.telemetry.endpoint }}
+            - name: CHART_VERSION
+              value: {{ .Chart.Version }}
             - name: KUBE_VERSION
               value: {{ .Capabilities.KubeVersion.Version }}
             - name: ROOT_USER_SECRET_NAME
