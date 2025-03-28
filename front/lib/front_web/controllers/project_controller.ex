@@ -28,6 +28,7 @@ defmodule FrontWeb.ProjectController do
   @public_proj_pages ~w(show workflows queues)a
   @edit_workflows ~w(edit_workflow blocked build_blocked commit_config check_commit_job fetch_yaml_artifacts)a
   @skip_for_page_authorization @org_pages ++ @public_proj_pages
+  @yaml_artifact_directory ".workflow_editor/.semaphore"
 
   plug(FetchPermissions, [scope: "org"] when action in @org_pages)
   plug(PageAccess, [permissions: "organization.view"] when action in @org_pages)
@@ -619,7 +620,7 @@ defmodule FrontWeb.ProjectController do
   end
 
   defp fetch_yamls_for_job({:ok, %{id: job_id, state: "passed"}}, project_id) do
-    Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, ".workflow-editor/.semaphore")
+    Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, @yaml_artifact_directory)
   end
 
   defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["pending", "running"],
