@@ -88,7 +88,7 @@ Semaphore follows a governance model that balances commercial stewardship with c
 
 - GitHub Issues and Discussions
 - [Project Documentation](https://docs.semaphoreci.com/CE/getting-started/about-semaphore)
-- [Discord Server](https://discord.gg/zEwewmzuft)
+- [Discord Server](https://discord.gg/FBuUrV24NH)
 
 ### Decision Visibility
 
