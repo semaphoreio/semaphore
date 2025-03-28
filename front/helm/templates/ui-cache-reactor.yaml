@@ -68,6 +68,8 @@ spec:
           env:
             - name: START_REACTOR
               value: "true"
+            - name: EDITION
+              value: {{ .Values.global.edition | quote }}
             - name: PREHEAT_PROJECT_PAGE
               value: "true"
             - name: USE_RBAC_API

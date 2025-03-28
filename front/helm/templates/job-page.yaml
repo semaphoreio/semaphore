@@ -88,6 +88,8 @@ spec:
           - secretRef:
               name: {{ include "secrets.authentication.name" . }}
           env:
+            - name: EDITION
+              value: {{ .Values.global.edition | quote }}
             - name: PORT
               value: "4000"
             - name: USE_RBAC_API

@@ -114,6 +114,8 @@ spec:
           - configMapRef:
              name: {{ .Values.global.internalApi.configMapName }}
           env:
+            - name: EDITION
+              value: {{ .Values.global.edition | quote }}
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:

@@ -189,3 +189,7 @@ config :front,
 config :front,
        :single_tenant,
        System.get_env("SINGLE_TENANT") == "true"
+
+config :front,
+       :edition,
+       System.get_env("EDITION", "") |> String.trim() |> String.downcase()
