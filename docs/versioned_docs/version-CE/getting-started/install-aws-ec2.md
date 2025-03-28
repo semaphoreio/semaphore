@@ -330,6 +330,7 @@ Finally, install the Semaphore with Helm:
 
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+  --debug \
   --version v1.1.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
@@ -415,6 +416,7 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+      --debug \
       --version v1.1.0 \
       --reuse-values
     ```
