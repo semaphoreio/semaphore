@@ -321,8 +321,9 @@ kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext 
 Finally, install Semaphore with Helm:
 
 ```shell title="remote shell - install Semaphore"
-helm upgrade --install --debug semaphore oci://ghcr.io/semaphoreio/semaphore \
-  --version v1.0.1 \
+helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+  --debug \
+  --version v1.1.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
@@ -389,6 +390,30 @@ Once you have Semaphore up and running, check out the following pages to finish 
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
+
+## How to Upgrade Semaphore {#upgrade}
+
+To upgrade Semaphore from version `v1.0.x`, follow these steps:
+
+<Steps>
+
+1. Connect to your server running Semaphore (see [Step 8](#env))
+2. Check that you can access the Kubernetes cluster (k3s):
+
+    ```shell
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    kubectl get nodes
+    ```
+
+3. Run the following command to upgrade to `v1.1.0`
+
+    ```shell
+    helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+      --version v1.1.0 \
+      --reuse-values
+    ```
+
+</Steps>
 
 ## How to Uninstall Semaphore from Google Compute
 
