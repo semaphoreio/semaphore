@@ -294,6 +294,7 @@ defmodule FrontWeb.Router do
     post("/projects/:name_or_id/commit_config", ProjectController, :commit_config)
 
     get("/projects/:name_or_id/check_commit_job", ProjectController, :check_commit_job)
+    get("/projects/:name_or_id/fetch_yaml_artifacts", ProjectController, :fetch_yaml_artifacts)
 
     # Project Onboarding
 
