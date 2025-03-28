@@ -56,12 +56,11 @@ var initOrgCmd = &cobra.Command{
 			telemetryClient := telemetry.NewTelemetryClient(os.Getenv("CHART_VERSION"))
 
 			installationDefaults, err := installation.ConfigureInstallationDefaults(instanceConfigClient, orgId)
-			if err != nil {
-				log.Errorf("Failed to configure installation defaults: %v", err)
-
+			if err == nil {
 				telemetryClient.SendTelemetryInstallationData(installationDefaults)
+			} else {
+				log.Errorf("Failed to configure installation defaults: %v", err)
 			}
-
 		}
 
 		if os.Getenv("CONFIGURE_GITHUB_APP") == "true" {
