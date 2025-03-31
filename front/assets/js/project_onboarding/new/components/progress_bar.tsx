@@ -1,5 +1,3 @@
-import { FunctionComponent } from "preact";
-
 export type OnboardingStep =
   | `select-type`
   | `setup-project`
@@ -11,7 +9,7 @@ interface ProgressBarProps {
 }
 
 // eslint-disable-next-line react/prop-types
-export const ProgressBar: FunctionComponent<ProgressBarProps> = ({ currentStep }) => {
+export const ProgressBar = ({ currentStep }: ProgressBarProps) => {
   const steps = [
     { id: `select-type`, label: `1. Select project type` },
     { id: `setup-project`, label: `2. Setup the project` },

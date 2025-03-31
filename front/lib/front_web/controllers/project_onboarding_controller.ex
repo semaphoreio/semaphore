@@ -337,6 +337,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         Async.run(fn -> Models.Organization.repository_integrators(org_id) end)
 
       {:ok, user} = Async.await(fetch_user)
+
       {:ok, {:ok, repository_integrators}} = Async.await(fetch_repository_integrators)
 
       fetch_instance_configs =

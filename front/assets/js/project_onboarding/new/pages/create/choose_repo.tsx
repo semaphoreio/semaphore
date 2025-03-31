@@ -4,23 +4,28 @@ import { useContext, useEffect } from "preact/hooks";
 import * as stores from "../../stores";
 import * as components from "../../components";
 import * as toolbox from "js/toolbox";
-import { useLocation } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { IntegrationType } from "../../types/provider";
 
 export const ChooseRepo = () => {
-  const { pathname } = useLocation();
-  const integration = pathname.substring(1) as IntegrationType;
+  const { integrationType } = useParams();
+  const navigate = useNavigate();
+  const integration = integrationType as IntegrationType;
+
   const configState = useContext(stores.Create.Config.Context);
   const { setProvider } = useContext(stores.Create.Provider.Context);
 
   useEffect(() => {
     if (integration && configState.providers) {
       const provider = configState.providers.find(p => p.type === integration);
+
       if (provider) {
         setProvider(provider);
+      } else {
+        navigate(`/`);
       }
     }
-  }, [integration, configState.providers, setProvider]);
+  }, []);
 
   const store = stores.Create.Repository.useRepositoryStore(configState);
 
