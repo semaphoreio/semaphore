@@ -48,22 +48,14 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
         is_active: true
       }
 
-      # First try to find existing config
-      query =
-        from c in __MODULE__,
-          where: c.org_id == ^org_id and is_nil(c.project_id)
-
-      case Repo.one(query) do
-        nil ->
-          %__MODULE__{}
-          |> changeset(attrs)
-          |> Repo.insert()
-
-        config ->
-          config
-          |> changeset(attrs)
-          |> Repo.update()
-      end
+      # Use upsert with conditional conflict target
+      %__MODULE__{}
+      |> changeset(attrs)
+      |> Repo.insert(
+        on_conflict: {:replace, [:claims, :is_active, :updated_at]},
+        conflict_target: {:unsafe_fragment, ~s<("org_id") WHERE project_id IS NULL>},
+        returning: true
+      )
     else
       {:error, :invalid_claims}
     end
@@ -93,24 +85,15 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
         is_active: true
       }
 
-      # First try to find existing config
-      query =
-        from c in __MODULE__,
-          where: c.org_id == ^org_id and c.project_id == ^project_id
-
-      case Repo.one(query) do
-        nil ->
-          # No existing config, create new one
-          %__MODULE__{}
-          |> changeset(attrs)
-          |> Repo.insert()
-
-        existing ->
-          # Update existing config
-          existing
-          |> changeset(%{claims: claims})
-          |> Repo.update()
-      end
+      # Use upsert with conditional conflict target for project-level config
+      %__MODULE__{}
+      |> changeset(attrs)
+      |> Repo.insert(
+        on_conflict: {:replace, [:claims, :is_active, :updated_at]},
+        conflict_target:
+          {:unsafe_fragment, ~s<("org_id", "project_id") WHERE project_id IS NOT NULL>},
+        returning: true
+      )
     else
       {:error, :invalid_claims}
     end
@@ -190,13 +173,9 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
   def delete_org_config(org_id) do
     query = from(c in __MODULE__, where: c.org_id == ^org_id)
 
-    case Repo.all(query) do
-      [] ->
-        {:error, :not_found}
-
-      configs ->
-        Enum.each(configs, &Repo.delete/1)
-        {:ok, :deleted}
+    case Repo.delete_all(query) do
+      {0, _} -> {:error, :not_found}
+      {_count, _} -> {:ok, :deleted}
     end
   end
 
