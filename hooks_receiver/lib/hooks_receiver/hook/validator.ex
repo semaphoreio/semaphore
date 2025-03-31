@@ -50,6 +50,9 @@ defmodule HooksReceiver.Hook.Validator do
       %{"x-gitlab-token" => signature} ->
         {:ok, signature}
 
+      %{"x-git-token" => signature} ->
+        {:ok, signature}
+
       _ ->
         {:ok, ""}
     end

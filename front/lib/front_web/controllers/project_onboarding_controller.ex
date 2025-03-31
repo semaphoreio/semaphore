@@ -74,7 +74,8 @@ defmodule FrontWeb.ProjectOnboardingController do
     GITHUB_APP: :CONFIG_TYPE_GITHUB_APP,
     GITHUB_OAUTH_TOKEN: :CONFIG_TYPE_GITHUB_APP,
     BITBUCKET: :CONFIG_TYPE_BITBUCKET_APP,
-    GITLAB: :CONFIG_TYPE_GITLAB_APP
+    GITLAB: :CONFIG_TYPE_GITLAB_APP,
+    GIT: :CONFIG_TYPE_UNSPECIFIED
   }
 
   def new(conn, params) do
@@ -337,6 +338,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         Async.run(fn -> Models.Organization.repository_integrators(org_id) end)
 
       {:ok, user} = Async.await(fetch_user)
+
       {:ok, {:ok, repository_integrators}} = Async.await(fetch_repository_integrators)
 
       fetch_instance_configs =

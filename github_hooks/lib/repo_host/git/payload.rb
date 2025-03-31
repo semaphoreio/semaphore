@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# TODO: NICK
 module RepoHost::Git
   class Payload
     def initialize(data)

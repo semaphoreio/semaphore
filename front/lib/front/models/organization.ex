@@ -217,7 +217,7 @@ defmodule Front.Models.Organization do
   end
 
   def repository_integrators(org_id) do
-    Watchman.benchmark("list_suspensions.duration", fn ->
+    Watchman.benchmark("repository_integrators.duration", fn ->
       req = InternalApi.Organization.RepositoryIntegratorsRequest.new(org_id: org_id)
 
       case Stub.repository_integrators(channel(), req, options(nil)) do

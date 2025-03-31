@@ -1,10 +1,17 @@
 /* eslint-disable quotes */
 
-import { useContext } from "preact/hooks";
+import { useContext, useLayoutEffect } from "preact/hooks";
 import * as stores from "../../stores";
 import * as components from "../../components";
+import { useSteps } from "../../stores/create/steps";
 
 export const SelectProjectType = () => {
+  const { dispatch } = useSteps();
+
+  useLayoutEffect(() => {
+    dispatch([`SET_STEPS`, []]);
+  }, []);
+
   return (
     <div className="flex-l">
       <components.InfoPanel
