@@ -329,7 +329,11 @@ defmodule Guard.Id.Api.Test do
       assert response.status_code == 200
 
       {_, cookie} = List.keyfind(response.headers, "set-cookie", 0)
+
       assert cookie =~ "semaphore_redirect_to="
+      assert cookie =~ "domain=.localhost"
+      assert cookie =~ "path=/"
+      assert cookie =~ "SameSite=None"
     end
 
     test "redirect_to query param present, redirects to valid domain only" do
@@ -472,7 +476,7 @@ defmodule Guard.Id.Api.Test do
       {_, cookie} = Enum.find(response.headers, fn h -> elem(h, 0) == "set-cookie" end)
 
       assert cookie =~ "semaphore_auth_state="
-      assert cookie =~ "secure; HttpOnly; SameSite=Lax"
+      assert cookie =~ "secure; HttpOnly; SameSite=Strict"
 
       assert response.body =~ "/protocol/openid-connect/auth"
       assert response.body =~ "localhost"

@@ -31,7 +31,7 @@ WORKDIR /app
 FROM base AS dev
 
 WORKDIR /tmp
-RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip -o protoc && \
+RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-x86_64.zip -o protoc && \
   unzip protoc && \
   mv bin/protoc /usr/local/bin/protoc
 
@@ -39,6 +39,7 @@ WORKDIR /app
 RUN go install github.com/mgechev/revive@latest
 RUN go install gotest.tools/gotestsum@latest
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 

@@ -10,6 +10,9 @@ defmodule Secrethub.OpenIDConnect.JWTFilter do
   def filter_enabled?(org_id),
     do: FeatureProvider.feature_enabled?(:open_id_connect_filter, param: org_id)
 
+  def project_filter_enabled?(org_id),
+    do: FeatureProvider.feature_enabled?(:open_id_connect_project_filter, param: org_id)
+
   @doc """
   Filters JWT claims based on organization or project settings.
   Uses JWT configuration if available, otherwise falls back to essential claims.
@@ -67,18 +70,32 @@ defmodule Secrethub.OpenIDConnect.JWTFilter do
   Returns a list of active claim names or error tuple.
   """
   def get_allowed_claims(org_id, project_id) do
-    case JWTConfiguration.get_project_config(org_id, project_id) do
-      {:ok, config} ->
-        active_claims =
-          config.claims
-          |> Enum.filter(fn claim -> claim["is_active"] == true end)
-          |> Enum.map(fn claim -> claim["name"] end)
-          |> Enum.sort()
-
-        {:ok, active_claims}
-
-      err ->
-        err
+    if project_filter_enabled?(org_id) do
+      get_project_allowed_claims(org_id, project_id)
+    else
+      get_org_allowed_claims(org_id)
     end
   end
+
+  defp get_project_allowed_claims(org_id, project_id) do
+    JWTConfiguration.get_project_config(org_id, project_id)
+    |> handle_get_config_result()
+  end
+
+  defp get_org_allowed_claims(org_id) do
+    JWTConfiguration.get_org_config(org_id)
+    |> handle_get_config_result()
+  end
+
+  defp handle_get_config_result({:ok, config}) do
+    active_claims =
+      config.claims
+      |> Enum.filter(fn claim -> claim["is_active"] == true end)
+      |> Enum.map(fn claim -> claim["name"] end)
+      |> Enum.sort()
+
+    {:ok, active_claims}
+  end
+
+  defp handle_get_config_result(err), do: err
 end
