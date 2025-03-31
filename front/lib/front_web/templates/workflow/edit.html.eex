@@ -9,6 +9,7 @@
   window.InjectedDataByBackend.Features = <%= raw Poison.encode!(%{
     "parameterizedPromotions" => FeatureProvider.feature_enabled?(:parameterized_promotions, param: @conn.assigns.organization_id),
     "hidePromotions" => @hide_promotions,
+    "isOS" => Front.os?(),
     "deploymentTargets" => FeatureProvider.feature_enabled?(:deployment_targets, param: @conn.assigns.organization_id),
     "uiMonacoWorkflowCodeEditor" => FeatureProvider.feature_enabled?(:ui_monaco_workflow_code_editor, param: @conn.assigns.organization_id),
     "useCommitJob" => FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: @conn.assigns.organization_id)
