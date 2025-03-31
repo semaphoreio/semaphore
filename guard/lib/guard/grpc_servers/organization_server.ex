@@ -120,6 +120,10 @@ defmodule Guard.GrpcServers.OrganizationServer do
               InternalApi.RepositoryIntegrator.IntegrationType.value(:GITLAB),
               FeatureProvider.feature_enabled?(:gitlab, param: org_id)
             )
+            |> add_if_enabled(
+              InternalApi.RepositoryIntegrator.IntegrationType.value(:GIT),
+              FeatureProvider.feature_enabled?(:git, param: org_id)
+            )
 
           %Organization.RepositoryIntegratorsResponse{
             primary: primary,

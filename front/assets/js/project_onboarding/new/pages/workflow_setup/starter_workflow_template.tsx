@@ -178,7 +178,7 @@ export const StarterWorkflowTemplate = () => {
       }
 
       // Start checking for workflow
-      await checkWorkflow(data.branch as string, data.commit_sha as string);
+      await checkWorkflow(data.branch as string, data.commit_sha as string, data.job_id as string);
     } catch (error) {
       Notice.error(`Error committing starter template: ${error as string}`);
     } finally {
@@ -186,11 +186,24 @@ export const StarterWorkflowTemplate = () => {
     }
   };
 
-  const checkWorkflow = async (branch: string, commitSha: string) => {
-    const query = new URLSearchParams({
-      branch,
-      commit_sha: commitSha
-    }).toString();
+  const checkWorkflow = async (branch: string, commitSha: string, jobId?: string) => {
+    setIsLoading(true);
+    let params = {};
+
+    if(jobId) {
+      params = {
+        branch,
+        commit_sha: commitSha,
+        job_id: jobId,
+      };
+    } else {
+      params = {
+        branch,
+        commit_sha: commitSha,
+      };
+    }
+
+    const query = new URLSearchParams(params).toString();
 
     const url = state.checkWorkflowUrl + `?${query}`;
 
@@ -204,9 +217,20 @@ export const StarterWorkflowTemplate = () => {
 
       const data = await response.json();
 
+      if(data.artifact_url !== null) {
+        try {
+          const shaResponse = await fetch(data.artifact_url as string);
+          const sha = await shaResponse.text();
+          setTimeout(() => void checkWorkflow(branch, sha.trim()), 1000);
+          return;
+        } catch (error) {
+          Notice.error(`Error starting the workflow: ${error as string}`);
+        }
+      }
+
       if (data.workflow_url == null) {
         // If workflow is not ready, check again in 1 second
-        setTimeout(() => void checkWorkflow(branch, commitSha), 1000);
+        setTimeout(() => void checkWorkflow(branch, commitSha, jobId), 1000);
       } else {
         // Set workflow tip cookie if it exists
         if (selectedTemplate.workflow_tip && selectedTemplate.workflow_tip !== ``) {
@@ -217,6 +241,7 @@ export const StarterWorkflowTemplate = () => {
       }
     } catch (error) {
       Notice.error(`Error starting the workflow: ${error as string}`);
+      setIsLoading(false);
     }
   };
 

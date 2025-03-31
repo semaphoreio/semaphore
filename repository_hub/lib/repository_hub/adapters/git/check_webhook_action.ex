@@ -1,11 +1,17 @@
 defimpl RepositoryHub.Server.CheckWebhookAction, for: RepositoryHub.GitAdapter do
   require Logger
+  alias InternalApi.Repository.{CheckWebhookResponse, Webhook}
+  alias RepositoryHub.Toolkit
+  import Toolkit
 
   @impl true
   def execute(_adapter, _request) do
-    raise GRPC.RPCError,
-      status: GRPC.Status.unimplemented(),
-      message: "CheckWebhook action is not implemented for GIT."
+    %CheckWebhookResponse{
+      webhook: %Webhook{
+        url: ""
+      }
+    }
+    |> wrap()
   end
 
   @impl true

@@ -45,7 +45,9 @@ defmodule RepositoryHub.Server do
     DescribeRevisionRequest,
     DescribeRevisionResponse,
     VerifyWebhookSignatureRequest,
-    VerifyWebhookSignatureResponse
+    VerifyWebhookSignatureResponse,
+    RegenerateWebhookSecretRequest,
+    RegenerateWebhookSecretResponse
   }
 
   alias RepositoryHub.Server
@@ -204,6 +206,12 @@ defmodule RepositoryHub.Server do
           VerifyWebhookSignatureResponse.t()
   def verify_webhook_signature(request, _stream) do
     execute(request, Server.VerifyWebhookSignatureAction)
+  end
+
+  @spec regenerate_webhook_secret(RegenerateWebhookSecretRequest.t(), ServerStream.t()) ::
+          RegenerateWebhookSecretResponse.t()
+  def regenerate_webhook_secret(request, _stream) do
+    execute(request, Server.RegenerateWebhookSecretAction)
   end
 
   defp execute(request, stream \\ nil, action) do

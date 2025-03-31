@@ -151,7 +151,7 @@ global:
     secretName: ""
 
 toolbox:
-  version: "v1.22.5"
+  version: "v1.23.2"
 
 #
 # Ingress configuration
@@ -238,7 +238,7 @@ controller:
     name: organization
     key: endpoint
   agent:
-    defaultImage: "registry.semaphoreci.com/ubuntu:22.04"
+    defaultImage: "docker.io/erlang:26"
     defaultPodSpec:
       mainContainer:
         env: []

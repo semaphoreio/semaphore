@@ -32,12 +32,12 @@ defmodule HooksProcessor.Hooks.Processing.Resurrector do
 
   def handle_info(:resurrect, state = %{provider: provider}) do
     "#{@threshold / 1000} seconds"
-    |> LT.info("Resurrector - resurecting workers for all #{provider} hooks in proceesing longer than")
+    |> LT.debug("Resurrector - resurecting workers for all #{provider} hooks in proceesing longer than")
 
     with {:ok, hooks} <- HooksQueries.hooks_stuck_in_processing(provider, @threshold, @deadline),
          {:ok, workers} <- resurrect_workers(hooks) do
       "#{@resurect_cooltime / 1000} seconds"
-      |> LT.info("Resurrector - resurected #{length(workers)} workers, cooling time befor next iteration")
+      |> LT.debug("Resurrector - resurected #{length(workers)} workers, cooling time befor next iteration")
 
       Process.send_after(self(), :resurrect, @resurect_cooltime)
 
