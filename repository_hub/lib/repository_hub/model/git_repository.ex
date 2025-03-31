@@ -1,10 +1,4 @@
 defmodule RepositoryHub.Model.GitRepository do
-  @allowed_hosts [
-    "github.com",
-    "bitbucket.org",
-    "gitlab.com"
-  ]
-
   alias RepositoryHub.Validator
   alias RepositoryHub.Toolkit
   alias __MODULE__
@@ -26,12 +20,48 @@ defmodule RepositoryHub.Model.GitRepository do
   @spec new(String.t()) :: Toolkit.tupled_result(t(), String.t())
   def new(url) do
     dissect(url)
-    |> Validator.validate(
-      chain: [
-        {:from!, :host},
-        &host_allowed?/1
-      ]
-    )
+  end
+
+  @spec from_github(String.t()) :: Toolkit.tupled_result(t(), String.t())
+  def from_github(url) do
+    url
+    |> Validator.validate([:is_github_url])
+    |> unwrap(&new/1)
+  end
+
+  @spec from_gitlab(String.t()) :: Toolkit.tupled_result(t(), String.t())
+  def from_gitlab(url) do
+    url
+    |> Validator.validate([:is_gitlab_url])
+    |> unwrap(&new/1)
+  end
+
+  @spec from_bitbucket(String.t()) :: Toolkit.tupled_result(t(), String.t())
+  def from_bitbucket(url) do
+    url
+    |> Validator.validate([:is_bitbucket_url])
+    |> unwrap(&new/1)
+  end
+
+  @spec from_generic(String.t()) :: Toolkit.tupled_result(t(), String.t())
+  def from_generic(url) do
+    ~r/^ssh:\/\/(?:(?<username>[^@\/]+)@)?(?<host>[^\/:]+)\/(?:.+\/)?(?<owner>[^\/]+)\/(?<repo>[^\/]+)\.git$/
+    |> Regex.named_captures(url)
+    |> case do
+      nil ->
+        error("Unrecognized Git remote format '#{url}'")
+
+      captures ->
+        %__MODULE__{
+          protocol: "ssh://",
+          username: captures["username"],
+          host: captures["host"],
+          owner: captures["owner"],
+          repo: captures["repo"],
+          ssh_git_url: url
+        }
+        |> wrap()
+    end
   end
 
   @doc """
@@ -62,7 +92,7 @@ defmodule RepositoryHub.Model.GitRepository do
   end
 
   defp dissect(url) do
-    url_with_no_trailing_git = url |> String.replace(~r/\.git$/, "")
+    url_with_no_trailing_git = clean_url(url)
 
     supported_git_formats()
     |> Regex.named_captures(url_with_no_trailing_git)
@@ -72,15 +102,8 @@ defmodule RepositoryHub.Model.GitRepository do
 
       captures ->
         construct(captures)
+        |> wrap()
     end
-  end
-
-  defp host_allowed?(host) when host in @allowed_hosts do
-    host
-  end
-
-  defp host_allowed?(_) do
-    error("Only #{@allowed_hosts |> Enum.join(" and ")} hosts are supported")
   end
 
   defp construct(url_parts) do
@@ -98,23 +121,8 @@ defmodule RepositoryHub.Model.GitRepository do
     }
   end
 
-  defmodule Type do
-    alias RepositoryHub.Model.GitRepository
-    use Ecto.Type
-
-    def type, do: :map
-
-    def cast(url) when is_bitstring(url), do: GitRepository.new(url)
-
-    def cast(%GitRepository{} = git_repository), do: git_repository
-
-    def cast(_), do: {:error, message: "Is not a github repository"}
-
-    def load(url) when is_bitstring(url) do
-      GitRepository.new(url)
-    end
-
-    def dump(%GitRepository{ssh_git_url: url}), do: {:ok, url}
-    def dump(_), do: :error
+  def clean_url(url) do
+    url
+    |> String.replace(~r/\.git$/, "")
   end
 end

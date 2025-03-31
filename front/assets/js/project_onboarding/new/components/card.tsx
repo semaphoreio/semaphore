@@ -28,7 +28,7 @@ export const Card = ({ type, status, setupIntegrationUrl }: CardProps) => {
 
   return (
     <div className="mv3">
-      {status === types.Provider.ProviderStatus.NotConnected ? (
+      {status === types.Provider.ProviderStatus.NotConnected && (
         <a
           className="db btn btn-secondary"
           href={setupIntegrationUrl}
@@ -43,7 +43,8 @@ export const Card = ({ type, status, setupIntegrationUrl }: CardProps) => {
             </div>
           </Tippy>
         </a>
-      ) : (
+      )}
+      {status !== types.Provider.ProviderStatus.NotConnected && (
         <a
           href="#"
           className="db btn btn-secondary"

@@ -42,12 +42,15 @@
       <%= render FrontWeb.ProjectSettingsView, "repository/_project_owner_info.html", project: @project, project_token: @project_token, project_owner: @project_owner, conn: @conn %>
     <% end %>
   </div>
-
-  <%= if @project.integration_type == :GITHUB_APP do %>
-    <div class="mb3">
+  <%= if @project.integration_type == :GIT do %>
+    <div class="mb3 pb3 bb b--lighter-gray">
+      <div id="deploy-key-config-app" data-config="<%= Poison.encode!(deploy_key_config(@conn)) %>"></div>
+    </div>
+    <div class="mb3 pb3">
+      <div id="webhook-config-app" data-config="<%= Poison.encode!(webhook_config(@conn)) %>"></div>
+    </div>
   <% else %>
     <div class="mb3 pb3 bb b--lighter-gray">
-  <% end %>
       <div class="mb1">
         <label class="b mr1">Deploy Key</label>
         <%= if @deploy_key do %>
@@ -74,29 +77,30 @@
       <% end %>
     </div>
 
-  <div class="mb3">
-    <div class="mb1">
-      <label class="b mr1">Webhook</label>
+    <div class="mb3">
+      <div class="mb1">
+        <label class="b mr1">Webhook</label>
+        <%= if @hook do %>
+          <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+        <% else %>
+          <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">
+          <span class="f5 fw5 red">Failed to establish connection</span>
+        <% end %>
+        <%= if @permissions["project.repository_info.manage"] do %>
+          <span class="f5">·
+            <%= link "Regenerate", to: project_settings_path(@conn, :regenerate_webhook, @project.name), method: :post %>
+          </span>
+        <% end %>
+      </div>
       <%= if @hook do %>
-        <img src="<%= assets_path() %>/images/icn-passed.svg" class="v-mid">
+        <div>
+          <input id="webhook" type="text" class="form-control w-100 mr2" value="<%= @hook.url %>" readonly disabled>
+        </div>
       <% else %>
-        <img src="<%= assets_path() %>/images/icn-failed.svg" class="v-mid">
-        <span class="f5 fw5 red">Failed to establish connection</span>
-      <% end %>
-      <%= if @permissions["project.repository_info.manage"] do %>
-        <span class="f5">·
-          <%= link "Regenerate", to: project_settings_path(@conn, :regenerate_webhook, @project.name), method: :post %>
-        </span>
+        <p class="f6 measure-wide mb3"><%= @hook_message %></p>
       <% end %>
     </div>
-    <%= if @hook do %>
-      <div>
-        <input id="webhook" type="text" class="form-control w-100 mr2" value="<%= @hook.url %>" readonly disabled>
-      </div>
-    <% else %>
-      <p class="f6 measure-wide mb3"><%= @hook_message %></p>
-    <% end %>
-  </div>
+  <% end %>
 <% else %>
   <div class="pv6 tc">
     <div class="f00">🗝</div>

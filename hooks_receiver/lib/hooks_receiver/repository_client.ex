@@ -4,7 +4,13 @@ defmodule HooksReceiver.RepositoryClient do
   """
 
   alias Util.{Metrics, ToTuple}
-  alias InternalApi.Repository.{RepositoryService, DescribeRequest}
+
+  alias InternalApi.Repository.{
+    RepositoryService,
+    DescribeRequest,
+    CheckWebhookRequest,
+    RegenerateWebhookRequest
+  }
 
   defp url, do: Application.get_env(:hooks_receiver, :repository_api_grpc)
   @opts [{:timeout, 2_500_000}]
@@ -32,9 +38,53 @@ defmodule HooksReceiver.RepositoryClient do
 
       channel
       |> RepositoryService.Stub.describe(request, @opts)
-      |> process_response()
+      |> case do
+        {:ok, response} ->
+          response
+          |> Map.get(:repository)
+          |> ToTuple.ok()
+
+        {:error, error} ->
+          error
+      end
     end)
   end
 
-  defp process_response({:ok, map}), do: map |> Map.get(:repository) |> ToTuple.ok()
+  def check_webhook(repository_id) do
+    Metrics.benchmark("HooksReceiver.RepositoryClient.check_webhook", fn ->
+      request = %CheckWebhookRequest{repository_id: repository_id}
+      {:ok, channel} = GRPC.Stub.connect(url())
+
+      channel
+      |> RepositoryService.Stub.check_webhook(request, @opts)
+      |> case do
+        {:ok, response} ->
+          response
+          |> Map.get(:webhook)
+          |> ToTuple.ok()
+
+        {:error, error} ->
+          error
+      end
+    end)
+  end
+
+  def regenerate_webhook(repository_id) do
+    Metrics.benchmark("HooksReceiver.RepositoryClient.regenerate_webhook", fn ->
+      request = %RegenerateWebhookRequest{repository_id: repository_id}
+      {:ok, channel} = GRPC.Stub.connect(url())
+
+      channel
+      |> RepositoryService.Stub.regenerate_webhook(request, @opts)
+      |> case do
+        {:ok, response} ->
+          response
+          |> Map.get(:webhook)
+          |> ToTuple.ok()
+
+        {:error, error} ->
+          error
+      end
+    end)
+  end
 end

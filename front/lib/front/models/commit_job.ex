@@ -24,6 +24,11 @@ defmodule Front.Models.CommitJob do
     {:ok, %{type: type, os_image: os_image}}
   end
 
+  defp decide_on_agent(%{"custom_machine_type" => type})
+       when is_binary(type) and type != "" do
+    {:ok, %{type: type, os_image: ""}}
+  end
+
   defp decide_on_agent(%{"plan_machine_type" => type, "plan_os_image" => os_image})
        when is_binary(type) and type != "" do
     {:ok, %{type: type, os_image: os_image}}
@@ -44,6 +49,9 @@ defmodule Front.Models.CommitJob do
 
       :GITLAB ->
         get_creds_from_user_service(project, user_id, "oauth2")
+
+      :GIT ->
+        {:ok, :GIT}
     end
   end
 
@@ -59,6 +67,30 @@ defmodule Front.Models.CommitJob do
       {:ok, token} -> {:ok, %{username: git_username, token: token}}
       error -> {:error, :token_from_user_svc, error}
     end
+  end
+
+  def create_job_spec(agent, :GIT, params) do
+    {:ok,
+     %JobSpec{
+       job_name: "Commiting changes from workflow editor to branch #{params.target_branch}",
+       agent: %JobSpec.Agent{
+         machine: %JobSpec.Agent.Machine{
+           os_image: agent.os_image,
+           type: agent.type
+         },
+         containers: [],
+         image_pull_secrets: []
+       },
+       secrets: [],
+       env_vars: [],
+       files: modified_files(params.changes),
+       commands: generate_git_commands(params),
+       epilogue_always_commands: [],
+       epilogue_on_pass_commands: [],
+       epilogue_on_fail_commands: [],
+       priority: 95,
+       execution_time_limit: 10
+     }}
   end
 
   def create_job_spec(agent, creds, params) do
@@ -146,18 +178,48 @@ defmodule Front.Models.CommitJob do
     |> Enum.filter(fn elem -> elem != :skip end)
   end
 
+  defp generate_git_commands(params) do
+    [
+      # Configure the branch that checkout should use
+      "export SEMAPHORE_GIT_BRANCH=#{params.initial_branch}",
+      # Clone repository using the read-only deploy key
+      "checkout",
+      # switch to a new branch if user configured a different target branch
+      configure_target_branch(params.initial_branch, params.target_branch),
+      add_commands_for_modified_files(params),
+      add_commands_for_deleted_files(params),
+      # Configure the user to be author of the changes
+      "git config --global user.name #{params.user.name}",
+      "git config --global user.email #{params.user.email}",
+      # Create commit with changes
+      "git add .",
+      "git commit -m \"#{params.commit_message}\"",
+      # Push commit to remote repository
+      "git push $SEMAPHORE_GIT_URL #{params.target_branch} --force",
+      # save the new commit sha in artifacts
+      "git rev-parse HEAD > commit_sha.val",
+      "artifact push job commit_sha.val -d .workflow_editor/commit_sha.val"
+    ]
+    |> List.flatten()
+    |> Enum.filter(fn elem -> elem != :skip end)
+  end
+
   defp configure_target_branch(initial, target) do
     if initial == target do
       :skip
     else
-      "git checkout -b #{target}"
+      ~s[git checkout -B #{target} #{initial}]
     end
   end
 
   defp add_commands_for_modified_files(params) do
     Enum.reduce(params.changes, [], fn change, acc ->
       if change.action != Action.value(:DELETE_FILE) do
-        acc ++ ["mv ../.changed_files/#{change.file.path} ./#{change.file.path}"]
+        dir_path = Path.dirname(change.file.path)
+
+        acc ++
+          ["mkdir -p ./#{dir_path}"] ++
+          ["mv ../.changed_files/#{change.file.path} ./#{change.file.path}"]
       else
         acc
       end

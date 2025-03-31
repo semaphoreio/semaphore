@@ -6,10 +6,16 @@ defmodule HooksProcessor.Hooks.Payload.Git do
   @doc """
   Extracts hook type from hook payload.
   """
-  def hook_type(payload), do: type(payload |> Map.get("reference"))
 
-  defp type("refs/tags/" <> _), do: "tag"
-  defp type("refs/heads/" <> _), do: "branch"
+  def hook_type(payload) do
+    payload
+    |> get_in(["reference"])
+    |> case do
+      "refs/tags/" <> _ -> "tag"
+      "refs/heads/" <> _ -> "branch"
+      _ -> ""
+    end
+  end
 
   @doc """
   Checks if head commit has [skip ci] flags in commit messsage
@@ -58,6 +64,14 @@ defmodule HooksProcessor.Hooks.Payload.Git do
   end
 
   def extract_author_email(payload) do
-    payload |> get_in(["actor", "email"])
+    payload
+    |> get_in(["actor", "email"])
+    |> case do
+      nil ->
+        ""
+
+      email ->
+        email
+    end
   end
 end

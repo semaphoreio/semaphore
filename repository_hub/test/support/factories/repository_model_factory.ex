@@ -50,6 +50,12 @@ defmodule RepositoryHub.RepositoryModelFactory do
     |> unwrap!
   end
 
+  def git_repo(params \\ []) do
+    with_defaults([integration_type: "git"], params)
+    |> create_repository()
+    |> unwrap!
+  end
+
   defp default(params) do
     repository_id = Keyword.get(params, :id, Ecto.UUID.generate())
 

@@ -21,7 +21,7 @@ defmodule RepositoryHub.BitbucketConnector do
   def setup(repository_id, token) do
     Model.RepositoryQuery.get_by_id(repository_id)
     |> unwrap(fn repository ->
-      Model.GitRepository.new(repository.url)
+      Model.GitRepository.from_bitbucket(repository.url)
       |> unwrap(fn git_repository ->
         %BitbucketConnector{
           repository: repository,
@@ -56,7 +56,7 @@ defmodule RepositoryHub.BitbucketConnector do
   end
 
   defp can_change_url?(connector, url) do
-    Model.GitRepository.new(url)
+    Model.GitRepository.from_bitbucket(url)
     |> unwrap(fn git_repository ->
       BitbucketClient.find_repository(
         %{
@@ -80,7 +80,7 @@ defmodule RepositoryHub.BitbucketConnector do
     |> unwrap(fn connector ->
       Multi.new()
       |> Multi.run(:new_git_repository, fn _, _ ->
-        Model.GitRepository.new(url)
+        Model.GitRepository.from_bitbucket(url)
       end)
       |> Multi.run(:updated_repository, fn _, context ->
         Model.RepositoryQuery.update(

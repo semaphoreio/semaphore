@@ -59,7 +59,7 @@ defmodule Support.Stubs.Organization do
     DB.insert(:organization_repo_integrators, %{
       id: api_model.org_id,
       types:
-        [:GITHUB_OAUTH_TOKEN, :GITHUB_APP, :BITBUCKET, :GITLAB]
+        [:GITHUB_OAUTH_TOKEN, :GITHUB_APP, :BITBUCKET, :GITLAB, :GIT]
         |> Enum.map(&InternalApi.RepositoryIntegrator.IntegrationType.value/1)
     })
 

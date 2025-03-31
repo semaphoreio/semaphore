@@ -53,7 +53,8 @@ import { SelfHostedAgents } from "./self_hosted_agents/main.js";
 import { PreFlightChecks } from "./pre_flight_checks";
 import { AuditLogs } from "./audit.js";
 import { Tasks } from "./tasks";
-
+import { DeployKeyConfig } from "./project_settings/deploy_key_config"
+import { WebhookConfig } from "./project_settings/webhook_config"
 import { default as GitIntegration } from "./git_integration";
 import { default as TestResults } from "./test_results";
 import { default as Insights } from "./insights";
@@ -270,6 +271,20 @@ export var App = {
   },
   general_project_settings: function () {
     GeneralSettings.init();
+
+    document.querySelectorAll("#deploy-key-config-app").forEach((dom) => {
+      DeployKeyConfig({
+        dom: dom,
+        config: dom.dataset
+      })
+    });
+
+    document.querySelectorAll("#webhook-config-app").forEach((dom) => {
+      WebhookConfig({
+        dom: dom,
+        config: dom.dataset
+      })
+    });
     new Star();
   },
   people_page: function () {

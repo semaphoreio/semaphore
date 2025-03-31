@@ -5,6 +5,7 @@ defmodule RepositoryHub.Model.Repositories do
   Stores data about repositories
   """
   use RepositoryHub.Repo
+  require Logger
 
   alias __MODULE__
   alias RepositoryHub.Toolkit
@@ -70,7 +71,8 @@ defmodule RepositoryHub.Model.Repositories do
       commit_status: commit_status(model.commit_status),
       whitelist: whitelist(model.whitelist),
       integration_type: to_integration_type(model.integration_type),
-      default_branch: model.default_branch
+      default_branch: model.default_branch,
+      connected: model.connected
     }
   end
 
@@ -86,12 +88,13 @@ defmodule RepositoryHub.Model.Repositories do
         ) :: Toolkit.tupled_result(boolean)
   def hook_signature_valid?(repository, payload, signature) do
     with {:ok, secret} <- get_signing_secret(repository),
-         signature_matches? <- compare_signature(signature, secret, payload),
-         secret_matches? <- compare_secret(signature, secret),
-         result <- signature_matches? or secret_matches? do
-      {:ok, result}
+         sig_valid <- compare_signature(signature, secret, payload),
+         secret_valid <- secure_compare(signature, secret) do
+      {:ok, sig_valid || secret_valid}
     else
       {:error, :no_secret} ->
+        Logger.info("No secret found for repository #{repository.id}")
+
         {:ok, false}
     end
   end
@@ -122,10 +125,6 @@ defmodule RepositoryHub.Model.Repositories do
     else
       false
     end
-  end
-
-  defp compare_secret(signature, secret) do
-    secure_compare(signature, secret)
   end
 
   defp secure_compare(left, right) do

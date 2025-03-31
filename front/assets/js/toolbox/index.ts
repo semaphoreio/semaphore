@@ -11,6 +11,7 @@ import * as URLState from "./url_state";
 import * as Formatter from "./formatter";
 import * as ChartHelpers from "./chart_helpers";
 import * as APIRequest from "./api_request";
+import { default as PreCopy } from "./pre_copy";
 
 export {
   Asset,
@@ -25,5 +26,6 @@ export {
   AccessProvider,
   FeatureProvider,
   Modal,
-  YamlEditor
+  YamlEditor,
+  PreCopy,
 };

@@ -29,6 +29,8 @@ defmodule Projecthub.RepositoryHubClient do
     RegenerateDeployKeyResponse,
     RegenerateWebhookRequest,
     RegenerateWebhookResponse,
+    RegenerateWebhookSecretRequest,
+    RegenerateWebhookSecretResponse,
     DescribeRequest,
     DescribeManyResponse,
     DeleteRequest,
@@ -85,6 +87,14 @@ defmodule Projecthub.RepositoryHubClient do
       request
       |> decorate(RegenerateWebhookRequest)
       |> grpc_call(:regenerate_webhook, with_default_opts(opts))
+
+  @spec regenerate_webhook_secret(rpc_request(RegenerateWebhookSecretRequest.t()), opts()) ::
+          rpc_response(RegenerateWebhookSecretResponse.t())
+  def regenerate_webhook_secret(request, opts \\ []),
+    do:
+      request
+      |> decorate(RegenerateWebhookSecretRequest)
+      |> grpc_call(:regenerate_webhook_secret, with_default_opts(opts))
 
   @spec check_deploy_key(rpc_request(CheckDeployKeyRequest.t()), opts()) :: rpc_response(CheckDeployKeyResponse.t())
   def check_deploy_key(request, opts \\ []),

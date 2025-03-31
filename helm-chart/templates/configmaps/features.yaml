@@ -24,12 +24,16 @@ data:
       enabled: true
     gitlab:
       enabled: true
+    git:
+      enabled: true
     github_oauth_token:
       enabled: false
     deployment_targets:
       enabled: false
     expose_cloud_agent_types:
       enabled: false
+    experimental_strict_hook_verification:
+      enabled: true
     feedback:
       enabled: false
     help:
@@ -105,6 +109,8 @@ data:
     ui_reports:
       enabled: true
     new_project_onboarding:
+      enabled: true
+    wf_editor_via_jobs:
       enabled: true
 {{- else }}
   features.yml: |-

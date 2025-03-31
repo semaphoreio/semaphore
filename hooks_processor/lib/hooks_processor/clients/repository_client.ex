@@ -3,7 +3,14 @@ defmodule HooksProcessor.Clients.RepositoryClient do
   Module is used for communication with Repository service over gRPC.
   """
 
-  alias InternalApi.Repository.{RepositoryService, DescribeRevisionRequest, VerifyWebhookSignatureRequest}
+  alias InternalApi.Repository.{
+    RepositoryService,
+    DescribeRevisionRequest,
+    VerifyWebhookSignatureRequest,
+    RegenerateWebhookRequest,
+    CheckWebhookRequest
+  }
+
   alias Util.{Metrics, ToTuple}
   alias LogTee, as: LT
 
@@ -11,6 +18,93 @@ defmodule HooksProcessor.Clients.RepositoryClient do
 
   @wormhole_timeout 6_000
   @grpc_timeout 5_000
+
+  # RegenerateWebhook
+
+  def regenerate_webhook(repository_id) do
+    "repository_id: #{repository_id}"
+    |> LT.info("Calling Repository API to regenerate webhook")
+
+    Metrics.benchmark("HooksProcessor.RepositoryClient", ["regenerate_webhook"], fn ->
+      %RegenerateWebhookRequest{
+        repository_id: repository_id
+      }
+      |> do_regenerate_webhook()
+    end)
+  end
+
+  defp do_regenerate_webhook(request) do
+    result =
+      Wormhole.capture(__MODULE__, :regenerate_webhook_grpc, [request],
+        stacktrace: true,
+        timeout: @wormhole_timeout
+      )
+
+    case result do
+      {:ok, result} -> result
+      error -> error
+    end
+  end
+
+  def regenerate_webhook_grpc(request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    channel
+    |> RepositoryService.Stub.regenerate_webhook(request, timeout: @grpc_timeout)
+    |> process_regenerate_webhook_status()
+  end
+
+  defp process_regenerate_webhook_status({:ok, regenerate_response}) do
+    regenerate_response
+    |> Map.get(:webhook)
+    |> ToTuple.ok()
+  end
+
+  defp process_regenerate_webhook_status(error = {:error, _msg}), do: error
+  defp process_regenerate_webhook_status(error), do: {:error, error}
+
+  # CheckWebhook
+  def check_webhook(repository_id) do
+    "repository_id: #{repository_id}"
+    |> LT.info("Calling Repository API to check webhook")
+
+    Metrics.benchmark("HooksProcessor.RepositoryClient", ["check_webhook"], fn ->
+      %CheckWebhookRequest{
+        repository_id: repository_id
+      }
+      |> do_check_webhook()
+    end)
+  end
+
+  defp do_check_webhook(request) do
+    result =
+      Wormhole.capture(__MODULE__, :check_webhook_grpc, [request],
+        stacktrace: true,
+        timeout: @wormhole_timeout
+      )
+
+    case result do
+      {:ok, result} -> result
+      error -> error
+    end
+  end
+
+  def check_webhook_grpc(request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    channel
+    |> RepositoryService.Stub.check_webhook(request, timeout: @grpc_timeout)
+    |> process_check_webhook_status()
+  end
+
+  defp process_check_webhook_status({:ok, check_response}) do
+    check_response
+    |> Map.get(:webhook)
+    |> ToTuple.ok()
+  end
+
+  defp process_check_webhook_status(error = {:error, _msg}), do: error
+  defp process_check_webhook_status(error), do: {:error, error}
 
   # DescribeRevision
 

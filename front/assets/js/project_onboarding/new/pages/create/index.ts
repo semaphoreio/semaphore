@@ -1,7 +1,4 @@
-import { SelectProjectType } from './select_project_type';
-import { ChooseRepo } from './choose_repo';
+import { SelectProjectType } from "./select_project_type";
+import { ChooseRepo } from "./choose_repo";
 
-export {
-  SelectProjectType,
-  ChooseRepo,
-};
+export { SelectProjectType, ChooseRepo };
