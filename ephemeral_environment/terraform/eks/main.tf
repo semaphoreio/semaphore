@@ -307,7 +307,6 @@ resource "helm_release" "external_dns" {
     value = aws_eks_cluster.cluster.name
   }
 
-  # Add these environment variables
   set {
     name  = "env[0].name"
     value = "AWS_DEFAULT_REGION"

@@ -5,6 +5,11 @@ agent:
     type: f1-standard-2
     os_image: ubuntu2004
 global_job_config:
+  env_vars:
+    - name: BASE_DOMAIN
+      value: "test.sonprem.com"
+    - name: ZONE_ID
+      value: "Z05198331K5V9MQ90PUK2"
   prologue:
     commands:
       - export DOMAIN="${CLOUD_TEST_ENV_PREFIX}.${BASE_DOMAIN}"
