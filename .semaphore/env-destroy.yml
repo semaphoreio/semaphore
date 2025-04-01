@@ -27,4 +27,8 @@ blocks:
             - make auth
             - terraform init
             - make terraform.destroy
-            - artifact yank project "environments/${CLOUD_TEST_ENV_PREFIX}"
+            - artifact yank project "environments/${CLOUD_TEST_ENV_PREFIX}" || true
+      epilogue:
+        on_fail:
+          commands:
+            - artifact push project terraform.tfstate -d environments/${CLOUD_TEST_ENV_PREFIX}/terraform.tfstate --force
