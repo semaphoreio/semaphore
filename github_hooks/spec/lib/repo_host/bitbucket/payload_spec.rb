@@ -116,7 +116,7 @@ RSpec.describe RepoHost::Bitbucket::Payload, :vcr => vcr_options do
         expect(payload_for_new_branch_with_new_commits.author_email).to eq ""
         expect(payload_for_new_branch_without_new_commits.author_email).to eq ""
         expect(payload_for_branch_deletion.commit_author).to eq ""
-        expect(payload_for_new_branch_with_new_commits.commit_author).to eq ""
+        expect(payload_for_new_branch_with_new_commits.commit_author).to eq "milana_stojadinov"
         expect(payload_for_new_branch_without_new_commits.commit_author).to eq ""
       end
     end
