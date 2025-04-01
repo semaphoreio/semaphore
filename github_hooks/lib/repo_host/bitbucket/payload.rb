@@ -97,9 +97,7 @@ module RepoHost::Bitbucket
 
     # ✔️
     def commit_author
-      if @commits.present? && @commits.last.present?
-        @commits.last["author"]["user"]["nickname"]
-      end
+      @commits.last&.dig("author", "user", "nickname")
     end
 
     # ✔️
