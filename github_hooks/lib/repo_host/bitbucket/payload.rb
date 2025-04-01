@@ -120,7 +120,7 @@ module RepoHost::Bitbucket
     end
 
     # ✔️
-  def author_name
+    def author_name
       @data.dig("actor", "nickname") || @data.dig("actor", "username") || ""
     end
 
