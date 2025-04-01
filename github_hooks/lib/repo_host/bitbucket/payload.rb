@@ -97,7 +97,7 @@ module RepoHost::Bitbucket
 
     # ✔️
     def commit_author
-      @commits.last&.dig("author", "user", "nickname")
+      @commits.last&.dig("author", "user", "nickname") || ""
     end
 
     # ✔️
@@ -120,7 +120,7 @@ module RepoHost::Bitbucket
     end
 
     # ✔️
-    def author_name
+  def author_name
       @data.dig("actor", "nickname") || @data.dig("actor", "username") || ""
     end
 
