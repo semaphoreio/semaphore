@@ -118,13 +118,6 @@ func (f *Fetcher) Sync(index int, totalRepoCount int, r *models.Repository) bool
 			quarantinedReason = string(gitrekt.QuarantineReasonCloneTimeout)
 		}
 
-		if _, ok := err.(*gitrekt.AuthTimeoutError); ok {
-			f.putRepoInQuarantine(repo, gitrekt.QuarantineReasonAuthTimeout)
-
-			quarantined = true
-			quarantinedReason = string(gitrekt.QuarantineReasonAuthTimeout)
-		}
-
 		if _, ok := err.(*gitrekt.AuthFailedError); ok {
 			f.putRepoInQuarantine(repo, gitrekt.QuarantineReasonNotFound)
 
