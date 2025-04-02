@@ -281,13 +281,28 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     kubectl get nodes
     ```
 
-3. Run the following command to upgrade to `v1.1.0`
+3. Source your configuration file and ensure your certificates are located in the expected folders. See [Step 4](#certs)
+
+    ```shell
+    source semaphore-config
+    ls certs/live/${DOMAIN}/fullchain.pem 
+    ls certs/live/${DOMAIN}/privkey.pem
+    ```
+4. Run the following command to upgrade to `v1.1.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
       --version v1.1.0 \
-      --reuse-values
+      --timeout 20m \
+      --set global.domain.ip=${IP_ADDRESS} \
+      --set global.domain.name=${DOMAIN} \
+      --set ingress.enabled=true \
+      --set ingress.ssl.enabled=true \
+      --set ingress.className=traefik \
+      --set ingress.ssl.type=custom \
+      --set ingress.ssl.crt=$(cat certs/live/${DOMAIN}/fullchain.pem | base64 -w 0) \
+      --set ingress.ssl.key=$(cat certs/live/${DOMAIN}/privkey.pem | base64 -w 0)
     ```
 
 </Steps>
