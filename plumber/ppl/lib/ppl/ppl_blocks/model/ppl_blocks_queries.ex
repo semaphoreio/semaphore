@@ -141,6 +141,8 @@ defmodule Ppl.PplBlocks.Model.PplBlocksQueries do
   has finished with result different than "passed", or false if fast_failing strategy
   is not configured or no blocks form same pipeline fulfills condition above.
   """
+  def should_do_fast_failing?(ppl_blk) when ppl_blk.state == "done", do: {:ok, false}
+
   def should_do_fast_failing?(ppl_blk) do
     from(pb in PplBlocks,
          join: p in Ppls, on: pb.ppl_id == p.ppl_id,
