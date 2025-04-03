@@ -64,7 +64,7 @@ defmodule Front.Models.DeploymentDetails do
       %__MODULE__{
         deployment
         | author_name: Application.get_env(:front, :default_user_name),
-          author_avatar_url: FrontWeb.SharedHelpers.assets_path()
+          author_avatar_url: FrontWeb.SharedHelpers.assets_path() <> "/images/org-s.svg"
       }
     end
   end
