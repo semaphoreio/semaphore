@@ -317,6 +317,12 @@ blocks:
 
 To use images in private repositories see [Private Docker Registries](#docker-private).
 
+:::info
+
+Semaphore provides a [public Docker registry](./optimization/container-registry) for popular images.
+
+:::
+
 ### Prologue {#prologue}
 
 Commands in the *prologue* run before the jobs in the block start. Semaphore prepends these commands to every job contained in the pipeline. This works like the [block prologue](./jobs#prologue) but for all blocks in the pipeline.

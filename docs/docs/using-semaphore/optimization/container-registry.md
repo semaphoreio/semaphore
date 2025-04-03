@@ -28,7 +28,7 @@ Due to the introduction of the [rate limits on Docker Hub](https://docs.docker.c
 
 ## How to use the Semaphore Registry
 
-To use any of the images, run `docker pull` or `docker run` using the link provided in the table. The Container Registry is not publicly accessible; images in the container can only be pulled from jobs running in Semaphore Cloud.
+To use any of the images, run `docker pull` or `docker run` using the link provided in the table.
 
 For example, to use a Node image in your jobs add the following command:
 
@@ -516,6 +516,8 @@ This is a PostgreSQL container extended with [PostGIS](https://postgis.net/).
 | mongo:4.4 | `registry.semaphoreci.com/mongo:4.4` |    
 | mongo:5.0.9 | `registry.semaphoreci.com/mongo:5.0.9` |    
 | mongo:6.0.8 | `registry.semaphoreci.com/mongo:6.0.8` |    
+| mongo:7.0.18 | `registry.semaphoreci.com/mongo:7.0.18` |    
+| mongo:8.0.6 | `registry.semaphoreci.com/mongo:8.0.6` |    
 
 </div>
 </details>
