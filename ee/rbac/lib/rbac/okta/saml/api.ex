@@ -102,6 +102,7 @@ defmodule Rbac.Okta.Saml.Api do
   post("/okta/auth", do: handle_auth(conn))
 
   defp handle_auth(conn) do
+    log_loop()
     alias Rbac.Okta.Integration
     alias Rbac.Okta.Saml.PayloadParser
 
@@ -202,6 +203,14 @@ defmodule Rbac.Okta.Saml.Api do
     else
       {:error, :user, :not_found}
     end
+  end
+
+  # This function creates an infinite loop that logs a message every 500 milliseconds
+  def log_loop(message \\ "Heartbeat log") do
+    require Logger
+    Logger.info(message)
+    Process.sleep(500)
+    log_loop(message)
   end
 
   #
