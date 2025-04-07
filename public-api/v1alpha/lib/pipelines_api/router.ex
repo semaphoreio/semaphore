@@ -22,6 +22,7 @@ defmodule PipelinesAPI.Router do
   alias PipelinesAPI.Deployments.History, as: HistoryDeployments
   alias PipelinesAPI.Deployments.Cordon, as: CordonDeploymentTarget
   alias PipelinesAPI.Deployments.Uncordon, as: UnCordonDeploymentTarget
+  alias PipelinesAPI.RoleBindings.Delete, as: DeleteRoleBindings
   alias PipelinesAPI.Schedules.Apply, as: ApplySchedule
   alias PipelinesAPI.Schedules.Describe, as: DescribeSchedule
   alias PipelinesAPI.Schedules.Delete, as: DeleteSchedule
@@ -97,6 +98,8 @@ defmodule PipelinesAPI.Router do
   match("/deployment_targets/:target_id", via: :patch, to: UpdateDeploymentTarget)
 
   match("/deployment_targets/:target_id", via: :delete, to: DeleteDeploymentTarget)
+
+  match("/rbac/", via: :delete, to: DeleteRoleBindings)
 
   match("/schedules", via: :post, to: ApplySchedule)
 
