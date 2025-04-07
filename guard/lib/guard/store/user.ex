@@ -246,41 +246,14 @@ defmodule Guard.Store.User do
 
     def delete_with_owned_orgs(user_id) do
       result =
-        Ecto.Multi.new()
-        |> Ecto.Multi.run(:get_user, fn repo, _changes ->
-          case repo.get(Repo.User, user_id) do
-            nil -> {:error, :user_not_found}
-            user -> {:ok, user}
-          end
-        end)
-        |> Ecto.Multi.run(:delete_related_data, fn repo, _changes ->
-          from(o in Repo.Organization, where: o.creator_id == ^user_id)
-          |> repo.all()
-          |> Enum.each(fn org ->
-            :ok = Guard.Api.Project.destroy_all_projects_by_org_id(org.id)
-
-            repo.delete_all(from(m in Repo.Member, where: m.organization_id == ^org.id))
-
-            repo.delete_all(
-              from(s in Repo.OrganizationSuspension, where: s.organization_id == ^org.id)
-            )
-
-            repo.delete_all(
-              from(c in Repo.OrganizationContact, where: c.organization_id == ^org.id)
-            )
-          end)
-
-          {:ok, :deleted_related_data}
-        end)
-        |> Ecto.Multi.delete_all(:delete_organizations, fn _changes ->
-          from(o in Repo.Organization, where: o.creator_id == ^user_id)
-        end)
-        |> Ecto.Multi.delete(:delete_user, fn %{get_user: user} -> user end)
-        |> Repo.transaction()
+        case Repo.get(Repo.User, user_id) do
+          nil -> {:error, :not_found}
+          user -> Repo.delete(user)
+        end
 
       case result do
-        {:ok, _changes} -> {:ok, :deleted}
-        {:error, :get_user, :user_not_found, _changes} -> {:error, :user_not_found}
+        {:ok, _struct} -> {:ok, :deleted}
+        {:error, :not_found} -> {:error, :not_found}
         _ -> {:error, :internal_error}
       end
     end

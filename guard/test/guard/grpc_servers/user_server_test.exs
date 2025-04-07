@@ -548,7 +548,7 @@ defmodule Guard.GrpcServers.UserServerTest do
   end
 
   describe "delete_with_owned_orgs" do
-    test "delete_with_owned_orgs should delete the user and their organizations", %{
+    test "delete_with_owned_orgs should delete the user", %{
       grpc_channel: channel,
       another_user: another_user
     } do
@@ -576,55 +576,22 @@ defmodule Guard.GrpcServers.UserServerTest do
           name: user.name
         )
 
-      orgs =
-        1..2
-        |> Enum.map(fn i ->
-          Support.Factories.Organization.insert!(creator_id: user.id, username: "test-org-#{i}")
-        end)
-
-      another_orgs =
-        1..2
-        |> Enum.map(fn i ->
-          Support.Factories.Organization.insert!(
-            creator_id: another_user.id,
-            username: "another-test-org-#{i}"
-          )
-        end)
-
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
-      with_mocks [
-        {Guard.Api.Project, [], destroy_all_projects_by_org_id: fn _ -> :ok end}
-      ] do
-        {:ok, response} =
-          channel
-          |> Stub.delete_with_owned_orgs(request)
+      {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
 
-        id = user.id
-        assert %User.User{id: ^id} = response
+      id = user.id
+      assert %User.User{id: ^id} = response
 
-        # check if the user is deleted
-        assert nil == FrontRepo.get(FrontRepo.User, id)
+      # check if the user is deleted
+      assert nil == FrontRepo.get(FrontRepo.User, id)
 
-        # check if the organizations are deleted
-        orgs
-        |> Enum.each(fn org ->
-          assert nil == FrontRepo.get(FrontRepo.Organization, org.id)
-        end)
-
-        # check if the another user organizations are not deleted
-        another_orgs
-        |> Enum.each(fn org ->
-          assert %FrontRepo.Organization{} = FrontRepo.get(FrontRepo.Organization, org.id)
-        end)
-
-        receive do
-          {:user_deleted_test, received_message} ->
-            user_deleted = User.UserDeleted.decode(received_message)
-            assert user_deleted.user_id == user.id
-        after
-          5000 -> flunk("Timeout: Message not received within 5 seconds")
-        end
+      receive do
+        {:user_deleted_test, received_message} ->
+          user_deleted = User.UserDeleted.decode(received_message)
+          assert user_deleted.user_id == user.id
+      after
+        5000 -> flunk("Timeout: Message not received within 5 seconds")
       end
     end
 
