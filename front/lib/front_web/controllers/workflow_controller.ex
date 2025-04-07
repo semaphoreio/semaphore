@@ -15,8 +15,7 @@ defmodule FrontWeb.WorkflowController do
     RepoProxy,
     Secret,
     User,
-    FetchingJob,
-    Job
+    FetchingJob
   }
 
   alias Front.Async
@@ -42,199 +41,100 @@ defmodule FrontWeb.WorkflowController do
 
   def edit(conn, _params) do
     Watchman.benchmark("workflow.edit.duration", fn ->
+      project = conn.assigns.project
+      user = User.find(conn.assigns.user_id)
+
       org_id = conn.assigns.organization_id
+      hook_id = conn.assigns.workflow.hook_id
 
-      if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
-        edit_using_fetching_job(conn)
-      else
-        edit_using_repohub(conn)
-      end
-    end)
-  end
-
-  defp edit_using_fetching_job(conn) do
-    project = conn.assigns.project
-    user = User.find(conn.assigns.user_id)
-
-    org_id = conn.assigns.organization_id
-    hook_id = conn.assigns.workflow.hook_id
-
-    fetch_org_secrets =
-      Async.run(fn -> Secret.list(user.id, org_id, project.id, :ORGANIZATION, true) end,
-        metric: "workflow.edit.fetch_secrets"
-      )
-
-    fetch_project_secrets =
-      Async.run(fn -> Secret.list(user.id, org_id, project.id, :PROJECT, true) end,
-        metric: "workflow.edit.fetch_project_secrets"
-      )
-
-    fetch_deployment_targets =
-      Async.run(fn -> Deployments.fetch_targets(project.id) end,
-        metric: "workflow.edit.fetch_deployment_targets"
-      )
-
-    fetch_organization =
-      Async.run(fn -> Organization.find(org_id) end, metric: "workflow.edit.fetch_organization")
-
-    fetch_hook = Async.run(fn -> RepoProxy.find(hook_id) end, metric: "workflow.edit.fetch_hook")
-
-    fetch_agent_types =
-      Async.run(fn -> AgentType.list(org_id) end, metric: "workflow.edit.fetch_agent_types")
-
-    fetch_self_hosted_agent_types =
-      Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end,
-        metric: "workflow.edit.fetch_self_hosted_agent_types"
-      )
-
-    {:ok, hook} = Async.await(fetch_hook)
-
-    job_params = [
-      user_id: user.id,
-      project: project,
-      target_branch: hook.branch_name,
-      restricted_job: true,
-      commit_sha: hook.head_commit_sha,
-      hook: hook
-    ]
-
-    start_fetching_job =
-      Async.run(fn -> start_fetching_job(job_params) end, metric: "workflow.edit.start_job")
-
-    {:ok, org_secrets} = Async.await(fetch_org_secrets)
-    {:ok, project_secrets} = Async.await(fetch_project_secrets)
-    {:ok, organization} = Async.await(fetch_organization)
-    {:ok, {:ok, hosted_agent_types}} = Async.await(fetch_agent_types)
-    {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
-    {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
-    {:ok, {:ok, job_id}} = Async.await(start_fetching_job)
-
-    workflow_data = %{
-      createdInEditor: false,
-      initialYAML: project.initial_pipeline_file,
-      yamls: []
-    }
-
-    params = [
-      title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
-      js: :workflow_editor,
-      org_secrets: org_secrets,
-      project_secrets: project_secrets,
-      project: project,
-      hook: hook,
-      sidebar_selected_item: project.id,
-      commiter_avatar: user.avatar_url,
-      workflow_data: workflow_data,
-      fetching_job_id: job_id,
-      agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
-      deployment_targets: Enum.map(deployment_targets, & &1.name),
-      hide_promotions: Application.get_env(:front, :hide_promotions, false)
-    ]
-
-    conn
-    |> put_flash(:alert, nil)
-    |> render("edit.html", params)
-  end
-
-  defp start_fetching_job(params) do
-    with {:ok, agent} <- FetchingJob.get_agent(params.project),
-         {:ok, job_spec} <- FetchingJob.create_job_spec(agent, params),
-         {:ok, job} <- Job.create(job_spec, params) do
-      {:ok, job.id}
-    else
-      error ->
-        Logger.error(
-          Enum.join(
-            [
-              "Could not create fetching job",
-              "project: #{params.project.id}",
-              "branch: #{params.target_branch}",
-              "user: #{params.user_id}",
-              "error: #{inspect(error)}"
-            ],
-            ", "
-          )
+      fetch_org_secrets =
+        Async.run(fn -> Secret.list(user.id, org_id, project.id, :ORGANIZATION, true) end,
+          metric: "workflow.edit.fetch_secrets"
         )
 
-        {:error, :fetching_job_creation_failed}
-    end
-  end
+      fetch_project_secrets =
+        Async.run(fn -> Secret.list(user.id, org_id, project.id, :PROJECT, true) end,
+          metric: "workflow.edit.fetch_project_secrets"
+        )
 
-  defp edit_using_repohub(conn) do
-    project = conn.assigns.project
-    user = User.find(conn.assigns.user_id)
+      fetch_deployment_targets =
+        Async.run(fn -> Deployments.fetch_targets(project.id) end,
+          metric: "workflow.edit.fetch_deployment_targets"
+        )
 
-    org_id = conn.assigns.organization_id
-    hook_id = conn.assigns.workflow.hook_id
+      fetch_organization =
+        Async.run(fn -> Organization.find(org_id) end, metric: "workflow.edit.fetch_organization")
 
-    fetch_org_secrets =
-      Async.run(fn -> Secret.list(user.id, org_id, project.id, :ORGANIZATION, true) end,
-        metric: "workflow.edit.fetch_secrets"
-      )
+      fetch_hook = Async.run(fn -> RepoProxy.find(hook_id) end, metric: "workflow.edit.fetch_hook")
 
-    fetch_project_secrets =
-      Async.run(fn -> Secret.list(user.id, org_id, project.id, :PROJECT, true) end,
-        metric: "workflow.edit.fetch_project_secrets"
-      )
+      fetch_agent_types =
+        Async.run(fn -> AgentType.list(org_id) end, metric: "workflow.edit.fetch_agent_types")
 
-    fetch_deployment_targets =
-      Async.run(fn -> Deployments.fetch_targets(project.id) end,
-        metric: "workflow.edit.fetch_deployment_targets"
-      )
+      fetch_self_hosted_agent_types =
+        Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end,
+          metric: "workflow.edit.fetch_self_hosted_agent_types"
+        )
 
-    fetch_organization =
-      Async.run(fn -> Organization.find(org_id) end, metric: "workflow.edit.fetch_organization")
+      {:ok, hook} = Async.await(fetch_hook)
 
-    fetch_hook = Async.run(fn -> RepoProxy.find(hook_id) end, metric: "workflow.edit.fetch_hook")
+      fetch_files_or_create_job =
+        if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
+          job_params = [
+            user_id: user.id,
+            project: project,
+            target_branch: hook.branch_name,
+            restricted_job: true,
+            commit_sha: hook.head_commit_sha,
+            hook: hook
+          ]
 
-    fetch_agent_types =
-      Async.run(fn -> AgentType.list(org_id) end, metric: "workflow.edit.fetch_agent_types")
+          Async.run(fn -> FetchingJob.start_fetching_job(job_params) end, metric: "workflow.edit.start_job")
+        else
+          Async.run(
+            fn -> fetch_yaml_files(project.repo_id, hook, project.initial_pipeline_file) end,
+            metric: "workflow.edit.load_all_yaml_files"
+          )
+        end
 
-    fetch_self_hosted_agent_types =
-      Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end,
-        metric: "workflow.edit.fetch_self_hosted_agent_types"
-      )
+      {:ok, org_secrets} = Async.await(fetch_org_secrets)
+      {:ok, project_secrets} = Async.await(fetch_project_secrets)
+      {:ok, organization} = Async.await(fetch_organization)
+      {:ok, {:ok, hosted_agent_types}} = Async.await(fetch_agent_types)
+      {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
+      {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
 
-    {:ok, hook} = Async.await(fetch_hook)
+      {initial_yaml, yamls, job_id, alert} =
+        if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
+          {:ok, {:ok, job_id}} = Async.await(fetch_files_or_create_job)
+          {project.initial_pipeline_file, [], job_id, nil}
+        else
+          {:ok, {:ok, yaml_files}} = Async.await(fetch_files_or_create_job)
+          {initial_yaml, yamls, alert} = extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
+          {initial_yaml, yamls, "", alert}
+        end
 
-    fetch_yaml_files =
-      Async.run(
-        fn -> fetch_yaml_files(project.repo_id, hook, project.initial_pipeline_file) end,
-        metric: "workflow.edit.load_all_yaml_files"
-      )
+      workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
 
-    {:ok, org_secrets} = Async.await(fetch_org_secrets)
-    {:ok, project_secrets} = Async.await(fetch_project_secrets)
-    {:ok, organization} = Async.await(fetch_organization)
-    {:ok, {:ok, hosted_agent_types}} = Async.await(fetch_agent_types)
-    {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
-    {:ok, {:ok, yaml_files}} = Async.await(fetch_yaml_files)
-    {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
+      params = [
+        title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
+        js: :workflow_editor,
+        org_secrets: org_secrets,
+        project_secrets: project_secrets,
+        project: project,
+        hook: hook,
+        sidebar_selected_item: project.id,
+        commiter_avatar: user.avatar_url,
+        workflow_data: workflow_data,
+        fetching_job_id: job_id,
+        agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
+        deployment_targets: Enum.map(deployment_targets, & &1.name),
+        hide_promotions: Application.get_env(:front, :hide_promotions, false)
+      ]
 
-    {initial_yaml, yamls, alert} =
-      extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
-
-    workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
-
-    params = [
-      title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
-      js: :workflow_editor,
-      org_secrets: org_secrets,
-      project_secrets: project_secrets,
-      project: project,
-      hook: hook,
-      sidebar_selected_item: project.id,
-      commiter_avatar: user.avatar_url,
-      workflow_data: workflow_data,
-      fetching_job_id: "",
-      agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
-      deployment_targets: Enum.map(deployment_targets, & &1.name),
-      hide_promotions: Application.get_env(:front, :hide_promotions, false)
-    ]
-
-    conn
-    |> put_flash(:alert, alert)
-    |> render("edit.html", params)
+      conn
+      |> put_flash(:alert, alert)
+      |> render("edit.html", params)
+    end)
   end
 
   defp fetch_yaml_files(repo_id, hook, initial_yaml) do

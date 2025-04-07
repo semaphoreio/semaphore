@@ -6,8 +6,35 @@ defmodule Front.Models.FetchingJob do
 
   alias Front.Models.OrganizationSettings
   alias InternalApi.ServerFarm.Job.JobSpec
+  alias Front.Models.Job
 
-  def get_agent(project) do
+  require Logger
+
+  def start_fetching_job(params) do
+    with {:ok, agent} <- get_agent(params.project),
+         {:ok, job_spec} <- create_job_spec(agent, params),
+         {:ok, job} <- Job.create(job_spec, params) do
+      {:ok, job.id}
+    else
+      error ->
+        Logger.error(
+          Enum.join(
+            [
+              "Could not create fetching job",
+              "project: #{params.project.id}",
+              "branch: #{params.target_branch}",
+              "user: #{params.user_id}",
+              "error: #{inspect(error)}"
+            ],
+            ", "
+          )
+        )
+
+        {:error, :fetching_job_creation_failed}
+    end
+  end
+
+  defp get_agent(project) do
     case OrganizationSettings.fetch(project.organization_id) do
       {:ok, settings} -> decide_on_agent(settings)
       error -> {:error, :fetch_agent, error}
@@ -26,7 +53,7 @@ defmodule Front.Models.FetchingJob do
 
   defp decide_on_agent(_seetings), do: {:error, :settings_without_agent_def}
 
-  def create_job_spec(agent, params) do
+  defp create_job_spec(agent, params) do
     {:ok,
      %JobSpec{
        job_name: "Workflow editor fetching files * #{params.project.name} * #{params.hook.name}",
