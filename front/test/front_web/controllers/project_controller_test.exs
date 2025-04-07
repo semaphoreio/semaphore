@@ -77,6 +77,69 @@ defmodule FrontWeb.ProjectControllerTest do
 
       assert html_response(conn, 200) =~ "workflow-editor-tabs"
     end
+
+    test "when project doesn't have branches but default branch has YAML file it shows editor",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      DB.clear(:workflows)
+      DB.clear(:branches)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/edit_workflow")
+
+      assert html_response(conn, 200) =~ "workflow-editor-tabs"
+    end
+
+    test "when project doesn't have branches, default branch has YAML file, and fetch job is started it shows editor",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      DB.clear(:workflows)
+      DB.clear(:branches)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/edit_workflow")
+
+      assert html_response(conn, 200) =~ "workflow-editor-tabs"
+
+      job = DB.first(:job_specs)
+
+      assert job.job_spec == expected_spec(project)
+    end
+  end
+
+  defp expected_spec(project) do
+    %InternalApi.ServerFarm.Job.JobSpec{
+      job_name: "Workflow editor fetching files * #{project.name} * default_branch",
+      agent: %InternalApi.ServerFarm.Job.JobSpec.Agent{
+        machine: %InternalApi.ServerFarm.Job.JobSpec.Agent.Machine{
+          type: "e2-standard-2",
+          os_image: "ubuntu2004"
+        },
+        containers: [],
+        image_pull_secrets: []
+      },
+      secrets: [],
+      env_vars: [],
+      files: [],
+      commands: [
+        "export SEMAPHORE_GIT_DEPTH=5",
+        "checkout",
+        "artifact push job .semaphore -d .workflow_editor/.semaphore"
+      ],
+      epilogue_always_commands: [],
+      epilogue_on_pass_commands: [],
+      epilogue_on_fail_commands: [],
+      priority: 95,
+      execution_time_limit: 10
+    }
   end
 
   describe "GET show" do

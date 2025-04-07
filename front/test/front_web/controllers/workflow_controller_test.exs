@@ -81,6 +81,60 @@ defmodule FrontWeb.WorkflowControllerTest do
 
       assert html_response(conn, 200)
     end
+
+    test "if fetching job feature is on, the fetching job is created", %{
+      conn: conn,
+      organization: organization,
+      project: project,
+      workflow: workflow
+    } do
+      Support.Stubs.Project.switch_repo_visibility(project, "private")
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      conn = conn |> get("/workflows/#{workflow.id}/edit")
+
+      assert html_response(conn, 200)
+
+      job = DB.first(:job_specs)
+
+      assert job.job_spec == expected_spec(project, workflow)
+    end
+  end
+
+  defp expected_spec(project, workflow) do
+    %InternalApi.ServerFarm.Job.JobSpec{
+      job_name:
+        "Workflow editor fetching files * #{project.name} * #{workflow.api_model.branch_name}",
+      agent: %InternalApi.ServerFarm.Job.JobSpec.Agent{
+        machine: %InternalApi.ServerFarm.Job.JobSpec.Agent.Machine{
+          type: "e2-standard-2",
+          os_image: "ubuntu2004"
+        },
+        containers: [],
+        image_pull_secrets: []
+      },
+      secrets: [],
+      env_vars: [],
+      files: [],
+      commands: [
+        "export SEMAPHORE_GIT_DEPTH=5",
+        "export SEMAPHORE_GIT_REF_TYPE=branch",
+        "export SEMAPHORE_GIT_BRANCH=#{workflow.api_model.branch_name}",
+        "export SEMAPHORE_GIT_SHA=#{workflow.api_model.commit_sha}",
+        "checkout",
+        "artifact push job .semaphore -d .workflow_editor/.semaphore"
+      ],
+      epilogue_always_commands: [],
+      epilogue_on_pass_commands: [],
+      epilogue_on_fail_commands: [],
+      priority: 95,
+      execution_time_limit: 10
+    }
   end
 
   describe "rebuild" do

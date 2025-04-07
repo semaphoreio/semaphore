@@ -80,14 +80,14 @@ defmodule FrontWeb.WorkflowController do
 
       fetch_files_or_create_job =
         if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
-          job_params = [
+          job_params = %{
             user_id: user.id,
             project: project,
             target_branch: hook.branch_name,
             restricted_job: true,
             commit_sha: hook.head_commit_sha,
             hook: hook
-          ]
+          }
 
           Async.run(fn -> FetchingJob.start_fetching_job(job_params) end,
             metric: "workflow.edit.start_job"
