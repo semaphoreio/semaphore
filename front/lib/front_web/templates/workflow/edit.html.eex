@@ -31,9 +31,9 @@
 
   window.InjectedDataByBackend.WorkflowData = <%= raw Poison.encode!(@workflow_data, escape: :html_safe) %>;
 
-  window.InjectedDataByBackend.CheckFetchingJobPath = <%= project_path(@conn, :fetch_yaml_artifacts, @project.name) %>;
+  window.InjectedDataByBackend.CheckFetchingJobPath = "<%= project_path(@conn, :fetch_yaml_artifacts, @project.name) %>";
 
-  window.InjectedDataByBackend.FetchingJobId = <%= @fetching_job_id %>;
+  window.InjectedDataByBackend.FetchingJobId = "<%= @fetching_job_id %>";
 
   window.InjectedDataByBackend.CommitForm = <%= raw Poison.encode!(%{
     "CommitPath" => project_path(@conn, :commit_config, @project.name),

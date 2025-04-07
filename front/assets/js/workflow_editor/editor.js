@@ -138,9 +138,9 @@ export class WorkflowEditor {
     })
     .then((data) => {
       if(!data.finished) {
-        setTimeout(this.fetchYamls.bind(this), 1000);
+        setTimeout(this.waitForFetchingJob.bind(this), 1000);
       } else {
-        this.fetchFilesAndShowEditor(data.urls);
+        this.fetchFilesAndShowEditor(data.signed_urls);
       }
     })
     .catch(
