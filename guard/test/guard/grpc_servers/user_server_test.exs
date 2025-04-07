@@ -549,8 +549,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
   describe "delete_with_owned_orgs" do
     test "delete_with_owned_orgs should delete the user", %{
-      grpc_channel: channel,
-      another_user: another_user
+      grpc_channel: channel
     } do
       alias Guard.FrontRepo
 
