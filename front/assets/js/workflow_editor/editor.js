@@ -69,40 +69,40 @@ export class WorkflowEditor {
   }
 
   constructor(config) {
-    this.config = config
+    this.config = config;
 
-    Promotion.setProjectName(this.config.projectName)
-    Promotion.setValidDeploymentTargets(this.config.deploymentTargets)
-    Secrets.setValidSecretNames(this.config.orgSecretNames, this.config.projectSecretNames)
-    Agent.setValidAgentTypes(this.config.agentTypes)
+    Promotion.setProjectName(this.config.projectName);
+    Promotion.setValidDeploymentTargets(this.config.deploymentTargets);
+    Secrets.setValidSecretNames(this.config.orgSecretNames, this.config.projectSecretNames);
+    Agent.setValidAgentTypes(this.config.agentTypes);
 
     if(Features.isEnabled("useFetchingJob")) {
-      this.registerLeavePageHandler() 
+      this.registerLeavePageHandler(); 
       
-      this.disableButtonsInHeader()
+      this.disableButtonsInHeader();
 
-      this.toggleWorkflowEditor()
+      this.toggleWorkflowEditor();
 
-      this.toggleZeroState()
+      this.toggleZeroState();
 
-      this.waitForFetchingJob()
+      this.waitForFetchingJob();
     } else {
-      this.setUpModelComponentEventLoop()
+      this.setUpModelComponentEventLoop();
 
-      this.registerLeavePageHandler()
+      this.registerLeavePageHandler();
   
-      this.preselectFirstBlock()
+      this.preselectFirstBlock();
     }
   }
 
   disableButtonsInHeader() {
-    $("[data-action=editorDismiss]").disabled = true;
-    $("[data-action=toggleCommitDialog]").disabled = true;
+    $("[data-action=editorDismiss]").prop("disabled", true);
+    $("[data-action=toggleCommitDialog]").prop("disabled", true);
   }
 
   enableButtonsInHeader() {
-    $("[data-action=editorDismiss]").disabled = false;
-    $("[data-action=toggleCommitDialog]").disabled = false;
+    $("[data-action=editorDismiss]").prop("disabled", false);
+    $("[data-action=toggleCommitDialog]").prop("disabled", false);
   }
 
   toggleWorkflowEditor() {
@@ -115,13 +115,13 @@ export class WorkflowEditor {
   }
 
   waitForFetchingJob() {
-    var url = this.config.checkFetchingJobPath + `?job_id=${this.config.fetching_job_id}` 
+    let url = this.config.checkFetchingJobPath + `?job_id=${this.config.fetchingJobId}`;
 
-    console.log(`Checking fetching job ${url}`)
+    console.log(`Checking fetching job ${url}`);
 
     fetch(url)
     .then((res) => {
-      var contentType = res.headers.get("content-type");
+      const contentType = res.headers.get("content-type");
 
       if(contentType && contentType.includes("application/json")) {
         return res.json();
@@ -138,37 +138,35 @@ export class WorkflowEditor {
     })
     .then((data) => {
       if(!data.finished) {
-        setTimeout(this.fetchYamls.bind(this), 1000)
+        setTimeout(this.fetchYamls.bind(this), 1000);
       } else {
-        this.fetchFilesAndShowEditor(data.urls)
+        this.fetchFilesAndShowEditor(data.urls);
       }
     })
     .catch(
       (reason) => { 
         console.log(reason); 
-
         this.enableExitAndShowErrorMessage();
       }
     )
   }
 
   enableExitAndShowErrorMessage() {
-    this.disableOnLeaveConfirm()
-    ("[data-action=editorDismiss]").disabled = false;
+    this.disableOnLeaveConfirm();
+    $("[data-action=editorDismiss]").prop("disabled", false);
 
-    $('#zero-state-title').text('Searching git repository for .yml files has failed.');
+    $("#zero-state-title").text('Searching git repository for .yml files has failed.');
 
-    var message1 = "There was an issue with searching your git repository for .yml files."
+    const message1 = "There was an issue with searching your git repository for .yml files.";
     $("#zero-state-paragraph-one").text(message1);
     $("#zero-state-paragraph-one").addClass("red");
 
-    var message2 = 'Please try reloading the page and contact support if the issue persists.';
+    const message2 = 'Please try reloading the page and contact support if the issue persists.';
     $("#zero-state-paragraph-two").text(message2);
     $("#zero-state-paragraph-two").addClass("red");
   }
 
   fetchFilesAndShowEditor(urls) {
-
    fetchFilesWithConcurrencyLimit(urls)
     .then(({ fetchedFiles, errors }) => {
       if (errors.length > 0) {
@@ -178,17 +176,17 @@ export class WorkflowEditor {
       } else {
         console.log("All .yml files were fetched successfully.");
 
-        this.config.workflowData.yamls = fetchedFiles
+        this.config.workflowData.yamls = fetchedFiles;
 
-        this.toggleZeroState()
+        this.toggleZeroState();
 
-        this.toggleWorkflowEditor()
+        this.toggleWorkflowEditor();
 
-        this.enableButtonsInHeader()
+        this.enableButtonsInHeader();
         
-        this.setUpModelComponentEventLoop()
+        this.setUpModelComponentEventLoop();
     
-        this.preselectFirstBlock()
+        this.preselectFirstBlock();
       }
     });
   }
@@ -352,11 +350,9 @@ async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
       errors.push({ filePath, error: err });
     }
 
-    // Keep the pipeline going
     await fetchNext();
   };
 
-  // Start up to `maxConcurrency` parallel fetchers
   const tasks = [];
   for (let i = 0; i < maxConcurrency; i++) {
     tasks.push(fetchNext());
@@ -366,6 +362,6 @@ async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
 
   return {
     updatedFiles: fileList,
-    errors, // List of { filePath, error } if any failed
+    errors,
   };
 }

@@ -211,7 +211,9 @@ defmodule FrontWeb.ProjectController do
           }
         ]
 
-        Async.run(fn -> FetchingJob.start_fetching_job(job_params) end, metric: "workflow.edit.start_job")
+        Async.run(fn -> FetchingJob.start_fetching_job(job_params) end,
+          metric: "workflow.edit.start_job"
+        )
       else
         Async.run(
           fn -> Repohub.fetch_semaphore_files(project.repo_id, project.initial_pipeline_file) end,
@@ -231,7 +233,10 @@ defmodule FrontWeb.ProjectController do
         {project.initial_pipeline_file, [], job_id, nil}
       else
         {:ok, {:ok, yaml_files}} = Async.await(fetch_files_or_create_job)
-        {initial_yaml, yamls, alert} = extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
+
+        {initial_yaml, yamls, alert} =
+          extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
+
         {initial_yaml, yamls, "", alert}
       end
 
