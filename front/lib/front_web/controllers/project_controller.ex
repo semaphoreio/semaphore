@@ -19,6 +19,7 @@ defmodule FrontWeb.ProjectController do
     Job,
     Artifacthub,
     CommitJob,
+    FetchingJob,
     User
   }
 
@@ -169,6 +170,16 @@ defmodule FrontWeb.ProjectController do
   end
 
   defp render_default_branch(conn) do
+    org_id = conn.assigns.organization_id
+
+    if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
+      render_default_branch_fetching_job(conn)
+    else
+      render_default_branch_repohub(conn)
+    end
+  end
+
+  defp render_default_branch_repohub(conn) do
     project = conn.assigns.project
     user_id = conn.assigns.user_id
 
@@ -213,14 +224,16 @@ defmodule FrontWeb.ProjectController do
     {initial_yaml, yamls, alert} =
       extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
 
+    workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
+
     params = [
       title: "Edit workflow・#{project.name}・#{organization.name}",
       js: :workflow_editor,
       secrets: secrets,
       project: project,
       commiter_avatar: user.avatar_url,
-      initial_yaml: initial_yaml,
-      yamls: yamls,
+      workflow_data: workflow_data,
+      fetching_job_id: "",
       agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
       deployment_targets: Enum.map(deployment_targets, & &1.name),
       hide_promotions: Application.get_env(:front, :hide_promotions, false)
@@ -229,6 +242,105 @@ defmodule FrontWeb.ProjectController do
     conn
     |> put_flash(:alert, alert)
     |> render("edit_workflow.html", params)
+  end
+
+  defp render_default_branch_fetching_job(conn) do
+    project = conn.assigns.project
+    user_id = conn.assigns.user_id
+
+    user = Models.User.find(user_id)
+
+    org_id = conn.assigns.organization_id
+
+    fetch_secrets =
+      Async.run(fn -> Secret.list(user.id, org_id, project.id, :ORGANIZATION, true) end,
+        metric: "workflow.edit.fetch_secrets"
+      )
+
+    fetch_deployment_targets =
+      Async.run(fn -> Deployments.fetch_targets(project.id) end,
+        metric: "workflow.edit.fetch_deployment_targets"
+      )
+
+    fetch_organization =
+      Async.run(fn -> Organization.find(org_id) end, metric: "workflow.edit.fetch_organization")
+
+    fetch_agent_types =
+      Async.run(fn -> AgentType.list(org_id) end, metric: "workflow.edit.fetch_agent_types")
+
+    fetch_self_hosted_agent_types =
+      Async.run(fn -> Front.SelfHostedAgents.AgentType.list(org_id) end,
+        metric: "workflow.edit.fetch_self_hosted_agent_types"
+      )
+
+    job_params = [
+      user_id: user.id,
+      project: project,
+      target_branch: "default_branch",
+      restricted_job: true,
+      commit_sha: "",
+      hook: %{
+        name: "default_branch",
+        type: :skip
+      }
+    ]
+
+    start_fetching_job =
+      Async.run(fn -> start_fetching_job(job_params) end, metric: "workflow.edit.start_job")
+
+    {:ok, secrets} = Async.await(fetch_secrets)
+    {:ok, organization} = Async.await(fetch_organization)
+    {:ok, {:ok, hosted_agent_types}} = Async.await(fetch_agent_types)
+    {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
+    {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
+    {:ok, {:ok, job_id}} = Async.await(start_fetching_job)
+
+    workflow_data = %{
+      createdInEditor: false,
+      initialYAML: project.initial_pipeline_file,
+      yamls: []
+    }
+
+    params = [
+      title: "Edit workflow・#{project.name}・#{organization.name}",
+      js: :workflow_editor,
+      secrets: secrets,
+      project: project,
+      commiter_avatar: user.avatar_url,
+      workflow_data: workflow_data,
+      fetching_job_id: job_id,
+      agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
+      deployment_targets: Enum.map(deployment_targets, & &1.name),
+      hide_promotions: Application.get_env(:front, :hide_promotions, false)
+    ]
+
+    conn
+    |> put_flash(:alert, nil)
+    |> render("edit_workflow.html", params)
+  end
+
+  defp start_fetching_job(params) do
+    with {:ok, agent} <- FetchingJob.get_agent(params.project),
+         {:ok, job_spec} <- FetchingJob.create_job_spec(agent, params),
+         {:ok, job} <- Job.create(job_spec, params) do
+      {:ok, job.id}
+    else
+      error ->
+        Logger.error(
+          Enum.join(
+            [
+              "Could not create fetching job",
+              "project: #{params.project.id}",
+              "branch: #{params.target_branch}",
+              "user: #{params.user_id}",
+              "error: #{inspect(error)}"
+            ],
+            ", "
+          )
+        )
+
+        {:error, :fetching_job_creation_failed}
+    end
   end
 
   defp combine_agent_types(hosted_agent_types, self_hosted_agent_types) do
@@ -523,10 +635,10 @@ defmodule FrontWeb.ProjectController do
     find_job(job_id, project)
     |> fetch_yamls_for_job(project.id)
     |> case do
-      {:ok, urls} ->
+      {:ok, urls, finished} ->
         conn
         |> put_status(200)
-        |> json(%{signed_urls: urls})
+        |> json(%{signed_urls: urls, finished: finished})
 
       {:error, e} ->
         Logger.error(
@@ -620,11 +732,25 @@ defmodule FrontWeb.ProjectController do
   end
 
   defp fetch_yamls_for_job({:ok, %{id: job_id, state: "passed"}}, project_id) do
-    Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, @yaml_artifact_directory)
+    case Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, @yaml_artifact_directory) do
+      {:ok, urls} ->
+        updated_urls =
+          Enum.map(urls, fn map ->
+            Map.new(map, fn {path, url} ->
+              new_path = String.replace_prefix(path, ".workflow_editor/", "")
+              {new_path, url}
+            end)
+          end)
+
+        {:ok, updated_urls, true}
+
+      error ->
+        error
+    end
   end
 
   defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["pending", "running"],
-    do: {:ok, []}
+    do: {:ok, [], false}
 
   defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["failed", "stopped"],
     do: {:error, "Job for fetching YAMLs failed"}

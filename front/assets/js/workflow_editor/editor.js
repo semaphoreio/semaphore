@@ -33,6 +33,8 @@ export class WorkflowEditor {
       workflowData: InjectedDataByBackend.WorkflowData,
       agentTypes: InjectedDataByBackend.AgentTypes,
       deploymentTargets: InjectedDataByBackend.DeploymentTargetsList,
+      checkFetchingJobPath: InjectedDataByBackend.CheckFetchingJobPath,
+      fetchingJobId: InjectedDataByBackend.FetchingJobId,
       commitInfo: {
         paths: {
           dismiss: InjectedDataByBackend.CommitForm.DismissPath,
@@ -74,12 +76,123 @@ export class WorkflowEditor {
     Secrets.setValidSecretNames(this.config.orgSecretNames, this.config.projectSecretNames)
     Agent.setValidAgentTypes(this.config.agentTypes)
 
-    this.setUpModelComponentEventLoop()
+    if(Features.isEnabled("useFetchingJob")) {
+      this.registerLeavePageHandler() 
+      
+      this.disableButtonsInHeader()
 
-    this.registerLeavePageHandler()
+      this.toggleWorkflowEditor()
 
-    this.preselectFirstBlock()
+      this.toggleZeroState()
+
+      this.waitForFetchingJob()
+    } else {
+      this.setUpModelComponentEventLoop()
+
+      this.registerLeavePageHandler()
+  
+      this.preselectFirstBlock()
+    }
   }
+
+  disableButtonsInHeader() {
+    $("[data-action=editorDismiss]").disabled = true;
+    $("[data-action=toggleCommitDialog]").disabled = true;
+  }
+
+  enableButtonsInHeader() {
+    $("[data-action=editorDismiss]").disabled = false;
+    $("[data-action=toggleCommitDialog]").disabled = false;
+  }
+
+  toggleWorkflowEditor() {
+    $("#workflow-editor-tabs").toggle();
+    $("#workflow-editor-container").toggle();
+  }
+
+  toggleZeroState() {
+    $("#zero-state-loading-message").toggle();
+  }
+
+  waitForFetchingJob() {
+    var url = this.config.checkFetchingJobPath + `?job_id=${this.config.fetching_job_id}` 
+
+    console.log(`Checking fetching job ${url}`)
+
+    fetch(url)
+    .then((res) => {
+      var contentType = res.headers.get("content-type");
+
+      if(contentType && contentType.includes("application/json")) {
+        return res.json();
+      } else {
+        throw new Error(res.statusText);
+      }
+    })
+    .then((res) => {
+      if(res.error) {
+        throw new Error(res.error);
+      } else {
+        return res;
+      }
+    })
+    .then((data) => {
+      if(!data.finished) {
+        setTimeout(this.fetchYamls.bind(this), 1000)
+      } else {
+        this.fetchFilesAndShowEditor(data.urls)
+      }
+    })
+    .catch(
+      (reason) => { 
+        console.log(reason); 
+
+        this.enableExitAndShowErrorMessage();
+      }
+    )
+  }
+
+  enableExitAndShowErrorMessage() {
+    this.disableOnLeaveConfirm()
+    ("[data-action=editorDismiss]").disabled = false;
+
+    $('#zero-state-title').text('Searching git repository for .yml files has failed.');
+
+    var message1 = "There was an issue with searching your git repository for .yml files."
+    $("#zero-state-paragraph-one").text(message1);
+    $("#zero-state-paragraph-one").addClass("red");
+
+    var message2 = 'Please try reloading the page and contact support if the issue persists.';
+    $("#zero-state-paragraph-two").text(message2);
+    $("#zero-state-paragraph-two").addClass("red");
+  }
+
+  fetchFilesAndShowEditor(urls) {
+
+   fetchFilesWithConcurrencyLimit(urls)
+    .then(({ fetchedFiles, errors }) => {
+      if (errors.length > 0) {
+        console.warn("Some files failed to fetch:", errors);
+
+        this.enableExitAndShowErrorMessage();
+      } else {
+        console.log("All .yml files were fetched successfully.");
+
+        this.config.workflowData.yamls = fetchedFiles
+
+        this.toggleZeroState()
+
+        this.toggleWorkflowEditor()
+
+        this.enableButtonsInHeader()
+        
+        this.setUpModelComponentEventLoop()
+    
+        this.preselectFirstBlock()
+      }
+    });
+  }
+  
 
   //
   // Sets up a model-component event loop.
@@ -214,4 +327,45 @@ export class WorkflowEditor {
     let uid = this.workflow.findInitialPipeline().blocks[0].uid
     SelectionRegister.setCurrentSelectionUid(uid)
   }
+}
+
+async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
+  const errors = [];
+  let currentIndex = 0;
+
+  const fetchNext = async () => {
+    if (currentIndex >= fileList.length) return;
+
+    const fileObj = fileList[currentIndex];
+    const filePath = Object.keys(fileObj)[0];
+    const signedUrl = fileObj[filePath];
+    currentIndex++;
+
+    try {
+      const response = await fetch(signedUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
+      }
+      const content = await response.text();
+      fileObj[filePath] = content;
+    } catch (err) {
+      errors.push({ filePath, error: err });
+    }
+
+    // Keep the pipeline going
+    await fetchNext();
+  };
+
+  // Start up to `maxConcurrency` parallel fetchers
+  const tasks = [];
+  for (let i = 0; i < maxConcurrency; i++) {
+    tasks.push(fetchNext());
+  }
+
+  await Promise.all(tasks);
+
+  return {
+    updatedFiles: fileList,
+    errors, // List of { filePath, error } if any failed
+  };
 }
