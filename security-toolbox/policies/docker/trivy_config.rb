@@ -18,7 +18,8 @@ class Policy::TrivyConfig < Policy
       "trivy",
       "config",
       "--severity #{@severity}",
-      "--exit-code 1"
+      "--exit-code 1",
+      "--misconfig-scanners dockerfile"
     ]
 
     @skip_files.each do |skip_file|
