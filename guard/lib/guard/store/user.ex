@@ -267,14 +267,12 @@ defmodule Guard.Store.User do
 
           {:ok, :deleted_related_data}
         end)
-        |> Ecto.Multi.run(:delete_user, fn repo, %{get_user: user} ->
-          repo.delete(user)
-        end)
+        |> Ecto.Multi.delete(:delete_user, fn %{get_user: user} -> user end)
         |> Repo.transaction()
 
       case result do
-        {:ok, _struct} -> {:ok, :deleted}
-        {:error, :not_found} -> {:error, :not_found}
+        {:ok, _changes} -> {:ok, :deleted}
+        {:error, :get_user, :user_not_found, _changes} -> {:error, :user_not_found}
         _ -> {:error, :internal_error}
       end
     end
