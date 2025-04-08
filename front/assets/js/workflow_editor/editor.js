@@ -33,6 +33,8 @@ export class WorkflowEditor {
       workflowData: InjectedDataByBackend.WorkflowData,
       agentTypes: InjectedDataByBackend.AgentTypes,
       deploymentTargets: InjectedDataByBackend.DeploymentTargetsList,
+      checkFetchingJobPath: InjectedDataByBackend.CheckFetchingJobPath,
+      fetchingJobId: InjectedDataByBackend.FetchingJobId,
       commitInfo: {
         paths: {
           dismiss: InjectedDataByBackend.CommitForm.DismissPath,
@@ -67,19 +69,128 @@ export class WorkflowEditor {
   }
 
   constructor(config) {
-    this.config = config
+    this.config = config;
 
-    Promotion.setProjectName(this.config.projectName)
-    Promotion.setValidDeploymentTargets(this.config.deploymentTargets)
-    Secrets.setValidSecretNames(this.config.orgSecretNames, this.config.projectSecretNames)
-    Agent.setValidAgentTypes(this.config.agentTypes)
+    Promotion.setProjectName(this.config.projectName);
+    Promotion.setValidDeploymentTargets(this.config.deploymentTargets);
+    Secrets.setValidSecretNames(this.config.orgSecretNames, this.config.projectSecretNames);
+    Agent.setValidAgentTypes(this.config.agentTypes);
 
-    this.setUpModelComponentEventLoop()
+    if(Features.isEnabled("useFetchingJob")) {
+      this.registerLeavePageHandler(); 
+      
+      this.disableButtonsInHeader();
 
-    this.registerLeavePageHandler()
+      this.toggleWorkflowEditor();
 
-    this.preselectFirstBlock()
+      this.toggleZeroState();
+
+      this.waitForFetchingJob();
+    } else {
+      this.setUpModelComponentEventLoop();
+
+      this.registerLeavePageHandler();
+  
+      this.preselectFirstBlock();
+    }
   }
+
+  disableButtonsInHeader() {
+    $("[data-action=editorDismiss]").prop("disabled", true);
+    $("[data-action=toggleCommitDialog]").prop("disabled", true);
+  }
+
+  enableButtonsInHeader() {
+    $("[data-action=editorDismiss]").prop("disabled", false);
+    $("[data-action=toggleCommitDialog]").prop("disabled", false);
+  }
+
+  toggleWorkflowEditor() {
+    $("#workflow-editor-tabs").toggle();
+    $("#workflow-editor-container").toggle();
+  }
+
+  toggleZeroState() {
+    $("#zero-state-loading-message").toggle();
+  }
+
+  waitForFetchingJob() {
+    let url = this.config.checkFetchingJobPath + `?job_id=${this.config.fetchingJobId}`;
+
+    console.log(`Checking fetching job ${url}`);
+
+    fetch(url)
+    .then((res) => {
+      const contentType = res.headers.get("content-type");
+
+      if(contentType && contentType.includes("application/json")) {
+        return res.json();
+      } else {
+        throw new Error(res.statusText);
+      }
+    })
+    .then((res) => {
+      if(res.error) {
+        throw new Error(res.error);
+      } else {
+        return res;
+      }
+    })
+    .then((data) => {
+      if(!data.finished) {
+        setTimeout(this.waitForFetchingJob.bind(this), 1000);
+      } else {
+        this.fetchFilesAndShowEditor(data.signed_urls);
+      }
+    })
+    .catch(
+      (reason) => { 
+        console.log(reason); 
+        this.enableExitAndShowErrorMessage();
+      }
+    )
+  }
+
+  enableExitAndShowErrorMessage() {
+    this.disableOnLeaveConfirm();
+    $("[data-action=editorDismiss]").prop("disabled", false);
+
+    $("#zero-state-title").text('Searching git repository for .yml files has failed.');
+
+    const message1 = "There was an issue with searching your git repository for .yml files.";
+    $("#zero-state-paragraph-one").text(message1);
+    $("#zero-state-paragraph-one").addClass("red");
+
+    const message2 = 'Please try reloading the page and contact support if the issue persists.';
+    $("#zero-state-paragraph-two").text(message2);
+    $("#zero-state-paragraph-two").addClass("red");
+  }
+
+  fetchFilesAndShowEditor(urls) {
+    fetchFilesSequentially(urls)
+    .then(({ updatedFiles, errors }) => {
+      if (errors.length > 0) {
+        console.warn("Some files failed to fetch:", errors);
+
+        this.enableExitAndShowErrorMessage();
+      } else {
+        console.log("All .yml files were fetched successfully.");
+
+        this.config.workflowData.yamls = updatedFiles;
+
+        this.toggleZeroState();
+
+        this.toggleWorkflowEditor();
+
+        this.enableButtonsInHeader();
+        
+        this.setUpModelComponentEventLoop();
+    
+        this.preselectFirstBlock();
+      }
+    });
+  }
+  
 
   //
   // Sets up a model-component event loop.
@@ -214,4 +325,27 @@ export class WorkflowEditor {
     let uid = this.workflow.findInitialPipeline().blocks[0].uid
     SelectionRegister.setCurrentSelectionUid(uid)
   }
+}
+
+async function fetchFilesSequentially(fileMap) {
+  const errors = [];
+
+  for (const [filePath, signedUrl] of Object.entries(fileMap)) {
+    try {
+      const response = await fetch(signedUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
+      }
+      const content = await response.text();
+      fileMap[filePath] = content;
+    } catch (error) {
+      console.error(`Error fetching ${filePath}:`, error);
+      errors.push({ filePath, error });
+    }
+  }
+
+  return {
+    updatedFiles: fileMap,
+    errors,
+  };
 }
