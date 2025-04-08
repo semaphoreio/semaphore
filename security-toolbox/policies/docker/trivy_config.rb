@@ -10,12 +10,14 @@ class Policy::TrivyConfig < Policy
     end
 
     @skip_dirs = args[:skip_dirs].to_s.split(",") || []
+    @severity = args[:severity] || "HIGH,CRITICAL"
   end
 
   def test
     command = [
       "trivy",
       "config",
+      "--severity #{@severity}",
       "--exit-code 1"
     ]
 
