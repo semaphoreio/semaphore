@@ -42,6 +42,11 @@ defmodule Rbac.RoleManagement.Test do
       assert RoleManagement.has_role(rbi, "") == false
     end
 
+    test "random non-existent role_id returns false" do
+      {:ok, rbi} = RBI.new(user_id: @user_id, org_id: @org_id, project_id: @project_id)
+      assert RoleManagement.has_role(rbi, Ecto.UUID.generate()) == false
+    end
+
     test "user that has given org_level role" do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
