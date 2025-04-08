@@ -4,6 +4,7 @@ defmodule PipelinesAPI.RoleBindings.Delete do
   """
 
   use Plug.Builder
+  require Logger
 
   alias PipelinesAPI.Util.Metrics
   # alias PipelinesAPI.RBACClient
@@ -21,6 +22,8 @@ defmodule PipelinesAPI.RoleBindings.Delete do
 
   def delete(conn, _opts) do
     Metrics.benchmark("PipelinesAPI.router", ["dt_delete"], fn ->
+      Logger.info("INSIDE")
+      Logger.info("#{inspect(conn.query_params)}")
       Common.respond({:ok, %{filed_name: "VALUE"}}, conn)
     end)
   end

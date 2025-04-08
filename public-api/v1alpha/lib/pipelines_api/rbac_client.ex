@@ -38,4 +38,11 @@ defmodule PipelinesAPI.RBACClient do
       )
     end)
   end
+
+  def retract_role(params) do
+    params
+    |> RequestFormatter.form_list_roles_request()
+    |> GrpcClient.list_roles()
+    |> ResponseFormatter.process_list_roles_response(InternalApi.RBAC.Scope.value(:SCOPE_PROJECT))
+  end
 end

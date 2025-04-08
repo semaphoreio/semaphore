@@ -97,4 +97,13 @@ defmodule PipelinesAPI.RBACClient.RequestFormatter do
 
   def form_list_roles_request(_),
     do: ToTuple.user_error("organization id is required to make list roles request")
+
+  def form_retract_role_request(_params = %{"user_id" => user_id}) do
+  end
+
+  def form_retract_role_request(_params = %{"user_email" => user_id}) do
+  end
+
+  def form_retract_role_request(_),
+    do: ToTuple.user_error("user id is required to make retract role request")
 end
