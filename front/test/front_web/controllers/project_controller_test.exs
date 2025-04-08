@@ -77,6 +77,69 @@ defmodule FrontWeb.ProjectControllerTest do
 
       assert html_response(conn, 200) =~ "workflow-editor-tabs"
     end
+
+    test "when project doesn't have branches but default branch has YAML file it shows editor",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      DB.clear(:workflows)
+      DB.clear(:branches)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/edit_workflow")
+
+      assert html_response(conn, 200) =~ "workflow-editor-tabs"
+    end
+
+    test "when project doesn't have branches, default branch has YAML file, and fetch job is started it shows editor",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      DB.clear(:workflows)
+      DB.clear(:branches)
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+      Support.Stubs.Feature.enable_feature(organization.id, :wf_editor_via_jobs)
+
+      Support.Stubs.Organization.put_settings(organization, %{
+        "plan_machine_type" => "e2-standard-2",
+        "plan_os_image" => "ubuntu2004"
+      })
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/edit_workflow")
+
+      assert html_response(conn, 200) =~ "workflow-editor-tabs"
+
+      job = DB.first(:job_specs)
+
+      assert job.job_spec == expected_spec(project)
+    end
+  end
+
+  defp expected_spec(project) do
+    %InternalApi.ServerFarm.Job.JobSpec{
+      job_name: "Workflow editor fetching files * #{project.name} * default_branch",
+      agent: %InternalApi.ServerFarm.Job.JobSpec.Agent{
+        machine: %InternalApi.ServerFarm.Job.JobSpec.Agent.Machine{
+          type: "e2-standard-2",
+          os_image: "ubuntu2004"
+        },
+        containers: [],
+        image_pull_secrets: []
+      },
+      secrets: [],
+      env_vars: [],
+      files: [],
+      commands: [
+        "export SEMAPHORE_GIT_DEPTH=5",
+        "checkout",
+        "artifact push job .semaphore -d .workflow_editor/.semaphore"
+      ],
+      epilogue_always_commands: [],
+      epilogue_on_pass_commands: [],
+      epilogue_on_fail_commands: [],
+      priority: 95,
+      execution_time_limit: 10
+    }
   end
 
   describe "GET show" do
@@ -308,6 +371,94 @@ defmodule FrontWeb.ProjectControllerTest do
 
       assert response = json_response(conn, 200)
       assert response["commit_sha"] == ""
+    end
+  end
+
+  describe "GET fetch_yaml_artifacts" do
+    test "returns signed URLs to artifacts if the job has passed",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :finished, :passed)
+
+      Support.Stubs.Artifacthub.create(job.id,
+        path: ".workflow_editor/.semaphore/semaphore.yml",
+        scope: "jobs",
+        url: "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml"
+      )
+
+      Support.Stubs.Artifacthub.create(job.id,
+        path: ".workflow_editor/.semaphore/release.yml",
+        scope: "jobs",
+        url: "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
+      )
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 200)
+
+      assert response["signed_urls"] == %{
+               ".semaphore/semaphore.yml" =>
+                 "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml",
+               ".semaphore/release.yml" =>
+                 "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
+             }
+
+      assert response["finished"] == true
+    end
+
+    test "returns error if job can not be found",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job_id = UUID.uuid4()
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job_id}")
+
+      assert response = json_response(conn, 422)
+
+      message = "Failed to fetch Semaphore YAML files from the git repository."
+      message = message <> " Please, contact support."
+      assert response["error"] == message
+    end
+
+    test "returns error if fetch yaml job fails",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :finished, :failed)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 422)
+
+      message = "Failed to fetch Semaphore YAML files from the git repository."
+      message = message <> " Please, contact support."
+      assert response["error"] == message
+    end
+
+    test "if job is still running, return empty map of signed URLs and set finished to false",
+         %{conn: conn, project: project, organization: organization, user: user} do
+      Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+
+      job = Support.Stubs.DB.first(:jobs)
+      Support.Stubs.Task.change_job_state(job, :running)
+
+      conn =
+        conn
+        |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
+
+      assert response = json_response(conn, 200)
+      assert response["signed_urls"] == %{}
+      assert response["finished"] == false
     end
   end
 
