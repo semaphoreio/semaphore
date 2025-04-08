@@ -127,10 +127,10 @@ defmodule Front.Models.Artifacthub do
   def list_and_sign_urls(project_id, source_kind, source_id, relative_path) do
     case list(project_id, source_kind, source_id, relative_path, true) do
       {:ok, artifacts} ->
-        Enum.reduce_while(artifacts, {:ok, []}, fn artifact, {_, urls} ->
+        Enum.reduce_while(artifacts, {:ok, %{}}, fn artifact, {_, urls} ->
           case signed_url(project_id, source_kind, source_id, artifact.path) do
             {:ok, url} ->
-              {:cont, {:ok, urls ++ [%{artifact.path => url}]}}
+              {:cont, {:ok, Map.put(urls, artifact.path, url)}}
 
             e ->
               {:halt, {:error, "error generating signed URL for #{artifact.path}: #{inspect(e)}"}}

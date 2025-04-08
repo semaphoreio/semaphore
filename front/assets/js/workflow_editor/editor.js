@@ -327,16 +327,15 @@ export class WorkflowEditor {
   }
 }
 
-async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
+async function fetchFilesWithConcurrencyLimit(fileMap, maxConcurrency = 3) {
   const errors = [];
+  const entries = Object.entries(fileMap); // [[filePath, signedUrl], ...]
   let currentIndex = 0;
 
   const fetchNext = async () => {
-    if (currentIndex >= fileList.length) return;
+    if (currentIndex >= entries.length) return;
 
-    const fileObj = fileList[currentIndex];
-    const filePath = Object.keys(fileObj)[0];
-    const signedUrl = fileObj[filePath];
+    const [filePath, signedUrl] = entries[currentIndex];
     currentIndex++;
 
     try {
@@ -345,12 +344,12 @@ async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
         throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
       }
       const content = await response.text();
-      fileObj[filePath] = content;
+      fileMap[filePath] = content; // Replace URL with content
     } catch (err) {
       errors.push({ filePath, error: err });
     }
 
-    await fetchNext();
+    await fetchNext(); // Kick off the next fetch in the sequence
   };
 
   const tasks = [];
@@ -361,7 +360,7 @@ async function fetchFilesWithConcurrencyLimit(fileList, maxConcurrency = 3) {
   await Promise.all(tasks);
 
   return {
-    updatedFiles: fileList,
+    updatedFiles: fileMap,
     errors,
   };
 }

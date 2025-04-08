@@ -400,16 +400,12 @@ defmodule FrontWeb.ProjectControllerTest do
 
       assert response = json_response(conn, 200)
 
-      assert response["signed_urls"] == [
-               %{
-                 ".semaphore/semaphore.yml" =>
-                   "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml"
-               },
-               %{
-                 ".semaphore/release.yml" =>
-                   "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
-               }
-             ]
+      assert response["signed_urls"] == %{
+               ".semaphore/semaphore.yml" =>
+                 "https://localhost:9000/.workflow_editor/.semaphore/semaphore.yml",
+               ".semaphore/release.yml" =>
+                 "https://localhost:9000/.workflow_editor/.semaphore/release.yml"
+             }
 
       assert response["finished"] == true
     end
@@ -449,7 +445,7 @@ defmodule FrontWeb.ProjectControllerTest do
       assert response["error"] == message
     end
 
-    test "if job is still running, return empty list of signed URLs and set finished to false",
+    test "if job is still running, return empty map of signed URLs and set finished to false",
          %{conn: conn, project: project, organization: organization, user: user} do
       Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
 
@@ -461,7 +457,7 @@ defmodule FrontWeb.ProjectControllerTest do
         |> get("/projects/#{project.name}/fetch_yaml_artifacts?job_id=#{job.id}")
 
       assert response = json_response(conn, 200)
-      assert response["signed_urls"] == []
+      assert response["signed_urls"] == %{}
       assert response["finished"] == false
     end
   end

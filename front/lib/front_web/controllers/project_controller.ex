@@ -652,11 +652,9 @@ defmodule FrontWeb.ProjectController do
     case Artifacthub.list_and_sign_urls(project_id, "jobs", job_id, @yaml_artifact_directory) do
       {:ok, urls} ->
         updated_urls =
-          Enum.map(urls, fn map ->
-            Map.new(map, fn {path, url} ->
-              new_path = String.replace_prefix(path, ".workflow_editor/", "")
-              {new_path, url}
-            end)
+          Enum.reduce(urls, %{}, fn {path, url}, acc ->
+            new_path = String.replace_prefix(path, ".workflow_editor/", "")
+            Map.put(acc, new_path, url)
           end)
 
         {:ok, updated_urls, true}
@@ -667,7 +665,7 @@ defmodule FrontWeb.ProjectController do
   end
 
   defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["pending", "running"],
-    do: {:ok, [], false}
+    do: {:ok, %{}, false}
 
   defp fetch_yamls_for_job({:ok, %{state: state}}, _) when state in ["failed", "stopped"],
     do: {:error, "Job for fetching YAMLs failed"}
