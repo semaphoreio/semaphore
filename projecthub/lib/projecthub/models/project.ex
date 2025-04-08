@@ -66,6 +66,8 @@ defmodule Projecthub.Models.Project do
 
     field(:repository, :map, virtual: true)
     # embeds_one(:repository, Repository)
+
+    field(:deleted_at, :utc_datetime, default: nil)
   end
 
   def create(request_id, user, org, project_spec, repo_details, integration_type, skip_onboarding \\ false) do
@@ -251,7 +253,7 @@ defmodule Projecthub.Models.Project do
 
   def find(id) do
     if id_is_uuid?(id) do
-      case Repo.get_by(Project, id: id) do
+      case Repo.get_by(Project, id: id, deleted_at: nil) do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
@@ -263,7 +265,7 @@ defmodule Projecthub.Models.Project do
 
   def find_in_org(org_id, id) do
     if id_is_uuid?(id) and id_is_uuid?(org_id) do
-      case Repo.get_by(__MODULE__, id: id, organization_id: org_id) do
+      case Repo.get_by(__MODULE__, id: id, organization_id: org_id, deleted_at: nil) do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
@@ -281,7 +283,7 @@ defmodule Projecthub.Models.Project do
   end
 
   def find_by_name(name, org_id) do
-    case Repo.get_by(Project, name: name, organization_id: org_id) do
+    case Repo.get_by(Project, name: name, organization_id: org_id, deleted_at: nil) do
       nil -> {:error, :not_found}
       project -> {:ok, project}
     end
@@ -306,6 +308,7 @@ defmodule Projecthub.Models.Project do
     Project
     |> where([p], p.organization_id == ^org_id)
     |> where([p], p.id in ^ids)
+    |> where_undeleted()
     |> Repo.all()
     |> preload_repositories()
   end
@@ -313,6 +316,7 @@ defmodule Projecthub.Models.Project do
   def count_in_org(org_id) do
     Project
     |> where([p], p.organization_id == ^org_id)
+    |> where_undeleted()
     |> Repo.aggregate(:count, :id)
   end
 
@@ -334,6 +338,7 @@ defmodule Projecthub.Models.Project do
 
     Project
     |> filter_by(options)
+    |> where_undeleted()
     |> Repo.paginate(page: page, page_size: page_size)
     |> case do
       %{entries: entries} = paged_result ->
@@ -365,6 +370,7 @@ defmodule Projecthub.Models.Project do
 
     Project
     |> filter_by(options)
+    |> where_undeleted()
     |> order_by([p], asc: p.organization_id, asc: p.name)
     |> Repo.cursor_paginate(
       cursor_fields: [:organization_id, :name],
@@ -485,5 +491,10 @@ defmodule Projecthub.Models.Project do
       :timer.sleep(1000)
       Projecthub.Workers.ProjectInit.lock_and_process(project_id)
     end)
+  end
+
+  defp where_undeleted(query) do
+    query
+    |> where([project], project.deleted_at == nil)
   end
 end
