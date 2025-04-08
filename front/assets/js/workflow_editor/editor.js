@@ -167,8 +167,8 @@ export class WorkflowEditor {
   }
 
   fetchFilesAndShowEditor(urls) {
-   fetchFilesWithConcurrencyLimit(urls)
-    .then(({ fetchedFiles, errors }) => {
+    fetchFilesSequentially(urls)
+    .then(({ updatedFiles, errors }) => {
       if (errors.length > 0) {
         console.warn("Some files failed to fetch:", errors);
 
@@ -176,7 +176,7 @@ export class WorkflowEditor {
       } else {
         console.log("All .yml files were fetched successfully.");
 
-        this.config.workflowData.yamls = fetchedFiles;
+        this.config.workflowData.yamls = updatedFiles;
 
         this.toggleZeroState();
 
@@ -327,37 +327,22 @@ export class WorkflowEditor {
   }
 }
 
-async function fetchFilesWithConcurrencyLimit(fileMap, maxConcurrency = 3) {
+async function fetchFilesSequentially(fileMap) {
   const errors = [];
-  const entries = Object.entries(fileMap); // [[filePath, signedUrl], ...]
-  let currentIndex = 0;
 
-  const fetchNext = async () => {
-    if (currentIndex >= entries.length) return;
-
-    const [filePath, signedUrl] = entries[currentIndex];
-    currentIndex++;
-
+  for (const [filePath, signedUrl] of Object.entries(fileMap)) {
     try {
       const response = await fetch(signedUrl);
       if (!response.ok) {
         throw new Error(`Failed to fetch ${filePath}: ${response.statusText}`);
       }
       const content = await response.text();
-      fileMap[filePath] = content; // Replace URL with content
-    } catch (err) {
-      errors.push({ filePath, error: err });
+      fileMap[filePath] = content;
+    } catch (error) {
+      console.error(`Error fetching ${filePath}:`, error);
+      errors.push({ filePath, error });
     }
-
-    await fetchNext(); // Kick off the next fetch in the sequence
-  };
-
-  const tasks = [];
-  for (let i = 0; i < maxConcurrency; i++) {
-    tasks.push(fetchNext());
   }
-
-  await Promise.all(tasks);
 
   return {
     updatedFiles: fileMap,
