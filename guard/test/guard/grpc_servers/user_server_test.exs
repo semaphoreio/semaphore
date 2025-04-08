@@ -586,6 +586,8 @@ defmodule Guard.GrpcServers.UserServerTest do
           permission_scope: "repo"
         )
 
+      {:ok, member} = Support.Members.insert_member(github_uid: "123123")
+
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
       {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
@@ -596,6 +598,7 @@ defmodule Guard.GrpcServers.UserServerTest do
       # check if the user is deleted
       assert nil == FrontRepo.get(FrontRepo.User, id)
       assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
+      assert nil == FrontRepo.get(FrontRepo.Member, member.id)
 
       receive do
         {:user_deleted_test, received_message} ->
