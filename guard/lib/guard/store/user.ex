@@ -255,7 +255,17 @@ defmodule Guard.Store.User do
         end)
         |> Ecto.Multi.run(:delete_related_data, fn repo, _changes ->
           repo.delete_all(from(r in Repo.RepoHostAccount, where: r.user_id == ^user_id))
-          repo.delete_all(from(m in Repo.Member, where: m.user_id == ^user_id))
+
+          members_query =
+            from(m in Guard.FrontRepo.Member,
+              join: rha in Guard.FrontRepo.RepoHostAccount,
+              on: m.github_uid == rha.github_uid,
+              where: rha.user_id == ^user_id
+            )
+
+          repo.delete_all(members_query)
+
+          {:ok, :deleted_related_data}
         end)
         |> Ecto.Multi.run(:delete_user, fn repo, %{get_user: user} ->
           repo.delete(user)
