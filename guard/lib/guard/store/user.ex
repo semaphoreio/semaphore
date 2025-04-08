@@ -246,10 +246,23 @@ defmodule Guard.Store.User do
 
     def delete_with_owned_orgs(user_id) do
       result =
-        case Repo.get(Repo.User, user_id) do
-          nil -> {:error, :not_found}
-          user -> Repo.delete(user)
-        end
+        Ecto.Multi.new()
+        |> Ecto.Multi.run(:get_user, fn repo, _changes ->
+          case repo.get(Repo.User, user_id) do
+            nil -> {:error, :user_not_found}
+            user -> {:ok, user}
+          end
+        end)
+        |> Ecto.Multi.run(:delete_repo_host_accounts, fn repo, _changes ->
+          repo.delete_all(Repo.RepoHostAccount, where: [user_id: ^user_id])
+        end)
+        |> Ecto.Multi.run(:delete_members, fn repo, _changes ->
+          repo.delete_all(Repo.Member, where: [user_id: ^user_id])
+        end)
+        |> Ecto.Multi.run(:delete_user, fn repo, %{get_user: user} ->
+          repo.delete(user)
+        end)
+        |> Repo.transaction()
 
       case result do
         {:ok, _struct} -> {:ok, :deleted}
