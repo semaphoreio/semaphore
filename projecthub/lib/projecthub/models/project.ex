@@ -256,7 +256,7 @@ defmodule Projecthub.Models.Project do
 
   def find(id) do
     if id_is_uuid?(id) do
-      case from(Project) |> where([p], p.id == ^id and is_nil(p.deleted_at)) |> Repo.one() do
+      case from(Project) |> where([p], p.id == ^id) |> where_undeleted() |> Repo.one() do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
