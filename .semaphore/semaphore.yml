@@ -30,10 +30,6 @@ global_job_config:
       commands:
         # Trivyfs security scan
         - 'if [ -f docker-scan-junit.xml ];            then test-results --name "Docker scan"         --suite-prefix "[$SERVICE_NAME]"  publish docker-scan-junit.xml; fi'
-        - ls -la
-        - cd out
-        - ls -la
-        - pwd
         - 'if [ -f junit.xml ];                        then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit.xml; fi'
         - 'if [ -f results.xml ];                      then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish results.xml; fi'
         - 'if [ -f out/results.xml ];                  then test-results --name "${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}"               publish out/results.xml; fi'
