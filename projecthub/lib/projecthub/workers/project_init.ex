@@ -61,7 +61,7 @@ defmodule Projecthub.Workers.ProjectInit do
       Watchman.benchmark("#{@metric_name}.tick.duration", fn ->
         Projecthub.Models.Project
         |> where([p], p.state == ^StateMachine.initializing() or p.state == ^StateMachine.initializing_skip())
-        |> where([p], p.deleted_at == nil)
+        |> where([p], is_nil(p.deleted_at))
         |> select([p], p.id)
         |> Projecthub.Repo.all()
       end)
@@ -94,7 +94,7 @@ defmodule Projecthub.Workers.ProjectInit do
           Projecthub.Models.Project
           |> where([p], p.state == ^StateMachine.initializing() or p.state == ^StateMachine.initializing_skip())
           |> where([p], p.id == ^project_id)
-          |> where([p], p.deleted_at == nil)
+          |> where([p], is_nil(p.deleted_at))
           |> lock("FOR UPDATE SKIP LOCKED")
           |> Repo.one()
 

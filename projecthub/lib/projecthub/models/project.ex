@@ -503,6 +503,6 @@ defmodule Projecthub.Models.Project do
 
   defp where_undeleted(query) do
     query
-    |> where([project], project.deleted_at == nil)
+    |> where([project], is_nil(project.deleted_at))
   end
 end
