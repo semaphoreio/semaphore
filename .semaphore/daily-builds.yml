@@ -512,6 +512,7 @@ blocks:
             - make check.ex.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker
   - name: "Dashboardhub: \U0001F9EA QA"
     dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
@@ -3050,6 +3051,7 @@ blocks:
             - make check.js.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'
   # Velocity
   - name: "Velocity: \U0001F4CB Provision Prod Image"
