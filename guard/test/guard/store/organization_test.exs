@@ -538,19 +538,39 @@ defmodule Guard.Store.OrganizationTest do
     end
   end
 
-  describe "destroy/1" do
+  describe "hard_destroy/1" do
     test "deletes organization when it exists", %{org_id: org_id} do
       organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
 
       contact = Support.Factories.Organization.insert_contact!(organization.id)
       suspension = Support.Factories.Organization.insert_suspension!(organization.id)
 
-      assert {:ok, deleted_org} = Organization.destroy(organization)
+      assert {:ok, deleted_org} = Organization.hard_destroy(organization)
       assert deleted_org.id == org_id
 
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.Organization, org_id))
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.OrganizationContact, contact.id))
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.OrganizationSuspension, suspension.id))
+    end
+  end
+
+  describe "soft_destroy/1" do
+    test "marks an organization as deleted", %{org_id: org_id} do
+      organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
+
+      contact = Support.Factories.Organization.insert_contact!(organization.id)
+      suspension = Support.Factories.Organization.insert_suspension!(organization.id)
+
+      assert {:ok, deleted_org} = Organization.soft_destroy(organization)
+      assert deleted_org.id == org_id
+
+      soft_deleted_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, org_id)
+      assert soft_deleted_org.deleted_at != nil
+
+      assert {:error, {:not_found, _message}} = Organization.get_by_id(org_id)
+
+      assert {:error, {:not_found, _message}} =
+               Organization.get_by_username(soft_deleted_org.username)
     end
   end
 

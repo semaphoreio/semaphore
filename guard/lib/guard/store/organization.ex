@@ -8,6 +8,7 @@ defmodule Guard.Store.Organization do
   def get_by_id(id) when is_binary(id) and id != "" do
     Guard.FrontRepo.Organization
     |> where([o], o.id == ^id)
+    |> where_undeleted()
     |> Guard.FrontRepo.one()
     |> case do
       nil -> Util.ToTuple.error("Organization '#{id}' not found.", :not_found)
@@ -20,6 +21,7 @@ defmodule Guard.Store.Organization do
   def get_by_username(username) when is_binary(username) and username != "" do
     Guard.FrontRepo.Organization
     |> where([o], o.username == ^username)
+    |> where_undeleted()
     |> Guard.FrontRepo.one()
     |> case do
       nil -> Util.ToTuple.error("Organization '#{username}' not found.", :not_found)
@@ -30,6 +32,7 @@ defmodule Guard.Store.Organization do
   def exists?(org_id) do
     Guard.FrontRepo.Organization
     |> where([o], o.id == ^org_id)
+    |> where_undeleted()
     |> Guard.FrontRepo.exists?()
   end
 
@@ -70,6 +73,7 @@ defmodule Guard.Store.Organization do
   def list(params, keyset_params) do
     query =
       Guard.FrontRepo.Organization
+      |> where_undeleted()
       |> filter_by_created_at_gt(params.created_at_gt)
 
     flop =
@@ -87,6 +91,7 @@ defmodule Guard.Store.Organization do
   def list_by_ids(ids) when is_list(ids) do
     Guard.FrontRepo.Organization
     |> where([o], o.id in ^ids)
+    |> where_undeleted()
     |> Guard.FrontRepo.all()
   end
 
@@ -296,12 +301,28 @@ defmodule Guard.Store.Organization do
   end
 
   @doc """
-  Deletes an organization.
+  Soft deletes an organization.
   Returns {:ok, organization} if successful, or {:error, changeset} if not.
   """
-  @spec destroy(Guard.FrontRepo.Organization.t()) ::
+  @spec soft_destroy(Guard.FrontRepo.Organization.t()) ::
           {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
-  def destroy(%Guard.FrontRepo.Organization{} = organization) do
+  def soft_destroy(%Guard.FrontRepo.Organization{} = organization) do
+    organization
+    |> Guard.FrontRepo.Organization.changeset(%{deleted_at: DateTime.utc_now()})
+    |> Guard.FrontRepo.update()
+  end
+
+  @doc """
+  Deletes an organization completely from the database.
+  Returns {:ok, organization} if successful, or {:error, changeset} if not.
+  """
+  @spec hard_destroy(Guard.FrontRepo.Organization.t()) ::
+          {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
+  def hard_destroy(%Guard.FrontRepo.Organization{} = organization) do
     Guard.FrontRepo.delete(organization)
+  end
+
+  defp where_undeleted(query) do
+    query |> where([o], is_nil(o.deleted_at))
   end
 end

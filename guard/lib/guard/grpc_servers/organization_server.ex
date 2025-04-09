@@ -421,9 +421,9 @@ defmodule Guard.GrpcServers.OrganizationServer do
     observe("destroy", fn ->
       case fetch_organization(org_id, "") do
         {:ok, organization} ->
-          case Guard.Store.Organization.destroy(organization) do
+          case Guard.Store.Organization.soft_destroy(organization) do
             {:ok, _} ->
-              Guard.Events.OrganizationDeleted.publish(organization.id)
+              Guard.Events.OrganizationDeleted.publish(organization.id, soft_delete: true)
 
               %Google.Protobuf.Empty{}
 
