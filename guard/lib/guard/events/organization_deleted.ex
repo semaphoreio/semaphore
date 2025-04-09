@@ -3,7 +3,7 @@ defmodule Guard.Events.OrganizationDeleted do
   Event emitted when an organization is deleted.
   """
 
-  @spec publish(String.t()) :: :ok
+  @spec publish(String.t(), Keyword.t()) :: :ok
   def publish(organization_id, opts \\ []) do
     event =
       InternalApi.Organization.OrganizationDeleted.new(
