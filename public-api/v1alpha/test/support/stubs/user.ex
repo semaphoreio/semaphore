@@ -183,10 +183,10 @@ defmodule Support.Stubs.User do
           repository_providers: user_model.repository_providers
         )
       else
-        %Google.Rpc.Status{
-          code: 5,
-          message: "User with email #{req.email} not found"
-        }
+        raise(GRPC.RPCError,
+          message: "User with email #{req.email} not found",
+          status: GRPC.Status.not_found()
+        )
       end
     end
 

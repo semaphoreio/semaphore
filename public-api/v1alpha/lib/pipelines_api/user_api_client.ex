@@ -12,6 +12,7 @@ defmodule PipelinesAPI.UserApiClient do
   defp url(), do: System.get_env("USER_API_URL")
 
   @wormhole_timeout Application.compile_env(:pipelines_api, :grpc_timeout, [])
+  @not_found_grpc_status_code 5
 
   def describe_many(user_ids) do
     Metrics.benchmark(__MODULE__, ["describe_many"], fn ->
@@ -52,8 +53,11 @@ defmodule PipelinesAPI.UserApiClient do
         {:ok, result} ->
           Proto.to_map(result)
 
+        {:error, {:error, %{status: @not_found_grpc_status_code}}} ->
+          {:error, :not_found}
+
         {:error, reason} ->
-          reason |> LogTee.error("Error describing user by email: #{inspect(reason)}")
+          Logger.error("Error describing user by email: #{inspect(reason)}")
           ToTuple.internal_error("Internal error")
       end
     end)
