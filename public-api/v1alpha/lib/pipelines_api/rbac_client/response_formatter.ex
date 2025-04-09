@@ -32,4 +32,8 @@ defmodule PipelinesAPI.RBACClient.ResponseFormatter do
     do: ToTuple.error({:internal_error, "internal error"})
 
   def process_list_roles_response(error, _), do: error
+
+  def process_retract_role_response({:ok, _response}), do: ToTuple.ok(true)
+
+  def process_retract_role_response({:error, _} = error), do: error
 end
