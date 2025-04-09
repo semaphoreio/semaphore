@@ -558,9 +558,6 @@ defmodule Guard.Store.OrganizationTest do
     test "marks an organization as deleted", %{org_id: org_id} do
       organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
 
-      contact = Support.Factories.Organization.insert_contact!(organization.id)
-      suspension = Support.Factories.Organization.insert_suspension!(organization.id)
-
       assert {:ok, deleted_org} = Organization.soft_destroy(organization)
       assert deleted_org.id == org_id
 
