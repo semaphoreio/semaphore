@@ -32,6 +32,7 @@ PROJECTHUB_API_GRPC_URL?=127.0.0.1:50052
 LOG_LEVEL?=debug
 API_VERSION?=v1alpha
 ON_PREM?="false"
+TMP_REPO_DIR ?= /tmp/internal_api
 
 CONTAINER_ENV_VARS= \
   -e IN_DOCKER=$(IN_DOCKER) \
