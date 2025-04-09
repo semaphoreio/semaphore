@@ -14,7 +14,8 @@ defmodule FrontWeb.WorkflowController do
     Repohub,
     RepoProxy,
     Secret,
-    User
+    User,
+    FetchingJob
   }
 
   alias Front.Async
@@ -77,22 +78,48 @@ defmodule FrontWeb.WorkflowController do
 
       {:ok, hook} = Async.await(fetch_hook)
 
-      fetch_yaml_files =
-        Async.run(
-          fn -> fetch_yaml_files(project.repo_id, hook, project.initial_pipeline_file) end,
-          metric: "workflow.edit.load_all_yaml_files"
-        )
+      fetch_files_or_create_job =
+        if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
+          job_params = %{
+            user_id: user.id,
+            project: project,
+            target_branch: hook.branch_name,
+            restricted_job: true,
+            commit_sha: hook.head_commit_sha,
+            hook: hook
+          }
+
+          Async.run(fn -> FetchingJob.start_fetching_job(job_params) end,
+            metric: "workflow.edit.start_job"
+          )
+        else
+          Async.run(
+            fn -> fetch_yaml_files(project.repo_id, hook, project.initial_pipeline_file) end,
+            metric: "workflow.edit.load_all_yaml_files"
+          )
+        end
 
       {:ok, org_secrets} = Async.await(fetch_org_secrets)
       {:ok, project_secrets} = Async.await(fetch_project_secrets)
       {:ok, organization} = Async.await(fetch_organization)
       {:ok, {:ok, hosted_agent_types}} = Async.await(fetch_agent_types)
       {:ok, {:ok, self_hosted_agent_types}} = Async.await(fetch_self_hosted_agent_types)
-      {:ok, {:ok, yaml_files}} = Async.await(fetch_yaml_files)
       {:ok, {:ok, deployment_targets}} = Async.await(fetch_deployment_targets)
 
-      {initial_yaml, yamls, alert} =
-        extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
+      {initial_yaml, yamls, job_id, alert} =
+        if FeatureProvider.feature_enabled?(:wf_editor_via_jobs, param: org_id) do
+          {:ok, {:ok, job_id}} = Async.await(fetch_files_or_create_job)
+          {project.initial_pipeline_file, [], job_id, nil}
+        else
+          {:ok, {:ok, yaml_files}} = Async.await(fetch_files_or_create_job)
+
+          {initial_yaml, yamls, alert} =
+            extract_yamls(yaml_files, project.initial_pipeline_file, org_id)
+
+          {initial_yaml, yamls, "", alert}
+        end
+
+      workflow_data = %{createdInEditor: false, initialYAML: initial_yaml, yamls: yamls}
 
       params = [
         title: "Edit workflow・#{hook.name}・#{project.name}・#{organization.name}",
@@ -103,8 +130,8 @@ defmodule FrontWeb.WorkflowController do
         hook: hook,
         sidebar_selected_item: project.id,
         commiter_avatar: user.avatar_url,
-        initial_yaml: initial_yaml,
-        yamls: yamls,
+        workflow_data: workflow_data,
+        fetching_job_id: job_id,
         agent_types: combine_agent_types(hosted_agent_types, self_hosted_agent_types),
         deployment_targets: Enum.map(deployment_targets, & &1.name),
         hide_promotions: Application.get_env(:front, :hide_promotions, false)
@@ -138,7 +165,7 @@ defmodule FrontWeb.WorkflowController do
         Repohub.fetch_semaphore_files(
           repo_id,
           initial_yaml,
-          hook.pr_sha,
+          hook.head_commit_sha,
           "refs/heads/#{hook.branch_name}"
         )
 
@@ -146,7 +173,7 @@ defmodule FrontWeb.WorkflowController do
         Repohub.fetch_semaphore_files(
           repo_id,
           initial_yaml,
-          hook.pr_sha,
+          hook.head_commit_sha,
           "refs/tags/#{hook.tag_name}"
         )
     end

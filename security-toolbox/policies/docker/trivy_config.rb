@@ -10,13 +10,16 @@ class Policy::TrivyConfig < Policy
     end
 
     @skip_dirs = args[:skip_dirs].to_s.split(",") || []
+    @severity = args[:severity] || "HIGH,CRITICAL"
   end
 
   def test
     command = [
       "trivy",
       "config",
-      "--exit-code 1"
+      "--severity #{@severity}",
+      "--exit-code 1",
+      "--misconfig-scanners dockerfile"
     ]
 
     @skip_files.each do |skip_file|

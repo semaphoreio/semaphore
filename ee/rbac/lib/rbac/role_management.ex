@@ -484,32 +484,27 @@ defmodule Rbac.RoleManagement do
   end
 
   defp role_scope_matches_rest_of_data?(project_id, role_id) do
-    role = Rbac.Repo.RbacRole.get_role_by_id(role_id)
-
-    case role.scope.scope_name do
-      "project_scope" ->
-        case project_id do
-          nil ->
-            {:error, "Project id cant be nil for roles with project scope"}
-
-          _ ->
-            {:ok, nil}
-        end
-
-      scope when scope in ["org_scope", "insider_scope"] ->
-        case project_id do
-          nil ->
-            {:ok, nil}
-
-          :is_nil ->
-            {:ok, nil}
-
-          _ ->
-            {:error, "Project id must be nil for roles with organization or insider scope"}
-        end
-
+    case Rbac.Repo.RbacRole.get_role_by_id(role_id) do
       nil ->
-        Logger.error("[Rbac RoleManagement] Role with id #{role_id} does not exist.")
+        {:error, "Role with id #{role_id} does not exist."}
+
+      %{scope: %{scope_name: "project_scope"}} when is_nil(project_id) ->
+        {:error, "Project id cant be nil for roles with project scope"}
+
+      %{scope: %{scope_name: "project_scope"}} ->
+        {:ok, nil}
+
+      %{scope: %{scope_name: scope}}
+      when scope in ["org_scope", "insider_scope"] and
+             (is_nil(project_id) or project_id == :is_nil) ->
+        {:ok, nil}
+
+      %{scope: %{scope_name: scope}} when scope in ["org_scope", "insider_scope"] ->
+        {:error, "Project id must be nil for roles with organization or insider scope"}
+
+      %{scope: %{scope_name: scope}} ->
+        Logger.error("[RoleManagement] Role #{role_id}, unrecongized scope: #{scope}.")
+        {:error, "Unrecongized scope: #{scope}"}
     end
   end
 

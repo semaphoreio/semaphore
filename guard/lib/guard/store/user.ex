@@ -254,26 +254,16 @@ defmodule Guard.Store.User do
           end
         end)
         |> Ecto.Multi.run(:delete_related_data, fn repo, _changes ->
-          from(o in Repo.Organization, where: o.creator_id == ^user_id)
-          |> repo.all()
-          |> Enum.each(fn org ->
-            :ok = Guard.Api.Project.destroy_all_projects_by_org_id(org.id)
-
-            repo.delete_all(from(m in Repo.Member, where: m.organization_id == ^org.id))
-
-            repo.delete_all(
-              from(s in Repo.OrganizationSuspension, where: s.organization_id == ^org.id)
+          members_query =
+            from(m in Guard.FrontRepo.Member,
+              join: rha in Guard.FrontRepo.RepoHostAccount,
+              on: m.github_uid == rha.github_uid,
+              where: rha.user_id == ^user_id
             )
 
-            repo.delete_all(
-              from(c in Repo.OrganizationContact, where: c.organization_id == ^org.id)
-            )
-          end)
-
+          repo.delete_all(members_query)
+          repo.delete_all(from(r in Repo.RepoHostAccount, where: r.user_id == ^user_id))
           {:ok, :deleted_related_data}
-        end)
-        |> Ecto.Multi.delete_all(:delete_organizations, fn _changes ->
-          from(o in Repo.Organization, where: o.creator_id == ^user_id)
         end)
         |> Ecto.Multi.delete(:delete_user, fn %{get_user: user} -> user end)
         |> Repo.transaction()
