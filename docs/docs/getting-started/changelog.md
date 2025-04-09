@@ -14,7 +14,7 @@ This page is updated on a weekly basis.
 
 **(New)** Packages:
 
-- xcbeutify
+- xcbeautify
   
 **(Updated)** Updated packages:
 
