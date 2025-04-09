@@ -37,10 +37,10 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   defp do_processing({:ok, webhook}, state) do
     with {:ok, project} <- ProjectHubClient.describe_project(webhook.project_id),
-         {:ok, hook_type} <- GitPayload.hook_type(webhook.request),
-         {:ok, email} <- GitPayload.extract_author_email(webhook.request),
-         {:ok, requester_id} <- get_requester_id(webhook, email),
-         {:ok, requester_id} <- filter_membership(webhook, webhook.organization_id, requester_id),
+         hook_type <- GitPayload.hook_type(webhook.request),
+         email <- GitPayload.extract_author_email(webhook.request),
+         requester_id <- get_requester_id(webhook, email),
+         requester_id <- filter_membership(webhook, webhook.organization_id, requester_id),
          {:ok, _webhook} <-
            process_webhook(hook_type, webhook, project.repository, requester_id) do
       "Processing finished successfully." |> graceful_exit(state)
@@ -59,17 +59,17 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
     case UserClient.describe_by_email(email) do
       {:ok, user} ->
-        {:ok, user.id}
+        user.id
 
       error ->
         error
         |> LT.warn("Hook #{webhook.id} - requester describe failed: ")
 
-        {:ok, ""}
+        ""
     end
   end
 
-  defp filter_membership(_, _, ""), do: {:ok, ""}
+  defp filter_membership(_, _, ""), do: ""
 
   defp filter_membership(webhook, organization_id, user_id) do
     "organization_id: #{organization_id}, user_id: #{user_id}"
@@ -77,16 +77,16 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
     case RBACClient.member?(organization_id, user_id) do
       {:ok, true} ->
-        {:ok, user_id}
+        user_id
 
       {:ok, false} ->
-        {:ok, ""}
+        ""
 
       error ->
         error
         |> LT.warn("Hook #{webhook.id} - member check failed: ")
 
-        {:ok, ""}
+        ""
     end
   end
 
@@ -136,8 +136,11 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
-    "Unsuported type of the hook: '#{hook_type}'"
+  defp process_webhook(hook_type, webhook, _project, _requester_id) do
+    webhook
+    |> LT.warn("Unsupported type of the hook: '#{hook_type}'")
+
+    HooksQueries.update_webhook(webhook, %{}, "failed")
   end
 
   defp perform_actions(webhook, parsed_data) do
@@ -168,6 +171,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
         {:build, true}
     end
   end
+
 
   defp hook_state(:BRANCHES, :skip), do: "skip_branch"
   defp hook_state(:BRANCHES, :whitelist), do: "whitelist_branch"

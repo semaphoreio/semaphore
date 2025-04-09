@@ -7,12 +7,16 @@ defmodule HooksProcessor.Hooks.Payload.Git do
   Extracts hook type from hook payload.
   """
 
-  @spec hook_type(map()) :: {:ok, String.t()} | {:error, String.t()}
-  def hook_type(payload), do: type(payload |> Map.get("reference"))
+  def hook_type(payload) do
+    payload
+    |> get_in(["reference"])
+    |> case do
+      "refs/tags/" <> _ -> "tag"
+      "refs/heads/" <> _ -> "branch"
+      _ -> ""
+    end
+  end
 
-  defp type("refs/tags/" <> _), do: {:ok, "tag"}
-  defp type("refs/heads/" <> _), do: {:ok, "branch"}
-  defp type(_), do: {:error, "Unsupported hook type"}
 
   @doc """
   Checks if head commit has [skip ci] flags in commit messsage
@@ -60,8 +64,15 @@ defmodule HooksProcessor.Hooks.Payload.Git do
     }
   end
 
-  @spec extract_author_email(map()) :: {:ok, String.t()}
   def extract_author_email(payload) do
-    {:ok, payload |> get_in(["actor", "email"])}
+    payload
+    |> get_in(["actor", "email"])
+    |> case do
+      nil ->
+        ""
+
+      email ->
+        email
+    end
   end
 end

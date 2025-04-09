@@ -42,6 +42,26 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
     end
   end
 
+  defp form_defintion_jobs(ppl_req = %{request_args: %{"service" => "git"} = req_args}, pfcs) do
+    commands = [
+      ~s[cp /tmp/git-ssh-key ~/.ssh/id_rsa_git],
+      ~s[chmod 400 ~/.ssh/id_rsa_git],
+      ~s[export GIT_SSH_COMMAND="ssh -i ~/.ssh/id_rsa_git -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"]
+    ] ++ commands(pfcs)
+
+    [
+      %{
+        "name" => "Compilation - git agnostic",
+        "execution_time_limit" => %{"minutes" => @default_execution_limit_in_minutes},
+        "priority" => [%{"value" => @default_priority, "when" => true}],
+        "env_vars" => ppl_env_vars(ppl_req) ++ [sem_yaml_file_path_env_var(req_args)],
+        "secrets" => secrets_definition(pfcs, req_args) ++ [%{"name" => "git-ssh-key"}],
+        "commands" => commands,
+        "epilogue_always_cmds" => epilogue_always_commands()
+      }
+    ]
+  end
+
   defp form_defintion_jobs(ppl_req = %{request_args: req_args}, pfcs) do
     [
       %{

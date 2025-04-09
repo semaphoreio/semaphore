@@ -37,7 +37,8 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GitAdapter do
         integration_type: adapter.integration_type,
         url: request.repository_url,
         default_branch: request.default_branch,
-        remote_id: ""
+        remote_id: "",
+        connected: true,
       },
       on_conflict: :nothing
     )
@@ -52,7 +53,7 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GitAdapter do
           chain: [{:from!, :project_id}, :is_uuid],
           chain: [{:from!, :user_id}, :is_uuid],
           chain: [{:from!, :integration_type}, :is_git_integration_type],
-          chain: [{:from!, :integration_type}, eq: :GIT, error_message: "github adapter does not work with bitbucket"]
+          chain: [{:from!, :integration_type}, eq: :GIT, error_message: "git adapter only works with git integration type"],
         ]
       ]
     )

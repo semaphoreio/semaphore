@@ -1144,7 +1144,6 @@ defmodule Projecthub.Api.GrpcServer do
       whitelist: project.repository.whitelist,
       public: !project.repository.private,
       integration_type: project.repository.integration_type,
-      connected: true,
       default_branch: project.repository.default_branch
     )
   end

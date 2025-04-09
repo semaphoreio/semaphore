@@ -1,10 +1,4 @@
 defmodule RepositoryHub.Model.GitRepository do
-  @allowed_hosts [
-    "github.com",
-    "bitbucket.org",
-    "gitlab.com"
-  ]
-
   alias RepositoryHub.Validator
   alias RepositoryHub.Toolkit
   alias __MODULE__
@@ -26,12 +20,7 @@ defmodule RepositoryHub.Model.GitRepository do
   @spec new(String.t()) :: Toolkit.tupled_result(t(), String.t())
   def new(url) do
     dissect(url)
-    |> Validator.validate(
-      chain: [
-        {:from!, :host},
-        &host_allowed?/1
-      ]
-    )
+    |> wrap()
   end
 
   @doc """
@@ -73,14 +62,6 @@ defmodule RepositoryHub.Model.GitRepository do
       captures ->
         construct(captures)
     end
-  end
-
-  defp host_allowed?(host) when host in @allowed_hosts do
-    host
-  end
-
-  defp host_allowed?(_) do
-    error("Only #{@allowed_hosts |> Enum.join(" and ")} hosts are supported")
   end
 
   defp construct(url_parts) do
