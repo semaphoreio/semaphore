@@ -2,7 +2,7 @@ Support.Stubs.init()
 
 ExUnit.configure(
   exclude: [integration: true, router: true, gofer_integration: true],
-  formatters: [JUnitFormatter, PipelinesAPI.CustomExUnitFormatter]
+  formatters: [ExUnit.CLIFormatter]
 )
 
 ExUnit.start(trace: true, capture_log: true)
