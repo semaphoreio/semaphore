@@ -47,9 +47,9 @@ agent:
 
 System version:
 
-- ProductVersion: 14.5
-- BuildVersion: 23F79
-- Kernel Version: Darwin 23.5.0
+- ProductVersion: 15.4
+- BuildVersion: 24E248
+- Kernel Version: Darwin 24.4.0
 
 ### Version control
 
@@ -92,15 +92,15 @@ Installed versions:
 
 - 16 (default)
 
-The default installed Xcode version is `16.2`.
+The default installed Xcode version is `16.3`.
 
 Xcode 16.2 has the following SDKs preinstalled:
 
-- iOS 18.2
-- macOS 15.0
-- tvOS 18.2
-- watchOS 11.2
-- visionOS 2.2
+- iOS 18.4
+- macOS 15.4
+- tvOS 18.4
+- watchOS 11.4
+- visionOS 2.4
 
 </div>
 
@@ -111,7 +111,7 @@ Xcode 16.2 has the following SDKs preinstalled:
 
 Installed version:
 
-- Node.js: v18.20.1
+- Node.js: v22.14.1
 - Yarn: 1.22.22
 
 </div>
@@ -123,11 +123,11 @@ Installed version:
 
 Installed version:
 
-- 3.12.44
+- 3.13.2
 
 Supporting libraries:
 
-- pip3: 24
+- pip3: 25
 
 </div>
 </details>
@@ -138,13 +138,13 @@ Supporting libraries:
 
 Installed versions:
 
-- 3.3.2 (system)
-- 3.3.5
+- 3.4.2 (system)
+- 3.2.8
 
 Following gems are pre-installed:
 
-- fastlane (2.221.1)
-- cocoapods (1.15.2)
+- fastlane (2.227.0)
+- cocoapods (1.16.2)
 
 </div>
 </details>
@@ -162,7 +162,7 @@ Following gems are pre-installed:
 <summary>Flutter</summary>
 <div>
 
-- 3.24.3
+- 3.29.2
 
 </div>
 </details>

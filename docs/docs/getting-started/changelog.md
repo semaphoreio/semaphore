@@ -10,6 +10,34 @@ This page is updated on a weekly basis.
 
 ### Week of April 7 2025
 
+**(Improved)  macos-xcode16 (apple silicon) image update**
+
+**(New)** Packages:
+
+- xcbeutify
+  
+**(Updated)** Updated packages:
+
+- brew 4.3.23 -> 4.4.28
+- cocoapods 1.15.2 -> 1.16.2
+- fastlane 2.226.0 -> 2.227.0
+- flutter 3.24.3 -> 3.29.2
+- macOS 14.5 -> 15.4
+- node v18.20.1 -> v22.14.0
+- nvm 0.40.1 -> 0.40.2
+- pip3 24.2 -> 25.0
+- postgres 14.13 -> 14.17
+- python3  3.12.6 -> 3.13.2 
+- ruby system 3.3.2 -> 3.4.2
+- ruby rbenv 3.3.5 -> 3.2.8
+- Simulator iOS    18.2  -> 18.4
+- Simulator tvOS    18.2 -> 18.4
+- Simulator watchOS   11.2 -> 11.4
+- Simulator visionOS 2.2 -> 2.4
+- Xcode 16.2 -> 16.3
+
+To learn more about this image, check our [macOS Xcode 16](https://docs.semaphoreci.com/reference/os-apple#mac-16)
+
 **(Improved) Ubuntu 20.04 image update**
 
 **(New)** Packages:
