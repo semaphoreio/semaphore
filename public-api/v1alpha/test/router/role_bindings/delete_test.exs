@@ -112,9 +112,7 @@ defmodule Router.RoleBindings.Delete.Test do
     end
 
     test "When user exists and is passed via email, successfully deletes role bindings", ctx do
-      user_to_delete =
-        Support.Stubs.User.create(user_id: UUID.uuid4(), email: "delete-me@example.com")
-
+      Support.Stubs.User.create(user_id: UUID.uuid4(), email: "delete-me@example.com")
       {:ok, resp} = create_delete_request(%{email: "delete-me@example.com"}, ctx)
 
       assert resp.status_code == 200

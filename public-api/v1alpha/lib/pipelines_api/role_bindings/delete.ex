@@ -79,36 +79,44 @@ defmodule PipelinesAPI.RoleBindings.Delete do
 
     cond do
       not is_nil(user_id) ->
-        case UserApiClient.describe_many([user_id]) do
-          {:ok, %{users: users}} when is_list(users) and length(users) > 0 ->
-            [user | _] = users
-            conn |> Plug.Conn.assign(:user_id, user.id)
-
-          {:ok, _} ->
-            Logger.info("User with id #{user_id} not found")
-            Common.respond({:error, {:user, "User with id #{user_id} not found"}}, conn)
-
-          error ->
-            Logger.error("Error when fetching user by ID: #{inspect(error)}")
-            Common.respond({:error, {:internal, "Internal error"}}, conn)
-        end
+        lookup_user_by_id(conn, user_id)
 
       not is_nil(email) ->
-        case UserApiClient.describe_by_email(email) do
-          {:ok, user} when not is_nil(user) ->
-            conn |> Plug.Conn.assign(:user_id, user.id)
-
-          {:error, :not_found} ->
-            Logger.info("User with email #{email} not found")
-            Common.respond({:error, {:user, "User with email #{email} not found"}}, conn)
-
-          error ->
-            Logger.error("Error when fetching user by email: #{inspect(error)}")
-            Common.respond({:error, {:internal, "Internal error"}}, conn)
-        end
+        lookup_user_by_email(conn, email)
 
       true ->
         Common.respond({:error, {:user, "Missing user_id or email in query parameters"}}, conn)
+    end
+  end
+
+  defp lookup_user_by_id(conn, user_id) do
+    case UserApiClient.describe_many([user_id]) do
+      {:ok, %{users: users}} when is_list(users) and length(users) > 0 ->
+        [user | _] = users
+        conn |> Plug.Conn.assign(:user_id, user.id)
+
+      {:ok, _} ->
+        Logger.info("User with id #{user_id} not found")
+        Common.respond({:error, {:user, "User with id #{user_id} not found"}}, conn)
+
+      error ->
+        Logger.error("Error when fetching user by ID: #{inspect(error)}")
+        Common.respond({:error, {:internal, "Internal error"}}, conn)
+    end
+  end
+
+  defp lookup_user_by_email(conn, email) do
+    case UserApiClient.describe_by_email(email) do
+      {:ok, user} when not is_nil(user) ->
+        conn |> Plug.Conn.assign(:user_id, user.id)
+
+      {:error, :not_found} ->
+        Logger.info("User with email #{email} not found")
+        Common.respond({:error, {:user, "User with email #{email} not found"}}, conn)
+
+      error ->
+        Logger.error("Error when fetching user by email: #{inspect(error)}")
+        Common.respond({:error, {:internal, "Internal error"}}, conn)
     end
   end
 end

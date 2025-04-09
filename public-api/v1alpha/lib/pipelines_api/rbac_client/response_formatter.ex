@@ -35,5 +35,5 @@ defmodule PipelinesAPI.RBACClient.ResponseFormatter do
 
   def process_retract_role_response({:ok, _response}), do: ToTuple.ok(true)
 
-  def process_retract_role_response({:error, _} = error), do: error
+  def process_retract_role_response(error = {:error, _}), do: error
 end
