@@ -1,0 +1,79 @@
+{{- if eq .Values.global.edition "ee" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: license-checker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: license-checker
+spec:
+  replicas: {{ .Values.licenseChecker.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: license-checker
+  template:
+    metadata:
+      labels:
+        app: license-checker
+    spec:
+      serviceAccountName: license-checker
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: true
+      containers:
+      - name: license-checker
+        image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+        imagePullPolicy: {{ .Values.imagePullPolicy | default "IfNotPresent" }}
+        command:
+          - /app/build/bootstrapper
+        args:
+          - "serve"
+        ports:
+        - name: grpc
+          containerPort: {{ .Values.licenseChecker.grpc.port }}
+        env:
+          - name: BOOTSTRAPPER_GRPC_PORT
+            value: "{{ .Values.licenseChecker.grpc.port }}"
+          - name: BOOTSTRAPPER_LICENSE_SERVER_URL
+            value: "{{ .Values.licenseChecker.licenseServerUrl }}"
+          - name: BOOTSTRAPPER_LICENSE_FILE
+            value: "/app/app.license"
+          - name: BOOTSTRAPPER_ENABLE_GRPC
+            value: "true"
+        volumeMounts:
+        - name: license
+          mountPath: /app/app.license
+          readOnly: true
+        resources:
+          {{- toYaml .Values.licenseChecker.resources | nindent 12 }}
+      volumes:
+      - name: license
+        secret:
+          secretName: "{{ .Release.Name }}-license"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: license-checker
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: license-checker
+spec:
+  type: ClusterIP
+  ports:
+  - name: grpc
+    port: {{ .Values.licenseChecker.grpc.port }}
+    targetPort: grpc
+  selector:
+    app: license-checker
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: license-checker
+  namespace: {{ .Release.Namespace }}
+{{- end }}

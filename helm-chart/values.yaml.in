@@ -163,6 +163,8 @@ global:
   vault:
     secretName: ""
 
+  license: ""
+
 toolbox:
   version: "v1.25.0"
 
