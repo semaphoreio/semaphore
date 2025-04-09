@@ -301,7 +301,7 @@ defmodule Projecthub.Models.Project do
 
   def soft_destroy(project, user) do
     {:ok, _} = update_record(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
-    {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
+    {:ok, _} = Events.ProjectDeleted.publish(project, soft_delete: true)
 
     {:ok, nil}
   end
