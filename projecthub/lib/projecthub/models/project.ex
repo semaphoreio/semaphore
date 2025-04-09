@@ -243,7 +243,9 @@ defmodule Projecthub.Models.Project do
       :attach_non_default_branch,
       :attach_pr,
       :attach_forked_pr,
-      :attach_tag
+      :attach_tag,
+      :deleted_at,
+      :deleted_by
     ])
     |> validate_required([:name, :organization_id, :creator_id])
     |> validate_format(:name, ~r/\A[\w\-\.]+\z/,
@@ -254,7 +256,7 @@ defmodule Projecthub.Models.Project do
 
   def find(id) do
     if id_is_uuid?(id) do
-      case Repo.get_by(Project, id: id, deleted_at: nil) do
+      case from(Project) |> where([p], p.id == ^id and is_nil(p.deleted_at)) |> Repo.one() do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
@@ -266,7 +268,10 @@ defmodule Projecthub.Models.Project do
 
   def find_in_org(org_id, id) do
     if id_is_uuid?(id) and id_is_uuid?(org_id) do
-      case Repo.get_by(__MODULE__, id: id, organization_id: org_id, deleted_at: nil) do
+      case from(Project)
+           |> where_undeleted()
+           |> where([p], p.id == ^id and p.organization_id == ^org_id)
+           |> Repo.one() do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
@@ -284,7 +289,10 @@ defmodule Projecthub.Models.Project do
   end
 
   def find_by_name(name, org_id) do
-    case Repo.get_by(Project, name: name, organization_id: org_id, deleted_at: nil) do
+    case from(Project)
+         |> where_undeleted()
+         |> where([p], p.name == ^name and p.organization_id == ^org_id)
+         |> Repo.one() do
       nil -> {:error, :not_found}
       project -> {:ok, project}
     end
@@ -292,7 +300,7 @@ defmodule Projecthub.Models.Project do
   end
 
   def soft_destroy(project, user) do
-    {:ok, _} = Repo.update(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
+    {:ok, _} = update_record(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
     {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
 
     {:ok, nil}

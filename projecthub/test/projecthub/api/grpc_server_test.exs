@@ -2598,10 +2598,10 @@ defmodule Projecthub.Api.GrpcServerTest do
           name: ""
         )
 
-      with_mock Project, [:passthrough], destroy: fn _p, _u -> {:ok, nil} end do
+      with_mock Project, [:passthrough], soft_destroy: fn _p, _u -> {:ok, nil} end do
         {:ok, response} = Stub.destroy(channel, request)
 
-        assert_called(Project.destroy(:_, :_))
+        assert_called(Project.soft_destroy(:_, :_))
 
         assert response.metadata.status.code ==
                  :OK
@@ -2644,10 +2644,10 @@ defmodule Projecthub.Api.GrpcServerTest do
           name: project.name
         )
 
-      with_mock Project, [:passthrough], destroy: fn _p, _u -> {:ok, nil} end do
+      with_mock Project, [:passthrough], soft_destroy: fn _p, _u -> {:ok, nil} end do
         {:ok, response} = Stub.destroy(channel, request)
 
-        assert_called(Project.destroy(:_, :_))
+        assert_called(Project.soft_destroy(:_, :_))
 
         assert response.metadata.status.code ==
                  :OK
