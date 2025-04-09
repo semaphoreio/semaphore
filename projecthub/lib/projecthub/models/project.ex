@@ -68,6 +68,7 @@ defmodule Projecthub.Models.Project do
     # embeds_one(:repository, Repository)
 
     field(:deleted_at, :utc_datetime, default: nil)
+    field(:deleted_by, :binary_id, default: nil)
   end
 
   def create(request_id, user, org, project_spec, repo_details, integration_type, skip_onboarding \\ false) do
@@ -290,7 +291,14 @@ defmodule Projecthub.Models.Project do
     |> unwrap(&preload_repository/1)
   end
 
-  def destroy(project, user) do
+  def soft_destroy(project, user) do
+    {:ok, _} = Repo.update(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
+    {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
+
+    {:ok, nil}
+  end
+
+  def hard_destroy(project, user) do
     {:ok, repository} = Repository.find_for_project(project.id)
     {:ok, _} = Repository.destroy(repository)
 
