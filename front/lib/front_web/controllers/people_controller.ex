@@ -233,7 +233,7 @@ defmodule FrontWeb.PeopleController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while removing member, please contac our support team."
+              "An error occured while removing member, please contact our support team."
             )
             |> redirect_to.()
         end
