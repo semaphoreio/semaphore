@@ -34,7 +34,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
 
       {:error, err_msg} ->
         Watchman.increment("create_group.failure")
-        Logger.info("TMP ERROR #{inspect(error_msg)}")
+        Logger.info("TMP ERROR #{inspect(err_msg)}")
         grpc_error!(:internal, err_msg)
     end
   end
@@ -97,6 +97,9 @@ defmodule Rbac.GrpcServers.GroupsServer do
   defp validate_group_parameters!(group) do
     if group.name == "" or group.name == nil,
       do: grpc_error!(:invalid_argument, "Group name is required")
+
+    if group.description == "" or group.description == nil,
+      do: grpc_error!(:invalid_argument, "Group description is required")
   end
 
   defp check_if_members_are_in_org!(member_ids, org_id) do
