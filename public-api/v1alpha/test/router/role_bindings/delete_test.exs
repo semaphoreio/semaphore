@@ -20,7 +20,7 @@ defmodule Router.RoleBindings.Delete.Test do
      }}
   end
 
-  describe "DELETE /rbac/ - endpoint to delete role binding" do
+  describe "DELETE /role_bindings - endpoint to delete role binding" do
     test "returns 400 when user_id header is missing", ctx do
       {:ok, resp} =
         create_delete_request(%{}, ctx, [
@@ -138,7 +138,7 @@ defmodule Router.RoleBindings.Delete.Test do
   end
 
   defp create_delete_request(params, _ctx, headers) do
-    url = url() <> "/rbac/" <> "?" <> Plug.Conn.Query.encode(params)
+    url = url() <> "/role_bindings/" <> "?" <> Plug.Conn.Query.encode(params)
     HTTPoison.delete(url, headers)
   end
 end

@@ -1,6 +1,6 @@
 defmodule PipelinesAPI.RoleBindings.Delete do
   @moduledoc """
-  Plug deletes a deployment target.
+  Plug deletes a role binding (removes role from the subject).
   """
   use Plug.Builder
   require Logger
@@ -107,7 +107,7 @@ defmodule PipelinesAPI.RoleBindings.Delete do
 
   defp lookup_user_by_email(conn, email) do
     case UserApiClient.describe_by_email(email) do
-      {:ok, user} when not is_nil(user) ->
+      {:ok, user} ->
         conn |> Plug.Conn.assign(:user_id, user.id)
 
       {:error, :not_found} ->

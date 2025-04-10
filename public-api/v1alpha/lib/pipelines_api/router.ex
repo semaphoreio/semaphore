@@ -99,7 +99,7 @@ defmodule PipelinesAPI.Router do
 
   match("/deployment_targets/:target_id", via: :delete, to: DeleteDeploymentTarget)
 
-  match("/rbac/", via: :delete, to: DeleteRoleBindings)
+  match("/role_bindings", via: :delete, to: DeleteRoleBindings)
 
   match("/schedules", via: :post, to: ApplySchedule)
 
