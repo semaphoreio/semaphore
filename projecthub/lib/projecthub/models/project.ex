@@ -322,12 +322,14 @@ defmodule Projecthub.Models.Project do
 
   def find_candidates_for_hard_destroy() do
     thirty_days_ago =
-      DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60)
+      DateTime.utc_now()
+      |> DateTime.add(-30, :day)
       |> DateTime.truncate(:second)
 
     Project
-    |> where([p], p.deleted_at != nil and p.deleted_at < ^thirty_days_ago)
+    |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^thirty_days_ago)
     |> Repo.all()
+    |> preload_repositories()
   end
 
   def find_many(org_id, ids) do
