@@ -7,6 +7,7 @@
 package license
 
 import (
+	timestamp "github.com/golang/protobuf/ptypes/timestamp"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
@@ -21,14 +22,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// VerifyLicenseRequest represents a request to verify a license
+// Verify License Request
 type VerifyLicenseRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	LicenseJwt    string                 `protobuf:"bytes,1,opt,name=license_jwt,json=licenseJwt,proto3" json:"license_jwt,omitempty"`
-	Hostname      string                 `protobuf:"bytes,2,opt,name=hostname,proto3" json:"hostname,omitempty"`
-	IpAddress     string                 `protobuf:"bytes,3,opt,name=ip_address,json=ipAddress,proto3" json:"ip_address,omitempty"`
-	Environment   string                 `protobuf:"bytes,4,opt,name=environment,proto3" json:"environment,omitempty"`
-	Version       string                 `protobuf:"bytes,5,opt,name=version,proto3" json:"version,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -63,46 +59,17 @@ func (*VerifyLicenseRequest) Descriptor() ([]byte, []int) {
 	return file_license_proto_rawDescGZIP(), []int{0}
 }
 
-func (x *VerifyLicenseRequest) GetLicenseJwt() string {
-	if x != nil {
-		return x.LicenseJwt
-	}
-	return ""
-}
-
-func (x *VerifyLicenseRequest) GetHostname() string {
-	if x != nil {
-		return x.Hostname
-	}
-	return ""
-}
-
-func (x *VerifyLicenseRequest) GetIpAddress() string {
-	if x != nil {
-		return x.IpAddress
-	}
-	return ""
-}
-
-func (x *VerifyLicenseRequest) GetEnvironment() string {
-	if x != nil {
-		return x.Environment
-	}
-	return ""
-}
-
-func (x *VerifyLicenseRequest) GetVersion() string {
-	if x != nil {
-		return x.Version
-	}
-	return ""
-}
-
-// VerifyLicenseResponse represents the response from license verification
+// Verify License Response
+//
+// - valid = [required] Whether the license is valid
+// - expires_at = [required] When the license expires
+// - max_users = [required] Maximum number of users the license allows
+// - enabled_features = [required] List of enabled features
+// - message = [required] Message associated with the license
 type VerifyLicenseResponse struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
 	Valid           bool                   `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
-	ExpiresAt       int64                  `protobuf:"varint,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"` // Unix timestamp
+	ExpiresAt       *timestamp.Timestamp   `protobuf:"bytes,2,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	MaxUsers        int32                  `protobuf:"varint,3,opt,name=max_users,json=maxUsers,proto3" json:"max_users,omitempty"`
 	EnabledFeatures []string               `protobuf:"bytes,4,rep,name=enabled_features,json=enabledFeatures,proto3" json:"enabled_features,omitempty"`
 	Message         string                 `protobuf:"bytes,5,opt,name=message,proto3" json:"message,omitempty"`
@@ -147,11 +114,11 @@ func (x *VerifyLicenseResponse) GetValid() bool {
 	return false
 }
 
-func (x *VerifyLicenseResponse) GetExpiresAt() int64 {
+func (x *VerifyLicenseResponse) GetExpiresAt() *timestamp.Timestamp {
 	if x != nil {
 		return x.ExpiresAt
 	}
-	return 0
+	return nil
 }
 
 func (x *VerifyLicenseResponse) GetMaxUsers() int32 {
@@ -179,24 +146,17 @@ var File_license_proto protoreflect.FileDescriptor
 
 const file_license_proto_rawDesc = "" +
 	"\n" +
-	"\rlicense.proto\x12\alicense\"\xae\x01\n" +
-	"\x14VerifyLicenseRequest\x12\x1f\n" +
-	"\vlicense_jwt\x18\x01 \x01(\tR\n" +
-	"licenseJwt\x12\x1a\n" +
-	"\bhostname\x18\x02 \x01(\tR\bhostname\x12\x1d\n" +
-	"\n" +
-	"ip_address\x18\x03 \x01(\tR\tipAddress\x12 \n" +
-	"\venvironment\x18\x04 \x01(\tR\venvironment\x12\x18\n" +
-	"\aversion\x18\x05 \x01(\tR\aversion\"\xae\x01\n" +
+	"\rlicense.proto\x12\x13InternalApi.License\x1a\x1fgoogle/protobuf/timestamp.proto\"\x16\n" +
+	"\x14VerifyLicenseRequest\"\xca\x01\n" +
 	"\x15VerifyLicenseResponse\x12\x14\n" +
-	"\x05valid\x18\x01 \x01(\bR\x05valid\x12\x1d\n" +
+	"\x05valid\x18\x01 \x01(\bR\x05valid\x129\n" +
 	"\n" +
-	"expires_at\x18\x02 \x01(\x03R\texpiresAt\x12\x1b\n" +
+	"expires_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x1b\n" +
 	"\tmax_users\x18\x03 \x01(\x05R\bmaxUsers\x12)\n" +
 	"\x10enabled_features\x18\x04 \x03(\tR\x0fenabledFeatures\x12\x18\n" +
-	"\amessage\x18\x05 \x01(\tR\amessage2b\n" +
-	"\x0eLicenseService\x12P\n" +
-	"\rVerifyLicense\x12\x1d.license.VerifyLicenseRequest\x1a\x1e.license.VerifyLicenseResponse\"\x00BBZ@github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/licenseb\x06proto3"
+	"\amessage\x18\x05 \x01(\tR\amessage2z\n" +
+	"\x0eLicenseService\x12h\n" +
+	"\rVerifyLicense\x12).InternalApi.License.VerifyLicenseRequest\x1a*.InternalApi.License.VerifyLicenseResponse\"\x00BBZ@github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/licenseb\x06proto3"
 
 var (
 	file_license_proto_rawDescOnce sync.Once
@@ -212,17 +172,19 @@ func file_license_proto_rawDescGZIP() []byte {
 
 var file_license_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_license_proto_goTypes = []any{
-	(*VerifyLicenseRequest)(nil),  // 0: license.VerifyLicenseRequest
-	(*VerifyLicenseResponse)(nil), // 1: license.VerifyLicenseResponse
+	(*VerifyLicenseRequest)(nil),  // 0: InternalApi.License.VerifyLicenseRequest
+	(*VerifyLicenseResponse)(nil), // 1: InternalApi.License.VerifyLicenseResponse
+	(*timestamp.Timestamp)(nil),   // 2: google.protobuf.Timestamp
 }
 var file_license_proto_depIdxs = []int32{
-	0, // 0: license.LicenseService.VerifyLicense:input_type -> license.VerifyLicenseRequest
-	1, // 1: license.LicenseService.VerifyLicense:output_type -> license.VerifyLicenseResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	2, // 0: InternalApi.License.VerifyLicenseResponse.expires_at:type_name -> google.protobuf.Timestamp
+	0, // 1: InternalApi.License.LicenseService.VerifyLicense:input_type -> InternalApi.License.VerifyLicenseRequest
+	1, // 2: InternalApi.License.LicenseService.VerifyLicense:output_type -> InternalApi.License.VerifyLicenseResponse
+	2, // [2:3] is the sub-list for method output_type
+	1, // [1:2] is the sub-list for method input_type
+	1, // [1:1] is the sub-list for extension type_name
+	1, // [1:1] is the sub-list for extension extendee
+	0, // [0:1] is the sub-list for field type_name
 }
 
 func init() { file_license_proto_init() }
