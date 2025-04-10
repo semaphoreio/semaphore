@@ -3,7 +3,6 @@ export MIX_ENV?=dev
 include ../../Makefile
 
 DOCKER_BUILD_PATH=../..
-OUT_VOLUME=$(PWD)/out:/app/api/out
 INTERNAL_API_BRANCH?=master
 TMP_INTERNAL_REPO_DIR?=/tmp/internal_api
 RELATIVE_INTERNAL_PB_OUTPUT_DIR=lib/internal_api
@@ -33,6 +32,7 @@ PROJECTHUB_API_GRPC_URL?=127.0.0.1:50052
 LOG_LEVEL?=debug
 API_VERSION?=v1alpha
 ON_PREM?="false"
+TMP_REPO_DIR ?= /tmp/internal_api
 
 CONTAINER_ENV_VARS= \
   -e IN_DOCKER=$(IN_DOCKER) \
@@ -62,7 +62,7 @@ test.ex.setup: export MIX_ENV=test
 test.ex.setup:
 ifeq ($(CI),)
 # Localy we use database supplied by docker-compose
-	docker compose $(DOCKER_COMPOSE_OPTS) run -e MIX_ENV=$(MIX_ENV) --build app mix do deps.get, test $(FILE)
+	docker compose $(DOCKER_COMPOSE_OPTS) run -e MIX_ENV=$(MIX_ENV) --build app mix do deps.get
 else
 	docker run --network host -v $(PWD)/out:/app/out $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) sh
 endif

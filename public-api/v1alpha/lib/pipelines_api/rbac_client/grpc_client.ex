@@ -114,4 +114,33 @@ defmodule PipelinesAPI.RBACClient.GrpcClient do
       |> RBAC.Stub.list_roles(list_roles_request, opts())
     end)
   end
+
+  def retract_role({:ok, retract_role_request = %{role_assignment: _, requester_id: _}}) do
+    LogTee.debug(retract_role_request, "RBACClient.GrpcClient.retract_role")
+
+    result =
+      Wormhole.capture(__MODULE__, :retract_role_, [retract_role_request],
+        stacktrace: true,
+        skip_log: true,
+        timeout_ms: @wormhole_timeout
+      )
+
+    case result do
+      {:ok, result} -> result
+      {:error, reason} -> Log.internal_error(reason, "retract_role")
+    end
+  end
+
+  def retract_role({:ok, _}), do: ToTuple.user_error("invalid retract role request")
+
+  def retract_role(error), do: error
+
+  def retract_role_(retract_role_request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+
+    Metrics.benchmark("PipelinesAPI.RBAC_client", ["retract_role_"], fn ->
+      channel
+      |> RBAC.Stub.retract_role(retract_role_request, opts())
+    end)
+  end
 end

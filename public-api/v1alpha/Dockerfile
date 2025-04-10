@@ -21,7 +21,7 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 RUN mix local.hex --force && mix local.rebar --force
 
 RUN mkdir api
-WORKDIR /app/api
+WORKDIR /app
 
 # install mix dependencies
 COPY public-api/v1alpha/mix.exs public-api/v1alpha/mix.lock ./
@@ -86,7 +86,7 @@ RUN \
 USER "${USER}"
 
 # copy release executables
-COPY --from=builder --chown="${USER}":"${USER}" /app/api/_build/"${MIX_ENV}"/rel/pipelines_api ./
+COPY --from=builder --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/pipelines_api ./
 
 ENTRYPOINT ["bin/pipelines_api"]
 
