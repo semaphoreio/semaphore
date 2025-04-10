@@ -312,7 +312,7 @@ defmodule Guard.Store.Organization do
       |> Guard.FrontRepo.Organization.changeset(%{deleted_at: DateTime.utc_now()})
       |> Guard.FrontRepo.update()
 
-    Guard.Events.OrganizationDeleted.publish(organization.id, soft_delete: true)
+    :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :soft_delete)
 
     result
   end
@@ -326,7 +326,7 @@ defmodule Guard.Store.Organization do
   def hard_destroy(%Guard.FrontRepo.Organization{} = organization) do
     result = Guard.FrontRepo.delete(organization)
 
-    Guard.Events.OrganizationDeleted.publish(organization.id)
+    :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :hard_delete)
 
     result
   end
