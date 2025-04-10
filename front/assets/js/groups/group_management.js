@@ -26,6 +26,11 @@ export var GroupManagement = {
       cancelModalBtn.addEventListener("click", () => this.closeGroupPopup())
       var saveChangesBtn = document.getElementById("save_changes_btn");
       saveChangesBtn.addEventListener("click", () => this.saveChanges())
+      
+      const nameInput = document.getElementById("name_input");
+      nameInput.addEventListener("input", () => this.refreshSaveChangesBtnState())
+      const descriptionInput = document.getElementById("description_input");
+      descriptionInput.addEventListener("input", () => this.refreshSaveChangesBtnState())
     }
   },
 
@@ -213,7 +218,7 @@ export var GroupManagement = {
       this.memberIdsToAdd.push(selectedUser.id)
       this.renderNewUser(selectedUser)
 
-      document.getElementById("save_changes_btn").disabled = false
+      this.refreshSaveChangesBtnState()
     }
   },
 
@@ -229,11 +234,7 @@ export var GroupManagement = {
       divToRemove.remove();
     }
 
-    if(!this.memberIdsToAdd.length && !this.memberIdsToRemove.length) {
-      document.getElementById("save_changes_btn").disabled = true
-    }else{
-      document.getElementById("save_changes_btn").disabled = false
-    }
+    this.refreshSaveChangesBtnState()
   },
 
   renderNewUser(user) {
@@ -266,5 +267,31 @@ export var GroupManagement = {
     listRoot.querySelector('input[type=text]').value=''
     listRoot.querySelector('input[type=text]').blur()
     listRoot.querySelector('input[type=text]').focus()
+  },
+
+  refreshSaveChangesBtnState() {
+    if(this.group) {
+      document.getElementById("save_changes_btn").disabled = this.areMandatoryFieldsEmpty() || !this.isAnyChangeMade()
+    }else{
+      document.getElementById("save_changes_btn").disabled = this.areMandatoryFieldsEmpty()
+    }
+  },
+
+  areMandatoryFieldsEmpty() {
+    const name = document.getElementById("name_input").value
+    const description = document.getElementById("description_input").value
+    return !name || !description
+  },
+
+  isAnyChangeMade() {
+    var isNameChanged, isDescriptionChanged
+    if(this.group) {
+      isNameChanged = document.getElementById("name_input").value !== this.group.name
+      isDescriptionChanged = document.getElementById("description_input").value !== this.group.description
+    }else{
+      isNameChanged = document.getElementById("name_input").value !== ''
+      isDescriptionChanged = document.getElementById("description_input").value !== ''
+    }
+    return isNameChanged || isDescriptionChanged || this.memberIdsToAdd.length > 0 || this.memberIdsToRemove.length > 0
   }
 }
