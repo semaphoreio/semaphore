@@ -17,5 +17,7 @@ defmodule Projecthub.Workers.ProjectCleaner do
       end)
     end)
     |> Stream.run()
+
+    :ok
   end
 end

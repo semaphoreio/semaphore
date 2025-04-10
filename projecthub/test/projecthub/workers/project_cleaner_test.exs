@@ -37,7 +37,7 @@ defmodule Projecthub.Workers.ProjectCleanerTest do
         {Schedulers, [], [delete_all: fn _p, _r -> {:ok, nil} end]},
         {Projecthub.Artifact, [], [destroy: fn _, _ -> nil end]}
       ]) do
-        {:ok, _} = Projecthub.Workers.ProjectCleaner.process()
+        :ok = Projecthub.Workers.ProjectCleaner.process()
 
         projects = Project |> Repo.all() |> Enum.map(& &1.id) |> MapSet.new()
         assert projects == MapSet.new(not_soft_deleted_projects ++ recent_soft_deleted_projects)
