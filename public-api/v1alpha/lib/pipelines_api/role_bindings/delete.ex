@@ -22,6 +22,8 @@ defmodule PipelinesAPI.RoleBindings.Delete do
       org_id = conn.assigns.org_id
       user_id = conn.assigns.user_id
 
+      Logger.info("Removing role: #{user_id} - #{org_id}. Action performed by #{requester_id}")
+
       resp =
         RBACClient.retract_role(%{requester_id: requester_id, user_id: user_id, org_id: org_id})
 
