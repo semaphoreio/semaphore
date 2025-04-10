@@ -306,18 +306,28 @@ defmodule Projecthub.Models.Project do
     {:ok, nil}
   end
 
-  def hard_destroy(project, user) do
+  def hard_destroy(project, user_id) do
     {:ok, repository} = Repository.find_for_project(project.id)
     {:ok, _} = Repository.destroy(repository)
 
     {:ok, _} = Repo.delete(project)
-    {:ok, _} = Schedulers.delete_all(project, user.id)
+    {:ok, _} = Schedulers.delete_all(project, user_id)
     {:ok, _} = Events.ProjectDeleted.publish(project)
 
     {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
     {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
 
     {:ok, nil}
+  end
+
+  def find_candidates_for_hard_destroy() do
+    thirty_days_ago =
+      DateTime.add(DateTime.utc_now(), -30 * 24 * 60 * 60)
+      |> DateTime.truncate(:second)
+
+    Project
+    |> where([p], p.deleted_at != nil and p.deleted_at < ^thirty_days_ago)
+    |> Repo.all()
   end
 
   def find_many(org_id, ids) do

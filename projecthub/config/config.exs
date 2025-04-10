@@ -25,7 +25,8 @@ config :projecthub, amqp_url: System.get_env("AMQP_URL")
 
 config :projecthub,
   start_project_init_worker?: System.get_env("START_PROJECT_INIT_WORKER"),
-  start_internal_api?: System.get_env("START_INTERNAL_API")
+  start_internal_api?: System.get_env("START_INTERNAL_API"),
+  start_project_cleaner?: System.get_env("START_PROJECT_CLEANER")
 
 config :projecthub,
   ecto_repos: [Projecthub.Repo],
@@ -49,6 +50,12 @@ config :projecthub,
     Support.FakeServices.RepositoryService,
     Support.FakeServices.RepositoryIntegratorService,
     Support.FakeServices.FeatureService
+  ]
+
+config :projecthub, Projecthub.Workers.ProjectCleaner,
+  jobs: [
+    # Every Midnight
+    {"0 0 * * *", {Projecthub.Workers.ProjectCleaner, :process, []}}
   ]
 
 import_config "#{config_env()}.exs"
