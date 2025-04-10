@@ -67,8 +67,8 @@ Following version control tools are pre-installed:
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
 - Geckodriver 0.36.0
-- Google Chrome 134.0.6998.117
-- ChromeDriver 134.0.6998.117
+- Google Chrome 131.0.6778.139
+- ChromeDriver 131.0.6778.139
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 
