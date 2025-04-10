@@ -23,8 +23,6 @@ defmodule Guard.Events.OrganizationDeleted do
 
     message = InternalApi.Organization.OrganizationDeleted.encode(event)
 
-    exchange_name = "organization_exchange"
-
     {:ok, channel} = AMQP.Application.get_channel(:organization)
     :ok = AMQP.Basic.publish(channel, "organization_exchange", routing_key, message)
   end
