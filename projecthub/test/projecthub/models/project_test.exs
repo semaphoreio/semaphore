@@ -512,7 +512,7 @@ defmodule Projecthub.Models.ProjectTest do
     end
   end
 
-  describe ".destroy" do
+  describe ".hard_destroy" do
     test "destroys repo, deploy key, schedulers and project records, removes key and hook from github, destroys artifact" do
       {:ok, project} = Support.Factories.Project.create_with_repo()
 
@@ -524,7 +524,7 @@ defmodule Projecthub.Models.ProjectTest do
         {Schedulers, [], [delete_all: fn _p, _r -> {:ok, nil} end]},
         {Projecthub.Artifact, [], [destroy: fn _, _ -> nil end]}
       ]) do
-        {:ok, _} = Project.destroy(project, user)
+        {:ok, _} = Project.hard_destroy(project, user)
         assert_called(Schedulers.delete_all(project, user.id))
         assert_called(Events.ProjectDeleted.publish(project))
         assert_called(Projecthub.Artifact.destroy(project.artifact_store_id, project.id))
@@ -533,6 +533,24 @@ defmodule Projecthub.Models.ProjectTest do
         projects = Project |> Repo.all()
         assert Enum.empty?(projects)
       end
+    end
+  end
+
+  describe ".soft_destroy" do
+    test "soft deletes the project updating deleted_at and deleted_by" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      user = %User{github_token: "token"}
+
+      {:ok, _} = Project.soft_destroy(project, user)
+
+      # Assert project is not found by default find function
+      assert {:error, :not_found} = Project.find(project.id)
+
+      # Assert soft deleted project
+      soft_deleted_project = Project |> Repo.get(project.id)
+      assert soft_deleted_project.deleted_at != nil
+      assert soft_deleted_project.deleted_by == user.id
     end
   end
 
