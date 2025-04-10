@@ -312,9 +312,14 @@ defmodule Guard.Store.Organization do
       |> Guard.FrontRepo.Organization.changeset(%{deleted_at: DateTime.utc_now()})
       |> Guard.FrontRepo.update()
 
-    :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :soft_delete)
+    case result do
+      {:ok, _} ->
+        :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :soft_delete)
+        result
 
-    result
+      _ ->
+        result
+    end
   end
 
   @doc """
@@ -326,9 +331,14 @@ defmodule Guard.Store.Organization do
   def hard_destroy(%Guard.FrontRepo.Organization{} = organization) do
     result = Guard.FrontRepo.delete(organization)
 
-    :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :hard_delete)
+    case result do
+      {:ok, _} ->
+        :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :hard_delete)
+        result
 
-    result
+      _ ->
+        result
+    end
   end
 
   defp where_undeleted(query) do
