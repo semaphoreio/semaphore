@@ -8,6 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Server struct {
@@ -42,10 +43,10 @@ func (s *Server) VerifyLicense(ctx context.Context, req *license.VerifyLicenseRe
 	// Create verification request
 	verificationReq := LicenseVerificationRequest{
 		LicenseJWT:  licenseJWT,
-		Hostname:    req.Hostname,
-		IPAddress:   req.IpAddress,
-		Environment: req.Environment,
-		Version:     req.Version,
+		Hostname:    "test-hostname",
+		IPAddress:   "127.0.0.1",
+		Environment: "dev",
+		Version:     "EE v1.2.0",
 	}
 
 	// Call license server
@@ -56,7 +57,7 @@ func (s *Server) VerifyLicense(ctx context.Context, req *license.VerifyLicenseRe
 
 	return &license.VerifyLicenseResponse{
 		Valid:           resp.Valid,
-		ExpiresAt:       resp.ExpiresAt.Unix(),
+		ExpiresAt:       timestamppb.New(resp.ExpiresAt),
 		MaxUsers:        int32(resp.MaxUsers),
 		EnabledFeatures: resp.EnabledFeatures,
 		Message:         resp.Message,
