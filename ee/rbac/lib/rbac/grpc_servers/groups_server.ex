@@ -34,7 +34,6 @@ defmodule Rbac.GrpcServers.GroupsServer do
 
       {:error, err_msg} ->
         Watchman.increment("create_group.failure")
-        Logger.info("TMP ERROR #{inspect(err_msg)}")
         grpc_error!(:internal, err_msg)
     end
   end
