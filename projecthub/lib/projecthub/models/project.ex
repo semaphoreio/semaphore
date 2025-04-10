@@ -323,7 +323,7 @@ defmodule Projecthub.Models.Project do
   def find_candidates_for_hard_destroy() do
     thirty_days_ago =
       DateTime.utc_now()
-      |> DateTime.add(-30, :day)
+      |> DateTime.add(-30 * 24 * 60 * 60)
       |> DateTime.truncate(:second)
 
     Project
