@@ -1,0 +1,12 @@
+<!-- Only show banner if license is invalid in EE version -->
+<%= if Front.ee?() and not @license_status.valid do %>
+  <div class="bg-red-600 text-white px-4 py-3" role="alert">
+    <div class="container mx-auto flex items-center justify-between">
+      <div class="flex items-center">
+        <span class="material-symbols-outlined mr-2">warning</span>
+        <p><%= @license_status.message %></p>
+        <p>Your license expires on <%= @license_status.expires_at %>.</p>
+      </div>
+    </div>
+  </div>
+<% end %>

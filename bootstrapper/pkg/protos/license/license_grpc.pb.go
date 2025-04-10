@@ -19,7 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	LicenseService_VerifyLicense_FullMethodName = "/license.LicenseService/VerifyLicense"
+	LicenseService_VerifyLicense_FullMethodName = "/InternalApi.License.LicenseService/VerifyLicense"
 )
 
 // LicenseServiceClient is the client API for LicenseService service.
@@ -28,7 +28,8 @@ const (
 //
 // LicenseService provides license verification functionality
 type LicenseServiceClient interface {
-	// VerifyLicense verifies if a license is valid
+	// Operation is called to verify a license.
+	// Operation is synchronous.
 	VerifyLicense(ctx context.Context, in *VerifyLicenseRequest, opts ...grpc.CallOption) (*VerifyLicenseResponse, error)
 }
 
@@ -56,7 +57,8 @@ func (c *licenseServiceClient) VerifyLicense(ctx context.Context, in *VerifyLice
 //
 // LicenseService provides license verification functionality
 type LicenseServiceServer interface {
-	// VerifyLicense verifies if a license is valid
+	// Operation is called to verify a license.
+	// Operation is synchronous.
 	VerifyLicense(context.Context, *VerifyLicenseRequest) (*VerifyLicenseResponse, error)
 }
 
@@ -112,7 +114,7 @@ func _LicenseService_VerifyLicense_Handler(srv interface{}, ctx context.Context,
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var LicenseService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "license.LicenseService",
+	ServiceName: "InternalApi.License.LicenseService",
 	HandlerType: (*LicenseServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
