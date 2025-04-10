@@ -21,8 +21,8 @@ defmodule Front.Application do
         {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
         FrontWeb.Endpoint,
         {Task.Supervisor, [name: Front.TaskSupervisor]},
-        Front.Tracing.Store,
-        Front.FeatureProviderInvalidatorWorker
+        Front.Tracing.Store
+        # Front.FeatureProviderInvalidatorWorker
       ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]

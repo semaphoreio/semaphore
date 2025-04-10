@@ -1,0 +1,2743 @@
+docker compose -f docker-compose.yml build --build-arg BUILDKIT_INLINE_CACHE=1 --build-arg BUILD_ENV=test app
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [app internal] load .dockerignore
+#1 transferring context: 2B done
+#1 DONE 0.0s
+
+#2 [app internal] load build definition from Dockerfile
+#2 transferring dockerfile: 3.37kB 0.0s done
+#2 DONE 0.0s
+
+#3 [app internal] load metadata for docker.io/hexpm/elixir:1.14.3-erlang-25.2.3-alpine-3.18.0
+#3 DONE 0.6s
+
+#4 [app internal] load build context
+#4 DONE 0.0s
+
+#5 [app] importing cache manifest from project_page/main:latest
+#5 ...
+
+#6 [app auth] project_page/main:pull token for registry-1.docker.io
+#6 DONE 0.0s
+
+#5 [app] importing cache manifest from project_page/main:latest
+#5 ERROR: failed to configure registry cache importer: pull access denied, repository does not exist or may require authorization: server message: insufficient_scope: authorization failed
+
+#7 [app base 1/5] FROM docker.io/hexpm/elixir:1.14.3-erlang-25.2.3-alpine-3.18.0@sha256:1f3caaeb8c730ed8ca78e0bec2dffaa1bf929c259269dea3a1d09eadf45010fe
+#7 DONE 0.0s
+
+#4 [app internal] load build context
+#4 transferring context: 161.45kB 0.9s done
+#4 DONE 0.9s
+
+#8 [app base 2/5] RUN echo "Build for test environment started"
+#8 CACHED
+
+#9 [app elixir 13/13] RUN mix sentry_recompile && mix compile --warnings-as-errors
+#9 CACHED
+
+#10 [app dev 6/7] RUN node build.js
+#10 CACHED
+
+#11 [app elixir  9/13] COPY front/secrets secrets
+#11 CACHED
+
+#12 [app node 3/6] RUN npm install
+#12 CACHED
+
+#13 [app elixir  7/13] COPY front/priv priv
+#13 CACHED
+
+#14 [app elixir  1/13] WORKDIR /elixir
+#14 CACHED
+
+#15 [app elixir  8/13] COPY front/lib lib
+#15 CACHED
+
+#16 [app dev 3/7] COPY --from=elixir /elixir ./
+#16 CACHED
+
+#17 [app elixir  6/13] COPY front/config config
+#17 CACHED
+
+#18 [app elixir 10/13] COPY front/workflow_templates workflow_templates
+#18 CACHED
+
+#19 [app elixir  4/13] COPY feature_provider ../feature_provider
+#19 CACHED
+
+#20 [app base 3/5] RUN echo "http://dl-cdn.alpinelinux.org/alpine/v3.18/main/" >> /etc/apk/repositories
+#20 CACHED
+
+#21 [app base 4/5] RUN apk update &&     apk add --no-cache build-base git python3 curl openssh &&     apk add --no-cache --upgrade busybox busybox-binsh ssl_client &&     apk add --no-cache nodejs npm --repository="http://dl-cdn.alpinelinux.org/alpine/v3.18/main/"
+#21 CACHED
+
+#22 [app node 4/6] WORKDIR /assets
+#22 CACHED
+
+#23 [app dev 1/7] WORKDIR /app
+#23 CACHED
+
+#24 [app elixir  2/13] RUN mix local.hex --force     && mix local.rebar --force
+#24 CACHED
+
+#25 [app node 6/6] RUN mv /node/node_modules /assets/node_modules
+#25 CACHED
+
+#26 [app dev 5/7] WORKDIR /app/assets
+#26 CACHED
+
+#27 [app elixir  5/13] RUN mix do deps.get, deps.compile
+#27 CACHED
+
+#28 [app elixir  3/13] COPY front/mix.* ./
+#28 CACHED
+
+#29 [app base 5/5] RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
+#29 CACHED
+
+#30 [app elixir 11/13] COPY front/test test
+#30 CACHED
+
+#31 [app node 1/6] WORKDIR /node
+#31 CACHED
+
+#32 [app node 2/6] COPY front/assets/package.json front/assets/package-lock.json ./
+#32 CACHED
+
+#33 [app node 5/6] COPY front/assets /assets
+#33 CACHED
+
+#34 [app elixir 12/13] COPY front/.formatter.exs ./
+#34 CACHED
+
+#35 [app dev 2/7] RUN apk update     && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg
+#35 CACHED
+
+#36 [app dev 4/7] COPY --from=node /assets ./assets
+#36 CACHED
+
+#37 [app dev 7/7] WORKDIR /app
+#37 CACHED
+
+#38 [app] preparing layers for inline cache
+#38 DONE 0.0s
+
+#39 [app] exporting to image
+#39 exporting layers done
+#39 writing image sha256:43348d935945db8fb062aca5f3872012ca5d6ee1d743570a5e0c79dc84bdb7ee done
+#39 naming to docker.io/project_page/frontfixgroupcreation:latest done
+#39 DONE 0.0s
+------
+ > [app] importing cache manifest from project_page/main:latest:
+------
+/Library/Developer/CommandLineTools/usr/bin/make test.ex.setup
+make[1]: Nothing to be done for `test.ex.setup'.
+docker compose -f docker-compose.yml run --rm app mix test test/browser/people_test.exs:23  --warnings-as-errors
+[info] Watchman sending metrics to 0.0.0.0:8125 with prefix 'front.dev' 
+[error] Failed to open AMQP connection (amqp). Retrying later... 
+[error] Failed to open an AMQP channel(audit). Connection (amqp) is not ready. 
+[info] Running application in test environment 
+[info] Starting: {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]} 
+[info] Starting: FrontWeb.Endpoint 
+[info] Starting: {Task.Supervisor, [name: Front.TaskSupervisor]} 
+[info] Starting: Front.Tracing.Store 
+[info] Starting: {Cacheman, [:front, %{backend: %{host: "redis-cache", pool_size: 5, port: 6379, type: :redis}, prefix: "front/"}]} 
+[info] Starting: %{id: :feature_provider_cache, start: {Cachex, :start_link, [:feature_provider_cache]}, type: :supervisor} 
+[info] Starting: %{id: :front_cache, start: {Cachex, :start_link, [:front_cache]}, type: :supervisor} 
+[info] Starting: %{id: :auth_cache, start: {Cachex, :start_link, [[name: :auth_cache, expiration: {:expiration, 300000, 3000, true}]]}, type: :supervisor} 
+[info] Running FrontWeb.Endpoint with cowboy 2.9.0 at 0.0.0.0:4001 (http) 
+[info] Access FrontWeb.Endpoint at http://localhost:4001 
+Excluding tags: [:test]
+Including tags: [line: "23"]
+
+HTML before remove: <html lang="en"><head>
+<meta content="OhF_byVaDBw5AR4MAQE_DVweWS1yUC1Gq_G0G9IMIXtCc1ryesml0gy2" name="csrf-token">
+  <!-- assets path; useful for JS apps -->
+  <meta name="assets-path" content="/projects/assets">
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Semaphore CSS -->
+  <link rel="stylesheet" media="screen" href="/projects/assets/css/app-semaphore-min.css">
+  <link rel="stylesheet" media="screen" href="/projects/assets/app.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.fill {
+        font-variation-settings:
+        'FILL' 1,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.md-18 { font-size: 18px; }
+      .material-symbols-outlined.md-24 { font-size: 24px; }
+      .material-symbols-outlined.md-36 { font-size: 36px; }
+      .material-symbols-outlined.md-48 { font-size: 48px; }
+  </style>
+
+  <!-- Favicon -->
+  <link rel="alternate icon" class="js-site-favicon" type="image/png" href="/projects/assets/images/favicon.png">
+  <link rel="icon" class="js-site-favicon" type="image/svg+xml" href="/projects/assets/images/favicon.svg">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.fill {
+        font-variation-settings:
+        'FILL' 1,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.md-18 { font-size: 18px; }
+      .material-symbols-outlined.md-24 { font-size: 24px; }
+      .material-symbols-outlined.md-36 { font-size: 36px; }
+      .material-symbols-outlined.md-48 { font-size: 48px; }
+  </style>
+
+  <title>People・RT1</title>
+
+  <script nonce="">
+    window.InjectedDataByBackend = {};
+    window.InjectedDataByBackend.Watchman = {};
+  </script>
+</head>
+
+  <body class="bg-lightest-brown">
+
+
+<script nonce="">
+  window.InjectedDataByBackend.JumpTo = {}
+  window.InjectedDataByBackend.JumpTo.Starred = [];
+  window.InjectedDataByBackend.JumpTo.Projects = [];
+  window.InjectedDataByBackend.JumpTo.Dashboards = [{"type":"dashboard","path":"/dashboards/dashboard_1","name":"dashboard_1","id":"8e718e2f-3fe1-4c59-a21f-edd7c0130749"}];
+
+
+
+</script>
+<style>
+  .projects-menu-results {
+    overflow: auto;
+    background: /* Shadow covers */
+    linear-gradient(white 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(rgba(255, 255, 255, 0), white 70%) 0 100%, /* Shadows */
+    radial-gradient(farthest-side at 50% 0, #e5eaea, rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 50% 100%, #e5eaea, rgba(0, 0, 0, 0)) 0 100%;
+    background-repeat: no-repeat;
+    background-color: white;
+    background-size: 100% 20px;
+    /* Opera doesn't support this in the shorthand */
+    background-attachment: local, local, scroll, scroll;
+  }
+</style>
+
+
+
+
+
+<div class="header" id="global-page-header">
+  <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
+    <div class="flex items-center">
+      <a href="/" class="link flex items-center flex-shrink-0 pv1 pr1 dark-gray  hover-bg-washed-brown ph2 br3 nh1">
+        <img src="/projects/assets/images/semaphore-logo-sign-black.svg" alt="logo" width="26" height="17">
+        <span class="dn db-m b pl2">Home</span>
+      </a>
+      <div class="bl b--black-15 pl2 pl3-ns ml2 ml3-ns">
+        <div class="b pointer flex items-center hover-bg-washed-brown ph2 br3 nh1 pv1 js-projects-menu-trigger" data-template="projectsMenu" data-hotkey="/">
+          <img src="/projects/assets/images/icn-project-nav.svg" alt="list" width="16" height="16" class="dn di-ns mr2">
+          Projects
+        </div>
+      </div>
+      <div id="projectsMenu" style="display: none;">
+        <div class="project-menu pl3 pt3">
+          <div id="jump-to-input-container" class="bg-white pr3">
+            <input id="jump-to-input" type="text" class="form-control w-100" placeholder="Jump to…">
+          </div>
+          <div class="projects-menu-results pb3 pr3" style="max-height: calc(100vh - 160px);">
+            <p class="f7 gray mt2 mb0 tc">Hit "/" to trigger from keyboard</p>
+            <div id="jump-to-results">
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
+
+            <a href="/x/new_project" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+              <img src="/projects/assets/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
+              <span class="dn di-ns">Create new</span>
+            </a>
+
+        </div>
+
+    </div>
+    <div class="flex items-center flex-shrink-0">
+
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <a href="/agents" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+            <img src="/projects/assets/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
+            <span class="dn di-ns">Agents</span>
+          </a>
+        </div>
+
+
+        <!-- Help Menu -->
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
+<img src="/projects/assets/images/icn-help.svg" class="db o-80" height="24" width="24">
+            <span class="dn db-m ml2 b">Help</span>
+          </div>
+        </div>
+
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="profileMenu">
+        <img src="https://avatars3.githubusercontent.com/u/0?v=4" alt="Jane" class="f7 db br-100 ba b--black-50" width="24" height="24">
+      </div>
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="orgMenu">
+        <img src="https://www.gravatar.com/avatar/87a0c603a9a02253c6f1b1e4cc5570e42f7457345e373598e34078a3e76fec20?d=identicon&amp;size=32" width="24" height="24" class="db br-100 ba">
+      </div>
+    </div>
+  </div>
+</div>
+<div style="display: none;">
+  <!-- Header Help menu  -->
+  <div id="helpMenu">
+    <div class="ph2 pv1">
+      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Help Center</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test" rel="noopener" target="_blank">
+  <div class="b">Docs</div>
+  <p class="f6 o-80 mb0">Semaphore 2.0 documentation</p>
+
+</a>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://status.semaphoretest.test" rel="noopener" target="_blank">
+  <div class="b">Status</div>
+  <p class="f6 o-80 mb0">Live system health</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test/reference/semaphore-changelog/" rel="noopener" target="_blank">
+  <div class="b">Changelog</div>
+  <p class="f6 o-80 mb0">Most recent product updates</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test/reference/sem-command-line-tool/" rel="noopener" target="_blank">
+  <div class="b">sem CLI Reference</div>
+  <p class="f6 o-80 mb0">Command line goodies</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://twitter.com/semaphoreci" rel="noopener" target="_blank">
+  <div class="b">Twitter</div>
+  <p class="f6 o-80 mb0">Follow us @semaphoreci</p>
+
+</a>
+    </div>
+  </div>
+  <!-- Header Profile menu -->
+  <div id="profileMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Logged in as</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40">Jane</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/people/78114608-be8a-465a-b9cd-81970fb802c5">
+  <div class="b">Profile Settings</div>
+  <p class="f6 o-80 mb0">Account, Repo access, API token</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://id.semaphoretest.test/logout?back_url=http://localhost:4001/people">
+  <div class="b">Log Out</div>
+  <p class="f6 o-80 mb0">Bye, bye!</p>
+
+</a>
+    </div>
+  </div>
+  <!-- Header Org menu -->
+  <div id="orgMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Current Organization</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40">RT1</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/projects">
+  <div class="b">Projects</div>
+  <p class="f6 o-80 mb0">All projects in this organization</p>
+
+</a>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/audit">
+  <div class="b">Audit Logs</div>
+  <p class="f6 o-80 mb0">List of all events</p>
+
+</a>
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/settings">
+  <div class="b">Settings</div>
+  <p class="f6 o-80 mb0">Basics, Secrets and Notifications</p>
+
+</a>
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/get_started/">
+  <div class="b">Get started</div>
+  <p class="f6 o-80 mb0">Your guide to Semaphore</p>
+
+</a>
+
+      <div class="bt b--white-40 pv2 mt3">
+        <div class="dib f5 mb0 fl bg-green white-80 ph2 lh-solid nt3">Restricted admin area</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/billing/">
+  <div class="b">Plans &amp; Billing</div>
+  <p class="f6 o-80 mb0">Spending, Plan and Invoices</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/people">
+  <div class="b">People</div>
+  <p class="f6 o-80 mb0">Manage Collaborators</p>
+
+</a>
+
+        <div class="bb b--white-40"></div>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://me.semaphoretest.test/new">
+  <div class="b">+ Create new</div>
+  <p class="f6 o-80 mb0">Create new organization</p>
+
+</a>
+
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    <div class="main" style="padding-top: 48px">
+      <div id="main-content" class="bg-white pa3 pa4-m">
+
+
+
+  <div class="fixed right-0 left-0 z-5" style="top: 48px">
+    <div class="pv2 bg-gray bg-pattern-wave white ph3 ph4-l mb4">
+      <div>Organization HQ</div>
+    </div>
+  </div>
+  <div class="mb3 mt4">
+    <div class="flex-l justify-between">
+      <div class="mb3 mb0-l pr4-m">
+        <h1 class="f2 f1-m lh-title mb1">RT1</h1>
+        <p class="mb0 measure-wide">Overview and manage organization</p>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs">
+<a class="tab" href="/projects">
+<img src="/projects/assets/images/icn-project-nav.svg" class="mr2" height="16" width="16">
+      <span>Projects</span>
+</a>
+<a class="tab" href="/agents">
+<img src="/projects/assets/images/icn-self-hosted.svg" class="mr2" height="16" width="16">
+      <span>Agents</span>
+</a>
+
+<a class="tab" href="/audit">
+        <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.26 7.312h1.5v1.5h-1.5v-1.5zm0 3.016h1.5v1.5h-1.5v-1.5zm4.504-3.015h-1.5v1.5h1.5v-1.5zm-1.5 3.015h1.5v1.5h-1.5v-1.5zm4.476-3.015h-1.5v1.5h1.5v-1.5zM5.76 4.35h-1.5v1.5h1.5v-1.5zm1.504 0h1.5v1.5h-1.5v-1.5zm2.976 0h1.5v1.5h-1.5v-1.5z"></path></svg>
+        <span>Audit Logs</span>
+</a>
+
+<a class="tab tab--active" href="/people">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5C1 3.57174 1.36875 2.6815 2.02513 2.02513C2.6815 1.36875 3.57174 1 4.5 1H11.5C12.4283 1 13.3185 1.36875 13.9749 2.02513C14.6313 2.6815 15 3.57174 15 4.5V11.5C15 12.4283 14.6313 13.3185 13.9749 13.9749C13.3185 14.6313 12.4283 15 11.5 15H4.5C3.57174 15 2.6815 14.6313 2.02513 13.9749C1.36875 13.3185 1 12.4283 1 11.5V4.5ZM4.5 2.4C3.94305 2.4 3.4089 2.62125 3.01508 3.01508C2.62125 3.4089 2.4 3.94305 2.4 4.5V11.5C2.4 12.057 2.62125 12.5911 3.01508 12.9849C3.29338 13.2632 3.64176 13.4554 4.01874 13.5441V12.6562C4.01874 11.1651 5.22757 9.95625 6.71874 9.95625H9.31249C10.8037 9.95625 12.0125 11.1651 12.0125 12.6562V13.5365C12.3775 13.4447 12.7143 13.2555 12.9849 12.9849C13.3788 12.5911 13.6 12.057 13.6 11.5V4.5C13.6 3.94305 13.3788 3.4089 12.9849 3.01508C12.5911 2.62125 12.057 2.4 11.5 2.4H4.5ZM10.6125 13.6V12.6562C10.6125 11.9383 10.0305 11.3562 9.31249 11.3562H6.71874C6.00077 11.3562 5.41874 11.9383 5.41874 12.6562V13.6H10.6125ZM7.99999 5.16875C7.32516 5.16875 6.77811 5.7158 6.77811 6.39062C6.77811 7.06545 7.32516 7.6125 7.99999 7.6125C8.67481 7.6125 9.22186 7.06545 9.22186 6.39062C9.22186 5.7158 8.67481 5.16875 7.99999 5.16875ZM5.37811 6.39062C5.37811 4.9426 6.55197 3.76875 7.99999 3.76875C9.44801 3.76875 10.6219 4.9426 10.6219 6.39062C10.6219 7.83865 9.44801 9.0125 7.99999 9.0125C6.55197 9.0125 5.37811 7.83865 5.37811 6.39062Z"></path></svg>
+        <span>People</span>
+</a>
+<a class="tab" href="/settings">
+      <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.996a.1.1 0 00-.099.086l-.25 1.784L6.733 4a4.193 4.193 0 00-1.554.9l-.327.299-1.68-.69a.1.1 0 00-.124.043l-.502.87a.1.1 0 00.026.128L4 6.667l-.093.43a4.216 4.216 0 00-.005 1.788l.093.43-1.438 1.112a.1.1 0 00-.026.129l.502.869a.1.1 0 00.124.043l1.68-.68.326.3c.445.41.979.726 1.568.913l.42.134.25 1.783a.1.1 0 00.099.086h1.003a.1.1 0 00.099-.087l.24-1.777.424-.133a4.192 4.192 0 001.575-.91l.326-.298 1.652.669a.1.1 0 00.124-.043l.502-.869a.1.1 0 00-.026-.13L12.013 9.34l.095-.433a4.217 4.217 0 00-.004-1.831l-.097-.433 1.4-1.093a.1.1 0 00.026-.129l-.502-.869a.1.1 0 00-.125-.042l-1.65.677-.328-.297a4.192 4.192 0 00-1.56-.896l-.425-.133-.24-1.778a.1.1 0 00-.1-.087H7.502zm-1.485-.108A1.5 1.5 0 017.501.596h1.003a1.5 1.5 0 011.486 1.3l.124.916c.472.192.912.446 1.309.752l.852-.35a1.5 1.5 0 011.868.638l.502.87a1.5 1.5 0 01-.376 1.932l-.718.56a5.63 5.63 0 01.004 1.548l.721.557a1.5 1.5 0 01.382 1.937l-.502.869a1.5 1.5 0 01-1.861.64l-.852-.344a5.59 5.59 0 01-1.329.768l-.124.915a1.5 1.5 0 01-1.486 1.3H7.5a1.5 1.5 0 01-1.486-1.292l-.13-.93a5.597 5.597 0 01-1.325-.771l-.877.354a1.5 1.5 0 01-1.861-.64l-.502-.869a1.5 1.5 0 01.382-1.937l.756-.584a5.645 5.645 0 01.003-1.494l-.752-.587a1.5 1.5 0 01-.376-1.933l.502-.869a1.5 1.5 0 011.868-.637l.877.36a5.593 5.593 0 011.305-.755l.13-.932zM7.989 6.7a1.3 1.3 0 100 2.6 1.3 1.3 0 000-2.6zM5.29 8a2.7 2.7 0 115.4 0 2.7 2.7 0 01-5.4 0z"></path></svg>
+      <span>Settings</span>
+</a>
+
+<a class="tab" href="/billing/">
+      <span class="material-symbols-outlined mr2" style="font-size: 22px;">credit_card</span>
+      <span>Plans &amp; Billing</span>
+</a>
+
+  </nav>
+<style>
+  .spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+  }
+
+  .selected{
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+
+  .selected .measure {
+    color: white;
+  }
+
+  .not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+  
+  .not-selected .measure {
+    color: black;
+  }
+
+  .not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+  }
+</style>
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+
+    <img src="/projects/assets/images/spinner-2.svg" width="100" height="100" class="spinner" style="display: none;">
+
+    <div class="flex-m items-start justify-between mb0 mb4-m">
+      <div class="mb3 mb0-m">
+        <p class="mb0">See different <a href="https://docs.semaphoreci.com/account-management/permission-levels/" target="_blank" rel="noopener">Permission levels</a> in the Docs.</p>
+        <p class="mb0">How to <a href="https://docs.semaphoreci.com/account-management/organizations/#transferring-ownership-of-an-organization" target="_blank" rel="noopener">Transfer the ownership</a>?</p>
+      </div>
+      <div class="flex items-center">
+
+<a class="pointer flex items-center btn-secondary btn nowrap ml2" href="/roles">
+          <span class="material-symbols-outlined mr1">open_in_new</span>
+          <span>Manage Roles</span>
+</a>
+      </div>
+    </div>
+
+    <div class="w-100 flex">
+<script nonce="">
+  window.InjectedDataByBackend.RenderMembers = "/people/render_members";
+</script>
+
+  <input type="text" class="form-control gray br3 w-100" name="search_input_field" id="search_input_field" placeholder="Search for users and groups" style="color: black;">
+
+<div id="filter_by_role_btn" selected_role_id="" class="pointer flex items-center btn-secondary btn ml3" data-template="roleSelector" aria-expanded="false">
+  <span class="material-symbols-outlined mr1">filter_list</span>
+  <span id="selected_role_name">Role</span>
+  <span class="material-symbols-outlined">expand_more</span>
+</div>
+
+<div id="roleSelector" class="dn">
+
+    <div role_id="07717e3b-831e-4cea-967f-84dd60a86ef1" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Owner</p>
+        <p class="f6 gray mb0 measure">Owners have access to all functionalities within the organization and any of its projects. They cannot be removed from the organization.</p>
+      </div>
+    </div>
+
+    <div role_id="e8314064-8314-496a-8d07-9e2e57502e27" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Admin</p>
+        <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+      </div>
+    </div>
+
+    <div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Member</p>
+        <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+      </div>
+    </div>
+
+</div>
+
+    </div>
+<script nonce="">
+  window.InjectedDataByBackend.AssignRoleUrl = "/people/assign_role";
+  window.InjectedDataByBackend.RetractRoleUrl = "/people/retract_role";
+</script>
+
+
+    <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
+      <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
+        <div>
+          <div class="flex items-center">
+            <span class="material-symbols-outlined pr2">group</span>
+            <div class="b">Groups</div>
+          </div>
+        </div>
+
+  <div>
+
+<style>
+.group-members-jumpto {
+  position: relative;
+}
+.group-members-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.group-members-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.group-members-jumpto .jumpto-results {
+  position: absolute;
+  top: 31px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 207px;
+  width: 100%;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+.group-members-jumpto .jumpto-results span[aria-selected="true"],
+.group-members-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.group-members-jumpto .jumpto-results span:focus,
+.group-members-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+#scrollable-div::-webkit-scrollbar {
+    width: 12px; 
+}
+.scrollable-div{
+  max-height: 200px;
+  overflow-y: auto;
+}
+.selected{
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+}
+.not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+}
+.not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+}
+</style>
+
+<div class="overlay" id="groups_modal_overlay" style="display: none;">
+  <div class="bg-white popup w-40 br3 pa3 tl" style="min-width: 500px;">
+
+    <h3 class="mb0">Group name</h3>
+    <input id="name_input" type="text" placeholder="E.g. Administrators" class="form-control w-100 mr2 mv2">
+
+    <div id="group_description_block">
+      <h3 class="mb0">Group description</h3>
+      <input id="description_input" type="text" placeholder="E.g. Employees with access to all functionalities and projects" class="form-control w-100 mr2 mv2">
+    </div>
+
+    <div id="fetching_non_members">
+      <h3 class="mb0">Group members</h3>
+      <div class="flex items-center mv2 justify-between">
+          <div class="group-members-jumpto w-100 filters-group flex">
+            <input type="hidden">
+            <input type="text" placeholder="Search members to add" class="form-control w-100 mr2">
+            <div class="jumpto-results"></div>
+          </div>
+      </div>
+
+      <div id="group-users" class="scrollable-div">
+
+      </div>
+    </div>
+
+    <div class="flex justify-center mt3">
+      <button id="save_changes_btn" disabled="true" class="pointer flex items-center btn-primary btn">
+        <span class="material-symbols-outlined mr1">done</span>
+        <span>Save changes</span>
+      </button>
+      <button id="cancel_btn" class="pointer flex items-center btn-secondary btn ml3">
+        <span class="material-symbols-outlined mr1">cancel</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+</div>
+      <div class="flex-m">
+        <div>
+          <button id="open_group_popup" class="btn btn-primary flex items-center"><span class="material-symbols-outlined mr2">group_add</span>Create a group</button>
+        </div>
+      </div>
+
+  </div>
+
+      </div>
+
+      <div id="groups">
+
+      </div>
+    </div>
+
+  <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
+    <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
+      <div>
+        <div class="flex items-center">
+          <span class="material-symbols-outlined pr2">person</span>
+          <div class="b">People</div>
+        </div>
+      </div>
+
+
+  <div>
+
+      <div id="add-people" data-config="{&quot;users&quot;:{&quot;providers&quot;:[&quot;email&quot;,&quot;github&quot;,&quot;gitlab&quot;,&quot;bitbucket&quot;],&quot;invite_url&quot;:{&quot;path&quot;:&quot;/people?format=json&quot;,&quot;method&quot;:&quot;post&quot;},&quot;create_url&quot;:{&quot;path&quot;:&quot;/people/create_member?format=json&quot;,&quot;method&quot;:&quot;post&quot;},&quot;collaborators_url&quot;:{&quot;path&quot;:&quot;/people/sync?format=json&quot;,&quot;method&quot;:&quot;get&quot;}}}"></div>
+
+  </div>
+
+
+    </div>
+
+    <div id="members">
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/0be42157-d2b8-423a-bfae-4b879503b65f">Test Test the 3rd</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn0be42157-d2b8-423a-bfae-4b879503b65f" member_id="0be42157-d2b8-423a-bfae-4b879503b65f" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_0be42157-d2b8-423a-bfae-4b879503b65f" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_0be42157-d2b8-423a-bfae-4b879503b65f" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="0be42157-d2b8-423a-bfae-4b879503b65f" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="0be42157-d2b8-423a-bfae-4b879503b65f" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="0be42157-d2b8-423a-bfae-4b879503b65f">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/191b67d3-a125-49a9-a0dc-55cca22012e5">Test Test the 5th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn191b67d3-a125-49a9-a0dc-55cca22012e5" member_id="191b67d3-a125-49a9-a0dc-55cca22012e5" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_191b67d3-a125-49a9-a0dc-55cca22012e5" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_191b67d3-a125-49a9-a0dc-55cca22012e5" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/74992462-4fae-4636-b27a-9d3d2ab1b57f">Test Test the 6th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn74992462-4fae-4636-b27a-9d3d2ab1b57f" member_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_74992462-4fae-4636-b27a-9d3d2ab1b57f" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_74992462-4fae-4636-b27a-9d3d2ab1b57f" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/78114608-be8a-465a-b9cd-81970fb802c5">Jane</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-red white">Owner</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/88437963-17f7-45cd-a114-5c98dccbd2dc">Jacob Bannon</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn88437963-17f7-45cd-a114-5c98dccbd2dc" member_id="88437963-17f7-45cd-a114-5c98dccbd2dc" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_88437963-17f7-45cd-a114-5c98dccbd2dc" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_88437963-17f7-45cd-a114-5c98dccbd2dc" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/a0534f97-acb4-41f9-b416-021995050cb9">Test Test the 4th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btna0534f97-acb4-41f9-b416-021995050cb9" member_id="a0534f97-acb4-41f9-b416-021995050cb9" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_a0534f97-acb4-41f9-b416-021995050cb9" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_a0534f97-acb4-41f9-b416-021995050cb9" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="a0534f97-acb4-41f9-b416-021995050cb9" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="a0534f97-acb4-41f9-b416-021995050cb9" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="a0534f97-acb4-41f9-b416-021995050cb9">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/e023870d-beae-4a40-9454-761dd809a4fc">Dimitri Minakakis</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btne023870d-beae-4a40-9454-761dd809a4fc" member_id="e023870d-beae-4a40-9454-761dd809a4fc" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_e023870d-beae-4a40-9454-761dd809a4fc" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_e023870d-beae-4a40-9454-761dd809a4fc" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="e023870d-beae-4a40-9454-761dd809a4fc" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="e023870d-beae-4a40-9454-761dd809a4fc" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="e023870d-beae-4a40-9454-761dd809a4fc">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+    </div>
+  </div>
+
+
+
+    <div id="invitees">
+
+<div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+  <div id="invitee" class="flex items-center justify-between">
+    <div class="flex items-center">
+
+      <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="b">Frank</div>
+        <div class="f6 gray"> Not joined yet</div>
+      </div>
+    </div>
+
+    <div class="flex-m">
+<a class="btn btn-secondary ml3" data-confirm="This will remove this person from organization on Semaphore and therefore revoke their access from all projects in this organization. This won’t remove them from repository. Are you sure?" data-csrf="OhF_byVaDBw5AR4MAQE_DVweWS1yUC1Gq_G0G9IMIXtCc1ryesml0gy2" data-method="delete" data-to="/people/membership/9963e954-c895-4521-94f4-6f72b2943553" href="/people/membership/9963e954-c895-4521-94f4-6f72b2943553" rel="nofollow">×</a>
+    </div>
+  </div>
+</div>
+
+
+    </div>
+
+
+</div>
+
+
+<style>
+  .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+  }
+  .popup {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+  }
+  .code-block {
+      font-family: Courier, monospace;
+  }
+</style>
+<div class="overlay" id="overlay" style="display: none;">
+</div>
+
+
+
+      </div>
+    </div>
+
+
+
+<div id="error" class="fixed left-0 right-0 bottom-0 w-100 z-9999 slide-from-bottom dn">
+  <div class="mw6 center bg-white mb4 shadow-2 bl bw3 b--red br2">
+    <div class="flex items-start justify-between">
+      <p id="error-message" class="f4 measure mb0 ph3 pv2"></p>
+      <a id="error-close" href="#" class="db link f3 dark-gray pv2 ph3 nr1 o-50 hover-o-100 lh-title">×</a>
+    </div>
+  </div>
+</div>
+
+<div id="notice" class="fixed left-0 right-0 bottom-0 w-100 z-9999 slide-from-bottom dn">
+  <div class="mw6 center bg-white mb4 shadow-2 bl bw3 b--green br2">
+    <div class="flex items-start justify-between">
+      <p id="notice-message" class="f4 measure mb0 ph3 pv2"></p>
+      <a id="notice-close" href="#" class="db link f3 dark-gray pv2 ph3 nr1 o-50 hover-o-100 lh-title">×</a>
+   </div>
+  </div>
+</div>
+
+<script nonce="">
+  window.InjectedDataByBackend.Environment = {}
+  window.InjectedDataByBackend.Environment.Env = "test"
+  window.InjectedDataByBackend.Integrations = {}
+  window.InjectedDataByBackend.Userpilot = {}
+
+  window.InjectedDataByBackend.JS = "people_page"
+
+</script>
+
+<script nonce="" src="/projects/assets/app.js"></script>
+
+
+    <!-- enabled only for semaphore org members on the semaphore org pages-->
+
+
+
+  
+
+</body></html>
+HTML after remove: <html lang="en"><head>
+<meta content="OhF_byVaDBw5AR4MAQE_DVweWS1yUC1Gq_G0G9IMIXtCc1ryesml0gy2" name="csrf-token">
+  <!-- assets path; useful for JS apps -->
+  <meta name="assets-path" content="/projects/assets">
+
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Semaphore CSS -->
+  <link rel="stylesheet" media="screen" href="/projects/assets/css/app-semaphore-min.css">
+  <link rel="stylesheet" media="screen" href="/projects/assets/app.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.fill {
+        font-variation-settings:
+        'FILL' 1,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.md-18 { font-size: 18px; }
+      .material-symbols-outlined.md-24 { font-size: 24px; }
+      .material-symbols-outlined.md-36 { font-size: 36px; }
+      .material-symbols-outlined.md-48 { font-size: 48px; }
+  </style>
+
+  <!-- Favicon -->
+  <link rel="alternate icon" class="js-site-favicon" type="image/png" href="/projects/assets/images/favicon.png">
+  <link rel="icon" class="js-site-favicon" type="image/svg+xml" href="/projects/assets/images/favicon.svg">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200">
+
+  <style>
+      .material-symbols-outlined {
+        font-variation-settings:
+        'FILL' 0,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.fill {
+        font-variation-settings:
+        'FILL' 1,
+        'wght' 300,
+        'GRAD' 0,
+        'opsz' 20
+      }
+      .material-symbols-outlined.md-18 { font-size: 18px; }
+      .material-symbols-outlined.md-24 { font-size: 24px; }
+      .material-symbols-outlined.md-36 { font-size: 36px; }
+      .material-symbols-outlined.md-48 { font-size: 48px; }
+  </style>
+
+  <title>People・RT1</title>
+
+  <script nonce="">
+    window.InjectedDataByBackend = {};
+    window.InjectedDataByBackend.Watchman = {};
+  </script>
+</head>
+
+  <body class="bg-lightest-brown">
+
+
+<script nonce="">
+  window.InjectedDataByBackend.JumpTo = {}
+  window.InjectedDataByBackend.JumpTo.Starred = [];
+  window.InjectedDataByBackend.JumpTo.Projects = [];
+  window.InjectedDataByBackend.JumpTo.Dashboards = [{"type":"dashboard","path":"/dashboards/dashboard_1","name":"dashboard_1","id":"8e718e2f-3fe1-4c59-a21f-edd7c0130749"}];
+
+
+
+</script>
+<style>
+  .projects-menu-results {
+    overflow: auto;
+    background: /* Shadow covers */
+    linear-gradient(white 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(rgba(255, 255, 255, 0), white 70%) 0 100%, /* Shadows */
+    radial-gradient(farthest-side at 50% 0, #e5eaea, rgba(0, 0, 0, 0)),
+    radial-gradient(farthest-side at 50% 100%, #e5eaea, rgba(0, 0, 0, 0)) 0 100%;
+    background-repeat: no-repeat;
+    background-color: white;
+    background-size: 100% 20px;
+    /* Opera doesn't support this in the shorthand */
+    background-attachment: local, local, scroll, scroll;
+  }
+</style>
+
+
+
+
+
+<div class="header" id="global-page-header">
+  <div class="flex items-center justify-between w-100 ph2 ph3-ns pv2">
+    <div class="flex items-center">
+      <a href="/" class="link flex items-center flex-shrink-0 pv1 pr1 dark-gray  hover-bg-washed-brown ph2 br3 nh1">
+        <img src="/projects/assets/images/semaphore-logo-sign-black.svg" alt="logo" width="26" height="17">
+        <span class="dn db-m b pl2">Home</span>
+      </a>
+      <div class="bl b--black-15 pl2 pl3-ns ml2 ml3-ns">
+        <div class="b pointer flex items-center hover-bg-washed-brown ph2 br3 nh1 pv1 js-projects-menu-trigger" data-template="projectsMenu" data-hotkey="/">
+          <img src="/projects/assets/images/icn-project-nav.svg" alt="list" width="16" height="16" class="dn di-ns mr2">
+          Projects
+        </div>
+      </div>
+      <div id="projectsMenu" style="display: none;">
+        <div class="project-menu pl3 pt3">
+          <div id="jump-to-input-container" class="bg-white pr3">
+            <input id="jump-to-input" type="text" class="form-control w-100" placeholder="Jump to…">
+          </div>
+          <div class="projects-menu-results pb3 pr3" style="max-height: calc(100vh - 160px);">
+            <p class="f7 gray mt2 mb0 tc">Hit "/" to trigger from keyboard</p>
+            <div id="jump-to-results">
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <div class="flex-shrink-0 bl b--black-10 pv1 pv0-ns pl2 pl3-m ml2 ml3-m">
+
+            <a href="/x/new_project" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+              <img src="/projects/assets/images/icn-plus-nav.svg" alt="list" width="16" height="16" class="mr1">
+              <span class="dn di-ns">Create new</span>
+            </a>
+
+        </div>
+
+    </div>
+    <div class="flex items-center flex-shrink-0">
+
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <a href="/agents" class="link dark-gray b pointer flex items-center  hover-bg-washed-brown ph2 br3 nh1 pv1">
+            <img src="/projects/assets/images/icn-self-hosted.svg" alt="list" width="16" height="16" class="mr1">
+            <span class="dn di-ns">Agents</span>
+          </a>
+        </div>
+
+
+        <!-- Help Menu -->
+        <div class="pr1 pr2-ns mr2-ns br-ns b--black-10">
+          <div class="flex flex-shrink-0 pv1 ph1 ph2-ns br3 pointer hover-bg-washed-brown js-dropdown-color-trigger" data-template="helpMenu">
+<img src="/projects/assets/images/icn-help.svg" class="db o-80" height="24" width="24">
+            <span class="dn db-m ml2 b">Help</span>
+          </div>
+        </div>
+
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="profileMenu">
+        <img src="https://avatars3.githubusercontent.com/u/0?v=4" alt="Jane" class="f7 db br-100 ba b--black-50" width="24" height="24">
+      </div>
+      <div class="flex-shrink-0 pa1 ma1 pointer bg-animate hover-bg-washed-brown br-100 js-dropdown-color-trigger" data-template="orgMenu">
+        <img src="https://www.gravatar.com/avatar/87a0c603a9a02253c6f1b1e4cc5570e42f7457345e373598e34078a3e76fec20?d=identicon&amp;size=32" width="24" height="24" class="db br-100 ba">
+      </div>
+    </div>
+  </div>
+</div>
+<div style="display: none;">
+  <!-- Header Help menu  -->
+  <div id="helpMenu">
+    <div class="ph2 pv1">
+      <div class="b ph2 pb2 pt2 mb2 bb b--white-40">Help Center</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test" rel="noopener" target="_blank">
+  <div class="b">Docs</div>
+  <p class="f6 o-80 mb0">Semaphore 2.0 documentation</p>
+
+</a>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://status.semaphoretest.test" rel="noopener" target="_blank">
+  <div class="b">Status</div>
+  <p class="f6 o-80 mb0">Live system health</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test/reference/semaphore-changelog/" rel="noopener" target="_blank">
+  <div class="b">Changelog</div>
+  <p class="f6 o-80 mb0">Most recent product updates</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://docs.semaphoretest.test/reference/sem-command-line-tool/" rel="noopener" target="_blank">
+  <div class="b">sem CLI Reference</div>
+  <p class="f6 o-80 mb0">Command line goodies</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://twitter.com/semaphoreci" rel="noopener" target="_blank">
+  <div class="b">Twitter</div>
+  <p class="f6 o-80 mb0">Follow us @semaphoreci</p>
+
+</a>
+    </div>
+  </div>
+  <!-- Header Profile menu -->
+  <div id="profileMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Logged in as</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40">Jane</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/people/78114608-be8a-465a-b9cd-81970fb802c5">
+  <div class="b">Profile Settings</div>
+  <p class="f6 o-80 mb0">Account, Repo access, API token</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://id.semaphoretest.test/logout?back_url=http://localhost:4001/people">
+  <div class="b">Log Out</div>
+  <p class="f6 o-80 mb0">Bye, bye!</p>
+
+</a>
+    </div>
+  </div>
+  <!-- Header Org menu -->
+  <div id="orgMenu">
+    <div class="ph2 pv1">
+      <div class="f6 ph2 mt2 o-80">Current Organization</div>
+      <div class="b ph2 pb2 mb2 bb b--white-40">RT1</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/projects">
+  <div class="b">Projects</div>
+  <p class="f6 o-80 mb0">All projects in this organization</p>
+
+</a>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/audit">
+  <div class="b">Audit Logs</div>
+  <p class="f6 o-80 mb0">List of all events</p>
+
+</a>
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/settings">
+  <div class="b">Settings</div>
+  <p class="f6 o-80 mb0">Basics, Secrets and Notifications</p>
+
+</a>
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/get_started/">
+  <div class="b">Get started</div>
+  <p class="f6 o-80 mb0">Your guide to Semaphore</p>
+
+</a>
+
+      <div class="bt b--white-40 pv2 mt3">
+        <div class="dib f5 mb0 fl bg-green white-80 ph2 lh-solid nt3">Restricted admin area</div>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/billing/">
+  <div class="b">Plans &amp; Billing</div>
+  <p class="f6 o-80 mb0">Spending, Plan and Invoices</p>
+
+</a>
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="/people">
+  <div class="b">People</div>
+  <p class="f6 o-80 mb0">Manage Collaborators</p>
+
+</a>
+
+        <div class="bb b--white-40"></div>
+
+
+
+<a class="link db white mv1 pv1 ph2 br2 hover-dark-gray hover-bg-lightest-green" href="https://me.semaphoretest.test/new">
+  <div class="b">+ Create new</div>
+  <p class="f6 o-80 mb0">Create new organization</p>
+
+</a>
+
+
+      </div>
+    </div>
+  </div>
+</div>
+
+
+    <div class="main" style="padding-top: 48px">
+      <div id="main-content" class="bg-white pa3 pa4-m">
+
+
+
+  <div class="fixed right-0 left-0 z-5" style="top: 48px">
+    <div class="pv2 bg-gray bg-pattern-wave white ph3 ph4-l mb4">
+      <div>Organization HQ</div>
+    </div>
+  </div>
+  <div class="mb3 mt4">
+    <div class="flex-l justify-between">
+      <div class="mb3 mb0-l pr4-m">
+        <h1 class="f2 f1-m lh-title mb1">RT1</h1>
+        <p class="mb0 measure-wide">Overview and manage organization</p>
+      </div>
+    </div>
+  </div>
+  <nav class="tabs">
+<a class="tab" href="/projects">
+<img src="/projects/assets/images/icn-project-nav.svg" class="mr2" height="16" width="16">
+      <span>Projects</span>
+</a>
+<a class="tab" href="/agents">
+<img src="/projects/assets/images/icn-self-hosted.svg" class="mr2" height="16" width="16">
+      <span>Agents</span>
+</a>
+
+<a class="tab" href="/audit">
+        <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.26 7.312h1.5v1.5h-1.5v-1.5zm0 3.016h1.5v1.5h-1.5v-1.5zm4.504-3.015h-1.5v1.5h1.5v-1.5zm-1.5 3.015h1.5v1.5h-1.5v-1.5zm4.476-3.015h-1.5v1.5h1.5v-1.5zM5.76 4.35h-1.5v1.5h1.5v-1.5zm1.504 0h1.5v1.5h-1.5v-1.5zm2.976 0h1.5v1.5h-1.5v-1.5z"></path></svg>
+        <span>Audit Logs</span>
+</a>
+
+<a class="tab tab--active" href="/people">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M1 4.5C1 3.57174 1.36875 2.6815 2.02513 2.02513C2.6815 1.36875 3.57174 1 4.5 1H11.5C12.4283 1 13.3185 1.36875 13.9749 2.02513C14.6313 2.6815 15 3.57174 15 4.5V11.5C15 12.4283 14.6313 13.3185 13.9749 13.9749C13.3185 14.6313 12.4283 15 11.5 15H4.5C3.57174 15 2.6815 14.6313 2.02513 13.9749C1.36875 13.3185 1 12.4283 1 11.5V4.5ZM4.5 2.4C3.94305 2.4 3.4089 2.62125 3.01508 3.01508C2.62125 3.4089 2.4 3.94305 2.4 4.5V11.5C2.4 12.057 2.62125 12.5911 3.01508 12.9849C3.29338 13.2632 3.64176 13.4554 4.01874 13.5441V12.6562C4.01874 11.1651 5.22757 9.95625 6.71874 9.95625H9.31249C10.8037 9.95625 12.0125 11.1651 12.0125 12.6562V13.5365C12.3775 13.4447 12.7143 13.2555 12.9849 12.9849C13.3788 12.5911 13.6 12.057 13.6 11.5V4.5C13.6 3.94305 13.3788 3.4089 12.9849 3.01508C12.5911 2.62125 12.057 2.4 11.5 2.4H4.5ZM10.6125 13.6V12.6562C10.6125 11.9383 10.0305 11.3562 9.31249 11.3562H6.71874C6.00077 11.3562 5.41874 11.9383 5.41874 12.6562V13.6H10.6125ZM7.99999 5.16875C7.32516 5.16875 6.77811 5.7158 6.77811 6.39062C6.77811 7.06545 7.32516 7.6125 7.99999 7.6125C8.67481 7.6125 9.22186 7.06545 9.22186 6.39062C9.22186 5.7158 8.67481 5.16875 7.99999 5.16875ZM5.37811 6.39062C5.37811 4.9426 6.55197 3.76875 7.99999 3.76875C9.44801 3.76875 10.6219 4.9426 10.6219 6.39062C10.6219 7.83865 9.44801 9.0125 7.99999 9.0125C6.55197 9.0125 5.37811 7.83865 5.37811 6.39062Z"></path></svg>
+        <span>People</span>
+</a>
+<a class="tab" href="/settings">
+      <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M7.5 1.996a.1.1 0 00-.099.086l-.25 1.784L6.733 4a4.193 4.193 0 00-1.554.9l-.327.299-1.68-.69a.1.1 0 00-.124.043l-.502.87a.1.1 0 00.026.128L4 6.667l-.093.43a4.216 4.216 0 00-.005 1.788l.093.43-1.438 1.112a.1.1 0 00-.026.129l.502.869a.1.1 0 00.124.043l1.68-.68.326.3c.445.41.979.726 1.568.913l.42.134.25 1.783a.1.1 0 00.099.086h1.003a.1.1 0 00.099-.087l.24-1.777.424-.133a4.192 4.192 0 001.575-.91l.326-.298 1.652.669a.1.1 0 00.124-.043l.502-.869a.1.1 0 00-.026-.13L12.013 9.34l.095-.433a4.217 4.217 0 00-.004-1.831l-.097-.433 1.4-1.093a.1.1 0 00.026-.129l-.502-.869a.1.1 0 00-.125-.042l-1.65.677-.328-.297a4.192 4.192 0 00-1.56-.896l-.425-.133-.24-1.778a.1.1 0 00-.1-.087H7.502zm-1.485-.108A1.5 1.5 0 017.501.596h1.003a1.5 1.5 0 011.486 1.3l.124.916c.472.192.912.446 1.309.752l.852-.35a1.5 1.5 0 011.868.638l.502.87a1.5 1.5 0 01-.376 1.932l-.718.56a5.63 5.63 0 01.004 1.548l.721.557a1.5 1.5 0 01.382 1.937l-.502.869a1.5 1.5 0 01-1.861.64l-.852-.344a5.59 5.59 0 01-1.329.768l-.124.915a1.5 1.5 0 01-1.486 1.3H7.5a1.5 1.5 0 01-1.486-1.292l-.13-.93a5.597 5.597 0 01-1.325-.771l-.877.354a1.5 1.5 0 01-1.861-.64l-.502-.869a1.5 1.5 0 01.382-1.937l.756-.584a5.645 5.645 0 01.003-1.494l-.752-.587a1.5 1.5 0 01-.376-1.933l.502-.869a1.5 1.5 0 011.868-.637l.877.36a5.593 5.593 0 011.305-.755l.13-.932zM7.989 6.7a1.3 1.3 0 100 2.6 1.3 1.3 0 000-2.6zM5.29 8a2.7 2.7 0 115.4 0 2.7 2.7 0 01-5.4 0z"></path></svg>
+      <span>Settings</span>
+</a>
+
+<a class="tab" href="/billing/">
+      <span class="material-symbols-outlined mr2" style="font-size: 22px;">credit_card</span>
+      <span>Plans &amp; Billing</span>
+</a>
+
+  </nav>
+<style>
+  .spinner {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000;
+  }
+
+  .selected{
+    background-color: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+
+  .selected .measure {
+    color: white;
+  }
+
+  .not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+  }
+  
+  .not-selected .measure {
+    color: black;
+  }
+
+  .not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+  }
+</style>
+<div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
+
+    <img src="/projects/assets/images/spinner-2.svg" width="100" height="100" class="spinner" style="display: none;">
+
+    <div class="flex-m items-start justify-between mb0 mb4-m">
+      <div class="mb3 mb0-m">
+        <p class="mb0">See different <a href="https://docs.semaphoreci.com/account-management/permission-levels/" target="_blank" rel="noopener">Permission levels</a> in the Docs.</p>
+        <p class="mb0">How to <a href="https://docs.semaphoreci.com/account-management/organizations/#transferring-ownership-of-an-organization" target="_blank" rel="noopener">Transfer the ownership</a>?</p>
+      </div>
+      <div class="flex items-center">
+
+<a class="pointer flex items-center btn-secondary btn nowrap ml2" href="/roles">
+          <span class="material-symbols-outlined mr1">open_in_new</span>
+          <span>Manage Roles</span>
+</a>
+      </div>
+    </div>
+
+    <div class="w-100 flex">
+<script nonce="">
+  window.InjectedDataByBackend.RenderMembers = "/people/render_members";
+</script>
+
+  <input type="text" class="form-control gray br3 w-100" name="search_input_field" id="search_input_field" placeholder="Search for users and groups" style="color: black;">
+
+<div id="filter_by_role_btn" selected_role_id="" class="pointer flex items-center btn-secondary btn ml3" data-template="roleSelector" aria-expanded="false">
+  <span class="material-symbols-outlined mr1">filter_list</span>
+  <span id="selected_role_name">Role</span>
+  <span class="material-symbols-outlined">expand_more</span>
+</div>
+
+<div id="roleSelector" class="dn">
+
+    <div role_id="07717e3b-831e-4cea-967f-84dd60a86ef1" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Owner</p>
+        <p class="f6 gray mb0 measure">Owners have access to all functionalities within the organization and any of its projects. They cannot be removed from the organization.</p>
+      </div>
+    </div>
+
+    <div role_id="e8314064-8314-496a-8d07-9e2e57502e27" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Admin</p>
+        <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+      </div>
+    </div>
+
+    <div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" name="filter_role_btn" class="not-selected" style="cursor: pointer;">
+      <div><span class="material-symbols-outlined mr1">&nbsp;</span></div>
+      <div>
+        <p name="role_name" class="b f5 mb0">Member</p>
+        <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+      </div>
+    </div>
+
+</div>
+
+    </div>
+<script nonce="">
+  window.InjectedDataByBackend.AssignRoleUrl = "/people/assign_role";
+  window.InjectedDataByBackend.RetractRoleUrl = "/people/retract_role";
+</script>
+
+
+    <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
+      <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
+        <div>
+          <div class="flex items-center">
+            <span class="material-symbols-outlined pr2">group</span>
+            <div class="b">Groups</div>
+          </div>
+        </div>
+
+  <div>
+
+<style>
+.group-members-jumpto {
+  position: relative;
+}
+.group-members-jumpto input {
+  position:relative;
+  z-index:2;
+}
+.group-members-jumpto input:focus {
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.2), inset 0 1px 1px 0 #e5eaea !important;
+}
+.group-members-jumpto .jumpto-results {
+  position: absolute;
+  top: 31px;
+  left: 1px;
+  font-size: 15px;
+  background-color: #fff;
+  min-width: 207px;
+  width: 100%;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,.1),rgba(0,0,0,.25) 0 8px 40px 3px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 1;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result {
+  display: flex;
+  align-items: center;
+  padding: 3px 8px;
+  color: #2e3637;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result:hover {
+  background-color: #cef1c8;
+}
+.group-members-jumpto .jumpto-results .autocomplete-result img {
+  flex-shrink: 0;
+}
+.group-members-jumpto .jumpto-results span[aria-selected="true"],
+.group-members-jumpto .jumpto-results span[aria-selected="true"]:hover,
+.group-members-jumpto .jumpto-results span:focus,
+.group-members-jumpto .jumpto-results span:active {
+    background-color: #00a569;
+    color: #fff;
+}
+#scrollable-div::-webkit-scrollbar {
+    width: 12px; 
+}
+.scrollable-div{
+  max-height: 200px;
+  overflow-y: auto;
+}
+.selected{
+  background-color: black;
+  color: white;
+  padding: 0.5rem;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-color: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+}
+.not-selected {
+    background-color: white;
+    cursor: pointer;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-color: rgba(208, 185, 185, 0.75);
+    display: flex;
+    align-items: center;
+}
+.not-selected:hover {
+    background-color: #f5f5f5; /* washed-gray */
+}
+</style>
+
+<div class="overlay" id="groups_modal_overlay" style="display: none;">
+  <div class="bg-white popup w-40 br3 pa3 tl" style="min-width: 500px;">
+
+    <h3 class="mb0">Group name</h3>
+    <input id="name_input" type="text" placeholder="E.g. Administrators" class="form-control w-100 mr2 mv2">
+
+    <div id="group_description_block">
+      <h3 class="mb0">Group description</h3>
+      <input id="description_input" type="text" placeholder="E.g. Employees with access to all functionalities and projects" class="form-control w-100 mr2 mv2">
+    </div>
+
+    <div id="fetching_non_members">
+      <h3 class="mb0">Group members</h3>
+      <div class="flex items-center mv2 justify-between">
+          <div class="group-members-jumpto w-100 filters-group flex">
+            <input type="hidden">
+            <input type="text" placeholder="Search members to add" class="form-control w-100 mr2">
+            <div class="jumpto-results"></div>
+          </div>
+      </div>
+
+      <div id="group-users" class="scrollable-div">
+
+      </div>
+    </div>
+
+    <div class="flex justify-center mt3">
+      <button id="save_changes_btn" disabled="true" class="pointer flex items-center btn-primary btn">
+        <span class="material-symbols-outlined mr1">done</span>
+        <span>Save changes</span>
+      </button>
+      <button id="cancel_btn" class="pointer flex items-center btn-secondary btn ml3">
+        <span class="material-symbols-outlined mr1">cancel</span>
+        <span>Cancel</span>
+      </button>
+    </div>
+  </div>
+</div>
+      <div class="flex-m">
+        <div>
+          <button id="open_group_popup" class="btn btn-primary flex items-center"><span class="material-symbols-outlined mr2">group_add</span>Create a group</button>
+        </div>
+      </div>
+
+  </div>
+
+      </div>
+
+      <div id="groups">
+
+      </div>
+    </div>
+
+  <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
+    <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
+      <div>
+        <div class="flex items-center">
+          <span class="material-symbols-outlined pr2">person</span>
+          <div class="b">People</div>
+        </div>
+      </div>
+
+
+  <div>
+
+      <div id="add-people" data-config="{&quot;users&quot;:{&quot;providers&quot;:[&quot;email&quot;,&quot;github&quot;,&quot;gitlab&quot;,&quot;bitbucket&quot;],&quot;invite_url&quot;:{&quot;path&quot;:&quot;/people?format=json&quot;,&quot;method&quot;:&quot;post&quot;},&quot;create_url&quot;:{&quot;path&quot;:&quot;/people/create_member?format=json&quot;,&quot;method&quot;:&quot;post&quot;},&quot;collaborators_url&quot;:{&quot;path&quot;:&quot;/people/sync?format=json&quot;,&quot;method&quot;:&quot;get&quot;}}}"></div>
+
+  </div>
+
+
+    </div>
+
+    <div id="members">
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/0be42157-d2b8-423a-bfae-4b879503b65f">Test Test the 3rd</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn0be42157-d2b8-423a-bfae-4b879503b65f" member_id="0be42157-d2b8-423a-bfae-4b879503b65f" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_0be42157-d2b8-423a-bfae-4b879503b65f" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_0be42157-d2b8-423a-bfae-4b879503b65f" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="0be42157-d2b8-423a-bfae-4b879503b65f" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="0be42157-d2b8-423a-bfae-4b879503b65f" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="0be42157-d2b8-423a-bfae-4b879503b65f">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/191b67d3-a125-49a9-a0dc-55cca22012e5">Test Test the 5th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn191b67d3-a125-49a9-a0dc-55cca22012e5" member_id="191b67d3-a125-49a9-a0dc-55cca22012e5" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_191b67d3-a125-49a9-a0dc-55cca22012e5" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_191b67d3-a125-49a9-a0dc-55cca22012e5" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="191b67d3-a125-49a9-a0dc-55cca22012e5">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/74992462-4fae-4636-b27a-9d3d2ab1b57f">Test Test the 6th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn74992462-4fae-4636-b27a-9d3d2ab1b57f" member_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_74992462-4fae-4636-b27a-9d3d2ab1b57f" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_74992462-4fae-4636-b27a-9d3d2ab1b57f" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="74992462-4fae-4636-b27a-9d3d2ab1b57f">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/78114608-be8a-465a-b9cd-81970fb802c5">Jane</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-red white">Owner</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/88437963-17f7-45cd-a114-5c98dccbd2dc">Jacob Bannon</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btn88437963-17f7-45cd-a114-5c98dccbd2dc" member_id="88437963-17f7-45cd-a114-5c98dccbd2dc" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_88437963-17f7-45cd-a114-5c98dccbd2dc" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_88437963-17f7-45cd-a114-5c98dccbd2dc" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="88437963-17f7-45cd-a114-5c98dccbd2dc">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/a0534f97-acb4-41f9-b416-021995050cb9">Test Test the 4th</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btna0534f97-acb4-41f9-b416-021995050cb9" member_id="a0534f97-acb4-41f9-b416-021995050cb9" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_a0534f97-acb4-41f9-b416-021995050cb9" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_a0534f97-acb4-41f9-b416-021995050cb9" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="a0534f97-acb4-41f9-b416-021995050cb9" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="a0534f97-acb4-41f9-b416-021995050cb9" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="a0534f97-acb4-41f9-b416-021995050cb9">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+<div class="bg-white shadow-1 ph3 pv2">
+  <div id="member" class="flex items-center justify-between" style="min-height: 45px;">
+    <div class="flex items-center">
+  <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="flex items-center">
+          <span class="ml1 b"><a class="link black" href="/people/e023870d-beae-4a40-9454-761dd809a4fc">Dimitri Minakakis</a></span>
+
+  <span class="f6 normal ml1 ph1 br2 bg-green white">Member</span>
+
+
+        </div>
+<div class="f6 gray flex items-center">
+
+
+
+</div>
+
+      </div>
+    </div>
+
+
+      <div class="flex-shrink-0 pl2">
+        <div class="button-group">
+
+
+<div class="item-center flex-column">
+  <div name="change_role_btn" id="change_role_btne023870d-beae-4a40-9454-761dd809a4fc" member_id="e023870d-beae-4a40-9454-761dd809a4fc" class="pointer flex items-center change_role_btn btn-secondary btn" data-template="role_selector_e023870d-beae-4a40-9454-761dd809a4fc" aria-expanded="false" style="border-top-right-radius: unset;border-bottom-right-radius: unset;">
+      <span class="material-symbols-outlined mr1">manage_accounts</span>
+      <span>Change role</span>
+  </div>
+
+  <div id="role_selector_e023870d-beae-4a40-9454-761dd809a4fc" class="dn">
+
+
+
+
+<div role_id="e8314064-8314-496a-8d07-9e2e57502e27" user_id="e023870d-beae-4a40-9454-761dd809a4fc" name="role_button" class="not-selected" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">&nbsp;</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Admin</p>
+    <p class="f6 gray mb0 measure">Admins can modify settings within the organization or any of its projects. However, they do not have access to billing information, and they cannot change general organization details, such as the organization name and URL.</p>
+  </div>
+</div>
+
+
+
+
+<div role_id="406d21f8-51fc-47c8-9ac7-d11246edbab7" user_id="e023870d-beae-4a40-9454-761dd809a4fc" name="role_button" class="selected can-be-retracted" ,="" style="">
+  <div style="flex-direction: column; display: flex;">
+    <span class="material-symbols-outlined mr1">done</span>
+  </div>
+  <div>
+    <p class="b f5 mb0">Member</p>
+    <p class="f6 gray mb0 measure">Members can access the organization's homepage and the projects they are assigned to. However, they are not able to modify any settings.</p>
+  </div>
+</div>
+
+
+
+  </div>
+</div>
+
+
+
+
+
+
+  <button class="btn btn-secondary" name="remove-btn" user_id="e023870d-beae-4a40-9454-761dd809a4fc">
+    ×
+  </button>
+
+
+        </div>
+      </div>
+
+  </div>
+</div>
+
+
+    </div>
+  </div>
+
+
+
+    <div id="invitees">
+
+<div class="bg-white shadow-1 mv3 ph3 pv2 br3">
+  <div id="invitee" class="flex items-center justify-between">
+    <div class="flex items-center">
+
+      <img src="https://avatars3.githubusercontent.com/u/0?v=4" class="w2 h2 br-100 mr2 ba b--black-50">
+
+      <div>
+        <div class="b">Frank</div>
+        <div class="f6 gray"> Not joined yet</div>
+      </div>
+    </div>
+
+    <div class="flex-m">
+<a class="btn btn-secondary ml3" data-confirm="This will remove this person from organization on Semaphore and therefore revoke their access from all projects in this organization. This won’t remove them from repository. Are you sure?" data-csrf="OhF_byVaDBw5AR4MAQE_DVweWS1yUC1Gq_G0G9IMIXtCc1ryesml0gy2" data-method="delete" data-to="/people/membership/9963e954-c895-4521-94f4-6f72b2943553" href="/people/membership/9963e954-c895-4521-94f4-6f72b2943553" rel="nofollow">×</a>
+    </div>
+  </div>
+</div>
+
+
+    </div>
+
+
+</div>
+
+
+<style>
+  .overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+  }
+  .popup {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+  }
+  .code-block {
+      font-family: Courier, monospace;
+  }
+</style>
+<div class="overlay" id="overlay" style="display: none;">
+</div>
+
+
+
+      </div>
+    </div>
+
+
+
+<div id="error" class="fixed left-0 right-0 bottom-0 w-100 z-9999 slide-from-bottom dn">
+  <div class="mw6 center bg-white mb4 shadow-2 bl bw3 b--red br2">
+    <div class="flex items-start justify-between">
+      <p id="error-message" class="f4 measure mb0 ph3 pv2"></p>
+      <a id="error-close" href="#" class="db link f3 dark-gray pv2 ph3 nr1 o-50 hover-o-100 lh-title">×</a>
+    </div>
+  </div>
+</div>
+
+<div id="notice" class="fixed left-0 right-0 bottom-0 w-100 z-9999 slide-from-bottom dn">
+  <div class="mw6 center bg-white mb4 shadow-2 bl bw3 b--green br2">
+    <div class="flex items-start justify-between">
+      <p id="notice-message" class="f4 measure mb0 ph3 pv2"></p>
+      <a id="notice-close" href="#" class="db link f3 dark-gray pv2 ph3 nr1 o-50 hover-o-100 lh-title">×</a>
+   </div>
+  </div>
+</div>
+
+<script nonce="">
+  window.InjectedDataByBackend.Environment = {}
+  window.InjectedDataByBackend.Environment.Env = "test"
+  window.InjectedDataByBackend.Integrations = {}
+  window.InjectedDataByBackend.Userpilot = {}
+
+  window.InjectedDataByBackend.JS = "people_page"
+
+</script>
+
+<script nonce="" src="/projects/assets/app.js"></script>
+
+
+    <!-- enabled only for semaphore org members on the semaphore org pages-->
+
+
+
+  
+
+</body></html>
+
+
+  1) test organization people remove user (Front.Browser.PeopleTest)
+     test/browser/people_test.exs:22
+     Assertion with == failed
+     code:  assert number == new_number + 1
+     left:  7
+     right: 8
+     stacktrace:
+       test/browser/people_test.exs:168: Front.Browser.PeopleTest.test_remove_user/1
+       test/browser/people_test.exs:23: (test)
+
+     The following output was logged:
+     [debug] Processing with FrontWeb.PeopleController.organization/2
+       Parameters: %{}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [debug] Permission Patrol check for user=78114608-be8a-465a-b9cd-81970fb802c5, org=92be62c2-9cf4-4dad-b168-d6efa6aa5e21, project=: %{"organization.people.manage" => true, "organization.pre_flight_checks.view" => true, "organization.plans_and_billing.view" => true, "organization.groups.manage" => true, "organization.projects.create" => true, "organization.audit_logs.view" => true, "organization.custom_roles.manage" => true, "organization.okta.view" => true, "organization.contact_support" => true, "organization.pre_flight_checks.manage" => true, "organization.self_hosted_agents.manage" => true, "organization.general_settings.view" => true, "organization.people.view" => true, "organization.okta.manage" => true, "organization.secrets.view" => true, "organization.secrets_policy_settings.manage" => true, "organization.ip_allow_list.view" => true, "organization.general_settings.manage" => true, "organization.groups.view" => true, "organization.secrets_policy_settings.view" => true, "organization.dashboards.view" => true, "organization.people.invite" => true, "organization.notifications.view" => true, "organization.dashboards.manage" => true, "organization.instance_git_integration.manage" => true, "organization.audit_logs.manage" => true, "organization.notifications.manage" => true, "organization.activity_monitor.view" => true, "organization.ip_allow_list.manage" => true, "organization.view" => true, "organization.repo_to_role_mappers.manage" => true, "organization.plans_and_billing.manage" => true, "organization.custom_roles.view" => true, "organization.secrets.manage" => true, "organization.self_hosted_agents.view" => true, "organization.delete" => true} 
+     [info] [LAYOUT MODEL] Invalidate layout_model_v1/rKP7OffoLa+Z3XD/AI+Hdw==/user_id=78114608-be8a-465a-b9cd-81970fb802c5/organization_id=92be62c2-9cf4-4dad-b168-d6efa6aa5e21/ skipped because cache key is not found 
+     [debug] Permission Patrol check for user=78114608-be8a-465a-b9cd-81970fb802c5, org=92be62c2-9cf4-4dad-b168-d6efa6aa5e21, project=: %{"organization.people.manage" => true, "organization.pre_flight_checks.view" => true, "organization.plans_and_billing.view" => true, "organization.groups.manage" => true, "organization.projects.create" => true, "organization.audit_logs.view" => true, "organization.custom_roles.manage" => true, "organization.okta.view" => true, "organization.contact_support" => true, "organization.pre_flight_checks.manage" => true, "organization.self_hosted_agents.manage" => true, "organization.general_settings.view" => true, "organization.people.view" => true, "organization.okta.manage" => true, "organization.secrets.view" => true, "organization.secrets_policy_settings.manage" => true, "organization.ip_allow_list.view" => true, "organization.general_settings.manage" => true, "organization.groups.view" => true, "organization.secrets_policy_settings.view" => true, "organization.dashboards.view" => true, "organization.people.invite" => true, "organization.notifications.view" => true, "organization.dashboards.manage" => true, "organization.instance_git_integration.manage" => true, "organization.audit_logs.manage" => true, "organization.notifications.manage" => true, "organization.activity_monitor.view" => true, "organization.ip_allow_list.manage" => true, "organization.view" => true, "organization.repo_to_role_mappers.manage" => true, "organization.plans_and_billing.manage" => true, "organization.custom_roles.view" => true, "organization.secrets.manage" => true, "organization.self_hosted_agents.view" => true, "organization.delete" => true} 
+     [info] [LAYOUT MODEL] Put layout_model_v1/rKP7OffoLa+Z3XD/AI+Hdw==/user_id=78114608-be8a-465a-b9cd-81970fb802c5/organization_id=92be62c2-9cf4-4dad-b168-d6efa6aa5e21/ 
+     [debug] Async people_page.api.organization.describe response OK in 2ms 
+     [info] Invitations Request: %InternalApi.Guard.InvitationsRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] Invitations Response: %InternalApi.Guard.InvitationsResponse{invitations: [%InternalApi.Guard.Invitation{id: "9963e954-c895-4521-94f4-6f72b2943553", invited_at: %Google.Protobuf.Timestamp{seconds: 1744290807, nanos: 0}, display_name: "Frank", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4"}]} 
+     [debug] Sending request to User API 
+     [debug] %InternalApi.User.DescribeManyRequest{user_ids: []} 
+     [debug] Sending request to User API 
+     [debug] %InternalApi.User.DescribeManyRequest{user_ids: ["0be42157-d2b8-423a-bfae-4b879503b65f", "191b67d3-a125-49a9-a0dc-55cca22012e5", "74992462-4fae-4636-b27a-9d3d2ab1b57f", "78114608-be8a-465a-b9cd-81970fb802c5", "88437963-17f7-45cd-a114-5c98dccbd2dc", "a0534f97-acb4-41f9-b416-021995050cb9", "e023870d-beae-4a40-9454-761dd809a4fc"]} 
+     [debug] Received response for describe many from User API 
+     [debug] %InternalApi.User.DescribeManyResponse{users: [], status: %InternalApi.ResponseStatus{code: 0, message: ""}} 
+     [debug] Received response for describe many from User API 
+     [debug] %InternalApi.User.DescribeManyResponse{users: [%InternalApi.User.User{id: "0be42157-d2b8-423a-bfae-4b879503b65f", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Test Test the 3rd", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "a0534f97-acb4-41f9-b416-021995050cb9", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Test Test the 4th", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "191b67d3-a125-49a9-a0dc-55cca22012e5", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Test Test the 5th", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "74992462-4fae-4636-b27a-9d3d2ab1b57f", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Test Test the 6th", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "88437963-17f7-45cd-a114-5c98dccbd2dc", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Jacob Bannon", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "e023870d-beae-4a40-9454-761dd809a4fc", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Dimitri Minakakis", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}, %InternalApi.User.User{id: "78114608-be8a-465a-b9cd-81970fb802c5", avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4", github_uid: "", name: "Jane", github_login: "", company: "RenderedText", email: "jane.doe@example.com", blocked_at: nil, created_at: nil, repository_providers: [], visited_at: nil, single_org_user: false, org_id: "", creation_source: 0, deactivated: false}], status: %InternalApi.ResponseStatus{code: 0, message: ""}} 
+     [debug] Async people_page.api.organization.invitations response OK in 7ms 
+     [debug] Permission Patrol check for user=78114608-be8a-465a-b9cd-81970fb802c5, org=92be62c2-9cf4-4dad-b168-d6efa6aa5e21, project=: %{"organization.plans_and_billing.manage" => true} 
+     [info] GET /people 200 374.1ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "css", "app-semaphore-min.css"]}
+       Pipelines: [:browser] 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "app.css"]}
+       Pipelines: [:browser] 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "app.js"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/css/app-semaphore-min.css 404 4.6ms 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/app.js 404 3.2ms 
+     [info] GET /projects/assets/app.css 404 3.5ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "semaphore-logo-sign-black.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/semaphore-logo-sign-black.svg 404 2.7ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-project-nav.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/icn-project-nav.svg 404 3.0ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-plus-nav.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/icn-plus-nav.svg 404 2.5ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-self-hosted.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/icn-self-hosted.svg 404 2.4ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-help.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/icn-help.svg 404 2.1ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "spinner-2.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/spinner-2.svg 404 3.0ms 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-project-nav.svg"]}
+       Pipelines: [:browser] 
+     [debug] Processing with FrontWeb.PageController.status404/2
+       Parameters: %{"path" => ["projects", "assets", "images", "icn-self-hosted.svg"]}
+       Pipelines: [:browser] 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [error] no stub defined for %InternalApi.Billing.CurrentSpendingRequest{org_id: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"} 
+     [info] GET /projects/assets/images/icn-project-nav.svg 404 3.0ms 
+     [info] GET /projects/assets/images/icn-self-hosted.svg 404 2.8ms 
+     
+
+Finished in 4.3 seconds (0.00s async, 4.3s sync)
+10 tests, 1 failure, 9 excluded
+
+Randomized with seed 621836
+docker compose -f docker-compose.yml down -v
