@@ -423,8 +423,6 @@ defmodule Guard.GrpcServers.OrganizationServer do
         {:ok, organization} ->
           case Guard.Store.Organization.soft_destroy(organization) do
             {:ok, _} ->
-              Guard.Events.OrganizationDeleted.publish(organization.id, soft_delete: true)
-
               %Google.Protobuf.Empty{}
 
             {:error, changeset} ->
