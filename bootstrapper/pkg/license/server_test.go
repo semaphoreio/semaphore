@@ -107,12 +107,7 @@ func TestServer_VerifyLicense(t *testing.T) {
 				mockClient := &http.Client{Transport: mockTransport}
 				return createMockServer(t, mockClient, licenseFile)
 			},
-			req: &license.VerifyLicenseRequest{
-				Hostname:    "test-host",
-				IpAddress:   "127.0.0.1",
-				Environment: "test",
-				Version:     "1.0.0",
-			},
+			req:     &license.VerifyLicenseRequest{},
 			wantErr: false,
 		},
 		{
@@ -120,12 +115,7 @@ func TestServer_VerifyLicense(t *testing.T) {
 			setupFunc: func() (license.LicenseServiceClient, func()) {
 				return createMockServer(t, nil, "/nonexistent/license.jwt")
 			},
-			req: &license.VerifyLicenseRequest{
-				Hostname:    "test-host",
-				IpAddress:   "127.0.0.1",
-				Environment: "test",
-				Version:     "1.0.0",
-			},
+			req:            &license.VerifyLicenseRequest{},
 			wantErr:        true,
 			wantErrMessage: "failed to read license file",
 		},
@@ -152,14 +142,8 @@ func TestServer_VerifyLicense(t *testing.T) {
 				mockClient := &http.Client{Transport: mockTransport}
 				return createMockServer(t, mockClient, licenseFile)
 			},
-			req: &license.VerifyLicenseRequest{
-				Hostname:    "test-host",
-				IpAddress:   "127.0.0.1",
-				Environment: "test",
-				Version:     "1.0.0",
-			},
-			wantErr:        false,
-			wantErrMessage: "",
+			req:     &license.VerifyLicenseRequest{},
+			wantErr: false,
 		},
 		{
 			name: "license server error",
@@ -176,12 +160,7 @@ func TestServer_VerifyLicense(t *testing.T) {
 				mockClient := &http.Client{Transport: mockTransport}
 				return createMockServer(t, mockClient, licenseFile)
 			},
-			req: &license.VerifyLicenseRequest{
-				Hostname:    "test-host",
-				IpAddress:   "127.0.0.1",
-				Environment: "test",
-				Version:     "1.0.0",
-			},
+			req:            &license.VerifyLicenseRequest{},
 			wantErr:        true,
 			wantErrMessage: "unexpected status code: 500",
 		},

@@ -48,12 +48,16 @@ spec:
         - name: license
           mountPath: /app/app.license
           readOnly: true
+          subPath: app.license
         resources:
           {{- toYaml .Values.licenseChecker.resources | nindent 12 }}
       volumes:
       - name: license
         secret:
           secretName: "{{ .Release.Name }}-license"
+          items:
+            - key: license
+              path: app.license
 ---
 apiVersion: v1
 kind: Service
