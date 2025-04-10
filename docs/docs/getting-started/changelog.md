@@ -54,8 +54,6 @@ To learn more about this image, check our [macOS Xcode 16](https://docs.semaphor
 - Gitlfs: 3.6.0 -> 3.6.1
 - Gh: 2.63.2 -> 2.69.0
 - Geckodriver: 0.35.0 -> 0.36.0
-- Chrome: 131.0.6778.139 -> 134.0.6998.117
-- Chromedriver: 131.0.6778.139 -> 134.0.6998.117
 - Docker: 27.4.0 -> 28.0.2
 - Docker compose v2: 2.32.1 -> 2.34.0
 - Dockerize: 0.9.0 -> 0.9.3
@@ -105,8 +103,6 @@ To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semap
 - Gitlfs: 3.6.0 -> 3.6.1
 - Gh: 2.63.2 -> 2.69.0
 - Geckodriver: 0.35.0 -> 0.36.0
-- Chrome: 131.0.6778.139 -> 134.0.6998.117
-- Chromedriver: 131.0.6778.139 -> 134.0.6998.117
 - Docker: 27.4.0 -> 28.0.2
 - Docker compose v2: 2.32.1 -> 2.34.0
 - Dockerize: 0.9.0 -> 0.9.3
@@ -157,8 +153,6 @@ To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semap
 - Gitlfs: 3.6.0 -> 3.6.1
 - Gh: 2.63.2 -> 2.69.0
 - Geckodriver: 0.35.0 -> 0.36.0
-- Chrome: 131.0.6778.139 -> 134.0.6998.117
-- Chromedriver: 131.0.6778.139 -> 134.0.6998.117
 - Docker: 27.4.0 -> 28.0.2
 - Docker compose v2: 2.32.1 -> 2.34.0
 - Dockerize: 0.9.0 -> 0.9.3
