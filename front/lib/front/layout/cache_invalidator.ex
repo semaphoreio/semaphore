@@ -36,7 +36,7 @@ defmodule Front.Layout.CacheInvalidator do
       {"organization_exchange", "suspension_removed", :suspension_removed},
       {"project_exchange", "created", :created_project},
       {"project_exchange", "updated", :updated_project},
-      {"project_exchange", "deleted", :deleted_project},
+      {"project_exchange", "soft_deleted", :deleted_project},
       {"user_exchange", "favorite_created", :starred},
       {"user_exchange", "favorite_deleted", :unstarred}
     ]

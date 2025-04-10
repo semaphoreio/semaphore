@@ -338,7 +338,7 @@ defmodule Projecthub.Api.GrpcServer do
       if user do
         case find_project(req) do
           {:ok, project} ->
-            {:ok, _} = Project.destroy(project, user)
+            {:ok, _} = Project.soft_destroy(project, user)
             DestroyResponse.new(metadata: status_ok(req))
 
           {:error, :not_found} ->
