@@ -341,6 +341,18 @@ defmodule Guard.Store.Organization do
     end
   end
 
+  @spec find_candidates_for_hard_destroy() :: [Guard.FrontRepo.Organization.t()]
+  def find_candidates_for_hard_destroy do
+    thirty_days_ago =
+      DateTime.utc_now()
+      |> DateTime.add(-30 * 24 * 60 * 60)
+      |> DateTime.truncate(:second)
+
+    FrontRepo.Organization
+    |> where([o], not is_nil(o.deleted_at) and o.deleted_at < ^thirty_days_ago)
+    |> FrontRepo.all()
+  end
+
   defp where_undeleted(query) do
     query |> where([o], is_nil(o.deleted_at))
   end
