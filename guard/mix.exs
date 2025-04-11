@@ -72,7 +72,8 @@ defmodule Guard.Mixfile do
       {:castore, "~> 0.1.22"},
       {:joken, "~> 2.5"},
       {:hackney, "~> 1.20"},
-      {:argon2_elixir, "~> 4.0"}
+      {:argon2_elixir, "~> 4.0"},
+      {:quantum, "~> 3.0"}
     ]
   end
 
