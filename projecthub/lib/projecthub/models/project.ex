@@ -321,13 +321,15 @@ defmodule Projecthub.Models.Project do
   end
 
   def find_candidates_for_hard_destroy() do
-    thirty_days_ago =
+    grace_period_days = Application.get_env(:projecthub, :hard_destroy_grace_period_days)
+
+    grace_period =
       DateTime.utc_now()
-      |> DateTime.add(-30 * 24 * 60 * 60)
+      |> DateTime.add(-grace_period_days * 24 * 60 * 60)
       |> DateTime.truncate(:second)
 
     Project
-    |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^thirty_days_ago)
+    |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^grace_period)
     |> Repo.all()
     |> preload_repositories()
   end

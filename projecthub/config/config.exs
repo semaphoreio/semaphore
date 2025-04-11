@@ -58,4 +58,6 @@ config :projecthub, Projecthub.Workers.ProjectCleaner,
     {"0 0 * * *", {Projecthub.Workers.ProjectCleaner, :process, []}}
   ]
 
+config :projecthub, :hard_destroy_grace_period_days, 30
+
 import_config "#{config_env()}.exs"
