@@ -348,9 +348,9 @@ defmodule Guard.Store.Organization do
       |> DateTime.add(-30 * 24 * 60 * 60)
       |> DateTime.truncate(:second)
 
-    FrontRepo.Organization
+    Guard.FrontRepo.Organization
     |> where([o], not is_nil(o.deleted_at) and o.deleted_at < ^thirty_days_ago)
-    |> FrontRepo.all()
+    |> Guard.FrontRepo.all()
   end
 
   defp where_undeleted(query) do

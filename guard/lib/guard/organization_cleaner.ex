@@ -13,7 +13,7 @@ defmodule Guard.OrganizationCleaner do
     |> Stream.map(fn projects ->
       Enum.map(projects, fn project ->
         Logger.info("Hard destroying organization #{project.id}")
-        Organization.hard_destroy(project, project.deleted_by)
+        Organization.hard_destroy(project)
       end)
     end)
     |> Stream.run()
