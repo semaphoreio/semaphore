@@ -306,18 +306,33 @@ defmodule Projecthub.Models.Project do
     {:ok, nil}
   end
 
-  def hard_destroy(project, user) do
+  def hard_destroy(project, user_id) do
     {:ok, repository} = Repository.find_for_project(project.id)
     {:ok, _} = Repository.destroy(repository)
 
     {:ok, _} = Repo.delete(project)
-    {:ok, _} = Schedulers.delete_all(project, user.id)
+    {:ok, _} = Schedulers.delete_all(project, user_id)
     {:ok, _} = Events.ProjectDeleted.publish(project)
 
     {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
     {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
 
     {:ok, nil}
+  end
+
+  def find_candidates_for_hard_destroy() do
+    grace_period_days = Application.get_env(:projecthub, :hard_destroy_grace_period_days)
+
+    grace_period =
+      DateTime.utc_now()
+      |> DateTime.add(-grace_period_days * 24 * 60 * 60)
+      |> DateTime.truncate(:second)
+
+    Project
+    |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^grace_period)
+    |> lock("FOR UPDATE SKIP LOCKED")
+    |> Repo.all()
+    |> preload_repositories()
   end
 
   def find_many(org_id, ids) do

@@ -66,6 +66,8 @@ spec:
               value: "false"
             - name: START_PROJECT_INIT_WORKER
               value: "true"
+            - name: START_PROJECT_CLEANER
+              value: "true"
             - name: POSTGRES_DB_SSL
               value: {{ .Values.global.database.ssl | quote }}
             - name: POSTGRES_DB_NAME

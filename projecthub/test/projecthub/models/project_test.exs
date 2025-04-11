@@ -524,7 +524,7 @@ defmodule Projecthub.Models.ProjectTest do
         {Schedulers, [], [delete_all: fn _p, _r -> {:ok, nil} end]},
         {Projecthub.Artifact, [], [destroy: fn _, _ -> nil end]}
       ]) do
-        {:ok, _} = Project.hard_destroy(project, user)
+        {:ok, _} = Project.hard_destroy(project, user.id)
         assert_called(Schedulers.delete_all(project, user.id))
         assert_called(Events.ProjectDeleted.publish(project))
         assert_called(Projecthub.Artifact.destroy(project.artifact_store_id, project.id))

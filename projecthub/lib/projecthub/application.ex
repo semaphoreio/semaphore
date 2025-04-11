@@ -20,6 +20,7 @@ defmodule Projecthub.Application do
 
     start_server? = enabled?(:start_internal_api?)
     start_worker? = enabled?(:start_project_init_worker?)
+    start_cleaner = enabled?(:start_project_cleaner?)
 
     children =
       [
@@ -36,7 +37,8 @@ defmodule Projecthub.Application do
           {provider, System.get_env("FEATURE_YAML_PATH") != nil},
           {{Support.MemoryDb, []}, env != :prod},
           {{Projecthub.Workers.ProjectInit, []}, start_worker?},
-          {{GRPC.Server.Supervisor, {Projecthub.Api.Endpoint, port}}, start_server?}
+          {{GRPC.Server.Supervisor, {Projecthub.Api.Endpoint, port}}, start_server?},
+          {{Projecthub.Workers.ProjectCleaner, []}, start_cleaner}
         ])
 
     Enum.each(children, fn c ->
