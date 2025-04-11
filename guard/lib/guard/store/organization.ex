@@ -343,13 +343,15 @@ defmodule Guard.Store.Organization do
 
   @spec find_candidates_for_hard_destroy() :: [Guard.FrontRepo.Organization.t()]
   def find_candidates_for_hard_destroy do
-    thirty_days_ago =
+    grace_period_days = Application.get_env(:guard, :hard_destroy_grace_period_days)
+
+    grace_period =
       DateTime.utc_now()
-      |> DateTime.add(-30 * 24 * 60 * 60)
+      |> DateTime.add(-grace_period_days * 24 * 60 * 60)
       |> DateTime.truncate(:second)
 
     Guard.FrontRepo.Organization
-    |> where([o], not is_nil(o.deleted_at) and o.deleted_at < ^thirty_days_ago)
+    |> where([o], not is_nil(o.deleted_at) and o.deleted_at < ^grace_period)
     |> Guard.FrontRepo.all()
   end
 
