@@ -330,6 +330,7 @@ defmodule Projecthub.Models.Project do
 
     Project
     |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^grace_period)
+    |> lock("FOR UPDATE SKIP LOCKED")
     |> Repo.all()
     |> preload_repositories()
   end
