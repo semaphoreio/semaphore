@@ -70,7 +70,7 @@ defmodule Guard.Application do
     rabbit = System.get_env("RABBIT_CONSUMER") || "true"
     id = System.get_env("ID_API") || "false"
     instance_config_api = System.get_env("INSTANCE_CONFIG_API") || "false"
-    organization_cleaner = System.get_env("ORGANIZATION_CLEANER") || "false"
+    organization_cleaner = System.get_env("START_ORGANIZATION_CLEANER") || "false"
 
     services
     |> add_grpc_service(grpc)
