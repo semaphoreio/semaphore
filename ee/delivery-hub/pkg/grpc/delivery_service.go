@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"gorm.io/gorm"
 
 	uuid "github.com/google/uuid"
 	log "github.com/sirupsen/logrus"
@@ -26,22 +28,20 @@ func NewDeliveryService(encryptor encryptor.Encryptor) *DeliveryService {
 	}
 }
 
-func (s *DeliveryService) CreateCanvas(ctx context.Context, request *pb.CreateCanvasRequest) (*pb.CreateCanvasResponse, error) {
-	log.Infof("CreateCanvas: %v", request)
-
-	orgID, err := uuid.Parse(request.OrganizationId)
+func (s *DeliveryService) CreateCanvas(ctx context.Context, req *pb.CreateCanvasRequest) (*pb.CreateCanvasResponse, error) {
+	orgID, err := uuid.Parse(req.OrganizationId)
 	if err != nil {
-		log.Errorf("Error reading organization id on %v for CreateCanvas: %v", request, err)
+		log.Errorf("Error reading organization id on %v for CreateCanvas: %v", req, err)
 		return nil, err
 	}
 
-	canvas, err := models.CreateCanvas(orgID, request.Name)
+	canvas, err := models.CreateCanvas(orgID, req.Name)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		log.Errorf("Error creating canvas on %v for CreateCanvas: %v", request, err)
+		log.Errorf("Error creating canvas on %v for CreateCanvas: %v", req, err)
 		return nil, err
 	}
 
@@ -57,15 +57,72 @@ func (s *DeliveryService) CreateCanvas(ctx context.Context, request *pb.CreateCa
 	return response, nil
 }
 
-func (s *DeliveryService) CreateEventSource(ctx context.Context, request *pb.CreateEventSourceRequest) (*pb.CreateEventSourceResponse, error) {
-	log.Infof("CreateEventSource: %v", request)
-
-	orgID, err := uuid.Parse(request.OrganizationId)
+func (s *DeliveryService) DescribeCanvas(ctx context.Context, req *pb.DescribeCanvasRequest) (*pb.DescribeCanvasResponse, error) {
+	orgID, err := uuid.Parse(req.OrganizationId)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid organization ID")
 	}
 
-	canvasID, err := uuid.Parse(request.CanvasId)
+	canvasID, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
+	}
+
+	log.Infof("Organization: %s", orgID.String())
+	log.Infof("Canvas: %s", canvasID.String())
+
+	canvas, err := models.FindCanvasByID(canvasID, orgID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Error(codes.NotFound, "canvas not found")
+		}
+
+		log.Errorf("Error describing canvas %s for organization %s: %v", canvasID, orgID, err)
+		return nil, err
+	}
+
+	sources, err := models.ListEventSourcesByCanvasID(canvasID, orgID)
+	if err != nil {
+		log.Errorf("Error listing sources for canvas %s for organization %s: %v", canvasID, orgID, err)
+		return nil, err
+	}
+
+	log.Infof("Sources: %v", sources)
+
+	stages, err := models.ListStagesByCanvasID(orgID, canvasID)
+	if err != nil {
+		log.Errorf("Error listing stages for canvas %s for organization %s: %v", canvasID, orgID, err)
+		return nil, err
+	}
+
+	log.Infof("Stages: %v", stages)
+
+	serializedStages, err := serializeStages(stages, sources)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &pb.DescribeCanvasResponse{
+		Canvas: &pb.Canvas{
+			Id:             canvas.ID.String(),
+			Name:           canvas.Name,
+			OrganizationId: canvas.OrganizationID.String(),
+			CreatedAt:      timestamppb.New(*canvas.CreatedAt),
+			EventSources:   serializeEventSources(sources),
+			Stages:         serializedStages,
+		},
+	}
+
+	return response, nil
+}
+
+func (s *DeliveryService) CreateEventSource(ctx context.Context, req *pb.CreateEventSourceRequest) (*pb.CreateEventSourceResponse, error) {
+	orgID, err := uuid.Parse(req.OrganizationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid organization ID")
+	}
+
+	canvasID, err := uuid.Parse(req.CanvasId)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
 	}
@@ -75,13 +132,13 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, request *pb.Cre
 		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
 	}
 
-	key, err := s.genNewEventSourceKey(ctx, request.Name)
+	key, err := s.genNewEventSourceKey(ctx, req.Name)
 	if err != nil {
-		log.Errorf("Error generating new event source key - org=%s canvas=%s name=%s: %v", orgID, canvasID, request.Name, err)
+		log.Errorf("Error generating key - org=%s canvas=%s name=%s: %v", orgID, canvasID, req.Name, err)
 		return nil, status.Errorf(codes.Internal, "error generating key")
 	}
 
-	eventSource, err := models.CreateEventSource(request.Name, orgID, canvasID, key)
+	eventSource, err := models.CreateEventSource(req.Name, orgID, canvasID, key)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -92,17 +149,57 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, request *pb.Cre
 	}
 
 	response := &pb.CreateEventSourceResponse{
-		EventSource: &pb.EventSource{
-			Id:             eventSource.ID.String(),
-			Name:           eventSource.Name,
-			OrganizationId: eventSource.OrganizationID.String(),
-			CanvasId:       eventSource.CanvasID.String(),
-			CreatedAt:      timestamppb.New(*eventSource.CreatedAt),
-		},
-		Key: string(eventSource.Key),
+		EventSource: serializeEventSource(*eventSource),
+		Key:         string(eventSource.Key),
 	}
 
 	return response, nil
+}
+
+func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateStageResponse, error) {
+	orgID, err := uuid.Parse(req.OrganizationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid organization ID")
+	}
+
+	canvasID, err := uuid.Parse(req.CanvasId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
+	}
+
+	_, err = models.FindCanvasByID(canvasID, orgID)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
+	}
+
+	connections, err := validateConnections(orgID, canvasID, req.Connections)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	err = models.CreateStage(orgID, canvasID, req.Name, connections)
+	if err != nil {
+		if errors.Is(err, models.ErrNameAlreadyUsed) {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+
+		return nil, err
+	}
+
+	stage, err := models.FindStageByName(orgID, canvasID, req.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &pb.CreateStageResponse{
+		Stage: serializeStage(*stage, req.Connections),
+	}
+
+	return response, nil
+}
+
+func (s *DeliveryService) UpdateStage(ctx context.Context, req *pb.UpdateStageRequest) (*pb.UpdateStageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
 }
 
 func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string) ([]byte, error) {
@@ -113,4 +210,149 @@ func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string)
 	}
 
 	return encrypted, nil
+}
+
+func serializeEventSources(eventSources []models.EventSource) []*pb.EventSource {
+	sources := []*pb.EventSource{}
+	for _, source := range eventSources {
+		sources = append(sources, serializeEventSource(source))
+	}
+
+	return sources
+}
+
+func serializeEventSource(eventSource models.EventSource) *pb.EventSource {
+	return &pb.EventSource{
+		Id:             eventSource.ID.String(),
+		Name:           eventSource.Name,
+		OrganizationId: eventSource.OrganizationID.String(),
+		CanvasId:       eventSource.CanvasID.String(),
+		CreatedAt:      timestamppb.New(*eventSource.CreatedAt),
+	}
+}
+
+func serializeStages(stages []models.Stage, sources []models.EventSource) ([]*pb.Stage, error) {
+	s := []*pb.Stage{}
+	for _, stage := range stages {
+		connections, err := models.ListConnectionsForStage(stage.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		serialized, err := convertConnections(stages, sources, connections)
+		if err != nil {
+			return nil, err
+		}
+
+		s = append(s, serializeStage(stage, serialized))
+	}
+
+	return s, nil
+}
+
+func serializeStage(stage models.Stage, connections []*pb.Connection) *pb.Stage {
+	return &pb.Stage{
+		Id:             stage.ID.String(),
+		Name:           stage.Name,
+		OrganizationId: stage.OrganizationID.String(),
+		CanvasId:       stage.CanvasID.String(),
+		CreatedAt:      timestamppb.New(*stage.CreatedAt),
+		Connections:    connections,
+	}
+}
+
+func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection) ([]models.StageConnection, error) {
+	cs := []models.StageConnection{}
+
+	for _, connection := range connections {
+		sourceID, err := findConnectionSourceID(orgID, canvasID, connection)
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection: %v", err)
+		}
+
+		cs = append(cs, models.StageConnection{
+			SourceID: *sourceID,
+			Type:     connection.Type.String(),
+		})
+	}
+
+	return cs, nil
+}
+
+func convertConnections(stages []models.Stage, sources []models.EventSource, in []models.StageConnection) ([]*pb.Connection, error) {
+	connections := []*pb.Connection{}
+
+	for _, c := range in {
+		log.Infof("Converting connection %s - type=%s source=%s, stage=%s", c.ID, c.Type, c.SourceID, c.StageID)
+		name, err := findConnectionName(stages, sources, c)
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection: %v", err)
+		}
+
+		connections = append(connections, &pb.Connection{
+			Type: connectionTypeToProto(c.Type),
+			Name: name,
+		})
+	}
+
+	return connections, nil
+}
+
+func findConnectionName(stages []models.Stage, sources []models.EventSource, connection models.StageConnection) (string, error) {
+	switch connection.Type {
+	case pb.Connection_TYPE_STAGE.String():
+		for _, stage := range stages {
+			if stage.ID == connection.SourceID {
+				return stage.Name, nil
+			}
+		}
+
+		return "", fmt.Errorf("stage %s not found", connection.SourceID)
+
+	case pb.Connection_TYPE_EVENT_SOURCE.String():
+		for _, s := range sources {
+			if s.ID == connection.SourceID {
+				return s.Name, nil
+			}
+		}
+
+		return "", fmt.Errorf("event source %s not found", connection.ID)
+
+	default:
+		return "", errors.New("invalid type")
+	}
+}
+
+func findConnectionSourceID(orgID, canvasID uuid.UUID, connection *pb.Connection) (*uuid.UUID, error) {
+	switch connection.Type {
+	case pb.Connection_TYPE_STAGE:
+		stage, err := models.FindStageByName(orgID, canvasID, connection.Name)
+		if err != nil {
+			return nil, fmt.Errorf("stage %s not found", connection.Name)
+		}
+
+		return &stage.ID, nil
+
+	case pb.Connection_TYPE_EVENT_SOURCE:
+		eventSource, err := models.FindEventSourceByName(orgID, canvasID, connection.Name)
+		if err != nil {
+			return nil, fmt.Errorf("event source %s not found", connection.Name)
+		}
+
+		return &eventSource.ID, nil
+
+	default:
+		return nil, errors.New("invalid type")
+	}
+}
+
+func connectionTypeToProto(t string) pb.Connection_Type {
+	switch t {
+	case pb.Connection_TYPE_STAGE.String():
+		return pb.Connection_TYPE_STAGE
+	case pb.Connection_TYPE_EVENT_SOURCE.String():
+		return pb.Connection_TYPE_EVENT_SOURCE
+	default:
+		return pb.Connection_TYPE_UNKNOWN
+	}
 }

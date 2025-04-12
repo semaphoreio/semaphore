@@ -20,7 +20,10 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Delivery_CreateCanvas_FullMethodName      = "/InternalApi.Delivery.Delivery/CreateCanvas"
+	Delivery_DescribeCanvas_FullMethodName    = "/InternalApi.Delivery.Delivery/DescribeCanvas"
 	Delivery_CreateEventSource_FullMethodName = "/InternalApi.Delivery.Delivery/CreateEventSource"
+	Delivery_CreateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/CreateStage"
+	Delivery_UpdateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/UpdateStage"
 )
 
 // DeliveryClient is the client API for Delivery service.
@@ -28,7 +31,10 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DeliveryClient interface {
 	CreateCanvas(ctx context.Context, in *CreateCanvasRequest, opts ...grpc.CallOption) (*CreateCanvasResponse, error)
+	DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error)
 	CreateEventSource(ctx context.Context, in *CreateEventSourceRequest, opts ...grpc.CallOption) (*CreateEventSourceResponse, error)
+	CreateStage(ctx context.Context, in *CreateStageRequest, opts ...grpc.CallOption) (*CreateStageResponse, error)
+	UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error)
 }
 
 type deliveryClient struct {
@@ -49,10 +55,40 @@ func (c *deliveryClient) CreateCanvas(ctx context.Context, in *CreateCanvasReque
 	return out, nil
 }
 
+func (c *deliveryClient) DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeCanvasResponse)
+	err := c.cc.Invoke(ctx, Delivery_DescribeCanvas_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *deliveryClient) CreateEventSource(ctx context.Context, in *CreateEventSourceRequest, opts ...grpc.CallOption) (*CreateEventSourceResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateEventSourceResponse)
 	err := c.cc.Invoke(ctx, Delivery_CreateEventSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) CreateStage(ctx context.Context, in *CreateStageRequest, opts ...grpc.CallOption) (*CreateStageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStageResponse)
+	err := c.cc.Invoke(ctx, Delivery_CreateStage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateStageResponse)
+	err := c.cc.Invoke(ctx, Delivery_UpdateStage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +100,10 @@ func (c *deliveryClient) CreateEventSource(ctx context.Context, in *CreateEventS
 // for forward compatibility.
 type DeliveryServer interface {
 	CreateCanvas(context.Context, *CreateCanvasRequest) (*CreateCanvasResponse, error)
+	DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error)
 	CreateEventSource(context.Context, *CreateEventSourceRequest) (*CreateEventSourceResponse, error)
+	CreateStage(context.Context, *CreateStageRequest) (*CreateStageResponse, error)
+	UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error)
 }
 
 // UnimplementedDeliveryServer should be embedded to have
@@ -77,8 +116,17 @@ type UnimplementedDeliveryServer struct{}
 func (UnimplementedDeliveryServer) CreateCanvas(context.Context, *CreateCanvasRequest) (*CreateCanvasResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCanvas not implemented")
 }
+func (UnimplementedDeliveryServer) DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeCanvas not implemented")
+}
 func (UnimplementedDeliveryServer) CreateEventSource(context.Context, *CreateEventSourceRequest) (*CreateEventSourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEventSource not implemented")
+}
+func (UnimplementedDeliveryServer) CreateStage(context.Context, *CreateStageRequest) (*CreateStageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateStage not implemented")
+}
+func (UnimplementedDeliveryServer) UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
 }
 func (UnimplementedDeliveryServer) testEmbeddedByValue() {}
 
@@ -118,6 +166,24 @@ func _Delivery_CreateCanvas_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Delivery_DescribeCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeCanvasRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).DescribeCanvas(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_DescribeCanvas_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).DescribeCanvas(ctx, req.(*DescribeCanvasRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Delivery_CreateEventSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateEventSourceRequest)
 	if err := dec(in); err != nil {
@@ -136,6 +202,42 @@ func _Delivery_CreateEventSource_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Delivery_CreateStage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).CreateStage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_CreateStage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).CreateStage(ctx, req.(*CreateStageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_UpdateStage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateStageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).UpdateStage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_UpdateStage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).UpdateStage(ctx, req.(*UpdateStageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Delivery_ServiceDesc is the grpc.ServiceDesc for Delivery service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -148,8 +250,20 @@ var Delivery_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Delivery_CreateCanvas_Handler,
 		},
 		{
+			MethodName: "DescribeCanvas",
+			Handler:    _Delivery_DescribeCanvas_Handler,
+		},
+		{
 			MethodName: "CreateEventSource",
 			Handler:    _Delivery_CreateEventSource_Handler,
+		},
+		{
+			MethodName: "CreateStage",
+			Handler:    _Delivery_CreateStage_Handler,
+		},
+		{
+			MethodName: "UpdateStage",
+			Handler:    _Delivery_UpdateStage_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

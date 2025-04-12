@@ -49,7 +49,7 @@ func CreateEventSource(name string, organizationID uuid.UUID, canvasID uuid.UUID
 }
 
 // NOTE: the caller must decrypt the key before using it
-func FindEventSourceByID(id uuid.UUID, organizationID uuid.UUID) (*EventSource, error) {
+func FindEventSourceByID(id, organizationID uuid.UUID) (*EventSource, error) {
 	var eventSource EventSource
 	err := database.Conn().
 		Where("id = ?", id).
@@ -62,4 +62,35 @@ func FindEventSourceByID(id uuid.UUID, organizationID uuid.UUID) (*EventSource, 
 	}
 
 	return &eventSource, nil
+}
+
+func FindEventSourceByName(orgID, canvasID uuid.UUID, name string) (*EventSource, error) {
+	var eventSource EventSource
+	err := database.Conn().
+		Where("organization_id = ?", orgID).
+		Where("canvas_id = ?", canvasID).
+		Where("name = ?").
+		First(&eventSource).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &eventSource, nil
+}
+
+func ListEventSourcesByCanvasID(canvasID uuid.UUID, organizationID uuid.UUID) ([]EventSource, error) {
+	var sources []EventSource
+	err := database.Conn().
+		Where("canvas_id = ?", canvasID).
+		Where("organization_id = ?", organizationID).
+		Find(&sources).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sources, nil
 }

@@ -91,6 +91,31 @@ CREATE TABLE public.schema_migrations (
 
 
 --
+-- Name: stage_connections; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_connections (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    stage_id uuid NOT NULL,
+    source_id uuid NOT NULL,
+    type character varying(64) NOT NULL
+);
+
+
+--
+-- Name: stages; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stages (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    name character varying(128) NOT NULL,
+    organization_id uuid NOT NULL,
+    canvas_id uuid NOT NULL,
+    created_at timestamp without time zone NOT NULL
+);
+
+
+--
 -- Name: canvases canvases_organization_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -139,6 +164,38 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
+-- Name: stage_connections stage_connections_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_connections
+    ADD CONSTRAINT stage_connections_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stage_connections stage_connections_stage_id_source_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_connections
+    ADD CONSTRAINT stage_connections_stage_id_source_id_key UNIQUE (stage_id, source_id);
+
+
+--
+-- Name: stages stages_organization_id_canvas_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stages
+    ADD CONSTRAINT stages_organization_id_canvas_id_name_key UNIQUE (organization_id, canvas_id, name);
+
+
+--
+-- Name: stages stages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stages
+    ADD CONSTRAINT stages_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: uix_canvases_orgs; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -160,6 +217,20 @@ CREATE INDEX uix_events_source ON public.events USING btree (source_id);
 
 
 --
+-- Name: uix_stage_connections_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_connections_stage ON public.stage_connections USING btree (stage_id);
+
+
+--
+-- Name: uix_stages_canvas; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stages_canvas ON public.stages USING btree (canvas_id);
+
+
+--
 -- Name: event_sources event_sources_canvas_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -173,6 +244,22 @@ ALTER TABLE ONLY public.event_sources
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_source_id_fkey FOREIGN KEY (source_id) REFERENCES public.event_sources(id);
+
+
+--
+-- Name: stage_connections stage_connections_stage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_connections
+    ADD CONSTRAINT stage_connections_stage_id_fkey FOREIGN KEY (stage_id) REFERENCES public.stages(id);
+
+
+--
+-- Name: stages stages_canvas_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stages
+    ADD CONSTRAINT stages_canvas_id_fkey FOREIGN KEY (canvas_id) REFERENCES public.canvases(id);
 
 
 --
@@ -202,7 +289,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250412011336	f
+20250412030210	f
 \.
 
 
