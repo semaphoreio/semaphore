@@ -1,0 +1,143 @@
+package public
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	log "github.com/sirupsen/logrus"
+)
+
+type Server struct {
+	httpServer            *http.Server
+	encryptor             encryptor.Encryptor
+	timeoutHandlerTimeout time.Duration
+	Router                *mux.Router
+}
+
+func NewServer(encryptor encryptor.Encryptor, middlewares ...mux.MiddlewareFunc) (*Server, error) {
+	server := &Server{
+		timeoutHandlerTimeout: 15 * time.Second,
+		encryptor:             encryptor,
+	}
+
+	server.timeoutHandlerTimeout = 15 * time.Second
+	server.InitRouter(middlewares...)
+	return server, nil
+}
+
+func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
+	r := mux.NewRouter().StrictSlash(true)
+
+	//
+	// Authenticated and validated routes.
+	//
+	authenticatedRoute := r.Methods(http.MethodPost).Subrouter()
+	authenticatedRoute.HandleFunc("/sources/{sourceID}/github", s.HandleGithubWebhook).Methods("POST")
+	authenticatedRoute.Use(OrganizationMiddleware)
+	authenticatedRoute.Use(additionalMiddlewares...)
+
+	//
+	// No authentication of any kind, just a health endpoint
+	//
+	unauthenticatedRoute := r.Methods(http.MethodGet).Subrouter()
+	unauthenticatedRoute.HandleFunc("/", s.HealthCheck).Methods("GET")
+
+	s.Router = r
+}
+
+func (s *Server) HealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+}
+
+func (s *Server) Serve(host string, port int) error {
+	log.Infof("Starting server at %s:%d", host, port)
+	s.httpServer = &http.Server{
+		Addr:         fmt.Sprintf("%s:%d", host, port),
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+		Handler: http.TimeoutHandler(
+			handlers.LoggingHandler(os.Stdout, s.Router),
+			s.timeoutHandlerTimeout,
+			"request timed out",
+		),
+	}
+
+	return s.httpServer.ListenAndServe()
+}
+
+func (s *Server) Close() {
+	if err := s.httpServer.Close(); err != nil {
+		log.Errorf("Error closing server: %v", err)
+	}
+}
+
+func (h *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
+	organizationID := r.Context().Value(orgIDKey).(uuid.UUID)
+
+	//
+	// Any verification that happens here must be quick
+	// so we always respond with a 200 OK to the event origin.
+	// All the event processing happen on the workers.
+	//
+
+	vars := mux.Vars(r)
+	sourceIDFromRequest := vars["sourceID"]
+	sourceID, err := uuid.Parse(sourceIDFromRequest)
+	if err != nil {
+		http.Error(w, "source ID not found", http.StatusNotFound)
+		return
+	}
+
+	signature := r.Header.Get("X-Hub-Signature-256")
+	if signature == "" {
+		http.Error(w, "Missing X-Hub-Signature-256 header", http.StatusBadRequest)
+		return
+	}
+
+	source, err := models.FindEventSourceByID(sourceID, organizationID)
+	if err != nil {
+		http.Error(w, "source ID not found", http.StatusNotFound)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	key, err := h.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	signature = strings.Replace(signature, "sha256=", "", 1)
+	if err := crypto.VerifySignature(key, body, signature); err != nil {
+		log.Errorf("Invalid signature: %v", err)
+		http.Error(w, "Invalid signature", http.StatusForbidden)
+		return
+	}
+
+	//
+	// Here, we know the event is for a valid organization/source,
+	// and comes from GitHub, so we just want to save it and give a response back.
+	//
+	if err := models.CreateEvent(source.ID, body); err != nil {
+		http.Error(w, "Error receiving event", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

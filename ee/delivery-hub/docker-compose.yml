@@ -1,0 +1,41 @@
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+
+    tty: true
+
+    environment:
+      DB_HOST: "db"
+      DB_PORT: "5432"
+      DB_NAME: "delivery_hub"
+      DB_USERNAME: "postgres"
+      APPLICATION_NAME: "delivery_hub"
+      DB_PASSWORD: "the-cake-is-a-lie"
+
+    links:
+      - db:db
+
+    volumes:
+      - go-pkg-cache:/go
+      - .:/app
+      - /tmp:/tmp
+
+  db:
+    image: postgres:9.6
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+volumes:
+  repo-data:
+    driver: local
+
+  go-pkg-cache:
+    driver: local
+
+  postgres-data:
+    driver: local
