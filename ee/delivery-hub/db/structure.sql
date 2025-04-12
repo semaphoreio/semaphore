@@ -103,6 +103,19 @@ CREATE TABLE public.stage_connections (
 
 
 --
+-- Name: stage_events; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_events (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    stage_id uuid NOT NULL,
+    source_id uuid NOT NULL,
+    state character varying(64) NOT NULL,
+    created_at timestamp without time zone NOT NULL
+);
+
+
+--
 -- Name: stages; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -180,6 +193,22 @@ ALTER TABLE ONLY public.stage_connections
 
 
 --
+-- Name: stage_events stage_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_events
+    ADD CONSTRAINT stage_events_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stage_events stage_events_stage_id_source_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_events
+    ADD CONSTRAINT stage_events_stage_id_source_id_key UNIQUE (stage_id, source_id);
+
+
+--
 -- Name: stages stages_organization_id_canvas_id_name_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -224,6 +253,20 @@ CREATE INDEX uix_stage_connections_stage ON public.stage_connections USING btree
 
 
 --
+-- Name: uix_stage_events_source; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_events_source ON public.stage_events USING btree (source_id);
+
+
+--
+-- Name: uix_stage_events_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_events_stage ON public.stage_events USING btree (stage_id);
+
+
+--
 -- Name: uix_stages_canvas; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -252,6 +295,14 @@ ALTER TABLE ONLY public.events
 
 ALTER TABLE ONLY public.stage_connections
     ADD CONSTRAINT stage_connections_stage_id_fkey FOREIGN KEY (stage_id) REFERENCES public.stages(id);
+
+
+--
+-- Name: stage_events stage_events_stage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_events
+    ADD CONSTRAINT stage_events_stage_id_fkey FOREIGN KEY (stage_id) REFERENCES public.stages(id);
 
 
 --
@@ -289,7 +340,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250412030210	f
+20250412191124	f
 \.
 
 

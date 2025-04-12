@@ -6,9 +6,12 @@ import (
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var EventStatePending = "pending"
+var EventStateDiscarded = "discarded"
 var EventStateProcessed = "processed"
 
 type Event struct {
@@ -19,7 +22,23 @@ type Event struct {
 	Raw        datatypes.JSON
 }
 
-func CreateEvent(sourceID uuid.UUID, raw []byte) error {
+func (e *Event) Discard() error {
+	return database.Conn().Model(e).
+		Update("state", EventStateDiscarded).
+		Error
+}
+
+func (e *Event) MarkAsProcessed() error {
+	return e.MarkAsProcessedInTransaction(database.Conn())
+}
+
+func (e *Event) MarkAsProcessedInTransaction(tx *gorm.DB) error {
+	return tx.Model(e).
+		Update("state", EventStateProcessed).
+		Error
+}
+
+func CreateEvent(sourceID uuid.UUID, raw []byte) (*Event, error) {
 	now := time.Now()
 
 	event := Event{
@@ -29,10 +48,29 @@ func CreateEvent(sourceID uuid.UUID, raw []byte) error {
 		Raw:        datatypes.JSON(raw),
 	}
 
-	return database.Conn().Create(&event).Error
+	err := database.Conn().
+		Clauses(clause.Returning{}).
+		Create(&event).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &event, nil
 }
 
 func ListEventsBySourceID(sourceID uuid.UUID) ([]Event, error) {
 	var events []Event
 	return events, database.Conn().Where("source_id = ?", sourceID).Find(&events).Error
+}
+
+func ListPendingEvents() ([]Event, error) {
+	var events []Event
+	return events, database.Conn().Where("state = ?", EventStatePending).Find(&events).Error
+}
+
+func FindEventByID(id uuid.UUID) (*Event, error) {
+	var event Event
+	return &event, database.Conn().Where("id = ?", id).First(&event).Error
 }

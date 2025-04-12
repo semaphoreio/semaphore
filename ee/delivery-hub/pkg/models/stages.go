@@ -52,6 +52,21 @@ func FindStageByID(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	return &stage, nil
 }
 
+func ListStagesByIDs(ids []uuid.UUID) ([]Stage, error) {
+	var stages []Stage
+
+	err := database.Conn().
+		Where("id IN ?", ids).
+		Find(&stages).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return stages, nil
+}
+
 func ListStagesByCanvasID(orgID, canvasID uuid.UUID) ([]Stage, error) {
 	var stages []Stage
 

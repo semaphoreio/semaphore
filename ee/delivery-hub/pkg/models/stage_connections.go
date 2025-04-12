@@ -12,6 +12,21 @@ type StageConnection struct {
 	Type     string
 }
 
+func ListConnectionsForSource(sourceID uuid.UUID, connectionType string) ([]StageConnection, error) {
+	var connections []StageConnection
+	err := database.Conn().
+		Where("source_id = ?", sourceID).
+		Where("type = ?", connectionType).
+		Find(&connections).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return connections, nil
+}
+
 func ListConnectionsForStage(stageID uuid.UUID) ([]StageConnection, error) {
 	var connections []StageConnection
 	err := database.Conn().

@@ -7,8 +7,19 @@ import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
 	grpc "github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/public"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/workers"
 	log "github.com/sirupsen/logrus"
 )
+
+func startWorkers() {
+	log.Println("Starting Workers")
+
+	if os.Getenv("START_PENDING_EVENTS_WORKER") == "true" {
+		log.Println("Starting Pending Events Worker")
+		w := workers.PendingEventsWorker{}
+		go w.Start()
+	}
+}
 
 func startInternalAPI(encryptor encryptor.Encryptor) {
 	log.Println("Starting Internal API")
@@ -46,6 +57,8 @@ func main() {
 	if os.Getenv("START_INTERNAL_API") == "yes" {
 		go startInternalAPI(encryptor)
 	}
+
+	startWorkers()
 
 	log.Println("Delivery Hub is UP.")
 
