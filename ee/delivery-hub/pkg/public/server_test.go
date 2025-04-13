@@ -36,7 +36,7 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 	canvas, err := models.CreateCanvas(orgID, "test")
 	require.NoError(t, err)
 
-	eventSource, err := models.CreateEventSource("github-repo-1", orgID, canvas.ID, []byte("my-key"))
+	eventSource, err := canvas.CreateEventSource("github-repo-1", []byte("my-key"))
 	require.NoError(t, err)
 
 	validEvent := `{"action": "created"}`

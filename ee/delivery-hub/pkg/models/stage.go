@@ -1,21 +1,19 @@
 package models
 
 import (
-	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
-	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type Stage struct {
-	ID             uuid.UUID `gorm:"type:uuid;primary_key;"`
-	OrganizationID uuid.UUID
-	CanvasID       uuid.UUID
-	Name           string
-	CreatedAt      *time.Time
+	ID               uuid.UUID `gorm:"type:uuid;primary_key;"`
+	OrganizationID   uuid.UUID
+	CanvasID         uuid.UUID
+	Name             string
+	CreatedAt        *time.Time
+	ApprovalRequired bool
 }
 
 func FindStageByName(orgID, canvasID uuid.UUID, name string) (*Stage, error) {
@@ -35,7 +33,22 @@ func FindStageByName(orgID, canvasID uuid.UUID, name string) (*Stage, error) {
 	return &stage, nil
 }
 
-func FindStageByID(id, orgID, canvasID uuid.UUID) (*Stage, error) {
+func FindStageByID(id uuid.UUID) (*Stage, error) {
+	var stage Stage
+
+	err := database.Conn().
+		Where("id = ?", id).
+		First(&stage).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stage, nil
+}
+
+func FindStage(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	var stage Stage
 
 	err := database.Conn().
@@ -50,6 +63,11 @@ func FindStageByID(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	}
 
 	return &stage, nil
+}
+
+func (s *Stage) ListEvents() ([]StageEvent, error) {
+	var events []StageEvent
+	return events, database.Conn().Where("stage_id = ?", s.ID).Find(&events).Error
 }
 
 func ListStagesByIDs(ids []uuid.UUID) ([]Stage, error) {
@@ -82,39 +100,4 @@ func ListStagesByCanvasID(orgID, canvasID uuid.UUID) ([]Stage, error) {
 	}
 
 	return stages, nil
-}
-
-func CreateStage(orgID uuid.UUID, canvasID uuid.UUID, name string, connections []StageConnection) error {
-	now := time.Now()
-	ID := uuid.New()
-
-	return database.Conn().Transaction(func(tx *gorm.DB) error {
-		stage := &Stage{
-			ID:             ID,
-			OrganizationID: orgID,
-			CanvasID:       canvasID,
-			Name:           name,
-			CreatedAt:      &now,
-		}
-
-		err := tx.Clauses(clause.Returning{}).Create(&stage).Error
-		if err != nil {
-			if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-				return ErrNameAlreadyUsed
-			}
-
-			return err
-		}
-
-		for _, i := range connections {
-			c := i
-			c.StageID = ID
-			err := tx.Create(&c).Error
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
-	})
 }

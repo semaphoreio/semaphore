@@ -1,11 +1,12 @@
 begin;
 
 CREATE TABLE stages (
-  id              uuid NOT NULL DEFAULT uuid_generate_v4(),
-  name            CHARACTER VARYING(128) NOT NULL,
-  organization_id uuid NOT NULL,
-  canvas_id       uuid NOT NULL,
-  created_at      TIMESTAMP NOT NULL,
+  id                uuid NOT NULL DEFAULT uuid_generate_v4(),
+  name              CHARACTER VARYING(128) NOT NULL,
+  organization_id   uuid NOT NULL,
+  canvas_id         uuid NOT NULL,
+  created_at        TIMESTAMP NOT NULL,
+  approval_required BOOLEAN NOT NULL DEFAULT FALSE,
 
   PRIMARY KEY (id),
   UNIQUE (organization_id, canvas_id, name),

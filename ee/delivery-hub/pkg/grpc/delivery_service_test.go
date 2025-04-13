@@ -90,23 +90,18 @@ func Test__DescribeCanvas(t *testing.T) {
 		canvas, err := models.CreateCanvas(orgID, "test-2")
 		require.NoError(t, err)
 
-		eventSource, err := models.CreateEventSource("gh", canvas.OrganizationID, canvas.ID, []byte("my-key"))
+		eventSource, err := canvas.CreateEventSource("gh", []byte("my-key"))
 		require.NoError(t, err)
 
 		//
 		// Connection only to the event source
 		//
-		err = models.CreateStage(
-			canvas.OrganizationID,
-			canvas.ID,
-			"stage-1",
-			[]models.StageConnection{
-				{
-					SourceID: eventSource.ID,
-					Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
-				},
+		err = canvas.CreateStage("stage-1", false, []models.StageConnection{
+			{
+				SourceID: eventSource.ID,
+				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
 			},
-		)
+		})
 
 		require.NoError(t, err)
 		stage1, err := models.FindStageByName(orgID, canvas.ID, "stage-1")
@@ -115,21 +110,16 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		// Connection to the event source and also with the previous stage
 		//
-		err = models.CreateStage(
-			canvas.OrganizationID,
-			canvas.ID,
-			"stage-2",
-			[]models.StageConnection{
-				{
-					SourceID: eventSource.ID,
-					Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
-				},
-				{
-					SourceID: stage1.ID,
-					Type:     protos.Connection_TYPE_STAGE.String(),
-				},
+		err = canvas.CreateStage("stage-2", false, []models.StageConnection{
+			{
+				SourceID: eventSource.ID,
+				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
 			},
-		)
+			{
+				SourceID: stage1.ID,
+				Type:     protos.Connection_TYPE_STAGE.String(),
+			},
+		})
 
 		require.NoError(t, err)
 
@@ -276,5 +266,123 @@ func Test__CreateStage(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, s.Code())
 		assert.Equal(t, "name already used", s.Message())
+	})
+}
+
+func Test__ListStageEvents(t *testing.T) {
+	require.NoError(t, database.TruncateTables())
+
+	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
+	orgID := uuid.New()
+
+	canvas, err := models.CreateCanvas(orgID, "test")
+	require.NoError(t, err)
+
+	eventSource, err := canvas.CreateEventSource("gh", []byte("my-key"))
+	require.NoError(t, err)
+
+	err = canvas.CreateStage("stage-1", false, []models.StageConnection{})
+	require.NoError(t, err)
+
+	stage, err := models.FindStageByName(canvas.OrganizationID, canvas.ID, "stage-1")
+	require.NoError(t, err)
+
+	t.Run("stage does not exist -> error", func(t *testing.T) {
+		_, err := service.ListStageEvents(context.Background(), &protos.ListStageEventsRequest{
+			StageId: uuid.New().String(),
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "stage not found", s.Message())
+	})
+
+	t.Run("stage with no stage events -> empty list", func(t *testing.T) {
+		res, err := service.ListStageEvents(context.Background(), &protos.ListStageEventsRequest{
+			StageId: stage.ID.String(),
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		assert.Empty(t, res.Events)
+	})
+
+	t.Run("stage with stage events -> list", func(t *testing.T) {
+		_, err = models.CreateStageEvent(stage.ID, eventSource.ID)
+		require.NoError(t, err)
+
+		res, err := service.ListStageEvents(context.Background(), &protos.ListStageEventsRequest{
+			StageId: stage.ID.String(),
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Events, 1)
+		assert.NotEmpty(t, res.Events[0].Id)
+		assert.NotEmpty(t, res.Events[0].CreatedAt)
+		assert.Equal(t, eventSource.ID.String(), res.Events[0].SourceId)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, res.Events[0].SourceType)
+		assert.Equal(t, models.StageEventPending, res.Events[0].State)
+		assert.Empty(t, res.Events[0].ApprovedAt)
+		assert.Empty(t, res.Events[0].ApprovedBy)
+	})
+}
+
+func Test__ApproveStageEvent(t *testing.T) {
+	require.NoError(t, database.TruncateTables())
+
+	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
+	orgID := uuid.New()
+
+	canvas, err := models.CreateCanvas(orgID, "test")
+	require.NoError(t, err)
+
+	eventSource, err := canvas.CreateEventSource("gh", []byte("my-key"))
+	require.NoError(t, err)
+
+	err = canvas.CreateStage("stage-1", true, []models.StageConnection{})
+	require.NoError(t, err)
+	stage, err := models.FindStageByName(canvas.OrganizationID, canvas.ID, "stage-1")
+	require.NoError(t, err)
+
+	event, err := models.CreateStageEvent(stage.ID, eventSource.ID)
+	require.NoError(t, err)
+
+	t.Run("stage does not exist -> error", func(t *testing.T) {
+		_, err := service.ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
+			StageId:     uuid.New().String(),
+			EventId:     event.ID.String(),
+			RequesterId: uuid.New().String(),
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "stage not found", s.Message())
+	})
+
+	t.Run("stage event does not exist -> error", func(t *testing.T) {
+		_, err := service.ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
+			StageId:     stage.ID.String(),
+			EventId:     uuid.New().String(),
+			RequesterId: uuid.New().String(),
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "event not found", s.Message())
+	})
+
+	t.Run("stage with stage events -> list", func(t *testing.T) {
+		res, err := service.ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
+			StageId:     stage.ID.String(),
+			EventId:     event.ID.String(),
+			RequesterId: uuid.New().String(),
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, res)
 	})
 }

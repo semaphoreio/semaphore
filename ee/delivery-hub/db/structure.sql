@@ -111,6 +111,21 @@ CREATE TABLE public.stage_events (
     stage_id uuid NOT NULL,
     source_id uuid NOT NULL,
     state character varying(64) NOT NULL,
+    created_at timestamp without time zone NOT NULL,
+    approved_at timestamp without time zone,
+    approved_by uuid
+);
+
+
+--
+-- Name: stage_executions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_executions (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    stage_id uuid NOT NULL,
+    stage_event_id uuid NOT NULL,
+    state character varying(64) NOT NULL,
     created_at timestamp without time zone NOT NULL
 );
 
@@ -124,7 +139,8 @@ CREATE TABLE public.stages (
     name character varying(128) NOT NULL,
     organization_id uuid NOT NULL,
     canvas_id uuid NOT NULL,
-    created_at timestamp without time zone NOT NULL
+    created_at timestamp without time zone NOT NULL,
+    approval_required boolean DEFAULT false NOT NULL
 );
 
 
@@ -201,11 +217,11 @@ ALTER TABLE ONLY public.stage_events
 
 
 --
--- Name: stage_events stage_events_stage_id_source_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: stage_executions stage_executions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.stage_events
-    ADD CONSTRAINT stage_events_stage_id_source_id_key UNIQUE (stage_id, source_id);
+ALTER TABLE ONLY public.stage_executions
+    ADD CONSTRAINT stage_executions_pkey PRIMARY KEY (id);
 
 
 --
@@ -267,6 +283,20 @@ CREATE INDEX uix_stage_events_stage ON public.stage_events USING btree (stage_id
 
 
 --
+-- Name: uix_stage_executions_events; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_executions_events ON public.stage_executions USING btree (stage_event_id);
+
+
+--
+-- Name: uix_stage_executions_stage; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_executions_stage ON public.stage_executions USING btree (stage_id);
+
+
+--
 -- Name: uix_stages_canvas; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -306,6 +336,22 @@ ALTER TABLE ONLY public.stage_events
 
 
 --
+-- Name: stage_executions stage_executions_stage_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_executions
+    ADD CONSTRAINT stage_executions_stage_event_id_fkey FOREIGN KEY (stage_event_id) REFERENCES public.stage_events(id);
+
+
+--
+-- Name: stage_executions stage_executions_stage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_executions
+    ADD CONSTRAINT stage_executions_stage_id_fkey FOREIGN KEY (stage_id) REFERENCES public.stages(id);
+
+
+--
 -- Name: stages stages_canvas_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -340,7 +386,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250412191124	f
+20250413124818	f
 \.
 
 

@@ -5,7 +5,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func ForStage(stage models.Stage) *log.Entry {
+func ForStage(stage *models.Stage) *log.Entry {
+	if stage == nil {
+		return log.WithFields(log.Fields{})
+	}
+
 	return log.WithFields(
 		log.Fields{
 			"organization_id": stage.OrganizationID,

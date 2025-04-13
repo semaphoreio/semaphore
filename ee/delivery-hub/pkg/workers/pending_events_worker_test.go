@@ -19,7 +19,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 	canvas, err := models.CreateCanvas(org, "test")
 	require.NoError(t, err)
 
-	source, err := models.CreateEventSource("gh", org, canvas.ID, []byte("my-key"))
+	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
 	require.NoError(t, err)
 
 	w := PendingEventsWorker{}
@@ -40,7 +40,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create two stages, connecting event source to them.
 		//
-		err := models.CreateStage(org, canvas.ID, "stage-1", []models.StageConnection{
+		err := canvas.CreateStage("stage-1", false, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -49,7 +49,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = models.CreateStage(org, canvas.ID, "stage-2", []models.StageConnection{
+		err = canvas.CreateStage("stage-2", false, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -79,13 +79,13 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		stage1, _ := models.FindStageByName(org, canvas.ID, "stage-1")
 		stage2, _ := models.FindStageByName(org, canvas.ID, "stage-2")
-		stage1Events, err := models.ListStageEvents(stage1.ID)
+		stage1Events, err := stage1.ListEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
 		assert.Equal(t, source.ID, stage1Events[0].SourceID)
 		assert.Equal(t, models.StageEventPending, stage1Events[0].State)
 
-		stage2Events, err := models.ListStageEvents(stage2.ID)
+		stage2Events, err := stage2.ListEvents()
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, source.ID, stage2Events[0].SourceID)

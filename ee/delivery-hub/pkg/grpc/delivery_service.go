@@ -7,6 +7,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"google.golang.org/grpc/codes"
@@ -127,7 +128,7 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, req *pb.CreateE
 		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
 	}
 
-	_, err = models.FindCanvasByID(canvasID, orgID)
+	canvas, err := models.FindCanvasByID(canvasID, orgID)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
 	}
@@ -138,7 +139,7 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, req *pb.CreateE
 		return nil, status.Errorf(codes.Internal, "error generating key")
 	}
 
-	eventSource, err := models.CreateEventSource(req.Name, orgID, canvasID, key)
+	eventSource, err := canvas.CreateEventSource(req.Name, key)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -167,7 +168,7 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
 	}
 
-	_, err = models.FindCanvasByID(canvasID, orgID)
+	canvas, err := models.FindCanvasByID(canvasID, orgID)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
 	}
@@ -177,7 +178,7 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = models.CreateStage(orgID, canvasID, req.Name, connections)
+	err = canvas.CreateStage(req.Name, req.ApprovalRequired, connections)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -200,6 +201,102 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 
 func (s *DeliveryService) UpdateStage(ctx context.Context, req *pb.UpdateStageRequest) (*pb.UpdateStageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
+}
+
+func (s *DeliveryService) ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*pb.ApproveStageEventResponse, error) {
+	stageID, err := uuid.Parse(req.StageId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid stage ID")
+	}
+
+	eventID, err := uuid.Parse(req.EventId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid event ID")
+	}
+
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid requester ID")
+	}
+
+	stage, err := models.FindStageByID(stageID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Errorf(codes.InvalidArgument, "stage not found")
+		}
+
+		return nil, err
+	}
+
+	event, err := models.FindStageEventByID(eventID, stageID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Errorf(codes.InvalidArgument, "event not found")
+		}
+
+		return nil, err
+	}
+
+	err = event.Approve(requesterID)
+	if err != nil {
+		return nil, err
+	}
+
+	logging.ForStage(stage).Infof("event %s approved", event.ID)
+
+	return &pb.ApproveStageEventResponse{}, nil
+}
+
+func (s *DeliveryService) ListStageEvents(ctx context.Context, req *pb.ListStageEventsRequest) (*pb.ListStageEventsResponse, error) {
+	stageID, err := uuid.Parse(req.StageId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid stage ID")
+	}
+
+	stage, err := models.FindStageByID(stageID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, status.Errorf(codes.InvalidArgument, "stage not found")
+		}
+
+		return nil, err
+	}
+
+	events, err := stage.ListEvents()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &pb.ListStageEventsResponse{
+		Events: serializeStageEvents(events),
+	}
+
+	return response, nil
+}
+
+func serializeStageEvents(in []models.StageEvent) []*pb.StageEvent {
+	out := []*pb.StageEvent{}
+	for _, i := range in {
+		e := &pb.StageEvent{
+			Id:         i.ID.String(),
+			State:      i.State,
+			CreatedAt:  timestamppb.New(*i.CreatedAt),
+			SourceId:   i.SourceID.String(),
+			SourceType: pb.Connection_TYPE_EVENT_SOURCE,
+		}
+
+		if i.ApprovedAt != nil {
+			e.ApprovedAt = timestamppb.New(*i.ApprovedAt)
+		}
+
+		if i.ApprovedBy != nil {
+			e.ApprovedBy = i.ApprovedBy.String()
+		}
+
+		out = append(out, e)
+	}
+
+	return out
 }
 
 func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string) ([]byte, error) {

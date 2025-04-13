@@ -24,6 +24,8 @@ const (
 	Delivery_CreateEventSource_FullMethodName = "/InternalApi.Delivery.Delivery/CreateEventSource"
 	Delivery_CreateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/CreateStage"
 	Delivery_UpdateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/UpdateStage"
+	Delivery_ListStageEvents_FullMethodName   = "/InternalApi.Delivery.Delivery/ListStageEvents"
+	Delivery_ApproveStageEvent_FullMethodName = "/InternalApi.Delivery.Delivery/ApproveStageEvent"
 )
 
 // DeliveryClient is the client API for Delivery service.
@@ -35,6 +37,8 @@ type DeliveryClient interface {
 	CreateEventSource(ctx context.Context, in *CreateEventSourceRequest, opts ...grpc.CallOption) (*CreateEventSourceResponse, error)
 	CreateStage(ctx context.Context, in *CreateStageRequest, opts ...grpc.CallOption) (*CreateStageResponse, error)
 	UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error)
+	ListStageEvents(ctx context.Context, in *ListStageEventsRequest, opts ...grpc.CallOption) (*ListStageEventsResponse, error)
+	ApproveStageEvent(ctx context.Context, in *ApproveStageEventRequest, opts ...grpc.CallOption) (*ApproveStageEventResponse, error)
 }
 
 type deliveryClient struct {
@@ -95,6 +99,26 @@ func (c *deliveryClient) UpdateStage(ctx context.Context, in *UpdateStageRequest
 	return out, nil
 }
 
+func (c *deliveryClient) ListStageEvents(ctx context.Context, in *ListStageEventsRequest, opts ...grpc.CallOption) (*ListStageEventsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStageEventsResponse)
+	err := c.cc.Invoke(ctx, Delivery_ListStageEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) ApproveStageEvent(ctx context.Context, in *ApproveStageEventRequest, opts ...grpc.CallOption) (*ApproveStageEventResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ApproveStageEventResponse)
+	err := c.cc.Invoke(ctx, Delivery_ApproveStageEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeliveryServer is the server API for Delivery service.
 // All implementations should embed UnimplementedDeliveryServer
 // for forward compatibility.
@@ -104,6 +128,8 @@ type DeliveryServer interface {
 	CreateEventSource(context.Context, *CreateEventSourceRequest) (*CreateEventSourceResponse, error)
 	CreateStage(context.Context, *CreateStageRequest) (*CreateStageResponse, error)
 	UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error)
+	ListStageEvents(context.Context, *ListStageEventsRequest) (*ListStageEventsResponse, error)
+	ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error)
 }
 
 // UnimplementedDeliveryServer should be embedded to have
@@ -127,6 +153,12 @@ func (UnimplementedDeliveryServer) CreateStage(context.Context, *CreateStageRequ
 }
 func (UnimplementedDeliveryServer) UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
+}
+func (UnimplementedDeliveryServer) ListStageEvents(context.Context, *ListStageEventsRequest) (*ListStageEventsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListStageEvents not implemented")
+}
+func (UnimplementedDeliveryServer) ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ApproveStageEvent not implemented")
 }
 func (UnimplementedDeliveryServer) testEmbeddedByValue() {}
 
@@ -238,6 +270,42 @@ func _Delivery_UpdateStage_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Delivery_ListStageEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStageEventsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).ListStageEvents(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_ListStageEvents_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).ListStageEvents(ctx, req.(*ListStageEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_ApproveStageEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ApproveStageEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).ApproveStageEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_ApproveStageEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).ApproveStageEvent(ctx, req.(*ApproveStageEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Delivery_ServiceDesc is the grpc.ServiceDesc for Delivery service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -264,6 +332,14 @@ var Delivery_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateStage",
 			Handler:    _Delivery_UpdateStage_Handler,
+		},
+		{
+			MethodName: "ListStageEvents",
+			Handler:    _Delivery_ListStageEvents_Handler,
+		},
+		{
+			MethodName: "ApproveStageEvent",
+			Handler:    _Delivery_ApproveStageEvent_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

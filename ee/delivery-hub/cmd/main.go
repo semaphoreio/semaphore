@@ -19,6 +19,12 @@ func startWorkers() {
 		w := workers.PendingEventsWorker{}
 		go w.Start()
 	}
+
+	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "true" {
+		log.Println("Starting Pending Stage Events Worker")
+		w := workers.PendingStageEventsWorker{}
+		go w.Start()
+	}
 }
 
 func startInternalAPI(encryptor encryptor.Encryptor) {
