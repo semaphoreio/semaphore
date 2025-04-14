@@ -40,11 +40,7 @@ func startWorkers() {
 			panic(err)
 		}
 
-		w := workers.PipelineDoneConsumer{
-			RabbitMQURL:    rabbitMQURL,
-			PipelineAPIURL: pipelineAPIURL,
-		}
-
+		w := workers.NewPipelineDoneConsumer(rabbitMQURL, pipelineAPIURL)
 		go w.Start()
 	}
 
