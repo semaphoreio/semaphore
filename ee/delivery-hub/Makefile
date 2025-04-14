@@ -1,4 +1,4 @@
-.PHONY: lint test
+include ../Makefile
 
 APP_NAME=delivery_hub
 APP_ENV=prod

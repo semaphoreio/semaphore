@@ -133,6 +133,12 @@
         "component": "secrethub"
       }
     ],
+    "DeliveryHub": [
+      {
+        "path": "ee/delivery-hub",
+        "component": "delivery-hub"
+      }
+    ],
     "Self Hosted Hub": [
       {
         "path": "self_hosted_hub",

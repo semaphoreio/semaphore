@@ -2840,6 +2840,75 @@ blocks:
         - name: "\U0001F9EA Lint"
           commands:
             - make lint
+  # DeliveryHub
+  - name: "DeliveryHub: \U0001F4CB Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/delivery-hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd ee/delivery-hub
+      jobs:
+        - name: "\U0001F5BC️ Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "DeliveryHub: \U0001F6E1 Deployment Preconditions"
+    dependencies: ["DeliveryHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/delivery-hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "DeliveryHub"
+      prologue:
+        commands:
+          - checkout && cd ee/delivery-hub
+          - make pull
+      jobs:
+        - name: "\U0001F6E1️ Check code"
+          commands:
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
+        - name: "\U0001F6E1️ Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "\U0001F6E1️ Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "DeliveryHub: \U0001F9EA QA"
+    dependencies: ["DeliveryHub: \U0001F4CB Provision Prod Image"]
+    run:
+      when: "change_in('/ee/delivery-hub', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd ee/delivery-hub
+          - make build
+      jobs:
+        - name: "\U0001F9EA Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "\U0001F9EA Lint"
+          commands:
+            - make lint
   # Secrethub
   - name: "Secrethub: \U0001F4CB Provision Test Image"
     dependencies: []
