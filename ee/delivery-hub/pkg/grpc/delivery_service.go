@@ -69,9 +69,6 @@ func (s *DeliveryService) DescribeCanvas(ctx context.Context, req *pb.DescribeCa
 		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
 	}
 
-	log.Infof("Organization: %s", orgID.String())
-	log.Infof("Canvas: %s", canvasID.String())
-
 	canvas, err := models.FindCanvasByID(canvasID, orgID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -88,15 +85,11 @@ func (s *DeliveryService) DescribeCanvas(ctx context.Context, req *pb.DescribeCa
 		return nil, err
 	}
 
-	log.Infof("Sources: %v", sources)
-
 	stages, err := models.ListStagesByCanvasID(orgID, canvasID)
 	if err != nil {
 		log.Errorf("Error listing stages for canvas %s for organization %s: %v", canvasID, orgID, err)
 		return nil, err
 	}
-
-	log.Infof("Stages: %v", stages)
 
 	serializedStages, err := serializeStages(stages, sources)
 	if err != nil {
@@ -133,13 +126,13 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, req *pb.CreateE
 		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
 	}
 
-	key, err := s.genNewEventSourceKey(ctx, req.Name)
+	plainKey, encryptedKey, err := s.genNewEventSourceKey(ctx, req.Name)
 	if err != nil {
 		log.Errorf("Error generating key - org=%s canvas=%s name=%s: %v", orgID, canvasID, req.Name, err)
 		return nil, status.Errorf(codes.Internal, "error generating key")
 	}
 
-	eventSource, err := canvas.CreateEventSource(req.Name, key)
+	eventSource, err := canvas.CreateEventSource(req.Name, encryptedKey)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -151,7 +144,7 @@ func (s *DeliveryService) CreateEventSource(ctx context.Context, req *pb.CreateE
 
 	response := &pb.CreateEventSourceResponse{
 		EventSource: serializeEventSource(*eventSource),
-		Key:         string(eventSource.Key),
+		Key:         string(plainKey),
 	}
 
 	return response, nil
@@ -314,14 +307,14 @@ func serializeStageEvents(in []models.StageEvent) []*pb.StageEvent {
 	return out
 }
 
-func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string) ([]byte, error) {
-	key, _ := crypto.Base64String(32)
-	encrypted, err := s.encryptor.Encrypt(ctx, []byte(key), []byte(name))
+func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string) (string, []byte, error) {
+	plainKey, _ := crypto.Base64String(32)
+	encrypted, err := s.encryptor.Encrypt(ctx, []byte(plainKey), []byte(name))
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
-	return encrypted, nil
+	return plainKey, encrypted, nil
 }
 
 func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {

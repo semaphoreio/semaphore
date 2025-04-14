@@ -1,3 +1,5 @@
+.PHONY: test
+
 include ../../Makefile
 
 APP_NAME=delivery_hub
