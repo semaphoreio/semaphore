@@ -855,7 +855,7 @@ defmodule Projecthub.Models.ProjectTest do
     user = %User{github_token: "token"}
 
     Enum.each(projects, fn project ->
-      {:ok, project} = Project.soft_destroy(project, user)
+      {:ok, _} = Project.soft_destroy(project, user)
     end)
 
     projects
