@@ -20,15 +20,17 @@ defmodule FrontWeb.AgentsController do
   plug(:put_layout, :organization)
 
   def index(conn, _params) do
-    user_id = conn.assigns.user_id
-    org_id = conn.assigns.organization_id
+    Watchman.benchmark("agents.index.duration", fn ->
+      user_id = conn.assigns.user_id
+      org_id = conn.assigns.organization_id
 
-    activity = Front.ActivityMonitor.load(org_id, user_id)
+      activity = Front.ActivityMonitor.load(org_id, user_id)
 
-    conn
-    |> render("index.html",
-      js: :agents,
-      activity: activity
-    )
+      conn
+      |> render("index.html",
+        js: :agents,
+        activity: activity
+      )
+    end)
   end
 end
