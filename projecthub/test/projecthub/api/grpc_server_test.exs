@@ -1042,7 +1042,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                      api_version: "",
                      kind: "",
                      req_id: "",
-                     org_id: org_id,
+                     org_id: "",
                      user_id: "12345678-1234-5678-1234-567812345678",
                      status:
                        InternalApi.Projecthub.ResponseMeta.Status.new(
@@ -1313,6 +1313,7 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       request =
         InternalApi.Projecthub.ListRequest.new(
+          soft_deleted: true,
           metadata:
             InternalApi.Projecthub.RequestMeta.new(
               api_version: "",
