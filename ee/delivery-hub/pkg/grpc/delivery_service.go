@@ -398,13 +398,14 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 	}
 
 	return &pb.Stage{
-		Id:             stage.ID.String(),
-		Name:           stage.Name,
-		OrganizationId: stage.OrganizationID.String(),
-		CanvasId:       stage.CanvasID.String(),
-		CreatedAt:      timestamppb.New(*stage.CreatedAt),
-		Connections:    connections,
-		RunTemplate:    runTemplate,
+		Id:               stage.ID.String(),
+		Name:             stage.Name,
+		OrganizationId:   stage.OrganizationID.String(),
+		CanvasId:         stage.CanvasID.String(),
+		CreatedAt:        timestamppb.New(*stage.CreatedAt),
+		Connections:      connections,
+		RunTemplate:      runTemplate,
+		ApprovalRequired: stage.ApprovalRequired,
 	}, nil
 }
 

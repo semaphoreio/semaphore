@@ -74,7 +74,8 @@ func (w *PendingEventsWorker) ProcessEvent(event *models.Event) error {
 	//
 	// Otherwise, we find all the stages, apply their filters on this event.
 	//
-	stages, err := models.ListStagesByIDs(w.stageIDs(connections))
+	stageIDs := w.stageIDs(connections)
+	stages, err := models.ListStagesByIDs(stageIDs)
 	if err != nil {
 		return fmt.Errorf("error listing stages for source %s: %v", event.SourceID, err)
 	}
@@ -98,7 +99,13 @@ func (w *PendingEventsWorker) ProcessEvent(event *models.Event) error {
 		return nil
 	}
 
-	return w.enqueueEvent(event, stages)
+	err = w.enqueueEvent(event, stages)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("Pushed event %s to queues: %v", event.ID, stageIDs)
+	return nil
 }
 
 func (w *PendingEventsWorker) filterStages(event *models.Event, stages []models.Stage) ([]models.Stage, error) {

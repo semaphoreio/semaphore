@@ -92,6 +92,8 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 			return fmt.Errorf("error update event state: %v", err)
 		}
 
+		logger.Infof("Event %s waiting for approval", event.ID)
+
 		return nil
 	}
 
