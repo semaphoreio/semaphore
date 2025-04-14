@@ -15,6 +15,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 	require.NoError(t, database.TruncateTables())
 
 	org := uuid.New()
+	user := uuid.New()
 
 	canvas, err := models.CreateCanvas(org, "test")
 	require.NoError(t, err)
@@ -22,13 +23,22 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
 	require.NoError(t, err)
 
+	template := models.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+			Project:      "demo-project",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
+
 	w := PendingStageEventsWorker{}
 
 	t.Run("stage does not require approval -> creates execution", func(t *testing.T) {
 		//
 		// Create stage that does not require approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-no-approval-1", false, []models.StageConnection{
+		require.NoError(t, canvas.CreateStage("stage-no-approval-1", user, false, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -68,7 +78,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-with-approval-1", true, []models.StageConnection{
+		require.NoError(t, canvas.CreateStage("stage-with-approval-1", user, true, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -100,7 +110,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-with-approval-2", true, []models.StageConnection{
+		require.NoError(t, canvas.CreateStage("stage-with-approval-2", user, true, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -141,7 +151,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that does not requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-no-approval-3", false, []models.StageConnection{
+		require.NoError(t, canvas.CreateStage("stage-no-approval-3", user, false, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),

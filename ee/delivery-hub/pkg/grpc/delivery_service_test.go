@@ -54,6 +54,25 @@ func Test__DescribeCanvas(t *testing.T) {
 
 	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
 	orgID := uuid.New()
+	userID := uuid.New()
+
+	template := models.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+			Project:      "demo-project",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
+
+	protoTemplate := protos.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
+		SemaphoreWorkflow: &protos.WorkflowTemplate{
+			ProjectId:    "demo-project",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
 
 	t.Run("canvas does not exist -> error", func(t *testing.T) {
 		_, err := service.DescribeCanvas(context.Background(), &protos.DescribeCanvasRequest{
@@ -96,7 +115,7 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		// Connection only to the event source
 		//
-		err = canvas.CreateStage("stage-1", false, []models.StageConnection{
+		err = canvas.CreateStage("stage-1", userID, false, template, []models.StageConnection{
 			{
 				SourceID: eventSource.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -110,7 +129,7 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		// Connection to the event source and also with the previous stage
 		//
-		err = canvas.CreateStage("stage-2", false, []models.StageConnection{
+		err = canvas.CreateStage("stage-2", userID, false, template, []models.StageConnection{
 			{
 				SourceID: eventSource.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -144,20 +163,24 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		// First stage has just one connection to an event source
 		//
-		assert.Equal(t, "stage-1", response.Canvas.Stages[0].Name)
-		require.Len(t, response.Canvas.Stages[0].Connections, 1)
-		assert.Equal(t, "gh", response.Canvas.Stages[0].Connections[0].Name)
-		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, response.Canvas.Stages[0].Connections[0].Type)
+		s1 := response.Canvas.Stages[0]
+		assert.Equal(t, "stage-1", s1.Name)
+		require.Len(t, s1.Connections, 1)
+		assert.Equal(t, "gh", s1.Connections[0].Name)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, s1.Connections[0].Type)
+		assert.Equal(t, &protoTemplate, s1.RunTemplate)
 
 		//
 		// Second stage just two connections: with a event source and another stage
 		//
-		assert.Equal(t, "stage-2", response.Canvas.Stages[1].Name)
-		require.Len(t, response.Canvas.Stages[1].Connections, 2)
-		assert.Equal(t, "gh", response.Canvas.Stages[1].Connections[0].Name)
-		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, response.Canvas.Stages[1].Connections[0].Type)
-		assert.Equal(t, "stage-1", response.Canvas.Stages[1].Connections[1].Name)
-		assert.Equal(t, protos.Connection_TYPE_STAGE, response.Canvas.Stages[1].Connections[1].Type)
+		s2 := response.Canvas.Stages[1]
+		assert.Equal(t, "stage-2", s2.Name)
+		require.Len(t, s2.Connections, 2)
+		assert.Equal(t, "stage-1", s2.Connections[0].Name)
+		assert.Equal(t, protos.Connection_TYPE_STAGE, s2.Connections[0].Type)
+		assert.Equal(t, "gh", s2.Connections[1].Name)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, s2.Connections[1].Type)
+		assert.Equal(t, &protoTemplate, s2.RunTemplate)
 	})
 }
 
@@ -221,15 +244,27 @@ func Test__CreateStage(t *testing.T) {
 
 	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
 	orgID := uuid.New()
+	requesterID := uuid.New()
 
 	canvas, err := models.CreateCanvas(orgID, "test")
 	require.NoError(t, err)
+
+	template := protos.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
+		SemaphoreWorkflow: &protos.WorkflowTemplate{
+			ProjectId:    "test",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
 
 	t.Run("canvas does not exist -> error", func(t *testing.T) {
 		_, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
 			OrganizationId: orgID.String(),
 			CanvasId:       uuid.New().String(),
 			Name:           "test",
+			RequesterId:    requesterID.String(),
+			RunTemplate:    &template,
 		})
 
 		s, ok := status.FromError(err)
@@ -238,11 +273,48 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "canvas not found", s.Message())
 	})
 
+	t.Run("missing requester ID -> error", func(t *testing.T) {
+		_, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: orgID.String(),
+			CanvasId:       canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    &template,
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid requester ID", s.Message())
+	})
+
+	t.Run("connection for source that does not exist -> error", func(t *testing.T) {
+		_, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: orgID.String(),
+			CanvasId:       canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    &template,
+			RequesterId:    requesterID.String(),
+			Connections: []*protos.Connection{
+				{
+					Name: "source-does-not-exist",
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid connection: event source source-does-not-exist not found", s.Message())
+	})
+
 	t.Run("stage is created", func(t *testing.T) {
 		res, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
 			OrganizationId: orgID.String(),
 			CanvasId:       canvas.ID.String(),
 			Name:           "test",
+			RunTemplate:    &template,
+			RequesterId:    requesterID.String(),
 		})
 
 		require.NoError(t, err)
@@ -253,6 +325,7 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, canvas.ID.String(), res.Stage.CanvasId)
 		assert.Equal(t, "test", res.Stage.Name)
 		assert.Empty(t, res.Stage.Connections)
+		assert.Equal(t, &template, res.Stage.RunTemplate)
 	})
 
 	t.Run("stage name already used -> error", func(t *testing.T) {
@@ -260,6 +333,8 @@ func Test__CreateStage(t *testing.T) {
 			OrganizationId: orgID.String(),
 			CanvasId:       canvas.ID.String(),
 			Name:           "test",
+			RequesterId:    requesterID.String(),
+			RunTemplate:    &template,
 		})
 
 		s, ok := status.FromError(err)
@@ -274,6 +349,7 @@ func Test__ListStageEvents(t *testing.T) {
 
 	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
 	orgID := uuid.New()
+	userID := uuid.New()
 
 	canvas, err := models.CreateCanvas(orgID, "test")
 	require.NoError(t, err)
@@ -281,7 +357,16 @@ func Test__ListStageEvents(t *testing.T) {
 	eventSource, err := canvas.CreateEventSource("gh", []byte("my-key"))
 	require.NoError(t, err)
 
-	err = canvas.CreateStage("stage-1", false, []models.StageConnection{})
+	template := models.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+			Project:      "demo-project",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
+
+	err = canvas.CreateStage("stage-1", userID, false, template, []models.StageConnection{})
 	require.NoError(t, err)
 
 	stage, err := models.FindStageByName(canvas.OrganizationID, canvas.ID, "stage-1")
@@ -334,6 +419,7 @@ func Test__ApproveStageEvent(t *testing.T) {
 
 	service := NewDeliveryService(&encryptor.NoOpEncryptor{})
 	orgID := uuid.New()
+	userID := uuid.New()
 
 	canvas, err := models.CreateCanvas(orgID, "test")
 	require.NoError(t, err)
@@ -341,7 +427,16 @@ func Test__ApproveStageEvent(t *testing.T) {
 	eventSource, err := canvas.CreateEventSource("gh", []byte("my-key"))
 	require.NoError(t, err)
 
-	err = canvas.CreateStage("stage-1", true, []models.StageConnection{})
+	template := models.RunTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+			Project:      "demo-project",
+			Branch:       "main",
+			PipelineFile: ".semaphore/semaphore.yml",
+		},
+	}
+
+	err = canvas.CreateStage("stage-1", userID, true, template, []models.StageConnection{})
 	require.NoError(t, err)
 	stage, err := models.FindStageByName(canvas.OrganizationID, canvas.ID, "stage-1")
 	require.NoError(t, err)

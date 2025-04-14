@@ -4,6 +4,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
 	grpc "github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/public"
@@ -23,6 +24,21 @@ func startWorkers() {
 	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "true" {
 		log.Println("Starting Pending Stage Events Worker")
 		w := workers.PendingStageEventsWorker{}
+		go w.Start()
+	}
+
+	if os.Getenv("START_PENDING_EXECUTIONS_WORKER") == "true" {
+		log.Println("Starting Pending Stage Events Worker")
+
+		repoProxyURL, err := config.RepoProxyURL()
+		if err != nil {
+			panic(err)
+		}
+
+		w := workers.PendingExecutionsWorker{
+			RepoProxyURL: repoProxyURL,
+		}
+
 		go w.Start()
 	}
 }

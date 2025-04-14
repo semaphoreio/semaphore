@@ -168,9 +168,19 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 		return nil, status.Errorf(codes.InvalidArgument, "invalid canvas ID")
 	}
 
+	requesterID, err := uuid.Parse(req.RequesterId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid requester ID")
+	}
+
 	canvas, err := models.FindCanvasByID(canvasID, orgID)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
+	}
+
+	template, err := validateRunTemplate(req.RunTemplate)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
 	connections, err := validateConnections(orgID, canvasID, req.Connections)
@@ -178,7 +188,7 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = canvas.CreateStage(req.Name, req.ApprovalRequired, connections)
+	err = canvas.CreateStage(req.Name, requesterID, req.ApprovalRequired, *template, connections)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -192,8 +202,13 @@ func (s *DeliveryService) CreateStage(ctx context.Context, req *pb.CreateStageRe
 		return nil, err
 	}
 
+	serialized, err := serializeStage(*stage, req.Connections)
+	if err != nil {
+		return nil, err
+	}
+
 	response := &pb.CreateStageResponse{
-		Stage: serializeStage(*stage, req.Connections),
+		Stage: serialized,
 	}
 
 	return response, nil
@@ -309,6 +324,37 @@ func (s *DeliveryService) genNewEventSourceKey(ctx context.Context, name string)
 	return encrypted, nil
 }
 
+func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
+	if in == nil {
+		return nil, fmt.Errorf("missing run template")
+	}
+
+	switch in.Type {
+	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW:
+		return &models.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+				Project:      in.SemaphoreWorkflow.ProjectId,
+				Branch:       in.SemaphoreWorkflow.Branch,
+				PipelineFile: in.SemaphoreWorkflow.PipelineFile,
+			},
+		}, nil
+
+	case pb.RunTemplate_TYPE_SEMAPHORE_TASK:
+		return &models.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK.String(),
+			SemaphoreTask: &models.SemaphoreTaskTemplate{
+				Project:    in.SemaphoreTask.ProjectId,
+				Task:       in.SemaphoreTask.TaskId,
+				Parameters: in.SemaphoreTask.Parameters,
+			},
+		}, nil
+
+	default:
+		return nil, errors.New("invalid run template type")
+	}
+}
+
 func serializeEventSources(eventSources []models.EventSource) []*pb.EventSource {
 	sources := []*pb.EventSource{}
 	for _, source := range eventSources {
@@ -341,13 +387,23 @@ func serializeStages(stages []models.Stage, sources []models.EventSource) ([]*pb
 			return nil, err
 		}
 
-		s = append(s, serializeStage(stage, serialized))
+		stage, err := serializeStage(stage, serialized)
+		if err != nil {
+			return nil, err
+		}
+
+		s = append(s, stage)
 	}
 
 	return s, nil
 }
 
-func serializeStage(stage models.Stage, connections []*pb.Connection) *pb.Stage {
+func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage, error) {
+	runTemplate, err := serializeRunTemplate(stage.RunTemplate.Data())
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.Stage{
 		Id:             stage.ID.String(),
 		Name:           stage.Name,
@@ -355,6 +411,34 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) *pb.Stage 
 		CanvasId:       stage.CanvasID.String(),
 		CreatedAt:      timestamppb.New(*stage.CreatedAt),
 		Connections:    connections,
+		RunTemplate:    runTemplate,
+	}, nil
+}
+
+func serializeRunTemplate(runTemplate models.RunTemplate) (*pb.RunTemplate, error) {
+	switch runTemplate.Type {
+	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String():
+		return &pb.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
+			SemaphoreWorkflow: &pb.WorkflowTemplate{
+				ProjectId:    runTemplate.SemaphoreWorkflow.Project,
+				Branch:       runTemplate.SemaphoreWorkflow.Branch,
+				PipelineFile: runTemplate.SemaphoreWorkflow.PipelineFile,
+			},
+		}, nil
+
+	case pb.RunTemplate_TYPE_SEMAPHORE_TASK.String():
+		return &pb.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK,
+			SemaphoreTask: &pb.TaskTemplate{
+				ProjectId:  runTemplate.SemaphoreTask.Project,
+				TaskId:     runTemplate.SemaphoreTask.Task,
+				Parameters: runTemplate.SemaphoreTask.Parameters,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("invalid run template type: %s", runTemplate.Type)
 	}
 }
 

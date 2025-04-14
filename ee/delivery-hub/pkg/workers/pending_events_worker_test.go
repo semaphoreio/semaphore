@@ -15,6 +15,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 	require.NoError(t, database.TruncateTables())
 
 	org := uuid.New()
+	user := uuid.New()
 
 	canvas, err := models.CreateCanvas(org, "test")
 	require.NoError(t, err)
@@ -37,10 +38,19 @@ func Test__PendingEventsWorker(t *testing.T) {
 	})
 
 	t.Run("source is connected to many stages -> event is added to each stage queue", func(t *testing.T) {
+		template := models.RunTemplate{
+			Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+				Project:      "demo-project",
+				Branch:       "main",
+				PipelineFile: ".semaphore/semaphore.yml",
+			},
+		}
+
 		//
 		// Create two stages, connecting event source to them.
 		//
-		err := canvas.CreateStage("stage-1", false, []models.StageConnection{
+		err := canvas.CreateStage("stage-1", user, false, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
@@ -49,7 +59,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = canvas.CreateStage("stage-2", false, []models.StageConnection{
+		err = canvas.CreateStage("stage-2", user, false, template, []models.StageConnection{
 			{
 				SourceID: source.ID,
 				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),

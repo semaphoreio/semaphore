@@ -6,7 +6,9 @@ CREATE TABLE stages (
   organization_id   uuid NOT NULL,
   canvas_id         uuid NOT NULL,
   created_at        TIMESTAMP NOT NULL,
+  created_by        uuid NOT NULL,
   approval_required BOOLEAN NOT NULL DEFAULT FALSE,
+  run_template      jsonb NOT NULL,
 
   PRIMARY KEY (id),
   UNIQUE (organization_id, canvas_id, name),

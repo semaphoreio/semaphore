@@ -56,7 +56,7 @@ db.test.delete:
 
 INTERNAL_API_BRANCH ?= master
 TMP_REPO_DIR ?= /tmp/internal_api
-INTERNAL_API_MODULES ?= delivery,encryptor
+INTERNAL_API_MODULES ?= delivery,encryptor,plumber_w_f.workflow,repo_proxy
 pb.gen:
 	rm -rf $(TMP_REPO_DIR)
 	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)

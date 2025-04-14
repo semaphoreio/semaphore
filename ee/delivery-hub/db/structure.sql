@@ -125,6 +125,7 @@ CREATE TABLE public.stage_executions (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     stage_event_id uuid NOT NULL,
+    execution_id character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
     created_at timestamp without time zone NOT NULL
 );
@@ -140,7 +141,9 @@ CREATE TABLE public.stages (
     organization_id uuid NOT NULL,
     canvas_id uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
-    approval_required boolean DEFAULT false NOT NULL
+    created_by uuid NOT NULL,
+    approval_required boolean DEFAULT false NOT NULL,
+    run_template jsonb NOT NULL
 );
 
 

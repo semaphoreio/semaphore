@@ -21,6 +21,22 @@ type StageExecution struct {
 	StageEventID uuid.UUID
 	State        string
 	CreatedAt    *time.Time
+
+	//
+	// The ID of the "thing" that is running.
+	// For now, this is a Semaphore workflow, but we might want to support other types of executions in the future,
+	// so keeping the name generic for now, and also not using uuid.UUID for this column, since we can't guarantee
+	// that all IDs will be UUIDs.
+	//
+	ExecutionID string
+}
+
+func (e *StageExecution) Start(executionID string) error {
+	return database.Conn().
+		Model(e).
+		Update("execution_id", executionID).
+		Update("state", StageExecutionStarted).
+		Error
 }
 
 func FindExecutionInState(stageID uuid.UUID, states []string) (*StageExecution, error) {
@@ -36,6 +52,21 @@ func FindExecutionInState(stageID uuid.UUID, states []string) (*StageExecution, 
 	}
 
 	return &execution, nil
+}
+
+func ListPendingStageExecutions() ([]StageExecution, error) {
+	var executions []StageExecution
+
+	err := database.Conn().
+		Where("state = ?", StageExecutionPending).
+		Find(&executions).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return executions, nil
 }
 
 func CreateStageExecution(stageID, stageEventID uuid.UUID) (*StageExecution, error) {

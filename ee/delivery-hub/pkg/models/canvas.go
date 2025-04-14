@@ -7,6 +7,7 @@ import (
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -54,7 +55,7 @@ func (c *Canvas) CreateEventSource(name string, key []byte) (*EventSource, error
 	return nil, err
 }
 
-func (c *Canvas) CreateStage(name string, approvalRequired bool, connections []StageConnection) error {
+func (c *Canvas) CreateStage(name string, createdBy uuid.UUID, approvalRequired bool, template RunTemplate, connections []StageConnection) error {
 	now := time.Now()
 	ID := uuid.New()
 
@@ -66,6 +67,8 @@ func (c *Canvas) CreateStage(name string, approvalRequired bool, connections []S
 			Name:             name,
 			ApprovalRequired: approvalRequired,
 			CreatedAt:        &now,
+			CreatedBy:        createdBy,
+			RunTemplate:      datatypes.NewJSONType(template),
 		}
 
 		err := tx.Clauses(clause.Returning{}).Create(&stage).Error
