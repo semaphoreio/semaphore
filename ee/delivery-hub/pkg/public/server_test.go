@@ -15,7 +15,7 @@ import (
 )
 
 func Test__HealthCheckEndpoint(t *testing.T) {
-	server, err := NewServer(&encryptor.NoOpEncryptor{})
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, "")
 	require.NoError(t, err)
 
 	response := execRequest(server, requestParams{
@@ -29,7 +29,7 @@ func Test__HealthCheckEndpoint(t *testing.T) {
 func Test__ReceiveGitHubEvent(t *testing.T) {
 	require.NoError(t, database.TruncateTables())
 
-	server, err := NewServer(&encryptor.NoOpEncryptor{})
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, "")
 	require.NoError(t, err)
 
 	orgID := uuid.New()

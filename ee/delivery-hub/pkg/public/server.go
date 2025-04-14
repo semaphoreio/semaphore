@@ -22,12 +22,14 @@ type Server struct {
 	encryptor             encryptor.Encryptor
 	timeoutHandlerTimeout time.Duration
 	Router                *mux.Router
+	BasePath              string
 }
 
-func NewServer(encryptor encryptor.Encryptor, middlewares ...mux.MiddlewareFunc) (*Server, error) {
+func NewServer(encryptor encryptor.Encryptor, basePath string, middlewares ...mux.MiddlewareFunc) (*Server, error) {
 	server := &Server{
 		timeoutHandlerTimeout: 15 * time.Second,
 		encryptor:             encryptor,
+		BasePath:              basePath,
 	}
 
 	server.timeoutHandlerTimeout = 15 * time.Second
@@ -42,7 +44,7 @@ func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
 	// Authenticated and validated routes.
 	//
 	authenticatedRoute := r.Methods(http.MethodPost).Subrouter()
-	authenticatedRoute.HandleFunc("/sources/{sourceID}/github", s.HandleGithubWebhook).Methods("POST")
+	authenticatedRoute.HandleFunc(s.BasePath+"/sources/{sourceID}/github", s.HandleGithubWebhook).Methods("POST")
 	authenticatedRoute.Use(OrganizationMiddleware)
 	authenticatedRoute.Use(additionalMiddlewares...)
 
@@ -82,7 +84,7 @@ func (s *Server) Close() {
 	}
 }
 
-func (h *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 	organizationID := r.Context().Value(orgIDKey).(uuid.UUID)
 
 	//
@@ -117,7 +119,7 @@ func (h *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	key, err := h.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
+	key, err := s.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return

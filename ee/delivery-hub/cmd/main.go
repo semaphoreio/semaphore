@@ -15,19 +15,19 @@ import (
 func startWorkers() {
 	log.Println("Starting Workers")
 
-	if os.Getenv("START_PENDING_EVENTS_WORKER") == "true" {
+	if os.Getenv("START_PENDING_EVENTS_WORKER") == "yes" {
 		log.Println("Starting Pending Events Worker")
 		w := workers.PendingEventsWorker{}
 		go w.Start()
 	}
 
-	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "true" {
+	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "yes" {
 		log.Println("Starting Pending Stage Events Worker")
 		w := workers.PendingStageEventsWorker{}
 		go w.Start()
 	}
 
-	if os.Getenv("START_PIPELINE_DONE_CONSUMER") == "true" {
+	if os.Getenv("START_PIPELINE_DONE_CONSUMER") == "yes" {
 		log.Println("Starting Pipeline Done Consumer")
 
 		rabbitMQURL, err := config.RabbitMQURL()
@@ -48,7 +48,7 @@ func startWorkers() {
 		go w.Start()
 	}
 
-	if os.Getenv("START_PENDING_EXECUTIONS_WORKER") == "true" {
+	if os.Getenv("START_PENDING_EXECUTIONS_WORKER") == "yes" {
 		log.Println("Starting Pending Stage Events Worker")
 
 		repoProxyURL, err := config.RepoProxyURL()
@@ -72,7 +72,12 @@ func startInternalAPI(encryptor encryptor.Encryptor) {
 func startPublicAPI(encryptor encryptor.Encryptor) {
 	log.Println("Starting Public API")
 
-	server, err := public.NewServer(encryptor)
+	basePath := os.Getenv("PUBLIC_API_BASE_PATH")
+	if basePath == "" {
+		panic("PUBLIC_API_BASE_PATH must be set")
+	}
+
+	server, err := public.NewServer(encryptor, basePath)
 	if err != nil {
 		log.Panicf("Error creating public API server: %v", err)
 	}
