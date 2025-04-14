@@ -27,6 +27,27 @@ func startWorkers() {
 		go w.Start()
 	}
 
+	if os.Getenv("START_PIPELINE_DONE_CONSUMER") == "true" {
+		log.Println("Starting Pipeline Done Consumer")
+
+		rabbitMQURL, err := config.RabbitMQURL()
+		if err != nil {
+			panic(err)
+		}
+
+		pipelineAPIURL, err := config.PipelineAPIURL()
+		if err != nil {
+			panic(err)
+		}
+
+		w := workers.PipelineDoneConsumer{
+			RabbitMQURL:    rabbitMQURL,
+			PipelineAPIURL: pipelineAPIURL,
+		}
+
+		go w.Start()
+	}
+
 	if os.Getenv("START_PENDING_EXECUTIONS_WORKER") == "true" {
 		log.Println("Starting Pending Stage Events Worker")
 

@@ -110,11 +110,11 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 
 		logger.Infof("Created stage execution %s", execution.ID)
 
-		if err := event.UpdateStateInTransaction(tx, models.StageEventWaitingForExecution); err != nil {
+		if err := event.UpdateStateInTransaction(tx, models.StageEventProcessed); err != nil {
 			return fmt.Errorf("error updating event state: %v", err)
 		}
 
-		logger.Infof("Event %s transitioned to %s", event.ID, models.StageEventWaitingForExecution)
+		logger.Infof("Stage event %s processed", event.ID)
 		return nil
 	})
 

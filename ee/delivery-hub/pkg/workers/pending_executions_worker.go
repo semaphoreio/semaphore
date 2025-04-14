@@ -106,6 +106,6 @@ func (w *PendingExecutionsWorker) StartSemaphoreWorkflow(logger *log.Entry, stag
 		return "", fmt.Errorf("error calling repo proxy API: %v", err)
 	}
 
-	logger.Infof("Semaphore workflow created: %s", res.WorkflowId)
-	return res.WorkflowId, nil
+	logger.Infof("Semaphore workflow created: workflow=%s pipeline=%s", res.WorkflowId, res.PipelineId)
+	return res.PipelineId, nil
 }

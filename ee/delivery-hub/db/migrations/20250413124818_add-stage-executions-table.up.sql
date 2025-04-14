@@ -4,8 +4,9 @@ CREATE TABLE stage_executions (
   id             uuid NOT NULL DEFAULT uuid_generate_v4(),
   stage_id       uuid NOT NULL,
   stage_event_id uuid NOT NULL,
-  execution_id   CHARACTER VARYING(64) NOT NULL,
+  reference_id   CHARACTER VARYING(64) NOT NULL,
   state          CHARACTER VARYING(64) NOT NULL,
+  result         CHARACTER VARYING(64) NOT NULL,
   created_at     TIMESTAMP NOT NULL,
 
   PRIMARY KEY (id),

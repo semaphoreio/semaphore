@@ -18,7 +18,10 @@ func NewRepoProxyService() *RepoProxyService {
 
 func (s *RepoProxyService) Create(ctx context.Context, request *pb.CreateRequest) (*pb.CreateResponse, error) {
 	s.LastCreateRequest = request
-	return &pb.CreateResponse{WorkflowId: uuid.New().String()}, nil
+	return &pb.CreateResponse{
+		WorkflowId: uuid.New().String(),
+		PipelineId: uuid.New().String(),
+	}, nil
 }
 
 func (s RepoProxyService) GetLastCreateRequest() *pb.CreateRequest {

@@ -125,8 +125,9 @@ CREATE TABLE public.stage_executions (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     stage_event_id uuid NOT NULL,
-    execution_id character varying(64) NOT NULL,
+    reference_id character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
+    result character varying(64) NOT NULL,
     created_at timestamp without time zone NOT NULL
 );
 

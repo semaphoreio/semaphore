@@ -3,6 +3,7 @@ package grpcmock
 import (
 	"net"
 
+	pplpb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	repoproxypb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/repo_proxy"
 	"google.golang.org/grpc"
 )
@@ -12,6 +13,7 @@ var registry *ServiceRegistry
 
 type ServiceRegistry struct {
 	RepoProxyService *RepoProxyService
+	PipelineService  *PipelineService
 }
 
 func Start() (*ServiceRegistry, error) {
@@ -29,10 +31,12 @@ func Start() (*ServiceRegistry, error) {
 
 	registry = &ServiceRegistry{
 		RepoProxyService: NewRepoProxyService(),
+		PipelineService:  NewPipelineService(),
 	}
 
 	grpcServer := grpc.NewServer()
 	repoproxypb.RegisterRepoProxyServiceServer(grpcServer, registry.RepoProxyService)
+	pplpb.RegisterPipelineServiceServer(grpcServer, registry.PipelineService)
 
 	go func() {
 		_ = grpcServer.Serve(lis)

@@ -15,9 +15,11 @@ services:
       DB_USERNAME: "postgres"
       APPLICATION_NAME: "delivery_hub"
       DB_PASSWORD: "the-cake-is-a-lie"
+      RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
 
     links:
       - db:db
+      - rabbitmq:rabbitmq
 
     volumes:
       - go-pkg-cache:/go
@@ -30,6 +32,12 @@ services:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: "the-cake-is-a-lie"
+  rabbitmq:
+    image: rabbitmq:3.8.17-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+      - 5672:5672
+      - 15672:15672
 volumes:
   repo-data:
     driver: local

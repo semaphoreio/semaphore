@@ -59,12 +59,11 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Verify that event was moved to the 'waiting-for-execution' state,
-		// and new execution record was created.
+		// Verify that a new execution record was created and event is processed.
 		//
 		event, err = models.FindStageEventByID(event.ID, stage.ID)
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventWaitingForExecution, event.State)
+		require.Equal(t, models.StageEventProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -132,12 +131,11 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Verify that event was moved to the 'waiting-for-execution' state,
-		// and new execution record was created.
+		// Verify that a new execution record was created and event is processed
 		//
 		event, err = models.FindStageEventByID(event.ID, stage.ID)
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventWaitingForExecution, event.State)
+		require.Equal(t, models.StageEventProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -163,7 +161,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 
 		//
 		// Create a pending stage event, trigger the worker,
-		// and verify that it moved to the waiting-for-execution state.
+		// and verify that it was processed.
 		//
 		event, err := models.CreateStageEvent(stage.ID, source.ID)
 		require.NoError(t, err)
@@ -173,7 +171,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		event, err = models.FindStageEventByID(event.ID, stage.ID)
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventWaitingForExecution, event.State)
+		require.Equal(t, models.StageEventProcessed, event.State)
 
 		//
 		// Add another pending event for this stage,

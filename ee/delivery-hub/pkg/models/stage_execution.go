@@ -13,6 +13,9 @@ const (
 	StageExecutionPending  = "pending"
 	StageExecutionStarted  = "started"
 	StageExecutionFinished = "finished"
+
+	StageExecutionResultPassed = "passed"
+	StageExecutionResultFailed = "failed"
 )
 
 type StageExecution struct {
@@ -20,6 +23,7 @@ type StageExecution struct {
 	StageID      uuid.UUID
 	StageEventID uuid.UUID
 	State        string
+	Result       string
 	CreatedAt    *time.Time
 
 	//
@@ -28,22 +32,61 @@ type StageExecution struct {
 	// so keeping the name generic for now, and also not using uuid.UUID for this column, since we can't guarantee
 	// that all IDs will be UUIDs.
 	//
-	ExecutionID string
+	ReferenceID string
 }
 
-func (e *StageExecution) Start(executionID string) error {
+func (e *StageExecution) Start(referenceID string) error {
 	return database.Conn().
 		Model(e).
-		Update("execution_id", executionID).
+		Update("reference_id", referenceID).
 		Update("state", StageExecutionStarted).
 		Error
+}
+
+func (e *StageExecution) Finish(result string) error {
+	return database.Conn().
+		Model(e).
+		Update("result", result).
+		Update("state", StageExecutionFinished).
+		Error
+}
+
+func FindExecutionByReference(referenceId string) (*StageExecution, error) {
+	var execution StageExecution
+
+	err := database.Conn().
+		Where("reference_id = ?", referenceId).
+		First(&execution).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &execution, nil
+}
+
+func FindExecutionByID(id uuid.UUID) (*StageExecution, error) {
+	var execution StageExecution
+
+	err := database.Conn().
+		Where("id = ?", id).
+		First(&execution).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &execution, nil
 }
 
 func FindExecutionInState(stageID uuid.UUID, states []string) (*StageExecution, error) {
 	var execution StageExecution
 
 	err := database.Conn().
-		Where("stage_id = ? AND state IN ?", stageID, states).
+		Where("stage_id = ?", stageID).
+		Where("state IN ?", states).
 		First(&execution).
 		Error
 

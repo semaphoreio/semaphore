@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	StageEventPending             = "pending"
-	StageEventWaitingForApproval  = "waiting-for-approval"
-	StageEventWaitingForExecution = "waiting-for-execution"
+	StageEventPending            = "pending"
+	StageEventWaitingForApproval = "waiting-for-approval"
+	StageEventProcessed          = "processed"
 )
 
 type StageEvent struct {

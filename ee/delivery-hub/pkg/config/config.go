@@ -13,3 +13,21 @@ func RepoProxyURL() (string, error) {
 
 	return URL, nil
 }
+
+func RabbitMQURL() (string, error) {
+	URL := os.Getenv("RABBITMQ_URL")
+	if URL == "" {
+		return "", fmt.Errorf("RABBITMQ_URL not set")
+	}
+
+	return URL, nil
+}
+
+func PipelineAPIURL() (string, error) {
+	URL := os.Getenv("INTERNAL_API_URL_PLUMBER")
+	if URL == "" {
+		return "", fmt.Errorf("INTERNAL_API_URL_PLUMBER not set")
+	}
+
+	return URL, nil
+}
