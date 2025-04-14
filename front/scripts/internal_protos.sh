@@ -8,6 +8,7 @@ include/google/rpc/status
 include/google/rpc/code
 repo_proxy
 branch
+delivery
 include/internal_api/response_status
 include/internal_api/status
 periodic_scheduler
