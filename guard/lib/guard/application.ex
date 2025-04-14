@@ -127,7 +127,7 @@ defmodule Guard.Application do
   defp add_rabbit_workers(services, _), do: services
 
   defp add_organization_cleaner(services, "true") do
-    services ++ [organization_cleaner()]
+    services ++ organization_cleaner()
   end
 
   defp add_organization_cleaner(services, _), do: services
@@ -146,7 +146,7 @@ defmodule Guard.Application do
     ]
   end
 
-  defp organization_cleaner, do: [Guard.OrganizationCleaner, []]
+  defp organization_cleaner, do: [{Guard.OrganizationCleaner, []}]
 
   defp caches do
     select_active([
