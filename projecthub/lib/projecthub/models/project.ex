@@ -307,17 +307,16 @@ defmodule Projecthub.Models.Project do
   end
 
   def hard_destroy(project, user_id) do
-    {:ok, repository} = Repository.find_for_project(project.id)
-    {:ok, _} = Repository.destroy(repository)
+    with {:ok, repository} <- Repository.find_for_project(project.id),
+         {:ok, _} <- Repository.destroy(repository),
+         {:ok, _} <- Repo.delete(project),
+         {:ok, _} <- Schedulers.delete_all(project, user_id),
+         {:ok, _} <- Events.ProjectDeleted.publish(project) do
+      {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
+      {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
 
-    {:ok, _} = Repo.delete(project)
-    {:ok, _} = Schedulers.delete_all(project, user_id)
-    {:ok, _} = Events.ProjectDeleted.publish(project)
-
-    {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
-    {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
-
-    {:ok, nil}
+      {:ok, nil}
+    end
   end
 
   def find_candidates_for_hard_destroy() do
