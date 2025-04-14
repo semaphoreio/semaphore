@@ -674,9 +674,10 @@ defmodule Projecthub.Models.ProjectTest do
     end
 
     test "when the projects are soft deleted but we query soft_deleted ones => returns them" do
-      [project1, project2] = create_and_soft_destroy_many()
+      org_id = Ecto.UUID.generate()
+      [project1, project2] = create_and_soft_destroy_many(org_id: org_id)
 
-      projects = Project.find_many(Ecto.UUID.generate(), [project1.id, project2.id], true)
+      projects = Project.find_many(org_id, [project1.id, project2.id], true)
 
       assert Enum.count(projects) == 2
     end
