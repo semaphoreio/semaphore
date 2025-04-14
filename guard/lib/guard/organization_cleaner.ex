@@ -6,12 +6,24 @@ defmodule Guard.OrganizationCleaner do
   require Logger
 
   def process do
-    Organization.find_candidates_for_hard_destroy()
-    |> Enum.each(fn org ->
-      Logger.info("Hard destroying organization #{org.id}")
-      Organization.hard_destroy(org)
-    end)
+    Watchman.benchmark("guard.organization_cleaner", fn ->
+      Logger.info("Starting organization cleaner")
 
-    :ok
+      Organization.find_candidates_for_hard_destroy()
+      |> Enum.each(fn org ->
+        Logger.info("Hard destroying organization #{org.id}")
+
+        case Organization.hard_destroy(org) do
+          {:ok, _} ->
+            Logger.info("Hard destroyed organization #{org.id}")
+
+          {:error, error} ->
+            Logger.error("Failed to hard destroy organization #{org.id}: #{error}")
+        end
+      end)
+
+      Logger.info("Finished organization cleaner")
+      :ok
+    end)
   end
 end
