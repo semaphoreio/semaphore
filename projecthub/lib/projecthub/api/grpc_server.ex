@@ -37,7 +37,7 @@ defmodule Projecthub.Api.GrpcServer do
 
   def describe(request, _) do
     Watchman.benchmark("projecthub_api.describe.duration", fn ->
-      find_project(request)
+      find_project(request, request.soft_deleted)
       |> case do
         {:ok, project} ->
           DescribeResponse.new(
@@ -663,16 +663,16 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
-  defp find_project(req) do
+  defp find_project(req, soft_deleted \\ false) do
     cond do
       req.id != "" and req.metadata.org_id != "" ->
-        Project.find_in_org(req.metadata.org_id, req.id, req.soft_deleted)
+        Project.find_in_org(req.metadata.org_id, req.id, soft_deleted)
 
       req.id != "" ->
-        Project.find(req.id, req.soft_deleted)
+        Project.find(req.id, soft_deleted)
 
       req.name != "" ->
-        Project.find_by_name(req.name, req.metadata.org_id, req.soft_deleted)
+        Project.find_by_name(req.name, req.metadata.org_id, soft_deleted)
 
       true ->
         {:error, :failed_precondition, "Name or ID must be provided"}
