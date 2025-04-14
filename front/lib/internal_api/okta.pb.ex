@@ -25,15 +25,15 @@ defmodule InternalApi.Okta.OktaIntegration do
     :jit_provisioning_enabled
   ]
 
-  field(:id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:creator_id, 3, type: :string)
-  field(:created_at, 4, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 5, type: Google.Protobuf.Timestamp)
-  field(:idempotency_token, 6, type: :string)
-  field(:saml_issuer, 7, type: :string)
-  field(:sso_url, 8, type: :string)
-  field(:jit_provisioning_enabled, 9, type: :bool)
+  field :id, 1, type: :string
+  field :org_id, 2, type: :string
+  field :creator_id, 3, type: :string
+  field :created_at, 4, type: Google.Protobuf.Timestamp
+  field :updated_at, 5, type: Google.Protobuf.Timestamp
+  field :idempotency_token, 6, type: :string
+  field :saml_issuer, 7, type: :string
+  field :sso_url, 8, type: :string
+  field :jit_provisioning_enabled, 9, type: :bool
 end
 
 defmodule InternalApi.Okta.SetUpRequest do
@@ -59,13 +59,13 @@ defmodule InternalApi.Okta.SetUpRequest do
     :jit_provisioning_enabled
   ]
 
-  field(:idempotency_token, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:creator_id, 3, type: :string)
-  field(:saml_certificate, 4, type: :string)
-  field(:saml_issuer, 5, type: :string)
-  field(:sso_url, 6, type: :string)
-  field(:jit_provisioning_enabled, 7, type: :bool)
+  field :idempotency_token, 1, type: :string
+  field :org_id, 2, type: :string
+  field :creator_id, 3, type: :string
+  field :saml_certificate, 4, type: :string
+  field :saml_issuer, 5, type: :string
+  field :sso_url, 6, type: :string
+  field :jit_provisioning_enabled, 7, type: :bool
 end
 
 defmodule InternalApi.Okta.SetUpResponse do
@@ -77,7 +77,7 @@ defmodule InternalApi.Okta.SetUpResponse do
         }
   defstruct [:integration]
 
-  field(:integration, 1, type: InternalApi.Okta.OktaIntegration)
+  field :integration, 1, type: InternalApi.Okta.OktaIntegration
 end
 
 defmodule InternalApi.Okta.GenerateScimTokenRequest do
@@ -89,7 +89,7 @@ defmodule InternalApi.Okta.GenerateScimTokenRequest do
         }
   defstruct [:integration_id]
 
-  field(:integration_id, 1, type: :string)
+  field :integration_id, 1, type: :string
 end
 
 defmodule InternalApi.Okta.GenerateScimTokenResponse do
@@ -101,7 +101,7 @@ defmodule InternalApi.Okta.GenerateScimTokenResponse do
         }
   defstruct [:token]
 
-  field(:token, 1, type: :string)
+  field :token, 1, type: :string
 end
 
 defmodule InternalApi.Okta.SetUpMappingRequest do
@@ -116,10 +116,10 @@ defmodule InternalApi.Okta.SetUpMappingRequest do
         }
   defstruct [:org_id, :default_role_id, :group_mapping, :role_mapping]
 
-  field(:org_id, 1, type: :string)
-  field(:default_role_id, 2, type: :string)
-  field(:group_mapping, 3, repeated: true, type: InternalApi.Okta.GroupMapping)
-  field(:role_mapping, 4, repeated: true, type: InternalApi.Okta.RoleMapping)
+  field :org_id, 1, type: :string
+  field :default_role_id, 2, type: :string
+  field :group_mapping, 3, repeated: true, type: InternalApi.Okta.GroupMapping
+  field :role_mapping, 4, repeated: true, type: InternalApi.Okta.RoleMapping
 end
 
 defmodule InternalApi.Okta.SetUpMappingResponse do
@@ -138,7 +138,7 @@ defmodule InternalApi.Okta.DescribeMappingRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Okta.DescribeMappingResponse do
@@ -152,9 +152,9 @@ defmodule InternalApi.Okta.DescribeMappingResponse do
         }
   defstruct [:default_role_id, :group_mapping, :role_mapping]
 
-  field(:default_role_id, 1, type: :string)
-  field(:group_mapping, 2, repeated: true, type: InternalApi.Okta.GroupMapping)
-  field(:role_mapping, 3, repeated: true, type: InternalApi.Okta.RoleMapping)
+  field :default_role_id, 1, type: :string
+  field :group_mapping, 2, repeated: true, type: InternalApi.Okta.GroupMapping
+  field :role_mapping, 3, repeated: true, type: InternalApi.Okta.RoleMapping
 end
 
 defmodule InternalApi.Okta.GroupMapping do
@@ -167,8 +167,8 @@ defmodule InternalApi.Okta.GroupMapping do
         }
   defstruct [:semaphore_group_id, :okta_group_id]
 
-  field(:semaphore_group_id, 1, type: :string)
-  field(:okta_group_id, 2, type: :string)
+  field :semaphore_group_id, 1, type: :string
+  field :okta_group_id, 2, type: :string
 end
 
 defmodule InternalApi.Okta.RoleMapping do
@@ -181,8 +181,8 @@ defmodule InternalApi.Okta.RoleMapping do
         }
   defstruct [:semaphore_role_id, :okta_role_id]
 
-  field(:semaphore_role_id, 1, type: :string)
-  field(:okta_role_id, 2, type: :string)
+  field :semaphore_role_id, 1, type: :string
+  field :okta_role_id, 2, type: :string
 end
 
 defmodule InternalApi.Okta.ListRequest do
@@ -194,7 +194,7 @@ defmodule InternalApi.Okta.ListRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Okta.ListResponse do
@@ -206,7 +206,7 @@ defmodule InternalApi.Okta.ListResponse do
         }
   defstruct [:integrations]
 
-  field(:integrations, 1, repeated: true, type: InternalApi.Okta.OktaIntegration)
+  field :integrations, 1, repeated: true, type: InternalApi.Okta.OktaIntegration
 end
 
 defmodule InternalApi.Okta.ListUsersRequest do
@@ -218,7 +218,7 @@ defmodule InternalApi.Okta.ListUsersRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Okta.ListUsersResponse do
@@ -230,7 +230,7 @@ defmodule InternalApi.Okta.ListUsersResponse do
         }
   defstruct [:user_ids]
 
-  field(:user_ids, 1, repeated: true, type: :string)
+  field :user_ids, 1, repeated: true, type: :string
 end
 
 defmodule InternalApi.Okta.DestroyRequest do
@@ -243,8 +243,8 @@ defmodule InternalApi.Okta.DestroyRequest do
         }
   defstruct [:integration_id, :user_id]
 
-  field(:integration_id, 1, type: :string)
-  field(:user_id, 2, type: :string)
+  field :integration_id, 1, type: :string
+  field :user_id, 2, type: :string
 end
 
 defmodule InternalApi.Okta.DestroyResponse do
@@ -258,24 +258,20 @@ defmodule InternalApi.Okta.Okta.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Okta.Okta"
 
-  rpc(:SetUp, InternalApi.Okta.SetUpRequest, InternalApi.Okta.SetUpResponse)
+  rpc :SetUp, InternalApi.Okta.SetUpRequest, InternalApi.Okta.SetUpResponse
 
-  rpc(
-    :GenerateScimToken,
-    InternalApi.Okta.GenerateScimTokenRequest,
-    InternalApi.Okta.GenerateScimTokenResponse
-  )
+  rpc :GenerateScimToken,
+      InternalApi.Okta.GenerateScimTokenRequest,
+      InternalApi.Okta.GenerateScimTokenResponse
 
-  rpc(:List, InternalApi.Okta.ListRequest, InternalApi.Okta.ListResponse)
-  rpc(:ListUsers, InternalApi.Okta.ListUsersRequest, InternalApi.Okta.ListUsersResponse)
-  rpc(:Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse)
-  rpc(:SetUpMapping, InternalApi.Okta.SetUpMappingRequest, InternalApi.Okta.SetUpMappingResponse)
+  rpc :List, InternalApi.Okta.ListRequest, InternalApi.Okta.ListResponse
+  rpc :ListUsers, InternalApi.Okta.ListUsersRequest, InternalApi.Okta.ListUsersResponse
+  rpc :Destroy, InternalApi.Okta.DestroyRequest, InternalApi.Okta.DestroyResponse
+  rpc :SetUpMapping, InternalApi.Okta.SetUpMappingRequest, InternalApi.Okta.SetUpMappingResponse
 
-  rpc(
-    :DescribeMapping,
-    InternalApi.Okta.DescribeMappingRequest,
-    InternalApi.Okta.DescribeMappingResponse
-  )
+  rpc :DescribeMapping,
+      InternalApi.Okta.DescribeMappingRequest,
+      InternalApi.Okta.DescribeMappingResponse
 end
 
 defmodule InternalApi.Okta.Okta.Stub do

@@ -10,10 +10,10 @@ defmodule InternalApi.InstanceConfig.Config do
         }
   defstruct [:type, :fields, :state, :instruction_fields]
 
-  field(:type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true)
-  field(:fields, 2, repeated: true, type: InternalApi.InstanceConfig.ConfigField)
-  field(:state, 3, type: InternalApi.InstanceConfig.State, enum: true)
-  field(:instruction_fields, 4, repeated: true, type: InternalApi.InstanceConfig.ConfigField)
+  field :type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true
+  field :fields, 2, repeated: true, type: InternalApi.InstanceConfig.ConfigField
+  field :state, 3, type: InternalApi.InstanceConfig.State, enum: true
+  field :instruction_fields, 4, repeated: true, type: InternalApi.InstanceConfig.ConfigField
 end
 
 defmodule InternalApi.InstanceConfig.ListConfigsRequest do
@@ -25,7 +25,7 @@ defmodule InternalApi.InstanceConfig.ListConfigsRequest do
         }
   defstruct [:types]
 
-  field(:types, 1, repeated: true, type: InternalApi.InstanceConfig.ConfigType, enum: true)
+  field :types, 1, repeated: true, type: InternalApi.InstanceConfig.ConfigType, enum: true
 end
 
 defmodule InternalApi.InstanceConfig.ListConfigsResponse do
@@ -37,7 +37,7 @@ defmodule InternalApi.InstanceConfig.ListConfigsResponse do
         }
   defstruct [:configs]
 
-  field(:configs, 1, repeated: true, type: InternalApi.InstanceConfig.Config)
+  field :configs, 1, repeated: true, type: InternalApi.InstanceConfig.Config
 end
 
 defmodule InternalApi.InstanceConfig.ConfigField do
@@ -50,8 +50,8 @@ defmodule InternalApi.InstanceConfig.ConfigField do
         }
   defstruct [:key, :value]
 
-  field(:key, 1, type: :string)
-  field(:value, 2, type: :string)
+  field :key, 1, type: :string
+  field :value, 2, type: :string
 end
 
 defmodule InternalApi.InstanceConfig.ModifyConfigRequest do
@@ -63,7 +63,7 @@ defmodule InternalApi.InstanceConfig.ModifyConfigRequest do
         }
   defstruct [:config]
 
-  field(:config, 1, type: InternalApi.InstanceConfig.Config)
+  field :config, 1, type: InternalApi.InstanceConfig.Config
 end
 
 defmodule InternalApi.InstanceConfig.ModifyConfigResponse do
@@ -83,46 +83,42 @@ defmodule InternalApi.InstanceConfig.ConfigModified do
         }
   defstruct [:type, :timestamp]
 
-  field(:type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :type, 1, type: InternalApi.InstanceConfig.ConfigType, enum: true
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.InstanceConfig.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:STATE_UNSPECIFIED, 0)
-  field(:STATE_EMPTY, 1)
-  field(:STATE_CONFIGURED, 2)
-  field(:STATE_WITH_ERRORS, 3)
+  field :STATE_UNSPECIFIED, 0
+  field :STATE_EMPTY, 1
+  field :STATE_CONFIGURED, 2
+  field :STATE_WITH_ERRORS, 3
 end
 
 defmodule InternalApi.InstanceConfig.ConfigType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:CONFIG_TYPE_UNSPECIFIED, 0)
-  field(:CONFIG_TYPE_GITHUB_APP, 1)
-  field(:CONFIG_TYPE_INSTALLATION_DEFAULTS, 2)
-  field(:CONFIG_TYPE_BITBUCKET_APP, 3)
-  field(:CONFIG_TYPE_GITLAB_APP, 4)
+  field :CONFIG_TYPE_UNSPECIFIED, 0
+  field :CONFIG_TYPE_GITHUB_APP, 1
+  field :CONFIG_TYPE_INSTALLATION_DEFAULTS, 2
+  field :CONFIG_TYPE_BITBUCKET_APP, 3
+  field :CONFIG_TYPE_GITLAB_APP, 4
 end
 
 defmodule InternalApi.InstanceConfig.InstanceConfigService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.InstanceConfig.InstanceConfigService"
 
-  rpc(
-    :ListConfigs,
-    InternalApi.InstanceConfig.ListConfigsRequest,
-    InternalApi.InstanceConfig.ListConfigsResponse
-  )
+  rpc :ListConfigs,
+      InternalApi.InstanceConfig.ListConfigsRequest,
+      InternalApi.InstanceConfig.ListConfigsResponse
 
-  rpc(
-    :ModifyConfig,
-    InternalApi.InstanceConfig.ModifyConfigRequest,
-    InternalApi.InstanceConfig.ModifyConfigResponse
-  )
+  rpc :ModifyConfig,
+      InternalApi.InstanceConfig.ModifyConfigRequest,
+      InternalApi.InstanceConfig.ModifyConfigResponse
 end
 
 defmodule InternalApi.InstanceConfig.InstanceConfigService.Stub do

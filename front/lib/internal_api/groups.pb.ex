@@ -9,9 +9,9 @@ defmodule InternalApi.Groups.ListGroupsRequest do
         }
   defstruct [:org_id, :group_id, :page]
 
-  field(:org_id, 1, type: :string)
-  field(:group_id, 2, type: :string)
-  field(:page, 3, type: InternalApi.Groups.ListGroupsRequest.Page)
+  field :org_id, 1, type: :string
+  field :group_id, 2, type: :string
+  field :page, 3, type: InternalApi.Groups.ListGroupsRequest.Page
 end
 
 defmodule InternalApi.Groups.ListGroupsRequest.Page do
@@ -24,8 +24,8 @@ defmodule InternalApi.Groups.ListGroupsRequest.Page do
         }
   defstruct [:page_no, :page_size]
 
-  field(:page_no, 1, type: :int32)
-  field(:page_size, 2, type: :int32)
+  field :page_no, 1, type: :int32
+  field :page_size, 2, type: :int32
 end
 
 defmodule InternalApi.Groups.ListGroupsResponse do
@@ -38,8 +38,8 @@ defmodule InternalApi.Groups.ListGroupsResponse do
         }
   defstruct [:groups, :total_pages]
 
-  field(:groups, 1, repeated: true, type: InternalApi.Groups.Group)
-  field(:total_pages, 2, type: :int32)
+  field :groups, 1, repeated: true, type: InternalApi.Groups.Group
+  field :total_pages, 2, type: :int32
 end
 
 defmodule InternalApi.Groups.CreateGroupRequest do
@@ -53,9 +53,9 @@ defmodule InternalApi.Groups.CreateGroupRequest do
         }
   defstruct [:group, :org_id, :requester_id]
 
-  field(:group, 1, type: InternalApi.Groups.Group)
-  field(:org_id, 2, type: :string)
-  field(:requester_id, 3, type: :string)
+  field :group, 1, type: InternalApi.Groups.Group
+  field :org_id, 2, type: :string
+  field :requester_id, 3, type: :string
 end
 
 defmodule InternalApi.Groups.CreateGroupResponse do
@@ -67,7 +67,7 @@ defmodule InternalApi.Groups.CreateGroupResponse do
         }
   defstruct [:group]
 
-  field(:group, 1, type: InternalApi.Groups.Group)
+  field :group, 1, type: InternalApi.Groups.Group
 end
 
 defmodule InternalApi.Groups.DestroyGroupRequest do
@@ -80,8 +80,8 @@ defmodule InternalApi.Groups.DestroyGroupRequest do
         }
   defstruct [:group_id, :requester_id]
 
-  field(:group_id, 1, type: :string)
-  field(:requester_id, 2, type: :string)
+  field :group_id, 1, type: :string
+  field :requester_id, 2, type: :string
 end
 
 defmodule InternalApi.Groups.DestroyGroupResponse do
@@ -104,11 +104,11 @@ defmodule InternalApi.Groups.ModifyGroupRequest do
         }
   defstruct [:group, :org_id, :requester_id, :members_to_add, :members_to_remove]
 
-  field(:group, 1, type: InternalApi.Groups.Group)
-  field(:org_id, 2, type: :string)
-  field(:requester_id, 3, type: :string)
-  field(:members_to_add, 4, repeated: true, type: :string)
-  field(:members_to_remove, 5, repeated: true, type: :string)
+  field :group, 1, type: InternalApi.Groups.Group
+  field :org_id, 2, type: :string
+  field :requester_id, 3, type: :string
+  field :members_to_add, 4, repeated: true, type: :string
+  field :members_to_remove, 5, repeated: true, type: :string
 end
 
 defmodule InternalApi.Groups.ModifyGroupResponse do
@@ -120,7 +120,7 @@ defmodule InternalApi.Groups.ModifyGroupResponse do
         }
   defstruct [:group]
 
-  field(:group, 1, type: InternalApi.Groups.Group)
+  field :group, 1, type: InternalApi.Groups.Group
 end
 
 defmodule InternalApi.Groups.Group do
@@ -135,26 +135,24 @@ defmodule InternalApi.Groups.Group do
         }
   defstruct [:id, :name, :description, :member_ids]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:description, 3, type: :string)
-  field(:member_ids, 4, repeated: true, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :description, 3, type: :string
+  field :member_ids, 4, repeated: true, type: :string
 end
 
 defmodule InternalApi.Groups.Groups.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Groups.Groups"
 
-  rpc(:ListGroups, InternalApi.Groups.ListGroupsRequest, InternalApi.Groups.ListGroupsResponse)
-  rpc(:CreateGroup, InternalApi.Groups.CreateGroupRequest, InternalApi.Groups.CreateGroupResponse)
+  rpc :ListGroups, InternalApi.Groups.ListGroupsRequest, InternalApi.Groups.ListGroupsResponse
+  rpc :CreateGroup, InternalApi.Groups.CreateGroupRequest, InternalApi.Groups.CreateGroupResponse
 
-  rpc(
-    :DestroyGroup,
-    InternalApi.Groups.DestroyGroupRequest,
-    InternalApi.Groups.DestroyGroupResponse
-  )
+  rpc :DestroyGroup,
+      InternalApi.Groups.DestroyGroupRequest,
+      InternalApi.Groups.DestroyGroupResponse
 
-  rpc(:ModifyGroup, InternalApi.Groups.ModifyGroupRequest, InternalApi.Groups.ModifyGroupResponse)
+  rpc :ModifyGroup, InternalApi.Groups.ModifyGroupRequest, InternalApi.Groups.ModifyGroupResponse
 end
 
 defmodule InternalApi.Groups.Groups.Stub do

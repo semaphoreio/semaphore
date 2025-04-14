@@ -8,8 +8,8 @@ defmodule InternalApi.Superjerry.Pagination do
         }
   defstruct [:page, :page_size]
 
-  field(:page, 1, type: :uint32)
-  field(:page_size, 2, type: :uint32)
+  field :page, 1, type: :uint32
+  field :page_size, 2, type: :uint32
 end
 
 defmodule InternalApi.Superjerry.Sort do
@@ -22,16 +22,16 @@ defmodule InternalApi.Superjerry.Sort do
         }
   defstruct [:dir, :name]
 
-  field(:dir, 1, type: InternalApi.Superjerry.Sort.Direction, enum: true)
-  field(:name, 2, type: :string)
+  field :dir, 1, type: InternalApi.Superjerry.Sort.Direction, enum: true
+  field :name, 2, type: :string
 end
 
 defmodule InternalApi.Superjerry.Sort.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:ASC, 0)
-  field(:DESC, 1)
+  field :ASC, 0
+  field :DESC, 1
 end
 
 defmodule InternalApi.Superjerry.Flaky do
@@ -85,27 +85,27 @@ defmodule InternalApi.Superjerry.Flaky do
     :total_count
   ]
 
-  field(:project_id, 1, type: :string)
-  field(:test_id, 2, type: :string)
-  field(:test_name, 3, type: :string)
-  field(:test_group, 4, type: :string)
-  field(:test_runner, 5, type: :string)
-  field(:test_file, 6, type: :string)
-  field(:test_suite, 7, type: :string)
-  field(:pass_rate, 8, type: :int32)
-  field(:labels, 9, repeated: true, type: :string)
-  field(:disruptions_count, 10, type: :int64)
-  field(:latest_disruption_at, 11, type: Google.Protobuf.Timestamp)
-  field(:first_disruption_at, 12, type: Google.Protobuf.Timestamp)
-  field(:latest_disruption_hash, 13, type: :string)
-  field(:latest_disruption_run_id, 14, type: :string)
-  field(:resolved, 15, type: :bool)
-  field(:scheduled, 16, type: :bool)
-  field(:ticket_url, 17, type: :string)
-  field(:age, 18, type: :int64)
-  field(:disruption_timestamps, 19, repeated: true, type: Google.Protobuf.Timestamp)
-  field(:disruption_history, 20, repeated: true, type: InternalApi.Superjerry.DisruptionRecord)
-  field(:total_count, 21, type: :uint64)
+  field :project_id, 1, type: :string
+  field :test_id, 2, type: :string
+  field :test_name, 3, type: :string
+  field :test_group, 4, type: :string
+  field :test_runner, 5, type: :string
+  field :test_file, 6, type: :string
+  field :test_suite, 7, type: :string
+  field :pass_rate, 8, type: :int32
+  field :labels, 9, repeated: true, type: :string
+  field :disruptions_count, 10, type: :int64
+  field :latest_disruption_at, 11, type: Google.Protobuf.Timestamp
+  field :first_disruption_at, 12, type: Google.Protobuf.Timestamp
+  field :latest_disruption_hash, 13, type: :string
+  field :latest_disruption_run_id, 14, type: :string
+  field :resolved, 15, type: :bool
+  field :scheduled, 16, type: :bool
+  field :ticket_url, 17, type: :string
+  field :age, 18, type: :int64
+  field :disruption_timestamps, 19, repeated: true, type: Google.Protobuf.Timestamp
+  field :disruption_history, 20, repeated: true, type: InternalApi.Superjerry.DisruptionRecord
+  field :total_count, 21, type: :uint64
 end
 
 defmodule InternalApi.Superjerry.DisruptionRecord do
@@ -118,8 +118,8 @@ defmodule InternalApi.Superjerry.DisruptionRecord do
         }
   defstruct [:day, :count]
 
-  field(:day, 1, type: Google.Protobuf.Timestamp)
-  field(:count, 2, type: :int64)
+  field :day, 1, type: Google.Protobuf.Timestamp
+  field :count, 2, type: :int64
 end
 
 defmodule InternalApi.Superjerry.ListFlakyTestsRequest do
@@ -135,11 +135,11 @@ defmodule InternalApi.Superjerry.ListFlakyTestsRequest do
         }
   defstruct [:org_id, :project_id, :pagination, :sort, :filters]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:pagination, 3, type: InternalApi.Superjerry.Pagination)
-  field(:sort, 4, type: InternalApi.Superjerry.Sort)
-  field(:filters, 5, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :pagination, 3, type: InternalApi.Superjerry.Pagination
+  field :sort, 4, type: InternalApi.Superjerry.Sort
+  field :filters, 5, type: :string
 end
 
 defmodule InternalApi.Superjerry.ListFlakyTestsResponse do
@@ -154,10 +154,10 @@ defmodule InternalApi.Superjerry.ListFlakyTestsResponse do
         }
   defstruct [:flaky_tests, :pagination, :total_pages, :total_rows]
 
-  field(:flaky_tests, 1, repeated: true, type: InternalApi.Superjerry.Flaky)
-  field(:pagination, 2, type: InternalApi.Superjerry.Pagination)
-  field(:total_pages, 3, type: :uint64)
-  field(:total_rows, 4, type: :uint64)
+  field :flaky_tests, 1, repeated: true, type: InternalApi.Superjerry.Flaky
+  field :pagination, 2, type: InternalApi.Superjerry.Pagination
+  field :total_pages, 3, type: :uint64
+  field :total_rows, 4, type: :uint64
 end
 
 defmodule InternalApi.Superjerry.ListDisruptionHistoryRequest do
@@ -171,9 +171,9 @@ defmodule InternalApi.Superjerry.ListDisruptionHistoryRequest do
         }
   defstruct [:org_id, :project_id, :filters]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:filters, 3, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :filters, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.ListDisruptionHistoryResponse do
@@ -185,7 +185,7 @@ defmodule InternalApi.Superjerry.ListDisruptionHistoryResponse do
         }
   defstruct [:disruptions]
 
-  field(:disruptions, 1, repeated: true, type: InternalApi.Superjerry.DisruptionRecord)
+  field :disruptions, 1, repeated: true, type: InternalApi.Superjerry.DisruptionRecord
 end
 
 defmodule InternalApi.Superjerry.ListFlakyHistoryRequest do
@@ -199,9 +199,9 @@ defmodule InternalApi.Superjerry.ListFlakyHistoryRequest do
         }
   defstruct [:org_id, :project_id, :filters]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:filters, 3, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :filters, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.ListFlakyHistoryResponse do
@@ -213,7 +213,7 @@ defmodule InternalApi.Superjerry.ListFlakyHistoryResponse do
         }
   defstruct [:disruptions]
 
-  field(:disruptions, 1, repeated: true, type: InternalApi.Superjerry.DisruptionRecord)
+  field :disruptions, 1, repeated: true, type: InternalApi.Superjerry.DisruptionRecord
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDetailsRequest do
@@ -228,10 +228,10 @@ defmodule InternalApi.Superjerry.FlakyTestDetailsRequest do
         }
   defstruct [:org_id, :project_id, :test_id, :filters]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
-  field(:filters, 4, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
+  field :filters, 4, type: :string
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDetail do
@@ -279,24 +279,24 @@ defmodule InternalApi.Superjerry.FlakyTestDetail do
     :disruption_history
   ]
 
-  field(:project_id, 1, type: :string)
-  field(:id, 2, type: :string)
-  field(:name, 3, type: :string)
-  field(:group, 4, type: :string)
-  field(:runner, 5, type: :string)
-  field(:file, 6, type: :string)
-  field(:labels, 7, repeated: true, type: :string)
-  field(:available_contexts, 8, repeated: true, type: :string)
-  field(:selected_context, 9, type: :string)
-  field(:disruptions_count, 10, repeated: true, type: :int64)
-  field(:pass_rates, 11, repeated: true, type: :double)
-  field(:p95_durations, 12, repeated: true, type: :double)
-  field(:impacts, 13, repeated: true, type: :double)
-  field(:total_counts, 14, repeated: true, type: :int64)
-  field(:contexts, 15, repeated: true, type: :string)
-  field(:hashes, 16, repeated: true, type: :string)
-  field(:disruption_timestamps, 17, repeated: true, type: Google.Protobuf.Timestamp)
-  field(:disruption_history, 18, repeated: true, type: InternalApi.Superjerry.DisruptionRecord)
+  field :project_id, 1, type: :string
+  field :id, 2, type: :string
+  field :name, 3, type: :string
+  field :group, 4, type: :string
+  field :runner, 5, type: :string
+  field :file, 6, type: :string
+  field :labels, 7, repeated: true, type: :string
+  field :available_contexts, 8, repeated: true, type: :string
+  field :selected_context, 9, type: :string
+  field :disruptions_count, 10, repeated: true, type: :int64
+  field :pass_rates, 11, repeated: true, type: :double
+  field :p95_durations, 12, repeated: true, type: :double
+  field :impacts, 13, repeated: true, type: :double
+  field :total_counts, 14, repeated: true, type: :int64
+  field :contexts, 15, repeated: true, type: :string
+  field :hashes, 16, repeated: true, type: :string
+  field :disruption_timestamps, 17, repeated: true, type: Google.Protobuf.Timestamp
+  field :disruption_history, 18, repeated: true, type: InternalApi.Superjerry.DisruptionRecord
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDetailsResponse do
@@ -308,7 +308,7 @@ defmodule InternalApi.Superjerry.FlakyTestDetailsResponse do
         }
   defstruct [:detail]
 
-  field(:detail, 1, type: InternalApi.Superjerry.FlakyTestDetail)
+  field :detail, 1, type: InternalApi.Superjerry.FlakyTestDetail
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDisruptionsRequest do
@@ -324,11 +324,11 @@ defmodule InternalApi.Superjerry.FlakyTestDisruptionsRequest do
         }
   defstruct [:org_id, :project_id, :test_id, :filters, :pagination]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
-  field(:filters, 4, type: :string)
-  field(:pagination, 5, type: InternalApi.Superjerry.Pagination)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
+  field :filters, 4, type: :string
+  field :pagination, 5, type: InternalApi.Superjerry.Pagination
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDisruption do
@@ -344,11 +344,11 @@ defmodule InternalApi.Superjerry.FlakyTestDisruption do
         }
   defstruct [:context, :hash, :timestamp, :run_id, :total_count]
 
-  field(:context, 1, type: :string)
-  field(:hash, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-  field(:run_id, 4, type: :string)
-  field(:total_count, 5, type: :uint64)
+  field :context, 1, type: :string
+  field :hash, 2, type: :string
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
+  field :run_id, 4, type: :string
+  field :total_count, 5, type: :uint64
 end
 
 defmodule InternalApi.Superjerry.FlakyTestDisruptionsResponse do
@@ -363,10 +363,10 @@ defmodule InternalApi.Superjerry.FlakyTestDisruptionsResponse do
         }
   defstruct [:disruptions, :pagination, :total_pages, :total_rows]
 
-  field(:disruptions, 1, repeated: true, type: InternalApi.Superjerry.FlakyTestDisruption)
-  field(:pagination, 2, type: InternalApi.Superjerry.Pagination)
-  field(:total_pages, 3, type: :uint64)
-  field(:total_rows, 4, type: :uint64)
+  field :disruptions, 1, repeated: true, type: InternalApi.Superjerry.FlakyTestDisruption
+  field :pagination, 2, type: InternalApi.Superjerry.Pagination
+  field :total_pages, 3, type: :uint64
+  field :total_rows, 4, type: :uint64
 end
 
 defmodule InternalApi.Superjerry.AddLabelRequest do
@@ -380,9 +380,9 @@ defmodule InternalApi.Superjerry.AddLabelRequest do
         }
   defstruct [:label, :project_id, :test_id]
 
-  field(:label, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
+  field :label, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.AddLabelResponse do
@@ -403,9 +403,9 @@ defmodule InternalApi.Superjerry.DeleteLabelRequest do
         }
   defstruct [:label, :project_id, :test_id]
 
-  field(:label, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
+  field :label, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.DeleteLabelResponse do
@@ -426,9 +426,9 @@ defmodule InternalApi.Superjerry.ResolveFlakyTestRequest do
         }
   defstruct [:user_id, :project_id, :test_id]
 
-  field(:user_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
+  field :user_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.ResolveFlakyTestResponse do
@@ -449,9 +449,9 @@ defmodule InternalApi.Superjerry.UnresolveFlakyTestRequest do
         }
   defstruct [:user_id, :project_id, :test_id]
 
-  field(:user_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
+  field :user_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
 end
 
 defmodule InternalApi.Superjerry.UnresolveFlakyTestResponse do
@@ -473,10 +473,10 @@ defmodule InternalApi.Superjerry.SaveTicketUrlRequest do
         }
   defstruct [:user_id, :project_id, :test_id, :ticket_url]
 
-  field(:user_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_id, 3, type: :string)
-  field(:ticket_url, 4, type: :string)
+  field :user_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_id, 3, type: :string
+  field :ticket_url, 4, type: :string
 end
 
 defmodule InternalApi.Superjerry.SaveTicketUrlResponse do
@@ -497,9 +497,9 @@ defmodule InternalApi.Superjerry.InsertTestResultsRequest do
         }
   defstruct [:org_id, :project_id, :test_results]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:test_results, 3, repeated: true, type: InternalApi.Superjerry.TestResult)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :test_results, 3, repeated: true, type: InternalApi.Superjerry.TestResult
 end
 
 defmodule InternalApi.Superjerry.InsertTestResultsResponse do
@@ -548,21 +548,21 @@ defmodule InternalApi.Superjerry.TestResult do
     :inserted_at
   ]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:id, 3, type: :string)
-  field(:context, 4, type: :string)
-  field(:hash, 5, type: :string)
-  field(:run_id, 6, type: :string)
-  field(:name, 7, type: :string)
-  field(:group, 8, type: :string)
-  field(:suite, 9, type: :string)
-  field(:file, 10, type: :string)
-  field(:framework, 11, type: :string)
-  field(:duration, 12, type: :uint64)
-  field(:state, 13, type: :string)
-  field(:run_at, 14, type: Google.Protobuf.Timestamp)
-  field(:inserted_at, 15, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :id, 3, type: :string
+  field :context, 4, type: :string
+  field :hash, 5, type: :string
+  field :run_id, 6, type: :string
+  field :name, 7, type: :string
+  field :group, 8, type: :string
+  field :suite, 9, type: :string
+  field :file, 10, type: :string
+  field :framework, 11, type: :string
+  field :duration, 12, type: :uint64
+  field :state, 13, type: :string
+  field :run_at, 14, type: Google.Protobuf.Timestamp
+  field :inserted_at, 15, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Superjerry.WebhookSettingsRequest do
@@ -575,8 +575,8 @@ defmodule InternalApi.Superjerry.WebhookSettingsRequest do
         }
   defstruct [:org_id, :project_id]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
 end
 
 defmodule InternalApi.Superjerry.WebhookSettingsResponse do
@@ -588,7 +588,7 @@ defmodule InternalApi.Superjerry.WebhookSettingsResponse do
         }
   defstruct [:settings]
 
-  field(:settings, 1, type: InternalApi.Superjerry.WebhookSettings)
+  field :settings, 1, type: InternalApi.Superjerry.WebhookSettings
 end
 
 defmodule InternalApi.Superjerry.CreateWebhookSettingsRequest do
@@ -605,12 +605,12 @@ defmodule InternalApi.Superjerry.CreateWebhookSettingsRequest do
         }
   defstruct [:webhook_url, :branches, :enabled, :org_id, :project_id, :greedy]
 
-  field(:webhook_url, 1, type: :string)
-  field(:branches, 2, repeated: true, type: :string)
-  field(:enabled, 3, type: :bool)
-  field(:org_id, 4, type: :string)
-  field(:project_id, 5, type: :string)
-  field(:greedy, 6, type: :bool)
+  field :webhook_url, 1, type: :string
+  field :branches, 2, repeated: true, type: :string
+  field :enabled, 3, type: :bool
+  field :org_id, 4, type: :string
+  field :project_id, 5, type: :string
+  field :greedy, 6, type: :bool
 end
 
 defmodule InternalApi.Superjerry.CreateWebhookSettingsResponse do
@@ -622,7 +622,7 @@ defmodule InternalApi.Superjerry.CreateWebhookSettingsResponse do
         }
   defstruct [:settings]
 
-  field(:settings, 1, type: InternalApi.Superjerry.WebhookSettings)
+  field :settings, 1, type: InternalApi.Superjerry.WebhookSettings
 end
 
 defmodule InternalApi.Superjerry.WebhookSettings do
@@ -640,13 +640,13 @@ defmodule InternalApi.Superjerry.WebhookSettings do
         }
   defstruct [:id, :webhook_url, :branches, :enabled, :org_id, :project_id, :greedy]
 
-  field(:id, 1, type: :string)
-  field(:webhook_url, 2, type: :string)
-  field(:branches, 3, repeated: true, type: :string)
-  field(:enabled, 4, type: :bool)
-  field(:org_id, 5, type: :string)
-  field(:project_id, 6, type: :string)
-  field(:greedy, 7, type: :bool)
+  field :id, 1, type: :string
+  field :webhook_url, 2, type: :string
+  field :branches, 3, repeated: true, type: :string
+  field :enabled, 4, type: :bool
+  field :org_id, 5, type: :string
+  field :project_id, 6, type: :string
+  field :greedy, 7, type: :bool
 end
 
 defmodule InternalApi.Superjerry.UpdateWebhookSettingsRequest do
@@ -663,12 +663,12 @@ defmodule InternalApi.Superjerry.UpdateWebhookSettingsRequest do
         }
   defstruct [:org_id, :project_id, :webhook_url, :branches, :enabled, :greedy]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:webhook_url, 3, type: :string)
-  field(:branches, 4, repeated: true, type: :string)
-  field(:enabled, 5, type: :bool)
-  field(:greedy, 6, type: :bool)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :webhook_url, 3, type: :string
+  field :branches, 4, repeated: true, type: :string
+  field :enabled, 5, type: :bool
+  field :greedy, 6, type: :bool
 end
 
 defmodule InternalApi.Superjerry.UpdateWebhookSettingsResponse do
@@ -688,8 +688,8 @@ defmodule InternalApi.Superjerry.DeleteWebhookSettingsRequest do
         }
   defstruct [:org_id, :project_id]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
 end
 
 defmodule InternalApi.Superjerry.DeleteWebhookSettingsResponse do
@@ -703,91 +703,63 @@ defmodule InternalApi.Superjerry.Superjerry.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Superjerry.Superjerry"
 
-  rpc(
-    :ListFlakyTests,
-    InternalApi.Superjerry.ListFlakyTestsRequest,
-    InternalApi.Superjerry.ListFlakyTestsResponse
-  )
+  rpc :ListFlakyTests,
+      InternalApi.Superjerry.ListFlakyTestsRequest,
+      InternalApi.Superjerry.ListFlakyTestsResponse
 
-  rpc(
-    :ListDisruptionHistory,
-    InternalApi.Superjerry.ListDisruptionHistoryRequest,
-    InternalApi.Superjerry.ListDisruptionHistoryResponse
-  )
+  rpc :ListDisruptionHistory,
+      InternalApi.Superjerry.ListDisruptionHistoryRequest,
+      InternalApi.Superjerry.ListDisruptionHistoryResponse
 
-  rpc(
-    :ListFlakyHistory,
-    InternalApi.Superjerry.ListFlakyHistoryRequest,
-    InternalApi.Superjerry.ListFlakyHistoryResponse
-  )
+  rpc :ListFlakyHistory,
+      InternalApi.Superjerry.ListFlakyHistoryRequest,
+      InternalApi.Superjerry.ListFlakyHistoryResponse
 
-  rpc(
-    :FlakyTestDetails,
-    InternalApi.Superjerry.FlakyTestDetailsRequest,
-    InternalApi.Superjerry.FlakyTestDetailsResponse
-  )
+  rpc :FlakyTestDetails,
+      InternalApi.Superjerry.FlakyTestDetailsRequest,
+      InternalApi.Superjerry.FlakyTestDetailsResponse
 
-  rpc(
-    :FlakyTestDisruptions,
-    InternalApi.Superjerry.FlakyTestDisruptionsRequest,
-    InternalApi.Superjerry.FlakyTestDisruptionsResponse
-  )
+  rpc :FlakyTestDisruptions,
+      InternalApi.Superjerry.FlakyTestDisruptionsRequest,
+      InternalApi.Superjerry.FlakyTestDisruptionsResponse
 
-  rpc(:AddLabel, InternalApi.Superjerry.AddLabelRequest, InternalApi.Superjerry.AddLabelResponse)
+  rpc :AddLabel, InternalApi.Superjerry.AddLabelRequest, InternalApi.Superjerry.AddLabelResponse
 
-  rpc(
-    :DeleteLabel,
-    InternalApi.Superjerry.DeleteLabelRequest,
-    InternalApi.Superjerry.DeleteLabelResponse
-  )
+  rpc :DeleteLabel,
+      InternalApi.Superjerry.DeleteLabelRequest,
+      InternalApi.Superjerry.DeleteLabelResponse
 
-  rpc(
-    :ResolveFlakyTest,
-    InternalApi.Superjerry.ResolveFlakyTestRequest,
-    InternalApi.Superjerry.ResolveFlakyTestResponse
-  )
+  rpc :ResolveFlakyTest,
+      InternalApi.Superjerry.ResolveFlakyTestRequest,
+      InternalApi.Superjerry.ResolveFlakyTestResponse
 
-  rpc(
-    :UnresolveFlakyTest,
-    InternalApi.Superjerry.UnresolveFlakyTestRequest,
-    InternalApi.Superjerry.UnresolveFlakyTestResponse
-  )
+  rpc :UnresolveFlakyTest,
+      InternalApi.Superjerry.UnresolveFlakyTestRequest,
+      InternalApi.Superjerry.UnresolveFlakyTestResponse
 
-  rpc(
-    :SaveTicketUrl,
-    InternalApi.Superjerry.SaveTicketUrlRequest,
-    InternalApi.Superjerry.SaveTicketUrlResponse
-  )
+  rpc :SaveTicketUrl,
+      InternalApi.Superjerry.SaveTicketUrlRequest,
+      InternalApi.Superjerry.SaveTicketUrlResponse
 
-  rpc(
-    :InsertTestResults,
-    InternalApi.Superjerry.InsertTestResultsRequest,
-    InternalApi.Superjerry.InsertTestResultsResponse
-  )
+  rpc :InsertTestResults,
+      InternalApi.Superjerry.InsertTestResultsRequest,
+      InternalApi.Superjerry.InsertTestResultsResponse
 
-  rpc(
-    :WebhookSettings,
-    InternalApi.Superjerry.WebhookSettingsRequest,
-    InternalApi.Superjerry.WebhookSettingsResponse
-  )
+  rpc :WebhookSettings,
+      InternalApi.Superjerry.WebhookSettingsRequest,
+      InternalApi.Superjerry.WebhookSettingsResponse
 
-  rpc(
-    :CreateWebhookSettings,
-    InternalApi.Superjerry.CreateWebhookSettingsRequest,
-    InternalApi.Superjerry.CreateWebhookSettingsResponse
-  )
+  rpc :CreateWebhookSettings,
+      InternalApi.Superjerry.CreateWebhookSettingsRequest,
+      InternalApi.Superjerry.CreateWebhookSettingsResponse
 
-  rpc(
-    :UpdateWebhookSettings,
-    InternalApi.Superjerry.UpdateWebhookSettingsRequest,
-    InternalApi.Superjerry.UpdateWebhookSettingsResponse
-  )
+  rpc :UpdateWebhookSettings,
+      InternalApi.Superjerry.UpdateWebhookSettingsRequest,
+      InternalApi.Superjerry.UpdateWebhookSettingsResponse
 
-  rpc(
-    :DeleteWebhookSettings,
-    InternalApi.Superjerry.DeleteWebhookSettingsRequest,
-    InternalApi.Superjerry.DeleteWebhookSettingsResponse
-  )
+  rpc :DeleteWebhookSettings,
+      InternalApi.Superjerry.DeleteWebhookSettingsRequest,
+      InternalApi.Superjerry.DeleteWebhookSettingsResponse
 end
 
 defmodule InternalApi.Superjerry.Superjerry.Stub do

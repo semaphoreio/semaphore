@@ -7,7 +7,7 @@ defmodule InternalApi.Billing.AcknowledgeTrialEndRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.AcknowledgeTrialEndResponse do
@@ -26,7 +26,7 @@ defmodule InternalApi.Billing.CanSetupOrganizationRequest do
         }
   defstruct [:owner_id]
 
-  field(:owner_id, 1, type: :string)
+  field :owner_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.CanSetupOrganizationResponse do
@@ -39,8 +39,8 @@ defmodule InternalApi.Billing.CanSetupOrganizationResponse do
         }
   defstruct [:allowed, :errors]
 
-  field(:allowed, 1, type: :bool)
-  field(:errors, 2, repeated: true, type: :string)
+  field :allowed, 1, type: :bool
+  field :errors, 2, repeated: true, type: :string
 end
 
 defmodule InternalApi.Billing.CanUpgradePlanRequest do
@@ -53,8 +53,8 @@ defmodule InternalApi.Billing.CanUpgradePlanRequest do
         }
   defstruct [:org_id, :plan_slug]
 
-  field(:org_id, 1, type: :string)
-  field(:plan_slug, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :plan_slug, 2, type: :string
 end
 
 defmodule InternalApi.Billing.CanUpgradePlanResponse do
@@ -67,8 +67,8 @@ defmodule InternalApi.Billing.CanUpgradePlanResponse do
         }
   defstruct [:allowed, :errors]
 
-  field(:allowed, 1, type: :bool)
-  field(:errors, 2, repeated: true, type: :string)
+  field :allowed, 1, type: :bool
+  field :errors, 2, repeated: true, type: :string
 end
 
 defmodule InternalApi.Billing.ListProjectsRequest do
@@ -82,9 +82,9 @@ defmodule InternalApi.Billing.ListProjectsRequest do
         }
   defstruct [:org_id, :from_date, :to_date]
 
-  field(:org_id, 1, type: :string)
-  field(:from_date, 2, type: Google.Protobuf.Timestamp)
-  field(:to_date, 3, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :from_date, 2, type: Google.Protobuf.Timestamp
+  field :to_date, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.ListProjectsResponse do
@@ -96,7 +96,7 @@ defmodule InternalApi.Billing.ListProjectsResponse do
         }
   defstruct [:projects]
 
-  field(:projects, 1, repeated: true, type: InternalApi.Billing.Project)
+  field :projects, 1, repeated: true, type: InternalApi.Billing.Project
 end
 
 defmodule InternalApi.Billing.DescribeProjectRequest do
@@ -110,9 +110,9 @@ defmodule InternalApi.Billing.DescribeProjectRequest do
         }
   defstruct [:project_id, :from_date, :to_date]
 
-  field(:project_id, 1, type: :string)
-  field(:from_date, 2, type: Google.Protobuf.Timestamp)
-  field(:to_date, 3, type: Google.Protobuf.Timestamp)
+  field :project_id, 1, type: :string
+  field :from_date, 2, type: Google.Protobuf.Timestamp
+  field :to_date, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.DescribeProjectResponse do
@@ -125,8 +125,8 @@ defmodule InternalApi.Billing.DescribeProjectResponse do
         }
   defstruct [:project, :costs]
 
-  field(:project, 1, type: InternalApi.Billing.Project)
-  field(:costs, 2, repeated: true, type: InternalApi.Billing.ProjectCost)
+  field :project, 1, type: InternalApi.Billing.Project
+  field :costs, 2, repeated: true, type: InternalApi.Billing.ProjectCost
 end
 
 defmodule InternalApi.Billing.Project do
@@ -140,9 +140,9 @@ defmodule InternalApi.Billing.Project do
         }
   defstruct [:id, :name, :cost]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:cost, 3, type: InternalApi.Billing.ProjectCost)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :cost, 3, type: InternalApi.Billing.ProjectCost
 end
 
 defmodule InternalApi.Billing.ProjectCost do
@@ -166,12 +166,12 @@ defmodule InternalApi.Billing.ProjectCost do
     :workflow_trends
   ]
 
-  field(:from_date, 1, type: Google.Protobuf.Timestamp)
-  field(:to_date, 2, type: Google.Protobuf.Timestamp)
-  field(:total_price, 3, type: :string)
-  field(:workflow_count, 4, type: :int32)
-  field(:spending_groups, 5, repeated: true, type: InternalApi.Billing.SpendingGroup)
-  field(:workflow_trends, 6, repeated: true, type: InternalApi.Billing.SpendingTrend)
+  field :from_date, 1, type: Google.Protobuf.Timestamp
+  field :to_date, 2, type: Google.Protobuf.Timestamp
+  field :total_price, 3, type: :string
+  field :workflow_count, 4, type: :int32
+  field :spending_groups, 5, repeated: true, type: InternalApi.Billing.SpendingGroup
+  field :workflow_trends, 6, repeated: true, type: InternalApi.Billing.SpendingTrend
 end
 
 defmodule InternalApi.Billing.SetupOrganizationRequest do
@@ -193,11 +193,11 @@ defmodule InternalApi.Billing.SetupOrganizationRequest do
     :plan_type_slug
   ]
 
-  field(:organization_username, 1, type: :string)
-  field(:organization_owner_id, 2, type: :string)
-  field(:plan, 3, type: InternalApi.Billing.PlanType, enum: true)
-  field(:force_creation, 4, type: :bool)
-  field(:plan_type_slug, 5, type: :string)
+  field :organization_username, 1, type: :string
+  field :organization_owner_id, 2, type: :string
+  field :plan, 3, type: InternalApi.Billing.PlanType, enum: true
+  field :force_creation, 4, type: :bool
+  field :plan_type_slug, 5, type: :string
 end
 
 defmodule InternalApi.Billing.SetupOrganizationResponse do
@@ -209,7 +209,7 @@ defmodule InternalApi.Billing.SetupOrganizationResponse do
         }
   defstruct [:organization_id]
 
-  field(:organization_id, 1, type: :string)
+  field :organization_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.PlanStatusRequest do
@@ -222,8 +222,8 @@ defmodule InternalApi.Billing.PlanStatusRequest do
         }
   defstruct [:org_id, :org_username]
 
-  field(:org_id, 1, type: :string)
-  field(:org_username, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :org_username, 2, type: :string
 end
 
 defmodule InternalApi.Billing.PlanStatusResponse do
@@ -239,11 +239,11 @@ defmodule InternalApi.Billing.PlanStatusResponse do
         }
   defstruct [:status, :for_owner, :for_owner_mobile, :for_member, :for_member_mobile]
 
-  field(:status, 1, type: Google.Rpc.Status)
-  field(:for_owner, 2, type: :string)
-  field(:for_owner_mobile, 3, type: :string)
-  field(:for_member, 4, type: :string)
-  field(:for_member_mobile, 5, type: :string)
+  field :status, 1, type: Google.Rpc.Status
+  field :for_owner, 2, type: :string
+  field :for_owner_mobile, 3, type: :string
+  field :for_member, 4, type: :string
+  field :for_member_mobile, 5, type: :string
 end
 
 defmodule InternalApi.Billing.PlanStateRequest do
@@ -256,8 +256,8 @@ defmodule InternalApi.Billing.PlanStateRequest do
         }
   defstruct [:org_id, :org_username]
 
-  field(:org_id, 1, type: :string)
-  field(:org_username, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :org_username, 2, type: :string
 end
 
 defmodule InternalApi.Billing.PlanStateResponse do
@@ -281,12 +281,12 @@ defmodule InternalApi.Billing.PlanStateResponse do
     :segment
   ]
 
-  field(:plan_type, 1, type: InternalApi.Billing.PlanType, enum: true)
-  field(:plan_badge, 2, type: :string)
-  field(:actionable_header, 3, type: :string)
-  field(:non_actionable_header, 4, type: :string)
-  field(:plan_type_slug, 5, type: :string)
-  field(:segment, 6, type: :string)
+  field :plan_type, 1, type: InternalApi.Billing.PlanType, enum: true
+  field :plan_badge, 2, type: :string
+  field :actionable_header, 3, type: :string
+  field :non_actionable_header, 4, type: :string
+  field :plan_type_slug, 5, type: :string
+  field :segment, 6, type: :string
 end
 
 defmodule InternalApi.Billing.OrganizationStatusRequest do
@@ -298,7 +298,7 @@ defmodule InternalApi.Billing.OrganizationStatusRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.OrganizationStatusResponse do
@@ -312,9 +312,9 @@ defmodule InternalApi.Billing.OrganizationStatusResponse do
         }
   defstruct [:plan, :last_charge_without_tax_amount_in_cents, :plan_type_slug]
 
-  field(:plan, 1, type: InternalApi.Billing.PlanType, enum: true)
-  field(:last_charge_without_tax_amount_in_cents, 2, type: :int32)
-  field(:plan_type_slug, 3, type: :string)
+  field :plan, 1, type: InternalApi.Billing.PlanType, enum: true
+  field :last_charge_without_tax_amount_in_cents, 2, type: :int32
+  field :plan_type_slug, 3, type: :string
 end
 
 defmodule InternalApi.Billing.ListPlansRequest do
@@ -333,7 +333,7 @@ defmodule InternalApi.Billing.ListPlansResponse do
         }
   defstruct [:plans]
 
-  field(:plans, 1, repeated: true, type: InternalApi.Billing.Plan)
+  field :plans, 1, repeated: true, type: InternalApi.Billing.Plan
 end
 
 defmodule InternalApi.Billing.Plan do
@@ -352,14 +352,14 @@ defmodule InternalApi.Billing.Plan do
         }
   defstruct [:id, :name, :price, :credits, :charge, :block, :created_at, :updated_at]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:price, 3, type: :int32)
-  field(:credits, 4, type: :int32)
-  field(:charge, 5, type: :bool)
-  field(:block, 6, type: :bool)
-  field(:created_at, 7, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 8, type: Google.Protobuf.Timestamp)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :price, 3, type: :int32
+  field :credits, 4, type: :int32
+  field :charge, 5, type: :bool
+  field :block, 6, type: :bool
+  field :created_at, 7, type: Google.Protobuf.Timestamp
+  field :updated_at, 8, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.ListFeaturesRequest do
@@ -371,7 +371,7 @@ defmodule InternalApi.Billing.ListFeaturesRequest do
         }
   defstruct [:target]
 
-  field(:target, 1, type: InternalApi.Billing.FeatureTarget)
+  field :target, 1, type: InternalApi.Billing.FeatureTarget
 end
 
 defmodule InternalApi.Billing.ListFeaturesResponse do
@@ -383,7 +383,7 @@ defmodule InternalApi.Billing.ListFeaturesResponse do
         }
   defstruct [:features]
 
-  field(:features, 1, repeated: true, type: InternalApi.Billing.FeatureWithValues)
+  field :features, 1, repeated: true, type: InternalApi.Billing.FeatureWithValues
 end
 
 defmodule InternalApi.Billing.FeatureWithValues do
@@ -397,9 +397,9 @@ defmodule InternalApi.Billing.FeatureWithValues do
         }
   defstruct [:feature, :fallback_value, :value]
 
-  field(:feature, 1, type: InternalApi.Billing.Feature)
-  field(:fallback_value, 2, type: InternalApi.Billing.FeatureValue)
-  field(:value, 3, type: InternalApi.Billing.FeatureValue)
+  field :feature, 1, type: InternalApi.Billing.Feature
+  field :fallback_value, 2, type: InternalApi.Billing.FeatureValue
+  field :value, 3, type: InternalApi.Billing.FeatureValue
 end
 
 defmodule InternalApi.Billing.Feature do
@@ -413,9 +413,9 @@ defmodule InternalApi.Billing.Feature do
         }
   defstruct [:type, :name, :description]
 
-  field(:type, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:description, 3, type: :string)
+  field :type, 1, type: :string
+  field :name, 2, type: :string
+  field :description, 3, type: :string
 end
 
 defmodule InternalApi.Billing.FeatureValue do
@@ -427,7 +427,7 @@ defmodule InternalApi.Billing.FeatureValue do
         }
   defstruct [:availability]
 
-  field(:availability, 1, type: InternalApi.Feature.Availability)
+  field :availability, 1, type: InternalApi.Feature.Availability
 end
 
 defmodule InternalApi.Billing.ListMachinesRequest do
@@ -439,7 +439,7 @@ defmodule InternalApi.Billing.ListMachinesRequest do
         }
   defstruct [:target]
 
-  field(:target, 1, type: InternalApi.Billing.FeatureTarget)
+  field :target, 1, type: InternalApi.Billing.FeatureTarget
 end
 
 defmodule InternalApi.Billing.ListMachinesResponse do
@@ -451,7 +451,7 @@ defmodule InternalApi.Billing.ListMachinesResponse do
         }
   defstruct [:machines]
 
-  field(:machines, 1, repeated: true, type: InternalApi.Billing.MachineWithValues)
+  field :machines, 1, repeated: true, type: InternalApi.Billing.MachineWithValues
 end
 
 defmodule InternalApi.Billing.MachineWithValues do
@@ -465,9 +465,9 @@ defmodule InternalApi.Billing.MachineWithValues do
         }
   defstruct [:machine, :fallback_value, :value]
 
-  field(:machine, 1, type: InternalApi.Billing.Machine)
-  field(:fallback_value, 2, type: InternalApi.Billing.MachineValue)
-  field(:value, 3, type: InternalApi.Billing.MachineValue)
+  field :machine, 1, type: InternalApi.Billing.Machine
+  field :fallback_value, 2, type: InternalApi.Billing.MachineValue
+  field :value, 3, type: InternalApi.Billing.MachineValue
 end
 
 defmodule InternalApi.Billing.Machine do
@@ -483,11 +483,11 @@ defmodule InternalApi.Billing.Machine do
         }
   defstruct [:type, :platform, :vcpu, :ram, :disk]
 
-  field(:type, 1, type: :string)
-  field(:platform, 3, type: InternalApi.Feature.Machine.Platform, enum: true)
-  field(:vcpu, 4, type: :string)
-  field(:ram, 5, type: :string)
-  field(:disk, 6, type: :string)
+  field :type, 1, type: :string
+  field :platform, 3, type: InternalApi.Feature.Machine.Platform, enum: true
+  field :vcpu, 4, type: :string
+  field :ram, 5, type: :string
+  field :disk, 6, type: :string
 end
 
 defmodule InternalApi.Billing.MachineValue do
@@ -501,9 +501,9 @@ defmodule InternalApi.Billing.MachineValue do
         }
   defstruct [:availability, :default_os_image, :os_images]
 
-  field(:availability, 1, type: InternalApi.Feature.Availability)
-  field(:default_os_image, 2, type: :string)
-  field(:os_images, 3, repeated: true, type: :string)
+  field :availability, 1, type: InternalApi.Feature.Availability
+  field :default_os_image, 2, type: :string
+  field :os_images, 3, repeated: true, type: :string
 end
 
 defmodule InternalApi.Billing.UpdateFeaturesRequest do
@@ -518,10 +518,10 @@ defmodule InternalApi.Billing.UpdateFeaturesRequest do
         }
   defstruct [:target, :requester_id, :updates, :removes]
 
-  field(:target, 1, type: InternalApi.Billing.FeatureTarget)
-  field(:requester_id, 2, type: :string)
-  field(:updates, 3, repeated: true, type: InternalApi.Billing.FeatureWithValues)
-  field(:removes, 4, repeated: true, type: InternalApi.Billing.Feature)
+  field :target, 1, type: InternalApi.Billing.FeatureTarget
+  field :requester_id, 2, type: :string
+  field :updates, 3, repeated: true, type: InternalApi.Billing.FeatureWithValues
+  field :removes, 4, repeated: true, type: InternalApi.Billing.Feature
 end
 
 defmodule InternalApi.Billing.UpdateFeaturesResponse do
@@ -543,10 +543,10 @@ defmodule InternalApi.Billing.UpdateMachinesRequest do
         }
   defstruct [:target, :requester_id, :updates, :removes]
 
-  field(:target, 1, type: InternalApi.Billing.FeatureTarget)
-  field(:requester_id, 2, type: :string)
-  field(:updates, 3, repeated: true, type: InternalApi.Billing.MachineWithValues)
-  field(:removes, 4, repeated: true, type: InternalApi.Billing.Machine)
+  field :target, 1, type: InternalApi.Billing.FeatureTarget
+  field :requester_id, 2, type: :string
+  field :updates, 3, repeated: true, type: InternalApi.Billing.MachineWithValues
+  field :removes, 4, repeated: true, type: InternalApi.Billing.Machine
 end
 
 defmodule InternalApi.Billing.UpdateMachinesResponse do
@@ -566,8 +566,8 @@ defmodule InternalApi.Billing.FeatureTarget do
         }
   defstruct [:org_id, :plan_id]
 
-  field(:org_id, 1, type: :string)
-  field(:plan_id, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :plan_id, 2, type: :string
 end
 
 defmodule InternalApi.Billing.CreditCardAdded do
@@ -582,10 +582,10 @@ defmodule InternalApi.Billing.CreditCardAdded do
         }
   defstruct [:org_id, :timestamp, :for_plan, :plan_type_slug]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:for_plan, 3, type: InternalApi.Billing.PlanType, enum: true)
-  field(:plan_type_slug, 4, type: :string)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :for_plan, 3, type: InternalApi.Billing.PlanType, enum: true
+  field :plan_type_slug, 4, type: :string
 end
 
 defmodule InternalApi.Billing.CreditCardReconnected do
@@ -598,8 +598,8 @@ defmodule InternalApi.Billing.CreditCardReconnected do
         }
   defstruct [:org_id, :timestamp]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.SpendingUpdated do
@@ -653,27 +653,27 @@ defmodule InternalApi.Billing.SpendingUpdated do
     :payment_method
   ]
 
-  field(:org_id, 1, type: :string)
-  field(:current_billing_cycle, 2, type: :string)
-  field(:current_spending_in_cents, 3, type: :int32)
-  field(:total_spending_in_cents, 4, type: :int32)
-  field(:timestamp, 5, type: Google.Protobuf.Timestamp)
-  field(:previous_spending_in_cents, 6, type: :int32)
-  field(:last_charge_amount_in_cents, 7, type: :int32)
-  field(:last_charge_without_tax_amount_in_cents, 17, type: :int32)
-  field(:last_charge_date, 8, type: :string)
-  field(:total_charge_amount_in_cents, 9, type: :int32)
-  field(:current_discount_in_cents, 10, type: :int32)
-  field(:current_mac_spending_in_cents, 11, type: :int32)
-  field(:total_mac_spending_in_cents, 12, type: :int32)
-  field(:current_linux_spending_in_cents, 13, type: :int32)
-  field(:total_linux_spending_in_cents, 14, type: :int32)
-  field(:second_last_charge_amount_in_cents, 15, type: :int32)
-  field(:second_last_charge_without_tax_amount_in_cents, 18, type: :int32)
-  field(:second_last_charge_date, 16, type: :string)
-  field(:monthly_budget_in_cents, 19, type: :string)
-  field(:charge_history, 20, repeated: true, type: InternalApi.Billing.MonthlyCharge)
-  field(:payment_method, 21, type: :string)
+  field :org_id, 1, type: :string
+  field :current_billing_cycle, 2, type: :string
+  field :current_spending_in_cents, 3, type: :int32
+  field :total_spending_in_cents, 4, type: :int32
+  field :timestamp, 5, type: Google.Protobuf.Timestamp
+  field :previous_spending_in_cents, 6, type: :int32
+  field :last_charge_amount_in_cents, 7, type: :int32
+  field :last_charge_without_tax_amount_in_cents, 17, type: :int32
+  field :last_charge_date, 8, type: :string
+  field :total_charge_amount_in_cents, 9, type: :int32
+  field :current_discount_in_cents, 10, type: :int32
+  field :current_mac_spending_in_cents, 11, type: :int32
+  field :total_mac_spending_in_cents, 12, type: :int32
+  field :current_linux_spending_in_cents, 13, type: :int32
+  field :total_linux_spending_in_cents, 14, type: :int32
+  field :second_last_charge_amount_in_cents, 15, type: :int32
+  field :second_last_charge_without_tax_amount_in_cents, 18, type: :int32
+  field :second_last_charge_date, 16, type: :string
+  field :monthly_budget_in_cents, 19, type: :string
+  field :charge_history, 20, repeated: true, type: InternalApi.Billing.MonthlyCharge
+  field :payment_method, 21, type: :string
 end
 
 defmodule InternalApi.Billing.MonthlyCharge do
@@ -686,8 +686,8 @@ defmodule InternalApi.Billing.MonthlyCharge do
         }
   defstruct [:month_name, :charge_in_cents]
 
-  field(:month_name, 1, type: :string)
-  field(:charge_in_cents, 2, type: :int32)
+  field :month_name, 1, type: :string
+  field :charge_in_cents, 2, type: :int32
 end
 
 defmodule InternalApi.Billing.ChargeSuccess do
@@ -701,9 +701,9 @@ defmodule InternalApi.Billing.ChargeSuccess do
         }
   defstruct [:org_id, :timestamp, :amount_charged_in_cents]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:amount_charged_in_cents, 3, type: :int32)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :amount_charged_in_cents, 3, type: :int32
 end
 
 defmodule InternalApi.Billing.FirstChargeSuccess do
@@ -718,10 +718,10 @@ defmodule InternalApi.Billing.FirstChargeSuccess do
         }
   defstruct [:org_id, :timestamp, :amount_charged_in_cents, :without_tax_amount_charged_in_cents]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:amount_charged_in_cents, 3, type: :int32)
-  field(:without_tax_amount_charged_in_cents, 4, type: :int32)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :amount_charged_in_cents, 3, type: :int32
+  field :without_tax_amount_charged_in_cents, 4, type: :int32
 end
 
 defmodule InternalApi.Billing.ChargeFailure do
@@ -735,9 +735,9 @@ defmodule InternalApi.Billing.ChargeFailure do
         }
   defstruct [:org_id, :timestamp, :amount_charged_in_cents]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:amount_charged_in_cents, 3, type: :int32)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :amount_charged_in_cents, 3, type: :int32
 end
 
 defmodule InternalApi.Billing.PaymentSuccess do
@@ -753,11 +753,11 @@ defmodule InternalApi.Billing.PaymentSuccess do
         }
   defstruct [:org_id, :timestamp, :amount_charged_in_cents, :reason, :method]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:amount_charged_in_cents, 3, type: :int32)
-  field(:reason, 4, type: :string)
-  field(:method, 5, type: InternalApi.Billing.PaymentMethod, enum: true)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :amount_charged_in_cents, 3, type: :int32
+  field :reason, 4, type: :string
+  field :method, 5, type: InternalApi.Billing.PaymentMethod, enum: true
 end
 
 defmodule InternalApi.Billing.PaymentFailure do
@@ -773,11 +773,11 @@ defmodule InternalApi.Billing.PaymentFailure do
         }
   defstruct [:org_id, :timestamp, :amount_charged_in_cents, :reason, :method]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:amount_charged_in_cents, 3, type: :int32)
-  field(:reason, 4, type: :string)
-  field(:method, 5, type: InternalApi.Billing.PaymentMethod, enum: true)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :amount_charged_in_cents, 3, type: :int32
+  field :reason, 4, type: :string
+  field :method, 5, type: InternalApi.Billing.PaymentMethod, enum: true
 end
 
 defmodule InternalApi.Billing.SubscriptionCanceled do
@@ -793,11 +793,11 @@ defmodule InternalApi.Billing.SubscriptionCanceled do
         }
   defstruct [:org_id, :timestamp, :subscription_on_fastspring, :for_plan, :plan_type_slug]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:subscription_on_fastspring, 3, type: :string)
-  field(:for_plan, 4, type: InternalApi.Billing.PlanType, enum: true)
-  field(:plan_type_slug, 5, type: :string)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :subscription_on_fastspring, 3, type: :string
+  field :for_plan, 4, type: InternalApi.Billing.PlanType, enum: true
+  field :plan_type_slug, 5, type: :string
 end
 
 defmodule InternalApi.Billing.PlanChanged do
@@ -811,9 +811,9 @@ defmodule InternalApi.Billing.PlanChanged do
         }
   defstruct [:org_id, :timestamp, :new_plan]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:new_plan, 3, type: :string)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :new_plan, 3, type: :string
 end
 
 defmodule InternalApi.Billing.SegmentChanged do
@@ -827,9 +827,9 @@ defmodule InternalApi.Billing.SegmentChanged do
         }
   defstruct [:org_id, :timestamp, :new_segment]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:new_segment, 3, type: :string)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :new_segment, 3, type: :string
 end
 
 defmodule InternalApi.Billing.TrialStarted do
@@ -843,9 +843,9 @@ defmodule InternalApi.Billing.TrialStarted do
         }
   defstruct [:org_id, :timestamp, :days_left_in_trial]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:days_left_in_trial, 3, type: :int32)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :days_left_in_trial, 3, type: :int32
 end
 
 defmodule InternalApi.Billing.TrialStatusUpdate do
@@ -859,9 +859,9 @@ defmodule InternalApi.Billing.TrialStatusUpdate do
         }
   defstruct [:org_id, :timestamp, :days_left_in_trial]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-  field(:days_left_in_trial, 3, type: :int32)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :days_left_in_trial, 3, type: :int32
 end
 
 defmodule InternalApi.Billing.TrialExpired do
@@ -874,8 +874,8 @@ defmodule InternalApi.Billing.TrialExpired do
         }
   defstruct [:org_id, :timestamp]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.TrialAbandoned do
@@ -888,8 +888,8 @@ defmodule InternalApi.Billing.TrialAbandoned do
         }
   defstruct [:org_id, :timestamp]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.NoteChanged do
@@ -903,9 +903,9 @@ defmodule InternalApi.Billing.NoteChanged do
         }
   defstruct [:org_id, :note, :timestamp]
 
-  field(:org_id, 1, type: :string)
-  field(:note, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :note, 2, type: :string
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.TrialOwnerOnboarded do
@@ -935,15 +935,15 @@ defmodule InternalApi.Billing.TrialOwnerOnboarded do
     :learned_from
   ]
 
-  field(:user_id, 1, type: :string)
-  field(:position_in_company, 2, type: :string)
-  field(:company_team_size, 3, type: :string)
-  field(:company_previous_tool, 4, type: :string)
-  field(:company_ci_goal, 5, type: :string)
-  field(:timestamp, 6, type: Google.Protobuf.Timestamp)
-  field(:user_name, 7, type: :string)
-  field(:company_name, 8, type: :string)
-  field(:learned_from, 9, type: :string)
+  field :user_id, 1, type: :string
+  field :position_in_company, 2, type: :string
+  field :company_team_size, 3, type: :string
+  field :company_previous_tool, 4, type: :string
+  field :company_ci_goal, 5, type: :string
+  field :timestamp, 6, type: Google.Protobuf.Timestamp
+  field :user_name, 7, type: :string
+  field :company_name, 8, type: :string
+  field :learned_from, 9, type: :string
 end
 
 defmodule InternalApi.Billing.PaidOwnerOnboarded do
@@ -958,10 +958,10 @@ defmodule InternalApi.Billing.PaidOwnerOnboarded do
         }
   defstruct [:user_id, :feedback, :requested_concierge_onboarding, :timestamp]
 
-  field(:user_id, 1, type: :string)
-  field(:feedback, 2, type: :string)
-  field(:requested_concierge_onboarding, 3, type: :bool)
-  field(:timestamp, 4, type: Google.Protobuf.Timestamp)
+  field :user_id, 1, type: :string
+  field :feedback, 2, type: :string
+  field :requested_concierge_onboarding, 3, type: :bool
+  field :timestamp, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.CreditsChanged do
@@ -974,8 +974,8 @@ defmodule InternalApi.Billing.CreditsChanged do
         }
   defstruct [:org_id, :timestamp]
 
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.ListSpendingsRequest do
@@ -987,7 +987,7 @@ defmodule InternalApi.Billing.ListSpendingsRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.ListSpendingsResponse do
@@ -999,7 +999,7 @@ defmodule InternalApi.Billing.ListSpendingsResponse do
         }
   defstruct [:spendings]
 
-  field(:spendings, 1, repeated: true, type: InternalApi.Billing.Spending)
+  field :spendings, 1, repeated: true, type: InternalApi.Billing.Spending
 end
 
 defmodule InternalApi.Billing.CurrentSpendingRequest do
@@ -1011,7 +1011,7 @@ defmodule InternalApi.Billing.CurrentSpendingRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.CurrentSpendingResponse do
@@ -1023,7 +1023,7 @@ defmodule InternalApi.Billing.CurrentSpendingResponse do
         }
   defstruct [:spending]
 
-  field(:spending, 1, type: InternalApi.Billing.Spending)
+  field :spending, 1, type: InternalApi.Billing.Spending
 end
 
 defmodule InternalApi.Billing.Spending do
@@ -1041,13 +1041,13 @@ defmodule InternalApi.Billing.Spending do
         }
   defstruct [:id, :display_name, :from_date, :to_date, :summary, :plan_summary, :groups]
 
-  field(:id, 1, type: :string)
-  field(:display_name, 2, type: :string)
-  field(:from_date, 3, type: Google.Protobuf.Timestamp)
-  field(:to_date, 4, type: Google.Protobuf.Timestamp)
-  field(:summary, 5, type: InternalApi.Billing.SpendingSummary)
-  field(:plan_summary, 6, type: InternalApi.Billing.PlanSummary)
-  field(:groups, 7, repeated: true, type: InternalApi.Billing.SpendingGroup)
+  field :id, 1, type: :string
+  field :display_name, 2, type: :string
+  field :from_date, 3, type: Google.Protobuf.Timestamp
+  field :to_date, 4, type: Google.Protobuf.Timestamp
+  field :summary, 5, type: InternalApi.Billing.SpendingSummary
+  field :plan_summary, 6, type: InternalApi.Billing.PlanSummary
+  field :groups, 7, repeated: true, type: InternalApi.Billing.SpendingGroup
 end
 
 defmodule InternalApi.Billing.SpendingSummary do
@@ -1077,15 +1077,15 @@ defmodule InternalApi.Billing.SpendingSummary do
     :discount_amount
   ]
 
-  field(:total_bill, 1, type: :string)
-  field(:subscription_total, 2, type: :string)
-  field(:usage_total, 3, type: :string)
-  field(:usage_used, 4, type: :string)
-  field(:credits_total, 5, type: :string)
-  field(:credits_used, 6, type: :string)
-  field(:credits_starting, 7, type: :string)
-  field(:discount, 8, type: :string)
-  field(:discount_amount, 9, type: :string)
+  field :total_bill, 1, type: :string
+  field :subscription_total, 2, type: :string
+  field :usage_total, 3, type: :string
+  field :usage_used, 4, type: :string
+  field :credits_total, 5, type: :string
+  field :credits_used, 6, type: :string
+  field :credits_starting, 7, type: :string
+  field :discount, 8, type: :string
+  field :discount_amount, 9, type: :string
 end
 
 defmodule InternalApi.Billing.PlanSummary do
@@ -1117,22 +1117,21 @@ defmodule InternalApi.Billing.PlanSummary do
     :slug
   ]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:details, 3, repeated: true, type: InternalApi.Billing.PlanSummary.Detail)
-  field(:charging_type, 4, type: InternalApi.Billing.ChargingType, enum: true)
-  field(:subscription_starts_on, 5, type: Google.Protobuf.Timestamp)
-  field(:subscription_ends_on, 6, type: Google.Protobuf.Timestamp)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :details, 3, repeated: true, type: InternalApi.Billing.PlanSummary.Detail
+  field :charging_type, 4, type: InternalApi.Billing.ChargingType, enum: true
+  field :subscription_starts_on, 5, type: Google.Protobuf.Timestamp
+  field :subscription_ends_on, 6, type: Google.Protobuf.Timestamp
 
-  field(:suspensions, 7,
+  field :suspensions, 7,
     repeated: true,
     type: InternalApi.Billing.SubscriptionSuspension,
     enum: true
-  )
 
-  field(:flags, 8, repeated: true, type: InternalApi.Billing.SubscriptionFlag, enum: true)
-  field(:payment_method_url, 9, type: :string)
-  field(:slug, 10, type: :string)
+  field :flags, 8, repeated: true, type: InternalApi.Billing.SubscriptionFlag, enum: true
+  field :payment_method_url, 9, type: :string
+  field :slug, 10, type: :string
 end
 
 defmodule InternalApi.Billing.PlanSummary.Detail do
@@ -1147,10 +1146,10 @@ defmodule InternalApi.Billing.PlanSummary.Detail do
         }
   defstruct [:id, :display_name, :display_description, :display_value]
 
-  field(:id, 1, type: :string)
-  field(:display_name, 2, type: :string)
-  field(:display_description, 3, type: :string)
-  field(:display_value, 4, type: :string)
+  field :id, 1, type: :string
+  field :display_name, 2, type: :string
+  field :display_description, 3, type: :string
+  field :display_value, 4, type: :string
 end
 
 defmodule InternalApi.Billing.DescribeSpendingRequest do
@@ -1162,7 +1161,7 @@ defmodule InternalApi.Billing.DescribeSpendingRequest do
         }
   defstruct [:spending_id]
 
-  field(:spending_id, 1, type: :string)
+  field :spending_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.DescribeSpendingResponse do
@@ -1174,7 +1173,7 @@ defmodule InternalApi.Billing.DescribeSpendingResponse do
         }
   defstruct [:spending]
 
-  field(:spending, 1, type: InternalApi.Billing.Spending)
+  field :spending, 1, type: InternalApi.Billing.Spending
 end
 
 defmodule InternalApi.Billing.SpendingGroup do
@@ -1189,10 +1188,10 @@ defmodule InternalApi.Billing.SpendingGroup do
         }
   defstruct [:type, :items, :total_price, :trends]
 
-  field(:type, 1, type: InternalApi.Billing.SpendingType, enum: true)
-  field(:items, 2, repeated: true, type: InternalApi.Billing.SpendingItem)
-  field(:total_price, 3, type: :string)
-  field(:trends, 4, repeated: true, type: InternalApi.Billing.SpendingTrend)
+  field :type, 1, type: InternalApi.Billing.SpendingType, enum: true
+  field :items, 2, repeated: true, type: InternalApi.Billing.SpendingItem
+  field :total_price, 3, type: :string
+  field :trends, 4, repeated: true, type: InternalApi.Billing.SpendingTrend
 end
 
 defmodule InternalApi.Billing.SpendingItem do
@@ -1220,14 +1219,14 @@ defmodule InternalApi.Billing.SpendingItem do
     :enabled
   ]
 
-  field(:display_name, 1, type: :string)
-  field(:display_description, 2, type: :string)
-  field(:units, 3, type: :int64)
-  field(:unit_price, 4, type: :string)
-  field(:total_price, 5, type: :string)
-  field(:name, 6, type: :string)
-  field(:trends, 7, repeated: true, type: InternalApi.Billing.SpendingTrend)
-  field(:enabled, 8, type: :bool)
+  field :display_name, 1, type: :string
+  field :display_description, 2, type: :string
+  field :units, 3, type: :int64
+  field :unit_price, 4, type: :string
+  field :total_price, 5, type: :string
+  field :name, 6, type: :string
+  field :trends, 7, repeated: true, type: InternalApi.Billing.SpendingTrend
+  field :enabled, 8, type: :bool
 end
 
 defmodule InternalApi.Billing.SpendingTrend do
@@ -1241,9 +1240,9 @@ defmodule InternalApi.Billing.SpendingTrend do
         }
   defstruct [:name, :units, :price]
 
-  field(:name, 1, type: :string)
-  field(:units, 2, type: :int64)
-  field(:price, 3, type: :string)
+  field :name, 1, type: :string
+  field :units, 2, type: :int64
+  field :price, 3, type: :string
 end
 
 defmodule InternalApi.Billing.ListDailyCostsRequest do
@@ -1255,7 +1254,7 @@ defmodule InternalApi.Billing.ListDailyCostsRequest do
         }
   defstruct [:spending_id]
 
-  field(:spending_id, 1, type: :string)
+  field :spending_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.ListDailyCostsResponse do
@@ -1267,7 +1266,7 @@ defmodule InternalApi.Billing.ListDailyCostsResponse do
         }
   defstruct [:costs]
 
-  field(:costs, 1, repeated: true, type: InternalApi.Billing.DailyCost)
+  field :costs, 1, repeated: true, type: InternalApi.Billing.DailyCost
 end
 
 defmodule InternalApi.Billing.DailyCost do
@@ -1284,12 +1283,12 @@ defmodule InternalApi.Billing.DailyCost do
         }
   defstruct [:type, :price_for_the_day, :price_up_to_the_day, :day, :prediction, :items]
 
-  field(:type, 1, type: InternalApi.Billing.SpendingType, enum: true)
-  field(:price_for_the_day, 2, type: :string)
-  field(:price_up_to_the_day, 3, type: :string)
-  field(:day, 4, type: Google.Protobuf.Timestamp)
-  field(:prediction, 5, type: :bool)
-  field(:items, 6, repeated: true, type: InternalApi.Billing.SpendingItem)
+  field :type, 1, type: InternalApi.Billing.SpendingType, enum: true
+  field :price_for_the_day, 2, type: :string
+  field :price_up_to_the_day, 3, type: :string
+  field :day, 4, type: Google.Protobuf.Timestamp
+  field :prediction, 5, type: :bool
+  field :items, 6, repeated: true, type: InternalApi.Billing.SpendingItem
 end
 
 defmodule InternalApi.Billing.ListSpendingSeatsRequest do
@@ -1301,7 +1300,7 @@ defmodule InternalApi.Billing.ListSpendingSeatsRequest do
         }
   defstruct [:spending_id]
 
-  field(:spending_id, 1, type: :string)
+  field :spending_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.ListSpendingSeatsResponse do
@@ -1313,7 +1312,7 @@ defmodule InternalApi.Billing.ListSpendingSeatsResponse do
         }
   defstruct [:seats]
 
-  field(:seats, 1, repeated: true, type: InternalApi.Usage.Seat)
+  field :seats, 1, repeated: true, type: InternalApi.Usage.Seat
 end
 
 defmodule InternalApi.Billing.ListInvoicesRequest do
@@ -1325,7 +1324,7 @@ defmodule InternalApi.Billing.ListInvoicesRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.ListInvoicesResponse do
@@ -1337,7 +1336,7 @@ defmodule InternalApi.Billing.ListInvoicesResponse do
         }
   defstruct [:invoices]
 
-  field(:invoices, 1, repeated: true, type: InternalApi.Billing.Invoice)
+  field :invoices, 1, repeated: true, type: InternalApi.Billing.Invoice
 end
 
 defmodule InternalApi.Billing.Invoice do
@@ -1352,10 +1351,10 @@ defmodule InternalApi.Billing.Invoice do
         }
   defstruct [:display_name, :total_bill, :total_bill_no_tax, :pdf_download_url]
 
-  field(:display_name, 1, type: :string)
-  field(:total_bill, 2, type: :string)
-  field(:total_bill_no_tax, 3, type: :string)
-  field(:pdf_download_url, 4, type: :string)
+  field :display_name, 1, type: :string
+  field :total_bill, 2, type: :string
+  field :total_bill_no_tax, 3, type: :string
+  field :pdf_download_url, 4, type: :string
 end
 
 defmodule InternalApi.Billing.GetBudgetRequest do
@@ -1367,7 +1366,7 @@ defmodule InternalApi.Billing.GetBudgetRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.GetBudgetResponse do
@@ -1379,7 +1378,7 @@ defmodule InternalApi.Billing.GetBudgetResponse do
         }
   defstruct [:budget]
 
-  field(:budget, 1, type: InternalApi.Billing.Budget)
+  field :budget, 1, type: InternalApi.Billing.Budget
 end
 
 defmodule InternalApi.Billing.SetBudgetRequest do
@@ -1392,8 +1391,8 @@ defmodule InternalApi.Billing.SetBudgetRequest do
         }
   defstruct [:org_id, :budget]
 
-  field(:org_id, 1, type: :string)
-  field(:budget, 2, type: InternalApi.Billing.Budget)
+  field :org_id, 1, type: :string
+  field :budget, 2, type: InternalApi.Billing.Budget
 end
 
 defmodule InternalApi.Billing.SetBudgetResponse do
@@ -1405,7 +1404,7 @@ defmodule InternalApi.Billing.SetBudgetResponse do
         }
   defstruct [:budget]
 
-  field(:budget, 1, type: InternalApi.Billing.Budget)
+  field :budget, 1, type: InternalApi.Billing.Budget
 end
 
 defmodule InternalApi.Billing.Budget do
@@ -1418,8 +1417,8 @@ defmodule InternalApi.Billing.Budget do
         }
   defstruct [:limit, :email]
 
-  field(:limit, 1, type: :string)
-  field(:email, 2, type: :string)
+  field :limit, 1, type: :string
+  field :email, 2, type: :string
 end
 
 defmodule InternalApi.Billing.CreditsUsageRequest do
@@ -1431,7 +1430,7 @@ defmodule InternalApi.Billing.CreditsUsageRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Billing.CreditsUsageResponse do
@@ -1444,8 +1443,8 @@ defmodule InternalApi.Billing.CreditsUsageResponse do
         }
   defstruct [:credits_available, :credits_balance]
 
-  field(:credits_available, 1, repeated: true, type: InternalApi.Billing.CreditAvailable)
-  field(:credits_balance, 2, repeated: true, type: InternalApi.Billing.CreditBalance)
+  field :credits_available, 1, repeated: true, type: InternalApi.Billing.CreditAvailable
+  field :credits_balance, 2, repeated: true, type: InternalApi.Billing.CreditBalance
 end
 
 defmodule InternalApi.Billing.CreditBalance do
@@ -1460,10 +1459,10 @@ defmodule InternalApi.Billing.CreditBalance do
         }
   defstruct [:type, :description, :amount, :occured_at]
 
-  field(:type, 1, type: InternalApi.Billing.CreditBalanceType, enum: true)
-  field(:description, 2, type: :string)
-  field(:amount, 3, type: :string)
-  field(:occured_at, 4, type: Google.Protobuf.Timestamp)
+  field :type, 1, type: InternalApi.Billing.CreditBalanceType, enum: true
+  field :description, 2, type: :string
+  field :amount, 3, type: :string
+  field :occured_at, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.CreditAvailable do
@@ -1478,10 +1477,10 @@ defmodule InternalApi.Billing.CreditAvailable do
         }
   defstruct [:type, :amount, :given_at, :expires_at]
 
-  field(:type, 1, type: InternalApi.Billing.CreditType, enum: true)
-  field(:amount, 2, type: :string)
-  field(:given_at, 3, type: Google.Protobuf.Timestamp)
-  field(:expires_at, 4, type: Google.Protobuf.Timestamp)
+  field :type, 1, type: InternalApi.Billing.CreditType, enum: true
+  field :amount, 2, type: :string
+  field :given_at, 3, type: Google.Protobuf.Timestamp
+  field :expires_at, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Billing.UpgradePlanRequest do
@@ -1494,8 +1493,8 @@ defmodule InternalApi.Billing.UpgradePlanRequest do
         }
   defstruct [:org_id, :plan_slug]
 
-  field(:org_id, 1, type: :string)
-  field(:plan_slug, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :plan_slug, 2, type: :string
 end
 
 defmodule InternalApi.Billing.UpgradePlanResponse do
@@ -1509,230 +1508,192 @@ defmodule InternalApi.Billing.UpgradePlanResponse do
         }
   defstruct [:spending_id, :errors, :payment_method_url]
 
-  field(:spending_id, 1, type: :string)
-  field(:errors, 2, repeated: true, type: :string)
-  field(:payment_method_url, 3, type: :string)
+  field :spending_id, 1, type: :string
+  field :errors, 2, repeated: true, type: :string
+  field :payment_method_url, 3, type: :string
 end
 
 defmodule InternalApi.Billing.PlanType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:FREE, 0)
-  field(:PAID, 1)
-  field(:TRIAL, 2)
-  field(:OPEN_SOURCE, 3)
-  field(:GRANDFATHERED_CLASSIC, 4)
-  field(:PREPAID, 5)
-  field(:FLAT_ANNUAL, 6)
-  field(:GRANDFATHERED_CLASSIC_TRIAL, 7)
+  field :FREE, 0
+  field :PAID, 1
+  field :TRIAL, 2
+  field :OPEN_SOURCE, 3
+  field :GRANDFATHERED_CLASSIC, 4
+  field :PREPAID, 5
+  field :FLAT_ANNUAL, 6
+  field :GRANDFATHERED_CLASSIC_TRIAL, 7
 end
 
 defmodule InternalApi.Billing.PaymentMethod do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:CREDIT_CARD, 0)
-  field(:WIRE, 1)
+  field :CREDIT_CARD, 0
+  field :WIRE, 1
 end
 
 defmodule InternalApi.Billing.SubscriptionFlag do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:SUBSCRIPTION_FLAG_UNSPECIFIED, 0)
-  field(:SUBSCRIPTION_FLAG_TRIAL, 1)
-  field(:SUBSCRIPTION_FLAG_TRANSFERABLE_CREDITS, 2)
-  field(:SUBSCRIPTION_FLAG_ELIGIBLE_FOR_TRIAL, 3)
-  field(:SUBSCRIPTION_FLAG_ELIGIBLE_FOR_ADDONS, 4)
-  field(:SUBSCRIPTION_FLAG_NOT_CHARGED, 5)
-  field(:SUBSCRIPTION_FLAG_FREE, 6)
-  field(:SUBSCRIPTION_FLAG_TRIAL_END_NACK, 7)
+  field :SUBSCRIPTION_FLAG_UNSPECIFIED, 0
+  field :SUBSCRIPTION_FLAG_TRIAL, 1
+  field :SUBSCRIPTION_FLAG_TRANSFERABLE_CREDITS, 2
+  field :SUBSCRIPTION_FLAG_ELIGIBLE_FOR_TRIAL, 3
+  field :SUBSCRIPTION_FLAG_ELIGIBLE_FOR_ADDONS, 4
+  field :SUBSCRIPTION_FLAG_NOT_CHARGED, 5
+  field :SUBSCRIPTION_FLAG_FREE, 6
+  field :SUBSCRIPTION_FLAG_TRIAL_END_NACK, 7
 end
 
 defmodule InternalApi.Billing.SubscriptionSuspension do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:SUBSCRIPTION_SUSPENSION_UNSPECIFIED, 0)
-  field(:SUBSCRIPTION_SUSPENSION_NO_PAYMENT_METHOD, 1)
-  field(:SUBSCRIPTION_SUSPENSION_MINER, 2)
-  field(:SUBSCRIPTION_SUSPENSION_NO_CREDITS, 3)
-  field(:SUBSCRIPTION_SUSPENSION_PAYMENT_FAILED, 4)
-  field(:SUBSCRIPTION_SUSPENSION_TERMS_OF_SERVICE, 5)
-  field(:SUBSCRIPTION_SUSPENSION_ACCOUNT_AT_RISK, 6)
-  field(:SUBSCRIPTION_SUSPENSION_PIPELINE_BLOCK, 7)
+  field :SUBSCRIPTION_SUSPENSION_UNSPECIFIED, 0
+  field :SUBSCRIPTION_SUSPENSION_NO_PAYMENT_METHOD, 1
+  field :SUBSCRIPTION_SUSPENSION_MINER, 2
+  field :SUBSCRIPTION_SUSPENSION_NO_CREDITS, 3
+  field :SUBSCRIPTION_SUSPENSION_PAYMENT_FAILED, 4
+  field :SUBSCRIPTION_SUSPENSION_TERMS_OF_SERVICE, 5
+  field :SUBSCRIPTION_SUSPENSION_ACCOUNT_AT_RISK, 6
+  field :SUBSCRIPTION_SUSPENSION_PIPELINE_BLOCK, 7
 end
 
 defmodule InternalApi.Billing.ChargingType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:CHARGING_TYPE_UNSPECIFIED, 0)
-  field(:CHARGING_TYPE_NONE, 1)
-  field(:CHARGING_TYPE_PREPAID, 2)
-  field(:CHARGING_TYPE_POSTPAID, 3)
-  field(:CHARGING_TYPE_FLATRATE, 4)
-  field(:CHARGING_TYPE_GRANDFATHERED, 5)
+  field :CHARGING_TYPE_UNSPECIFIED, 0
+  field :CHARGING_TYPE_NONE, 1
+  field :CHARGING_TYPE_PREPAID, 2
+  field :CHARGING_TYPE_POSTPAID, 3
+  field :CHARGING_TYPE_FLATRATE, 4
+  field :CHARGING_TYPE_GRANDFATHERED, 5
 end
 
 defmodule InternalApi.Billing.SpendingType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:SPENDING_TYPE_UNSPECIFIED, 0)
-  field(:SPENDING_TYPE_MACHINE_TIME, 1)
-  field(:SPENDING_TYPE_SEAT, 2)
-  field(:SPENDING_TYPE_STORAGE, 3)
-  field(:SPENDING_TYPE_ADDON, 4)
-  field(:SPENDING_TYPE_MACHINE_CAPACITY, 5)
+  field :SPENDING_TYPE_UNSPECIFIED, 0
+  field :SPENDING_TYPE_MACHINE_TIME, 1
+  field :SPENDING_TYPE_SEAT, 2
+  field :SPENDING_TYPE_STORAGE, 3
+  field :SPENDING_TYPE_ADDON, 4
+  field :SPENDING_TYPE_MACHINE_CAPACITY, 5
 end
 
 defmodule InternalApi.Billing.CreditType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:CREDIT_TYPE_UNSPECIFIED, 0)
-  field(:CREDIT_TYPE_PREPAID, 1)
-  field(:CREDIT_TYPE_GIFT, 2)
-  field(:CREDIT_TYPE_SUBSCRIPTION, 3)
-  field(:CREDIT_TYPE_EDUCATIONAL, 4)
+  field :CREDIT_TYPE_UNSPECIFIED, 0
+  field :CREDIT_TYPE_PREPAID, 1
+  field :CREDIT_TYPE_GIFT, 2
+  field :CREDIT_TYPE_SUBSCRIPTION, 3
+  field :CREDIT_TYPE_EDUCATIONAL, 4
 end
 
 defmodule InternalApi.Billing.CreditBalanceType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:CREDIT_BALANCE_TYPE_UNSPECIFIED, 0)
-  field(:CREDIT_BALANCE_TYPE_CHARGE, 1)
-  field(:CREDIT_BALANCE_TYPE_DEPOSIT, 2)
+  field :CREDIT_BALANCE_TYPE_UNSPECIFIED, 0
+  field :CREDIT_BALANCE_TYPE_CHARGE, 1
+  field :CREDIT_BALANCE_TYPE_DEPOSIT, 2
 end
 
 defmodule InternalApi.Billing.BillingService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Billing.BillingService"
 
-  rpc(
-    :CanSetupOrganization,
-    InternalApi.Billing.CanSetupOrganizationRequest,
-    InternalApi.Billing.CanSetupOrganizationResponse
-  )
+  rpc :CanSetupOrganization,
+      InternalApi.Billing.CanSetupOrganizationRequest,
+      InternalApi.Billing.CanSetupOrganizationResponse
 
-  rpc(
-    :SetupOrganization,
-    InternalApi.Billing.SetupOrganizationRequest,
-    InternalApi.Billing.SetupOrganizationResponse
-  )
+  rpc :SetupOrganization,
+      InternalApi.Billing.SetupOrganizationRequest,
+      InternalApi.Billing.SetupOrganizationResponse
 
-  rpc(:PlanStatus, InternalApi.Billing.PlanStatusRequest, InternalApi.Billing.PlanStatusResponse)
+  rpc :PlanStatus, InternalApi.Billing.PlanStatusRequest, InternalApi.Billing.PlanStatusResponse
 
-  rpc(
-    :OrganizationStatus,
-    InternalApi.Billing.OrganizationStatusRequest,
-    InternalApi.Billing.OrganizationStatusResponse
-  )
+  rpc :OrganizationStatus,
+      InternalApi.Billing.OrganizationStatusRequest,
+      InternalApi.Billing.OrganizationStatusResponse
 
-  rpc(:PlanState, InternalApi.Billing.PlanStateRequest, InternalApi.Billing.PlanStateResponse)
-  rpc(:ListPlans, InternalApi.Billing.ListPlansRequest, InternalApi.Billing.ListPlansResponse)
+  rpc :PlanState, InternalApi.Billing.PlanStateRequest, InternalApi.Billing.PlanStateResponse
+  rpc :ListPlans, InternalApi.Billing.ListPlansRequest, InternalApi.Billing.ListPlansResponse
 
-  rpc(
-    :ListFeatures,
-    InternalApi.Billing.ListFeaturesRequest,
-    InternalApi.Billing.ListFeaturesResponse
-  )
+  rpc :ListFeatures,
+      InternalApi.Billing.ListFeaturesRequest,
+      InternalApi.Billing.ListFeaturesResponse
 
-  rpc(
-    :ListMachines,
-    InternalApi.Billing.ListMachinesRequest,
-    InternalApi.Billing.ListMachinesResponse
-  )
+  rpc :ListMachines,
+      InternalApi.Billing.ListMachinesRequest,
+      InternalApi.Billing.ListMachinesResponse
 
-  rpc(
-    :UpdateFeatures,
-    InternalApi.Billing.UpdateFeaturesRequest,
-    InternalApi.Billing.UpdateFeaturesResponse
-  )
+  rpc :UpdateFeatures,
+      InternalApi.Billing.UpdateFeaturesRequest,
+      InternalApi.Billing.UpdateFeaturesResponse
 
-  rpc(
-    :UpdateMachines,
-    InternalApi.Billing.UpdateMachinesRequest,
-    InternalApi.Billing.UpdateMachinesResponse
-  )
+  rpc :UpdateMachines,
+      InternalApi.Billing.UpdateMachinesRequest,
+      InternalApi.Billing.UpdateMachinesResponse
 
-  rpc(
-    :ListSpendings,
-    InternalApi.Billing.ListSpendingsRequest,
-    InternalApi.Billing.ListSpendingsResponse
-  )
+  rpc :ListSpendings,
+      InternalApi.Billing.ListSpendingsRequest,
+      InternalApi.Billing.ListSpendingsResponse
 
-  rpc(
-    :ListSpendingSeats,
-    InternalApi.Billing.ListSpendingSeatsRequest,
-    InternalApi.Billing.ListSpendingSeatsResponse
-  )
+  rpc :ListSpendingSeats,
+      InternalApi.Billing.ListSpendingSeatsRequest,
+      InternalApi.Billing.ListSpendingSeatsResponse
 
-  rpc(
-    :DescribeSpending,
-    InternalApi.Billing.DescribeSpendingRequest,
-    InternalApi.Billing.DescribeSpendingResponse
-  )
+  rpc :DescribeSpending,
+      InternalApi.Billing.DescribeSpendingRequest,
+      InternalApi.Billing.DescribeSpendingResponse
 
-  rpc(
-    :CurrentSpending,
-    InternalApi.Billing.CurrentSpendingRequest,
-    InternalApi.Billing.CurrentSpendingResponse
-  )
+  rpc :CurrentSpending,
+      InternalApi.Billing.CurrentSpendingRequest,
+      InternalApi.Billing.CurrentSpendingResponse
 
-  rpc(
-    :ListInvoices,
-    InternalApi.Billing.ListInvoicesRequest,
-    InternalApi.Billing.ListInvoicesResponse
-  )
+  rpc :ListInvoices,
+      InternalApi.Billing.ListInvoicesRequest,
+      InternalApi.Billing.ListInvoicesResponse
 
-  rpc(
-    :ListDailyCosts,
-    InternalApi.Billing.ListDailyCostsRequest,
-    InternalApi.Billing.ListDailyCostsResponse
-  )
+  rpc :ListDailyCosts,
+      InternalApi.Billing.ListDailyCostsRequest,
+      InternalApi.Billing.ListDailyCostsResponse
 
-  rpc(:SetBudget, InternalApi.Billing.SetBudgetRequest, InternalApi.Billing.SetBudgetResponse)
-  rpc(:GetBudget, InternalApi.Billing.GetBudgetRequest, InternalApi.Billing.GetBudgetResponse)
+  rpc :SetBudget, InternalApi.Billing.SetBudgetRequest, InternalApi.Billing.SetBudgetResponse
+  rpc :GetBudget, InternalApi.Billing.GetBudgetRequest, InternalApi.Billing.GetBudgetResponse
 
-  rpc(
-    :CreditsUsage,
-    InternalApi.Billing.CreditsUsageRequest,
-    InternalApi.Billing.CreditsUsageResponse
-  )
+  rpc :CreditsUsage,
+      InternalApi.Billing.CreditsUsageRequest,
+      InternalApi.Billing.CreditsUsageResponse
 
-  rpc(
-    :CanUpgradePlan,
-    InternalApi.Billing.CanUpgradePlanRequest,
-    InternalApi.Billing.CanUpgradePlanResponse
-  )
+  rpc :CanUpgradePlan,
+      InternalApi.Billing.CanUpgradePlanRequest,
+      InternalApi.Billing.CanUpgradePlanResponse
 
-  rpc(
-    :UpgradePlan,
-    InternalApi.Billing.UpgradePlanRequest,
-    InternalApi.Billing.UpgradePlanResponse
-  )
+  rpc :UpgradePlan,
+      InternalApi.Billing.UpgradePlanRequest,
+      InternalApi.Billing.UpgradePlanResponse
 
-  rpc(
-    :ListProjects,
-    InternalApi.Billing.ListProjectsRequest,
-    InternalApi.Billing.ListProjectsResponse
-  )
+  rpc :ListProjects,
+      InternalApi.Billing.ListProjectsRequest,
+      InternalApi.Billing.ListProjectsResponse
 
-  rpc(
-    :DescribeProject,
-    InternalApi.Billing.DescribeProjectRequest,
-    InternalApi.Billing.DescribeProjectResponse
-  )
+  rpc :DescribeProject,
+      InternalApi.Billing.DescribeProjectRequest,
+      InternalApi.Billing.DescribeProjectResponse
 
-  rpc(
-    :AcknowledgeTrialEnd,
-    InternalApi.Billing.AcknowledgeTrialEndRequest,
-    InternalApi.Billing.AcknowledgeTrialEndResponse
-  )
+  rpc :AcknowledgeTrialEnd,
+      InternalApi.Billing.AcknowledgeTrialEndRequest,
+      InternalApi.Billing.AcknowledgeTrialEndResponse
 end
 
 defmodule InternalApi.Billing.BillingService.Stub do

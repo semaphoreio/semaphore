@@ -45,7 +45,7 @@ defmodule FrontWeb.ProjectOnboardingController do
            :create,
            :project_repository_status,
            :repositories,
-           :create
+           :onboarding_state
          ]
   )
 
@@ -66,6 +66,7 @@ defmodule FrontWeb.ProjectOnboardingController do
            :project_repository_status,
            :x_workflow_builder,
            :onboarding_index,
+           :onboarding_state,
            :skip_onboarding
          ]
   )
@@ -77,6 +78,30 @@ defmodule FrontWeb.ProjectOnboardingController do
     GITLAB: :CONFIG_TYPE_GITLAB_APP,
     GIT: :CONFIG_TYPE_UNSPECIFIED
   }
+
+  def onboarding_state(conn, _params) do
+    # Front.Onboarding.Project.GitAgnostic
+
+    conn.assigns
+    |> Map.get(:project)
+    |> case do
+      nil ->
+        conn
+        |> put_status(422)
+        |> json(%{
+          test: "BAR"
+        })
+
+      project ->
+        conn
+        |> json(%{
+          repository_id: project.repo_id,
+          name: project.name,
+          url: project.repo_url,
+          connected: project.repo_connected
+        })
+    end
+  end
 
   def new(conn, params) do
     Watchman.benchmark("project.new.duration", fn ->
@@ -318,6 +343,7 @@ defmodule FrontWeb.ProjectOnboardingController do
 
         {:error, message} ->
           conn
+          |> put_status(422)
           |> json(%{
             error: normalize_project_creation_error(message)
           })
@@ -479,6 +505,8 @@ defmodule FrontWeb.ProjectOnboardingController do
 
     conn
     |> json(%{
+      project_name: project.name,
+      repository_id: project.repository.id,
       deploy_key: key,
       deploy_key_message: key_message,
       deploy_key_regenerate_url:

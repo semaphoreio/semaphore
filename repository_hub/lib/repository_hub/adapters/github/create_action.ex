@@ -20,7 +20,7 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GithubAdapter do
   import Toolkit
   @impl true
   def execute(adapter, request) do
-    with {:ok, git_repository} <- GitRepository.new(request.repository_url),
+    with {:ok, git_repository} <- GitRepository.from_github(request.repository_url),
          {:ok, github_token} <- GithubAdapter.token(adapter, request.user_id, git_repository),
          {:ok, github_repository} <- get_github_repository(git_repository, github_token),
          {:ok, permissions} <- get_permissions(adapter, github_repository, request.user_id, github_token),

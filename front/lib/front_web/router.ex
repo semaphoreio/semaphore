@@ -317,6 +317,8 @@ defmodule FrontWeb.Router do
     scope "/x" do
       get("/new_project", ProjectOnboardingController, :index)
 
+      get("/new_project.json", ProjectOnboardingController, :onboarding_state)
+
       get("/new_project/github_app", ProjectOnboardingController, :index,
         assigns: %{integration_type: :github_app},
         as: :github_choose_repository

@@ -24,7 +24,8 @@ defmodule RepositoryHub.Adapters do
     UpdateRequest,
     DescribeRemoteRepositoryRequest,
     DescribeRevisionRequest,
-    VerifyWebhookSignatureRequest
+    VerifyWebhookSignatureRequest,
+    RegenerateWebhookSecretRequest
   }
 
   alias RepositoryHub.Model
@@ -139,6 +140,7 @@ defmodule RepositoryHub.Adapters do
       DescribeRemoteRepositoryRequest -> from_integration_type(request)
       DescribeRevisionRequest -> from_repository_id(request)
       ForkRequest -> from_integration_type(request)
+      RegenerateWebhookSecretRequest -> from_repository_id(request)
       _ -> error("Can't find adapter for request #{request}")
     end
   end

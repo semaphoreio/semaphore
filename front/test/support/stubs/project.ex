@@ -213,16 +213,40 @@ defmodule Support.Stubs.Project do
       GrpcMock.stub(ProjecthubMock, :users, &__MODULE__.users/2)
     end
 
-    def create(_req, _) do
-      status = ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))
-      meta = ResponseMeta.new(status: status)
+    def create(req, _) do
+      project =
+        Support.Stubs.Project.build(%{id: req.metadata.org_id}, %{id: req.metadata.user_id},
+          name: req.project.metadata.name
+        )
 
-      project = DB.first(:projects)
+      DB.find_by(:projects, :name, project.metadata.name)
+      |> case do
+        nil ->
+          DB.insert(:projects, %{
+            id: project.metadata.id,
+            name: project.metadata.name,
+            org_id: req.metadata.org_id,
+            api_model: project
+          })
 
-      InternalApi.Projecthub.CreateResponse.new(
-        metadata: meta,
-        project: project.api_model
-      )
+          status = ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))
+          meta = ResponseMeta.new(status: status)
+
+          InternalApi.Projecthub.CreateResponse.new(
+            metadata: meta,
+            project: project
+          )
+
+        _project ->
+          status =
+            ResponseMeta.Status.new(
+              code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
+              message: "Project with this name already exists."
+            )
+
+          meta = ResponseMeta.new(status: status)
+          InternalApi.Projecthub.CreateResponse.new(metadata: meta)
+      end
     end
 
     def describe(req, _) do

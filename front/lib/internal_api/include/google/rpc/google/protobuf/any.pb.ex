@@ -8,6 +8,6 @@ defmodule Google.Protobuf.Any do
         }
   defstruct [:type_url, :value]
 
-  field(:type_url, 1, type: :string)
-  field(:value, 2, type: :bytes)
+  field :type_url, 1, type: :string
+  field :value, 2, type: :bytes
 end

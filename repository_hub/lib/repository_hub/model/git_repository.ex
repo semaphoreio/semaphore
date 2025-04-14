@@ -20,7 +20,24 @@ defmodule RepositoryHub.Model.GitRepository do
   @spec new(String.t()) :: Toolkit.tupled_result(t(), String.t())
   def new(url) do
     dissect(url)
-    |> wrap()
+  end
+
+  def from_github(url) do
+    url
+    |> Validator.validate([:is_github_url])
+    |> unwrap(&new/1)
+  end
+
+  def from_gitlab(url) do
+    url
+    |> Validator.validate([:is_gitlab_url])
+    |> unwrap(&new/1)
+  end
+
+  def from_bitbucket(url) do
+    url
+    |> Validator.validate([:is_bitbucket_url])
+    |> unwrap(&new/1)
   end
 
   @doc """
@@ -61,6 +78,7 @@ defmodule RepositoryHub.Model.GitRepository do
 
       captures ->
         construct(captures)
+        |> wrap()
     end
   end
 
@@ -77,25 +95,5 @@ defmodule RepositoryHub.Model.GitRepository do
       repo: repo,
       ssh_git_url: "git@#{host}:#{owner}/#{repo}.git"
     }
-  end
-
-  defmodule Type do
-    alias RepositoryHub.Model.GitRepository
-    use Ecto.Type
-
-    def type, do: :map
-
-    def cast(url) when is_bitstring(url), do: GitRepository.new(url)
-
-    def cast(%GitRepository{} = git_repository), do: git_repository
-
-    def cast(_), do: {:error, message: "Is not a github repository"}
-
-    def load(url) when is_bitstring(url) do
-      GitRepository.new(url)
-    end
-
-    def dump(%GitRepository{ssh_git_url: url}), do: {:ok, url}
-    def dump(_), do: :error
   end
 end

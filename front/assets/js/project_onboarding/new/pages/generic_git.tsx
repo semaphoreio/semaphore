@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import * as stores from "../stores";
 import * as types from "../types";
 import { useSteps } from "../stores/create/steps";
@@ -12,7 +12,7 @@ import { createContext, h } from "preact";
 enum Step {
   SelectType = `select-type`,
   RepositorySetup = `repository-setup`,
-  VerifyConnection = `verify-connection`,
+  SetupWorkflow = `setup-workflow`,
 }
 
 
@@ -21,8 +21,8 @@ export const Page = () => {
 
   const steps = [
     { id: Step.SelectType, title: `Select project type` },
-    { id: Step.RepositorySetup, title: `Repository setup` },
-    { id: Step.VerifyConnection, title: `Verify connection` },
+    { id: Step.RepositorySetup, title: `Setup the project` },
+    { id: Step.SetupWorkflow, title: `Setup workflow` },
   ];
 
   const [repository, setRepository] = useState<Repository>({
@@ -32,10 +32,7 @@ export const Page = () => {
 
   useLayoutEffect(() => {
     dispatch([`SET_STEPS`, steps]);
-  }, []);
-
-  useEffect(() => {
-    setRepository((prev) => ({ ...prev, url: `git@git.kutryj.pl/repos/agnostic.git` }));
+    setRepository((prev) => ({ ...prev, url: `ssh://git@git.kutryj.pl/repos/agnostic.git` }));
   }, []);
 
   const nameFromUrl = (url: string) => {
@@ -59,26 +56,36 @@ export const Page = () => {
 
   }, [repository.url]);
 
-  useEffect(() => {
-    dispatch([`SET_CURRENT`, Step.RepositorySetup]);
-  }, [repository]);
-
   return (
     <RepositoryContext.Provider value={{ repository, setRepository: setRepository }}>
       <Routes>
         <Route path="/" element={<RepositorySetup/>}/>
-        <Route path="/:projectName" element={<RepositoryConnect/>}/>
+        <Route path="/:projectName" element={<RepositorySetup/>}/>
+        <Route path="/:projectName/connect" element={<SetupWorkflow/>}/>
       </Routes>
     </RepositoryContext.Provider>
   );
 };
 
-const RepositoryConnect = () => {
-  return <div>YEASH</div>;
+const SetupWorkflow = () => {
+  const { dispatch } = useSteps();
+
+  useEffect(() => {
+    dispatch([`SET_CURRENT`, Step.SetupWorkflow]);
+  }, []);
+
+  return <div>YEASsH</div>;
 };
 
 
 const RepositorySetup = () => {
+  const { dispatch } = useSteps();
+  const { repository } = useContext(RepositoryContext);
+
+  useEffect(() => {
+    dispatch([`SET_CURRENT`, Step.RepositorySetup]);
+  }, []);
+
   return (
     <div className="flex-l">
       <div className="w-third ph4-l">
@@ -117,33 +124,51 @@ const RepositorySetup = () => {
 
 const CreateRepository = (props: h.JSX.HTMLAttributes) => {
   const config = useContext(stores.Create.Config.Context);
-  const { repository, setRepository } = useContext(RepositoryContext);
+  const { repository } = useContext(RepositoryContext);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(``);
+  const navigate = useNavigate();
 
   const createRepository = () => {
-    const url = new toolbox.APIRequest.Url<any>(`post`,config.createProjectUrl );
+    const url = new toolbox.APIRequest.Url<{ project_name: string, error?: string, }>(`post`,config.createProjectUrl );
+    setLoading(true);
+    setError(``);
 
-    void url.call({ body: {
-      url: repository.url,
-      integration_type: types.Provider.IntegrationType.Git,
-      duplicate: `true`,
-      name: repository.projectName,
-    } }).then((response) => {
-      console.log(response);
-    } );
+    void url
+      .call({
+        body: {
+          url: repository.url,
+          integration_type: types.Provider.IntegrationType.Git,
+          name: repository.projectName,
+        }
+      })
+      .then((response) => {
+        if(response.error) {
+          setError(response.data.error);
+          return;
+        }
+
+        navigate(`./${response.data.project_name}`);
+      })
+      .finally(() => {
+        setTimeout(() => {
+          setLoading(false);
+        }, 200);
+      });
 
   };
 
   return <div className={props.className}>
     <div className="flex flex-column">
-      <a className="btn btn-primary br2 f6 f5-m" onClick={createRepository}>
-        <toolbox.Asset
-          path="images/icn-plus.svg"
-          className="self-center mr2"
-          style={{ width: `16px`, height: `16px` }}
-        />
-        Create repository
-      </a>
+      <button className="btn btn-primary br2 f6 f5-m flex items-center justify-center" onClick={createRepository} disabled={loading}>
+        {loading && <toolbox.Asset
+          path="images/spinner-2.svg"
+          style={{ width: `20px`, height: `20px` }}
+        />}
+        <span>Create repository</span>
+      </button>
     </div>
+    {!loading && <div className="red mt2 tc">{error}</div>}
   </div>;
 };
 
@@ -230,4 +255,6 @@ const RepositoryContext = createContext<{
 interface Repository {
   url: string;
   projectName: string;
+  id: string;
+  webhookSecret: ``;
 }

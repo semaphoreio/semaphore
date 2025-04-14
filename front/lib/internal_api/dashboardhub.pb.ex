@@ -11,11 +11,11 @@ defmodule InternalApi.Dashboardhub.RequestMeta do
         }
   defstruct [:api_version, :kind, :req_id, :org_id, :user_id]
 
-  field(:api_version, 1, type: :string)
-  field(:kind, 2, type: :string)
-  field(:req_id, 3, type: :string)
-  field(:org_id, 4, type: :string)
-  field(:user_id, 5, type: :string)
+  field :api_version, 1, type: :string
+  field :kind, 2, type: :string
+  field :req_id, 3, type: :string
+  field :org_id, 4, type: :string
+  field :user_id, 5, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.Dashboard do
@@ -28,8 +28,8 @@ defmodule InternalApi.Dashboardhub.Dashboard do
         }
   defstruct [:metadata, :spec]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.Dashboard.Metadata)
-  field(:spec, 2, type: InternalApi.Dashboardhub.Dashboard.Spec)
+  field :metadata, 1, type: InternalApi.Dashboardhub.Dashboard.Metadata
+  field :spec, 2, type: InternalApi.Dashboardhub.Dashboard.Spec
 end
 
 defmodule InternalApi.Dashboardhub.Dashboard.Metadata do
@@ -46,12 +46,12 @@ defmodule InternalApi.Dashboardhub.Dashboard.Metadata do
         }
   defstruct [:name, :id, :title, :create_time, :update_time, :org_id]
 
-  field(:name, 1, type: :string)
-  field(:id, 2, type: :string)
-  field(:title, 3, type: :string)
-  field(:create_time, 4, type: :int64)
-  field(:update_time, 5, type: :int64)
-  field(:org_id, 6, type: :string)
+  field :name, 1, type: :string
+  field :id, 2, type: :string
+  field :title, 3, type: :string
+  field :create_time, 4, type: :int64
+  field :update_time, 5, type: :int64
+  field :org_id, 6, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.Dashboard.Spec do
@@ -63,7 +63,7 @@ defmodule InternalApi.Dashboardhub.Dashboard.Spec do
         }
   defstruct [:widgets]
 
-  field(:widgets, 2, repeated: true, type: InternalApi.Dashboardhub.Dashboard.Spec.Widget)
+  field :widgets, 2, repeated: true, type: InternalApi.Dashboardhub.Dashboard.Spec.Widget
 end
 
 defmodule InternalApi.Dashboardhub.Dashboard.Spec.Widget do
@@ -77,14 +77,13 @@ defmodule InternalApi.Dashboardhub.Dashboard.Spec.Widget do
         }
   defstruct [:name, :type, :filters]
 
-  field(:name, 1, type: :string)
-  field(:type, 2, type: :string)
+  field :name, 1, type: :string
+  field :type, 2, type: :string
 
-  field(:filters, 3,
+  field :filters, 3,
     repeated: true,
     type: InternalApi.Dashboardhub.Dashboard.Spec.Widget.FiltersEntry,
     map: true
-  )
 end
 
 defmodule InternalApi.Dashboardhub.Dashboard.Spec.Widget.FiltersEntry do
@@ -97,8 +96,8 @@ defmodule InternalApi.Dashboardhub.Dashboard.Spec.Widget.FiltersEntry do
         }
   defstruct [:key, :value]
 
-  field(:key, 1, type: :string)
-  field(:value, 2, type: :string)
+  field :key, 1, type: :string
+  field :value, 2, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.ListRequest do
@@ -112,9 +111,9 @@ defmodule InternalApi.Dashboardhub.ListRequest do
         }
   defstruct [:metadata, :page_size, :page_token]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.RequestMeta)
-  field(:page_size, 2, type: :int32)
-  field(:page_token, 3, type: :string)
+  field :metadata, 1, type: InternalApi.Dashboardhub.RequestMeta
+  field :page_size, 2, type: :int32
+  field :page_token, 3, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.ListResponse do
@@ -128,9 +127,9 @@ defmodule InternalApi.Dashboardhub.ListResponse do
         }
   defstruct [:dashboards, :next_page_token, :page_size]
 
-  field(:dashboards, 1, repeated: true, type: InternalApi.Dashboardhub.Dashboard)
-  field(:next_page_token, 2, type: :string)
-  field(:page_size, 3, type: :int32)
+  field :dashboards, 1, repeated: true, type: InternalApi.Dashboardhub.Dashboard
+  field :next_page_token, 2, type: :string
+  field :page_size, 3, type: :int32
 end
 
 defmodule InternalApi.Dashboardhub.CreateRequest do
@@ -143,8 +142,8 @@ defmodule InternalApi.Dashboardhub.CreateRequest do
         }
   defstruct [:metadata, :dashboard]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.RequestMeta)
-  field(:dashboard, 2, type: InternalApi.Dashboardhub.Dashboard)
+  field :metadata, 1, type: InternalApi.Dashboardhub.RequestMeta
+  field :dashboard, 2, type: InternalApi.Dashboardhub.Dashboard
 end
 
 defmodule InternalApi.Dashboardhub.CreateResponse do
@@ -156,7 +155,7 @@ defmodule InternalApi.Dashboardhub.CreateResponse do
         }
   defstruct [:dashboard]
 
-  field(:dashboard, 1, type: InternalApi.Dashboardhub.Dashboard)
+  field :dashboard, 1, type: InternalApi.Dashboardhub.Dashboard
 end
 
 defmodule InternalApi.Dashboardhub.DescribeRequest do
@@ -169,8 +168,8 @@ defmodule InternalApi.Dashboardhub.DescribeRequest do
         }
   defstruct [:metadata, :id_or_name]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.RequestMeta)
-  field(:id_or_name, 2, type: :string)
+  field :metadata, 1, type: InternalApi.Dashboardhub.RequestMeta
+  field :id_or_name, 2, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.DescribeResponse do
@@ -182,7 +181,7 @@ defmodule InternalApi.Dashboardhub.DescribeResponse do
         }
   defstruct [:dashboard]
 
-  field(:dashboard, 1, type: InternalApi.Dashboardhub.Dashboard)
+  field :dashboard, 1, type: InternalApi.Dashboardhub.Dashboard
 end
 
 defmodule InternalApi.Dashboardhub.UpdateRequest do
@@ -196,9 +195,9 @@ defmodule InternalApi.Dashboardhub.UpdateRequest do
         }
   defstruct [:metadata, :id_or_name, :dashboard]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.RequestMeta)
-  field(:id_or_name, 2, type: :string)
-  field(:dashboard, 3, type: InternalApi.Dashboardhub.Dashboard)
+  field :metadata, 1, type: InternalApi.Dashboardhub.RequestMeta
+  field :id_or_name, 2, type: :string
+  field :dashboard, 3, type: InternalApi.Dashboardhub.Dashboard
 end
 
 defmodule InternalApi.Dashboardhub.UpdateResponse do
@@ -210,7 +209,7 @@ defmodule InternalApi.Dashboardhub.UpdateResponse do
         }
   defstruct [:dashboard]
 
-  field(:dashboard, 1, type: InternalApi.Dashboardhub.Dashboard)
+  field :dashboard, 1, type: InternalApi.Dashboardhub.Dashboard
 end
 
 defmodule InternalApi.Dashboardhub.DestroyRequest do
@@ -223,8 +222,8 @@ defmodule InternalApi.Dashboardhub.DestroyRequest do
         }
   defstruct [:metadata, :id_or_name]
 
-  field(:metadata, 1, type: InternalApi.Dashboardhub.RequestMeta)
-  field(:id_or_name, 2, type: :string)
+  field :metadata, 1, type: InternalApi.Dashboardhub.RequestMeta
+  field :id_or_name, 2, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.DestroyResponse do
@@ -236,7 +235,7 @@ defmodule InternalApi.Dashboardhub.DestroyResponse do
         }
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Dashboardhub.DashboardEvent do
@@ -250,26 +249,24 @@ defmodule InternalApi.Dashboardhub.DashboardEvent do
         }
   defstruct [:dashboard_id, :org_id, :timestamp]
 
-  field(:dashboard_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+  field :dashboard_id, 1, type: :string
+  field :org_id, 2, type: :string
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Dashboardhub.DashboardsService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Dashboardhub.DashboardsService"
 
-  rpc(:List, InternalApi.Dashboardhub.ListRequest, InternalApi.Dashboardhub.ListResponse)
+  rpc :List, InternalApi.Dashboardhub.ListRequest, InternalApi.Dashboardhub.ListResponse
 
-  rpc(
-    :Describe,
-    InternalApi.Dashboardhub.DescribeRequest,
-    InternalApi.Dashboardhub.DescribeResponse
-  )
+  rpc :Describe,
+      InternalApi.Dashboardhub.DescribeRequest,
+      InternalApi.Dashboardhub.DescribeResponse
 
-  rpc(:Create, InternalApi.Dashboardhub.CreateRequest, InternalApi.Dashboardhub.CreateResponse)
-  rpc(:Update, InternalApi.Dashboardhub.UpdateRequest, InternalApi.Dashboardhub.UpdateResponse)
-  rpc(:Destroy, InternalApi.Dashboardhub.DestroyRequest, InternalApi.Dashboardhub.DestroyResponse)
+  rpc :Create, InternalApi.Dashboardhub.CreateRequest, InternalApi.Dashboardhub.CreateResponse
+  rpc :Update, InternalApi.Dashboardhub.UpdateRequest, InternalApi.Dashboardhub.UpdateResponse
+  rpc :Destroy, InternalApi.Dashboardhub.DestroyRequest, InternalApi.Dashboardhub.DestroyResponse
 end
 
 defmodule InternalApi.Dashboardhub.DashboardsService.Stub do

@@ -8,8 +8,8 @@ defmodule InternalApi.Loghub.GetLogEventsRequest do
         }
   defstruct [:job_id, :starting_line]
 
-  field(:job_id, 1, type: :string)
-  field(:starting_line, 2, type: :int32)
+  field :job_id, 1, type: :string
+  field :starting_line, 2, type: :int32
 end
 
 defmodule InternalApi.Loghub.GetLogEventsResponse do
@@ -23,20 +23,18 @@ defmodule InternalApi.Loghub.GetLogEventsResponse do
         }
   defstruct [:status, :events, :final]
 
-  field(:status, 1, type: InternalApi.ResponseStatus)
-  field(:events, 2, repeated: true, type: :string)
-  field(:final, 3, type: :bool)
+  field :status, 1, type: InternalApi.ResponseStatus
+  field :events, 2, repeated: true, type: :string
+  field :final, 3, type: :bool
 end
 
 defmodule InternalApi.Loghub.Loghub.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Loghub.Loghub"
 
-  rpc(
-    :GetLogEvents,
-    InternalApi.Loghub.GetLogEventsRequest,
-    InternalApi.Loghub.GetLogEventsResponse
-  )
+  rpc :GetLogEvents,
+      InternalApi.Loghub.GetLogEventsRequest,
+      InternalApi.Loghub.GetLogEventsResponse
 end
 
 defmodule InternalApi.Loghub.Loghub.Stub do

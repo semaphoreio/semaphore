@@ -618,6 +618,22 @@ defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
   field :valid, 1, type: :bool
 end
 
+defmodule InternalApi.Repository.RegenerateWebhookSecretRequest do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
+
+  field :repository_id, 1, type: :string, json_name: "repositoryId"
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretResponse do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
+
+  field :secret, 1, type: :string
+end
+
 defmodule InternalApi.Repository.RepositoryService.Service do
   @moduledoc false
 
@@ -694,6 +710,10 @@ defmodule InternalApi.Repository.RepositoryService.Service do
   rpc :VerifyWebhookSignature,
       InternalApi.Repository.VerifyWebhookSignatureRequest,
       InternalApi.Repository.VerifyWebhookSignatureResponse
+
+  rpc :RegenerateWebhookSecret,
+      InternalApi.Repository.RegenerateWebhookSecretRequest,
+      InternalApi.Repository.RegenerateWebhookSecretResponse
 end
 
 defmodule InternalApi.Repository.RepositoryService.Stub do

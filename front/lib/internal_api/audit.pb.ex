@@ -8,8 +8,8 @@ defmodule InternalApi.Audit.ListRequest do
         }
   defstruct [:org_id, :all_events_in_operation]
 
-  field(:org_id, 1, type: :string)
-  field(:all_events_in_operation, 2, type: :bool)
+  field :org_id, 1, type: :string
+  field :all_events_in_operation, 2, type: :bool
 end
 
 defmodule InternalApi.Audit.ListResponse do
@@ -21,7 +21,7 @@ defmodule InternalApi.Audit.ListResponse do
         }
   defstruct [:events]
 
-  field(:events, 1, repeated: true, type: InternalApi.Audit.Event)
+  field :events, 1, repeated: true, type: InternalApi.Audit.Event
 end
 
 defmodule InternalApi.Audit.PaginatedListRequest do
@@ -36,18 +36,18 @@ defmodule InternalApi.Audit.PaginatedListRequest do
         }
   defstruct [:org_id, :page_size, :page_token, :direction]
 
-  field(:org_id, 1, type: :string)
-  field(:page_size, 2, type: :int32)
-  field(:page_token, 3, type: :string)
-  field(:direction, 4, type: InternalApi.Audit.PaginatedListRequest.Direction, enum: true)
+  field :org_id, 1, type: :string
+  field :page_size, 2, type: :int32
+  field :page_token, 3, type: :string
+  field :direction, 4, type: InternalApi.Audit.PaginatedListRequest.Direction, enum: true
 end
 
 defmodule InternalApi.Audit.PaginatedListRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:NEXT, 0)
-  field(:PREVIOUS, 1)
+  field :NEXT, 0
+  field :PREVIOUS, 1
 end
 
 defmodule InternalApi.Audit.PaginatedListResponse do
@@ -61,9 +61,9 @@ defmodule InternalApi.Audit.PaginatedListResponse do
         }
   defstruct [:events, :next_page_token, :previous_page_token]
 
-  field(:events, 1, repeated: true, type: InternalApi.Audit.Event)
-  field(:next_page_token, 2, type: :string)
-  field(:previous_page_token, 3, type: :string)
+  field :events, 1, repeated: true, type: InternalApi.Audit.Event
+  field :next_page_token, 2, type: :string
+  field :previous_page_token, 3, type: :string
 end
 
 defmodule InternalApi.Audit.ListStreamLogsRequest do
@@ -78,18 +78,18 @@ defmodule InternalApi.Audit.ListStreamLogsRequest do
         }
   defstruct [:org_id, :page_size, :page_token, :direction]
 
-  field(:org_id, 1, type: :string)
-  field(:page_size, 2, type: :int32)
-  field(:page_token, 3, type: :string)
-  field(:direction, 4, type: InternalApi.Audit.ListStreamLogsRequest.Direction, enum: true)
+  field :org_id, 1, type: :string
+  field :page_size, 2, type: :int32
+  field :page_token, 3, type: :string
+  field :direction, 4, type: InternalApi.Audit.ListStreamLogsRequest.Direction, enum: true
 end
 
 defmodule InternalApi.Audit.ListStreamLogsRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:NEXT, 0)
-  field(:PREVIOUS, 1)
+  field :NEXT, 0
+  field :PREVIOUS, 1
 end
 
 defmodule InternalApi.Audit.ListStreamLogsResponse do
@@ -103,9 +103,9 @@ defmodule InternalApi.Audit.ListStreamLogsResponse do
         }
   defstruct [:stream_logs, :next_page_token, :previous_page_token]
 
-  field(:stream_logs, 1, repeated: true, type: InternalApi.Audit.StreamLog)
-  field(:next_page_token, 2, type: :string)
-  field(:previous_page_token, 3, type: :string)
+  field :stream_logs, 1, repeated: true, type: InternalApi.Audit.StreamLog
+  field :next_page_token, 2, type: :string
+  field :previous_page_token, 3, type: :string
 end
 
 defmodule InternalApi.Audit.StreamLog do
@@ -129,12 +129,12 @@ defmodule InternalApi.Audit.StreamLog do
     :last_event_timestamp
   ]
 
-  field(:timestamp, 1, type: Google.Protobuf.Timestamp)
-  field(:error_message, 2, type: :string)
-  field(:file_size, 3, type: :int32)
-  field(:file_name, 4, type: :string)
-  field(:first_event_timestamp, 5, type: Google.Protobuf.Timestamp)
-  field(:last_event_timestamp, 6, type: Google.Protobuf.Timestamp)
+  field :timestamp, 1, type: Google.Protobuf.Timestamp
+  field :error_message, 2, type: :string
+  field :file_size, 3, type: :int32
+  field :file_name, 4, type: :string
+  field :first_event_timestamp, 5, type: Google.Protobuf.Timestamp
+  field :last_event_timestamp, 6, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Audit.Stream do
@@ -149,10 +149,10 @@ defmodule InternalApi.Audit.Stream do
         }
   defstruct [:org_id, :provider, :status, :s3_config]
 
-  field(:org_id, 1, type: :string)
-  field(:provider, 2, type: InternalApi.Audit.StreamProvider, enum: true)
-  field(:status, 3, type: InternalApi.Audit.StreamStatus, enum: true)
-  field(:s3_config, 4, type: InternalApi.Audit.S3StreamConfig)
+  field :org_id, 1, type: :string
+  field :provider, 2, type: InternalApi.Audit.StreamProvider, enum: true
+  field :status, 3, type: InternalApi.Audit.StreamStatus, enum: true
+  field :s3_config, 4, type: InternalApi.Audit.S3StreamConfig
 end
 
 defmodule InternalApi.Audit.EditMeta do
@@ -168,11 +168,11 @@ defmodule InternalApi.Audit.EditMeta do
         }
   defstruct [:created_at, :updated_at, :activity_toggled_at, :updated_by, :activity_toggled_by]
 
-  field(:created_at, 1, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 2, type: Google.Protobuf.Timestamp)
-  field(:activity_toggled_at, 3, type: Google.Protobuf.Timestamp)
-  field(:updated_by, 4, type: :string)
-  field(:activity_toggled_by, 5, type: :string)
+  field :created_at, 1, type: Google.Protobuf.Timestamp
+  field :updated_at, 2, type: Google.Protobuf.Timestamp
+  field :activity_toggled_at, 3, type: Google.Protobuf.Timestamp
+  field :updated_by, 4, type: :string
+  field :activity_toggled_by, 5, type: :string
 end
 
 defmodule InternalApi.Audit.S3StreamConfig do
@@ -189,20 +189,20 @@ defmodule InternalApi.Audit.S3StreamConfig do
         }
   defstruct [:bucket, :key_id, :key_secret, :host, :region, :type]
 
-  field(:bucket, 1, type: :string)
-  field(:key_id, 2, type: :string)
-  field(:key_secret, 3, type: :string)
-  field(:host, 4, type: :string)
-  field(:region, 5, type: :string)
-  field(:type, 6, type: InternalApi.Audit.S3StreamConfig.Type, enum: true)
+  field :bucket, 1, type: :string
+  field :key_id, 2, type: :string
+  field :key_secret, 3, type: :string
+  field :host, 4, type: :string
+  field :region, 5, type: :string
+  field :type, 6, type: InternalApi.Audit.S3StreamConfig.Type, enum: true
 end
 
 defmodule InternalApi.Audit.S3StreamConfig.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:USER, 0)
-  field(:INSTANCE_ROLE, 1)
+  field :USER, 0
+  field :INSTANCE_ROLE, 1
 end
 
 defmodule InternalApi.Audit.TestStreamRequest do
@@ -214,7 +214,7 @@ defmodule InternalApi.Audit.TestStreamRequest do
         }
   defstruct [:stream]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
+  field :stream, 1, type: InternalApi.Audit.Stream
 end
 
 defmodule InternalApi.Audit.TestStreamResponse do
@@ -227,8 +227,8 @@ defmodule InternalApi.Audit.TestStreamResponse do
         }
   defstruct [:success, :message]
 
-  field(:success, 1, type: :bool)
-  field(:message, 2, type: :string)
+  field :success, 1, type: :bool
+  field :message, 2, type: :string
 end
 
 defmodule InternalApi.Audit.CreateStreamRequest do
@@ -241,8 +241,8 @@ defmodule InternalApi.Audit.CreateStreamRequest do
         }
   defstruct [:stream, :user_id]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
-  field(:user_id, 2, type: :string)
+  field :stream, 1, type: InternalApi.Audit.Stream
+  field :user_id, 2, type: :string
 end
 
 defmodule InternalApi.Audit.CreateStreamResponse do
@@ -255,8 +255,8 @@ defmodule InternalApi.Audit.CreateStreamResponse do
         }
   defstruct [:stream, :meta]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
-  field(:meta, 2, type: InternalApi.Audit.EditMeta)
+  field :stream, 1, type: InternalApi.Audit.Stream
+  field :meta, 2, type: InternalApi.Audit.EditMeta
 end
 
 defmodule InternalApi.Audit.DescribeStreamRequest do
@@ -268,7 +268,7 @@ defmodule InternalApi.Audit.DescribeStreamRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Audit.DescribeStreamResponse do
@@ -281,8 +281,8 @@ defmodule InternalApi.Audit.DescribeStreamResponse do
         }
   defstruct [:stream, :meta]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
-  field(:meta, 2, type: InternalApi.Audit.EditMeta)
+  field :stream, 1, type: InternalApi.Audit.Stream
+  field :meta, 2, type: InternalApi.Audit.EditMeta
 end
 
 defmodule InternalApi.Audit.UpdateStreamRequest do
@@ -295,8 +295,8 @@ defmodule InternalApi.Audit.UpdateStreamRequest do
         }
   defstruct [:stream, :user_id]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
-  field(:user_id, 2, type: :string)
+  field :stream, 1, type: InternalApi.Audit.Stream
+  field :user_id, 2, type: :string
 end
 
 defmodule InternalApi.Audit.UpdateStreamResponse do
@@ -309,8 +309,8 @@ defmodule InternalApi.Audit.UpdateStreamResponse do
         }
   defstruct [:stream, :meta]
 
-  field(:stream, 1, type: InternalApi.Audit.Stream)
-  field(:meta, 2, type: InternalApi.Audit.EditMeta)
+  field :stream, 1, type: InternalApi.Audit.Stream
+  field :meta, 2, type: InternalApi.Audit.EditMeta
 end
 
 defmodule InternalApi.Audit.DestroyStreamRequest do
@@ -322,7 +322,7 @@ defmodule InternalApi.Audit.DestroyStreamRequest do
         }
   defstruct [:org_id]
 
-  field(:org_id, 1, type: :string)
+  field :org_id, 1, type: :string
 end
 
 defmodule InternalApi.Audit.SetStreamStateRequest do
@@ -336,9 +336,9 @@ defmodule InternalApi.Audit.SetStreamStateRequest do
         }
   defstruct [:org_id, :status, :user_id]
 
-  field(:org_id, 1, type: :string)
-  field(:status, 2, type: InternalApi.Audit.StreamStatus, enum: true)
-  field(:user_id, 3, type: :string)
+  field :org_id, 1, type: :string
+  field :status, 2, type: InternalApi.Audit.StreamStatus, enum: true
+  field :user_id, 3, type: :string
 end
 
 defmodule InternalApi.Audit.Event do
@@ -376,127 +376,111 @@ defmodule InternalApi.Audit.Event do
     :medium
   ]
 
-  field(:resource, 1, type: InternalApi.Audit.Event.Resource, enum: true)
-  field(:operation, 2, type: InternalApi.Audit.Event.Operation, enum: true)
-  field(:user_id, 3, type: :string)
-  field(:org_id, 4, type: :string)
-  field(:ip_address, 5, type: :string)
-  field(:username, 6, type: :string)
-  field(:description, 7, type: :string)
-  field(:metadata, 8, type: :string)
-  field(:timestamp, 9, type: Google.Protobuf.Timestamp)
-  field(:operation_id, 10, type: :string)
-  field(:resource_id, 11, type: :string)
-  field(:resource_name, 12, type: :string)
-  field(:medium, 13, type: InternalApi.Audit.Event.Medium, enum: true)
+  field :resource, 1, type: InternalApi.Audit.Event.Resource, enum: true
+  field :operation, 2, type: InternalApi.Audit.Event.Operation, enum: true
+  field :user_id, 3, type: :string
+  field :org_id, 4, type: :string
+  field :ip_address, 5, type: :string
+  field :username, 6, type: :string
+  field :description, 7, type: :string
+  field :metadata, 8, type: :string
+  field :timestamp, 9, type: Google.Protobuf.Timestamp
+  field :operation_id, 10, type: :string
+  field :resource_id, 11, type: :string
+  field :resource_name, 12, type: :string
+  field :medium, 13, type: InternalApi.Audit.Event.Medium, enum: true
 end
 
 defmodule InternalApi.Audit.Event.Resource do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:Project, 0)
-  field(:User, 1)
-  field(:Workflow, 2)
-  field(:Pipeline, 3)
-  field(:DebugSession, 4)
-  field(:PeriodicScheduler, 5)
-  field(:Secret, 6)
-  field(:Notification, 7)
-  field(:Dashboard, 8)
-  field(:Job, 9)
-  field(:Artifact, 10)
-  field(:Organization, 11)
-  field(:SelfHostedAgentType, 12)
-  field(:SelfHostedAgent, 13)
-  field(:CustomDashboard, 14)
-  field(:CustomDashboardItem, 15)
-  field(:ProjectInsightsSettings, 16)
-  field(:Okta, 17)
-  field(:FlakyTests, 18)
-  field(:RBACRole, 19)
+  field :Project, 0
+  field :User, 1
+  field :Workflow, 2
+  field :Pipeline, 3
+  field :DebugSession, 4
+  field :PeriodicScheduler, 5
+  field :Secret, 6
+  field :Notification, 7
+  field :Dashboard, 8
+  field :Job, 9
+  field :Artifact, 10
+  field :Organization, 11
+  field :SelfHostedAgentType, 12
+  field :SelfHostedAgent, 13
+  field :CustomDashboard, 14
+  field :CustomDashboardItem, 15
+  field :ProjectInsightsSettings, 16
+  field :Okta, 17
+  field :FlakyTests, 18
+  field :RBACRole, 19
 end
 
 defmodule InternalApi.Audit.Event.Operation do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:Added, 0)
-  field(:Removed, 1)
-  field(:Modified, 2)
-  field(:Started, 3)
-  field(:Stopped, 4)
-  field(:Promoted, 5)
-  field(:Demoted, 6)
-  field(:Rebuild, 7)
-  field(:Download, 8)
-  field(:Disabled, 9)
+  field :Added, 0
+  field :Removed, 1
+  field :Modified, 2
+  field :Started, 3
+  field :Stopped, 4
+  field :Promoted, 5
+  field :Demoted, 6
+  field :Rebuild, 7
+  field :Download, 8
+  field :Disabled, 9
 end
 
 defmodule InternalApi.Audit.Event.Medium do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:Web, 0)
-  field(:API, 1)
-  field(:CLI, 2)
+  field :Web, 0
+  field :API, 1
+  field :CLI, 2
 end
 
 defmodule InternalApi.Audit.StreamProvider do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:S3, 0)
+  field :S3, 0
 end
 
 defmodule InternalApi.Audit.StreamStatus do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:ACTIVE, 0)
-  field(:PAUSED, 1)
+  field :ACTIVE, 0
+  field :PAUSED, 1
 end
 
 defmodule InternalApi.Audit.AuditService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Audit.AuditService"
 
-  rpc(:List, InternalApi.Audit.ListRequest, InternalApi.Audit.ListResponse)
+  rpc :List, InternalApi.Audit.ListRequest, InternalApi.Audit.ListResponse
 
-  rpc(
-    :PaginatedList,
-    InternalApi.Audit.PaginatedListRequest,
-    InternalApi.Audit.PaginatedListResponse
-  )
+  rpc :PaginatedList,
+      InternalApi.Audit.PaginatedListRequest,
+      InternalApi.Audit.PaginatedListResponse
 
-  rpc(:TestStream, InternalApi.Audit.TestStreamRequest, InternalApi.Audit.TestStreamResponse)
+  rpc :TestStream, InternalApi.Audit.TestStreamRequest, InternalApi.Audit.TestStreamResponse
+  rpc :CreateStream, InternalApi.Audit.CreateStreamRequest, InternalApi.Audit.CreateStreamResponse
 
-  rpc(
-    :CreateStream,
-    InternalApi.Audit.CreateStreamRequest,
-    InternalApi.Audit.CreateStreamResponse
-  )
+  rpc :DescribeStream,
+      InternalApi.Audit.DescribeStreamRequest,
+      InternalApi.Audit.DescribeStreamResponse
 
-  rpc(
-    :DescribeStream,
-    InternalApi.Audit.DescribeStreamRequest,
-    InternalApi.Audit.DescribeStreamResponse
-  )
+  rpc :UpdateStream, InternalApi.Audit.UpdateStreamRequest, InternalApi.Audit.UpdateStreamResponse
+  rpc :DestroyStream, InternalApi.Audit.DestroyStreamRequest, Google.Protobuf.Empty
+  rpc :SetStreamState, InternalApi.Audit.SetStreamStateRequest, Google.Protobuf.Empty
 
-  rpc(
-    :UpdateStream,
-    InternalApi.Audit.UpdateStreamRequest,
-    InternalApi.Audit.UpdateStreamResponse
-  )
-
-  rpc(:DestroyStream, InternalApi.Audit.DestroyStreamRequest, Google.Protobuf.Empty)
-  rpc(:SetStreamState, InternalApi.Audit.SetStreamStateRequest, Google.Protobuf.Empty)
-
-  rpc(
-    :ListStreamLogs,
-    InternalApi.Audit.ListStreamLogsRequest,
-    InternalApi.Audit.ListStreamLogsResponse
-  )
+  rpc :ListStreamLogs,
+      InternalApi.Audit.ListStreamLogsRequest,
+      InternalApi.Audit.ListStreamLogsResponse
 end
 
 defmodule InternalApi.Audit.AuditService.Stub do

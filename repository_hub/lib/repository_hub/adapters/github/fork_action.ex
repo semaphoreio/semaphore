@@ -22,7 +22,7 @@ defimpl RepositoryHub.Server.ForkAction, for: RepositoryHub.GithubAdapter do
   end
 
   def execute(%GithubAdapter{integration_type: "github_oauth_token"} = adapter, request) do
-    with {:ok, git_repository} <- Model.GitRepository.new(request.url),
+    with {:ok, git_repository} <- Model.GitRepository.from_github(request.url),
          {:ok, github_token} <- GithubAdapter.token(adapter, request.user_id, git_repository),
          {:ok, github_repository} <- get_github_repository(git_repository, github_token),
          {:ok, forked_repository} <- fork_repository(git_repository, github_token),
