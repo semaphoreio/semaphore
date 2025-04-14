@@ -1006,7 +1006,8 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
 
     test "when the project is soft deleted => returns a not found response" do
-      {:ok, project} = Support.Factories.Project.create_with_repo()
+      org_id = Ecto.UUID.generate()
+      {:ok, project} = Support.Factories.Project.create_with_repo(%{organization_id: org_id})
       {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
 
       {:ok, channel} =
