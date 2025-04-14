@@ -15,7 +15,7 @@ defmodule Projecthub.Workers.ProjectCleaner do
 
         case Project.hard_destroy(project, project.deleted_by) do
           {:ok, _} -> Logger.info("Hard destroyed project #{project.id}")
-          {:error, error} -> Logger.error("Failed to hard destroy project #{project.id}: #{error}")
+          {:error, error} -> Logger.error("Failed to hard destroy project #{project.id}: #{inspect(error)}")
         end
       end)
 
