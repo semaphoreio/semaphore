@@ -97,9 +97,7 @@ func (w *PendingEventsWorker) ProcessEvent(event *models.Event) error {
 		return nil
 	}
 
-	w.enqueueEvent(event, stages)
-
-	return nil
+	return w.enqueueEvent(event, stages)
 }
 
 func (w *PendingEventsWorker) filterStages(event *models.Event, stages []models.Stage) ([]models.Stage, error) {
