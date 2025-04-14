@@ -8,6 +8,14 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of April 14 2025
+
+**(Improved)  macos-xcode16 (apple silicon) image update**
+
+**(New)** Packages:
+
+- Added iOS simulator 18.2, 18.3.1
+
 ### Week of April 7 2025
 
 **(Improved)  macos-xcode16 (apple silicon) image update**
