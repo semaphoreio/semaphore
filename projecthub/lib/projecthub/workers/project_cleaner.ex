@@ -19,6 +19,8 @@ defmodule Projecthub.Workers.ProjectCleaner do
         end
       end)
 
+      Logger.info("Project cleaner finished")
+
       :ok
     end)
   end
