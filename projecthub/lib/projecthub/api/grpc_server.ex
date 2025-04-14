@@ -37,7 +37,7 @@ defmodule Projecthub.Api.GrpcServer do
 
   def describe(request, _) do
     Watchman.benchmark("projecthub_api.describe.duration", fn ->
-      find_project(request)
+      find_project(request, request.soft_deleted)
       |> case do
         {:ok, project} ->
           DescribeResponse.new(
@@ -53,7 +53,7 @@ defmodule Projecthub.Api.GrpcServer do
 
   def describe_many(req, _) do
     Watchman.benchmark("projecthub_api.describe_many.duration", fn ->
-      projects = Project.find_many(req.metadata.org_id, req.ids)
+      projects = Project.find_many(req.metadata.org_id, req.ids, req.soft_deleted)
 
       projects =
         projects
@@ -127,7 +127,8 @@ defmodule Projecthub.Api.GrpcServer do
         req.pagination.page,
         req.pagination.page_size,
         owner_id: req.owner_id,
-        repo_url: url
+        repo_url: url,
+        soft_deleted: req.soft_deleted
       )
     end)
   end
@@ -662,16 +663,16 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
-  defp find_project(req) do
+  defp find_project(req, soft_deleted \\ false) do
     cond do
       req.id != "" and req.metadata.org_id != "" ->
-        Project.find_in_org(req.metadata.org_id, req.id)
+        Project.find_in_org(req.metadata.org_id, req.id, soft_deleted)
 
       req.id != "" ->
-        Project.find(req.id)
+        Project.find(req.id, soft_deleted)
 
       req.name != "" ->
-        Project.find_by_name(req.name, req.metadata.org_id)
+        Project.find_by_name(req.name, req.metadata.org_id, soft_deleted)
 
       true ->
         {:error, :failed_precondition, "Name or ID must be provided"}
@@ -965,7 +966,7 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp projects_count_quota_reached?(org) do
-    Project.count_in_org(org.id) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, param: org.id)
+    Project.count_in_org(org.id, false) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, param: org.id)
   end
 
   defp serialize(project), do: serialize(project, true)
