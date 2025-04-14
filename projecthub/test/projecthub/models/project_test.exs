@@ -701,6 +701,9 @@ defmodule Projecthub.Models.ProjectTest do
 
       {:ok, _project4} = Support.Factories.Project.create()
 
+      # Soft deleted project should not be listed
+      create_and_soft_destroy()
+
       page = Project.list_per_page(org_id, 1, 2)
 
       assert page.page_number == 1
@@ -710,6 +713,24 @@ defmodule Projecthub.Models.ProjectTest do
 
       entries = page.entries
       assert Enum.count(entries) == 2
+    end
+
+    test "it returns a page of soft deleted projects" do
+      org_id = Ecto.UUID.generate()
+
+      create_and_soft_destroy_many(org_id: org_id, quantity: 4)
+
+      {:ok, _non_deleted_project} = Support.Factories.Project.create()
+
+      page = Project.list_per_page(org_id, 1, 3, soft_deleted: true)
+
+      assert page.page_number == 1
+      assert page.page_size == 3
+      assert page.total_entries == 3
+      assert page.total_pages == 2
+
+      entries = page.entries
+      assert Enum.count(entries) == 3
     end
 
     test "it filter projects by owner_id" do
@@ -819,16 +840,22 @@ defmodule Projecthub.Models.ProjectTest do
     end
   end
 
-  defp create_and_soft_destroy_many do
-    {:ok, project1} = Support.Factories.Project.create_with_repo()
-    {:ok, project2} = Support.Factories.Project.create_with_repo()
+  defp create_and_soft_destroy_many(opts \\ []) do
+    org_id = opts[:org_id] || Ecto.UUID.generate()
+    quantity = opts[:quantity] || 2
+
+    projects =
+      for _ <- 1..quantity do
+        {:ok, project} = Support.Factories.Project.create_with_repo(%{organization_id: org_id})
+        project
+      end
 
     user = %User{github_token: "token"}
 
-    {:ok, _} = Project.soft_destroy(project1, user)
-    {:ok, _} = Project.soft_destroy(project2, user)
-
-    [project1, project2]
+    Enum.map(projects, fn project ->
+      {:ok, project} = Project.soft_destroy(project, user)
+      project
+    end)
   end
 
   defp create_and_soft_destroy do
@@ -836,7 +863,7 @@ defmodule Projecthub.Models.ProjectTest do
 
     user = %User{github_token: "token"}
 
-    {:ok, _} = Project.soft_destroy(project, user)
+    {:ok, project} = Project.soft_destroy(project, user)
 
     project
   end
