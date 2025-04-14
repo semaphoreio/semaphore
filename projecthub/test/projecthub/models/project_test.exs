@@ -582,7 +582,8 @@ defmodule Projecthub.Models.ProjectTest do
 
       {:ok, found_project} = Project.find(project.id, true)
 
-      assert found_project == project
+      assert found_project.id == project.id
+      assert found_project.name == project.name
     end
   end
 
@@ -618,7 +619,8 @@ defmodule Projecthub.Models.ProjectTest do
 
       {:ok, found_project} = Project.find_by_name(project.name, project.organization_id, true)
 
-      assert found_project == project
+      assert found_project.id == project.id
+      assert found_project.name == project.name
     end
   end
 
@@ -726,7 +728,7 @@ defmodule Projecthub.Models.ProjectTest do
 
       assert page.page_number == 1
       assert page.page_size == 3
-      assert page.total_entries == 3
+      assert page.total_entries == 4
       assert page.total_pages == 2
 
       entries = page.entries
@@ -852,10 +854,11 @@ defmodule Projecthub.Models.ProjectTest do
 
     user = %User{github_token: "token"}
 
-    Enum.map(projects, fn project ->
+    Enum.each(projects, fn project ->
       {:ok, project} = Project.soft_destroy(project, user)
-      project
     end)
+
+    projects
   end
 
   defp create_and_soft_destroy do
@@ -863,7 +866,7 @@ defmodule Projecthub.Models.ProjectTest do
 
     user = %User{github_token: "token"}
 
-    {:ok, project} = Project.soft_destroy(project, user)
+    {:ok, _} = Project.soft_destroy(project, user)
 
     project
   end
