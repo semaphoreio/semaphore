@@ -38,7 +38,7 @@ func FindEventSourceByName(orgID, canvasID uuid.UUID, name string) (*EventSource
 	err := database.Conn().
 		Where("organization_id = ?", orgID).
 		Where("canvas_id = ?", canvasID).
-		Where("name = ?").
+		Where("name = ?", name).
 		First(&eventSource).
 		Error
 

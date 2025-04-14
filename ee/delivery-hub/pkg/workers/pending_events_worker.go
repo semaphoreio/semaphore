@@ -62,6 +62,7 @@ func (w *PendingEventsWorker) ProcessEvent(event *models.Event) error {
 	// If the source is not connected to any stage, we discard the event.
 	//
 	if len(connections) == 0 {
+		log.Infof("Discarding event %s due to source %s not being connected to any stages", event.ID, event.SourceID)
 		err := event.Discard()
 		if err != nil {
 			return fmt.Errorf("error discarding event %s: %v", event.ID.String(), err)
