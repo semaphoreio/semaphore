@@ -570,6 +570,20 @@ defmodule Projecthub.Models.ProjectTest do
     test "when the project is requested by non-uuid => returns an error" do
       {:error, :not_found} = Project.find("semaphore")
     end
+
+    test "when the project is soft deleted => returns an error" do
+      project = create_and_soft_destroy()
+
+      assert {:error, :not_found} = Project.find(project.id)
+    end
+
+    test "when the project is soft deleted but we query soft_deleted ones => returns the project" do
+      project = create_and_soft_destroy()
+
+      {:ok, found_project} = Project.find(project.id, true)
+
+      assert found_project == project
+    end
   end
 
   describe ".find_by_name" do
@@ -591,6 +605,20 @@ defmodule Projecthub.Models.ProjectTest do
           "name",
           Ecto.UUID.generate()
         )
+    end
+
+    test "when the project is soft deleted => returns an error" do
+      project = create_and_soft_destroy()
+
+      assert {:error, :not_found} = Project.find_by_name(project.name, project.organization_id)
+    end
+
+    test "when the project is soft deleted but we query soft_deleted ones => returns the project" do
+      project = create_and_soft_destroy()
+
+      {:ok, found_project} = Project.find_by_name(project.name, project.organization_id, true)
+
+      assert found_project == project
     end
   end
 
@@ -633,6 +661,22 @@ defmodule Projecthub.Models.ProjectTest do
         )
 
       assert Enum.empty?(projects)
+    end
+
+    test "when the projects are soft deleted => doesn't return them" do
+      [project1, project2] = create_and_soft_destroy_many()
+
+      projects = Project.find_many(Ecto.UUID.generate(), [project1.id, project2.id])
+
+      assert Enum.empty?(projects)
+    end
+
+    test "when the projects are soft deleted but we query soft_deleted ones => returns them" do
+      [project1, project2] = create_and_soft_destroy_many()
+
+      projects = Project.find_many(Ecto.UUID.generate(), [project1.id, project2.id], true)
+
+      assert Enum.count(projects) == 2
     end
   end
 
@@ -773,5 +817,27 @@ defmodule Projecthub.Models.ProjectTest do
       entries = page.entries
       assert Enum.count(entries) == 2
     end
+  end
+
+  defp create_and_soft_destroy_many do
+    {:ok, project1} = Support.Factories.Project.create_with_repo()
+    {:ok, project2} = Support.Factories.Project.create_with_repo()
+
+    user = %User{github_token: "token"}
+
+    {:ok, _} = Project.soft_destroy(project1, user)
+    {:ok, _} = Project.soft_destroy(project2, user)
+
+    [project1, project2]
+  end
+
+  defp create_and_soft_destroy do
+    {:ok, project} = Support.Factories.Project.create_with_repo()
+
+    user = %User{github_token: "token"}
+
+    {:ok, _} = Project.soft_destroy(project, user)
+
+    project
   end
 end
