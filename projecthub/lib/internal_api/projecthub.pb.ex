@@ -484,7 +484,8 @@ defmodule InternalApi.Projecthub.RestoreRequest do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
 
-  field(:id, 1, type: :string)
+  field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
+  field(:id, 2, type: :string)
 end
 
 defmodule InternalApi.Projecthub.RestoreResponse do
@@ -679,6 +680,15 @@ defmodule InternalApi.Projecthub.ProjectCreated do
 end
 
 defmodule InternalApi.Projecthub.ProjectDeleted do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:project_id, 1, type: :string, json_name: "projectId")
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field(:org_id, 3, type: :string, json_name: "orgId")
+end
+
+defmodule InternalApi.Projecthub.ProjectRestored do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
 
