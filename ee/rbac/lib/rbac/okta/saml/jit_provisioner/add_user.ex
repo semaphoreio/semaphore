@@ -144,7 +144,7 @@ defmodule Rbac.Okta.Saml.JitProvisioner.AddUser do
 
   defp assign_groups(user_id, group_ids) when is_list(group_ids) do
     Enum.each(group_ids, fn group_id ->
-      Rbac.Repo.GroupManagementRequest.create_new_request(user_id, group_id, :add)
+      Rbac.Repo.GroupManagementRequest.create_new_request(user_id, group_id, :add, nil)
     end)
 
     :ok
