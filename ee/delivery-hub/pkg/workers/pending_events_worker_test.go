@@ -89,17 +89,15 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		stage1, _ := models.FindStageByName(org, canvas.ID, "stage-1")
 		stage2, _ := models.FindStageByName(org, canvas.ID, "stage-2")
-		stage1Events, err := stage1.ListEvents()
+		stage1Events, err := stage1.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
 		assert.Equal(t, source.ID, stage1Events[0].SourceID)
-		assert.Equal(t, models.StageEventPending, stage1Events[0].State)
 
-		stage2Events, err := stage2.ListEvents()
+		stage2Events, err := stage2.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, source.ID, stage2Events[0].SourceID)
-		assert.Equal(t, models.StageEventPending, stage2Events[0].State)
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {
@@ -146,11 +144,11 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// No events for the first stage, and one pending event for the second stage.
 		//
-		events, err := firstStage.ListEvents()
+		events, err := firstStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 0)
 		secondStage, _ := models.FindStageByName(org, canvas.ID, "stage-4")
-		events, err = secondStage.ListEvents()
+		events, err = secondStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, firstStage.ID, events[0].SourceID)

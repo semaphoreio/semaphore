@@ -120,6 +120,61 @@ func (RunTemplate_Type) EnumDescriptor() ([]byte, []int) {
 	return file_delivery_proto_rawDescGZIP(), []int{13, 0}
 }
 
+type StageEvent_State int32
+
+const (
+	StageEvent_UNKNOWN                 StageEvent_State = 0
+	StageEvent_PENDING                 StageEvent_State = 1
+	StageEvent_WAITING_FOR_APPROVAL    StageEvent_State = 2
+	StageEvent_WAITING_FOR_TIME_WINDOW StageEvent_State = 3
+	StageEvent_PROCESSED               StageEvent_State = 4
+)
+
+// Enum value maps for StageEvent_State.
+var (
+	StageEvent_State_name = map[int32]string{
+		0: "UNKNOWN",
+		1: "PENDING",
+		2: "WAITING_FOR_APPROVAL",
+		3: "WAITING_FOR_TIME_WINDOW",
+		4: "PROCESSED",
+	}
+	StageEvent_State_value = map[string]int32{
+		"UNKNOWN":                 0,
+		"PENDING":                 1,
+		"WAITING_FOR_APPROVAL":    2,
+		"WAITING_FOR_TIME_WINDOW": 3,
+		"PROCESSED":               4,
+	}
+)
+
+func (x StageEvent_State) Enum() *StageEvent_State {
+	p := new(StageEvent_State)
+	*p = x
+	return p
+}
+
+func (x StageEvent_State) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (StageEvent_State) Descriptor() protoreflect.EnumDescriptor {
+	return file_delivery_proto_enumTypes[2].Descriptor()
+}
+
+func (StageEvent_State) Type() protoreflect.EnumType {
+	return &file_delivery_proto_enumTypes[2]
+}
+
+func (x StageEvent_State) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use StageEvent_State.Descriptor instead.
+func (StageEvent_State) EnumDescriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{21, 0}
+}
+
 type Canvas struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1279,6 +1334,7 @@ func (x *UpdateStageResponse) GetStage() *Stage {
 type ListStageEventsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	StageId       string                 `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	States        []StageEvent_State     `protobuf:"varint,2,rep,packed,name=states,proto3,enum=InternalApi.Delivery.StageEvent_State" json:"states,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1318,6 +1374,13 @@ func (x *ListStageEventsRequest) GetStageId() string {
 		return x.StageId
 	}
 	return ""
+}
+
+func (x *ListStageEventsRequest) GetStates() []StageEvent_State {
+	if x != nil {
+		return x.States
+	}
+	return nil
 }
 
 type ListStageEventsResponse struct {
@@ -1369,7 +1432,7 @@ type StageEvent struct {
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	SourceId      string                 `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
 	SourceType    Connection_Type        `protobuf:"varint,3,opt,name=source_type,json=sourceType,proto3,enum=InternalApi.Delivery.Connection_Type" json:"source_type,omitempty"`
-	State         string                 `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
+	State         StageEvent_State       `protobuf:"varint,4,opt,name=state,proto3,enum=InternalApi.Delivery.StageEvent_State" json:"state,omitempty"`
 	CreatedAt     *timestamp.Timestamp   `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	ApprovedAt    *timestamp.Timestamp   `protobuf:"bytes,6,opt,name=approved_at,json=approvedAt,proto3" json:"approved_at,omitempty"`
 	ApprovedBy    string                 `protobuf:"bytes,7,opt,name=approved_by,json=approvedBy,proto3" json:"approved_by,omitempty"`
@@ -1428,11 +1491,11 @@ func (x *StageEvent) GetSourceType() Connection_Type {
 	return Connection_TYPE_UNKNOWN
 }
 
-func (x *StageEvent) GetState() string {
+func (x *StageEvent) GetState() StageEvent_State {
 	if x != nil {
 		return x.State
 	}
-	return ""
+	return StageEvent_UNKNOWN
 }
 
 func (x *StageEvent) GetCreatedAt() *timestamp.Timestamp {
@@ -1654,24 +1717,31 @@ const file_delivery_proto_rawDesc = "" +
 	"\vconnections\x18\x02 \x03(\v2 .InternalApi.Delivery.ConnectionR\vconnections\x12!\n" +
 	"\frequester_id\x18\x03 \x01(\tR\vrequesterId\"H\n" +
 	"\x13UpdateStageResponse\x121\n" +
-	"\x05stage\x18\x01 \x01(\v2\x1b.InternalApi.Delivery.StageR\x05stage\"3\n" +
+	"\x05stage\x18\x01 \x01(\v2\x1b.InternalApi.Delivery.StageR\x05stage\"s\n" +
 	"\x16ListStageEventsRequest\x12\x19\n" +
-	"\bstage_id\x18\x01 \x01(\tR\astageId\"S\n" +
+	"\bstage_id\x18\x01 \x01(\tR\astageId\x12>\n" +
+	"\x06states\x18\x02 \x03(\x0e2&.InternalApi.Delivery.StageEvent.StateR\x06states\"S\n" +
 	"\x17ListStageEventsResponse\x128\n" +
-	"\x06events\x18\x01 \x03(\v2 .InternalApi.Delivery.StageEventR\x06events\"\xb0\x02\n" +
+	"\x06events\x18\x01 \x03(\v2 .InternalApi.Delivery.StageEventR\x06events\"\xc1\x03\n" +
 	"\n" +
 	"StageEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x12F\n" +
 	"\vsource_type\x18\x03 \x01(\x0e2%.InternalApi.Delivery.Connection.TypeR\n" +
-	"sourceType\x12\x14\n" +
-	"\x05state\x18\x04 \x01(\tR\x05state\x129\n" +
+	"sourceType\x12<\n" +
+	"\x05state\x18\x04 \x01(\x0e2&.InternalApi.Delivery.StageEvent.StateR\x05state\x129\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12;\n" +
 	"\vapproved_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"approvedAt\x12\x1f\n" +
 	"\vapproved_by\x18\a \x01(\tR\n" +
-	"approvedBy\"s\n" +
+	"approvedBy\"g\n" +
+	"\x05State\x12\v\n" +
+	"\aUNKNOWN\x10\x00\x12\v\n" +
+	"\aPENDING\x10\x01\x12\x18\n" +
+	"\x14WAITING_FOR_APPROVAL\x10\x02\x12\x1b\n" +
+	"\x17WAITING_FOR_TIME_WINDOW\x10\x03\x12\r\n" +
+	"\tPROCESSED\x10\x04\"s\n" +
 	"\x18ApproveStageEventRequest\x12\x19\n" +
 	"\bstage_id\x18\x01 \x01(\tR\astageId\x12\x19\n" +
 	"\bevent_id\x18\x02 \x01(\tR\aeventId\x12!\n" +
@@ -1698,83 +1768,86 @@ func file_delivery_proto_rawDescGZIP() []byte {
 	return file_delivery_proto_rawDescData
 }
 
-var file_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
 var file_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_delivery_proto_goTypes = []any{
 	(Connection_Type)(0),                // 0: InternalApi.Delivery.Connection.Type
 	(RunTemplate_Type)(0),               // 1: InternalApi.Delivery.RunTemplate.Type
-	(*Canvas)(nil),                      // 2: InternalApi.Delivery.Canvas
-	(*CreateCanvasRequest)(nil),         // 3: InternalApi.Delivery.CreateCanvasRequest
-	(*CreateCanvasResponse)(nil),        // 4: InternalApi.Delivery.CreateCanvasResponse
-	(*DescribeCanvasRequest)(nil),       // 5: InternalApi.Delivery.DescribeCanvasRequest
-	(*DescribeCanvasResponse)(nil),      // 6: InternalApi.Delivery.DescribeCanvasResponse
-	(*EventSource)(nil),                 // 7: InternalApi.Delivery.EventSource
-	(*CreateEventSourceRequest)(nil),    // 8: InternalApi.Delivery.CreateEventSourceRequest
-	(*CreateEventSourceResponse)(nil),   // 9: InternalApi.Delivery.CreateEventSourceResponse
-	(*DescribeEventSourceRequest)(nil),  // 10: InternalApi.Delivery.DescribeEventSourceRequest
-	(*DescribeEventSourceResponse)(nil), // 11: InternalApi.Delivery.DescribeEventSourceResponse
-	(*Connection)(nil),                  // 12: InternalApi.Delivery.Connection
-	(*Stage)(nil),                       // 13: InternalApi.Delivery.Stage
-	(*CreateStageRequest)(nil),          // 14: InternalApi.Delivery.CreateStageRequest
-	(*RunTemplate)(nil),                 // 15: InternalApi.Delivery.RunTemplate
-	(*WorkflowTemplate)(nil),            // 16: InternalApi.Delivery.WorkflowTemplate
-	(*TaskTemplate)(nil),                // 17: InternalApi.Delivery.TaskTemplate
-	(*CreateStageResponse)(nil),         // 18: InternalApi.Delivery.CreateStageResponse
-	(*UpdateStageRequest)(nil),          // 19: InternalApi.Delivery.UpdateStageRequest
-	(*UpdateStageResponse)(nil),         // 20: InternalApi.Delivery.UpdateStageResponse
-	(*ListStageEventsRequest)(nil),      // 21: InternalApi.Delivery.ListStageEventsRequest
-	(*ListStageEventsResponse)(nil),     // 22: InternalApi.Delivery.ListStageEventsResponse
-	(*StageEvent)(nil),                  // 23: InternalApi.Delivery.StageEvent
-	(*ApproveStageEventRequest)(nil),    // 24: InternalApi.Delivery.ApproveStageEventRequest
-	(*ApproveStageEventResponse)(nil),   // 25: InternalApi.Delivery.ApproveStageEventResponse
-	nil,                                 // 26: InternalApi.Delivery.TaskTemplate.ParametersEntry
-	(*timestamp.Timestamp)(nil),         // 27: google.protobuf.Timestamp
+	(StageEvent_State)(0),               // 2: InternalApi.Delivery.StageEvent.State
+	(*Canvas)(nil),                      // 3: InternalApi.Delivery.Canvas
+	(*CreateCanvasRequest)(nil),         // 4: InternalApi.Delivery.CreateCanvasRequest
+	(*CreateCanvasResponse)(nil),        // 5: InternalApi.Delivery.CreateCanvasResponse
+	(*DescribeCanvasRequest)(nil),       // 6: InternalApi.Delivery.DescribeCanvasRequest
+	(*DescribeCanvasResponse)(nil),      // 7: InternalApi.Delivery.DescribeCanvasResponse
+	(*EventSource)(nil),                 // 8: InternalApi.Delivery.EventSource
+	(*CreateEventSourceRequest)(nil),    // 9: InternalApi.Delivery.CreateEventSourceRequest
+	(*CreateEventSourceResponse)(nil),   // 10: InternalApi.Delivery.CreateEventSourceResponse
+	(*DescribeEventSourceRequest)(nil),  // 11: InternalApi.Delivery.DescribeEventSourceRequest
+	(*DescribeEventSourceResponse)(nil), // 12: InternalApi.Delivery.DescribeEventSourceResponse
+	(*Connection)(nil),                  // 13: InternalApi.Delivery.Connection
+	(*Stage)(nil),                       // 14: InternalApi.Delivery.Stage
+	(*CreateStageRequest)(nil),          // 15: InternalApi.Delivery.CreateStageRequest
+	(*RunTemplate)(nil),                 // 16: InternalApi.Delivery.RunTemplate
+	(*WorkflowTemplate)(nil),            // 17: InternalApi.Delivery.WorkflowTemplate
+	(*TaskTemplate)(nil),                // 18: InternalApi.Delivery.TaskTemplate
+	(*CreateStageResponse)(nil),         // 19: InternalApi.Delivery.CreateStageResponse
+	(*UpdateStageRequest)(nil),          // 20: InternalApi.Delivery.UpdateStageRequest
+	(*UpdateStageResponse)(nil),         // 21: InternalApi.Delivery.UpdateStageResponse
+	(*ListStageEventsRequest)(nil),      // 22: InternalApi.Delivery.ListStageEventsRequest
+	(*ListStageEventsResponse)(nil),     // 23: InternalApi.Delivery.ListStageEventsResponse
+	(*StageEvent)(nil),                  // 24: InternalApi.Delivery.StageEvent
+	(*ApproveStageEventRequest)(nil),    // 25: InternalApi.Delivery.ApproveStageEventRequest
+	(*ApproveStageEventResponse)(nil),   // 26: InternalApi.Delivery.ApproveStageEventResponse
+	nil,                                 // 27: InternalApi.Delivery.TaskTemplate.ParametersEntry
+	(*timestamp.Timestamp)(nil),         // 28: google.protobuf.Timestamp
 }
 var file_delivery_proto_depIdxs = []int32{
-	27, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
-	13, // 1: InternalApi.Delivery.Canvas.stages:type_name -> InternalApi.Delivery.Stage
-	7,  // 2: InternalApi.Delivery.Canvas.event_sources:type_name -> InternalApi.Delivery.EventSource
-	2,  // 3: InternalApi.Delivery.CreateCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
-	2,  // 4: InternalApi.Delivery.DescribeCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
-	27, // 5: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
-	7,  // 6: InternalApi.Delivery.CreateEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
-	7,  // 7: InternalApi.Delivery.DescribeEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
+	28, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
+	14, // 1: InternalApi.Delivery.Canvas.stages:type_name -> InternalApi.Delivery.Stage
+	8,  // 2: InternalApi.Delivery.Canvas.event_sources:type_name -> InternalApi.Delivery.EventSource
+	3,  // 3: InternalApi.Delivery.CreateCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
+	3,  // 4: InternalApi.Delivery.DescribeCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
+	28, // 5: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
+	8,  // 6: InternalApi.Delivery.CreateEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
+	8,  // 7: InternalApi.Delivery.DescribeEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
 	0,  // 8: InternalApi.Delivery.Connection.type:type_name -> InternalApi.Delivery.Connection.Type
-	27, // 9: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
-	12, // 10: InternalApi.Delivery.Stage.connections:type_name -> InternalApi.Delivery.Connection
-	15, // 11: InternalApi.Delivery.Stage.run_template:type_name -> InternalApi.Delivery.RunTemplate
-	12, // 12: InternalApi.Delivery.CreateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
-	15, // 13: InternalApi.Delivery.CreateStageRequest.run_template:type_name -> InternalApi.Delivery.RunTemplate
+	28, // 9: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
+	13, // 10: InternalApi.Delivery.Stage.connections:type_name -> InternalApi.Delivery.Connection
+	16, // 11: InternalApi.Delivery.Stage.run_template:type_name -> InternalApi.Delivery.RunTemplate
+	13, // 12: InternalApi.Delivery.CreateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
+	16, // 13: InternalApi.Delivery.CreateStageRequest.run_template:type_name -> InternalApi.Delivery.RunTemplate
 	1,  // 14: InternalApi.Delivery.RunTemplate.type:type_name -> InternalApi.Delivery.RunTemplate.Type
-	16, // 15: InternalApi.Delivery.RunTemplate.semaphore_workflow:type_name -> InternalApi.Delivery.WorkflowTemplate
-	17, // 16: InternalApi.Delivery.RunTemplate.semaphore_task:type_name -> InternalApi.Delivery.TaskTemplate
-	26, // 17: InternalApi.Delivery.TaskTemplate.parameters:type_name -> InternalApi.Delivery.TaskTemplate.ParametersEntry
-	13, // 18: InternalApi.Delivery.CreateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
-	12, // 19: InternalApi.Delivery.UpdateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
-	13, // 20: InternalApi.Delivery.UpdateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
-	23, // 21: InternalApi.Delivery.ListStageEventsResponse.events:type_name -> InternalApi.Delivery.StageEvent
-	0,  // 22: InternalApi.Delivery.StageEvent.source_type:type_name -> InternalApi.Delivery.Connection.Type
-	27, // 23: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
-	27, // 24: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
-	3,  // 25: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
-	5,  // 26: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
-	8,  // 27: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
-	14, // 28: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
-	19, // 29: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
-	21, // 30: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
-	24, // 31: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
-	4,  // 32: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
-	6,  // 33: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
-	9,  // 34: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
-	18, // 35: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
-	20, // 36: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
-	22, // 37: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
-	25, // 38: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
-	32, // [32:39] is the sub-list for method output_type
-	25, // [25:32] is the sub-list for method input_type
-	25, // [25:25] is the sub-list for extension type_name
-	25, // [25:25] is the sub-list for extension extendee
-	0,  // [0:25] is the sub-list for field type_name
+	17, // 15: InternalApi.Delivery.RunTemplate.semaphore_workflow:type_name -> InternalApi.Delivery.WorkflowTemplate
+	18, // 16: InternalApi.Delivery.RunTemplate.semaphore_task:type_name -> InternalApi.Delivery.TaskTemplate
+	27, // 17: InternalApi.Delivery.TaskTemplate.parameters:type_name -> InternalApi.Delivery.TaskTemplate.ParametersEntry
+	14, // 18: InternalApi.Delivery.CreateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
+	13, // 19: InternalApi.Delivery.UpdateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
+	14, // 20: InternalApi.Delivery.UpdateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
+	2,  // 21: InternalApi.Delivery.ListStageEventsRequest.states:type_name -> InternalApi.Delivery.StageEvent.State
+	24, // 22: InternalApi.Delivery.ListStageEventsResponse.events:type_name -> InternalApi.Delivery.StageEvent
+	0,  // 23: InternalApi.Delivery.StageEvent.source_type:type_name -> InternalApi.Delivery.Connection.Type
+	2,  // 24: InternalApi.Delivery.StageEvent.state:type_name -> InternalApi.Delivery.StageEvent.State
+	28, // 25: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
+	28, // 26: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
+	4,  // 27: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
+	6,  // 28: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
+	9,  // 29: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
+	15, // 30: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
+	20, // 31: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
+	22, // 32: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
+	25, // 33: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
+	5,  // 34: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
+	7,  // 35: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
+	10, // 36: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
+	19, // 37: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
+	21, // 38: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
+	23, // 39: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
+	26, // 40: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
+	34, // [34:41] is the sub-list for method output_type
+	27, // [27:34] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_delivery_proto_init() }
@@ -1787,7 +1860,7 @@ func file_delivery_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_delivery_proto_rawDesc), len(file_delivery_proto_rawDesc)),
-			NumEnums:      2,
+			NumEnums:      3,
 			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,

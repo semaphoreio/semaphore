@@ -95,9 +95,23 @@ func FindStage(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	return &stage, nil
 }
 
-func (s *Stage) ListEvents() ([]StageEvent, error) {
+func (s *Stage) ListPendingEvents() ([]StageEvent, error) {
+	return s.ListEvents([]string{StageEventPending})
+}
+
+func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
 	var events []StageEvent
-	return events, database.Conn().Where("stage_id = ?", s.ID).Find(&events).Error
+	err := database.Conn().
+		Where("stage_id = ?", s.ID).
+		Where("state IN ?", states).
+		Find(&events).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }
 
 func (s *Stage) FindExecutionByID(id uuid.UUID) (*StageExecution, error) {

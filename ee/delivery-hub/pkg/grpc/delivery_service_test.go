@@ -408,7 +408,7 @@ func Test__ListStageEvents(t *testing.T) {
 		assert.NotEmpty(t, res.Events[0].CreatedAt)
 		assert.Equal(t, eventSource.ID.String(), res.Events[0].SourceId)
 		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, res.Events[0].SourceType)
-		assert.Equal(t, models.StageEventPending, res.Events[0].State)
+		assert.Equal(t, protos.StageEvent_PENDING, res.Events[0].State)
 		assert.Empty(t, res.Events[0].ApprovedAt)
 		assert.Empty(t, res.Events[0].ApprovedBy)
 	})
