@@ -132,6 +132,49 @@ defmodule Rbac.Store.Group do
     end
   end
 
+  @spec destroy(String.t()) :: :ok | {:error, atom() | String.t()}
+  def destroy(group_id) do
+    Watchman.benchmark("groups.destroy.duration", fn ->
+      case fetch_group(group_id) do
+        {:ok, group} ->
+          {:ok, rbi} = RBI.new(org_id: group.org_id)
+
+          # Build the full transaction to remove the group
+          ecto_transaction =
+            Ecto.Multi.new()
+            |> Ecto.Multi.run(:clear_all_permissions, fn _, _ -> remove_user_permissions(rbi) end)
+            |> Ecto.Multi.run(:clear_all_project_access, fn _, _ -> clear_project_access(rbi) end)
+            |> Ecto.Multi.delete_all(
+              :delete_user_group_bindings,
+              Rbac.Repo.UserGroupBinding |> where([ugb], ugb.group_id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_subject_role_bindings,
+              Rbac.Repo.SubjectRoleBinding |> where([srb], srb.subject_id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_group,
+              Rbac.Repo.Group |> where([g], g.id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_subject,
+              Rbac.Repo.Subject |> where([s], s.id == ^group_id)
+            )
+            |> Ecto.Multi.run(:recalculate_all_permissions, fn _, _ ->
+              add_user_permissions(rbi)
+            end)
+            |> Ecto.Multi.run(:recalculate_all_project_access, fn _, _ ->
+              add_project_access(rbi)
+            end)
+
+          execute_transaction(ecto_transaction, "destroy_group")
+
+        {:error, :not_found} ->
+          :ok
+      end
+    end)
+  end
+
   #
   # Helper funcs
   #
