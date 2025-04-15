@@ -14,6 +14,7 @@ defmodule E2E.UI.UserTestCase do
     quote do
       use ExUnit.Case, async: false
       use Wallaby.DSL
+      require Wallaby.Browser
 
       @moduletag :user
       @moduletag :browser
