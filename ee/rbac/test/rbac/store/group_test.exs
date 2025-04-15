@@ -2,6 +2,7 @@ defmodule Rbac.Store.Group.Test do
   use Rbac.RepoCase, async: true
 
   alias Rbac.Store.Group
+  alias Rbac.Repo
 
   import Ecto.Query
   import Mock
@@ -25,7 +26,7 @@ defmodule Rbac.Store.Group.Test do
 
   describe "add_to_group/2" do
     test "when group does not exist", ctx do
-      group = %Rbac.Repo.Group{id: Ecto.UUID.generate(), org_id: Ecto.UUID.generate()}
+      group = %Repo.Group{id: Ecto.UUID.generate(), org_id: Ecto.UUID.generate()}
       {:error, :user_not_in_org} = Group.add_to_group(group, ctx.user_id)
     end
 
@@ -42,26 +43,14 @@ defmodule Rbac.Store.Group.Test do
 
       :ok = Group.add_to_group(ctx.group, ctx.user_id)
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value =~ "organization.view"
       assert org_permissions.value =~ "organization.billing.manage"
 
-      project_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}")
-        |> Rbac.Repo.one()
-
+      project_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}") |> Repo.one()
       assert project_permissions.value == "project.view"
 
-      accesible_projects =
-        Rbac.Repo.ProjectAccessKeyValueStore
-        |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}")
-        |> Rbac.Repo.one()
-
+      accesible_projects = Repo.ProjectAccessKeyValueStore |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}") |> Repo.one()
       assert accesible_projects.value == proj_id
     end
 
@@ -77,11 +66,7 @@ defmodule Rbac.Store.Group.Test do
         {:error, :cant_add_project_acces_to_store} = Group.add_to_group(ctx.group, ctx.user_id)
       end
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value == "organization.view"
     end
 
@@ -102,11 +87,7 @@ defmodule Rbac.Store.Group.Test do
         end
       end
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value == "organization.view"
     end
   end
@@ -122,20 +103,11 @@ defmodule Rbac.Store.Group.Test do
       :ok = Group.add_to_group(ctx.group, ctx.user_id)
       :ok = Group.remove_from_group(ctx.group, ctx.user_id)
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value =~ "organization.view"
 
-      refute Rbac.Repo.UserPermissionsKeyValueStore
-             |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}")
-             |> Rbac.Repo.exists?()
-
-      refute Rbac.Repo.ProjectAccessKeyValueStore
-             |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}")
-             |> Rbac.Repo.exists?()
+      refute Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}") |> Repo.exists?()
+      refute Repo.ProjectAccessKeyValueStore |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}") |> Repo.exists?()
     end
 
     test "when something goes wrong during the transaction", ctx do
@@ -151,26 +123,14 @@ defmodule Rbac.Store.Group.Test do
         {:error, :cache_refresh_error} = Group.remove_from_group(ctx.group, ctx.user_id)
       end
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value =~ "organization.view"
       assert org_permissions.value =~ "organization.billing.manage"
 
-      project_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}")
-        |> Rbac.Repo.one()
-
+      project_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}") |> Repo.one()
       assert project_permissions.value == "project.view"
 
-      accesible_projects =
-        Rbac.Repo.ProjectAccessKeyValueStore
-        |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}")
-        |> Rbac.Repo.one()
-
+      accesible_projects = Repo.ProjectAccessKeyValueStore |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}") |> Repo.one()
       assert accesible_projects.value == proj_id
     end
 
@@ -191,26 +151,42 @@ defmodule Rbac.Store.Group.Test do
         end
       end
 
-      org_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*")
-        |> Rbac.Repo.one()
-
+      org_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:*") |> Repo.one()
       assert org_permissions.value =~ "organization.view"
 
-      project_permissions =
-        Rbac.Repo.UserPermissionsKeyValueStore
-        |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}")
-        |> Rbac.Repo.one()
-
+      project_permissions = Repo.UserPermissionsKeyValueStore |> where([up], up.key == ^"user:#{ctx.user_id}_org:#{@org_id}_project:#{proj_id}") |> Repo.one()
       assert project_permissions.value == "project.view"
 
-      accesible_projects =
-        Rbac.Repo.ProjectAccessKeyValueStore
-        |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}")
-        |> Rbac.Repo.one()
-
+      accesible_projects = Repo.ProjectAccessKeyValueStore |> where([pa], pa.key == ^"user:#{ctx.user_id}_org:#{@org_id}") |> Repo.one()
       assert accesible_projects.value == proj_id
+    end
+  end
+
+  describe "destroy/1" do
+    test "when group does not exist" do
+      :ok = Group.destroy(Ecto.UUID.generate())
+    end
+
+    test "when group exists with user having both direct and group-assigned roles", %{user_id: user_id, group: group} do
+      {:ok, rbi} = Rbac.RoleBindingIdentification.new(user_id: user_id, org_id: @org_id)
+      Support.Factories.UserGroupBinding.insert(user_id: user_id, group_id: group.id)
+      Support.Rbac.assign_org_role_by_name(@org_id, group.id, "BillingAdmin")
+      permissions = Rbac.Store.UserPermissions.read_user_permissions(rbi)
+
+      assert permissions =~ "organization.view"
+      assert permissions =~ "organization.billing.manage"
+
+      Group.destroy(group.id)
+
+      permissions = Rbac.Store.UserPermissions.read_user_permissions(rbi)
+      assert permissions =~ "organization.view"
+      refute permissions =~ "organization.billing.manage"
+
+      # Verify all related records are removed
+      refute Repo.UserGroupBinding |> where([ugb], ugb.group_id == ^group.id) |> Repo.exists?()
+      refute Repo.SubjectRoleBinding |> where([srb], srb.subject_id == ^group.id) |> Repo.exists?()
+      refute Repo.Group |> where([g], g.id == ^group.id) |> Repo.exists?()
+      refute Repo.Subject |> where([s], s.id == ^group.id) |> Repo.exists?()
     end
   end
 end
