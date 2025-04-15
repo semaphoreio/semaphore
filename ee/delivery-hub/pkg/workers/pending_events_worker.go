@@ -80,9 +80,9 @@ func (w *PendingEventsWorker) ProcessEvent(logger *log.Entry, event *models.Even
 
 	logger.Infof("Connected stages: %v", stageIDs)
 
-	stages, err = w.filterStages(event, stages)
+	stages, err = w.filterStages(logger, event, stages, connections)
 	if err != nil {
-		return fmt.Errorf("error applying filters")
+		return fmt.Errorf("error applying filters: %v", err)
 	}
 
 	//
@@ -109,15 +109,44 @@ func (w *PendingEventsWorker) ProcessEvent(logger *log.Entry, event *models.Even
 	return nil
 }
 
-func (w *PendingEventsWorker) filterStages(event *models.Event, stages []models.Stage) ([]models.Stage, error) {
-	//
-	// TODO
-	// Here is where we would apply the stage filters, but we still don't have them.
-	// Stage filters prevent events from entering the stage queue.
-	//
-	// For POC purposes, all events enter the queue.
-	//
-	return stages, nil
+func findConnectionForStage(stageID string, connections []models.StageConnection) (models.StageConnection, error) {
+	for _, connection := range connections {
+		if connection.StageID.String() == stageID {
+			return connection, nil
+		}
+	}
+
+	return models.StageConnection{}, fmt.Errorf("connection not found for stage ID: %s", stageID)
+}
+
+func (w *PendingEventsWorker) filterStages(logger *log.Entry, event *models.Event, stages []models.Stage, connections []models.StageConnection) ([]models.Stage, error) {
+	filtered := []models.Stage{}
+
+	for _, stage := range stages {
+		connection, err := findConnectionForStage(stage.ID.String(), connections)
+		if err != nil {
+			return nil, fmt.Errorf("error finding connection for stage: %v", err)
+		}
+
+		//
+		// If the filter evaluation fails, we only log the error and skip this stage.
+		//
+		accept, err := connection.Accept(event)
+		if err != nil {
+			logger.Errorf("Error applying filter on stage %s: %v", stage.ID, err)
+			continue
+		}
+
+		if !accept {
+			logger.Infof("Not sending to stage %s - filters did not pass", stage.ID)
+			continue
+		}
+
+		logger.Infof("Sending to stage %s", stage.ID)
+		filtered = append(filtered, stage)
+	}
+
+	return filtered, nil
 }
 
 func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.Stage) error {

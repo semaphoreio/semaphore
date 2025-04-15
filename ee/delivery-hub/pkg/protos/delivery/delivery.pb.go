@@ -71,6 +71,104 @@ func (Connection_Type) EnumDescriptor() ([]byte, []int) {
 	return file_delivery_proto_rawDescGZIP(), []int{10, 0}
 }
 
+type Connection_FilterType int32
+
+const (
+	Connection_FILTER_TYPE_UNKNOWN    Connection_FilterType = 0
+	Connection_FILTER_TYPE_EXPRESSION Connection_FilterType = 1
+)
+
+// Enum value maps for Connection_FilterType.
+var (
+	Connection_FilterType_name = map[int32]string{
+		0: "FILTER_TYPE_UNKNOWN",
+		1: "FILTER_TYPE_EXPRESSION",
+	}
+	Connection_FilterType_value = map[string]int32{
+		"FILTER_TYPE_UNKNOWN":    0,
+		"FILTER_TYPE_EXPRESSION": 1,
+	}
+)
+
+func (x Connection_FilterType) Enum() *Connection_FilterType {
+	p := new(Connection_FilterType)
+	*p = x
+	return p
+}
+
+func (x Connection_FilterType) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Connection_FilterType) Descriptor() protoreflect.EnumDescriptor {
+	return file_delivery_proto_enumTypes[1].Descriptor()
+}
+
+func (Connection_FilterType) Type() protoreflect.EnumType {
+	return &file_delivery_proto_enumTypes[1]
+}
+
+func (x Connection_FilterType) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Connection_FilterType.Descriptor instead.
+func (Connection_FilterType) EnumDescriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{10, 1}
+}
+
+// Filters can be combined in two ways:
+//   - FILTER_OPERATOR_AND: all filters must be true
+//   - FILTER_OPERATOR_OR: at least one filter must be true
+type Connection_FilterOperator int32
+
+const (
+	Connection_FILTER_OPERATOR_UNKNOWN Connection_FilterOperator = 0
+	Connection_FILTER_OPERATOR_AND     Connection_FilterOperator = 1
+	Connection_FILTER_OPERATOR_OR      Connection_FilterOperator = 2
+)
+
+// Enum value maps for Connection_FilterOperator.
+var (
+	Connection_FilterOperator_name = map[int32]string{
+		0: "FILTER_OPERATOR_UNKNOWN",
+		1: "FILTER_OPERATOR_AND",
+		2: "FILTER_OPERATOR_OR",
+	}
+	Connection_FilterOperator_value = map[string]int32{
+		"FILTER_OPERATOR_UNKNOWN": 0,
+		"FILTER_OPERATOR_AND":     1,
+		"FILTER_OPERATOR_OR":      2,
+	}
+)
+
+func (x Connection_FilterOperator) Enum() *Connection_FilterOperator {
+	p := new(Connection_FilterOperator)
+	*p = x
+	return p
+}
+
+func (x Connection_FilterOperator) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Connection_FilterOperator) Descriptor() protoreflect.EnumDescriptor {
+	return file_delivery_proto_enumTypes[2].Descriptor()
+}
+
+func (Connection_FilterOperator) Type() protoreflect.EnumType {
+	return &file_delivery_proto_enumTypes[2]
+}
+
+func (x Connection_FilterOperator) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Connection_FilterOperator.Descriptor instead.
+func (Connection_FilterOperator) EnumDescriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{10, 2}
+}
+
 type RunTemplate_Type int32
 
 const (
@@ -104,11 +202,11 @@ func (x RunTemplate_Type) String() string {
 }
 
 func (RunTemplate_Type) Descriptor() protoreflect.EnumDescriptor {
-	return file_delivery_proto_enumTypes[1].Descriptor()
+	return file_delivery_proto_enumTypes[3].Descriptor()
 }
 
 func (RunTemplate_Type) Type() protoreflect.EnumType {
-	return &file_delivery_proto_enumTypes[1]
+	return &file_delivery_proto_enumTypes[3]
 }
 
 func (x RunTemplate_Type) Number() protoreflect.EnumNumber {
@@ -159,11 +257,11 @@ func (x StageEvent_State) String() string {
 }
 
 func (StageEvent_State) Descriptor() protoreflect.EnumDescriptor {
-	return file_delivery_proto_enumTypes[2].Descriptor()
+	return file_delivery_proto_enumTypes[4].Descriptor()
 }
 
 func (StageEvent_State) Type() protoreflect.EnumType {
-	return &file_delivery_proto_enumTypes[2]
+	return &file_delivery_proto_enumTypes[4]
 }
 
 func (x StageEvent_State) Number() protoreflect.EnumNumber {
@@ -760,11 +858,13 @@ func (x *DescribeEventSourceResponse) GetEventSource() *EventSource {
 }
 
 type Connection struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          Connection_Type        `protobuf:"varint,1,opt,name=type,proto3,enum=InternalApi.Delivery.Connection_Type" json:"type,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState    `protogen:"open.v1"`
+	Type           Connection_Type           `protobuf:"varint,1,opt,name=type,proto3,enum=InternalApi.Delivery.Connection_Type" json:"type,omitempty"`
+	Name           string                    `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Filters        []*Connection_Filter      `protobuf:"bytes,3,rep,name=filters,proto3" json:"filters,omitempty"`
+	FilterOperator Connection_FilterOperator `protobuf:"varint,4,opt,name=filter_operator,json=filterOperator,proto3,enum=InternalApi.Delivery.Connection_FilterOperator" json:"filter_operator,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Connection) Reset() {
@@ -809,6 +909,20 @@ func (x *Connection) GetName() string {
 		return x.Name
 	}
 	return ""
+}
+
+func (x *Connection) GetFilters() []*Connection_Filter {
+	if x != nil {
+		return x.Filters
+	}
+	return nil
+}
+
+func (x *Connection) GetFilterOperator() Connection_FilterOperator {
+	if x != nil {
+		return x.FilterOperator
+	}
+	return Connection_FILTER_OPERATOR_UNKNOWN
 }
 
 type Stage struct {
@@ -1615,6 +1729,162 @@ func (*ApproveStageEventResponse) Descriptor() ([]byte, []int) {
 	return file_delivery_proto_rawDescGZIP(), []int{23}
 }
 
+type Connection_Filter struct {
+	state         protoimpl.MessageState       `protogen:"open.v1"`
+	Type          Connection_FilterType        `protobuf:"varint,1,opt,name=type,proto3,enum=InternalApi.Delivery.Connection_FilterType" json:"type,omitempty"`
+	Expression    *Connection_ExpressionFilter `protobuf:"bytes,2,opt,name=expression,proto3" json:"expression,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Connection_Filter) Reset() {
+	*x = Connection_Filter{}
+	mi := &file_delivery_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Connection_Filter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Connection_Filter) ProtoMessage() {}
+
+func (x *Connection_Filter) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Connection_Filter.ProtoReflect.Descriptor instead.
+func (*Connection_Filter) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{10, 0}
+}
+
+func (x *Connection_Filter) GetType() Connection_FilterType {
+	if x != nil {
+		return x.Type
+	}
+	return Connection_FILTER_TYPE_UNKNOWN
+}
+
+func (x *Connection_Filter) GetExpression() *Connection_ExpressionFilter {
+	if x != nil {
+		return x.Expression
+	}
+	return nil
+}
+
+type Connection_ExpressionFilter struct {
+	state         protoimpl.MessageState                  `protogen:"open.v1"`
+	Expression    string                                  `protobuf:"bytes,1,opt,name=expression,proto3" json:"expression,omitempty"`
+	Variables     []*Connection_ExpressionFilter_Variable `protobuf:"bytes,2,rep,name=variables,proto3" json:"variables,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Connection_ExpressionFilter) Reset() {
+	*x = Connection_ExpressionFilter{}
+	mi := &file_delivery_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Connection_ExpressionFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Connection_ExpressionFilter) ProtoMessage() {}
+
+func (x *Connection_ExpressionFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Connection_ExpressionFilter.ProtoReflect.Descriptor instead.
+func (*Connection_ExpressionFilter) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{10, 1}
+}
+
+func (x *Connection_ExpressionFilter) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
+}
+
+func (x *Connection_ExpressionFilter) GetVariables() []*Connection_ExpressionFilter_Variable {
+	if x != nil {
+		return x.Variables
+	}
+	return nil
+}
+
+type Connection_ExpressionFilter_Variable struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Path          string                 `protobuf:"bytes,2,opt,name=path,proto3" json:"path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Connection_ExpressionFilter_Variable) Reset() {
+	*x = Connection_ExpressionFilter_Variable{}
+	mi := &file_delivery_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Connection_ExpressionFilter_Variable) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Connection_ExpressionFilter_Variable) ProtoMessage() {}
+
+func (x *Connection_ExpressionFilter_Variable) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Connection_ExpressionFilter_Variable.ProtoReflect.Descriptor instead.
+func (*Connection_ExpressionFilter_Variable) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{10, 1, 0}
+}
+
+func (x *Connection_ExpressionFilter_Variable) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Connection_ExpressionFilter_Variable) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
 var File_delivery_proto protoreflect.FileDescriptor
 
 const file_delivery_proto_rawDesc = "" +
@@ -1659,16 +1929,39 @@ const file_delivery_proto_rawDesc = "" +
 	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1b\n" +
 	"\tcanvas_id\x18\x03 \x01(\tR\bcanvasId\"c\n" +
 	"\x1bDescribeEventSourceResponse\x12D\n" +
-	"\fevent_source\x18\x01 \x01(\v2!.InternalApi.Delivery.EventSourceR\veventSource\"\x9c\x01\n" +
+	"\fevent_source\x18\x01 \x01(\v2!.InternalApi.Delivery.EventSourceR\veventSource\"\xbe\x06\n" +
 	"\n" +
 	"Connection\x129\n" +
 	"\x04type\x18\x01 \x01(\x0e2%.InternalApi.Delivery.Connection.TypeR\x04type\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"?\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12A\n" +
+	"\afilters\x18\x03 \x03(\v2'.InternalApi.Delivery.Connection.FilterR\afilters\x12X\n" +
+	"\x0ffilter_operator\x18\x04 \x01(\x0e2/.InternalApi.Delivery.Connection.FilterOperatorR\x0efilterOperator\x1a\x9c\x01\n" +
+	"\x06Filter\x12?\n" +
+	"\x04type\x18\x01 \x01(\x0e2+.InternalApi.Delivery.Connection.FilterTypeR\x04type\x12Q\n" +
+	"\n" +
+	"expression\x18\x02 \x01(\v21.InternalApi.Delivery.Connection.ExpressionFilterR\n" +
+	"expression\x1a\xc0\x01\n" +
+	"\x10ExpressionFilter\x12\x1e\n" +
+	"\n" +
+	"expression\x18\x01 \x01(\tR\n" +
+	"expression\x12X\n" +
+	"\tvariables\x18\x02 \x03(\v2:.InternalApi.Delivery.Connection.ExpressionFilter.VariableR\tvariables\x1a2\n" +
+	"\bVariable\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04path\x18\x02 \x01(\tR\x04path\"?\n" +
 	"\x04Type\x12\x10\n" +
 	"\fTYPE_UNKNOWN\x10\x00\x12\x15\n" +
 	"\x11TYPE_EVENT_SOURCE\x10\x01\x12\x0e\n" +
 	"\n" +
-	"TYPE_STAGE\x10\x02\"\xe3\x02\n" +
+	"TYPE_STAGE\x10\x02\"A\n" +
+	"\n" +
+	"FilterType\x12\x17\n" +
+	"\x13FILTER_TYPE_UNKNOWN\x10\x00\x12\x1a\n" +
+	"\x16FILTER_TYPE_EXPRESSION\x10\x01\"^\n" +
+	"\x0eFilterOperator\x12\x1b\n" +
+	"\x17FILTER_OPERATOR_UNKNOWN\x10\x00\x12\x17\n" +
+	"\x13FILTER_OPERATOR_AND\x10\x01\x12\x16\n" +
+	"\x12FILTER_OPERATOR_OR\x10\x02\"\xe3\x02\n" +
 	"\x05Stage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12'\n" +
@@ -1768,86 +2061,96 @@ func file_delivery_proto_rawDescGZIP() []byte {
 	return file_delivery_proto_rawDescData
 }
 
-var file_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
+var file_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_delivery_proto_goTypes = []any{
-	(Connection_Type)(0),                // 0: InternalApi.Delivery.Connection.Type
-	(RunTemplate_Type)(0),               // 1: InternalApi.Delivery.RunTemplate.Type
-	(StageEvent_State)(0),               // 2: InternalApi.Delivery.StageEvent.State
-	(*Canvas)(nil),                      // 3: InternalApi.Delivery.Canvas
-	(*CreateCanvasRequest)(nil),         // 4: InternalApi.Delivery.CreateCanvasRequest
-	(*CreateCanvasResponse)(nil),        // 5: InternalApi.Delivery.CreateCanvasResponse
-	(*DescribeCanvasRequest)(nil),       // 6: InternalApi.Delivery.DescribeCanvasRequest
-	(*DescribeCanvasResponse)(nil),      // 7: InternalApi.Delivery.DescribeCanvasResponse
-	(*EventSource)(nil),                 // 8: InternalApi.Delivery.EventSource
-	(*CreateEventSourceRequest)(nil),    // 9: InternalApi.Delivery.CreateEventSourceRequest
-	(*CreateEventSourceResponse)(nil),   // 10: InternalApi.Delivery.CreateEventSourceResponse
-	(*DescribeEventSourceRequest)(nil),  // 11: InternalApi.Delivery.DescribeEventSourceRequest
-	(*DescribeEventSourceResponse)(nil), // 12: InternalApi.Delivery.DescribeEventSourceResponse
-	(*Connection)(nil),                  // 13: InternalApi.Delivery.Connection
-	(*Stage)(nil),                       // 14: InternalApi.Delivery.Stage
-	(*CreateStageRequest)(nil),          // 15: InternalApi.Delivery.CreateStageRequest
-	(*RunTemplate)(nil),                 // 16: InternalApi.Delivery.RunTemplate
-	(*WorkflowTemplate)(nil),            // 17: InternalApi.Delivery.WorkflowTemplate
-	(*TaskTemplate)(nil),                // 18: InternalApi.Delivery.TaskTemplate
-	(*CreateStageResponse)(nil),         // 19: InternalApi.Delivery.CreateStageResponse
-	(*UpdateStageRequest)(nil),          // 20: InternalApi.Delivery.UpdateStageRequest
-	(*UpdateStageResponse)(nil),         // 21: InternalApi.Delivery.UpdateStageResponse
-	(*ListStageEventsRequest)(nil),      // 22: InternalApi.Delivery.ListStageEventsRequest
-	(*ListStageEventsResponse)(nil),     // 23: InternalApi.Delivery.ListStageEventsResponse
-	(*StageEvent)(nil),                  // 24: InternalApi.Delivery.StageEvent
-	(*ApproveStageEventRequest)(nil),    // 25: InternalApi.Delivery.ApproveStageEventRequest
-	(*ApproveStageEventResponse)(nil),   // 26: InternalApi.Delivery.ApproveStageEventResponse
-	nil,                                 // 27: InternalApi.Delivery.TaskTemplate.ParametersEntry
-	(*timestamp.Timestamp)(nil),         // 28: google.protobuf.Timestamp
+	(Connection_Type)(0),                         // 0: InternalApi.Delivery.Connection.Type
+	(Connection_FilterType)(0),                   // 1: InternalApi.Delivery.Connection.FilterType
+	(Connection_FilterOperator)(0),               // 2: InternalApi.Delivery.Connection.FilterOperator
+	(RunTemplate_Type)(0),                        // 3: InternalApi.Delivery.RunTemplate.Type
+	(StageEvent_State)(0),                        // 4: InternalApi.Delivery.StageEvent.State
+	(*Canvas)(nil),                               // 5: InternalApi.Delivery.Canvas
+	(*CreateCanvasRequest)(nil),                  // 6: InternalApi.Delivery.CreateCanvasRequest
+	(*CreateCanvasResponse)(nil),                 // 7: InternalApi.Delivery.CreateCanvasResponse
+	(*DescribeCanvasRequest)(nil),                // 8: InternalApi.Delivery.DescribeCanvasRequest
+	(*DescribeCanvasResponse)(nil),               // 9: InternalApi.Delivery.DescribeCanvasResponse
+	(*EventSource)(nil),                          // 10: InternalApi.Delivery.EventSource
+	(*CreateEventSourceRequest)(nil),             // 11: InternalApi.Delivery.CreateEventSourceRequest
+	(*CreateEventSourceResponse)(nil),            // 12: InternalApi.Delivery.CreateEventSourceResponse
+	(*DescribeEventSourceRequest)(nil),           // 13: InternalApi.Delivery.DescribeEventSourceRequest
+	(*DescribeEventSourceResponse)(nil),          // 14: InternalApi.Delivery.DescribeEventSourceResponse
+	(*Connection)(nil),                           // 15: InternalApi.Delivery.Connection
+	(*Stage)(nil),                                // 16: InternalApi.Delivery.Stage
+	(*CreateStageRequest)(nil),                   // 17: InternalApi.Delivery.CreateStageRequest
+	(*RunTemplate)(nil),                          // 18: InternalApi.Delivery.RunTemplate
+	(*WorkflowTemplate)(nil),                     // 19: InternalApi.Delivery.WorkflowTemplate
+	(*TaskTemplate)(nil),                         // 20: InternalApi.Delivery.TaskTemplate
+	(*CreateStageResponse)(nil),                  // 21: InternalApi.Delivery.CreateStageResponse
+	(*UpdateStageRequest)(nil),                   // 22: InternalApi.Delivery.UpdateStageRequest
+	(*UpdateStageResponse)(nil),                  // 23: InternalApi.Delivery.UpdateStageResponse
+	(*ListStageEventsRequest)(nil),               // 24: InternalApi.Delivery.ListStageEventsRequest
+	(*ListStageEventsResponse)(nil),              // 25: InternalApi.Delivery.ListStageEventsResponse
+	(*StageEvent)(nil),                           // 26: InternalApi.Delivery.StageEvent
+	(*ApproveStageEventRequest)(nil),             // 27: InternalApi.Delivery.ApproveStageEventRequest
+	(*ApproveStageEventResponse)(nil),            // 28: InternalApi.Delivery.ApproveStageEventResponse
+	(*Connection_Filter)(nil),                    // 29: InternalApi.Delivery.Connection.Filter
+	(*Connection_ExpressionFilter)(nil),          // 30: InternalApi.Delivery.Connection.ExpressionFilter
+	(*Connection_ExpressionFilter_Variable)(nil), // 31: InternalApi.Delivery.Connection.ExpressionFilter.Variable
+	nil,                         // 32: InternalApi.Delivery.TaskTemplate.ParametersEntry
+	(*timestamp.Timestamp)(nil), // 33: google.protobuf.Timestamp
 }
 var file_delivery_proto_depIdxs = []int32{
-	28, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
-	14, // 1: InternalApi.Delivery.Canvas.stages:type_name -> InternalApi.Delivery.Stage
-	8,  // 2: InternalApi.Delivery.Canvas.event_sources:type_name -> InternalApi.Delivery.EventSource
-	3,  // 3: InternalApi.Delivery.CreateCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
-	3,  // 4: InternalApi.Delivery.DescribeCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
-	28, // 5: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
-	8,  // 6: InternalApi.Delivery.CreateEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
-	8,  // 7: InternalApi.Delivery.DescribeEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
+	33, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
+	16, // 1: InternalApi.Delivery.Canvas.stages:type_name -> InternalApi.Delivery.Stage
+	10, // 2: InternalApi.Delivery.Canvas.event_sources:type_name -> InternalApi.Delivery.EventSource
+	5,  // 3: InternalApi.Delivery.CreateCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
+	5,  // 4: InternalApi.Delivery.DescribeCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
+	33, // 5: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
+	10, // 6: InternalApi.Delivery.CreateEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
+	10, // 7: InternalApi.Delivery.DescribeEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
 	0,  // 8: InternalApi.Delivery.Connection.type:type_name -> InternalApi.Delivery.Connection.Type
-	28, // 9: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
-	13, // 10: InternalApi.Delivery.Stage.connections:type_name -> InternalApi.Delivery.Connection
-	16, // 11: InternalApi.Delivery.Stage.run_template:type_name -> InternalApi.Delivery.RunTemplate
-	13, // 12: InternalApi.Delivery.CreateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
-	16, // 13: InternalApi.Delivery.CreateStageRequest.run_template:type_name -> InternalApi.Delivery.RunTemplate
-	1,  // 14: InternalApi.Delivery.RunTemplate.type:type_name -> InternalApi.Delivery.RunTemplate.Type
-	17, // 15: InternalApi.Delivery.RunTemplate.semaphore_workflow:type_name -> InternalApi.Delivery.WorkflowTemplate
-	18, // 16: InternalApi.Delivery.RunTemplate.semaphore_task:type_name -> InternalApi.Delivery.TaskTemplate
-	27, // 17: InternalApi.Delivery.TaskTemplate.parameters:type_name -> InternalApi.Delivery.TaskTemplate.ParametersEntry
-	14, // 18: InternalApi.Delivery.CreateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
-	13, // 19: InternalApi.Delivery.UpdateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
-	14, // 20: InternalApi.Delivery.UpdateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
-	2,  // 21: InternalApi.Delivery.ListStageEventsRequest.states:type_name -> InternalApi.Delivery.StageEvent.State
-	24, // 22: InternalApi.Delivery.ListStageEventsResponse.events:type_name -> InternalApi.Delivery.StageEvent
-	0,  // 23: InternalApi.Delivery.StageEvent.source_type:type_name -> InternalApi.Delivery.Connection.Type
-	2,  // 24: InternalApi.Delivery.StageEvent.state:type_name -> InternalApi.Delivery.StageEvent.State
-	28, // 25: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
-	28, // 26: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
-	4,  // 27: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
-	6,  // 28: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
-	9,  // 29: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
-	15, // 30: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
-	20, // 31: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
-	22, // 32: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
-	25, // 33: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
-	5,  // 34: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
-	7,  // 35: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
-	10, // 36: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
-	19, // 37: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
-	21, // 38: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
-	23, // 39: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
-	26, // 40: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
-	34, // [34:41] is the sub-list for method output_type
-	27, // [27:34] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	29, // 9: InternalApi.Delivery.Connection.filters:type_name -> InternalApi.Delivery.Connection.Filter
+	2,  // 10: InternalApi.Delivery.Connection.filter_operator:type_name -> InternalApi.Delivery.Connection.FilterOperator
+	33, // 11: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
+	15, // 12: InternalApi.Delivery.Stage.connections:type_name -> InternalApi.Delivery.Connection
+	18, // 13: InternalApi.Delivery.Stage.run_template:type_name -> InternalApi.Delivery.RunTemplate
+	15, // 14: InternalApi.Delivery.CreateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
+	18, // 15: InternalApi.Delivery.CreateStageRequest.run_template:type_name -> InternalApi.Delivery.RunTemplate
+	3,  // 16: InternalApi.Delivery.RunTemplate.type:type_name -> InternalApi.Delivery.RunTemplate.Type
+	19, // 17: InternalApi.Delivery.RunTemplate.semaphore_workflow:type_name -> InternalApi.Delivery.WorkflowTemplate
+	20, // 18: InternalApi.Delivery.RunTemplate.semaphore_task:type_name -> InternalApi.Delivery.TaskTemplate
+	32, // 19: InternalApi.Delivery.TaskTemplate.parameters:type_name -> InternalApi.Delivery.TaskTemplate.ParametersEntry
+	16, // 20: InternalApi.Delivery.CreateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
+	15, // 21: InternalApi.Delivery.UpdateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
+	16, // 22: InternalApi.Delivery.UpdateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
+	4,  // 23: InternalApi.Delivery.ListStageEventsRequest.states:type_name -> InternalApi.Delivery.StageEvent.State
+	26, // 24: InternalApi.Delivery.ListStageEventsResponse.events:type_name -> InternalApi.Delivery.StageEvent
+	0,  // 25: InternalApi.Delivery.StageEvent.source_type:type_name -> InternalApi.Delivery.Connection.Type
+	4,  // 26: InternalApi.Delivery.StageEvent.state:type_name -> InternalApi.Delivery.StageEvent.State
+	33, // 27: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
+	33, // 28: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
+	1,  // 29: InternalApi.Delivery.Connection.Filter.type:type_name -> InternalApi.Delivery.Connection.FilterType
+	30, // 30: InternalApi.Delivery.Connection.Filter.expression:type_name -> InternalApi.Delivery.Connection.ExpressionFilter
+	31, // 31: InternalApi.Delivery.Connection.ExpressionFilter.variables:type_name -> InternalApi.Delivery.Connection.ExpressionFilter.Variable
+	6,  // 32: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
+	8,  // 33: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
+	11, // 34: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
+	17, // 35: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
+	22, // 36: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
+	24, // 37: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
+	27, // 38: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
+	7,  // 39: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
+	9,  // 40: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
+	12, // 41: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
+	21, // 42: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
+	23, // 43: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
+	25, // 44: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
+	28, // 45: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
+	39, // [39:46] is the sub-list for method output_type
+	32, // [32:39] is the sub-list for method input_type
+	32, // [32:32] is the sub-list for extension type_name
+	32, // [32:32] is the sub-list for extension extendee
+	0,  // [0:32] is the sub-list for field type_name
 }
 
 func init() { file_delivery_proto_init() }
@@ -1860,8 +2163,8 @@ func file_delivery_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_delivery_proto_rawDesc), len(file_delivery_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   25,
+			NumEnums:      5,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

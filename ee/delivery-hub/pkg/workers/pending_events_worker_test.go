@@ -154,4 +154,85 @@ func Test__PendingEventsWorker(t *testing.T) {
 		assert.Equal(t, firstStage.ID, events[0].SourceID)
 		assert.Equal(t, models.StageEventPending, events[0].State)
 	})
+
+	t.Run("event is filtered", func(t *testing.T) {
+		//
+		// Create two stages, connecting event source to them.
+		// First stage has a filter that should pass our event,
+		// but the second stage has a filter that should not pass.
+		//
+		err := canvas.CreateStage("stage-5", user, false, template, []models.StageConnection{
+			{
+				SourceID:       source.ID,
+				SourceType:     models.SourceTypeEventSource,
+				FilterOperator: models.FilterOperatorAnd,
+				Filters: []models.StageConnectionFilter{
+					{
+						Type: models.FilterTypeExpression,
+						Expression: &models.ExpressionFilter{
+							Expression: "a == 1 && b == 2",
+							Variables: []models.ExpressionVariable{
+								{Name: "a", Path: "a"},
+								{Name: "b", Path: "b"},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+
+		err = canvas.CreateStage("stage-6", user, false, template, []models.StageConnection{
+			{
+				SourceID:       source.ID,
+				SourceType:     models.SourceTypeEventSource,
+				FilterOperator: models.FilterOperatorAnd,
+				Filters: []models.StageConnectionFilter{
+					{
+						Type: models.FilterTypeExpression,
+						Expression: &models.ExpressionFilter{
+							Expression: "a == 0 && b == 0",
+							Variables: []models.ExpressionVariable{
+								{Name: "a", Path: "a"},
+								{Name: "b", Path: "b"},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, err)
+
+		//
+		// Create an event for the source, and trigger the worker.
+		//
+		event, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
+		require.NoError(t, err)
+		err = w.Tick()
+		require.NoError(t, err)
+
+		//
+		// Event is moved to processed state.
+		//
+		event, err = models.FindEventByID(event.ID)
+		require.NoError(t, err)
+		assert.Equal(t, models.EventStateProcessed, event.State)
+
+		//
+		// A pending stage event should be created only for the first stage
+		//
+
+		firstStage, _ := models.FindStageByName(org, canvas.ID, "stage-5")
+		events, err := firstStage.ListPendingEvents()
+		require.NoError(t, err)
+		require.Len(t, events, 1)
+		assert.Equal(t, source.ID, events[0].SourceID)
+
+		secondStage, _ := models.FindStageByName(org, canvas.ID, "stage-6")
+		events, err = secondStage.ListPendingEvents()
+		require.NoError(t, err)
+		require.Len(t, events, 0)
+	})
 }

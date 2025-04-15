@@ -432,7 +432,7 @@ func serializeStages(stages []models.Stage, sources []models.EventSource) ([]*pb
 			return nil, err
 		}
 
-		serialized, err := convertConnections(stages, sources, connections)
+		serialized, err := serializeConnections(stages, sources, connections)
 		if err != nil {
 			return nil, err
 		}
@@ -502,16 +502,155 @@ func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection
 			return nil, fmt.Errorf("invalid connection: %v", err)
 		}
 
+		operator, err := protoToFilterOperator(connection.FilterOperator)
+		if err != nil {
+			return nil, err
+		}
+
+		filters, err := validateFilters(connection.Filters)
+		if err != nil {
+			return nil, err
+		}
+
 		cs = append(cs, models.StageConnection{
-			SourceID:   *sourceID,
-			SourceType: protoToConnectionType(connection.Type),
+			SourceID:       *sourceID,
+			SourceType:     protoToConnectionType(connection.Type),
+			FilterOperator: operator,
+			Filters:        filters,
 		})
 	}
 
 	return cs, nil
 }
 
-func convertConnections(stages []models.Stage, sources []models.EventSource, in []models.StageConnection) ([]*pb.Connection, error) {
+func validateFilters(in []*pb.Connection_Filter) ([]models.StageConnectionFilter, error) {
+	filters := []models.StageConnectionFilter{}
+	for _, f := range in {
+		filter, err := validateFilter(f)
+		if err != nil {
+			return nil, err
+		}
+
+		filters = append(filters, *filter)
+	}
+
+	return filters, nil
+}
+
+func validateFilter(filter *pb.Connection_Filter) (*models.StageConnectionFilter, error) {
+	switch filter.Type {
+	case pb.Connection_FILTER_TYPE_EXPRESSION:
+		return validateExpressionFilter(filter.Expression)
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", filter.Type)
+	}
+}
+
+func validateExpressionFilter(filter *pb.Connection_ExpressionFilter) (*models.StageConnectionFilter, error) {
+	if filter == nil {
+		return nil, fmt.Errorf("no filter provided")
+	}
+
+	if filter.Expression == "" {
+		return nil, fmt.Errorf("expression is empty")
+	}
+
+	variables, err := validateExpressionVariables(filter.Variables)
+	if err != nil {
+		return nil, fmt.Errorf("invalid variables: %v", err)
+	}
+
+	return &models.StageConnectionFilter{
+		Type: models.FilterTypeExpression,
+		Expression: &models.ExpressionFilter{
+			Expression: filter.Expression,
+			Variables:  variables,
+		},
+	}, nil
+}
+
+func validateExpressionVariables(in []*pb.Connection_ExpressionFilter_Variable) ([]models.ExpressionVariable, error) {
+	variables := make([]models.ExpressionVariable, len(in))
+
+	for i, v := range variables {
+		if v.Name == "" {
+			return nil, fmt.Errorf("variable name is empty")
+		}
+
+		if v.Path == "" {
+			return nil, fmt.Errorf("path for variable '%s' is empty", v.Name)
+		}
+
+		variables[i] = models.ExpressionVariable{
+			Name: v.Name,
+			Path: v.Path,
+		}
+	}
+
+	return variables, nil
+}
+
+func protoToFilterOperator(in pb.Connection_FilterOperator) (string, error) {
+	switch in {
+	case pb.Connection_FILTER_OPERATOR_OR:
+		return models.FilterOperatorOr, nil
+	case pb.Connection_FILTER_OPERATOR_AND:
+		return models.FilterOperatorAnd, nil
+	default:
+		return "", fmt.Errorf("invalid filter operator: %s", in)
+	}
+}
+
+func filterOperatorToProto(in string) pb.Connection_FilterOperator {
+	switch in {
+	case models.FilterOperatorOr:
+		return pb.Connection_FILTER_OPERATOR_OR
+	case models.FilterOperatorAnd:
+		return pb.Connection_FILTER_OPERATOR_AND
+	default:
+		return pb.Connection_FILTER_OPERATOR_UNKNOWN
+	}
+}
+
+func serializeFilters(in []models.StageConnectionFilter) ([]*pb.Connection_Filter, error) {
+	filters := []*pb.Connection_Filter{}
+
+	for _, f := range in {
+		filter, err := serializeFilter(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter: %v", err)
+		}
+
+		filters = append(filters, filter)
+	}
+
+	return filters, nil
+}
+
+func serializeFilter(in models.StageConnectionFilter) (*pb.Connection_Filter, error) {
+	switch in.Type {
+	case models.FilterTypeExpression:
+		vars := []*pb.Connection_ExpressionFilter_Variable{}
+		for _, v := range in.Expression.Variables {
+			vars = append(vars, &pb.Connection_ExpressionFilter_Variable{
+				Name: v.Name,
+				Path: v.Path,
+			})
+		}
+
+		return &pb.Connection_Filter{
+			Type: pb.Connection_FILTER_TYPE_EXPRESSION,
+			Expression: &pb.Connection_ExpressionFilter{
+				Expression: in.Expression.Expression,
+				Variables:  vars,
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", in.Type)
+	}
+}
+
+func serializeConnections(stages []models.Stage, sources []models.EventSource, in []models.StageConnection) ([]*pb.Connection, error) {
 	connections := []*pb.Connection{}
 
 	for _, c := range in {
@@ -520,9 +659,16 @@ func convertConnections(stages []models.Stage, sources []models.EventSource, in 
 			return nil, fmt.Errorf("invalid connection: %v", err)
 		}
 
+		filters, err := serializeFilters(c.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filters: %v", err)
+		}
+
 		connections = append(connections, &pb.Connection{
-			Type: connectionTypeToProto(c.SourceType),
-			Name: name,
+			Type:           connectionTypeToProto(c.SourceType),
+			Name:           name,
+			FilterOperator: filterOperatorToProto(c.FilterOperator),
+			Filters:        filters,
 		})
 	}
 

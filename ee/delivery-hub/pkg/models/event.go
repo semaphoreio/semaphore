@@ -1,10 +1,13 @@
 package models
 
 import (
+	"encoding/json"
+	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -42,6 +45,16 @@ func (e *Event) MarkAsProcessedInTransaction(tx *gorm.DB) error {
 	return tx.Model(e).
 		Update("state", EventStateProcessed).
 		Error
+}
+
+func (e *Event) GetNestedField(path string) (any, error) {
+	var obj map[string]any
+	err := json.Unmarshal(e.Raw, &obj)
+	if err != nil {
+		return "", err
+	}
+
+	return events.GetNestedField(obj, strings.Split(path, "."))
 }
 
 func CreateEvent(sourceID uuid.UUID, sourceType string, raw []byte) (*Event, error) {

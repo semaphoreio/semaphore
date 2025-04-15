@@ -99,7 +99,9 @@ CREATE TABLE public.stage_connections (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     source_id uuid NOT NULL,
-    source_type character varying(64) NOT NULL
+    source_type character varying(64) NOT NULL,
+    filter_operator character varying(16) NOT NULL,
+    filters jsonb NOT NULL
 );
 
 
