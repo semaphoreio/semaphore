@@ -176,10 +176,10 @@ func Test__DescribeCanvas(t *testing.T) {
 		s2 := response.Canvas.Stages[1]
 		assert.Equal(t, "stage-2", s2.Name)
 		require.Len(t, s2.Connections, 2)
-		assert.Equal(t, "stage-1", s2.Connections[0].Name)
-		assert.Equal(t, protos.Connection_TYPE_STAGE, s2.Connections[0].Type)
-		assert.Equal(t, "gh", s2.Connections[1].Name)
-		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, s2.Connections[1].Type)
+		assert.Equal(t, "gh", s2.Connections[0].Name)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, s2.Connections[0].Type)
+		assert.Equal(t, "stage-1", s2.Connections[1].Name)
+		assert.Equal(t, protos.Connection_TYPE_STAGE, s2.Connections[1].Type)
 		assert.Equal(t, &protoTemplate, s2.RunTemplate)
 	})
 }

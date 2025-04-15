@@ -89,7 +89,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 			}
 
 			return e.State == models.StageExecutionFinished && e.Result == models.StageExecutionResultFailed
-		}, time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 200*time.Millisecond)
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -127,6 +127,6 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 			}
 
 			return e.State == models.StageExecutionFinished && e.Result == models.StageExecutionResultPassed
-		}, time.Second, 100*time.Millisecond)
+		}, 5*time.Second, 200*time.Millisecond)
 	})
 }

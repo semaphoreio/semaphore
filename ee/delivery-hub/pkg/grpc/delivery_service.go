@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
@@ -469,6 +470,13 @@ func convertConnections(stages []models.Stage, sources []models.EventSource, in 
 			Name: name,
 		})
 	}
+
+	//
+	// Sort them by name so we have some predictability here.
+	//
+	sort.SliceStable(connections, func(i, j int) bool {
+		return connections[i].Name < connections[j].Name
+	})
 
 	return connections, nil
 }
