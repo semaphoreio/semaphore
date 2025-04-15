@@ -215,6 +215,41 @@ defmodule Rbac.Store.Group.Test do
              |> where([srb], srb.subject_id == ^group.id)
              |> Repo.exists?()
     end
+
+    test "When something breaks during the transaction", %{
+      user_id: user_id,
+      group: group
+    } do
+      {:ok, proj} = Support.Factories.Project.insert(org_id: @org_id)
+
+      Support.Factories.UserGroupBinding.insert(user_id: user_id, group_id: group.id)
+      Support.Rbac.assign_org_role_by_name(@org_id, group.id, "BillingAdmin")
+      Support.Rbac.assign_project_role_by_name(@org_id, group.id, proj.id, "Reader")
+
+      with_mocks [
+        {Rbac.Store.UserPermissions, [:passthrough], [add_permissions: fn _ -> :error end]}
+      ] do
+        {:error, :cache_refresh_error} = Group.destroy(group.id)
+      end
+
+      permissions = fetch_permissions(user_id, @org_id)
+      assert permissions =~ "organization.view"
+      assert permissions =~ "organization.billing.manage"
+
+      proj_permissions = fetch_permissions(user_id, @org_id, proj.id)
+      assert proj_permissions =~ "project.view"
+
+      accessible_projects = fetch_accessible_projects(user_id, @org_id)
+      assert accessible_projects == [proj.id]
+
+      assert Repo.UserGroupBinding |> where([ugb], ugb.group_id == ^group.id) |> Repo.exists?()
+      assert Repo.Group |> where([g], g.id == ^group.id) |> Repo.exists?()
+      assert Repo.Subject |> where([s], s.id == ^group.id) |> Repo.exists?()
+
+      assert Repo.SubjectRoleBinding
+             |> where([srb], srb.subject_id == ^group.id)
+             |> Repo.exists?()
+    end
   end
 
   ###
