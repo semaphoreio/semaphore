@@ -19,6 +19,7 @@ type StageEvent struct {
 	ID         uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
 	StageID    uuid.UUID
 	SourceID   uuid.UUID
+	SourceType string
 	State      string
 	CreatedAt  *time.Time
 	ApprovedAt *time.Time

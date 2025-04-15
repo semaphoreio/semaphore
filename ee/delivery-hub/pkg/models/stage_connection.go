@@ -6,17 +6,17 @@ import (
 )
 
 type StageConnection struct {
-	ID       uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
-	StageID  uuid.UUID
-	SourceID uuid.UUID
-	Type     string
+	ID         uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
+	StageID    uuid.UUID
+	SourceID   uuid.UUID
+	SourceType string
 }
 
 func ListConnectionsForSource(sourceID uuid.UUID, connectionType string) ([]StageConnection, error) {
 	var connections []StageConnection
 	err := database.Conn().
 		Where("source_id = ?", sourceID).
-		Where("type = ?", connectionType).
+		Where("source_type = ?", connectionType).
 		Find(&connections).
 		Error
 

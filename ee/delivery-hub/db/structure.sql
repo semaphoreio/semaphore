@@ -74,6 +74,7 @@ CREATE TABLE public.event_sources (
 CREATE TABLE public.events (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     source_id uuid NOT NULL,
+    source_type character varying(64) NOT NULL,
     received_at timestamp without time zone NOT NULL,
     raw jsonb NOT NULL,
     state character varying(64) NOT NULL
@@ -98,7 +99,7 @@ CREATE TABLE public.stage_connections (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     source_id uuid NOT NULL,
-    type character varying(64) NOT NULL
+    source_type character varying(64) NOT NULL
 );
 
 
@@ -110,6 +111,7 @@ CREATE TABLE public.stage_events (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     source_id uuid NOT NULL,
+    source_type character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
     created_at timestamp without time zone NOT NULL,
     approved_at timestamp without time zone,
@@ -313,14 +315,6 @@ CREATE INDEX uix_stages_canvas ON public.stages USING btree (canvas_id);
 
 ALTER TABLE ONLY public.event_sources
     ADD CONSTRAINT event_sources_canvas_id_fkey FOREIGN KEY (canvas_id) REFERENCES public.canvases(id);
-
-
---
--- Name: events events_source_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_source_id_fkey FOREIGN KEY (source_id) REFERENCES public.event_sources(id);
 
 
 --

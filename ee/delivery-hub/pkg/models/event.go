@@ -10,13 +10,19 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-var EventStatePending = "pending"
-var EventStateDiscarded = "discarded"
-var EventStateProcessed = "processed"
+const (
+	EventStatePending   = "pending"
+	EventStateDiscarded = "discarded"
+	EventStateProcessed = "processed"
+
+	SourceTypeEventSource = "event-source"
+	SourceTypeStage       = "stage"
+)
 
 type Event struct {
 	ID         uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
 	SourceID   uuid.UUID
+	SourceType string
 	State      string
 	ReceivedAt *time.Time
 	Raw        datatypes.JSON
@@ -38,11 +44,12 @@ func (e *Event) MarkAsProcessedInTransaction(tx *gorm.DB) error {
 		Error
 }
 
-func CreateEvent(sourceID uuid.UUID, raw []byte) (*Event, error) {
+func CreateEvent(sourceID uuid.UUID, sourceType string, raw []byte) (*Event, error) {
 	now := time.Now()
 
 	event := Event{
 		SourceID:   sourceID,
+		SourceType: sourceType,
 		State:      EventStatePending,
 		ReceivedAt: &now,
 		Raw:        datatypes.JSON(raw),

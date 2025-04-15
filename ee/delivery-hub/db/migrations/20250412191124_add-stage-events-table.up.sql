@@ -4,6 +4,7 @@ CREATE TABLE stage_events (
   id          uuid NOT NULL DEFAULT uuid_generate_v4(),
   stage_id    uuid NOT NULL,
   source_id   uuid NOT NULL,
+  source_type CHARACTER VARYING(64) NOT NULL,
   state       CHARACTER VARYING(64) NOT NULL,
   created_at  TIMESTAMP NOT NULL,
   approved_at TIMESTAMP,

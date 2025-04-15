@@ -117,8 +117,8 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		err = canvas.CreateStage("stage-1", userID, false, template, []models.StageConnection{
 			{
-				SourceID: eventSource.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   eventSource.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		})
 
@@ -131,12 +131,12 @@ func Test__DescribeCanvas(t *testing.T) {
 		//
 		err = canvas.CreateStage("stage-2", userID, false, template, []models.StageConnection{
 			{
-				SourceID: eventSource.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   eventSource.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 			{
-				SourceID: stage1.ID,
-				Type:     protos.Connection_TYPE_STAGE.String(),
+				SourceID:   stage1.ID,
+				SourceType: models.SourceTypeStage,
 			},
 		})
 

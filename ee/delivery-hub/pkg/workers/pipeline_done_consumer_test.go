@@ -1,12 +1,14 @@
 package workers
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/renderedtext/go-tackle"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
@@ -43,8 +45,8 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 
 	require.NoError(t, canvas.CreateStage("stage-1", user, false, template, []models.StageConnection{
 		{
-			SourceID: source.ID,
-			Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+			SourceID:   source.ID,
+			SourceType: models.SourceTypeEventSource,
 		},
 	}))
 
@@ -54,7 +56,14 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 	go w.Start()
 	defer w.Stop()
 
+	//
+	// give the worker a few milliseconds to start before we start running the tests
+	//
+	time.Sleep(100 * time.Millisecond)
+
 	t.Run("failed pipeline -> execution fails", func(t *testing.T) {
+		require.NoError(t, database.Conn().Exec(`truncate table events`).Error)
+
 		//
 		// Create execution
 		//
@@ -90,9 +99,29 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 
 			return e.State == models.StageExecutionFinished && e.Result == models.StageExecutionResultFailed
 		}, 5*time.Second, 200*time.Millisecond)
+
+		//
+		// Verify that new pending event for stage completion is created.
+		//
+		list, err := models.ListEventsBySourceID(stage.ID)
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].SourceID, stage.ID)
+		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
+		e, err := unmarshalCompletionEvent(list[0].Raw)
+		require.NoError(t, err)
+		require.Equal(t, events.StageCompletionEvent{
+			Stage: events.Stage{
+				ID: stage.ID.String(),
+			},
+			Result: models.StageExecutionResultFailed,
+		}, *e)
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
+		require.NoError(t, database.Conn().Exec(`truncate table events`).Error)
+
 		//
 		// Create execution
 		//
@@ -128,5 +157,33 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 
 			return e.State == models.StageExecutionFinished && e.Result == models.StageExecutionResultPassed
 		}, 5*time.Second, 200*time.Millisecond)
+
+		//
+		// Verify that new pending event for stage completion is created with proper result.
+		//
+		list, err := models.ListEventsBySourceID(stage.ID)
+		require.NoError(t, err)
+		require.Len(t, list, 1)
+		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].SourceID, stage.ID)
+		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
+		e, err := unmarshalCompletionEvent(list[0].Raw)
+		require.NoError(t, err)
+		require.Equal(t, events.StageCompletionEvent{
+			Stage: events.Stage{
+				ID: stage.ID.String(),
+			},
+			Result: models.StageExecutionResultPassed,
+		}, *e)
 	})
+}
+
+func unmarshalCompletionEvent(raw []byte) (*events.StageCompletionEvent, error) {
+	e := events.StageCompletionEvent{}
+	err := json.Unmarshal(raw, &e)
+	if err != nil {
+		return nil, err
+	}
+
+	return &e, nil
 }

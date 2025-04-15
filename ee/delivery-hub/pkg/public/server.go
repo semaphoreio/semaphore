@@ -136,7 +136,7 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 	// Here, we know the event is for a valid organization/source,
 	// and comes from GitHub, so we just want to save it and give a response back.
 	//
-	if _, err := models.CreateEvent(source.ID, body); err != nil {
+	if _, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, body); err != nil {
 		http.Error(w, "Error receiving event", http.StatusInternalServerError)
 		return
 	}

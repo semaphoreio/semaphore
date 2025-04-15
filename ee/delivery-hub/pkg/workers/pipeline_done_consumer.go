@@ -2,11 +2,14 @@ package workers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/renderedtext/go-tackle"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/retry"
@@ -65,11 +68,10 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	ID := pipelineEvent.PipelineId
 	log.Infof("Received message for %s", ID)
 
-	result, err := c.findPipelineResult(ID)
-	if err != nil {
-		return fmt.Errorf("error finding pipeline result for %s: %v", ID, err)
-	}
-
+	//
+	// Not all pipelines are related to stage executions, so we
+	// check if there are is a stage execution associated with this pipeline first.
+	//
 	execution, err := models.FindExecutionByReference(ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -78,14 +80,41 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 		}
 	}
 
+	//
+	// The message doesn't contain the result of the pipeline,
+	// so we need to go to use the pipeline API for that,
+	// and map the pipeline result to a stage execution result.
+	//
+	logger := logging.ForExecution(execution)
+	result, err := c.findPipelineResult(logger, ID)
+	if err != nil {
+		logger.Errorf("Error finding pipeline result: %v", err)
+		return err
+	}
+
+	//
+	// Update the stage execution accordingly.
+	//
 	if err := execution.Finish(result); err != nil {
-		return fmt.Errorf("error finishing execution %s: %v", execution.ID, err)
+		logger.Errorf("Error updating execution state: %v", err)
+		return err
+	}
+
+	logger.Infof("Execution state updated: %s", result)
+
+	//
+	// Lastly, since the stage for this execution might be connected to other stages,
+	// we create a new event for the completion of this stage.
+	//
+	if err := c.createStageCompletionEvent(logger, execution, result); err != nil {
+		logger.Errorf("Error creating stage completion event: %v", err)
+		return err
 	}
 
 	return nil
 }
 
-func (c *PipelineDoneConsumer) findPipelineResult(id string) (string, error) {
+func (c *PipelineDoneConsumer) findPipelineResult(logger *log.Entry, id string) (string, error) {
 	conn, err := grpc.NewClient(c.PipelineAPIURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", fmt.Errorf("error connecting to repo proxy API: %v", err)
@@ -103,9 +132,34 @@ func (c *PipelineDoneConsumer) findPipelineResult(id string) (string, error) {
 		return "", fmt.Errorf("error describing pipeline: %v", err)
 	}
 
+	logger.Infof("Pipeline result: %s", res.Pipeline.Result.String())
+
 	if res.Pipeline.Result == pplproto.Pipeline_PASSED {
 		return models.StageExecutionResultPassed, nil
 	}
 
 	return models.StageExecutionResultFailed, nil
+}
+
+func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution, result string) error {
+	completionEvent := events.StageCompletionEvent{
+		Stage: events.Stage{
+			ID: execution.StageID.String(),
+		},
+		Result: result,
+	}
+
+	raw, err := json.Marshal(&completionEvent)
+	if err != nil {
+		return fmt.Errorf("error marshaling event: %v", err)
+	}
+
+	event, err := models.CreateEvent(execution.StageID, models.SourceTypeStage, raw)
+	if err != nil {
+		return fmt.Errorf("error creating event: %v", err)
+	}
+
+	logger.Infof("Created event %s", event.ID)
+
+	return nil
 }

@@ -447,8 +447,8 @@ func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection
 		}
 
 		cs = append(cs, models.StageConnection{
-			SourceID: *sourceID,
-			Type:     connection.Type.String(),
+			SourceID:   *sourceID,
+			SourceType: protoToConnectionType(connection.Type),
 		})
 	}
 
@@ -459,14 +459,13 @@ func convertConnections(stages []models.Stage, sources []models.EventSource, in 
 	connections := []*pb.Connection{}
 
 	for _, c := range in {
-		log.Infof("Converting connection %s - type=%s source=%s, stage=%s", c.ID, c.Type, c.SourceID, c.StageID)
 		name, err := findConnectionName(stages, sources, c)
 		if err != nil {
 			return nil, fmt.Errorf("invalid connection: %v", err)
 		}
 
 		connections = append(connections, &pb.Connection{
-			Type: connectionTypeToProto(c.Type),
+			Type: connectionTypeToProto(c.SourceType),
 			Name: name,
 		})
 	}
@@ -482,8 +481,8 @@ func convertConnections(stages []models.Stage, sources []models.EventSource, in 
 }
 
 func findConnectionName(stages []models.Stage, sources []models.EventSource, connection models.StageConnection) (string, error) {
-	switch connection.Type {
-	case pb.Connection_TYPE_STAGE.String():
+	switch connection.SourceType {
+	case models.SourceTypeStage:
 		for _, stage := range stages {
 			if stage.ID == connection.SourceID {
 				return stage.Name, nil
@@ -492,7 +491,7 @@ func findConnectionName(stages []models.Stage, sources []models.EventSource, con
 
 		return "", fmt.Errorf("stage %s not found", connection.SourceID)
 
-	case pb.Connection_TYPE_EVENT_SOURCE.String():
+	case models.SourceTypeEventSource:
 		for _, s := range sources {
 			if s.ID == connection.SourceID {
 				return s.Name, nil
@@ -531,11 +530,22 @@ func findConnectionSourceID(orgID, canvasID uuid.UUID, connection *pb.Connection
 
 func connectionTypeToProto(t string) pb.Connection_Type {
 	switch t {
-	case pb.Connection_TYPE_STAGE.String():
+	case models.SourceTypeStage:
 		return pb.Connection_TYPE_STAGE
-	case pb.Connection_TYPE_EVENT_SOURCE.String():
+	case models.SourceTypeEventSource:
 		return pb.Connection_TYPE_EVENT_SOURCE
 	default:
 		return pb.Connection_TYPE_UNKNOWN
+	}
+}
+
+func protoToConnectionType(t pb.Connection_Type) string {
+	switch t {
+	case pb.Connection_TYPE_STAGE:
+		return models.SourceTypeStage
+	case pb.Connection_TYPE_EVENT_SOURCE:
+		return models.SourceTypeEventSource
+	default:
+		return ""
 	}
 }

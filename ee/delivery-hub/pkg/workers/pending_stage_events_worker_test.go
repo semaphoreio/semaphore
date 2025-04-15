@@ -40,8 +40,8 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		require.NoError(t, canvas.CreateStage("stage-no-approval-1", user, false, template, []models.StageConnection{
 			{
-				SourceID: source.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   source.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
@@ -79,8 +79,8 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		require.NoError(t, canvas.CreateStage("stage-with-approval-1", user, true, template, []models.StageConnection{
 			{
-				SourceID: source.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   source.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
@@ -111,8 +111,8 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		require.NoError(t, canvas.CreateStage("stage-with-approval-2", user, true, template, []models.StageConnection{
 			{
-				SourceID: source.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   source.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
@@ -151,8 +151,8 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		require.NoError(t, canvas.CreateStage("stage-no-approval-3", user, false, template, []models.StageConnection{
 			{
-				SourceID: source.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   source.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 

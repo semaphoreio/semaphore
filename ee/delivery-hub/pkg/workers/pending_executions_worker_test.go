@@ -46,8 +46,8 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 
 		require.NoError(t, canvas.CreateStage("stage-1", user, false, template, []models.StageConnection{
 			{
-				SourceID: source.ID,
-				Type:     protos.Connection_TYPE_EVENT_SOURCE.String(),
+				SourceID:   source.ID,
+				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
