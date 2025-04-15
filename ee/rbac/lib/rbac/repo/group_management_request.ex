@@ -38,11 +38,6 @@ defmodule Rbac.Repo.GroupManagementRequest do
     |> insert()
   end
 
-  def create_destroy_group_request(group_id, requester_id) do
-    # For destroy_group action, user_id is not needed
-    create_new_request(nil, group_id, :destroy_group, requester_id)
-  end
-
   def finish_processing(%__MODULE__{} = req) do
     req = fetch(req)
 

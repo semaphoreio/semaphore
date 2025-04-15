@@ -79,7 +79,8 @@ defmodule Rbac.Workers.GroupManagementWorkerTest do
       end
 
       request = GroupManagementRequest |> Rbac.Repo.one()
-      assert request.state == :failed
+      assert request.state == :pending
+      assert request.retries == 1
     end
   end
 
