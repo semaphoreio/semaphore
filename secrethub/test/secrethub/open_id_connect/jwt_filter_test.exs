@@ -43,7 +43,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
       }
 
       with_mock(JWTConfiguration, [],
-        get_project_config: fn "org_id", "project_id" ->
+        get_org_config: fn "org_id" ->
           {:ok,
            %{
              claims: [
@@ -85,7 +85,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
       }
 
       with_mock(JWTConfiguration, [],
-        get_project_config: fn "org_id", "project_id" ->
+        get_org_config: fn "org_id" ->
           {:ok,
            %{
              claims: [
@@ -116,7 +116,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
       }
 
       with_mock(JWTConfiguration, [],
-        get_project_config: fn "org_id", "project_id" ->
+        get_org_config: fn "org_id" ->
           {:ok,
            %{
              claims: [
@@ -131,7 +131,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
     end
 
     test "returns error for invalid claims" do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
       assert JWTFilter.filter_claims(nil, "org_id", "project_id") == {:error, :invalid_claims}
     end
 
@@ -139,7 +139,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
       FakeServices.enable_features(["open_id_connect_filter"])
 
       with_mock(JWTConfiguration, [],
-        get_project_config: fn "org_id", "project_id" ->
+        get_org_config: fn "org_id" ->
           {:error, :not_found}
         end
       ) do
@@ -151,7 +151,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
 
   describe "get_allowed_claims/2" do
     test "returns active claims from JWT configuration" do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
 
       with_mock(JWTConfiguration, [],
         get_project_config: fn "org_id", "project_id" ->
@@ -170,7 +170,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
     end
 
     test "propagates JWT configuration errors" do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
 
       with_mock(JWTConfiguration, [],
         get_project_config: fn "org_id", "project_id" ->
@@ -259,7 +259,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
     end
 
     test "project config overrides org config", %{org_id: org_id, project_id: project_id} do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
       # Create org configuration with certain claims active
       {:ok, org_config} = JWTConfiguration.get_org_config(org_id)
 
@@ -293,7 +293,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
     end
 
     test "handles non-existent project configuration", %{org_id: org_id, project_id: project_id} do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
       # Create org configuration with active claims
       {:ok, org_config} = JWTConfiguration.get_org_config(org_id)
 
@@ -355,7 +355,7 @@ defmodule Secrethub.OpenIDConnect.JWTFilterTest do
       org_id: org_id,
       project_id: project_id
     } do
-      FakeServices.enable_features(["open_id_connect_filter"])
+      FakeServices.enable_features(["open_id_connect_filter", "open_id_connect_project_filter"])
 
       project_claims = [
         %{"name" => "sub", "is_active" => true},

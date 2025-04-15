@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 ARG UBUNTU_VERSION=22.04
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -11,12 +11,12 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME started"
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates unzip curl postgresql-client libc-bin libc6 \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /tmp
 RUN curl -L https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz | tar xvz && \
-    mv /tmp/migrate /usr/bin/migrate && \
-    chmod +x /usr/bin/migrate
+  mv /tmp/migrate /usr/bin/migrate && \
+  chmod +x /usr/bin/migrate
 
 WORKDIR /app
 COPY pkg pkg
@@ -31,14 +31,15 @@ WORKDIR /app
 FROM base AS dev
 
 WORKDIR /tmp
-RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip -o protoc && \
+RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-x86_64.zip -o protoc && \
   unzip protoc && \
   mv bin/protoc /usr/local/bin/protoc
 
 WORKDIR /app
-RUN go install github.com/mgechev/revive@latest
-RUN go install gotest.tools/gotestsum@latest
+RUN go install github.com/mgechev/revive@v1.7.0
+RUN go install gotest.tools/gotestsum@v1.12.1
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
@@ -53,7 +54,7 @@ FROM ${RUNNER_IMAGE} AS runner
 # postgresql-client needs to be installed here too,
 # otherwise the createdb command won't work.
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates postgresql-client \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # We don't need Docker health checks, since these containers
 # are intended to run in Kubernetes pods, which have probes.

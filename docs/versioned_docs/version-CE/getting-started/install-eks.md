@@ -146,8 +146,9 @@ echo "CERT_NAME=${CERT_NAME}"
 Install Semaphore with Helm:
 
 ```shell
-helm upgrade --install --debug semaphore oci://ghcr.io/semaphoreio/semaphore \
-  --version v1.0.1 \
+helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+  --debug \
+  --version v1.1.0 \
   --timeout 20m \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
@@ -210,6 +211,46 @@ Once your have Semaphore up and running, check out the following pages to finish
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
+
+## How to Upgrade Semaphore {#upgrade}
+
+To upgrade Semaphore from version `v1.0.x`, follow these steps:
+
+<Steps>
+
+1. Connect to your AWS EKS cluster (see [Step 5](#crds))
+2. Check that you can access the Kubernetes cluster:
+
+    ```shell
+    kubectl get nodes
+    ```
+
+3. Source the config file:
+
+    ```shell
+    source aws-config
+    echo "DOMAIN=${DOMAIN}"
+    echo "CERT_NAME=${CERT_NAME}"
+    ```
+
+4. Run the following command to upgrade to `v1.1.0`
+
+    ```shell
+    helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+      --debug \
+      --version v1.1.0 \
+      --timeout 20m \
+      --set global.domain.ip=${IP_ADDRESS} \
+      --set global.domain.name=${DOMAIN} \
+      --set ingress.enabled=true \
+      --set ingress.ssl.enabled=true \
+      --set ingress.className=traefik \
+      --set ingress.ssl.type=custom \
+      --set ingress.ssl.crt=$(cat certs/live/${DOMAIN}/fullchain.pem | base64 -w 0) \
+      --set ingress.ssl.key=$(cat certs/live/${DOMAIN}/privkey.pem | base64 -w 0)
+    ```
+
+</Steps>
 
 ## How to Uninstall Semaphore from EKS
 

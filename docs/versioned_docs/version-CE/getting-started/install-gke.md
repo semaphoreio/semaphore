@@ -278,8 +278,9 @@ ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
 Run the following to install Semaphore:
 
 ```shell title="Install Semaphore"
-helm upgrade --install --debug semaphore oci://ghcr.io/semaphoreio/semaphore \
-  --version v1.0.1 \
+helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+  --debug \
+  --version v1.1.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name="${DOMAIN}" \
@@ -370,6 +371,47 @@ Once your have Semaphore up and running, check out the following pages to finish
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
+
+## How to Upgrade Semaphore {#upgrade}
+
+To upgrade Semaphore from version `v1.0.x`, follow these steps:
+
+<Steps>
+
+1. Connect to your Google project (see [Step 2](#setup))
+2. Check that you can access the Kubernetes cluster:
+
+    ```shell
+    kubectl get nodes
+    ```
+3. Load the configuration file and ensure the certificates are in the correct folder. See [Step 4](#certs) if you need to recreate the certificates.
+
+    ```shell
+    source google-config
+    echo "DOMAIN=${DOMAIN}"
+    echo "IP_ADDRESS=${IP_ADDRESS}"
+    echo "GOOGLE_CERTIFICATE_NAME=${GOOGLE_CERTIFICATE_NAME}"
+    echo "GOOGLE_STATIC_IP_NAME=${GOOGLE_STATIC_IP_NAME}"
+    ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
+    ```
+4. Run the following command to upgrade to `v1.1.0`
+
+    ```shell
+    helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+      --debug \
+      --version v1.1.0 \
+      --timeout 20m \
+      --set global.domain.ip=${IP_ADDRESS} \
+      --set global.domain.name=${DOMAIN} \
+      --set ingress.enabled=true \
+      --set ingress.ssl.enabled=true \
+      --set ingress.className=traefik \
+      --set ingress.ssl.type=custom \
+      --set ingress.ssl.crt=$(cat certs/live/${DOMAIN}/fullchain.pem | base64 -w 0) \
+      --set ingress.ssl.key=$(cat certs/live/${DOMAIN}/privkey.pem | base64 -w 0)
+    ```
+
+</Steps>
 
 ## How to Uninstall Semaphore from GKE
 

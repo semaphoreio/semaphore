@@ -9,6 +9,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
   import Mock
   import Ecto.Query
+  alias Ecto.UUID
   alias InternalApi.RBAC.RBAC.Stub
 
   @store_backend Application.compile_env(:rbac, :key_value_store_backend)
@@ -16,10 +17,10 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   @project_access_store_name Application.compile_env(:rbac, :project_access_store_name)
 
   @user_name "Jane Doe"
-  @user_id Ecto.UUID.generate()
-  @org_id Ecto.UUID.generate()
-  @project_id Ecto.UUID.generate()
-  @requester_id Ecto.UUID.generate()
+  @user_id UUID.generate()
+  @org_id UUID.generate()
+  @project_id UUID.generate()
+  @requester_id UUID.generate()
   @org_admin_permissions ["organization.general_settings.manage", "organization.view"]
   @proj_reader_permissions ["project.view"]
 
@@ -60,7 +61,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     test "organization permissions are not returned for user without organization role",
          state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
-      req = %Request{user_id: @user_id, org_id: Ecto.UUID.generate()}
+      req = %Request{user_id: @user_id, org_id: UUID.generate()}
 
       {:ok, %{permissions: permissions}} = state.grpc_channel |> Stub.list_user_permissions(req)
       assert permissions == []
@@ -145,12 +146,12 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   describe "assign_role" do
     test "role is not assigned if parameters are not valid UUIDs", state do
       reqs = [
-        gen_assign_role_req("", Ecto.UUID.generate(), Ecto.UUID.generate()),
-        gen_assign_role_req("*", Ecto.UUID.generate(), Ecto.UUID.generate()),
-        gen_assign_role_req(@user_id, "", Ecto.UUID.generate()),
-        gen_assign_role_req(@user_id, "*", Ecto.UUID.generate()),
-        gen_assign_role_req(@user_id, Ecto.UUID.generate(), ""),
-        gen_assign_role_req(@user_id, Ecto.UUID.generate(), "*")
+        gen_assign_role_req("", UUID.generate(), UUID.generate()),
+        gen_assign_role_req("*", UUID.generate(), UUID.generate()),
+        gen_assign_role_req(@user_id, "", UUID.generate()),
+        gen_assign_role_req(@user_id, "*", UUID.generate()),
+        gen_assign_role_req(@user_id, UUID.generate(), ""),
+        gen_assign_role_req(@user_id, UUID.generate(), "*")
       ]
 
       Enum.each(reqs, fn req ->
@@ -161,7 +162,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "organization role is not assigned if it does not exist", state do
-      role_id = Ecto.UUID.generate()
+      role_id = UUID.generate()
       req = gen_assign_role_req(@user_id, role_id, @org_id)
       {:error, err} = state.grpc_channel |> Stub.assign_role(req)
 
@@ -170,7 +171,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "role is not assigned if it is not owned by organization", state do
-      non_existant_org_id = Ecto.UUID.generate()
+      non_existant_org_id = UUID.generate()
       {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
 
       req = gen_assign_role_req(@user_id, role.id, non_existant_org_id)
@@ -188,7 +189,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       end)
 
       {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name("Reader", "project_scope", @org_id)
-      non_existant_proj_id = Ecto.UUID.generate()
+      non_existant_proj_id = UUID.generate()
       req = gen_assign_role_req(@user_id, role.id, @org_id, non_existant_proj_id)
 
       {:error, err} = state.grpc_channel |> Stub.assign_role(req)
@@ -197,7 +198,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "project role is not assigned if project does not belong to organization", state do
-      project_id = Ecto.UUID.generate()
+      project_id = UUID.generate()
       Support.Projects.insert(project_id: project_id)
 
       GrpcMock.stub(ProjecthubMock, :describe, fn _, _ ->
@@ -424,7 +425,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       Support.Factories.UserGroupBinding.insert(group_id: group.id, user_id: @user_id)
 
       # Role within some other organization
-      other_org = Ecto.UUID.generate()
+      other_org = UUID.generate()
       Support.Rbac.create_org_roles(other_org)
       Support.Rbac.assign_org_role_by_name(other_org, @user_id, "Admin")
 
@@ -494,7 +495,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
   describe "list_members" do
     alias InternalApi.RBAC.ListMembersRequest, as: Request
     @new_member_name "Adam Neely"
-    @new_member Ecto.UUID.generate()
+    @new_member UUID.generate()
 
     setup state do
       Support.Factories.RbacUser.insert(@new_member, @new_member_name)
@@ -578,7 +579,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     test "when listing project members", state do
       alias Support.Factories.OrgRoleToProjRoleMappings
 
-      {:ok, third_user} = Support.Factories.RbacUser.insert(Ecto.UUID.generate(), @user_name)
+      {:ok, third_user} = Support.Factories.RbacUser.insert(UUID.generate(), @user_name)
 
       # Two users are 'normal' members of the org
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Member")
@@ -616,7 +617,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       1..3
       |> Enum.each(fn i ->
         {:ok, rbac_user} =
-          Support.Factories.RbacUser.insert(Ecto.UUID.generate(), "John Doe #{i}")
+          Support.Factories.RbacUser.insert(UUID.generate(), "John Doe #{i}")
 
         Support.Rbac.assign_org_role_by_name(@org_id, rbac_user.id, Enum.at(roles, i - 1))
       end)
@@ -633,7 +634,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "Should return not found error if organization is not found", %{grpc_channel: channel} do
-      org_id = Ecto.UUID.generate()
+      org_id = UUID.generate()
       request = %Request{org_id: org_id}
 
       assert {:error, grpc_error} = channel |> Stub.count_members(request)
@@ -711,7 +712,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     alias InternalApi.RBAC.DescribeRoleRequest, as: Request
 
     test "when role does not exist", state do
-      req = %Request{role_id: Ecto.UUID.generate(), org_id: @org_id}
+      req = %Request{role_id: UUID.generate(), org_id: @org_id}
       {:error, err} = state.grpc_channel |> Stub.describe_role(req)
       assert err.status == GRPC.Status.not_found()
       assert err.message =~ "not found"
@@ -763,8 +764,8 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
 
     test "creates refresh request and calls worker", state do
       # Insert a couple more test projects
-      project_id2 = Ecto.UUID.generate()
-      project_id3 = Ecto.UUID.generate()
+      project_id2 = UUID.generate()
+      project_id3 = UUID.generate()
       Support.Projects.insert(project_id: project_id2, org_id: @org_id)
       Support.Projects.insert(project_id: project_id3, org_id: @org_id)
 
@@ -803,7 +804,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     test "modify role that does not exist", state do
       req = %Request{
         role: %InternalApi.RBAC.Role{
-          id: Ecto.UUID.generate(),
+          id: UUID.generate(),
           org_id: @org_id,
           scope: :SCOPE_ORG
         },
@@ -907,7 +908,7 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "user is unauthorized to update roles", state do
-      req = %Request{role_id: Ecto.UUID.generate(), org_id: @org_id, requester_id: @requester_id}
+      req = %Request{role_id: UUID.generate(), org_id: @org_id, requester_id: @requester_id}
 
       {:error, err} = state.grpc_channel |> Stub.destroy_role(req)
 
@@ -927,11 +928,18 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
       assert err_msg.message =~ "Invalid uuid passed"
     end
 
+    test "role does not exist anymore", state do
+      req = %Request{role_assignments: [gen_role_assignment(UUID.generate(), @user_id, @org_id)]}
+
+      {:ok, response} = state.grpc_channel |> Stub.subjects_have_roles(req)
+      assert response.has_roles |> Enum.at(0) |> Map.get(:has_role) == false
+    end
+
     test "first subject has the role, second does not", state do
       Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Admin")
       {:ok, role} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "org_scope", @org_id)
 
-      random_user = Ecto.UUID.generate()
+      random_user = UUID.generate()
 
       req = %Request{
         role_assignments: [
@@ -972,8 +980,8 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "If user has access to 2 orgs, return those ids", state do
-      org1_id = Ecto.UUID.generate()
-      org2_id = Ecto.UUID.generate()
+      org1_id = UUID.generate()
+      org2_id = UUID.generate()
 
       Support.Rbac.create_org_roles(org1_id)
       Support.Rbac.create_org_roles(org2_id)
@@ -1013,10 +1021,10 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
 
     test "return only projects that user has access to", state do
-      project1_id = Ecto.UUID.generate()
-      project2_id = Ecto.UUID.generate()
-      project3_id = Ecto.UUID.generate()
-      org2_id = Ecto.UUID.generate()
+      project1_id = UUID.generate()
+      project2_id = UUID.generate()
+      project3_id = UUID.generate()
+      org2_id = UUID.generate()
 
       Support.Rbac.create_org_roles(org2_id)
       Support.Rbac.create_project_roles(org2_id)

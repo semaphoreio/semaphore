@@ -1,6 +1,7 @@
 import _ from "lodash"
 
 import { Container } from "./container"
+import { Features } from "../../features"
 
 export class Agent {
   // injected when the Editor app starts
@@ -164,12 +165,13 @@ export class Agent {
         break
 
       case Agent.ENVIRONMENT_TYPE_DOCKER:
-        this.type = "e1-standard-2"
-        this.osImage = this.defaultOSImage(this.type)
+        const isOS = Features.isEnabled("isOS")
+        this.type = isOS ? this.defaultMachineTypeForOS() : "e1-standard-2"
+        this.osImage = isOS ? "" : this.defaultOSImage(this.type)
         this.containers = [
           new Container(this, {
             "name": "main",
-            "image": "semaphoreci/ubuntu:20.04"
+            "image": this.getDefaultUbuntuImage()
           })
         ]
         break
@@ -183,6 +185,10 @@ export class Agent {
   }
 
   defaultMachineType() {
+    if (Features.isEnabled("isOS")) {
+      return this.defaultMachineTypeForOS()
+    }
+
     if (_.includes(this.availableMachineTypes("LINUX"), "e1-standard-2")) {
       return "e1-standard-2"
     }
@@ -200,6 +206,20 @@ export class Agent {
     }
 
     return ""
+  }
+
+  getDefaultUbuntuImage() {
+    return Features.isEnabled("isOS")
+      ? "registry.semaphoreci.com/ubuntu:22.04"
+      : "semaphoreci/ubuntu:20.04"
+  }
+
+  defaultMachineTypeForOS() {
+    if (this.availableMachineTypes("SELF_HOSTED").length > 0) {
+      return this.availableMachineTypes("SELF_HOSTED")[0]
+    }
+
+    return "s1-kubernetes"
   }
 
   availableOSImages(type) {

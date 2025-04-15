@@ -23,9 +23,19 @@ The latest version ID is always "CE" (without the semver). Older versions have t
 
 For example:
 
-- Latest version: "CE"
+- Latest version: "CE" (could be v2.0 or greater)
 - Version 1.0: "CE-1.0"
 - Version 1.1: "CE-1.1"
+
+When a new version is released, update the version number on `docusaurus.config.js`
+
+```js
+    "CE": {
+      label: 'Community Edition (1.1)',
+      path: 'CE',
+      banner: "none"
+    }
+```
 
 ### Enterprise Edition
 

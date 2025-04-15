@@ -180,7 +180,7 @@ blocks:
       jobs:
         - name: "\U0001F6E1️ Check code"
           commands:
-            - make check.go.code CHECK_CODE_OPTS='--ignores G115'
+            - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.go.deps
@@ -557,6 +557,7 @@ blocks:
             - make check.ex.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker
   - name: "Dashboardhub: \U0001F9EA QA"
     dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
@@ -590,7 +591,7 @@ blocks:
   - name: "Docs: \U0001F5BC️ Provision Prod Image"
     dependencies: []
     run:
-      when: "change_in('/docs', {default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -605,7 +606,7 @@ blocks:
   - name: "Docs: \U0001F5BC️ Build test image"
     dependencies: []
     run:
-      when: "change_in('/docs', {default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -620,7 +621,7 @@ blocks:
   - name: "Docs: \U0001F9EA QA"
     dependencies: ["Docs: \U0001F5BC️ Build test image"]
     run:
-      when: "change_in('/docs', {default_branch: 'main'})"
+      when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       env_vars:
         - name: APP_ENV
@@ -3398,6 +3399,7 @@ blocks:
             - make check.js.deps
         - name: "\U0001F6E1️ Check docker"
           commands:
+            - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'
   # Velocity
   - name: "Velocity: \U0001F4CB Provision Prod Image"

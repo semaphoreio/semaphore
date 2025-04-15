@@ -137,7 +137,9 @@ defmodule Guard.Utils.Http do
   @state_cookie_options [
     encrypt: true,
     max_age: 30 * 60,
-    same_site: "Strict",
+    # If `same_site` is set to `Strict` then the cookie will not be sent on
+    # IdP callback redirects, which will break the auth flow.
+    same_site: "Lax",
     path: "/",
     secure: true,
     http_only: true

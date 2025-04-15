@@ -1,7 +1,7 @@
 <div id="workflow-editor-tabs" class="pv2">
 </div>
 
-<div class="nb4">
+<div class="nb4" id="workflow-editor-container">
   <div id="workflow-editor-visual-editor" class="bg-white relative bt b--lighter-gray nh4">
     <div class="flex">
       <div class="flex-auto">
@@ -23,5 +23,21 @@
   </div>
 
   <div id="workflow-editor-code-editor" class="code-mirror-style-semaphore bg-white f5 lh-title bg-white relative mt3 mt4-m <%= code_editor_border_classes(@org_id) %>">
+  </div>
+</div>
+
+<div id="zero-state-loading-message" class="bg-white relative" style="display: none;">
+  <div class="pa5-m">
+    <div class="mw6 center shadow-1-m pa4-m">
+      <div class="flex items-start justify-between mb3">
+        <div>
+          <h1 id="zero-state-title" class="f3 mb4">Searching git repository for .yml files
+            <img class="ml2" width="18" height="18" src="<%= assets_path() %>/images/spinner-2.svg">
+          </h1>
+          <p id="zero-state-paragraph-one" class="pr4 mb1 measure"> We are searching your git repository for Seamphore pipeline .yml files.</p>
+          <p id="zero-state-paragraph-two" class="pr4 mb0 measure"> This can take up to a few minutes for repositories that are large or have a lot of commits.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

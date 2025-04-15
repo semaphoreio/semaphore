@@ -377,6 +377,24 @@ defmodule RepositoryHub.GithubClient do
               fail_with(:precondition, "Error while setting deploy key on GitHub. Please contact support.")
           end
 
+        {422, payload, resp} ->
+          log_warn([
+            "deploy could not be created in #{params.repo_owner}/#{params.repo_name}. Possibly due to disabled deploy keys on the repo.",
+            "response: #{inspect_response(resp)}"
+          ])
+
+          error_message =
+            case payload do
+              %{"errors" => errors} when is_list(errors) ->
+                messages = errors |> Enum.map(fn %{"message" => msg} -> msg end) |> Enum.join(", ")
+                "Error while setting deploy key on GitHub. #{messages}"
+
+              _ ->
+                "Error while setting deploy key on GitHub. Please contact support."
+            end
+
+          fail_with(:precondition, error_message)
+
         {status, _, resp} ->
           log_error([
             "creating deploy key #{params.repo_owner}/#{params.repo_name}",

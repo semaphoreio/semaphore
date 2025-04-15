@@ -668,7 +668,95 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
         }
       ]
 
-      {:ok, %{org_id: org_id, project_id: project_id, claims: claims}}
+      # Different claims for concurrent tests
+      concurrent_claims = [
+        %{
+          "name" => "sub",
+          "is_active" => true,
+          "description" => "Concurrent update"
+        }
+      ]
+
+      {:ok,
+       %{
+         org_id: org_id,
+         project_id: project_id,
+         claims: claims,
+         concurrent_claims: concurrent_claims
+       }}
+    end
+
+    test "handles concurrent org config creations", %{
+      org_id: org_id,
+      claims: claims,
+      concurrent_claims: concurrent_claims
+    } do
+      # Start multiple concurrent operations
+      tasks =
+        for _ <- 1..20 do
+          Task.async(fn ->
+            JWTConfiguration.create_or_update_org_config(org_id, claims)
+          end)
+        end
+
+      # Add a concurrent update with different claims
+      update_task =
+        Task.async(fn ->
+          JWTConfiguration.create_or_update_org_config(org_id, concurrent_claims)
+        end)
+
+      # Wait for all tasks to complete
+      results = Task.await_many([update_task | tasks], 5000)
+
+      # All operations should succeed
+      assert Enum.all?(results, fn {:ok, _} -> true end)
+
+      # Verify only one configuration exists
+      configs = Repo.all(JWTConfiguration)
+      org_configs = Enum.filter(configs, &is_nil(&1.project_id))
+      assert length(org_configs) == 1
+
+      # The final state should be consistent
+      {:ok, final_config} = JWTConfiguration.get_org_config(org_id)
+      assert final_config.org_id == org_id
+      assert is_nil(final_config.project_id)
+    end
+
+    test "handles concurrent project config creations", %{
+      org_id: org_id,
+      project_id: project_id,
+      claims: claims,
+      concurrent_claims: concurrent_claims
+    } do
+      # Start multiple concurrent operations
+      tasks =
+        for _ <- 1..10 do
+          Task.async(fn ->
+            JWTConfiguration.create_or_update_project_config(org_id, project_id, claims)
+          end)
+        end
+
+      # Add a concurrent update with different claims
+      update_task =
+        Task.async(fn ->
+          JWTConfiguration.create_or_update_project_config(org_id, project_id, concurrent_claims)
+        end)
+
+      # Wait for all tasks to complete
+      results = Task.await_many([update_task | tasks], 5000)
+
+      # All operations should succeed
+      assert Enum.all?(results, fn {:ok, _} -> true end)
+
+      # Verify only one configuration exists for this project
+      configs = Repo.all(JWTConfiguration)
+      project_configs = Enum.filter(configs, &(&1.project_id == project_id))
+      assert length(project_configs) == 1
+
+      # The final state should be consistent
+      {:ok, final_config} = JWTConfiguration.get_project_config(org_id, project_id)
+      assert final_config.org_id == org_id
+      assert final_config.project_id == project_id
     end
 
     test "allows updating existing org config", %{org_id: org_id, claims: claims} do

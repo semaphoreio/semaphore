@@ -134,7 +134,7 @@ func (s *Server) ListPath(ctx context.Context,
 	log.Debug("[ListPath] Received", zap.Reflect("request", request))
 
 	response := &artifacthub.ListPathResponse{}
-	is, err := privateapi.ListArtifactPath(ctx, s.StorageClient, request.ArtifactId, request.Path)
+	is, err := privateapi.ListArtifactPath(ctx, s.StorageClient, request.ArtifactId, request.Path, !request.UnwrapDirectories)
 	if err != nil {
 		return nil, err
 	}

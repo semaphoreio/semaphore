@@ -1,8 +1,20 @@
 Support.Stubs.init()
 
+formatters = [PipelinesAPI.CustomExUnitFormatter]
+
+formatters =
+  System.get_env("CI", "")
+  |> case do
+    "" ->
+      formatters
+
+    _ ->
+      [JUnitFormatter | formatters]
+  end
+
 ExUnit.configure(
   exclude: [integration: true, router: true, gofer_integration: true],
-  formatters: [JUnitFormatter, PipelinesAPI.CustomExUnitFormatter]
+  formatters: formatters
 )
 
 ExUnit.start(trace: true, capture_log: true)
