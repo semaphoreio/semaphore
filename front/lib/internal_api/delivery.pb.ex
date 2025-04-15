@@ -160,12 +160,62 @@ defmodule InternalApi.Delivery.Connection do
 
   @type t :: %__MODULE__{
           type: integer,
-          name: String.t()
+          name: String.t(),
+          filters: [InternalApi.Delivery.Connection.Filter.t()],
+          filter_operator: integer
         }
-  defstruct [:type, :name]
+  defstruct [:type, :name, :filters, :filter_operator]
 
   field(:type, 1, type: InternalApi.Delivery.Connection.Type, enum: true)
   field(:name, 2, type: :string)
+  field(:filters, 3, repeated: true, type: InternalApi.Delivery.Connection.Filter)
+  field(:filter_operator, 4, type: InternalApi.Delivery.Connection.FilterOperator, enum: true)
+end
+
+defmodule InternalApi.Delivery.Connection.Filter do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: integer,
+          expression: InternalApi.Delivery.Connection.ExpressionFilter.t()
+        }
+  defstruct [:type, :expression]
+
+  field(:type, 1, type: InternalApi.Delivery.Connection.FilterType, enum: true)
+  field(:expression, 2, type: InternalApi.Delivery.Connection.ExpressionFilter)
+end
+
+defmodule InternalApi.Delivery.Connection.ExpressionFilter do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          expression: String.t(),
+          variables: [InternalApi.Delivery.Connection.ExpressionFilter.Variable.t()]
+        }
+  defstruct [:expression, :variables]
+
+  field(:expression, 1, type: :string)
+
+  field(:variables, 2,
+    repeated: true,
+    type: InternalApi.Delivery.Connection.ExpressionFilter.Variable
+  )
+end
+
+defmodule InternalApi.Delivery.Connection.ExpressionFilter.Variable do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          path: String.t()
+        }
+  defstruct [:name, :path]
+
+  field(:name, 1, type: :string)
+  field(:path, 2, type: :string)
 end
 
 defmodule InternalApi.Delivery.Connection.Type do
@@ -175,6 +225,23 @@ defmodule InternalApi.Delivery.Connection.Type do
   field(:TYPE_UNKNOWN, 0)
   field(:TYPE_EVENT_SOURCE, 1)
   field(:TYPE_STAGE, 2)
+end
+
+defmodule InternalApi.Delivery.Connection.FilterType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:FILTER_TYPE_UNKNOWN, 0)
+  field(:FILTER_TYPE_EXPRESSION, 1)
+end
+
+defmodule InternalApi.Delivery.Connection.FilterOperator do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:FILTER_OPERATOR_UNKNOWN, 0)
+  field(:FILTER_OPERATOR_AND, 1)
+  field(:FILTER_OPERATOR_OR, 2)
 end
 
 defmodule InternalApi.Delivery.Stage do
@@ -365,11 +432,13 @@ defmodule InternalApi.Delivery.ListStageEventsRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          stage_id: String.t()
+          stage_id: String.t(),
+          states: [integer]
         }
-  defstruct [:stage_id]
+  defstruct [:stage_id, :states]
 
   field(:stage_id, 1, type: :string)
+  field(:states, 2, repeated: true, type: InternalApi.Delivery.StageEvent.State, enum: true)
 end
 
 defmodule InternalApi.Delivery.ListStageEventsResponse do
@@ -392,7 +461,7 @@ defmodule InternalApi.Delivery.StageEvent do
           id: String.t(),
           source_id: String.t(),
           source_type: integer,
-          state: String.t(),
+          state: integer,
           created_at: Google.Protobuf.Timestamp.t(),
           approved_at: Google.Protobuf.Timestamp.t(),
           approved_by: String.t()
@@ -402,10 +471,21 @@ defmodule InternalApi.Delivery.StageEvent do
   field(:id, 1, type: :string)
   field(:source_id, 2, type: :string)
   field(:source_type, 3, type: InternalApi.Delivery.Connection.Type, enum: true)
-  field(:state, 4, type: :string)
+  field(:state, 4, type: InternalApi.Delivery.StageEvent.State, enum: true)
   field(:created_at, 5, type: Google.Protobuf.Timestamp)
   field(:approved_at, 6, type: Google.Protobuf.Timestamp)
   field(:approved_by, 7, type: :string)
+end
+
+defmodule InternalApi.Delivery.StageEvent.State do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:UNKNOWN, 0)
+  field(:PENDING, 1)
+  field(:WAITING_FOR_APPROVAL, 2)
+  field(:WAITING_FOR_TIME_WINDOW, 3)
+  field(:PROCESSED, 4)
 end
 
 defmodule InternalApi.Delivery.ApproveStageEventRequest do
