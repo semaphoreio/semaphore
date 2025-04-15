@@ -352,6 +352,24 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
+  def restore(req, _) do
+    Watchman.benchmark("projecthub_api.restore.duration", fn ->
+      soft_deleted = true
+
+      case find_project(req, soft_deleted) do
+        {:ok, project} ->
+          {:ok, _} = Project.restore(project)
+          RestoreResponse.new(metadata: status_ok(req))
+
+        {:error, :not_found} ->
+          RestoreResponse.new(metadata: status_not_found(req))
+
+        {:error, %{message: message}} ->
+          RestoreResponse.new(metadata: status_failed_precondition(req, message))
+      end
+    end)
+  end
+
   # DEPRECATED
   def users(req, _) do
     Watchman.benchmark("projecthub_api.users.duration", fn ->
