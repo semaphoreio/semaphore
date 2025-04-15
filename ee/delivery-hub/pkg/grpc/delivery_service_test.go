@@ -249,6 +249,9 @@ func Test__CreateStage(t *testing.T) {
 	canvas, err := models.CreateCanvas(orgID, "test")
 	require.NoError(t, err)
 
+	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
+	require.NoError(t, err)
+
 	template := protos.RunTemplate{
 		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
 		SemaphoreWorkflow: &protos.WorkflowTemplate{
@@ -308,6 +311,63 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "invalid connection: event source source-does-not-exist not found", s.Message())
 	})
 
+	t.Run("stage with invalid connection filter operator -> error", func(t *testing.T) {
+		_, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: orgID.String(),
+			CanvasId:       canvas.ID.String(),
+			Name:           "test",
+			RequesterId:    requesterID.String(),
+			RunTemplate:    &template,
+			Connections: []*protos.Connection{
+				{
+					Name: source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid filter operator: FILTER_OPERATOR_UNKNOWN", s.Message())
+	})
+
+	t.Run("stage with invalid connection filter expression variables -> error", func(t *testing.T) {
+		_, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: orgID.String(),
+			CanvasId:       canvas.ID.String(),
+			Name:           "test",
+			RequesterId:    requesterID.String(),
+			RunTemplate:    &template,
+			Connections: []*protos.Connection{
+				{
+					Name:           source.Name,
+					Type:           protos.Connection_TYPE_EVENT_SOURCE,
+					FilterOperator: protos.Connection_FILTER_OPERATOR_AND,
+					Filters: []*protos.Connection_Filter{
+						{
+							Type: protos.Connection_FILTER_TYPE_EXPRESSION,
+							Expression: &protos.Connection_ExpressionFilter{
+								Expression: "true",
+								Variables: []*protos.Connection_ExpressionFilter_Variable{
+									{
+										Name: "",
+										Path: "test",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid filter [0]: invalid variables: variable name is empty", s.Message())
+	})
+
 	t.Run("stage is created", func(t *testing.T) {
 		res, err := service.CreateStage(context.Background(), &protos.CreateStageRequest{
 			OrganizationId: orgID.String(),
@@ -315,6 +375,27 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    &template,
 			RequesterId:    requesterID.String(),
+			Connections: []*protos.Connection{
+				{
+					Name:           source.Name,
+					Type:           protos.Connection_TYPE_EVENT_SOURCE,
+					FilterOperator: protos.Connection_FILTER_OPERATOR_AND,
+					Filters: []*protos.Connection_Filter{
+						{
+							Type: protos.Connection_FILTER_TYPE_EXPRESSION,
+							Expression: &protos.Connection_ExpressionFilter{
+								Expression: "test == 12",
+								Variables: []*protos.Connection_ExpressionFilter_Variable{
+									{
+										Name: "test",
+										Path: "test",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
 		})
 
 		require.NoError(t, err)
@@ -324,8 +405,9 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, orgID.String(), res.Stage.OrganizationId)
 		assert.Equal(t, canvas.ID.String(), res.Stage.CanvasId)
 		assert.Equal(t, "test", res.Stage.Name)
-		assert.Empty(t, res.Stage.Connections)
 		assert.Equal(t, &template, res.Stage.RunTemplate)
+		require.Len(t, res.Stage.Connections, 1)
+		require.Len(t, res.Stage.Connections[0].Filters, 1)
 	})
 
 	t.Run("stage name already used -> error", func(t *testing.T) {

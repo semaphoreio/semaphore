@@ -525,10 +525,10 @@ func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection
 
 func validateFilters(in []*pb.Connection_Filter) ([]models.StageConnectionFilter, error) {
 	filters := []models.StageConnectionFilter{}
-	for _, f := range in {
+	for i, f := range in {
 		filter, err := validateFilter(f)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("invalid filter [%d]: %v", i, err)
 		}
 
 		filters = append(filters, *filter)
@@ -572,7 +572,7 @@ func validateExpressionFilter(filter *pb.Connection_ExpressionFilter) (*models.S
 func validateExpressionVariables(in []*pb.Connection_ExpressionFilter_Variable) ([]models.ExpressionVariable, error) {
 	variables := make([]models.ExpressionVariable, len(in))
 
-	for i, v := range variables {
+	for i, v := range in {
 		if v.Name == "" {
 			return nil, fmt.Errorf("variable name is empty")
 		}
