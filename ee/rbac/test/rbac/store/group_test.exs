@@ -171,18 +171,40 @@ defmodule Rbac.Store.Group.Test do
       user_id: user_id,
       group: group
     } do
-      Support.Factories.UserGroupBinding.insert(user_id: user_id, group_id: group.id)
-      Support.Rbac.assign_org_role_by_name(@org_id, group.id, "BillingAdmin")
-      permissions = fetch_permissions(user_id, @org_id)
+      {:ok, proj1} = Support.Factories.Project.insert(org_id: @org_id)
+      {:ok, proj2} = Support.Factories.Project.insert(org_id: @org_id)
 
+      Support.Factories.UserGroupBinding.insert(user_id: user_id, group_id: group.id)
+      Support.Rbac.assign_project_role_by_name(@org_id, user_id, proj1.id, "Reader")
+
+      Support.Rbac.assign_org_role_by_name(@org_id, group.id, "BillingAdmin")
+      Support.Rbac.assign_project_role_by_name(@org_id, group.id, proj2.id, "Reader")
+
+      permissions = fetch_permissions(user_id, @org_id)
       assert permissions =~ "organization.view"
       assert permissions =~ "organization.billing.manage"
+
+      proj1_permissions = fetch_permissions(user_id, @org_id, proj1.id)
+      proj2_permissions = fetch_permissions(user_id, @org_id, proj2.id)
+      assert proj1_permissions =~ "project.view"
+      assert proj2_permissions =~ "project.view"
+
+      accessible_projects = fetch_accessible_projects(user_id, @org_id)
+      assert Enum.sort(accessible_projects) == Enum.sort([proj1.id, proj2.id])
 
       Group.destroy(group.id)
 
       permissions = fetch_permissions(user_id, @org_id)
       assert permissions =~ "organization.view"
       refute permissions =~ "organization.billing.manage"
+
+      accessible_projects = fetch_accessible_projects(user_id, @org_id)
+      assert accessible_projects == [proj1.id]
+
+      proj1_permissions = fetch_permissions(user_id, @org_id, proj1.id)
+      proj2_permissions = fetch_permissions(user_id, @org_id, proj2.id)
+      assert proj1_permissions =~ "project.view"
+      refute proj2_permissions =~ "project.view"
 
       # Verify all related records are removed
       refute Repo.UserGroupBinding |> where([ugb], ugb.group_id == ^group.id) |> Repo.exists?()

@@ -371,10 +371,15 @@ defmodule Rbac.RoleManagement do
          |> Ecto.Multi.run(:update_user_permissions_store, fn _repo, _changeset ->
            update_user_permissions_store(rbi)
          end)
-         |> Ecto.Multi.run(
-           :update_project_access_store,
-           fn _repo, _changeset -> update_project_access_store(subject_role_bindings, :add) end
-         )
+         |> Ecto.Multi.run(:add_project_access, fn _repo, _changeset ->
+           case ProjectAccess.add_project_access(rbi) do
+             :ok ->
+               {:ok, :added_keys_from_project_access_store}
+
+             err_tuple ->
+               err_tuple
+           end
+         end)
          |> Rbac.Repo.transaction(timeout: 60_000) do
       {:ok, _} ->
         Logger.debug(fn -> "[Rbac RoleManagement] Role(s) successfully assigned" end)
@@ -398,35 +403,6 @@ defmodule Rbac.RoleManagement do
       else
         throw(error)
       end
-  end
-
-  defp update_project_access_store(subject_role_bindings, action)
-       when action in [:add, :remove] do
-    func =
-      if action == :add do
-        &Rbac.Store.ProjectAccess.add_project_access/3
-      else
-        &Rbac.Store.ProjectAccess.remove_project_access/3
-      end
-
-    operation_result =
-      subject_role_bindings
-      |> Enum.filter(&(&1.project_id != nil))
-      |> Enum.map(
-        &func.(
-          &1.subject_id,
-          &1.org_id,
-          &1.project_id
-        )
-      )
-
-    case Enum.filter(operation_result, &(&1 != :ok)) |> length() do
-      0 ->
-        {:ok, "Successfully added project access"}
-
-      no_of_errors ->
-        {:error, "Had #{no_of_errors} errors while adding project access to the eky value store"}
-    end
   end
 
   defp update_user_permissions_store(rbi) do
