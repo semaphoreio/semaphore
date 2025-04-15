@@ -20,6 +20,7 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.ListResponse
   alias InternalApi.Projecthub.ListKeysetResponse
   alias InternalApi.Projecthub.DestroyResponse
+  alias InternalApi.Projecthub.RestoreResponse
   alias InternalApi.Projecthub.CreateResponse
   alias InternalApi.Projecthub.ForkAndCreateResponse
   alias InternalApi.Projecthub.UpdateResponse

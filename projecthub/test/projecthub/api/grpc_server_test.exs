@@ -2964,6 +2964,80 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
   end
 
+  describe ".restore" do
+    test "when a soft deleted project is set to be restored => restores the project and returns ok" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
+
+      request =
+        InternalApi.Projecthub.RestoreRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id
+        )
+
+      {:ok, response} = Stub.restore(channel, request)
+
+      assert response.metadata.status.code == :OK
+    end
+
+    test "when a project that is not soft deleted and it is requested to be restored => returns a not found response" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      request =
+        InternalApi.Projecthub.RestoreRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id
+        )
+
+      {:ok, response} = Stub.restore(channel, request)
+
+      assert response.metadata.status.code == :NOT_FOUND
+    end
+  end
+
   describe ".users" do
     # TODO
   end
