@@ -26,14 +26,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
       {:ok, created_group} ->
         Rbac.TempSync.assign_org_member_role(created_group.id, org_id)
 
-        Enum.each(group.member_ids, fn member_id ->
-          Rbac.Repo.GroupManagementRequest.create_new_request(
-            member_id,
-            created_group.id,
-            :add_user,
-            requester_id
-          )
-        end)
+        {:ok, _} = create_request(group.member_ids, created_group.id, :add_user, requester_id)
 
         %Groups.CreateGroupResponse{group: construct_grpc_group(created_group)}
 
@@ -66,8 +59,6 @@ defmodule Rbac.GrpcServers.GroupsServer do
   end
 
   def modify_group(%Groups.ModifyGroupRequest{} = req, _stream) do
-    alias Rbac.Repo.GroupManagementRequest
-
     if req.group == nil,
       do: grpc_error!(:invalid_argument, "Required group information not provided")
 
@@ -78,19 +69,8 @@ defmodule Rbac.GrpcServers.GroupsServer do
     with {:ok, _} <- Group.fetch_group(req.group.id),
          {:ok, group} <-
            Group.modify_metadata(req.group.id, req.group.name, req.group.description) do
-      GroupManagementRequest.create_new_request(
-        req.members_to_remove,
-        group.id,
-        :remove_user,
-        req.requester_id
-      )
-
-      GroupManagementRequest.create_new_request(
-        req.members_to_add,
-        group.id,
-        :add_user,
-        req.requester_id
-      )
+      {:ok, _} = create_request(req.members_to_remove, group.id, :remove_user, req.requester_id)
+      {:ok, _} = create_request(req.members_to_add, group.id, :add_user, req.requester_id)
 
       %Groups.ModifyGroupResponse{group: construct_grpc_group(group)}
     else
@@ -107,16 +87,13 @@ defmodule Rbac.GrpcServers.GroupsServer do
         %Groups.DestroyGroupRequest{group_id: group_id, requester_id: requester_id},
         _stream
       ) do
-    alias Rbac.Repo.GroupManagementRequest
-
     validate_uuid!([requester_id, group_id])
 
     case Group.fetch_group(group_id) do
       {:ok, group} ->
         authorize!(@manage_groups_permission, requester_id, group.org_id)
 
-        {:ok, _request} =
-          GroupManagementRequest.create_new_request(nil, group_id, :destroy_group, requester_id)
+        {:ok, _} = create_request(nil, group_id, :destroy_group, requester_id)
 
         %Groups.DestroyGroupResponse{}
 
@@ -132,6 +109,10 @@ defmodule Rbac.GrpcServers.GroupsServer do
   ###
   ### Helper functions
   ###
+
+  defdelegate create_request(user_id_or_ids, group_id, action, requester_id),
+    to: Rbac.Repo.GroupManagementRequest,
+    as: :create_new_request
 
   defp validate_group_parameters!(nil),
     do: grpc_error!(:invalid_argument, "No group information provided")

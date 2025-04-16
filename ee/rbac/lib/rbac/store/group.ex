@@ -108,7 +108,7 @@ defmodule Rbac.Store.Group do
     Finds all the groups a given user belongs to (within the given organization)
     and creates requests for asynchronously removing the user from each of them
   """
-  def remove_member_from_all_org_groups(member_id, org_id) do
+  def remove_member_from_all_org_groups(member_id, org_id, requester_id) do
     Rbac.Repo.UserGroupBinding
     |> where([ugb], ugb.user_id == ^member_id)
     |> join(:inner, [ugb], g in assoc(ugb, :group))
@@ -116,7 +116,12 @@ defmodule Rbac.Store.Group do
     |> select([ugb, _], ugb.group_id)
     |> Rbac.Repo.all()
     |> Enum.each(
-      &Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, :remove_user, nil)
+      &Rbac.Repo.GroupManagementRequest.create_new_request(
+        member_id,
+        &1,
+        :remove_user,
+        requester_id
+      )
     )
   end
 
