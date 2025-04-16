@@ -71,9 +71,11 @@ defmodule Guard.Store.Organization do
 
   @spec list(map(), map()) :: {[FrontRepo.Organization.t()], String.t() | nil}
   def list(params, keyset_params) do
+    soft_deleted = Map.get(params, :soft_deleted, false)
+
     query =
       Guard.FrontRepo.Organization
-      |> filter_deleted_query(params.soft_deleted)
+      |> filter_deleted_query(soft_deleted)
       |> filter_by_created_at_gt(params.created_at_gt)
 
     flop =
@@ -88,10 +90,10 @@ defmodule Guard.Store.Organization do
   end
 
   @spec list_by_ids([String.t()]) :: [FrontRepo.Organization.t()]
-  def list_by_ids(ids) when is_list(ids) do
+  def list_by_ids(ids, opts \\ []) when is_list(ids) do
     Guard.FrontRepo.Organization
     |> where([o], o.id in ^ids)
-    |> filter_deleted_query()
+    |> filter_deleted_query(opts[:soft_deleted])
     |> Guard.FrontRepo.all()
   end
 
@@ -373,7 +375,7 @@ defmodule Guard.Store.Organization do
     |> Guard.FrontRepo.all()
   end
 
-  defp filter_deleted_query(query, soft_deleted \\ false) do
+  defp filter_deleted_query(query, soft_deleted) do
     if soft_deleted do
       query |> where([o], not is_nil(o.deleted_at))
     else
