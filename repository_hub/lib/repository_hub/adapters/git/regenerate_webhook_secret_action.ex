@@ -15,10 +15,10 @@ defimpl RepositoryHub.Server.RegenerateWebhookSecretAction, for: RepositoryHub.G
     end
   end
 
-  defp update_repository_secret(repository, secret) do
+  defp update_repository_secret(repository, secret_enc) do
     Model.RepositoryQuery.update(repository, %{
       hook_id: repository.id,
-      hook_secret_enc: secret
+      hook_secret_enc: secret_enc
     })
   end
 

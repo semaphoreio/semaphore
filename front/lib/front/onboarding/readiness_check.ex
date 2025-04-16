@@ -1,4 +1,6 @@
 defmodule Front.Onboarding.ReadinessCheck do
+  alias Front.Models.Project
+
   def waiting_message(_project),
     do: "<p>Hang in there!<br> Larger Git repositories need a bit more time to be analyzed.</p>"
 
@@ -22,7 +24,7 @@ defmodule Front.Onboarding.ReadinessCheck do
   end
 
   def should_make_ready?(nil), do: false
-  def should_make_ready?(project), do: project.state == :ONBOARDING
+  def should_make_ready?(project), do: is_connected(project) && project.state == :ONBOARDING
 
   def ready(nil), do: false
   def ready(project), do: project.state == :ONBOARDING || project.state == :READY
@@ -57,4 +59,8 @@ defmodule Front.Onboarding.ReadinessCheck do
   def workflow_ready(nil), do: false
   def workflow_ready(:error), do: "error"
   def workflow_ready(_), do: true
+
+  @spec is_connected(Project.t() | nil) :: boolean()
+  def is_connected(nil), do: false
+  def is_connected(project), do: project.repo_connected == true
 end
