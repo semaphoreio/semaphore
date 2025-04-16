@@ -9,12 +9,17 @@ defmodule E2E.UI.UserTestCase do
   """
 
   use ExUnit.CaseTemplate
+  require Wallaby.Browser
+  import Wallaby.Browser
+  require Logger
 
   using do
     quote do
-      use ExUnit.Case, async: false
+      use ExUnit.Case, async: true
       use Wallaby.DSL
       require Wallaby.Browser
+      import Wallaby.Browser
+      require Logger
 
       @moduletag :user
       @moduletag :browser
@@ -37,19 +42,44 @@ defmodule E2E.UI.UserTestCase do
 
     login_url = "https://id.#{base_domain}/login"
 
-    logged_in_session =
-      session
-      |> Wallaby.Browser.visit(login_url)
-      |> Wallaby.Browser.fill_in(Wallaby.Query.text_field("username"), with: root_email)
-      |> Wallaby.Browser.fill_in(Wallaby.Query.text_field("password"), with: root_password)
-      |> Wallaby.Browser.click(Wallaby.Query.css("#kc-login"))
-      |> Wallaby.Browser.assert_has(
-        Wallaby.Query.css("h1.f2.f1-m.lh-title.mb1",
-          text: "Here's what's going on",
-          timeout: 10_000
+    try do
+      # Fill in login form and authenticate
+      logged_in_session =
+        session
+        |> visit(login_url)
+        |> (fn s ->
+            # Verify login form exists
+            has?(s, Wallaby.Query.css("#kc-form-login"))
+            s
+          end).()
+        |> fill_in(Wallaby.Query.text_field("username"), with: root_email)
+        |> fill_in(Wallaby.Query.text_field("password"), with: root_password)
+        |> click(Wallaby.Query.css("#kc-login"))
+        |> assert_has(
+          Wallaby.Query.css("h1.f2.f1-m.lh-title.mb1",
+            text: "Here's what's going on",
+            timeout: 10_000
+          )
         )
-      )
 
-    {:ok, session: logged_in_session, organization: organization, base_domain: base_domain}
+      {:ok, session: logged_in_session, organization: organization, base_domain: base_domain}
+    rescue
+      e in Wallaby.ExpectationNotMetError ->
+        # Take screenshot of the error state
+        take_screenshot(session, name: "login_failure")
+        # Log the current URL and HTML source for debugging
+        Logger.error("Login failed! Current URL: #{current_url(session)}")        # Attempt to capture some of the page source
+        html_source =
+          try do
+            session
+            |> execute_script("return document.documentElement.outerHTML")
+            |> String.slice(0, 500)
+          rescue
+            _ -> "Could not retrieve page source"
+          end
+
+        Logger.error("Page source snippet: #{html_source}...")
+        reraise e, __STACKTRACE__
+    end
   end
 end
