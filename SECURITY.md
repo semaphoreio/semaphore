@@ -7,7 +7,7 @@ At Semaphore, we take security seriously. If you believe you have found a securi
 ### How to Report
 
 Please send reports about any security related issues you find to:
-**support+security@semaphoreci.com**
+**<support+security@semaphoreci.com>**
 
 Please provide as much information as possible, including:
 
@@ -79,7 +79,7 @@ Please provide as much information as possible, including:
 
 Stay informed about security updates:
 
-- Follow our security announcements on [discord](https://discord.com/channels/1097422014735732746/1097434200438755369)
+- Follow our security announcements on [Discord](https://discord.gg/FBuUrV24NH)
 - Follow the announcements on our [website](https://semaphoreci.com/category/semaphore-news)
 
 ## Attribution
