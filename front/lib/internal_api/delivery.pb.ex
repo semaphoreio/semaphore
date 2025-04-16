@@ -239,9 +239,8 @@ defmodule InternalApi.Delivery.Connection.FilterOperator do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:FILTER_OPERATOR_UNKNOWN, 0)
-  field(:FILTER_OPERATOR_AND, 1)
-  field(:FILTER_OPERATOR_OR, 2)
+  field(:FILTER_OPERATOR_AND, 0)
+  field(:FILTER_OPERATOR_OR, 1)
 end
 
 defmodule InternalApi.Delivery.Stage do
@@ -359,14 +358,18 @@ defmodule InternalApi.Delivery.TaskTemplate do
   @type t :: %__MODULE__{
           project_id: String.t(),
           task_id: String.t(),
+          branch: String.t(),
+          pipeline_file: String.t(),
           parameters: %{String.t() => String.t()}
         }
-  defstruct [:project_id, :task_id, :parameters]
+  defstruct [:project_id, :task_id, :branch, :pipeline_file, :parameters]
 
   field(:project_id, 1, type: :string)
   field(:task_id, 2, type: :string)
+  field(:branch, 3, type: :string)
+  field(:pipeline_file, 4, type: :string)
 
-  field(:parameters, 3,
+  field(:parameters, 5,
     repeated: true,
     type: InternalApi.Delivery.TaskTemplate.ParametersEntry,
     map: true
