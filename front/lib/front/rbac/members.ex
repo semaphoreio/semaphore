@@ -150,8 +150,6 @@ defmodule Front.RBAC.Members do
     do: InternalApi.RBAC.CountMembersRequest.new(org_id: org_id)
 
   defp construct_members_structs(members) do
-    IO.puts("MEMBER")
-    IO.inspect(members)
     alias InternalApi.RBAC.SubjectType, as: Type
 
     members =
@@ -172,8 +170,6 @@ defmodule Front.RBAC.Members do
         )
       end)
 
-    IO.puts("AFTER")
-    IO.inspect(members)
     {:ok, members}
   end
 

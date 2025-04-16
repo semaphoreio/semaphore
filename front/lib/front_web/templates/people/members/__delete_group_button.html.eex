@@ -1,0 +1,7 @@
+<%= if @render? && @permissions["organization.people.manage"] do %>
+  <%= link "×",
+      to: groups_path(@conn, :destroy_group, @group.id),
+      method: :delete,
+      class: "btn btn-secondary",
+      data: [confirm: "Are you sure you want to delete this group?"] %>
+<% end %>

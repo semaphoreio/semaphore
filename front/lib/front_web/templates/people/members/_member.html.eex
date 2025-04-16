@@ -25,10 +25,12 @@
             <% end %>
           <% end %>
           <%= render "members/__modify_group_button.html", render?: (@is_group? and @org_scope?), group: @member %>
+          <%= render "members/__delete_group_button.html", render?: (@is_group? and @org_scope?), group: @member, conn: @conn, permissions: @permissions %>
 
-          <%= unless !@org_scope? && Front.ce_roles?() && "Member" not in member_role_names do %>
+          <%= unless (@is_group? or !@org_scope? && Front.ce_roles?() && "Member" not in member_role_names) do %>
             <%= render "members/__remove_member_btn.html", member: @member %>
           <% end %>
+
         </div>
       </div>
     <% end %>
