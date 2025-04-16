@@ -571,6 +571,20 @@ defmodule Guard.Store.OrganizationTest do
     end
   end
 
+  describe "restore/1" do
+    test "restores an organization", %{org_id: org_id} do
+      organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
+
+      assert {:ok, deleted_org} = Organization.soft_destroy(organization)
+      assert deleted_org.id == org_id
+      assert deleted_org.deleted_at != nil
+
+      assert {:ok, restored_org} = Organization.restore(organization)
+      assert restored_org.id == org_id
+      assert restored_org.deleted_at == nil
+    end
+  end
+
   describe "create/1" do
     test "creates organization with valid attributes" do
       owner_id = Ecto.UUID.generate()
