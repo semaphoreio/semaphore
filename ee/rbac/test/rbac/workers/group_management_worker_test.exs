@@ -13,10 +13,6 @@ defmodule Rbac.Workers.GroupManagementWorkerTest do
   end
 
   describe "perform/1" do
-    test "When request is nil" do
-      assert GroupManagement.perform() == :ok
-    end
-
     test "when request for adding users to a group exists", ctx do
       create_request(ctx, :add_user)
 

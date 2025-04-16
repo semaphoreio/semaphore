@@ -352,7 +352,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       assert group.name == "Test Group"
       assert group.description == "Test group description"
 
-      assert_request_created(user1.id, group.id, "add")
+      assert_request_created(user1.id, group.id, "add_user")
       assert Rbac.Repo.GroupManagementRequest |> Rbac.Repo.aggregate(:count, :id) == 1
     end
   end

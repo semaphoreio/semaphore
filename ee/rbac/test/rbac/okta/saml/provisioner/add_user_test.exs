@@ -114,7 +114,10 @@ defmodule Rbac.Okta.Saml.Provisioner.AddUser.Test do
     import Ecto.Query
 
     assert Repo.GroupManagementRequest
-           |> where([r], r.user_id == ^user_id and r.group_id == ^group_id and r.action == :add)
+           |> where(
+             [r],
+             r.user_id == ^user_id and r.group_id == ^group_id and r.action == :add_user
+           )
            |> Repo.exists?()
   end
 end

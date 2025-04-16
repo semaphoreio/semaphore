@@ -116,7 +116,7 @@ defmodule Rbac.Store.Group do
     |> select([ugb, _], ugb.group_id)
     |> Rbac.Repo.all()
     |> Enum.each(
-      &Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, :remove, nil)
+      &Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, :remove_user, nil)
     )
   end
 
