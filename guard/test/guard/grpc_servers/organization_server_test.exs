@@ -53,6 +53,53 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
              } = response
     end
 
+    test "returns a soft-deleted organization by id if soft_deleted param is true", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      {:ok, organization} = Guard.Store.Organization.soft_destroy(organization)
+
+      request = Organization.DescribeRequest.new(org_id: organization.id, soft_deleted: true)
+
+      {:ok, response} =
+        channel
+        |> Stub.describe(request)
+
+      id = organization.id
+      username = organization.username
+
+      assert %Organization.DescribeResponse{
+               organization: %Organization.Organization{
+                 org_id: ^id,
+                 org_username: ^username
+               }
+             } = response
+    end
+
+    test "returns a soft-deleted organization by username if soft_deleted param is true", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      {:ok, organization} = Guard.Store.Organization.soft_destroy(organization)
+
+      request =
+        Organization.DescribeRequest.new(org_username: organization.username, soft_deleted: true)
+
+      {:ok, response} =
+        channel
+        |> Stub.describe(request)
+
+      id = organization.id
+      username = organization.username
+
+      assert %Organization.DescribeResponse{
+               organization: %Organization.Organization{
+                 org_id: ^id,
+                 org_username: ^username
+               }
+             } = response
+    end
+
     test "returns an error if the organization is not found", %{grpc_channel: channel} do
       org_id = Ecto.UUID.generate()
       request = Organization.DescribeRequest.new(org_id: org_id)
@@ -60,6 +107,34 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       assert {:error, %GRPC.RPCError{message: message}} = Stub.describe(channel, request)
 
       assert message =~ "Organization '#{org_id}' not found."
+    end
+
+    test "returns an error if the organization is soft deleted and soft_deleted is false", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      {:ok, organization} = Guard.Store.Organization.soft_destroy(organization)
+
+      request = Organization.DescribeRequest.new(org_id: organization.id, soft_deleted: false)
+
+      assert {:error, %GRPC.RPCError{message: message, status: status}} =
+               Stub.describe(channel, request)
+
+      assert status == GRPC.Status.not_found()
+      assert message =~ "Organization '#{organization.id}' not found."
+    end
+
+    test "returns an error if the organization is not soft deleted and soft_deleted is true", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      request = Organization.DescribeRequest.new(org_id: organization.id, soft_deleted: true)
+
+      assert {:error, %GRPC.RPCError{message: message, status: status}} =
+               Stub.describe(channel, request)
+
+      assert status == GRPC.Status.not_found()
+      assert message =~ "Organization '#{organization.id}' not found."
     end
   end
 
@@ -81,6 +156,48 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       assert resp_org1.org_username == org1.username
       assert resp_org2.org_id == org2.id
       assert resp_org2.org_username == org2.username
+    end
+
+    test "filters soft-deleted organizations if soft_deleted param is false", %{
+      grpc_channel: channel
+    } do
+      org1 = Support.Factories.Organization.insert!(name: "A", username: "abc")
+      org2 = Support.Factories.Organization.insert!(name: "B", username: "bcd")
+      org3 = Support.Factories.Organization.insert!(name: "C", username: "cde")
+      {:ok, _} = Guard.Store.Organization.soft_destroy(org3)
+
+      request =
+        Organization.DescribeManyRequest.new(
+          org_ids: [org1.id, org2.id, org3.id],
+          soft_deleted: false
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.describe_many(request)
+
+      assert length(response.organizations) == 2
+    end
+
+    test "returns soft-deleted organizations if soft_deleted param is true", %{
+      grpc_channel: channel
+    } do
+      org1 = Support.Factories.Organization.insert!(name: "A", username: "abc")
+      org2 = Support.Factories.Organization.insert!(name: "B", username: "bcd")
+      org3 = Support.Factories.Organization.insert!(name: "C", username: "cde")
+      {:ok, _} = Guard.Store.Organization.soft_destroy(org3)
+
+      request =
+        Organization.DescribeManyRequest.new(
+          org_ids: [org1.id, org2.id, org3.id],
+          soft_deleted: true
+        )
+
+      {:ok, response} =
+        channel
+        |> Stub.describe_many(request)
+
+      assert length(response.organizations) == 1
     end
 
     test "filters out invalid UUIDs", %{grpc_channel: channel, organization: organization} do
@@ -309,13 +426,30 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
           created_at: now |> DateTime.truncate(:second)
         )
 
+      org4 =
+        Support.Factories.Organization.insert!(
+          name: "Soft Deleted Org 1",
+          username: "deleted-org-1",
+          created_at: now |> DateTime.truncate(:second)
+        )
+
+      org5 =
+        Support.Factories.Organization.insert!(
+          name: "Soft Deleted Org 2",
+          username: "deleted-org-2",
+          created_at: now |> DateTime.truncate(:second)
+        )
+
+      {:ok, _} = Guard.Store.Organization.soft_destroy(org4)
+      {:ok, _} = Guard.Store.Organization.soft_destroy(org5)
+
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
-      [orgs: [org1, org2, org3], now: now, channel: channel]
+      [orgs: [org1, org2, org3, org4, org5], now: now, channel: channel]
     end
 
     test "lists organizations with default parameters", %{
       channel: channel,
-      orgs: [org1, org2, org3]
+      orgs: [org1, org2, org3 | _rest]
     } do
       request = Organization.ListRequest.new()
 
@@ -331,7 +465,28 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       assert Enum.map(organizations, & &1.name) == [org1.name, org2.name, org3.name]
     end
 
-    test "lists organizations with pagination", %{channel: channel, orgs: [org1, org2, org3]} do
+    test "lists soft-deleted organizations with default parameters", %{
+      channel: channel,
+      orgs: [_org1, _org2, _org3, org4, org5]
+    } do
+      request = Organization.ListRequest.new(soft_deleted: true)
+
+      {:ok, response} = channel |> Stub.list(request)
+
+      assert %Organization.ListResponse{
+               status: %InternalApi.ResponseStatus{code: 0},
+               organizations: organizations,
+               next_page_token: _
+             } = response
+
+      assert length(organizations) == 2
+      assert Enum.map(organizations, & &1.name) == [org4.name, org5.name]
+    end
+
+    test "lists organizations with pagination", %{
+      channel: channel,
+      orgs: [org1, org2, org3 | _rest]
+    } do
       # First page
       request = Organization.ListRequest.new(page_size: 2)
 
@@ -361,7 +516,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
 
     test "lists organizations ordered by creation time", %{
       channel: channel,
-      orgs: [org1, org2, org3]
+      orgs: [org1, org2, org3 | _rest]
     } do
       request =
         Organization.ListRequest.new(
@@ -379,7 +534,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
     test "filters organizations by creation time", %{
       channel: channel,
       now: now,
-      orgs: [_, org2, org3]
+      orgs: [_, org2, org3 | _rest]
     } do
       one_day_ago = DateTime.add(now, -25, :hour)
 
@@ -1226,6 +1381,37 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
         assert message =~ "Organization '#{non_existent_id}' not found."
         assert_not_called(Guard.Events.OrganizationDeleted.publish(:_, type: :soft_delete))
       end
+    end
+  end
+
+  describe "restore" do
+    test "restores an organization", %{grpc_channel: channel, organization: organization} do
+      {:ok, organization} = Guard.Store.Organization.soft_destroy(organization)
+
+      with_mocks [{Guard.Events.OrganizationRestored, [], [publish: fn _ -> :ok end]}] do
+        request = Organization.RestoreRequest.new(org_id: organization.id)
+
+        {:ok, _} = channel |> Organization.OrganizationService.Stub.restore(request)
+
+        # Verify organization was restored
+        restored_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, organization.id)
+        assert restored_org.deleted_at == nil
+
+        assert_called(Guard.Events.OrganizationRestored.publish(organization.id))
+      end
+    end
+
+    test "if organization is not soft_deleted, returns error", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      request = Organization.RestoreRequest.new(org_id: organization.id)
+
+      assert {:error, %GRPC.RPCError{message: message, status: status}} =
+               Stub.restore(channel, request)
+
+      assert status == GRPC.Status.not_found()
+      assert message =~ "Organization '#{organization.id}' not found."
     end
   end
 
