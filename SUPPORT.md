@@ -7,7 +7,6 @@ This document outlines the various support channels available for Semaphore.
 ### GitHub Discussions
 
 For general questions, best practices, and community discussions:
-
 - Visit our [GitHub Discussions](https://github.com/semaphoreio/semaphore/discussions)
 - Search existing discussions before creating a new one
 - Use appropriate category tags
@@ -15,7 +14,7 @@ For general questions, best practices, and community discussions:
 ### Discord & Documentation
 
 - [Official Documentation](https://docs.semaphoreci.com)
-- [Discord server](https://discord.gg/FBuUrV24NH)
+- [Discord server](https://discord.com/channels/1097422014735732746/1097434200438755369)
 
 ### Bug Reports & Feature Requests
 
@@ -35,7 +34,7 @@ Enterprise and SaaS customers have access to:
 - Private security reporting
 - Custom feature development consultation
 
-Contact enterprise support at: <support@semaphoreci.com>
+Contact enterprise support at: support@semaphoreci.com
 
 ### Security Issues
 
@@ -69,4 +68,3 @@ For security-related issues:
    - Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
    - Be patient with community responses
    - Help others when you can
-
