@@ -1238,7 +1238,9 @@ type TaskTemplate struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ProjectId     string                 `protobuf:"bytes,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	TaskId        string                 `protobuf:"bytes,2,opt,name=task_id,json=taskId,proto3" json:"task_id,omitempty"`
-	Parameters    map[string]string      `protobuf:"bytes,3,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	Branch        string                 `protobuf:"bytes,3,opt,name=branch,proto3" json:"branch,omitempty"`
+	PipelineFile  string                 `protobuf:"bytes,4,opt,name=pipeline_file,json=pipelineFile,proto3" json:"pipeline_file,omitempty"`
+	Parameters    map[string]string      `protobuf:"bytes,5,rep,name=parameters,proto3" json:"parameters,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1283,6 +1285,20 @@ func (x *TaskTemplate) GetProjectId() string {
 func (x *TaskTemplate) GetTaskId() string {
 	if x != nil {
 		return x.TaskId
+	}
+	return ""
+}
+
+func (x *TaskTemplate) GetBranch() string {
+	if x != nil {
+		return x.Branch
+	}
+	return ""
+}
+
+func (x *TaskTemplate) GetPipelineFile() string {
+	if x != nil {
+		return x.PipelineFile
 	}
 	return ""
 }
@@ -1988,13 +2004,15 @@ const file_delivery_proto_rawDesc = "" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x16\n" +
 	"\x06branch\x18\x02 \x01(\tR\x06branch\x12#\n" +
-	"\rpipeline_file\x18\x03 \x01(\tR\fpipelineFile\"\xd9\x01\n" +
+	"\rpipeline_file\x18\x03 \x01(\tR\fpipelineFile\"\x96\x02\n" +
 	"\fTaskTemplate\x12\x1d\n" +
 	"\n" +
 	"project_id\x18\x01 \x01(\tR\tprojectId\x12\x17\n" +
-	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12R\n" +
+	"\atask_id\x18\x02 \x01(\tR\x06taskId\x12\x16\n" +
+	"\x06branch\x18\x03 \x01(\tR\x06branch\x12#\n" +
+	"\rpipeline_file\x18\x04 \x01(\tR\fpipelineFile\x12R\n" +
 	"\n" +
-	"parameters\x18\x03 \x03(\v22.InternalApi.Delivery.TaskTemplate.ParametersEntryR\n" +
+	"parameters\x18\x05 \x03(\v22.InternalApi.Delivery.TaskTemplate.ParametersEntryR\n" +
 	"parameters\x1a=\n" +
 	"\x0fParametersEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +

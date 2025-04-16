@@ -57,9 +57,9 @@ func Test__DescribeCanvas(t *testing.T) {
 	userID := uuid.New()
 
 	template := models.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		Type: models.RunTemplateTypeSemaphoreWorkflow,
 		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			Project:      "demo-project",
+			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
 		},
@@ -419,9 +419,9 @@ func Test__ListStageEvents(t *testing.T) {
 	require.NoError(t, err)
 
 	template := models.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		Type: models.RunTemplateTypeSemaphoreWorkflow,
 		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			Project:      "demo-project",
+			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
 		},
@@ -489,9 +489,9 @@ func Test__ApproveStageEvent(t *testing.T) {
 	require.NoError(t, err)
 
 	template := models.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		Type: models.RunTemplateTypeSemaphoreWorkflow,
 		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			Project:      "demo-project",
+			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
 		},

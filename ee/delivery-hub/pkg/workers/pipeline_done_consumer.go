@@ -69,10 +69,24 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	log.Infof("Received message for %s", ID)
 
 	//
-	// Not all pipelines are related to stage executions, so we
-	// check if there are is a stage execution associated with this pipeline first.
+	// TODO
 	//
-	execution, err := models.FindExecutionByReference(ID)
+	// Currently, we need to describe the pipeline to find the workflow ID and the result of the pipeline.
+	// Going to the pipeline API on every event for this is expensive, and
+	// if we put the workflow ID and pipeline result in the message,
+	// we wouldn't need to do this.
+	//
+	pipeline, err := c.describePipeline(ID)
+	if err != nil {
+		log.Errorf("Error describing pipeline %s: %v", ID, err)
+		return err
+	}
+
+	//
+	// Not all pipelines are related to stage executions, so we
+	// check if there are is a stage execution associated with this workflow first.
+	//
+	execution, err := models.FindExecutionByReference(pipeline.WfId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			log.Infof("No execution for %s - ignoring", ID)
@@ -86,15 +100,11 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	// and map the pipeline result to a stage execution result.
 	//
 	logger := logging.ForExecution(execution)
-	result, err := c.findPipelineResult(logger, ID)
-	if err != nil {
-		logger.Errorf("Error finding pipeline result: %v", err)
-		return err
-	}
 
 	//
 	// Update the stage execution accordingly.
 	//
+	result := c.resolveExecutionResult(logger, pipeline)
 	if err := execution.Finish(result); err != nil {
 		logger.Errorf("Error updating execution state: %v", err)
 		return err
@@ -114,10 +124,10 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	return nil
 }
 
-func (c *PipelineDoneConsumer) findPipelineResult(logger *log.Entry, id string) (string, error) {
+func (c *PipelineDoneConsumer) describePipeline(id string) (*pplproto.Pipeline, error) {
 	conn, err := grpc.NewClient(c.PipelineAPIURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		return "", fmt.Errorf("error connecting to repo proxy API: %v", err)
+		return nil, fmt.Errorf("error connecting to repo proxy API: %v", err)
 	}
 
 	defer conn.Close()
@@ -129,16 +139,21 @@ func (c *PipelineDoneConsumer) findPipelineResult(logger *log.Entry, id string) 
 	})
 
 	if err != nil {
-		return "", fmt.Errorf("error describing pipeline: %v", err)
+		return nil, fmt.Errorf("error describing pipeline: %v", err)
 	}
 
-	logger.Infof("Pipeline result: %s", res.Pipeline.Result.String())
+	return res.Pipeline, nil
+}
 
-	if res.Pipeline.Result == pplproto.Pipeline_PASSED {
-		return models.StageExecutionResultPassed, nil
+func (c *PipelineDoneConsumer) resolveExecutionResult(logger *log.Entry, pipeline *pplproto.Pipeline) string {
+	logger.Infof("Pipeline %s state: %v", pipeline.PplId, pipeline.Result)
+
+	switch pipeline.Result {
+	case pplproto.Pipeline_PASSED:
+		return models.StageExecutionResultPassed
+	default:
+		return models.StageExecutionResultFailed
 	}
-
-	return models.StageExecutionResultFailed, nil
 }
 
 func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution, result string) error {

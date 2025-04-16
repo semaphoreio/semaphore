@@ -382,9 +382,9 @@ func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
 	switch in.Type {
 	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW:
 		return &models.RunTemplate{
-			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+			Type: models.RunTemplateTypeSemaphoreWorkflow,
 			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-				Project:      in.SemaphoreWorkflow.ProjectId,
+				ProjectID:    in.SemaphoreWorkflow.ProjectId,
 				Branch:       in.SemaphoreWorkflow.Branch,
 				PipelineFile: in.SemaphoreWorkflow.PipelineFile,
 			},
@@ -392,11 +392,13 @@ func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
 
 	case pb.RunTemplate_TYPE_SEMAPHORE_TASK:
 		return &models.RunTemplate{
-			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK.String(),
+			Type: models.RunTemplateTypeSemaphoreTask,
 			SemaphoreTask: &models.SemaphoreTaskTemplate{
-				Project:    in.SemaphoreTask.ProjectId,
-				Task:       in.SemaphoreTask.TaskId,
-				Parameters: in.SemaphoreTask.Parameters,
+				ProjectID:    in.SemaphoreTask.ProjectId,
+				TaskID:       in.SemaphoreTask.TaskId,
+				Branch:       in.SemaphoreTask.Branch,
+				PipelineFile: in.SemaphoreTask.PipelineFile,
+				Parameters:   in.SemaphoreTask.Parameters,
 			},
 		}, nil
 
@@ -468,23 +470,25 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 
 func serializeRunTemplate(runTemplate models.RunTemplate) (*pb.RunTemplate, error) {
 	switch runTemplate.Type {
-	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String():
+	case models.RunTemplateTypeSemaphoreWorkflow:
 		return &pb.RunTemplate{
 			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
 			SemaphoreWorkflow: &pb.WorkflowTemplate{
-				ProjectId:    runTemplate.SemaphoreWorkflow.Project,
+				ProjectId:    runTemplate.SemaphoreWorkflow.ProjectID,
 				Branch:       runTemplate.SemaphoreWorkflow.Branch,
 				PipelineFile: runTemplate.SemaphoreWorkflow.PipelineFile,
 			},
 		}, nil
 
-	case pb.RunTemplate_TYPE_SEMAPHORE_TASK.String():
+	case models.RunTemplateTypeSemaphoreTask:
 		return &pb.RunTemplate{
 			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK,
 			SemaphoreTask: &pb.TaskTemplate{
-				ProjectId:  runTemplate.SemaphoreTask.Project,
-				TaskId:     runTemplate.SemaphoreTask.Task,
-				Parameters: runTemplate.SemaphoreTask.Parameters,
+				ProjectId:    runTemplate.SemaphoreTask.ProjectID,
+				TaskId:       runTemplate.SemaphoreTask.TaskID,
+				Branch:       runTemplate.SemaphoreTask.Branch,
+				PipelineFile: runTemplate.SemaphoreTask.PipelineFile,
+				Parameters:   runTemplate.SemaphoreTask.Parameters,
 			},
 		}, nil
 

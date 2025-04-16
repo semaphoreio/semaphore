@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
-	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,9 +23,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 	require.NoError(t, err)
 
 	template := models.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		Type: models.RunTemplateTypeSemaphoreWorkflow,
 		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			Project:      "demo-project",
+			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
 		},

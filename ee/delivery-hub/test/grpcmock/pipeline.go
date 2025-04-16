@@ -9,6 +9,7 @@ import (
 
 type PipelineService struct {
 	MockedPipelineResult pb.Pipeline_Result
+	MockedWorkflowID     string
 }
 
 func NewPipelineService() *PipelineService {
@@ -19,9 +20,14 @@ func (s *PipelineService) MockPipelineResult(result pb.Pipeline_Result) {
 	s.MockedPipelineResult = result
 }
 
+func (s *PipelineService) MockWorkflow(id string) {
+	s.MockedWorkflowID = id
+}
+
 func (s *PipelineService) Describe(ctx context.Context, request *pb.DescribeRequest) (*pb.DescribeResponse, error) {
 	return &pb.DescribeResponse{
 		Pipeline: &pb.Pipeline{
+			WfId:   s.MockedWorkflowID,
 			Result: s.MockedPipelineResult,
 		},
 	}, nil

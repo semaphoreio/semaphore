@@ -10,7 +10,6 @@ import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
-	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/grpcmock"
 	"github.com/stretchr/testify/require"
@@ -35,9 +34,9 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 	require.NoError(t, err)
 
 	template := models.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW.String(),
+		Type: models.RunTemplateTypeSemaphoreWorkflow,
 		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			Project:      "demo-project",
+			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/run.yml",
 		},
@@ -67,18 +66,19 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		//
 		// Create execution
 		//
-		pipelineID := uuid.New().String()
+		workflowID := uuid.New().String()
 		event, err := models.CreateStageEvent(stage.ID, source.ID)
 		require.NoError(t, err)
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
-		require.NoError(t, execution.Start(pipelineID))
+		require.NoError(t, execution.Start(workflowID))
 
 		//
 		// Mock failed result and publish pipeline done message.
 		//
 		mockRegistry.PipelineService.MockPipelineResult(pplproto.Pipeline_FAILED)
-		message := pplproto.PipelineEvent{PipelineId: pipelineID}
+		mockRegistry.PipelineService.MockWorkflow(workflowID)
+		message := pplproto.PipelineEvent{PipelineId: uuid.New().String()}
 		body, err := proto.Marshal(&message)
 		require.NoError(t, err)
 		require.NoError(t, tackle.PublishMessage(&tackle.PublishParams{
@@ -126,18 +126,19 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		//
 		// Create execution
 		//
-		pipelineID := uuid.New().String()
+		workflowID := uuid.New().String()
 		event, err := models.CreateStageEvent(stage.ID, source.ID)
 		require.NoError(t, err)
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
-		require.NoError(t, execution.Start(pipelineID))
+		require.NoError(t, execution.Start(workflowID))
 
 		//
 		// Mock failed result and publish pipeline done message.
 		//
 		mockRegistry.PipelineService.MockPipelineResult(pplproto.Pipeline_PASSED)
-		message := pplproto.PipelineEvent{PipelineId: pipelineID}
+		mockRegistry.PipelineService.MockWorkflow(workflowID)
+		message := pplproto.PipelineEvent{PipelineId: uuid.New().String()}
 		body, err := proto.Marshal(&message)
 		require.NoError(t, err)
 		require.NoError(t, tackle.PublishMessage(&tackle.PublishParams{

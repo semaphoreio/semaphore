@@ -52,8 +52,14 @@ func startWorkers() {
 			panic(err)
 		}
 
+		schedulerURL, err := config.SchedulerAPIURL()
+		if err != nil {
+			panic(err)
+		}
+
 		w := workers.PendingExecutionsWorker{
 			RepoProxyURL: repoProxyURL,
+			SchedulerURL: schedulerURL,
 		}
 
 		go w.Start()

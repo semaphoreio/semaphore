@@ -30,8 +30,11 @@ type StageExecution struct {
 	FinishedAt   *time.Time
 
 	//
+	// TODO: not so sure about this column
+	// TODO: maybe we can use stage execution outputs for this?
 	// The ID of the "thing" that is running.
-	// For now, this is a Semaphore workflow, but we might want to support other types of executions in the future,
+	// For now, since we only have workflow/task runs,
+	// this is always a Semaphore workflow ID, but we might want to support other types of executions in the future,
 	// so keeping the name generic for now, and also not using uuid.UUID for this column, since we can't guarantee
 	// that all IDs will be UUIDs.
 	//

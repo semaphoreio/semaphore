@@ -31,3 +31,12 @@ func PipelineAPIURL() (string, error) {
 
 	return URL, nil
 }
+
+func SchedulerAPIURL() (string, error) {
+	URL := os.Getenv("INTERNAL_API_URL_SCHEDULER")
+	if URL == "" {
+		return "", fmt.Errorf("INTERNAL_API_URL_SCHEDULER not set")
+	}
+
+	return URL, nil
+}

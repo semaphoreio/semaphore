@@ -8,6 +8,11 @@ import (
 	"gorm.io/datatypes"
 )
 
+const (
+	RunTemplateTypeSemaphoreWorkflow = "semaphore-workflow"
+	RunTemplateTypeSemaphoreTask     = "semaphore-task"
+)
+
 type Stage struct {
 	ID               uuid.UUID `gorm:"type:uuid;primary_key;"`
 	OrganizationID   uuid.UUID
@@ -21,29 +26,31 @@ type Stage struct {
 }
 
 type RunTemplate struct {
-	Type string
+	Type string `json:"type"`
 
 	//
 	// Triggers a workflow run on an existing Semaphore project.
 	//
-	SemaphoreWorkflow *SemaphoreWorkflowTemplate
+	SemaphoreWorkflow *SemaphoreWorkflowTemplate `json:"semaphore_workflow,omitempty"`
 
 	//
 	// Triggers a task on an existing Semaphore project.
 	//
-	SemaphoreTask *SemaphoreTaskTemplate
+	SemaphoreTask *SemaphoreTaskTemplate `json:"semaphore_task,omitempty"`
 }
 
 type SemaphoreWorkflowTemplate struct {
-	Project      string
-	Branch       string
-	PipelineFile string
+	ProjectID    string `json:"project_id"`
+	Branch       string `json:"branch"`
+	PipelineFile string `json:"pipeline_file"`
 }
 
 type SemaphoreTaskTemplate struct {
-	Project    string
-	Task       string
-	Parameters map[string]string
+	ProjectID    string            `json:"project_id"`
+	TaskID       string            `json:"task_id"`
+	Branch       string            `json:"branch"`
+	PipelineFile string            `json:"pipeline_file"`
+	Parameters   map[string]string `json:"parameters"`
 }
 
 func FindStageByName(orgID, canvasID uuid.UUID, name string) (*Stage, error) {
