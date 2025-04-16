@@ -2966,14 +2966,7 @@ defmodule Projecthub.Api.GrpcServerTest do
 
   describe ".restore" do
     test "when a soft deleted project is set to be restored => restores the project and returns ok" do
-      {:ok, channel} =
-        GRPC.Stub.connect("localhost:50051",
-          interceptors: [
-            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
-            Projecthub.Util.GRPC.ClientLoggerInterceptor,
-            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
-          ]
-        )
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       org_id = Ecto.UUID.generate()
 
@@ -3003,14 +2996,7 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
 
     test "when a project that is not soft deleted and it is requested to be restored => returns a not found response" do
-      {:ok, channel} =
-        GRPC.Stub.connect("localhost:50051",
-          interceptors: [
-            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
-            Projecthub.Util.GRPC.ClientLoggerInterceptor,
-            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
-          ]
-        )
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       org_id = Ecto.UUID.generate()
 
