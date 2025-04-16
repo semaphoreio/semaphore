@@ -1229,6 +1229,37 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
     end
   end
 
+  describe "restore" do
+    test "restores an organization", %{grpc_channel: channel, organization: organization} do
+      {:ok, organization} = Guard.Store.Organization.soft_destroy(organization)
+
+      with_mocks [{Guard.Events.OrganizationRestored, [], [publish: fn _ -> :ok end]}] do
+        request = Organization.RestoreRequest.new(org_id: organization.id)
+
+        {:ok, _} = channel |> Organization.OrganizationService.Stub.restore(request)
+
+        # Verify organization was restored
+        restored_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, organization.id)
+        assert restored_org.deleted_at == nil
+
+        assert_called(Guard.Events.OrganizationRestored.publish(organization.id))
+      end
+    end
+
+    test "if organization is not soft_deleted, returns error", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      request = Organization.RestoreRequest.new(org_id: organization.id)
+
+      assert {:error, %GRPC.RPCError{message: message, status: status}} =
+               Stub.restore(channel, request)
+
+      assert status == GRPC.Status.not_found()
+      assert message =~ "Organization '#{organization.id}' not found."
+    end
+  end
+
   describe "create/2" do
     test "creates organization with valid params", %{grpc_channel: channel} do
       with_mocks [{Guard.Events.OrganizationCreated, [], [publish: fn _ -> :ok end]}] do
