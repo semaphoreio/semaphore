@@ -115,14 +115,7 @@ defmodule Rbac.Store.Group do
     |> where([_, g], g.org_id == ^org_id)
     |> select([ugb, _], ugb.group_id)
     |> Rbac.Repo.all()
-    |> Enum.each(
-      &Rbac.Repo.GroupManagementRequest.create_new_request(
-        member_id,
-        &1,
-        :remove_user,
-        requester_id
-      )
-    )
+    |> Enum.each(&create_request(member_id, &1, :remove_user, requester_id))
   end
 
   def modify_metadata(group_id, "", ""), do: fetch_group(group_id)
@@ -146,7 +139,6 @@ defmodule Rbac.Store.Group do
         {:ok, group} ->
           {:ok, rbi} = RBI.new(org_id: group.org_id)
 
-          # Build the full transaction to remove the group
           ecto_transaction =
             Ecto.Multi.new()
             |> Ecto.Multi.run(:clear_all_permissions, fn _, _ -> remove_user_permissions(rbi) end)
@@ -258,4 +250,8 @@ defmodule Rbac.Store.Group do
       {:error, :cant_remove_keys_from_project_access_store}
     end
   end
+
+  defdelegate create_request(user_id_or_ids, group_id, action, requester_id),
+    to: Rbac.Repo.GroupManagementRequest,
+    as: :create_new_request
 end

@@ -92,9 +92,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
     case Group.fetch_group(group_id) do
       {:ok, group} ->
         authorize!(@manage_groups_permission, requester_id, group.org_id)
-
         {:ok, _} = create_request(nil, group_id, :destroy_group, requester_id)
-
         %Groups.DestroyGroupResponse{}
 
       {:error, :not_found} ->

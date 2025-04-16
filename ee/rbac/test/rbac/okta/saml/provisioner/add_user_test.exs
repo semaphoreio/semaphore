@@ -100,24 +100,22 @@ defmodule Rbac.Okta.Saml.Provisioner.AddUser.Test do
 
     {:ok, role} = Repo.RbacRole.get_role_by_name(role_name, "org_scope", jit_user.org_id)
 
-    assert Repo.SubjectRoleBinding
-           |> where(
-             [s],
-             s.subject_id == ^jit_user.user_id and s.org_id == ^jit_user.org_id and
-               s.role_id == ^role.id and
-               is_nil(s.project_id)
-           )
-           |> Repo.exists?()
+    Repo.SubjectRoleBinding
+    |> where(
+      [s],
+      s.subject_id == ^jit_user.user_id and s.org_id == ^jit_user.org_id and s.role_id == ^role.id and
+        is_nil(s.project_id)
+    )
+    |> Repo.exists?()
+    |> assert()
   end
 
   defp assert_group_request(user_id, group_id) do
     import Ecto.Query
 
-    assert Repo.GroupManagementRequest
-           |> where(
-             [r],
-             r.user_id == ^user_id and r.group_id == ^group_id and r.action == :add_user
-           )
-           |> Repo.exists?()
+    Repo.GroupManagementRequest
+    |> where([r], r.user_id == ^user_id and r.group_id == ^group_id and r.action == :add_user)
+    |> Repo.exists?()
+    |> assert()
   end
 end
