@@ -52,6 +52,21 @@ defmodule Front.RBAC.Groups do
     end
   end
 
+  def destroy_group(group_id, requester_id) do
+    req =
+      Groups.DestroyGroupRequest.new(
+        group_id: group_id,
+        requester_id: requester_id
+      )
+
+    Front.RBAC.GroupsClient.channel()
+    |> Groups.Groups.Stub.destroy_group(req)
+    |> case do
+      {:ok, _} -> {:ok, nil}
+      e -> e
+    end
+  end
+
   def modify_group(
         group_id,
         name,

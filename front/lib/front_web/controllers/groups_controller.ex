@@ -6,7 +6,7 @@ defmodule FrontWeb.GroupsController do
   alias FrontWeb.Plugs.{FetchPermissions, PageAccess}
   alias Front.RBAC.{Groups, Members}
 
-  @modify_endpoints ~w(create_group modify_group)a
+  @modify_endpoints ~w(create_group modify_group destroy_group)a
 
   plug(FetchPermissions, scope: "org")
   plug(PageAccess, permissions: "organization.people.view")
@@ -140,5 +140,34 @@ defmodule FrontWeb.GroupsController do
     {:ok, group_members} = Groups.fetch_group_members(org_id, group_id)
 
     conn |> json(group_members)
+  end
+
+  def destroy_group(conn, params) do
+    org_id = conn.assigns.organization_id
+    requester_id = conn.assigns.user_id
+    group_id = params["group_id"]
+
+    case Groups.destroy_group(group_id, requester_id) do
+      {:ok, _} ->
+        conn
+        |> put_flash(
+          :notice,
+          "Group successfully deleted. It might take up to a minute for changes to apply."
+        )
+        |> redirect(to: people_path(conn, :organization))
+
+      {:error, err_msg} ->
+        Logger.error(
+          "Error while deleting a group: #{inspect(err_msg)}." <>
+            "Org #{inspect(org_id)} group_id #{inspect(group_id)} requestor #{inspect(requester_id)}"
+        )
+
+        conn
+        |> put_flash(
+          :alert,
+          "An error occurred while deleting the group. Please contact our support team."
+        )
+        |> redirect(to: people_path(conn, :organization))
+    end
   end
 end
