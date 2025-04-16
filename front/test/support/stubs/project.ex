@@ -81,6 +81,34 @@ defmodule Support.Stubs.Project do
     Artifacthub.create(workflow.id, params)
   end
 
+  @spec set_project_state(project_stub_t(), InternalApi.Projecthub.Project.Status.State.t()) ::
+          any()
+  def set_project_state(project, state) do
+    onboarding_finished = state != :ONBOARDING
+
+    DB.find(:projects, project.id)
+    |> case do
+      project ->
+        new_project = %{
+          id: project.id,
+          name: project.name,
+          org_id: project.org_id,
+          api_model:
+            InternalApi.Projecthub.Project.new(
+              metadata:
+                Map.merge(project.api_model.metadata, %{onboarding_finished: onboarding_finished}),
+              spec: project.api_model.spec,
+              status: %{
+                project.api_model.status
+                | state: InternalApi.Projecthub.Project.Status.State.value(state)
+              }
+            )
+        }
+
+        DB.update(:projects, new_project)
+    end
+  end
+
   def add_member(project_id, user_id) do
     DB.insert(:project_members, %{
       project_id: project_id,

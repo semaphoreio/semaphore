@@ -23,6 +23,18 @@ defmodule Support.Stubs.Workflow do
     })
   end
 
+  def add_report(workflow_id, filename \\ "reports/wf_report.md") do
+    Artifacthub.create(workflow_id,
+      path: ".semaphore/REPORT.md",
+      scope: "workflows",
+      url:
+        Path.join(
+          Application.get_env(:front, :artifact_host),
+          filename
+        )
+    )
+  end
+
   @spec with_summary(workflow_stub_t(),
           project_id: String.t(),
           pipeline_id: String.t(),

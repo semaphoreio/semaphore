@@ -1,0 +1,5 @@
+<div id="report-app"></div>
+
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.ReportConfig = <%= raw json_config(@conn) %>;
+</script>

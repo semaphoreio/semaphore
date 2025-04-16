@@ -66,6 +66,7 @@ import { default as Agents} from "./agents";
 import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
+import { default as Report } from "./report";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
 import { AccountInitializingScreen } from "./me/initialization/initializing";
@@ -462,6 +463,12 @@ export var App = {
     GetStarted({
       dom: document.getElementById("get-started-app"),
       config: InjectedDataByBackend.GetStartedConfig,
+    })
+  },
+  report: function() {
+    Report({
+      dom: document.getElementById("report-app"),
+      config: InjectedDataByBackend.ReportConfig,
     })
   },
   // App.run() is invoked at the bottom of the body element

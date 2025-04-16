@@ -29,7 +29,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
   defp options do
     [
       nonces_for: [:script_src],
-      report_only: Application.get_env(:front, :environment) == :dev,
+      report_only: Application.get_env(:front, :environment) in [:dev, :test],
       directives: %{
         connect_src: connect_src(),
         default_src: ~w('none'),
