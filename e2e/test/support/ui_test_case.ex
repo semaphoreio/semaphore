@@ -55,12 +55,8 @@ defmodule E2E.UI.UserTestCase do
         |> fill_in(Wallaby.Query.text_field("username"), with: root_email)
         |> fill_in(Wallaby.Query.text_field("password"), with: root_password)
         |> click(Wallaby.Query.css("#kc-login"))
-        |> assert_has(
-          Wallaby.Query.css("h1.f2.f1-m.lh-title.mb1",
-            text: "Here's what's going on",
-            timeout: 10_000
-          )
-        )
+
+      assert current_url(logged_in_session) == "https://#{organization}.#{base_domain}/get_started/"
 
       {:ok, session: logged_in_session, organization: organization, base_domain: base_domain}
     rescue
