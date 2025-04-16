@@ -10,9 +10,14 @@ import (
 )
 
 const (
-	StageEventPending            = "pending"
-	StageEventWaitingForApproval = "waiting-for-approval"
-	StageEventProcessed          = "processed"
+	StageEventPending = "pending"
+
+	// TODO: might be easier to have a waiting state,
+	// and a separate WaitReason field, but we can revisit that later.
+	StageEventWaitingForApproval   = "waiting-for-approval"
+	StageEventWaitingForTimeWindow = "waiting-for-time-window"
+
+	StageEventProcessed = "processed"
 )
 
 type StageEvent struct {

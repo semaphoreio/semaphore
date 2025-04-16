@@ -111,12 +111,13 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
 		require.NoError(t, err)
-		require.Equal(t, events.StageCompletionEvent{
-			Stage: events.Stage{
-				ID: stage.ID.String(),
-			},
-			Result: models.StageExecutionResultFailed,
-		}, *e)
+		require.Equal(t, events.StageExecutionCompletionType, e.Type)
+		require.Equal(t, stage.ID.String(), e.Stage.ID)
+		require.Equal(t, execution.ID.String(), e.StageExecution.ID)
+		require.Equal(t, models.StageExecutionResultFailed, e.StageExecution.Result)
+		require.NotEmpty(t, e.StageExecution.CreatedAt)
+		require.NotEmpty(t, e.StageExecution.StartedAt)
+		require.NotEmpty(t, e.StageExecution.FinishedAt)
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -169,17 +170,18 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
 		require.NoError(t, err)
-		require.Equal(t, events.StageCompletionEvent{
-			Stage: events.Stage{
-				ID: stage.ID.String(),
-			},
-			Result: models.StageExecutionResultPassed,
-		}, *e)
+		require.Equal(t, events.StageExecutionCompletionType, e.Type)
+		require.Equal(t, stage.ID.String(), e.Stage.ID)
+		require.Equal(t, execution.ID.String(), e.StageExecution.ID)
+		require.Equal(t, models.StageExecutionResultPassed, e.StageExecution.Result)
+		require.NotEmpty(t, e.StageExecution.CreatedAt)
+		require.NotEmpty(t, e.StageExecution.StartedAt)
+		require.NotEmpty(t, e.StageExecution.FinishedAt)
 	})
 }
 
-func unmarshalCompletionEvent(raw []byte) (*events.StageCompletionEvent, error) {
-	e := events.StageCompletionEvent{}
+func unmarshalCompletionEvent(raw []byte) (*events.StageExecutionCompletion, error) {
+	e := events.StageExecutionCompletion{}
 	err := json.Unmarshal(raw, &e)
 	if err != nil {
 		return nil, err

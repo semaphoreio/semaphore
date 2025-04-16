@@ -2,12 +2,12 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -54,7 +54,37 @@ func (e *Event) GetNestedField(path string) (any, error) {
 		return "", err
 	}
 
-	return events.GetNestedField(obj, strings.Split(path, "."))
+	return e.getNestedField(obj, strings.Split(path, "."))
+}
+
+// TODO: support array traversing or use expr-lang for this too
+func (e *Event) getNestedField(obj map[string]any, path []string) (any, error) {
+	first := path[0]
+	v, ok := obj[first]
+	if !ok {
+		return nil, fmt.Errorf("key '%s' not found", first)
+	}
+
+	//
+	// We have reached the end of the recursion, just return the value.
+	//
+	if len(path) == 1 {
+		return v, nil
+	}
+
+	//
+	// If the current value is not a map, and we still have more path to traverse,
+	// this is not a valid path. We should stop and fail here.
+	//
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("key '%s' is not a map", first)
+	}
+
+	//
+	// Otherwise, continue traversing.
+	//
+	return e.getNestedField(m, path[1:])
 }
 
 func CreateEvent(sourceID uuid.UUID, sourceType string, raw []byte) (*Event, error) {

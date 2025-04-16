@@ -118,27 +118,24 @@ func (Connection_FilterType) EnumDescriptor() ([]byte, []int) {
 }
 
 // Filters can be combined in two ways:
-//   - FILTER_OPERATOR_AND: all filters must be true
+//   - FILTER_OPERATOR_AND: all filters must be true (default)
 //   - FILTER_OPERATOR_OR: at least one filter must be true
 type Connection_FilterOperator int32
 
 const (
-	Connection_FILTER_OPERATOR_UNKNOWN Connection_FilterOperator = 0
-	Connection_FILTER_OPERATOR_AND     Connection_FilterOperator = 1
-	Connection_FILTER_OPERATOR_OR      Connection_FilterOperator = 2
+	Connection_FILTER_OPERATOR_AND Connection_FilterOperator = 0
+	Connection_FILTER_OPERATOR_OR  Connection_FilterOperator = 1
 )
 
 // Enum value maps for Connection_FilterOperator.
 var (
 	Connection_FilterOperator_name = map[int32]string{
-		0: "FILTER_OPERATOR_UNKNOWN",
-		1: "FILTER_OPERATOR_AND",
-		2: "FILTER_OPERATOR_OR",
+		0: "FILTER_OPERATOR_AND",
+		1: "FILTER_OPERATOR_OR",
 	}
 	Connection_FilterOperator_value = map[string]int32{
-		"FILTER_OPERATOR_UNKNOWN": 0,
-		"FILTER_OPERATOR_AND":     1,
-		"FILTER_OPERATOR_OR":      2,
+		"FILTER_OPERATOR_AND": 0,
+		"FILTER_OPERATOR_OR":  1,
 	}
 )
 
@@ -922,7 +919,7 @@ func (x *Connection) GetFilterOperator() Connection_FilterOperator {
 	if x != nil {
 		return x.FilterOperator
 	}
-	return Connection_FILTER_OPERATOR_UNKNOWN
+	return Connection_FILTER_OPERATOR_AND
 }
 
 type Stage struct {
@@ -1929,7 +1926,7 @@ const file_delivery_proto_rawDesc = "" +
 	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1b\n" +
 	"\tcanvas_id\x18\x03 \x01(\tR\bcanvasId\"c\n" +
 	"\x1bDescribeEventSourceResponse\x12D\n" +
-	"\fevent_source\x18\x01 \x01(\v2!.InternalApi.Delivery.EventSourceR\veventSource\"\xbe\x06\n" +
+	"\fevent_source\x18\x01 \x01(\v2!.InternalApi.Delivery.EventSourceR\veventSource\"\xa1\x06\n" +
 	"\n" +
 	"Connection\x129\n" +
 	"\x04type\x18\x01 \x01(\x0e2%.InternalApi.Delivery.Connection.TypeR\x04type\x12\x12\n" +
@@ -1957,11 +1954,10 @@ const file_delivery_proto_rawDesc = "" +
 	"\n" +
 	"FilterType\x12\x17\n" +
 	"\x13FILTER_TYPE_UNKNOWN\x10\x00\x12\x1a\n" +
-	"\x16FILTER_TYPE_EXPRESSION\x10\x01\"^\n" +
-	"\x0eFilterOperator\x12\x1b\n" +
-	"\x17FILTER_OPERATOR_UNKNOWN\x10\x00\x12\x17\n" +
-	"\x13FILTER_OPERATOR_AND\x10\x01\x12\x16\n" +
-	"\x12FILTER_OPERATOR_OR\x10\x02\"\xe3\x02\n" +
+	"\x16FILTER_TYPE_EXPRESSION\x10\x01\"A\n" +
+	"\x0eFilterOperator\x12\x17\n" +
+	"\x13FILTER_OPERATOR_AND\x10\x00\x12\x16\n" +
+	"\x12FILTER_OPERATOR_OR\x10\x01\"\xe3\x02\n" +
 	"\x05Stage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12'\n" +

@@ -72,6 +72,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, models.StageExecutionStarted, execution.State)
 		assert.NotEmpty(t, execution.ReferenceID)
+		assert.NotEmpty(t, execution.StartedAt)
 		repoProxyReq := mockRegistry.RepoProxyService.GetLastCreateRequest()
 		require.NotNil(t, repoProxyReq)
 		assert.Equal(t, "demo-project", repoProxyReq.ProjectId)

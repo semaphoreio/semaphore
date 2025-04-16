@@ -25,6 +25,9 @@ type StageExecution struct {
 	State        string
 	Result       string
 	CreatedAt    *time.Time
+	UpdatedAt    *time.Time
+	StartedAt    *time.Time
+	FinishedAt   *time.Time
 
 	//
 	// The ID of the "thing" that is running.
@@ -36,18 +39,27 @@ type StageExecution struct {
 }
 
 func (e *StageExecution) Start(referenceID string) error {
+	now := time.Now()
+
 	return database.Conn().
 		Model(e).
 		Update("reference_id", referenceID).
 		Update("state", StageExecutionStarted).
+		Update("started_at", &now).
+		Update("updated_at", &now).
 		Error
 }
 
 func (e *StageExecution) Finish(result string) error {
+	now := time.Now()
+
 	return database.Conn().
 		Model(e).
+		Clauses(clause.Returning{}).
 		Update("result", result).
 		Update("state", StageExecutionFinished).
+		Update("updated_at", &now).
+		Update("finished_at", &now).
 		Error
 }
 
@@ -123,6 +135,7 @@ func CreateStageExecutionInTransaction(tx *gorm.DB, stageID, stageEventID uuid.U
 		StageEventID: stageEventID,
 		State:        StageExecutionPending,
 		CreatedAt:    &now,
+		UpdatedAt:    &now,
 	}
 
 	err := tx.

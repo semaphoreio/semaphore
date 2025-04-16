@@ -502,11 +502,6 @@ func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection
 			return nil, fmt.Errorf("invalid connection: %v", err)
 		}
 
-		operator, err := protoToFilterOperator(connection.FilterOperator)
-		if err != nil {
-			return nil, err
-		}
-
 		filters, err := validateFilters(connection.Filters)
 		if err != nil {
 			return nil, err
@@ -515,7 +510,7 @@ func validateConnections(orgID, canvasID uuid.UUID, connections []*pb.Connection
 		cs = append(cs, models.StageConnection{
 			SourceID:       *sourceID,
 			SourceType:     protoToConnectionType(connection.Type),
-			FilterOperator: operator,
+			FilterOperator: protoToFilterOperator(connection.FilterOperator),
 			Filters:        filters,
 		})
 	}
@@ -590,14 +585,12 @@ func validateExpressionVariables(in []*pb.Connection_ExpressionFilter_Variable) 
 	return variables, nil
 }
 
-func protoToFilterOperator(in pb.Connection_FilterOperator) (string, error) {
+func protoToFilterOperator(in pb.Connection_FilterOperator) string {
 	switch in {
 	case pb.Connection_FILTER_OPERATOR_OR:
-		return models.FilterOperatorOr, nil
-	case pb.Connection_FILTER_OPERATOR_AND:
-		return models.FilterOperatorAnd, nil
+		return models.FilterOperatorOr
 	default:
-		return "", fmt.Errorf("invalid filter operator: %s", in)
+		return models.FilterOperatorAnd
 	}
 }
 
@@ -605,10 +598,8 @@ func filterOperatorToProto(in string) pb.Connection_FilterOperator {
 	switch in {
 	case models.FilterOperatorOr:
 		return pb.Connection_FILTER_OPERATOR_OR
-	case models.FilterOperatorAnd:
-		return pb.Connection_FILTER_OPERATOR_AND
 	default:
-		return pb.Connection_FILTER_OPERATOR_UNKNOWN
+		return pb.Connection_FILTER_OPERATOR_AND
 	}
 }
 

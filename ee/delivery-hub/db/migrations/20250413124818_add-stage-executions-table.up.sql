@@ -8,6 +8,9 @@ CREATE TABLE stage_executions (
   state          CHARACTER VARYING(64) NOT NULL,
   result         CHARACTER VARYING(64) NOT NULL,
   created_at     TIMESTAMP NOT NULL,
+  updated_at     TIMESTAMP NOT NULL,
+  started_at     TIMESTAMP,
+  finished_at    TIMESTAMP,
 
   PRIMARY KEY (id),
   FOREIGN KEY (stage_id) REFERENCES stages(id),

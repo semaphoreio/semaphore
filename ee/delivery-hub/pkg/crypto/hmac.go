@@ -12,7 +12,7 @@ func VerifySignature(key []byte, data []byte, signature string) error {
 
 	computed := fmt.Sprintf("%x", h.Sum(nil))
 	if computed != signature {
-		return fmt.Errorf("invalid signature - computed=%s, given=%s", computed, signature)
+		return fmt.Errorf("invalid signature")
 	}
 
 	return nil

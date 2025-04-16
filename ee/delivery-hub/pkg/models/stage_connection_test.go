@@ -8,7 +8,6 @@ import (
 )
 
 func Test__StageConnectionFilter(t *testing.T) {
-
 	t.Run("single expression filter -> true", func(t *testing.T) {
 		conn := StageConnection{
 			FilterOperator: FilterOperatorAnd,

@@ -142,14 +142,8 @@ func (c *PipelineDoneConsumer) findPipelineResult(logger *log.Entry, id string) 
 }
 
 func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution, result string) error {
-	completionEvent := events.StageCompletionEvent{
-		Stage: events.Stage{
-			ID: execution.StageID.String(),
-		},
-		Result: result,
-	}
-
-	raw, err := json.Marshal(&completionEvent)
+	e := events.NewStageExecutionCompletion(execution)
+	raw, err := json.Marshal(&e)
 	if err != nil {
 		return fmt.Errorf("error marshaling event: %v", err)
 	}
