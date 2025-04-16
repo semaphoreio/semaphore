@@ -357,6 +357,44 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
   end
 
+  describe "destroy_group/2" do
+    alias Groups.DestroyGroupRequest, as: Request
+
+    setup do
+      {:ok, group} = Factories.Group.insert(org_id: @org_id)
+      {:ok, %{group: group}}
+    end
+
+    test "when request is successful", %{grpc_channel: channel, group: group} do
+      request = %Request{group_id: group.id, requester_id: @requester_id}
+      {:ok, %Groups.DestroyGroupResponse{}} = channel |> Stub.destroy_group(request)
+
+      assert Rbac.Repo.GroupManagementRequest
+             |> where(
+               [r],
+               r.group_id == ^group.id and r.action == :destroy_group and
+                 r.requester_id == ^@requester_id
+             )
+             |> Rbac.Repo.exists?()
+    end
+
+    test "when group doesn't exist", %{grpc_channel: channel} do
+      request = %Request{group_id: Ecto.UUID.generate(), requester_id: @requester_id}
+
+      {:error, response} = channel |> Stub.destroy_group(request)
+      assert response.status == GRPC.Status.not_found()
+      assert response.message =~ "does not exist"
+    end
+
+    test "when unauthorized due to missing role bindings", %{grpc_channel: channel, group: group} do
+      {:ok, user} = Factories.RbacUser.insert()
+
+      request = %Request{group_id: group.id, requester_id: user.id}
+      {:error, response} = channel |> Stub.destroy_group(request)
+      assert response.status == GRPC.Status.permission_denied()
+    end
+  end
+
   #
   # Helper funcs
   #
