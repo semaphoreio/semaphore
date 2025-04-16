@@ -20,6 +20,7 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.ListResponse
   alias InternalApi.Projecthub.ListKeysetResponse
   alias InternalApi.Projecthub.DestroyResponse
+  alias InternalApi.Projecthub.RestoreResponse
   alias InternalApi.Projecthub.CreateResponse
   alias InternalApi.Projecthub.ForkAndCreateResponse
   alias InternalApi.Projecthub.UpdateResponse
@@ -348,6 +349,24 @@ defmodule Projecthub.Api.GrpcServer do
           {:error, %{message: message}} ->
             DestroyResponse.new(metadata: status_failed_precondition(req, message))
         end
+      end
+    end)
+  end
+
+  def restore(req, _) do
+    Watchman.benchmark("projecthub_api.restore.duration", fn ->
+      soft_deleted = true
+
+      case find_project(req, soft_deleted) do
+        {:ok, project} ->
+          {:ok, _} = Project.restore(project)
+          RestoreResponse.new(metadata: status_ok(req))
+
+        {:error, :not_found} ->
+          RestoreResponse.new(metadata: status_not_found(req))
+
+        {:error, %{message: message}} ->
+          RestoreResponse.new(metadata: status_failed_precondition(req, message))
       end
     end)
   end
