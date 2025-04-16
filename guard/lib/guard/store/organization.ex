@@ -375,11 +375,7 @@ defmodule Guard.Store.Organization do
     |> Guard.FrontRepo.all()
   end
 
-  defp filter_deleted_query(query, soft_deleted) do
-    if soft_deleted do
-      query |> where([o], not is_nil(o.deleted_at))
-    else
-      query |> where([o], is_nil(o.deleted_at))
-    end
-  end
+  defp filter_deleted_query(query, true), do: query |> where([o], not is_nil(o.deleted_at))
+  defp filter_deleted_query(query, false), do: query |> where([o], is_nil(o.deleted_at))
+  defp filter_deleted_query(query, _), do: filter_deleted_query(query, false)
 end
