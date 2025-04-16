@@ -554,6 +554,24 @@ defmodule Projecthub.Models.ProjectTest do
     end
   end
 
+  describe ".restore" do
+    test "restores the project updating deleted_at and deleted_by" do
+      %{id: id} = create_and_soft_destroy()
+
+      assert {:error, :not_found} = Project.find(id)
+      assert {:ok, project} = Project.find(id, true)
+
+      assert project.deleted_at != nil
+      assert project.deleted_by != nil
+
+      {:ok, _} = Project.restore(project)
+
+      assert {:ok, project} = Project.find(project.id)
+      assert project.deleted_at == nil
+      assert project.deleted_by == nil
+    end
+  end
+
   describe ".find" do
     test "when the project exists => returns the project" do
       {:ok, project} = Support.Factories.Project.create()
@@ -853,7 +871,7 @@ defmodule Projecthub.Models.ProjectTest do
         project
       end
 
-    user = %User{github_token: "token"}
+    user = %User{id: Ecto.UUID.generate(), github_token: "token"}
 
     Enum.each(projects, fn project ->
       {:ok, _} = Project.soft_destroy(project, user)
@@ -865,7 +883,7 @@ defmodule Projecthub.Models.ProjectTest do
   defp create_and_soft_destroy do
     {:ok, project} = Support.Factories.Project.create_with_repo()
 
-    user = %User{github_token: "token"}
+    user = %User{id: Ecto.UUID.generate(), github_token: "token"}
 
     {:ok, _} = Project.soft_destroy(project, user)
 
