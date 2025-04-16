@@ -10,9 +10,9 @@ import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 import Steps from '@site/src/components/Steps';
 
-:::info
+:::note
 
-This image is in the Technical Preview stage. If you wish to use this machine, please contact `support@semaphoreci.com`
+The Ubuntu 24.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
 
 :::
 
