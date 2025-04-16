@@ -1,12 +1,13 @@
 package workers
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/periodic_scheduler"
+	schedulepb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/periodic_scheduler"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/grpcmock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -136,9 +137,13 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, "main", req.Branch)
 		assert.Equal(t, ".semaphore/run.yml", req.PipelineFile)
 		assert.Equal(t, stage.CreatedBy.String(), req.Requester)
-		assert.Equal(t, []*periodic_scheduler.ParameterValue{
-			{Name: "PARAM_1", Value: "VALUE_1"},
-			{Name: "PARAM_2", Value: "VALUE_2"},
-		}, req.ParameterValues)
+
+		require.Len(t, req.ParameterValues, 2)
+		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+			return v.Name == "PARAM_1" && v.Value == "VALUE_1"
+		}))
+		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+			return v.Name == "PARAM_2" && v.Value == "VALUE_2"
+		}))
 	})
 }

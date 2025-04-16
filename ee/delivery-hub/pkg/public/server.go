@@ -44,7 +44,12 @@ func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
 	// Authenticated and validated routes.
 	//
 	authenticatedRoute := r.Methods(http.MethodPost).Subrouter()
-	authenticatedRoute.HandleFunc(s.BasePath+"/sources/{sourceID}/github", s.HandleGithubWebhook).Methods("POST")
+
+	authenticatedRoute.
+		HandleFunc(s.BasePath+"/sources/{sourceID}/github", s.HandleGithubWebhook).
+		Headers("Content-Type", "application/json").
+		Methods("POST")
+
 	authenticatedRoute.Use(OrganizationMiddleware)
 	authenticatedRoute.Use(additionalMiddlewares...)
 

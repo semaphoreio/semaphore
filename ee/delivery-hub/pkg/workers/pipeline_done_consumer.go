@@ -116,7 +116,7 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	// Lastly, since the stage for this execution might be connected to other stages,
 	// we create a new event for the completion of this stage.
 	//
-	if err := c.createStageCompletionEvent(logger, execution, result); err != nil {
+	if err := c.createStageCompletionEvent(logger, execution); err != nil {
 		logger.Errorf("Error creating stage completion event: %v", err)
 		return err
 	}
@@ -156,7 +156,7 @@ func (c *PipelineDoneConsumer) resolveExecutionResult(logger *log.Entry, pipelin
 	}
 }
 
-func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution, result string) error {
+func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution) error {
 	e := events.NewStageExecutionCompletion(execution)
 	raw, err := json.Marshal(&e)
 	if err != nil {

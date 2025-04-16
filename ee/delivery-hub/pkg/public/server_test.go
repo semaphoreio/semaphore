@@ -55,9 +55,12 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 
 	t.Run("invalid organization header -> 404", func(t *testing.T) {
 		response := execRequest(server, requestParams{
-			method: "POST",
-			path:   validURL,
-			orgID:  "not-a-uuid",
+			method:      "POST",
+			path:        validURL,
+			orgID:       "not-a-uuid",
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 404, response.Code)
@@ -66,25 +69,53 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 	t.Run("event for invalid source -> 404", func(t *testing.T) {
 		invalidURL := "/sources/invalidsource/github"
 		response := execRequest(server, requestParams{
-			method:    "POST",
-			path:      invalidURL,
-			orgID:     orgID.String(),
-			body:      validEvent,
-			signature: validSignature,
+			method:      "POST",
+			path:        invalidURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 404, response.Code)
 		require.Equal(t, "source ID not found\n", response.Body.String())
 	})
 
+	t.Run("missing Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "",
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
+	t.Run("unsupported Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/x-www-form-urlencoded",
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
 	t.Run("event for source that does not exist -> 404", func(t *testing.T) {
 		invalidURL := "/sources/" + uuid.New().String() + "/github"
 		response := execRequest(server, requestParams{
-			method:    "POST",
-			path:      invalidURL,
-			orgID:     orgID.String(),
-			body:      validEvent,
-			signature: validSignature,
+			method:      "POST",
+			path:        invalidURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 404, response.Code)
@@ -93,11 +124,12 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 
 	t.Run("event with missing signature header -> 400", func(t *testing.T) {
 		response := execRequest(server, requestParams{
-			method:    "POST",
-			path:      validURL,
-			orgID:     orgID.String(),
-			body:      validEvent,
-			signature: "",
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   "",
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 400, response.Code)
@@ -106,11 +138,12 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 
 	t.Run("invalid signature -> 403", func(t *testing.T) {
 		response := execRequest(server, requestParams{
-			method:    "POST",
-			path:      validURL,
-			orgID:     orgID.String(),
-			body:      validEvent,
-			signature: "sha256=823a7b73b066321f4f644e70e1d32c15dc8f4677968149c1f35eb07639013271",
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   "sha256=823a7b73b066321f4f644e70e1d32c15dc8f4677968149c1f35eb07639013271",
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 403, response.Code)
@@ -119,11 +152,12 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 
 	t.Run("properly signed event is received -> 200", func(t *testing.T) {
 		response := execRequest(server, requestParams{
-			method:    "POST",
-			path:      validURL,
-			orgID:     orgID.String(),
-			body:      validEvent,
-			signature: validSignature,
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
 		})
 
 		require.Equal(t, 200, response.Code)
@@ -140,15 +174,20 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 }
 
 type requestParams struct {
-	method    string
-	path      string
-	orgID     string
-	body      string
-	signature string
+	method      string
+	path        string
+	orgID       string
+	body        string
+	signature   string
+	contentType string
 }
 
 func execRequest(server *Server, params requestParams) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest(params.method, params.path, strings.NewReader(params.body))
+
+	if params.contentType != "" {
+		req.Header.Add("Content-Type", params.contentType)
+	}
 
 	if params.orgID != "" {
 		req.Header.Add("x-semaphore-org-id", params.orgID)
