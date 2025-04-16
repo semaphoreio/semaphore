@@ -165,7 +165,7 @@ defmodule FrontWeb.GroupsController do
         conn
         |> put_flash(
           :alert,
-          "An error occurred while deleting the group. Please contact our support team."
+          "An error occurred: #{err_msg.message}. Please contact our support team."
         )
         |> redirect(to: people_path(conn, :organization))
     end

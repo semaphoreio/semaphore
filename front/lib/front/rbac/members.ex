@@ -172,8 +172,8 @@ defmodule Front.RBAC.Members do
         )
       end)
 
-      IO.puts("AFTER")
-      IO.inspect(members)
+    IO.puts("AFTER")
+    IO.inspect(members)
     {:ok, members}
   end
 
