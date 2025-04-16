@@ -12,7 +12,7 @@ import Steps from '@site/src/components/Steps';
 
 :::note
 
-The Ubuntu 22.04 images is not available for the older generation agent type [e1-standard](../machine-types#e1). This OS version is in technical preview and versions of preinstalled software are subject to change.
+The Ubuntu 22.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
 
 :::
 
