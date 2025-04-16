@@ -103,6 +103,32 @@ defmodule Rbac.GrpcServers.GroupsServer do
     end
   end
 
+  def destroy_group(
+        %Groups.DestroyGroupRequest{group_id: group_id, requester_id: requester_id},
+        _stream
+      ) do
+    alias Rbac.Repo.GroupManagementRequest
+
+    validate_uuid!([requester_id, group_id])
+
+    case Group.fetch_group(group_id) do
+      {:ok, group} ->
+        authorize!(@manage_groups_permission, requester_id, group.org_id)
+
+        {:ok, _request} =
+          GroupManagementRequest.create_new_request(nil, group_id, :destroy_group, requester_id)
+
+        %Groups.DestroyGroupResponse{}
+
+      {:error, :not_found} ->
+        grpc_error!(:not_found, "The group you are trying to destroy does not exist")
+
+      {:error, _error_msg} ->
+        Watchman.increment("destroy_group.failure")
+        grpc_error!(:internal, "Groups service, internal server error")
+    end
+  end
+
   ###
   ### Helper functions
   ###
