@@ -75,6 +75,7 @@ defmodule Support.Stubs do
       "project.job.stop",
       "organization.self_hosted_agents.manage",
       "organization.self_hosted_agents.view",
+      "organization.people.manage",
       "project.general_settings.view",
       "project.general_settings.manage",
       "project.scheduler.manage",

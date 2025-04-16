@@ -29,8 +29,8 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v28.0/protoc-2
   mv bin/protoc /usr/local/bin/protoc
 
 WORKDIR /app
-RUN go install github.com/mgechev/revive@latest
-RUN go install gotest.tools/gotestsum@latest
+RUN go install github.com/mgechev/revive@v1.7.0
+RUN go install gotest.tools/gotestsum@v1.12.1
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 RUN export PATH="$PATH:$(go env GOPATH)/bin"

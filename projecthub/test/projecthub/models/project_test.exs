@@ -512,7 +512,7 @@ defmodule Projecthub.Models.ProjectTest do
     end
   end
 
-  describe ".destroy" do
+  describe ".hard_destroy" do
     test "destroys repo, deploy key, schedulers and project records, removes key and hook from github, destroys artifact" do
       {:ok, project} = Support.Factories.Project.create_with_repo()
 
@@ -524,7 +524,7 @@ defmodule Projecthub.Models.ProjectTest do
         {Schedulers, [], [delete_all: fn _p, _r -> {:ok, nil} end]},
         {Projecthub.Artifact, [], [destroy: fn _, _ -> nil end]}
       ]) do
-        {:ok, _} = Project.destroy(project, user)
+        {:ok, _} = Project.hard_destroy(project, user.id)
         assert_called(Schedulers.delete_all(project, user.id))
         assert_called(Events.ProjectDeleted.publish(project))
         assert_called(Projecthub.Artifact.destroy(project.artifact_store_id, project.id))
@@ -533,6 +533,24 @@ defmodule Projecthub.Models.ProjectTest do
         projects = Project |> Repo.all()
         assert Enum.empty?(projects)
       end
+    end
+  end
+
+  describe ".soft_destroy" do
+    test "soft deletes the project updating deleted_at and deleted_by" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+
+      user = %User{github_token: "token"}
+
+      {:ok, _} = Project.soft_destroy(project, user)
+
+      # Assert project is not found by default find function
+      assert {:error, :not_found} = Project.find(project.id)
+
+      # Assert soft deleted project
+      soft_deleted_project = Project |> Repo.get(project.id)
+      assert soft_deleted_project.deleted_at != nil
+      assert soft_deleted_project.deleted_by == user.id
     end
   end
 
@@ -551,6 +569,21 @@ defmodule Projecthub.Models.ProjectTest do
 
     test "when the project is requested by non-uuid => returns an error" do
       {:error, :not_found} = Project.find("semaphore")
+    end
+
+    test "when the project is soft deleted => returns an error" do
+      project = create_and_soft_destroy()
+
+      assert {:error, :not_found} = Project.find(project.id)
+    end
+
+    test "when the project is soft deleted but we query soft_deleted ones => returns the project" do
+      project = create_and_soft_destroy()
+
+      {:ok, found_project} = Project.find(project.id, true)
+
+      assert found_project.id == project.id
+      assert found_project.name == project.name
     end
   end
 
@@ -573,6 +606,21 @@ defmodule Projecthub.Models.ProjectTest do
           "name",
           Ecto.UUID.generate()
         )
+    end
+
+    test "when the project is soft deleted => returns an error" do
+      project = create_and_soft_destroy()
+
+      assert {:error, :not_found} = Project.find_by_name(project.name, project.organization_id)
+    end
+
+    test "when the project is soft deleted but we query soft_deleted ones => returns the project" do
+      project = create_and_soft_destroy()
+
+      {:ok, found_project} = Project.find_by_name(project.name, project.organization_id, true)
+
+      assert found_project.id == project.id
+      assert found_project.name == project.name
     end
   end
 
@@ -616,6 +664,23 @@ defmodule Projecthub.Models.ProjectTest do
 
       assert Enum.empty?(projects)
     end
+
+    test "when the projects are soft deleted => doesn't return them" do
+      [project1, project2] = create_and_soft_destroy_many()
+
+      projects = Project.find_many(Ecto.UUID.generate(), [project1.id, project2.id])
+
+      assert Enum.empty?(projects)
+    end
+
+    test "when the projects are soft deleted but we query soft_deleted ones => returns them" do
+      org_id = Ecto.UUID.generate()
+      [project1, project2] = create_and_soft_destroy_many(org_id: org_id)
+
+      projects = Project.find_many(org_id, [project1.id, project2.id], true)
+
+      assert Enum.count(projects) == 2
+    end
   end
 
   describe ".list_per_page" do
@@ -639,6 +704,9 @@ defmodule Projecthub.Models.ProjectTest do
 
       {:ok, _project4} = Support.Factories.Project.create()
 
+      # Soft deleted project should not be listed
+      create_and_soft_destroy()
+
       page = Project.list_per_page(org_id, 1, 2)
 
       assert page.page_number == 1
@@ -648,6 +716,24 @@ defmodule Projecthub.Models.ProjectTest do
 
       entries = page.entries
       assert Enum.count(entries) == 2
+    end
+
+    test "it returns a page of soft deleted projects" do
+      org_id = Ecto.UUID.generate()
+
+      create_and_soft_destroy_many(org_id: org_id, quantity: 4)
+
+      {:ok, _non_deleted_project} = Support.Factories.Project.create()
+
+      page = Project.list_per_page(org_id, 1, 3, soft_deleted: true)
+
+      assert page.page_number == 1
+      assert page.page_size == 3
+      assert page.total_entries == 4
+      assert page.total_pages == 2
+
+      entries = page.entries
+      assert Enum.count(entries) == 3
     end
 
     test "it filter projects by owner_id" do
@@ -755,5 +841,34 @@ defmodule Projecthub.Models.ProjectTest do
       entries = page.entries
       assert Enum.count(entries) == 2
     end
+  end
+
+  defp create_and_soft_destroy_many(opts \\ []) do
+    org_id = opts[:org_id] || Ecto.UUID.generate()
+    quantity = opts[:quantity] || 2
+
+    projects =
+      for _ <- 1..quantity do
+        {:ok, project} = Support.Factories.Project.create_with_repo(%{organization_id: org_id})
+        project
+      end
+
+    user = %User{github_token: "token"}
+
+    Enum.each(projects, fn project ->
+      {:ok, _} = Project.soft_destroy(project, user)
+    end)
+
+    projects
+  end
+
+  defp create_and_soft_destroy do
+    {:ok, project} = Support.Factories.Project.create_with_repo()
+
+    user = %User{github_token: "token"}
+
+    {:ok, _} = Project.soft_destroy(project, user)
+
+    project
   end
 end

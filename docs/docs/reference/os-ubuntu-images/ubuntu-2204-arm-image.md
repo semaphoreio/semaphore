@@ -119,7 +119,7 @@ Docker toolset is installed and the following versions are available:
 Erlang versions are installed and managed via [kerl](https://github.com/kerl/kerl).
 Elixir versions are installed with [kiex](https://github.com/taylor/kiex).
 
-- Erlang: 24.3, 25.0, 25.1, 25.2, 25.3 (default), 26.0, 26.1, 26.2, 27.0, 27.1, 27.2
+- Erlang: 24.3, 25.0, 25.1, 25.2, 25.3 (default), 26.0, 26.1, 26.2, 27.0, 27.1, 27.2, 27.3
 - Elixir: 1.14.x (1.14.5 as default), 1.15.x, 1.16.x, 1.17.x, 1.18.x
 
 Additional libraries:
@@ -135,6 +135,7 @@ Versions:
 - 1.21.x (1.21.6 as default)
 - 1.22.x
 - 1.23.x
+- 1.24.x
 
 ### Java and JVM languages
 
@@ -200,6 +201,7 @@ Available versions:
 - 3.1.x
 - 3.2.x
 - 3.3.x
+- 3.4.x
 - jruby-9.3.10.0
 - jruby-9.4.2.0
 

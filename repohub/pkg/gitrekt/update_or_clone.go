@@ -227,17 +227,17 @@ func (o *UpdateOrCloneOperation) gitRemoteConfig() error {
 
 func (o *UpdateOrCloneOperation) parseError(output []byte, err error) error {
 	if strings.Contains(string(output), "remote: Repository not found") {
-		return &NotFoundError{}
+		return &NotFoundError{Output: string(output)}
 	}
 
 	if strings.Contains(string(output), "fatal: Authentication failed") {
-		return &AuthFailedError{}
+		return &AuthFailedError{Output: string(output)}
 	}
 
 	if exiterr, ok := err.(*exec.ExitError); ok {
 		if status, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 			if status.ExitStatus() == -1 && strings.Contains(err.Error(), "killed") {
-				return &TimeoutError{}
+				return &TimeoutError{Output: string(output)}
 			}
 		}
 	}

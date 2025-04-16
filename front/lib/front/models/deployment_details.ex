@@ -61,11 +61,11 @@ defmodule Front.Models.DeploymentDetails do
     end
 
     def preload_triggerer(deployment = %__MODULE__{}, nil) do
-      %__MODULE__{
-        deployment
-        | author_name: Application.get_env(:front, :default_user_name),
-          author_avatar_url: FrontWeb.SharedHelpers.assets_path()
-      }
+      author_name = Application.get_env(:front, :default_user_name)
+      first_letter = author_name |> String.first() |> String.downcase()
+      avatar_url = "#{FrontWeb.SharedHelpers.assets_path()}/images/org-#{first_letter}.svg"
+
+      %__MODULE__{deployment | author_name: author_name, author_avatar_url: avatar_url}
     end
   end
 

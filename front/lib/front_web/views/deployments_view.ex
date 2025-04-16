@@ -54,6 +54,9 @@ defmodule FrontWeb.DeploymentsView do
   def object_mode_icon(:NONE), do: "close"
   def object_mode_icon(:WHITELISTED), do: "rule"
 
+  def last_edited_by_label(_updator = nil), do: "deleted_user"
+  def last_edited_by_label(updator), do: updator.name
+
   def injectable(items) do
     items
     |> Enum.map(&Map.drop(&1, ~w(__struct__ __meta__)a))

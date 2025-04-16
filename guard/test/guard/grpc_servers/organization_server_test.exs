@@ -1196,26 +1196,35 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       grpc_channel: channel,
       organization: organization
     } do
-      with_mocks [{Guard.Events.OrganizationDeleted, [], [publish: fn _ -> :ok end]}] do
+      with_mocks [{Guard.Events.OrganizationDeleted, [], [publish: fn _, _ -> :ok end]}] do
         request = Organization.DestroyRequest.new(org_id: organization.id)
 
         {:ok, _} = channel |> Organization.OrganizationService.Stub.destroy(request)
 
-        # Verify organization was deleted
-        assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.Organization, organization.id))
+        # Verify organization was soft deleted
+        soft_deleted_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, organization.id)
+        assert soft_deleted_org.deleted_at != nil
 
-        assert_called(Guard.Events.OrganizationDeleted.publish(organization.id))
+        assert {:error, {:not_found, _message}} =
+                 Guard.Store.Organization.get_by_id(soft_deleted_org.id)
+
+        assert {:error, {:not_found, _message}} =
+                 Guard.Store.Organization.get_by_username(soft_deleted_org.username)
+
+        assert_called(
+          Guard.Events.OrganizationDeleted.publish(organization.id, type: :soft_delete)
+        )
       end
     end
 
     test "returns error for non-existent organization", %{grpc_channel: channel} do
-      with_mocks [{Guard.Events.OrganizationDeleted, [], [publish: fn _ -> :ok end]}] do
+      with_mocks [{Guard.Events.OrganizationDeleted, [], [publish: fn _, _ -> :ok end]}] do
         non_existent_id = Ecto.UUID.generate()
         request = Organization.DestroyRequest.new(org_id: non_existent_id)
 
         assert {:error, %GRPC.RPCError{message: message}} = Stub.destroy(channel, request)
         assert message =~ "Organization '#{non_existent_id}' not found."
-        assert_not_called(Guard.Events.OrganizationDeleted.publish(:_))
+        assert_not_called(Guard.Events.OrganizationDeleted.publish(:_, type: :soft_delete))
       end
     end
   end

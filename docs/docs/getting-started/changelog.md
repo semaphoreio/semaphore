@@ -8,6 +8,194 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of April 14 2025
+
+**(Improved)  macos-xcode16 (apple silicon) image update**
+
+**(New)** Packages:
+
+- Added iOS simulator 18.2, 18.3.1
+
+### Week of April 7 2025
+
+**(Improved)  macos-xcode16 (apple silicon) image update**
+
+**(New)** Packages:
+
+- xcbeautify
+  
+**(Updated)** Updated packages:
+
+- brew 4.3.23 -> 4.4.28
+- cocoapods 1.15.2 -> 1.16.2
+- fastlane 2.226.0 -> 2.227.0
+- flutter 3.24.3 -> 3.29.2
+- macOS 14.5 -> 15.4
+- node v18.20.1 -> v22.14.0
+- nvm 0.40.1 -> 0.40.2
+- pip3 24.2 -> 25.0
+- postgres 14.13 -> 14.17
+- python3  3.12.6 -> 3.13.2 
+- ruby system 3.3.2 -> 3.4.2
+- ruby rbenv 3.3.5 -> 3.2.8
+- Simulator iOS    18.2  -> 18.4
+- Simulator tvOS    18.2 -> 18.4
+- Simulator watchOS   11.2 -> 11.4
+- Simulator visionOS 2.2 -> 2.4
+- Xcode 16.2 -> 16.3
+
+To learn more about this image, check our [macOS Xcode 16](https://docs.semaphoreci.com/reference/os-apple#mac-16)
+
+**(Improved) Ubuntu 20.04 image update**
+
+**(New)** Packages:
+
+- Erlang 27.3.2 (aliased as 27.3)
+- Elixir 1.18.1, 1.18.2, 1.18.3
+- PHP 8.1.32, 8.2.28, 8.3.16, 8.3.17, 8.3.19
+- Ruby 3.1.7, 3.2.7, 3.2.8, 3.3.7, 3.4.0, 3.4.1, 3.4.2
+
+**(Updated)** Updated packages:
+
+- Kernel: 5.15.0-124.134 -> 5.15.0-134.145
+- Git: 2.47.1 -> 2.49.0
+- Gitlfs: 3.6.0 -> 3.6.1
+- Gh: 2.63.2 -> 2.69.0
+- Geckodriver: 0.35.0 -> 0.36.0
+- Docker: 27.4.0 -> 28.0.2
+- Docker compose v2: 2.32.1 -> 2.34.0
+- Dockerize: 0.9.0 -> 0.9.3
+- Docker buildx: 0.19.3 -> 0.22.0
+- Containerd.io: 1.7.24 -> 1.7.25
+- Runc: 1.2.2 -> 1.2.4
+- Aws v1: 1.36.24 -> 1.38.17
+- Aws v2: 2.22.19 -> 2.25.0
+- Azure: 2.67.0 -> 2.70.0
+- Doctl: 1.120.0 -> 1.123.0
+- Gcloud: 504.0.0 -> 515.0.0
+- Heroku: 10.0.0 -> 10.4.0
+- Terraform: 1.10.2 -> 1.11.2
+- Helm: 3.16.3 -> 3.17.2
+- Erlang: 25.3.2.16 -> 25.3.2.19 (aliased as 25.3)
+- Erlang: 26.2.5.6 -> 26.2.5.10 (aliased as 26.2)
+- Erlang: 27.2.2 -> 27.2.4 (aliased as 27.2)
+- Go: 1.23.4 -> 1.24.1
+- Java 11: 11.0.25 -> 11.0.26
+- Java 17: 17.0.13 -> 17.0.14
+- Gradle: 8.11.1 -> 8.13
+- Bazel: 8.0.0 -> 8.1.1
+- Nodejs: 22.12.0 -> 22.14.0
+- Npm: 10.9.0 -> 10.9.2
+- Nvm: 0.40.1 -> 0.40.2
+- Python3.12: 3.12.8 -> 3.12.9
+- Pip: 24.3.1 -> 25.0.1
+- Virtualenv: 20.28.0 -> 20.29.3
+- Sbt: 1.10.6 -> 1.10.11
+- Yq: 4.44.6 -> 4.45.1
+
+To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2004-image/).
+
+**(Improved) Ubuntu 22.04 image update**
+
+**(New)** Packages:
+
+- Erlang 27.3.2 (aliased as 27.3)
+- Elixir 1.18.1, 1.18.2, 1.18.3
+- PHP 8.1.32, 8.2.28, 8.3.16, 8.3.17, 8.3.19
+- Ruby 3.1.7, 3.2.7, 3.2.8, 3.3.7, 3.4.0, 3.4.1, 3.4.2
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-50.51 -> 6.8.0-55.57
+- Git: 2.47.1 -> 2.49.0
+- Gitlfs: 3.6.0 -> 3.6.1
+- Gh: 2.63.2 -> 2.69.0
+- Geckodriver: 0.35.0 -> 0.36.0
+- Docker: 27.4.0 -> 28.0.2
+- Docker compose v2: 2.32.1 -> 2.34.0
+- Dockerize: 0.9.0 -> 0.9.3
+- Docker buildx: 0.19.3 -> 0.22.0
+- Containerd.io: 1.7.24 -> 1.7.25
+- Runc: 1.2.2 -> 1.2.4
+- Aws v2: 2.22.19 -> 2.25.0
+- Azure: 2.67.0 -> 2.70.0
+- Doctl: 1.120.0 -> 1.123.0
+- Gcloud: 504.0.0 -> 515.0.0
+- Heroku: 10.0.0 -> 10.4.0
+- Terraform: 1.10.2 -> 1.11.2
+- Helm: 3.16.3 -> 3.17.2
+- Erlang: 25.3.2.16 -> 25.3.2.19 (aliased as 25.3)
+- Erlang: 26.2.5.6 -> 26.2.5.10 (aliased as 26.2)
+- Erlang: 27.2.2 -> 27.2.4 (aliased as 27.2)
+- Go: 1.23.4 -> 1.24.1
+- Java 11: 11.0.25 -> 11.0.26
+- Java 17: 17.0.13 -> 17.0.14
+- Gradle: 8.11.1 -> 8.13
+- Bazel: 8.0.0 -> 8.1.1
+- Nodejs: 22.12.0 -> 22.14.0
+- Npm: 10.9.0 -> 10.9.2
+- Nvm: 0.40.1 -> 0.40.2
+- Php: 8.1.31 -> 8.1.32
+- Python3.12: 3.12.8 -> 3.12.9
+- Pip: 24.3.1 -> 25.0.1
+- Virtualenv: 20.28.0 -> 20.29.3
+- Sbt: 1.10.6 -> 1.10.11
+- Yq: 4.44.6 -> 4.45.1
+- Rust: 1.83.0 -> 1.85.1
+
+To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2204-image/).
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** Packages:
+
+- Erlang 27.3.2 (aliased as 27.3)
+- Elixir 1.18.1, 1.18.2, 1.18.3
+- PHP 8.1.32, 8.2.28, 8.3.16, 8.3.17, 8.3.19
+- Ruby 3.1.7, 3.2.7, 3.2.8, 3.3.7, 3.4.0, 3.4.1, 3.4.2
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-51.52 -> 6.8.0-55.57
+- Git: 2.47.1 -> 2.49.0
+- Gitlfs: 3.6.0 -> 3.6.1
+- Gh: 2.63.2 -> 2.69.0
+- Geckodriver: 0.35.0 -> 0.36.0
+- Docker: 27.4.0 -> 28.0.2
+- Docker compose v2: 2.32.1 -> 2.34.0
+- Dockerize: 0.9.0 -> 0.9.3
+- Docker buildx: 0.19.3 -> 0.22.0
+- Containerd.io: 1.7.24 -> 1.7.25
+- Runc: 1.2.2 -> 1.2.4
+- Aws v2: 2.22.19 -> 2.25.0
+- Azure: 2.67.0 -> 2.70.0
+- Doctl: 1.120.0 -> 1.123.0
+- Gcloud: 504.0.0 -> 515.0.0
+- Heroku: 10.0.0 -> 10.4.0
+- Terraform: 1.10.2 -> 1.11.2
+- Helm: 3.16.3 -> 3.17.2
+- Erlang: 25.3.2.16 -> 25.3.2.19 (aliased as 25.3)
+- Erlang: 26.2.5.6 -> 26.2.5.10 (aliased as 26.2)
+- Erlang: 27.2.2 -> 27.2.4 (aliased as 27.2)
+- Go: 1.23.4 -> 1.24.1
+- Java 11: 11.0.25 -> 11.0.26
+- Java 17: 17.0.13 -> 17.0.14
+- Java 21: 21.0.5 -> 21.0.6
+- Gradle: 8.11.1 -> 8.13
+- Bazel: 8.0.0 -> 8.1.1
+- Nodejs: 22.12.0 -> 22.14.0
+- Npm: 10.9.0 -> 10.9.2
+- Nvm: 0.40.1 -> 0.40.2
+- Php: 8.1.31 -> 8.1.32
+- Pip: 24.3.1 -> 25.0.1
+- Pypy3: 7.3.17 -> 7.3.19
+- Virtualenv: 20.28.0 -> 20.29.3
+- Sbt: 1.10.6 -> 1.10.11
+- Yq: 4.44.6 -> 4.45.1
+- Rust: 1.83.0 -> 1.85.1
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+
 ### Week of December 23 2024
 
 **(Improved) Ubuntu 20.04 image update**

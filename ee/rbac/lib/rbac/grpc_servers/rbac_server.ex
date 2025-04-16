@@ -289,8 +289,8 @@ defmodule Rbac.GrpcServers.RbacServer do
     is_owner? =
       Rbac.RoleManagement.fetch_subject_role_bindings(rbi)
       |> elem(0)
-      |> List.first()
-      |> Map.get(:role_bindings)
+      |> List.first(%{})
+      |> Map.get(:role_bindings, [])
       |> Enum.map(&Rbac.Repo.RbacRole.get_role_by_id(&1["role_id"]))
       |> Enum.any?(&(&1.name == "Owner"))
 

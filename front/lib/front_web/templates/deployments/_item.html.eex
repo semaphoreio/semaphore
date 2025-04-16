@@ -98,7 +98,7 @@
 
             <p class="f6 mb1 gray">
                 Created <%= time_ago(@target.created_at) %> ·
-                Last edit by <%= @target.updator.name %>, <%= time_ago(@target.updated_at) %>
+                Last edit by <%= last_edited_by_label(@target.updator) %>, <%= time_ago(@target.updated_at) %>
             </p>
         </div>
     </div>
