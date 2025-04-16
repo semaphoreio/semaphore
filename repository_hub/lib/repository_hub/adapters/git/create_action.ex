@@ -38,13 +38,14 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GitAdapter do
         url: request.repository_url,
         default_branch: request.default_branch,
         remote_id: "",
-        connected: true,
+        connected: false
       },
       on_conflict: :nothing
     )
   end
 
   @impl true
+  @spec validate(RepositoryHub.GitAdapter.t(), any()) :: {:error, any()} | {:ok, any()}
   def validate(_adapter, request) do
     request
     |> Validator.validate(
@@ -52,8 +53,7 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GitAdapter do
         all: [
           chain: [{:from!, :project_id}, :is_uuid],
           chain: [{:from!, :user_id}, :is_uuid],
-          chain: [{:from!, :integration_type}, :is_git_integration_type],
-          chain: [{:from!, :integration_type}, eq: :GIT, error_message: "git adapter only works with git integration type"],
+          chain: [{:from!, :integration_type}, :is_git_integration_type]
         ]
       ]
     )
