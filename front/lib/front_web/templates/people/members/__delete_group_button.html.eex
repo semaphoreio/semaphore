@@ -1,4 +1,4 @@
-<%= if @render? && @permissions["organization.people.manage"] do %>
+<%= if @permissions["organization.people.manage"] do %>
   <%= link "×",
       to: groups_path(@conn, :destroy_group, @group.id),
       method: :delete,
