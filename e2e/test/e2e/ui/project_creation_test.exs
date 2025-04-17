@@ -28,7 +28,9 @@ defmodule E2E.UI.ProjectCreationFlowTest do
 
       # Step 3: Search for repositories
       Logger.info("Step 3: Searching for repositories")
-      session = fill_in(session, Wallaby.Query.fillable_field("Search repositories..."), with: "e2e-tests")
+
+      session =
+        fill_in(session, Wallaby.Query.fillable_field("Search repositories..."), with: "e2e-tests")
 
       # Give the search some time to complete
       :timer.sleep(1000)
@@ -67,7 +69,9 @@ defmodule E2E.UI.ProjectCreationFlowTest do
 
       # Click on the "I want to configure this project from scratch" link
       Logger.info("Clicking 'I want to configure this project from scratch' link")
-      session = click(session, Wallaby.Query.link("I want to configure this project from scratch"))
+
+      session =
+        click(session, Wallaby.Query.link("I want to configure this project from scratch"))
 
       # Take a screenshot after clicking the link
       take_screenshot(session, name: "configure_from_scratch")
@@ -95,8 +99,9 @@ defmodule E2E.UI.ProjectCreationFlowTest do
       # Verify the URL path starts with "/workflows/"
       Logger.info("Verifying we are on the workflows page")
       current_url = current_url(session)
+
       assert String.contains?(current_url, "/workflows/"),
-        "Expected URL to contain '/workflows/', but got: #{current_url}"
+             "Expected URL to contain '/workflows/', but got: #{current_url}"
 
       # Take a final screenshot of the workflows page
       take_screenshot(session, name: "workflows_page")
