@@ -174,7 +174,7 @@ defmodule FrontWeb.GroupsController.Test do
       conn = ctx.conn |> delete("/groups/#{group.id}")
 
       assert response(conn, 302) =~ "/people"
-      assert get_flash(conn, :notice) =~ "Group successfully deleted"
+      assert get_flash(conn, :notice) =~ "Request for deleting the group has been sent"
     end
   end
 
