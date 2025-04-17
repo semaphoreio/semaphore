@@ -202,6 +202,14 @@ defmodule PublicAPI.ApiSpec do
         "/projects/{project_id_or_name}/deployment_targets/{id_or_name}/activate" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :patch, plug: PublicAPI.Handlers.DeploymentTargets.Uncordon, opts: []}
+          ]),
+        "/canvases" =>
+          OpenApiSpex.PathItem.from_routes([
+            %{verb: :post, plug: PublicAPI.Handlers.Canvases.Create, opts: []}
+          ]),
+        "/canvases/{id_or_name}" =>
+          OpenApiSpex.PathItem.from_routes([
+            %{verb: :get, plug: PublicAPI.Handlers.Canvases.Describe, opts: []}
           ])
       }
     }

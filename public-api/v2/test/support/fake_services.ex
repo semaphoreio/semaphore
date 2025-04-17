@@ -8,6 +8,7 @@ defmodule Support.FakeServices do
       for: InternalApi.Gofer.DeploymentTargets.DeploymentTargets.Service
     )
 
+    GrpcMock.defmock(CanvasMock, for: InternalApi.Delivery.Delivery.Service)
     GrpcMock.defmock(DashboardMock, for: InternalApi.Dashboardhub.DashboardsService.Service)
     GrpcMock.defmock(PipelineMock, for: InternalApi.Plumber.PipelineService.Service)
     GrpcMock.defmock(RepoProxyMock, for: InternalApi.RepoProxy.RepoProxyService.Service)
@@ -31,6 +32,7 @@ defmodule Support.FakeServices do
       SecretMock,
       GoferMock,
       DeploymentsMock,
+      CanvasMock,
       DashboardMock,
       PipelineMock,
       RepoProxyMock,

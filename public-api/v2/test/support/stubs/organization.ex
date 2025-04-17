@@ -117,8 +117,7 @@ defmodule Support.Stubs.Organization do
             org_username: org.api_model.org_username,
             name: org.api_model.name,
             org_id: org.api_model.org_id,
-            created_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543},
-            quotas: []
+            created_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543}
           }
         }
       else

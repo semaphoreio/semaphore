@@ -12,6 +12,7 @@ defmodule PublicAPI.Router do
   alias PublicAPI.Handlers.Projects, as: Projects
   alias PublicAPI.Handlers.Dashboards, as: Dash
   alias PublicAPI.Handlers.DeploymentTargets, as: DeploymentTargets
+  alias PublicAPI.Handlers.Canvases, as: Canvases
   alias PublicAPI.Handlers.Spec
 
   plug(Plug.Logger)
@@ -154,6 +155,9 @@ defmodule PublicAPI.Router do
     via: :patch,
     to: DeploymentTargets.Uncordon
   )
+
+  match("/canvases", via: :post, to: Canvases.Create)
+  match("/canvases/:id_or_name", via: :get, to: Canvases.Describe)
 
   # sobelow_skip ["XSS.SendResp"]
   def handle_errors(conn, %{kind: _kind, reason: reason, stack: _stack}) do

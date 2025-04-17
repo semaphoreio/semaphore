@@ -56,14 +56,8 @@ defmodule InternalApi.Delivery.Canvas do
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:organization_id, 3, type: :string, json_name: "organizationId")
-  field(:created_at, 4, type: Google.Protobuf.Timestamp, json_name: "createdAt")
-  field(:stages, 5, repeated: true, type: InternalApi.Delivery.Stage)
-
-  field(:event_sources, 6,
-    repeated: true,
-    type: InternalApi.Delivery.EventSource,
-    json_name: "eventSources"
-  )
+  field(:created_by, 4, type: :string, json_name: "createdBy")
+  field(:created_at, 5, type: Google.Protobuf.Timestamp, json_name: "createdAt")
 end
 
 defmodule InternalApi.Delivery.CreateCanvasRequest do
@@ -90,7 +84,8 @@ defmodule InternalApi.Delivery.DescribeCanvasRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:id, 1, type: :string)
-  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:name, 2, type: :string)
+  field(:organization_id, 3, type: :string, json_name: "organizationId")
 end
 
 defmodule InternalApi.Delivery.DescribeCanvasResponse do
@@ -111,6 +106,24 @@ defmodule InternalApi.Delivery.EventSource do
   field(:organization_id, 3, type: :string, json_name: "organizationId")
   field(:canvas_id, 4, type: :string, json_name: "canvasId")
   field(:created_at, 5, type: Google.Protobuf.Timestamp, json_name: "createdAt")
+end
+
+defmodule InternalApi.Delivery.DescribeStageRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:organization_id, 3, type: :string, json_name: "organizationId")
+end
+
+defmodule InternalApi.Delivery.DescribeStageResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:stage, 1, type: InternalApi.Delivery.Stage)
 end
 
 defmodule InternalApi.Delivery.CreateEventSourceRequest do
@@ -139,8 +152,9 @@ defmodule InternalApi.Delivery.DescribeEventSourceRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:id, 1, type: :string)
-  field(:organization_id, 2, type: :string, json_name: "organizationId")
-  field(:canvas_id, 3, type: :string, json_name: "canvasId")
+  field(:name, 2, type: :string)
+  field(:organization_id, 3, type: :string, json_name: "organizationId")
+  field(:canvas_id, 4, type: :string, json_name: "canvasId")
 end
 
 defmodule InternalApi.Delivery.DescribeEventSourceResponse do
@@ -304,6 +318,44 @@ defmodule InternalApi.Delivery.UpdateStageResponse do
   field(:stage, 1, type: InternalApi.Delivery.Stage)
 end
 
+defmodule InternalApi.Delivery.ListStagesRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:organization_id, 1, type: :string, json_name: "organizationId")
+  field(:canvas_id, 2, type: :string, json_name: "canvasId")
+end
+
+defmodule InternalApi.Delivery.ListStagesResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:stages, 1, repeated: true, type: InternalApi.Delivery.Stage)
+end
+
+defmodule InternalApi.Delivery.ListEventSourcesRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:organization_id, 1, type: :string, json_name: "organizationId")
+  field(:canvas_id, 2, type: :string, json_name: "canvasId")
+end
+
+defmodule InternalApi.Delivery.ListEventSourcesResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:event_sources, 1,
+    repeated: true,
+    type: InternalApi.Delivery.EventSource,
+    json_name: "eventSources"
+  )
+end
+
 defmodule InternalApi.Delivery.ListStageEventsRequest do
   @moduledoc false
 
@@ -369,12 +421,6 @@ defmodule InternalApi.Delivery.Delivery.Service do
   )
 
   rpc(
-    :DescribeCanvas,
-    InternalApi.Delivery.DescribeCanvasRequest,
-    InternalApi.Delivery.DescribeCanvasResponse
-  )
-
-  rpc(
     :CreateEventSource,
     InternalApi.Delivery.CreateEventSourceRequest,
     InternalApi.Delivery.CreateEventSourceResponse
@@ -387,15 +433,41 @@ defmodule InternalApi.Delivery.Delivery.Service do
   )
 
   rpc(
-    :UpdateStage,
-    InternalApi.Delivery.UpdateStageRequest,
-    InternalApi.Delivery.UpdateStageResponse
+    :DescribeCanvas,
+    InternalApi.Delivery.DescribeCanvasRequest,
+    InternalApi.Delivery.DescribeCanvasResponse
+  )
+
+  rpc(
+    :DescribeStage,
+    InternalApi.Delivery.DescribeStageRequest,
+    InternalApi.Delivery.DescribeStageResponse
+  )
+
+  rpc(
+    :DescribeEventSource,
+    InternalApi.Delivery.DescribeEventSourceRequest,
+    InternalApi.Delivery.DescribeEventSourceResponse
+  )
+
+  rpc(:ListStages, InternalApi.Delivery.ListStagesRequest, InternalApi.Delivery.ListStagesRequest)
+
+  rpc(
+    :ListEventSources,
+    InternalApi.Delivery.ListEventSourcesRequest,
+    InternalApi.Delivery.ListEventSourcesResponse
   )
 
   rpc(
     :ListStageEvents,
     InternalApi.Delivery.ListStageEventsRequest,
     InternalApi.Delivery.ListStageEventsResponse
+  )
+
+  rpc(
+    :UpdateStage,
+    InternalApi.Delivery.UpdateStageRequest,
+    InternalApi.Delivery.UpdateStageResponse
   )
 
   rpc(
