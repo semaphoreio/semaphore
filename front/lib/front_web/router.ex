@@ -136,6 +136,7 @@ defmodule FrontWeb.Router do
     get("/groups/:group_id/", GroupsController, :fetch_group)
     put("/groups/:group_id/", GroupsController, :modify_group)
     post("/groups", GroupsController, :create_group)
+    delete("/groups/:group_id", GroupsController, :destroy_group)
 
     get("/roles", RolesController, :index)
     get("/roles/:scope/new", RolesController, :new)

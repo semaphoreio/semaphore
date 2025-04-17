@@ -6,6 +6,7 @@ defmodule Front.RBAC.Members do
 
   typedstruct do
     field(:id, String.t(), enforce: true)
+    field(:subject_type, String.t(), enforce: true)
     field(:name, String.t(), enforce: true)
 
     field(:has_email, boolean(), enforce: true)
@@ -149,10 +150,19 @@ defmodule Front.RBAC.Members do
     do: InternalApi.RBAC.CountMembersRequest.new(org_id: org_id)
 
   defp construct_members_structs(members) do
+    alias InternalApi.RBAC.SubjectType, as: Type
+
     members =
       Enum.map(members, fn member ->
+        subject_type =
+          member.subject.subject_type
+          |> Type.key()
+          |> Atom.to_string()
+          |> String.downcase()
+
         struct!(__MODULE__,
           id: member.subject.subject_id,
+          subject_type: subject_type,
           name: member.subject.display_name,
           has_email: false,
           has_avatar: false,

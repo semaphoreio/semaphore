@@ -95,7 +95,7 @@ defmodule Rbac.GrpcServers.RbacServer do
       Rbac.RoleManagement.retract_roles(rbi, :manually_assigned)
 
       unless Rbac.RoleManagement.user_part_of_org?(subject_id, org_id) do
-        Rbac.Store.Group.remove_member_from_all_org_groups(subject_id, org_id)
+        Rbac.Store.Group.remove_member_from_all_org_groups(subject_id, org_id, req.requester_id)
         # Remove all project and org level roles, regardless of how they were assigned
         {:ok, rbi} = RBI.new(user_id: subject_id, org_id: org_id)
         Rbac.RoleManagement.retract_roles(rbi)
