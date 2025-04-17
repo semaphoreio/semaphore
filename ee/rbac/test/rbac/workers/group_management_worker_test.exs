@@ -51,8 +51,8 @@ defmodule Rbac.Workers.GroupManagementWorkerTest do
       create_request(ctx, :destroy_group)
 
       with_mock Group, [:passthrough],
-        destroy: fn group ->
-          assert ctx.group_id == group.id
+        destroy: fn group_id ->
+          assert ctx.group_id == group_id
           :ok
         end do
         GroupManagement.perform()

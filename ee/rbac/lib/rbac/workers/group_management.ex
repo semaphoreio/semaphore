@@ -31,7 +31,7 @@ defmodule Rbac.Workers.GroupManagement do
             :ok = Rbac.Store.Group.remove_from_group(group, req.user_id)
 
           :destroy_group ->
-            :ok = Rbac.Store.Group.destroy(group)
+            :ok = Rbac.Store.Group.destroy(group.id)
 
           other ->
             raise "Unknown action: #{inspect(other)}"
