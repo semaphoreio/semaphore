@@ -590,22 +590,80 @@ defmodule Guard.GrpcServers.UserServerTest do
 
       request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
 
-      {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
+      with_mock InternalApi.Projecthub.ProjectService.Stub,
+        list: fn _channel, _req, _opts ->
+          {:ok,
+           InternalApi.Projecthub.ListResponse.new(
+             metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
+             projects: []
+           )}
+        end do
+        {:ok, response} = channel |> Stub.delete_with_owned_orgs(request)
 
-      id = user.id
-      assert %User.User{id: ^id} = response
+        id = user.id
+        assert %User.User{id: ^id} = response
 
-      # check if the user is deleted
-      assert nil == FrontRepo.get(FrontRepo.User, id)
-      assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
-      assert nil == FrontRepo.get(FrontRepo.Member, member.id)
+        # check if the user is deleted
+        assert nil == FrontRepo.get(FrontRepo.User, id)
+        assert nil == FrontRepo.get(FrontRepo.RepoHostAccount, repo_host_account.id)
+        assert nil == FrontRepo.get(FrontRepo.Member, member.id)
 
-      receive do
-        {:user_deleted_test, received_message} ->
-          user_deleted = User.UserDeleted.decode(received_message)
-          assert user_deleted.user_id == user.id
-      after
-        5000 -> flunk("Timeout: Message not received within 5 seconds")
+        receive do
+          {:user_deleted_test, received_message} ->
+            user_deleted = User.UserDeleted.decode(received_message)
+            assert user_deleted.user_id == user.id
+        after
+          5000 -> flunk("Timeout: Message not received within 5 seconds")
+        end
+      end
+    end
+
+    test "delete_with_owned_orgs should not delete the user if he has owned projects", %{
+      grpc_channel: channel
+    } do
+      {:ok, user} = Support.Factories.RbacUser.insert()
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user.id)
+
+      {:ok, _} =
+        Support.Members.insert_user(
+          id: user.id,
+          email: user.email,
+          name: user.name
+        )
+
+      {:ok, _repo_host_account} =
+        Support.Members.insert_repo_host_account(
+          login: "test",
+          name: "test",
+          github_uid: "123123",
+          user_id: user.id,
+          token: "token",
+          revoked: false,
+          permission_scope: "repo"
+        )
+
+      {:ok, _member} = Support.Members.insert_member(github_uid: "123123")
+
+      request = User.DeleteWithOwnedOrgsRequest.new(user_id: user.id)
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub,
+        list: fn _channel, _req, _opts ->
+          {:ok,
+           InternalApi.Projecthub.ListResponse.new(
+             metadata: InternalApi.Projecthub.ResponseMeta.new(status: %{code: 0}),
+             projects: [
+               %InternalApi.Projecthub.Project{
+                 metadata: InternalApi.Projecthub.RequestMeta.new(user_id: user.id)
+               }
+             ]
+           )}
+        end do
+        {:error, grpc_error} = channel |> Stub.delete_with_owned_orgs(request)
+
+        assert %GRPC.RPCError{
+                 status: GRPC.Status.invalid_argument(),
+                 message: "User #{user.id} is owner of projects."
+               } == grpc_error
       end
     end
 
