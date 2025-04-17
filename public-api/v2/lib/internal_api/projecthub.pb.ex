@@ -78,6 +78,7 @@ defmodule InternalApi.Projecthub.Project.Status.State do
   field(:INITIALIZING, 0)
   field(:READY, 1)
   field(:ERROR, 2)
+  field(:ONBOARDING, 3)
 end
 
 defmodule InternalApi.Projecthub.ListKeysetRequest.Direction do
@@ -413,6 +414,7 @@ defmodule InternalApi.Projecthub.ListKeysetRequest do
   field(:direction, 4, type: InternalApi.Projecthub.ListKeysetRequest.Direction, enum: true)
   field(:owner_id, 5, type: :string, json_name: "ownerId")
   field(:repo_url, 6, type: :string, json_name: "repoUrl")
+  field(:created_after, 7, type: Google.Protobuf.Timestamp, json_name: "createdAfter")
 end
 
 defmodule InternalApi.Projecthub.ListKeysetResponse do
@@ -471,6 +473,7 @@ defmodule InternalApi.Projecthub.CreateRequest do
 
   field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
   field(:project, 2, type: InternalApi.Projecthub.Project)
+  field(:skip_onboarding, 3, type: :bool, json_name: "skipOnboarding")
 end
 
 defmodule InternalApi.Projecthub.CreateResponse do
@@ -698,6 +701,23 @@ defmodule InternalApi.Projecthub.GithubAppSwitchResponse do
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
 
+defmodule InternalApi.Projecthub.FinishOnboardingRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:metadata, 1, type: InternalApi.Projecthub.RequestMeta)
+  field(:id, 2, type: :string)
+end
+
+defmodule InternalApi.Projecthub.FinishOnboardingResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
+end
+
 defmodule InternalApi.Projecthub.ProjectCreated do
   @moduledoc false
 
@@ -808,6 +828,12 @@ defmodule InternalApi.Projecthub.ProjectService.Service do
     :GithubAppSwitch,
     InternalApi.Projecthub.GithubAppSwitchRequest,
     InternalApi.Projecthub.GithubAppSwitchResponse
+  )
+
+  rpc(
+    :FinishOnboarding,
+    InternalApi.Projecthub.FinishOnboardingRequest,
+    InternalApi.Projecthub.FinishOnboardingResponse
   )
 end
 

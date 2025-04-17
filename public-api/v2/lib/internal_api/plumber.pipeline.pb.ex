@@ -245,10 +245,7 @@ defmodule InternalApi.Plumber.ScheduleResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:ppl_id, 2, type: :string, json_name: "pplId")
 end
@@ -267,10 +264,7 @@ defmodule InternalApi.Plumber.DescribeResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:pipeline, 3, type: InternalApi.Plumber.Pipeline)
   field(:blocks, 4, repeated: true, type: InternalApi.Plumber.Block)
@@ -322,10 +316,7 @@ defmodule InternalApi.Plumber.DescribeManyResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
 end
@@ -384,10 +375,7 @@ defmodule InternalApi.Plumber.TerminateResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 end
 
 defmodule InternalApi.Plumber.ListQueuesRequest do
@@ -413,10 +401,7 @@ defmodule InternalApi.Plumber.ListQueuesResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:queues, 2, repeated: true, type: InternalApi.Plumber.Queue)
   field(:page_number, 3, type: :int32, json_name: "pageNumber")
@@ -448,10 +433,7 @@ defmodule InternalApi.Plumber.ListGroupedResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
   field(:page_number, 3, type: :int32, json_name: "pageNumber")
@@ -534,10 +516,7 @@ defmodule InternalApi.Plumber.ListResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
   field(:page_number, 3, type: :int32, json_name: "pageNumber")
@@ -604,11 +583,7 @@ defmodule InternalApi.Plumber.Pipeline do
   field(:after_task_id, 32, type: :string, json_name: "afterTaskId")
   field(:repository_id, 33, type: :string, json_name: "repositoryId")
 
-  field(:env_vars, 34,
-    repeated: true,
-    type: InternalApi.Plumber.EnvVariable,
-    json_name: "envVars"
-  )
+  field(:env_vars, 34, repeated: true, type: InternalApi.Plumber.EnvVariable, json_name: "envVars")
 
   field(:triggerer, 35, type: InternalApi.Plumber.Triggerer)
   field(:organization_id, 36, type: :string, json_name: "organizationId")
@@ -814,10 +789,7 @@ defmodule InternalApi.Plumber.GetProjectIdResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:project_id, 2, type: :string, json_name: "projectId")
 end
@@ -836,10 +808,7 @@ defmodule InternalApi.Plumber.ValidateYamlResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:ppl_id, 2, type: :string, json_name: "pplId")
 end
@@ -880,10 +849,7 @@ defmodule InternalApi.Plumber.ScheduleExtensionResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:ppl_id, 2, type: :string, json_name: "pplId")
 end
@@ -920,10 +886,7 @@ defmodule InternalApi.Plumber.PartialRebuildResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:response_status, 1,
-    type: InternalApi.Plumber.ResponseStatus,
-    json_name: "responseStatus"
-  )
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus, json_name: "responseStatus")
 
   field(:ppl_id, 2, type: :string, json_name: "pplId")
 end

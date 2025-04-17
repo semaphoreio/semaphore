@@ -72,12 +72,11 @@ defmodule InternalClients.Permissions do
     alias InternalApi.RBAC.ListUserPermissionsRequest
     alias InternalApi.RBAC.RBAC.Stub
 
-    request =
-      %ListUserPermissionsRequest{
-        user_id: user_id,
-        org_id: org_id,
-        project_id: project_id
-      }
+    request = %ListUserPermissionsRequest{
+      user_id: user_id,
+      org_id: org_id,
+      project_id: project_id
+    }
 
     rbac_channel()
     |> Stub.list_user_permissions(request, timeout: rbac_grpc_timeout())
