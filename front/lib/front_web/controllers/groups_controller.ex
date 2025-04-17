@@ -152,7 +152,7 @@ defmodule FrontWeb.GroupsController do
         conn
         |> put_flash(
           :notice,
-          "Group successfully deleted. It might take up to a minute for changes to apply."
+          "Request for deleting the group has been sent. It might take up to a minute for the request to be processed."
         )
         |> redirect(to: people_path(conn, :organization))
 
