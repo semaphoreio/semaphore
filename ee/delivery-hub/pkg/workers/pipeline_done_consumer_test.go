@@ -67,7 +67,9 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		// Create execution
 		//
 		workflowID := uuid.New().String()
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		ev, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, ev)
 		require.NoError(t, err)
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
@@ -127,7 +129,9 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		// Create execution
 		//
 		workflowID := uuid.New().String()
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		ev, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, ev)
 		require.NoError(t, err)
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)

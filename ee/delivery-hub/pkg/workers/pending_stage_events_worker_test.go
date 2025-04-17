@@ -50,7 +50,9 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create a pending stage event, and trigger the worker.
 		//
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
 		require.NotNil(t, event)
 		require.Equal(t, models.StageEventPending, event.State)
@@ -89,7 +91,9 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create a pending stage event, and trigger the worker.
 		//
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
 		require.NotNil(t, event)
 		require.Equal(t, models.StageEventPending, event.State)
@@ -121,7 +125,9 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create a pending stage event, approve it, and trigger the worker.
 		//
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
 		require.NotNil(t, event)
 		require.NoError(t, event.Approve(uuid.New()))
@@ -162,7 +168,9 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		// Create a pending stage event, trigger the worker,
 		// and verify that it was processed.
 		//
-		event, err := models.CreateStageEvent(stage.ID, source.ID)
+		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
 		require.NotNil(t, event)
 		require.Equal(t, models.StageEventPending, event.State)
@@ -176,7 +184,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		// Add another pending event for this stage,
 		// trigger the worker, and verify that it remained in the pending state.
 		//
-		event, err = models.CreateStageEvent(stage.ID, source.ID)
+		event, err = models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventPending, event.State)
 		err = w.Tick()

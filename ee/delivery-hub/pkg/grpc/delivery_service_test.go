@@ -455,7 +455,10 @@ func Test__ListStageEvents(t *testing.T) {
 	})
 
 	t.Run("stage with stage events -> list", func(t *testing.T) {
-		_, err = models.CreateStageEvent(stage.ID, eventSource.ID)
+		event, err := models.CreateEvent(eventSource.ID, models.SourceTypeEventSource, []byte(`{}`))
+		require.NoError(t, err)
+
+		_, err = models.CreateStageEvent(stage.ID, event)
 		require.NoError(t, err)
 
 		res, err := service.ListStageEvents(context.Background(), &protos.ListStageEventsRequest{
@@ -502,7 +505,9 @@ func Test__ApproveStageEvent(t *testing.T) {
 	stage, err := models.FindStageByName(canvas.OrganizationID, canvas.ID, "stage-1")
 	require.NoError(t, err)
 
-	event, err := models.CreateStageEvent(stage.ID, eventSource.ID)
+	e, err := models.CreateEvent(eventSource.ID, models.SourceTypeEventSource, []byte(`{}`))
+	require.NoError(t, err)
+	event, err := models.CreateStageEvent(stage.ID, e)
 	require.NoError(t, err)
 
 	t.Run("stage does not exist -> error", func(t *testing.T) {

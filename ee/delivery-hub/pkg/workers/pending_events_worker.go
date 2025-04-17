@@ -152,7 +152,7 @@ func (w *PendingEventsWorker) filterStages(logger *log.Entry, event *models.Even
 func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.Stage) error {
 	return database.Conn().Transaction(func(tx *gorm.DB) error {
 		for _, stage := range stages {
-			_, err := models.CreateStageEventInTransaction(tx, stage.ID, event.SourceID)
+			_, err := models.CreateStageEventInTransaction(tx, stage.ID, event)
 			if err != nil {
 				return fmt.Errorf("error creating pending stage event: %v", err)
 			}

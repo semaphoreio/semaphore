@@ -112,6 +112,7 @@ CREATE TABLE public.stage_connections (
 CREATE TABLE public.stage_events (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
+    event_id uuid NOT NULL,
     source_id uuid NOT NULL,
     source_type character varying(64) NOT NULL,
     state character varying(64) NOT NULL,

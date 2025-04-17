@@ -59,7 +59,12 @@ func (w *PendingExecutionsWorker) Tick() error {
 // There is an issue here where, if we are having issues updating the state of the execution in the database,
 // we might end up creating more executions than we should.
 func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *models.Stage, execution models.StageExecution) error {
-	executionID, err := w.StartExecution(logger, stage, stage.RunTemplate.Data())
+	event, err := execution.GetEvent()
+	if err != nil {
+		return fmt.Errorf("error getting event: %v", err)
+	}
+
+	executionID, err := w.StartExecution(logger, stage, stage.RunTemplate.Data(), event)
 	if err != nil {
 		return fmt.Errorf("error starting execution: %v", err)
 	}
@@ -75,7 +80,7 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 }
 
 // TODO: implement some retry and give up mechanism
-func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, runTemplate models.RunTemplate) (string, error) {
+func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, runTemplate models.RunTemplate, event map[string]any) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
@@ -83,7 +88,7 @@ func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *model
 	case models.RunTemplateTypeSemaphoreWorkflow:
 		return w.StartSemaphoreWorkflow(ctx, logger, stage, runTemplate.SemaphoreWorkflow)
 	case models.RunTemplateTypeSemaphoreTask:
-		return w.TriggerSemaphoreTask(ctx, logger, stage, runTemplate.SemaphoreTask)
+		return w.TriggerSemaphoreTask(ctx, logger, stage, runTemplate.SemaphoreTask, event)
 	default:
 		return "", fmt.Errorf("unknown run template type")
 	}
@@ -120,7 +125,7 @@ func (w *PendingExecutionsWorker) StartSemaphoreWorkflow(ctx context.Context, l 
 	return res.WorkflowId, nil
 }
 
-func (w *PendingExecutionsWorker) TriggerSemaphoreTask(ctx context.Context, l *log.Entry, s *models.Stage, t *models.SemaphoreTaskTemplate) (string, error) {
+func (w *PendingExecutionsWorker) TriggerSemaphoreTask(ctx context.Context, l *log.Entry, s *models.Stage, t *models.SemaphoreTaskTemplate, event map[string]any) (string, error) {
 	conn, err := grpc.NewClient(w.SchedulerURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", fmt.Errorf("error connecting to task API: %v", err)

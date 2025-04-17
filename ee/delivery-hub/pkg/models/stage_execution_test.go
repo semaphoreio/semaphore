@@ -1,0 +1,38 @@
+package models
+
+import (
+	"testing"
+
+	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"github.com/stretchr/testify/require"
+)
+
+func Test__StageExecution(t *testing.T) {
+	require.NoError(t, database.TruncateTables())
+
+	org := uuid.New()
+	user := uuid.New()
+
+	canvas, err := CreateCanvas(org, "test")
+	require.NoError(t, err)
+	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
+	require.NoError(t, err)
+	require.NoError(t, canvas.CreateStage("stg-1", user, false, RunTemplate{}, []StageConnection{}))
+	stage, err := FindStageByName(org, canvas.ID, "stg-1")
+	require.NoError(t, err)
+
+	data := `{"hello": "world"}`
+	event, err := CreateEvent(source.ID, SourceTypeEventSource, []byte(data))
+	require.NoError(t, err)
+	stageEvent, err := CreateStageEvent(stage.ID, event)
+	require.NoError(t, err)
+
+	t.Run("can get event data for execution", func(t *testing.T) {
+		stageExecution, err := CreateStageExecution(stage.ID, stageEvent.ID)
+		require.NoError(t, err)
+		raw, err := stageExecution.GetEvent()
+		require.NoError(t, err)
+		require.Equal(t, map[string]any{"hello": "world"}, raw)
+	})
+}

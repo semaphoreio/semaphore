@@ -23,6 +23,7 @@ const (
 type StageEvent struct {
 	ID         uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
 	StageID    uuid.UUID
+	EventID    uuid.UUID
 	SourceID   uuid.UUID
 	SourceType string
 	State      string
@@ -66,20 +67,22 @@ func FindStageEventByID(id, stageID uuid.UUID) (*StageEvent, error) {
 	return &event, nil
 }
 
-func CreateStageEvent(stageID, sourceID uuid.UUID) (*StageEvent, error) {
-	return CreateStageEventInTransaction(database.Conn(), stageID, sourceID)
+func CreateStageEvent(stageID uuid.UUID, event *Event) (*StageEvent, error) {
+	return CreateStageEventInTransaction(database.Conn(), stageID, event)
 }
 
-func CreateStageEventInTransaction(tx *gorm.DB, stageID, sourceID uuid.UUID) (*StageEvent, error) {
+func CreateStageEventInTransaction(tx *gorm.DB, stageID uuid.UUID, event *Event) (*StageEvent, error) {
 	now := time.Now()
-	event := StageEvent{
-		StageID:   stageID,
-		SourceID:  sourceID,
-		State:     StageEventPending,
-		CreatedAt: &now,
+	stageEvent := StageEvent{
+		StageID:    stageID,
+		EventID:    event.ID,
+		SourceID:   event.SourceID,
+		SourceType: event.SourceType,
+		State:      StageEventPending,
+		CreatedAt:  &now,
 	}
 
-	err := tx.Create(&event).
+	err := tx.Create(&stageEvent).
 		Clauses(clause.Returning{}).
 		Error
 
@@ -87,13 +90,7 @@ func CreateStageEventInTransaction(tx *gorm.DB, stageID, sourceID uuid.UUID) (*S
 		return nil, err
 	}
 
-	return &event, nil
-}
-
-type StageEventWithSource struct {
-	StageEvent
-	SourceID   uuid.UUID
-	SourceType string
+	return &stageEvent, nil
 }
 
 func FindOldestPendingStageEvent(stageID uuid.UUID) (*StageEvent, error) {

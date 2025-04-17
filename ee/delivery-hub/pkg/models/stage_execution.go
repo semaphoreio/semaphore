@@ -1,10 +1,13 @@
 package models
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -41,11 +44,37 @@ type StageExecution struct {
 	ReferenceID string
 }
 
+func (e *StageExecution) GetEvent() (map[string]any, error) {
+	var data struct {
+		Raw datatypes.JSON
+	}
+
+	err := database.Conn().
+		Table("stage_executions").
+		Select("events.raw").
+		Joins("inner join stage_events ON stage_executions.stage_event_id = stage_events.id").
+		Joins("inner join events ON stage_events.event_id = events.id").
+		Where("stage_executions.id = ?", e.ID).
+		Scan(&data).
+		Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error finding event: %v", err)
+	}
+
+	var m map[string]any
+	err = json.Unmarshal(data.Raw, &m)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling data: %v", err)
+	}
+
+	return m, nil
+}
+
 func (e *StageExecution) Start(referenceID string) error {
 	now := time.Now()
 
-	return database.Conn().
-		Model(e).
+	return database.Conn().Model(e).
 		Update("reference_id", referenceID).
 		Update("state", StageExecutionStarted).
 		Update("started_at", &now).
