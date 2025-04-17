@@ -284,7 +284,7 @@ export var GroupManagement = {
   },
 
   isAnyChangeMade() {
-    var isNameChanged, isDescriptionChanged
+    let isNameChanged, isDescriptionChanged
     if(this.group) {
       isNameChanged = document.getElementById("name_input").value !== this.group.name
       isDescriptionChanged = document.getElementById("description_input").value !== this.group.description
