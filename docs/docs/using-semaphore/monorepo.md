@@ -136,13 +136,13 @@ To enable change detection, follow these steps.
 2. Select the block
 3. Open the **Skip/run conditions** on the right side
 4. Select **Run this block when conditions are met**
-5. In the **When?** field type the [change condition](#condition), e.g. `change_in("/frontend", {default_branch: "main"})`
+5. In the **When?** field type the [change condition](#condition), e.g. `change_in('/frontend', {default_branch: 'main'})`
 
   ![Setting up change conditions](./img/change-conditions-first.jpg)
 
 </Steps>
 
-Repeat the procedure for the rest of the blocks. For example, for the Backend block, we could use the condition `change_in("/backend", {default_branch: "main"})`
+Repeat the procedure for the rest of the blocks. For example, for the Backend block, we could use the condition `change_in('/backend', {default_branch: 'main'})`
 
 Press **Run the workflow** > **Start** to save your changes and run the pipeline.
 
@@ -156,7 +156,7 @@ Conditions are ignored by default when you change the pipeline file. So, the ver
 1. Open your pipeline YAML file
 2. Locate the block you wish to add change conditions to
 3. Add `run.when` under the block
-4. Type the [change condition](#condition), e.g. `change_in("/frontend", {default_branch: "main"})`
+4. Type the [change condition](#condition), e.g. `change_in('/frontend', {default_branch: 'main'})`
 5. Repeat the process for the other blocks that need conditions
 6. Push the pipeline file to the remote repository 
 
@@ -193,7 +193,7 @@ blocks:
             - 'npm run test:integration'
     # highlight-start
     run:
-      when: 'change_in("/frontend", {default_branch: "main"})'
+      when: 'change_in(''/frontend'', {default_branch: ''main''})'
     # highlight-end
   - name: Frontend
     dependencies: []
@@ -211,7 +211,7 @@ blocks:
             - 'npm run test:integration'
     # highlight-start
     run:
-      when: 'change_in("/backend", {default_branch: "main"})'
+      when: 'change_in(''/backend'', {default_branch: ''main''})'
     # highlight-end
 ```
 
@@ -239,13 +239,13 @@ To activate change detection on promotions, follow these steps:
 1. Open the **Workflow Editor** for your Semaphore project
 2. Create or select the [promotion](./pipelines#connecting-pipelines)
 3. Check the option **Enable automatic promotion**
-4. Type the [change condition](#condition), e.g. `branch = "main" AND result = "passed" AND change_in("/backend", {default_branch: "main"})`
+4. Type the [change condition](#condition), e.g. `branch = 'main' AND result = 'passed' AND change_in('/backend', {default_branch: 'main'})`
 
   ![Change conditions for promotions](./img/change-condition-promotion.jpg)
 
 </Steps>
 
-Repeat the procedure for the rest of the promotions. For example, for the Frontend block, we could use the condition `change_in("/frontend", {default_branch: "main"}) and branch = "main" AND result = "passed"`
+Repeat the procedure for the rest of the promotions. For example, for the Frontend block, we could use the condition `change_in('/frontend', {default_branch: 'main'}) and branch = 'main' AND result = 'passed'`
 
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
@@ -259,7 +259,7 @@ To use change detection, follow these steps:
 1. Open your pipeline YAML file
 2. Locate or create the [promotion block](./pipelines#connecting-pipelines) you wish to add conditions to
 3. Add `auto_promote.when` under the block
-4. Type the [change condition](#condition), e.g. `change_in("/frontend", {default_branch: "main"})`
+4. Type the [change condition](#condition), e.g. `change_in('/frontend', {default_branch: 'main'})`
 5. Repeat the process for the other promotions that need conditions
 6. Push the pipeline file to the remote repository 
 
@@ -288,7 +288,7 @@ blocks:
             - 'npm install'
             - 'npm run test:integration'
     run:
-      when: 'change_in("/frontend", {default_branch: "main"})'
+      when: 'change_in(''/frontend'', {default_branch: ''main''})'
   - name: Frontend
     dependencies: []
     task:
@@ -304,19 +304,19 @@ blocks:
             - 'npm install'
             - 'npm run test:integration'
     run:
-      when: 'change_in("/backend", {default_branch: "main"})'
+      when: 'change_in(''/backend'', {default_branch: ''main''})'
 promotions:
   - name: Deploy Backend
     pipeline_file: deploy_backend.yml
     # highlight-start
     auto_promote:
-      when: 'change_in("/backend", {default_branch: "main"}) and branch = "main" AND result = "passed"'
+      when: 'change_in(''/backend'', {default_branch: ''main''}) and branch = ''main'' AND result = ''passed'''
     # highlight-end
   - name: Deploy Frontend
     pipeline_file: deploy_frontend.yml
     # highlight-start
     auto_promote:
-      when: 'change_in("/frontend", {default_branch: "main"}) and branch = "main" AND result = "passed"'
+      when: 'change_in(''/frontend'', {default_branch: ''main''}) and branch = ''main'' AND result = ''passed'''
     # highlight-end
 ```
 
@@ -381,7 +381,7 @@ blocks:
             - 'npm run test:integration'
     # highlight-start
     run:
-      when: 'change_in("/backend", {default_branch: "main"})'
+      when: 'change_in(''/backend'', {default_branch: ''main''})'
     # highlight-end
 ```
 
@@ -411,7 +411,7 @@ blocks:
             - 'npm run test:integration'
     # highlight-start
     skip:
-      when: 'change_in("/backend", {default_branch: "main"})'
+      when: 'change_in(''/backend'', {default_branch: ''main''})'
     # highlight-end
 ```
 
@@ -429,7 +429,7 @@ change_in(<glob_pattern>, options)
 The `options` is an optional hashmap to change the change detection behavior. For example, to change the name of the trunk from master to main:
 
 ```text title="Using main instead of master"
-change_in("/backend/", {default_branch: "main"})
+change_in('/backend/', {default_branch: 'main'})
 ```
 The most common options are:
 The supported options are:
@@ -448,35 +448,35 @@ See the [change_in conditions DSL reference](../reference/conditions-dsl#change-
 This section shows examples of common change detection scenarios.
 
 ```text title="When a directory changes"
-change_in("/backend/", {default_branch: "master"})
+change_in('/backend/', {default_branch: 'master'})
 ```
 
 ```text title="When a directory in a list changes"
-change_in(["/web-app/","/lib/"])
+change_in(['/web-app/','/lib/'])
 ```
 
 ```text title="When a file changes"
-change_in("./Gemfile.lock", {default_branch: "master"})
+change_in('./Gemfile.lock', {default_branch: 'master'})
 ```
 
 ```text title="Trunk is main instead of master"
-change_in("/backend/", {default_branch: "main"})
+change_in('/backend/', {default_branch: 'main'})
 ```
 
 ```text title="Ignoring pipeline file changes"
-change_in("/backend/", {pipeline_file: "ignore", default_branch: "main"})
+change_in('/backend/', {pipeline_file: 'ignore', default_branch: 'main'})
 ```
 
 ```text title="When any file changes, except files in the docs folder"
-change_in("/", {exclude: ["/docs"], default_branch: "main"})
+change_in('/', {exclude: ['/docs'], default_branch: 'main'})
 ```
 
 ```text title="Changes in /backend/ folder for branches master or staging"
-(branch = "staging" OR branch = "main") and change_in("/backend/", default_branch: "main")
+(branch = 'staging' OR branch = 'main') and change_in('/backend/', {default_branch: 'main'})
 ```
 
 ```text title="Changes on /backend/ folder for any branch starting with 'hotfix/'"
-branch =~ "^hotfix/" and change_in("/backend/", default_branch: "main") 
+branch =~ '^hotfix/' and change_in('/backend/', {default_branch: 'main'}) 
 ```
 
 ## Demo project {#demo}
@@ -530,7 +530,7 @@ agent:
     type: e1-standard-2
     os_image: ubuntu2004
 blocks:
-  - name: "UI Service"
+  - name: 'UI Service'
     dependencies: []
     run:
       when: 'change_in(''/services/ui'', {exclude: ''/services/ui/**/*.md''})'
@@ -553,7 +553,7 @@ blocks:
         - name: Test
           commands:
             - mix test
-  - name: "User Service"
+  - name: 'User Service'
     dependencies: []
     run:
       when: 'change_in(''/services/users'', {exclude: ''/services/users/**/*.md''})'
@@ -573,7 +573,7 @@ blocks:
         - name: Test
           commands:
             - bundle exec ruby test.rb
-  - name: "Billing Service"
+  - name: 'Billing Service'
     dependencies: []
     run:
       when: 'change_in(''/services/billing'', {exclude: ''/services/billing/**/*.md''})'
