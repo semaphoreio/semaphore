@@ -48,6 +48,7 @@ CREATE TABLE public.canvases (
     organization_id uuid NOT NULL,
     name character varying(128) NOT NULL,
     created_at timestamp without time zone NOT NULL,
+    created_by uuid NOT NULL,
     updated_at timestamp without time zone NOT NULL
 );
 

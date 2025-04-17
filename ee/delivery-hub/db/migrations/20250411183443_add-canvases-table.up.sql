@@ -7,6 +7,7 @@ CREATE TABLE canvases (
   organization_id uuid NOT NULL,
   name            CHARACTER VARYING(128) NOT NULL,
   created_at      TIMESTAMP NOT NULL,
+  created_by      uuid NOT NULL,
   updated_at      TIMESTAMP NOT NULL,
 
   PRIMARY KEY (id),

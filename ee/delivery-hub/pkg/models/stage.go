@@ -70,7 +70,24 @@ func FindStageByName(orgID, canvasID uuid.UUID, name string) (*Stage, error) {
 	return &stage, nil
 }
 
-func FindStageByID(id uuid.UUID) (*Stage, error) {
+func FindStageByID(orgID, canvasID uuid.UUID, id uuid.UUID) (*Stage, error) {
+	var stage Stage
+
+	err := database.Conn().
+		Where("organization_id = ?", orgID).
+		Where("canvas_id = ?", canvasID).
+		Where("id = ?", id).
+		First(&stage).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stage, nil
+}
+
+func FindStageByIDOnly(id uuid.UUID) (*Stage, error) {
 	var stage Stage
 
 	err := database.Conn().

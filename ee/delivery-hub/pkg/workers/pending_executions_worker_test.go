@@ -22,7 +22,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 	org := uuid.New()
 	user := uuid.New()
 
-	canvas, err := models.CreateCanvas(org, "test")
+	canvas, err := models.CreateCanvas(org, user, "test")
 	require.NoError(t, err)
 
 	source, err := canvas.CreateEventSource("gh", []byte("my-key"))

@@ -33,7 +33,8 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 	require.NoError(t, err)
 
 	orgID := uuid.New()
-	canvas, err := models.CreateCanvas(orgID, "test")
+	userID := uuid.New()
+	canvas, err := models.CreateCanvas(orgID, userID, "test")
 	require.NoError(t, err)
 
 	eventSource, err := canvas.CreateEventSource("github-repo-1", []byte("my-key"))

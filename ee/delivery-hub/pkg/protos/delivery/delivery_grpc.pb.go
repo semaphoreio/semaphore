@@ -19,13 +19,17 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Delivery_CreateCanvas_FullMethodName      = "/InternalApi.Delivery.Delivery/CreateCanvas"
-	Delivery_DescribeCanvas_FullMethodName    = "/InternalApi.Delivery.Delivery/DescribeCanvas"
-	Delivery_CreateEventSource_FullMethodName = "/InternalApi.Delivery.Delivery/CreateEventSource"
-	Delivery_CreateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/CreateStage"
-	Delivery_UpdateStage_FullMethodName       = "/InternalApi.Delivery.Delivery/UpdateStage"
-	Delivery_ListStageEvents_FullMethodName   = "/InternalApi.Delivery.Delivery/ListStageEvents"
-	Delivery_ApproveStageEvent_FullMethodName = "/InternalApi.Delivery.Delivery/ApproveStageEvent"
+	Delivery_CreateCanvas_FullMethodName        = "/InternalApi.Delivery.Delivery/CreateCanvas"
+	Delivery_CreateEventSource_FullMethodName   = "/InternalApi.Delivery.Delivery/CreateEventSource"
+	Delivery_CreateStage_FullMethodName         = "/InternalApi.Delivery.Delivery/CreateStage"
+	Delivery_DescribeCanvas_FullMethodName      = "/InternalApi.Delivery.Delivery/DescribeCanvas"
+	Delivery_DescribeStage_FullMethodName       = "/InternalApi.Delivery.Delivery/DescribeStage"
+	Delivery_DescribeEventSource_FullMethodName = "/InternalApi.Delivery.Delivery/DescribeEventSource"
+	Delivery_ListStages_FullMethodName          = "/InternalApi.Delivery.Delivery/ListStages"
+	Delivery_ListEventSources_FullMethodName    = "/InternalApi.Delivery.Delivery/ListEventSources"
+	Delivery_ListStageEvents_FullMethodName     = "/InternalApi.Delivery.Delivery/ListStageEvents"
+	Delivery_UpdateStage_FullMethodName         = "/InternalApi.Delivery.Delivery/UpdateStage"
+	Delivery_ApproveStageEvent_FullMethodName   = "/InternalApi.Delivery.Delivery/ApproveStageEvent"
 )
 
 // DeliveryClient is the client API for Delivery service.
@@ -33,11 +37,15 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DeliveryClient interface {
 	CreateCanvas(ctx context.Context, in *CreateCanvasRequest, opts ...grpc.CallOption) (*CreateCanvasResponse, error)
-	DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error)
 	CreateEventSource(ctx context.Context, in *CreateEventSourceRequest, opts ...grpc.CallOption) (*CreateEventSourceResponse, error)
 	CreateStage(ctx context.Context, in *CreateStageRequest, opts ...grpc.CallOption) (*CreateStageResponse, error)
-	UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error)
+	DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error)
+	DescribeStage(ctx context.Context, in *DescribeStageRequest, opts ...grpc.CallOption) (*DescribeStageResponse, error)
+	DescribeEventSource(ctx context.Context, in *DescribeEventSourceRequest, opts ...grpc.CallOption) (*DescribeEventSourceResponse, error)
+	ListStages(ctx context.Context, in *ListStagesRequest, opts ...grpc.CallOption) (*ListStagesResponse, error)
+	ListEventSources(ctx context.Context, in *ListEventSourcesRequest, opts ...grpc.CallOption) (*ListEventSourcesResponse, error)
 	ListStageEvents(ctx context.Context, in *ListStageEventsRequest, opts ...grpc.CallOption) (*ListStageEventsResponse, error)
+	UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error)
 	ApproveStageEvent(ctx context.Context, in *ApproveStageEventRequest, opts ...grpc.CallOption) (*ApproveStageEventResponse, error)
 }
 
@@ -53,16 +61,6 @@ func (c *deliveryClient) CreateCanvas(ctx context.Context, in *CreateCanvasReque
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateCanvasResponse)
 	err := c.cc.Invoke(ctx, Delivery_CreateCanvas_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *deliveryClient) DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(DescribeCanvasResponse)
-	err := c.cc.Invoke(ctx, Delivery_DescribeCanvas_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -89,10 +87,50 @@ func (c *deliveryClient) CreateStage(ctx context.Context, in *CreateStageRequest
 	return out, nil
 }
 
-func (c *deliveryClient) UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error) {
+func (c *deliveryClient) DescribeCanvas(ctx context.Context, in *DescribeCanvasRequest, opts ...grpc.CallOption) (*DescribeCanvasResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(UpdateStageResponse)
-	err := c.cc.Invoke(ctx, Delivery_UpdateStage_FullMethodName, in, out, cOpts...)
+	out := new(DescribeCanvasResponse)
+	err := c.cc.Invoke(ctx, Delivery_DescribeCanvas_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) DescribeStage(ctx context.Context, in *DescribeStageRequest, opts ...grpc.CallOption) (*DescribeStageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeStageResponse)
+	err := c.cc.Invoke(ctx, Delivery_DescribeStage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) DescribeEventSource(ctx context.Context, in *DescribeEventSourceRequest, opts ...grpc.CallOption) (*DescribeEventSourceResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DescribeEventSourceResponse)
+	err := c.cc.Invoke(ctx, Delivery_DescribeEventSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) ListStages(ctx context.Context, in *ListStagesRequest, opts ...grpc.CallOption) (*ListStagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStagesResponse)
+	err := c.cc.Invoke(ctx, Delivery_ListStages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) ListEventSources(ctx context.Context, in *ListEventSourcesRequest, opts ...grpc.CallOption) (*ListEventSourcesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListEventSourcesResponse)
+	err := c.cc.Invoke(ctx, Delivery_ListEventSources_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +141,16 @@ func (c *deliveryClient) ListStageEvents(ctx context.Context, in *ListStageEvent
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListStageEventsResponse)
 	err := c.cc.Invoke(ctx, Delivery_ListStageEvents_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateStageResponse)
+	err := c.cc.Invoke(ctx, Delivery_UpdateStage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,11 +172,15 @@ func (c *deliveryClient) ApproveStageEvent(ctx context.Context, in *ApproveStage
 // for forward compatibility.
 type DeliveryServer interface {
 	CreateCanvas(context.Context, *CreateCanvasRequest) (*CreateCanvasResponse, error)
-	DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error)
 	CreateEventSource(context.Context, *CreateEventSourceRequest) (*CreateEventSourceResponse, error)
 	CreateStage(context.Context, *CreateStageRequest) (*CreateStageResponse, error)
-	UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error)
+	DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error)
+	DescribeStage(context.Context, *DescribeStageRequest) (*DescribeStageResponse, error)
+	DescribeEventSource(context.Context, *DescribeEventSourceRequest) (*DescribeEventSourceResponse, error)
+	ListStages(context.Context, *ListStagesRequest) (*ListStagesResponse, error)
+	ListEventSources(context.Context, *ListEventSourcesRequest) (*ListEventSourcesResponse, error)
 	ListStageEvents(context.Context, *ListStageEventsRequest) (*ListStageEventsResponse, error)
+	UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error)
 	ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error)
 }
 
@@ -142,20 +194,32 @@ type UnimplementedDeliveryServer struct{}
 func (UnimplementedDeliveryServer) CreateCanvas(context.Context, *CreateCanvasRequest) (*CreateCanvasResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateCanvas not implemented")
 }
-func (UnimplementedDeliveryServer) DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DescribeCanvas not implemented")
-}
 func (UnimplementedDeliveryServer) CreateEventSource(context.Context, *CreateEventSourceRequest) (*CreateEventSourceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEventSource not implemented")
 }
 func (UnimplementedDeliveryServer) CreateStage(context.Context, *CreateStageRequest) (*CreateStageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateStage not implemented")
 }
-func (UnimplementedDeliveryServer) UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
+func (UnimplementedDeliveryServer) DescribeCanvas(context.Context, *DescribeCanvasRequest) (*DescribeCanvasResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeCanvas not implemented")
+}
+func (UnimplementedDeliveryServer) DescribeStage(context.Context, *DescribeStageRequest) (*DescribeStageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeStage not implemented")
+}
+func (UnimplementedDeliveryServer) DescribeEventSource(context.Context, *DescribeEventSourceRequest) (*DescribeEventSourceResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeEventSource not implemented")
+}
+func (UnimplementedDeliveryServer) ListStages(context.Context, *ListStagesRequest) (*ListStagesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListStages not implemented")
+}
+func (UnimplementedDeliveryServer) ListEventSources(context.Context, *ListEventSourcesRequest) (*ListEventSourcesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListEventSources not implemented")
 }
 func (UnimplementedDeliveryServer) ListStageEvents(context.Context, *ListStageEventsRequest) (*ListStageEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListStageEvents not implemented")
+}
+func (UnimplementedDeliveryServer) UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateStage not implemented")
 }
 func (UnimplementedDeliveryServer) ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApproveStageEvent not implemented")
@@ -198,24 +262,6 @@ func _Delivery_CreateCanvas_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Delivery_DescribeCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DescribeCanvasRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(DeliveryServer).DescribeCanvas(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Delivery_DescribeCanvas_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeliveryServer).DescribeCanvas(ctx, req.(*DescribeCanvasRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _Delivery_CreateEventSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateEventSourceRequest)
 	if err := dec(in); err != nil {
@@ -252,20 +298,92 @@ func _Delivery_CreateStage_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Delivery_UpdateStage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateStageRequest)
+func _Delivery_DescribeCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeCanvasRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeliveryServer).UpdateStage(ctx, in)
+		return srv.(DeliveryServer).DescribeCanvas(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Delivery_UpdateStage_FullMethodName,
+		FullMethod: Delivery_DescribeCanvas_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeliveryServer).UpdateStage(ctx, req.(*UpdateStageRequest))
+		return srv.(DeliveryServer).DescribeCanvas(ctx, req.(*DescribeCanvasRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_DescribeStage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeStageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).DescribeStage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_DescribeStage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).DescribeStage(ctx, req.(*DescribeStageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_DescribeEventSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeEventSourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).DescribeEventSource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_DescribeEventSource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).DescribeEventSource(ctx, req.(*DescribeEventSourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_ListStages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).ListStages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_ListStages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).ListStages(ctx, req.(*ListStagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_ListEventSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListEventSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).ListEventSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_ListEventSources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).ListEventSources(ctx, req.(*ListEventSourcesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -284,6 +402,24 @@ func _Delivery_ListStageEvents_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(DeliveryServer).ListStageEvents(ctx, req.(*ListStageEventsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_UpdateStage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateStageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).UpdateStage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_UpdateStage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).UpdateStage(ctx, req.(*UpdateStageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -318,10 +454,6 @@ var Delivery_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Delivery_CreateCanvas_Handler,
 		},
 		{
-			MethodName: "DescribeCanvas",
-			Handler:    _Delivery_DescribeCanvas_Handler,
-		},
-		{
 			MethodName: "CreateEventSource",
 			Handler:    _Delivery_CreateEventSource_Handler,
 		},
@@ -330,12 +462,32 @@ var Delivery_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Delivery_CreateStage_Handler,
 		},
 		{
-			MethodName: "UpdateStage",
-			Handler:    _Delivery_UpdateStage_Handler,
+			MethodName: "DescribeCanvas",
+			Handler:    _Delivery_DescribeCanvas_Handler,
+		},
+		{
+			MethodName: "DescribeStage",
+			Handler:    _Delivery_DescribeStage_Handler,
+		},
+		{
+			MethodName: "DescribeEventSource",
+			Handler:    _Delivery_DescribeEventSource_Handler,
+		},
+		{
+			MethodName: "ListStages",
+			Handler:    _Delivery_ListStages_Handler,
+		},
+		{
+			MethodName: "ListEventSources",
+			Handler:    _Delivery_ListEventSources_Handler,
 		},
 		{
 			MethodName: "ListStageEvents",
 			Handler:    _Delivery_ListStageEvents_Handler,
+		},
+		{
+			MethodName: "UpdateStage",
+			Handler:    _Delivery_UpdateStage_Handler,
 		},
 		{
 			MethodName: "ApproveStageEvent",

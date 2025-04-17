@@ -19,6 +19,7 @@ type Canvas struct {
 	Name           string
 	OrganizationID uuid.UUID
 	CreatedAt      *time.Time
+	CreatedBy      uuid.UUID
 	UpdatedAt      *time.Time
 }
 
@@ -109,12 +110,13 @@ func FindCanvasByID(id uuid.UUID, organizationID uuid.UUID) (*Canvas, error) {
 	return &canvas, nil
 }
 
-func CreateCanvas(orgID uuid.UUID, name string) (*Canvas, error) {
+func CreateCanvas(orgID, requesterID uuid.UUID, name string) (*Canvas, error) {
 	now := time.Now()
 	canvas := Canvas{
 		OrganizationID: orgID,
 		Name:           name,
 		CreatedAt:      &now,
+		CreatedBy:      requesterID,
 		UpdatedAt:      &now,
 	}
 
