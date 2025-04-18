@@ -2,8 +2,8 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   @moduledoc false
   alias InternalApi.Delivery, as: API
 
-  def describe(source = %API.Stage{}, ctx) do
-    {:ok, stage_from_pb(source, ctx)}
+  def describe(stage = %API.Stage{}, ctx) do
+    {:ok, stage_from_pb(stage, ctx)}
   end
 
   def event(event = %API.StageEvent{}) do
@@ -62,8 +62,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
       },
       spec: %{
         approval_required: stage.approval_required,
-        connections:
-          Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
+        connections: Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
         run: run_template_from_pb(stage.run_template)
       }
     }
@@ -82,17 +81,20 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   defp run_template_type_from_pb(_), do: ""
 
   defp semaphore_run_template_from_pb(:TYPE_SEMAPHORE, %API.RunTemplate{} = run_template) do
+    task_id =
+      if run_template.semaphore.task_id != "",
+        do: run_template.semaphore.task_id,
+        else: nil
+
     %{
-      semaphore: %{
-        project_id: run_template.semaphore.project_id,
-        branch: run_template.semaphore.branch,
-        pipeline_file: run_template.semaphore.pipeline_file,
-        task_id: run_template.semaphore.task_id,
-        parameters:
-          Enum.reduce(run_template.semaphore.parameters, fn {key, value}, acc ->
-            Map.put(acc, key, value)
-          end)
-      }
+      project_id: run_template.semaphore.project_id,
+      branch: run_template.semaphore.branch,
+      pipeline_file: run_template.semaphore.pipeline_file,
+      task_id: task_id,
+      parameters:
+        Enum.map(run_template.semaphore.parameters, fn {key, value} ->
+          %{name: key, value: value}
+        end)
     }
   end
 

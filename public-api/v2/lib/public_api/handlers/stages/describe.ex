@@ -95,8 +95,8 @@ defmodule PublicAPI.Handlers.Stages.Describe do
     conn
     |> get_resource()
     |> case do
-      {:ok, source} ->
-        source
+      {:ok, stage} ->
+        stage
         |> PublicAPI.Handlers.Stages.Formatter.describe(ctx)
         |> set_response(conn)
 

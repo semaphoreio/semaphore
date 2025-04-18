@@ -27,7 +27,21 @@ defmodule Support.Stubs.Canvases do
   def create_stage(org, canvas_id, params \\ []) do
     defaults = [
       id: UUID.gen(),
-      name: "stage-1"
+      name: "stage-1",
+      approval_required: true,
+      connections: [],
+      run_template: %InternalApi.Delivery.RunTemplate{
+        type: InternalApi.Delivery.RunTemplate.Type.value(:TYPE_SEMAPHORE),
+        semaphore: %InternalApi.Delivery.SemaphoreRunTemplate{
+          project_id: UUID.gen(),
+          branch: "main",
+          pipeline_file: ".semaphore/semaphore.yml",
+          parameters: %{
+            "PARAM_1" => "VALUE_1",
+            "PARAM_2" => "VALUE_2"
+          }
+        }
+      }
     ]
 
     params = defaults |> Keyword.merge(params)
@@ -42,7 +56,10 @@ defmodule Support.Stubs.Canvases do
         name: params[:name],
         organization_id: org.id,
         canvas_id: canvas_id,
-        created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+        approval_required: params[:approval_required],
+        run_template: params[:run_template],
+        connections: params[:connections]
       }
     })
   end

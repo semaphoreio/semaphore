@@ -7,7 +7,6 @@ defmodule PublicAPI.Schemas.Stages.Connection do
   OpenApiSpex.schema(%{
     title: "Stages.Connection",
     type: :object,
-    nullable: true,
     description: "A stage connection contains details about sources / stages with filters",
     properties: %{
       type: %Schema{
