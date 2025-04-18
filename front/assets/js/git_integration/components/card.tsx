@@ -22,7 +22,7 @@ interface CardProps {
 
 export const Card = (props: CardProps) => {
   return (
-    <div className={`ph3 pv2 mv2 ${props.lastItem ? `` : `bb b--black-075`}`}>
+    <div data-testid="integration-card" className={`ph3 pv2 mv2 ${props.lastItem ? `` : `bb b--black-075`}`}>
       <div className="flex items-center justify-between mb2">
         <div className="flex items-center">
           {props.cardIcon || iconFromType(props.integrationType)}
