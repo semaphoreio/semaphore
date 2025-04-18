@@ -40,7 +40,7 @@ func (e *StageEvent) UpdateStateInTransaction(tx *gorm.DB, state string) error {
 	return tx.Model(e).Update("state", state).Error
 }
 
-func (e *StageEvent) Approve(requesterID uuid.UUID) error {
+func (e *StageEvent) Approve(requesterID string) error {
 	now := time.Now()
 
 	return database.Conn().
@@ -51,7 +51,7 @@ func (e *StageEvent) Approve(requesterID uuid.UUID) error {
 		Error
 }
 
-func FindStageEventByID(id, stageID uuid.UUID) (*StageEvent, error) {
+func FindStageEventByID(id, stageID string) (*StageEvent, error) {
 	var event StageEvent
 
 	err := database.Conn().

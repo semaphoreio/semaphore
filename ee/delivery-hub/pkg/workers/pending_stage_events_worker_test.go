@@ -4,65 +4,41 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test__PendingStageEventsWorker(t *testing.T) {
-	require.NoError(t, database.TruncateTables())
-
-	org := uuid.New()
-	user := uuid.New()
-
-	canvas, err := models.CreateCanvas(org, user, "test")
-	require.NoError(t, err)
-
-	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
-	require.NoError(t, err)
-
-	template := models.RunTemplate{
-		Type: models.RunTemplateTypeSemaphoreWorkflow,
-		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			ProjectID:    "demo-project",
-			Branch:       "main",
-			PipelineFile: ".semaphore/semaphore.yml",
-		},
-	}
-
+	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
 	w := PendingStageEventsWorker{}
 
 	t.Run("stage does not require approval -> creates execution", func(t *testing.T) {
 		//
 		// Create stage that does not require approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-no-approval-1", user, false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-1", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-no-approval-1")
+		stage, err := r.Canvas.FindStageByName("stage-no-approval-1")
 		require.NoError(t, err)
 
 		//
 		// Create a pending stage event, and trigger the worker.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		require.NotNil(t, event)
-		require.Equal(t, models.StageEventPending, event.State)
+		event := support.CreateStageEvent(t, r.Source, stage)
 		err = w.Tick()
 		require.NoError(t, err)
 
 		//
 		// Verify that a new execution record was created and event is processed.
 		//
-		event, err = models.FindStageEventByID(event.ID, stage.ID)
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
@@ -78,32 +54,27 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-with-approval-1", user, true, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-1", r.User.String(), true, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-with-approval-1")
+		stage, err := r.Canvas.FindStageByName("stage-with-approval-1")
 		require.NoError(t, err)
 
 		//
 		// Create a pending stage event, and trigger the worker.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		require.NotNil(t, event)
-		require.Equal(t, models.StageEventPending, event.State)
+		event := support.CreateStageEvent(t, r.Source, stage)
 		err = w.Tick()
 		require.NoError(t, err)
 
 		//
 		// Verify that event was moved to the 'waiting-for-approval' state.
 		//
-		event, err = models.FindStageEventByID(event.ID, stage.ID)
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventWaitingForApproval, event.State)
 	})
@@ -112,33 +83,28 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-with-approval-2", user, true, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-2", r.User.String(), true, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-with-approval-2")
+		stage, err := r.Canvas.FindStageByName("stage-with-approval-2")
 		require.NoError(t, err)
 
 		//
 		// Create a pending stage event, approve it, and trigger the worker.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		require.NotNil(t, event)
-		require.NoError(t, event.Approve(uuid.New()))
-		require.Equal(t, models.StageEventPending, event.State)
+		event := support.CreateStageEvent(t, r.Source, stage)
+		require.NoError(t, event.Approve(uuid.New().String()))
 		err = w.Tick()
 		require.NoError(t, err)
 
 		//
 		// Verify that a new execution record was created and event is processed
 		//
-		event, err = models.FindStageEventByID(event.ID, stage.ID)
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
@@ -154,29 +120,24 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that does not requires approval.
 		//
-		require.NoError(t, canvas.CreateStage("stage-no-approval-3", user, false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-3", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-no-approval-3")
+		stage, err := r.Canvas.FindStageByName("stage-no-approval-3")
 		require.NoError(t, err)
 
 		//
 		// Create a pending stage event, trigger the worker,
 		// and verify that it was processed.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		require.NotNil(t, event)
-		require.Equal(t, models.StageEventPending, event.State)
+		event := support.CreateStageEvent(t, r.Source, stage)
 		err = w.Tick()
 		require.NoError(t, err)
-		event, err = models.FindStageEventByID(event.ID, stage.ID)
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventProcessed, event.State)
 
@@ -184,12 +145,10 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		// Add another pending event for this stage,
 		// trigger the worker, and verify that it remained in the pending state.
 		//
-		event, err = models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		require.Equal(t, models.StageEventPending, event.State)
+		event = support.CreateStageEvent(t, r.Source, stage)
 		err = w.Tick()
 		require.NoError(t, err)
-		event, err = models.FindStageEventByID(event.ID, stage.ID)
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
 		require.Equal(t, models.StageEventPending, event.State)
 	})

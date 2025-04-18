@@ -3,38 +3,18 @@ package workers
 import (
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test__PendingEventsWorker(t *testing.T) {
-	require.NoError(t, database.TruncateTables())
-
-	org := uuid.New()
-	user := uuid.New()
-
-	canvas, err := models.CreateCanvas(org, user, "test")
-	require.NoError(t, err)
-
-	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
-	require.NoError(t, err)
-
-	template := models.RunTemplate{
-		Type: models.RunTemplateTypeSemaphoreWorkflow,
-		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-			ProjectID:    "demo-project",
-			Branch:       "main",
-			PipelineFile: ".semaphore/semaphore.yml",
-		},
-	}
-
+	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
 	w := PendingEventsWorker{}
 
 	t.Run("source is not connected to any stage -> event is discarded", func(t *testing.T) {
-		event, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 
 		err = w.Tick()
@@ -49,18 +29,18 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create two stages, connecting event source to them.
 		//
-		err := canvas.CreateStage("stage-1", user, false, template, []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-1", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		})
 
 		require.NoError(t, err)
 
-		err = canvas.CreateStage("stage-2", user, false, template, []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-2", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		})
@@ -70,7 +50,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -86,17 +66,17 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// Two pending stage events are created: one for each stage.
 		//
 
-		stage1, _ := models.FindStageByName(org, canvas.ID, "stage-1")
-		stage2, _ := models.FindStageByName(org, canvas.ID, "stage-2")
+		stage1, _ := r.Canvas.FindStageByName("stage-1")
+		stage2, _ := r.Canvas.FindStageByName("stage-2")
 		stage1Events, err := stage1.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
-		assert.Equal(t, source.ID, stage1Events[0].SourceID)
+		assert.Equal(t, r.Source.ID, stage1Events[0].SourceID)
 
 		stage2Events, err := stage2.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
-		assert.Equal(t, source.ID, stage2Events[0].SourceID)
+		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {
@@ -105,18 +85,18 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// First stage is connected to event source.
 		// Second stage is connected fo first stage.
 		//
-		err := canvas.CreateStage("stage-3", user, false, template, []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-3", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		})
 
 		require.NoError(t, err)
-		firstStage, err := models.FindStageByName(org, canvas.ID, "stage-3")
+		firstStage, err := r.Canvas.FindStageByName("stage-3")
 		require.NoError(t, err)
 
-		err = canvas.CreateStage("stage-4", user, false, template, []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-4", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   firstStage.ID,
 				SourceType: models.SourceTypeStage,
@@ -146,7 +126,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		events, err := firstStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 0)
-		secondStage, _ := models.FindStageByName(org, canvas.ID, "stage-4")
+		secondStage, _ := r.Canvas.FindStageByName("stage-4")
 		events, err = secondStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 1)
@@ -160,9 +140,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// First stage has a filter that should pass our event,
 		// but the second stage has a filter that should not pass.
 		//
-		err := canvas.CreateStage("stage-5", user, false, template, []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-5", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:       source.ID,
+				SourceID:       r.Source.ID,
 				SourceType:     models.SourceTypeEventSource,
 				FilterOperator: models.FilterOperatorAnd,
 				Filters: []models.StageConnectionFilter{
@@ -182,9 +162,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = canvas.CreateStage("stage-6", user, false, template, []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-6", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:       source.ID,
+				SourceID:       r.Source.ID,
 				SourceType:     models.SourceTypeEventSource,
 				FilterOperator: models.FilterOperatorAnd,
 				Filters: []models.StageConnectionFilter{
@@ -207,7 +187,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
+		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -223,13 +203,13 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// A pending stage event should be created only for the first stage
 		//
 
-		firstStage, _ := models.FindStageByName(org, canvas.ID, "stage-5")
+		firstStage, _ := r.Canvas.FindStageByName("stage-5")
 		events, err := firstStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 1)
-		assert.Equal(t, source.ID, events[0].SourceID)
+		assert.Equal(t, r.Source.ID, events[0].SourceID)
 
-		secondStage, _ := models.FindStageByName(org, canvas.ID, "stage-6")
+		secondStage, _ := r.Canvas.FindStageByName("stage-6")
 		events, err = secondStage.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, events, 0)

@@ -53,40 +53,6 @@ type SemaphoreTaskTemplate struct {
 	Parameters   map[string]string `json:"parameters"`
 }
 
-func FindStageByName(orgID, canvasID uuid.UUID, name string) (*Stage, error) {
-	var stage Stage
-
-	err := database.Conn().
-		Where("organization_id = ?", orgID).
-		Where("canvas_id = ?", canvasID).
-		Where("name = ?", name).
-		First(&stage).
-		Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &stage, nil
-}
-
-func FindStageByID(orgID, canvasID uuid.UUID, id uuid.UUID) (*Stage, error) {
-	var stage Stage
-
-	err := database.Conn().
-		Where("organization_id = ?", orgID).
-		Where("canvas_id = ?", canvasID).
-		Where("id = ?", id).
-		First(&stage).
-		Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &stage, nil
-}
-
 func FindStageByIDOnly(id uuid.UUID) (*Stage, error) {
 	var stage Stage
 
@@ -159,23 +125,6 @@ func ListStagesByIDs(ids []uuid.UUID) ([]Stage, error) {
 
 	err := database.Conn().
 		Where("id IN ?", ids).
-		Find(&stages).
-		Error
-
-	if err != nil {
-		return nil, err
-	}
-
-	return stages, nil
-}
-
-func ListStagesByCanvasID(orgID, canvasID uuid.UUID) ([]Stage, error) {
-	var stages []Stage
-
-	err := database.Conn().
-		Where("organization_id = ?", orgID).
-		Where("canvas_id = ?", canvasID).
-		Order("name ASC").
 		Find(&stages).
 		Error
 

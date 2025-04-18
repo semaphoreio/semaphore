@@ -19,6 +19,20 @@ func ForStage(stage *models.Stage) *log.Entry {
 	)
 }
 
+func ForCanvas(canvas *models.Canvas) *log.Entry {
+	if canvas == nil {
+		return log.WithFields(log.Fields{})
+	}
+
+	return log.WithFields(
+		log.Fields{
+			"id":              canvas.ID,
+			"name":            canvas.Name,
+			"organization_id": canvas.OrganizationID,
+		},
+	)
+}
+
 func ForExecution(execution *models.StageExecution) *log.Entry {
 	if execution == nil {
 		return log.WithFields(log.Fields{})

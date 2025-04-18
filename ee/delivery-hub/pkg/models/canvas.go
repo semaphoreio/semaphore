@@ -56,7 +56,91 @@ func (c *Canvas) CreateEventSource(name string, key []byte) (*EventSource, error
 	return nil, err
 }
 
-func (c *Canvas) CreateStage(name string, createdBy uuid.UUID, approvalRequired bool, template RunTemplate, connections []StageConnection) error {
+func (c *Canvas) FindEventSourceByName(name string) (*EventSource, error) {
+	var eventSource EventSource
+	err := database.Conn().
+		Where("organization_id = ?", c.OrganizationID).
+		Where("canvas_id = ?", c.ID).
+		Where("name = ?", name).
+		First(&eventSource).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &eventSource, nil
+}
+
+func (c *Canvas) FindStageByName(name string) (*Stage, error) {
+	var stage Stage
+
+	err := database.Conn().
+		Where("organization_id = ?", c.OrganizationID).
+		Where("canvas_id = ?", c.ID).
+		Where("name = ?", name).
+		First(&stage).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stage, nil
+}
+
+// NOTE: the caller must decrypt the key before using it
+func (c *Canvas) FindEventSourceByID(id uuid.UUID) (*EventSource, error) {
+	var eventSource EventSource
+	err := database.Conn().
+		Where("id = ?", id).
+		Where("organization_id = ?", c.OrganizationID).
+		Where("canvas_id = ?", c.ID).
+		First(&eventSource).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &eventSource, nil
+}
+
+func (c *Canvas) FindStageByID(id string) (*Stage, error) {
+	var stage Stage
+
+	err := database.Conn().
+		Where("organization_id = ?", c.OrganizationID).
+		Where("canvas_id = ?", c.ID).
+		Where("id = ?", id).
+		First(&stage).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &stage, nil
+}
+
+func (c *Canvas) ListStages() ([]Stage, error) {
+	var stages []Stage
+
+	err := database.Conn().
+		Where("organization_id = ?", c.OrganizationID).
+		Where("canvas_id = ?", c.ID).
+		Order("name ASC").
+		Find(&stages).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return stages, nil
+}
+
+func (c *Canvas) CreateStage(name, createdBy string, approvalRequired bool, template RunTemplate, connections []StageConnection) error {
 	now := time.Now()
 	ID := uuid.New()
 
@@ -68,7 +152,7 @@ func (c *Canvas) CreateStage(name string, createdBy uuid.UUID, approvalRequired 
 			Name:             name,
 			ApprovalRequired: approvalRequired,
 			CreatedAt:        &now,
-			CreatedBy:        createdBy,
+			CreatedBy:        uuid.Must(uuid.Parse(createdBy)),
 			RunTemplate:      datatypes.NewJSONType(template),
 		}
 
@@ -94,7 +178,7 @@ func (c *Canvas) CreateStage(name string, createdBy uuid.UUID, approvalRequired 
 	})
 }
 
-func FindCanvasByID(id uuid.UUID, organizationID uuid.UUID) (*Canvas, error) {
+func FindCanvasByID(id, organizationID string) (*Canvas, error) {
 	canvas := Canvas{}
 
 	err := database.Conn().

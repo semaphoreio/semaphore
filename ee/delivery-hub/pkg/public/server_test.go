@@ -78,8 +78,8 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 			contentType: "application/json",
 		})
 
-		require.Equal(t, 404, response.Code)
-		require.Equal(t, "source ID not found\n", response.Body.String())
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "source ID not found\n", response.Body.String())
 	})
 
 	t.Run("missing Content-Type header -> 400", func(t *testing.T) {
@@ -119,8 +119,8 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 			contentType: "application/json",
 		})
 
-		require.Equal(t, 404, response.Code)
-		require.Equal(t, "source ID not found\n", response.Body.String())
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "source ID not found\n", response.Body.String())
 	})
 
 	t.Run("event with missing signature header -> 400", func(t *testing.T) {
@@ -133,8 +133,8 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 			contentType: "application/json",
 		})
 
-		require.Equal(t, 400, response.Code)
-		require.Equal(t, "Missing X-Hub-Signature-256 header\n", response.Body.String())
+		assert.Equal(t, 400, response.Code)
+		assert.Equal(t, "Missing X-Hub-Signature-256 header\n", response.Body.String())
 	})
 
 	t.Run("invalid signature -> 403", func(t *testing.T) {
@@ -147,8 +147,8 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 			contentType: "application/json",
 		})
 
-		require.Equal(t, 403, response.Code)
-		require.Equal(t, "Invalid signature\n", response.Body.String())
+		assert.Equal(t, 403, response.Code)
+		assert.Equal(t, "Invalid signature\n", response.Body.String())
 	})
 
 	t.Run("properly signed event is received -> 200", func(t *testing.T) {
@@ -161,7 +161,7 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 			contentType: "application/json",
 		})
 
-		require.Equal(t, 200, response.Code)
+		assert.Equal(t, 200, response.Code)
 
 		// event is stored in database
 		events, err := models.ListEventsBySourceID(eventSource.ID)

@@ -17,31 +17,11 @@ type EventSource struct {
 	UpdatedAt      *time.Time
 }
 
-// NOTE: the caller must decrypt the key before using it
-func FindEventSourceByID(id, organizationID, canvasID *uuid.UUID) (*EventSource, error) {
-	var eventSource EventSource
-	query := database.Conn().
-		Where("id = ?", id).
-		Where("organization_id = ?", organizationID)
-
-	if canvasID != nil {
-		query = query.Where("canvas_id = ?", canvasID)
-	}
-
-	err := query.First(&eventSource).Error
-	if err != nil {
-		return nil, err
-	}
-
-	return &eventSource, nil
-}
-
-func FindEventSourceByName(orgID, canvasID uuid.UUID, name string) (*EventSource, error) {
+func FindEventSource(orgID, id uuid.UUID) (*EventSource, error) {
 	var eventSource EventSource
 	err := database.Conn().
+		Where("id = ?", id).
 		Where("organization_id = ?", orgID).
-		Where("canvas_id = ?", canvasID).
-		Where("name = ?", name).
 		First(&eventSource).
 		Error
 
@@ -52,11 +32,11 @@ func FindEventSourceByName(orgID, canvasID uuid.UUID, name string) (*EventSource
 	return &eventSource, nil
 }
 
-func ListEventSourcesByCanvasID(orgID, canvasID uuid.UUID) ([]EventSource, error) {
+func (c *Canvas) ListEventSources() ([]EventSource, error) {
 	var sources []EventSource
 	err := database.Conn().
-		Where("canvas_id = ?", canvasID).
-		Where("organization_id = ?", orgID).
+		Where("canvas_id = ?", c.ID).
+		Where("organization_id = ?", c.OrganizationID).
 		Find(&sources).
 		Error
 

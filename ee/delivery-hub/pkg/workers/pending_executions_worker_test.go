@@ -4,30 +4,15 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	schedulepb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/periodic_scheduler"
-	"github.com/semaphoreio/semaphore/delivery-hub/test/grpcmock"
+	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test__PendingExecutionsWorker(t *testing.T) {
-	require.NoError(t, database.TruncateTables())
-
-	mockRegistry, err := grpcmock.Start()
-	require.NoError(t, err)
-
-	org := uuid.New()
-	user := uuid.New()
-
-	canvas, err := models.CreateCanvas(org, user, "test")
-	require.NoError(t, err)
-
-	source, err := canvas.CreateEventSource("gh", []byte("my-key"))
-	require.NoError(t, err)
-
+	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Grpc: true})
 	w := PendingExecutionsWorker{
 		RepoProxyURL: "0.0.0.0:50052",
 		SchedulerURL: "0.0.0.0:50052",
@@ -37,34 +22,20 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create stage that creates Semaphore workflows.
 		//
-		template := models.RunTemplate{
-			Type: models.RunTemplateTypeSemaphoreWorkflow,
-			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-				ProjectID:    "demo-project",
-				Branch:       "main",
-				PipelineFile: ".semaphore/run.yml",
-			},
-		}
-
-		require.NoError(t, canvas.CreateStage("stage-wf", user, false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-wf", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-wf")
+		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
 
 		//
 		// Create pending execution.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		execution, err := models.CreateStageExecution(stage.ID, event.ID)
-		require.NoError(t, err)
+		execution := support.CreateExecution(t, r.Source, stage)
 
 		//
 		// Trigger the worker, and verify that request to repo proxy was sent,
@@ -77,10 +48,10 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, models.StageExecutionStarted, execution.State)
 		assert.NotEmpty(t, execution.ReferenceID)
 		assert.NotEmpty(t, execution.StartedAt)
-		repoProxyReq := mockRegistry.RepoProxyService.GetLastCreateRequest()
+		repoProxyReq := r.Grpc.RepoProxyService.GetLastCreateRequest()
 		require.NotNil(t, repoProxyReq)
 		assert.Equal(t, "demo-project", repoProxyReq.ProjectId)
-		assert.Equal(t, ".semaphore/run.yml", repoProxyReq.DefinitionFile)
+		assert.Equal(t, ".semaphore/semaphore.yml", repoProxyReq.DefinitionFile)
 		assert.Equal(t, stage.CreatedBy.String(), repoProxyReq.RequesterId)
 		assert.Equal(t, "refs/heads/main", repoProxyReq.Git.Reference)
 	})
@@ -89,34 +60,20 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create stage that trigger Semaphore task.
 		//
-		template := models.RunTemplate{
-			Type: models.RunTemplateTypeSemaphoreTask,
-			SemaphoreTask: &models.SemaphoreTaskTemplate{
-				ProjectID:    "demo-project",
-				TaskID:       "demo-task",
-				Branch:       "main",
-				PipelineFile: ".semaphore/run.yml",
-				Parameters: map[string]string{
-					"PARAM_1": "VALUE_1",
-					"PARAM_2": "VALUE_2",
-				},
-			},
-		}
-
-		require.NoError(t, canvas.CreateStage("stage-task", user, false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-task", r.User.String(), false, support.TaskRunTemplate(), []models.StageConnection{
 			{
-				SourceID:   source.ID,
+				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
 		}))
 
-		stage, err := models.FindStageByName(org, canvas.ID, "stage-task")
+		stage, err := r.Canvas.FindStageByName("stage-task")
 		require.NoError(t, err)
 
 		//
 		// Create pending execution.
 		//
-		e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		e, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)
@@ -135,7 +92,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.NotEmpty(t, execution.ReferenceID)
 		assert.NotEmpty(t, execution.StartedAt)
 
-		req := mockRegistry.SchedulerService.GetLastRunNowRequest()
+		req := r.Grpc.SchedulerService.GetLastRunNowRequest()
 		require.NotNil(t, req)
 		assert.Equal(t, "demo-task", req.Id)
 		assert.Equal(t, "main", req.Branch)

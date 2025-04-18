@@ -1,0 +1,416 @@
+package actions
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sort"
+
+	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateStageResponse, error) {
+	err := ValidateUUIDs(req.OrganizationId, req.CanvasId, req.RequesterId)
+	if err != nil {
+		return nil, err
+	}
+
+	canvas, err := models.FindCanvasByID(req.CanvasId, req.OrganizationId)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "canvas not found")
+	}
+
+	template, err := validateRunTemplate(req.RunTemplate)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	connections, err := validateConnections(canvas, req.Connections)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	err = canvas.CreateStage(req.Name, req.RequesterId, req.ApprovalRequired, *template, connections)
+	if err != nil {
+		if errors.Is(err, models.ErrNameAlreadyUsed) {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+
+		return nil, err
+	}
+
+	stage, err := canvas.FindStageByName(req.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	serialized, err := serializeStage(*stage, req.Connections)
+	if err != nil {
+		return nil, err
+	}
+
+	response := &pb.CreateStageResponse{
+		Stage: serialized,
+	}
+
+	return response, nil
+}
+
+func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
+	if in == nil {
+		return nil, fmt.Errorf("missing run template")
+	}
+
+	switch in.Type {
+	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW:
+		return &models.RunTemplate{
+			Type: models.RunTemplateTypeSemaphoreWorkflow,
+			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+				ProjectID:    in.SemaphoreWorkflow.ProjectId,
+				Branch:       in.SemaphoreWorkflow.Branch,
+				PipelineFile: in.SemaphoreWorkflow.PipelineFile,
+			},
+		}, nil
+
+	case pb.RunTemplate_TYPE_SEMAPHORE_TASK:
+		return &models.RunTemplate{
+			Type: models.RunTemplateTypeSemaphoreTask,
+			SemaphoreTask: &models.SemaphoreTaskTemplate{
+				ProjectID:    in.SemaphoreTask.ProjectId,
+				TaskID:       in.SemaphoreTask.TaskId,
+				Branch:       in.SemaphoreTask.Branch,
+				PipelineFile: in.SemaphoreTask.PipelineFile,
+				Parameters:   in.SemaphoreTask.Parameters,
+			},
+		}, nil
+
+	default:
+		return nil, errors.New("invalid run template type")
+	}
+}
+
+func validateConnections(canvas *models.Canvas, connections []*pb.Connection) ([]models.StageConnection, error) {
+	cs := []models.StageConnection{}
+
+	for _, connection := range connections {
+		sourceID, err := findConnectionSourceID(canvas, connection)
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection: %v", err)
+		}
+
+		filters, err := validateFilters(connection.Filters)
+		if err != nil {
+			return nil, err
+		}
+
+		cs = append(cs, models.StageConnection{
+			SourceID:       *sourceID,
+			SourceType:     protoToConnectionType(connection.Type),
+			FilterOperator: protoToFilterOperator(connection.FilterOperator),
+			Filters:        filters,
+		})
+	}
+
+	return cs, nil
+}
+
+func validateFilters(in []*pb.Connection_Filter) ([]models.StageConnectionFilter, error) {
+	filters := []models.StageConnectionFilter{}
+	for i, f := range in {
+		filter, err := validateFilter(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter [%d]: %v", i, err)
+		}
+
+		filters = append(filters, *filter)
+	}
+
+	return filters, nil
+}
+
+func validateFilter(filter *pb.Connection_Filter) (*models.StageConnectionFilter, error) {
+	switch filter.Type {
+	case pb.Connection_FILTER_TYPE_EXPRESSION:
+		return validateExpressionFilter(filter.Expression)
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", filter.Type)
+	}
+}
+
+func validateExpressionFilter(filter *pb.Connection_ExpressionFilter) (*models.StageConnectionFilter, error) {
+	if filter == nil {
+		return nil, fmt.Errorf("no filter provided")
+	}
+
+	if filter.Expression == "" {
+		return nil, fmt.Errorf("expression is empty")
+	}
+
+	variables, err := validateExpressionVariables(filter.Variables)
+	if err != nil {
+		return nil, fmt.Errorf("invalid variables: %v", err)
+	}
+
+	return &models.StageConnectionFilter{
+		Type: models.FilterTypeExpression,
+		Expression: &models.ExpressionFilter{
+			Expression: filter.Expression,
+			Variables:  variables,
+		},
+	}, nil
+}
+
+func validateExpressionVariables(in []*pb.Connection_ExpressionFilter_Variable) ([]models.ExpressionVariable, error) {
+	variables := make([]models.ExpressionVariable, len(in))
+
+	for i, v := range in {
+		if v.Name == "" {
+			return nil, fmt.Errorf("variable name is empty")
+		}
+
+		if v.Path == "" {
+			return nil, fmt.Errorf("path for variable '%s' is empty", v.Name)
+		}
+
+		variables[i] = models.ExpressionVariable{
+			Name: v.Name,
+			Path: v.Path,
+		}
+	}
+
+	return variables, nil
+}
+
+func protoToFilterOperator(in pb.Connection_FilterOperator) string {
+	switch in {
+	case pb.Connection_FILTER_OPERATOR_OR:
+		return models.FilterOperatorOr
+	default:
+		return models.FilterOperatorAnd
+	}
+}
+
+func filterOperatorToProto(in string) pb.Connection_FilterOperator {
+	switch in {
+	case models.FilterOperatorOr:
+		return pb.Connection_FILTER_OPERATOR_OR
+	default:
+		return pb.Connection_FILTER_OPERATOR_AND
+	}
+}
+
+func serializeFilters(in []models.StageConnectionFilter) ([]*pb.Connection_Filter, error) {
+	filters := []*pb.Connection_Filter{}
+
+	for _, f := range in {
+		filter, err := serializeFilter(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filter: %v", err)
+		}
+
+		filters = append(filters, filter)
+	}
+
+	return filters, nil
+}
+
+func serializeFilter(in models.StageConnectionFilter) (*pb.Connection_Filter, error) {
+	switch in.Type {
+	case models.FilterTypeExpression:
+		vars := []*pb.Connection_ExpressionFilter_Variable{}
+		for _, v := range in.Expression.Variables {
+			vars = append(vars, &pb.Connection_ExpressionFilter_Variable{
+				Name: v.Name,
+				Path: v.Path,
+			})
+		}
+
+		return &pb.Connection_Filter{
+			Type: pb.Connection_FILTER_TYPE_EXPRESSION,
+			Expression: &pb.Connection_ExpressionFilter{
+				Expression: in.Expression.Expression,
+				Variables:  vars,
+			},
+		}, nil
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", in.Type)
+	}
+}
+
+func serializeConnections(stages []models.Stage, sources []models.EventSource, in []models.StageConnection) ([]*pb.Connection, error) {
+	connections := []*pb.Connection{}
+
+	for _, c := range in {
+		name, err := findConnectionName(stages, sources, c)
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection: %v", err)
+		}
+
+		filters, err := serializeFilters(c.Filters)
+		if err != nil {
+			return nil, fmt.Errorf("invalid filters: %v", err)
+		}
+
+		connections = append(connections, &pb.Connection{
+			Type:           connectionTypeToProto(c.SourceType),
+			Name:           name,
+			FilterOperator: filterOperatorToProto(c.FilterOperator),
+			Filters:        filters,
+		})
+	}
+
+	//
+	// Sort them by name so we have some predictability here.
+	//
+	sort.SliceStable(connections, func(i, j int) bool {
+		return connections[i].Name < connections[j].Name
+	})
+
+	return connections, nil
+}
+
+func connectionTypeToProto(t string) pb.Connection_Type {
+	switch t {
+	case models.SourceTypeStage:
+		return pb.Connection_TYPE_STAGE
+	case models.SourceTypeEventSource:
+		return pb.Connection_TYPE_EVENT_SOURCE
+	default:
+		return pb.Connection_TYPE_UNKNOWN
+	}
+}
+
+func findConnectionName(stages []models.Stage, sources []models.EventSource, connection models.StageConnection) (string, error) {
+	switch connection.SourceType {
+	case models.SourceTypeStage:
+		for _, stage := range stages {
+			if stage.ID == connection.SourceID {
+				return stage.Name, nil
+			}
+		}
+
+		return "", fmt.Errorf("stage %s not found", connection.SourceID)
+
+	case models.SourceTypeEventSource:
+		for _, s := range sources {
+			if s.ID == connection.SourceID {
+				return s.Name, nil
+			}
+		}
+
+		return "", fmt.Errorf("event source %s not found", connection.ID)
+
+	default:
+		return "", errors.New("invalid type")
+	}
+}
+
+func findConnectionSourceID(canvas *models.Canvas, connection *pb.Connection) (*uuid.UUID, error) {
+	switch connection.Type {
+	case pb.Connection_TYPE_STAGE:
+		stage, err := canvas.FindStageByName(connection.Name)
+		if err != nil {
+			return nil, fmt.Errorf("stage %s not found", connection.Name)
+		}
+
+		return &stage.ID, nil
+
+	case pb.Connection_TYPE_EVENT_SOURCE:
+		eventSource, err := canvas.FindEventSourceByName(connection.Name)
+		if err != nil {
+			return nil, fmt.Errorf("event source %s not found", connection.Name)
+		}
+
+		return &eventSource.ID, nil
+
+	default:
+		return nil, errors.New("invalid type")
+	}
+}
+
+func protoToConnectionType(t pb.Connection_Type) string {
+	switch t {
+	case pb.Connection_TYPE_STAGE:
+		return models.SourceTypeStage
+	case pb.Connection_TYPE_EVENT_SOURCE:
+		return models.SourceTypeEventSource
+	default:
+		return ""
+	}
+}
+
+func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage, error) {
+	runTemplate, err := serializeRunTemplate(stage.RunTemplate.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.Stage{
+		Id:               stage.ID.String(),
+		Name:             stage.Name,
+		OrganizationId:   stage.OrganizationID.String(),
+		CanvasId:         stage.CanvasID.String(),
+		CreatedAt:        timestamppb.New(*stage.CreatedAt),
+		Connections:      connections,
+		RunTemplate:      runTemplate,
+		ApprovalRequired: stage.ApprovalRequired,
+	}, nil
+}
+
+func serializeRunTemplate(runTemplate models.RunTemplate) (*pb.RunTemplate, error) {
+	switch runTemplate.Type {
+	case models.RunTemplateTypeSemaphoreWorkflow:
+		return &pb.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
+			SemaphoreWorkflow: &pb.WorkflowTemplate{
+				ProjectId:    runTemplate.SemaphoreWorkflow.ProjectID,
+				Branch:       runTemplate.SemaphoreWorkflow.Branch,
+				PipelineFile: runTemplate.SemaphoreWorkflow.PipelineFile,
+			},
+		}, nil
+
+	case models.RunTemplateTypeSemaphoreTask:
+		return &pb.RunTemplate{
+			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK,
+			SemaphoreTask: &pb.TaskTemplate{
+				ProjectId:    runTemplate.SemaphoreTask.ProjectID,
+				TaskId:       runTemplate.SemaphoreTask.TaskID,
+				Branch:       runTemplate.SemaphoreTask.Branch,
+				PipelineFile: runTemplate.SemaphoreTask.PipelineFile,
+				Parameters:   runTemplate.SemaphoreTask.Parameters,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("invalid run template type: %s", runTemplate.Type)
+	}
+}
+
+func serializeStages(stages []models.Stage, sources []models.EventSource) ([]*pb.Stage, error) {
+	s := []*pb.Stage{}
+	for _, stage := range stages {
+		connections, err := models.ListConnectionsForStage(stage.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		serialized, err := serializeConnections(stages, sources, connections)
+		if err != nil {
+			return nil, err
+		}
+
+		stage, err := serializeStage(stage, serialized)
+		if err != nil {
+			return nil, err
+		}
+
+		s = append(s, stage)
+	}
+
+	return s, nil
+}

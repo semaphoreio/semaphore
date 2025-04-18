@@ -115,7 +115,7 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 	// TODO: we don't have the canvas ID here.
 	// We could put it in the path, but then the path will become quite big.
 	// For now, just organization/source IDs are enough for us.
-	source, err := models.FindEventSourceByID(&sourceID, &organizationID, nil)
+	source, err := models.FindEventSource(organizationID, sourceID)
 	if err != nil {
 		http.Error(w, "source ID not found", http.StatusNotFound)
 		return
