@@ -1,6 +1,5 @@
 defmodule PublicAPI.Handlers.Stages.Describe do
   @moduledoc false
-  require Logger
 
   alias PublicAPI.Schemas
 
@@ -11,7 +10,7 @@ defmodule PublicAPI.Handlers.Stages.Describe do
   # TODO: put API behind feature flag
   # plug(PublicAPI.Plugs.FeatureFlag, feature: "canvas")
 
-  @operation_id "Stages.List"
+  @operation_id "Stages.Describe"
   plug(OpenApiSpex.Plug.CastAndValidate,
     json_render_error_v2: true,
     operation_id: @operation_id,
@@ -29,10 +28,10 @@ defmodule PublicAPI.Handlers.Stages.Describe do
     permissions: ["organization.dashboards.view"]
   )
 
-  plug(PublicAPI.Plugs.Metrics, tags: ["describe", "event_sources"])
+  plug(PublicAPI.Plugs.Metrics, tags: ["describe", "stages"])
   plug(PublicAPI.Handlers.Stages.Loader)
-  plug(PublicAPI.Plugs.ObjectFilter)
   plug(:describe)
+  plug(PublicAPI.Plugs.ObjectFilter)
 
   plug(PublicAPI.Plugs.Respond,
     schema: @response_schema

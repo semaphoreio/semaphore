@@ -4,8 +4,8 @@ defmodule Support.Stubs.Canvases do
   def init do
     DB.add_table(:canvases, [:id, :name, :org_id])
     DB.add_table(:stages, [:id, :name, :org_id, :canvas_id, :api_model])
-    DB.add_table(:stage_events, [:id, :org_id, :canvas_id, :stage_id, :state, :approved_at])
     DB.add_table(:sources, [:id, :name, :org_id, :canvas_id])
+    DB.add_table(:stage_events, [:id, :org_id, :canvas_id, :stage_id, :state, :source_id, :source_type, :approved_at])
 
     __MODULE__.Grpc.init()
   end
@@ -62,10 +62,11 @@ defmodule Support.Stubs.Canvases do
     })
   end
 
-  def create_stage_event(org, canvas_id, stage_id, params \\ []) do
+  def create_stage_event(org, canvas_id, stage_id, source_id, params \\ []) do
     defaults = [
       id: UUID.gen(),
-      state: :pending
+      state: :PENDING,
+      source_type: :TYPE_EVENT_SOURCE
     ]
 
     params = defaults |> Keyword.merge(params)
@@ -76,6 +77,8 @@ defmodule Support.Stubs.Canvases do
       org_id: org.id,
       stage_id: stage_id,
       canvas_id: canvas_id,
+      source_id: source_id,
+      source_type: params[:source_type],
       approved_at: nil
     })
   end
@@ -146,15 +149,15 @@ defmodule Support.Stubs.Canvases do
       events =
         DB.filter(:stage_events,
           stage_id: req.stage_id,
-          org_id: req.org_id,
+          org_id: req.organization_id,
           canvas_id: req.canvas_id
         )
         |> Enum.map(fn event ->
           %InternalApi.Delivery.StageEvent{
             id: event.id,
-            source_id: event.api_model.source_id,
-            source_type: event.api_model.source_type,
-            state: event.api_model.state,
+            source_id: event.source_id,
+            source_type: InternalApi.Delivery.Connection.Type.value(event.source_type),
+            state: InternalApi.Delivery.StageEvent.State.value(event.state),
             created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
           }
         end)
@@ -190,7 +193,7 @@ defmodule Support.Stubs.Canvases do
 
     def list_stages(req, _call) do
       stages =
-        DB.filter(:stages, org_id: req.org_id, canvas_id: req.canvas_id)
+        DB.filter(:stages, org_id: req.organization_id, canvas_id: req.canvas_id)
         |> Enum.map(fn stage ->
           %InternalApi.Delivery.Stage{
             id: stage.id,
@@ -213,7 +216,10 @@ defmodule Support.Stubs.Canvases do
               name: stage.name,
               canvas_id: stage.canvas_id,
               organization_id: stage.org_id,
-              created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+              created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+              approval_required: stage.api_model.approval_required,
+              run_template: stage.api_model.run_template,
+              connections: stage.api_model.connections
             }
           }
 
@@ -276,7 +282,7 @@ defmodule Support.Stubs.Canvases do
     end
 
     defp find_stage(req) do
-      DB.filter(:stages, org_id: req.org_id, canvas_id: req.canvas_id)
+      DB.filter(:stages, org_id: req.organization_id, canvas_id: req.canvas_id)
       |> Enum.find(fn c -> c.id == req.id || c.name == req.name end)
       |> case do
         nil ->

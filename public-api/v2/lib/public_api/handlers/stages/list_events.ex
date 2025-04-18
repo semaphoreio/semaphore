@@ -1,4 +1,4 @@
-defmodule PublicAPI.Handlers.Stages.List do
+defmodule PublicAPI.Handlers.Stages.ListEvents do
   @moduledoc false
   require Logger
 
@@ -41,8 +41,8 @@ defmodule PublicAPI.Handlers.Stages.List do
   def open_api_operation(_) do
     %Operation{
       tags: ["StageEvents"],
-      summary: "List events in the stage queue",
-      description: "List events in the stage queue.",
+      summary: "List events for the stage",
+      description: "List events for the stage.",
       operationId: @operation_id,
       parameters: [
         Operation.parameter(
@@ -84,14 +84,13 @@ defmodule PublicAPI.Handlers.Stages.List do
 
   def list_events(conn, _opts) do
     Map.merge(conn.params, %{
-      id: conn.assigns[:id],
+      stage_id: conn.params.id_or_name,
       organization_id: conn.assigns[:organization_id],
-      canvas_id: conn.assigns[:canvas_id]
     })
     |> CanvasesClient.list_stage_events()
     |> case do
-      {:ok, response} ->
-        response
+      {:ok, events} ->
+        events
         |> PublicAPI.Handlers.Stages.Formatter.list_events()
         |> set_response(conn)
 

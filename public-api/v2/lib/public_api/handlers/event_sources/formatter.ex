@@ -8,7 +8,7 @@ defmodule PublicAPI.Handlers.EventSources.Formatter do
     {:ok, source_from_pb(source, ctx)}
   end
 
-  def list(%API.ListEventSourcesResponse{event_sources: sources}, ctx) do
+  def list(sources, ctx) do
     {:ok, %{
       next_page_token: nil,
       page_size: 100,

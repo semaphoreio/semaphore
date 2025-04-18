@@ -1,6 +1,6 @@
 defmodule PublicAPI.Handlers.Stages.Loader do
   @moduledoc """
-  Loader for event sources.
+  Loader for stages.
   """
   @behaviour Plug
 
@@ -15,7 +15,12 @@ defmodule PublicAPI.Handlers.Stages.Loader do
     org_id = conn.assigns[:organization_id]
     {id, name} = get_id_and_name(conn.params.id_or_name)
 
-    %{id: id, name: name, organization_id: org_id}
+    %{
+      id: id,
+      name: name,
+      organization_id: org_id,
+      canvas_id: conn.params.canvas_id
+    }
     |> CanvasesClient.describe_stage()
     |> set_resource(conn)
   end

@@ -41,7 +41,7 @@ defmodule PublicAPI.Schemas.Stages.Stage do
       spec: %Schema{
         type: :object,
         description: "Specification of the stage",
-        required: [:approval_required, :connections, :run_template],
+        required: [:approval_required, :connections],
         properties: %{
           approval_required: %Schema{
             type: :boolean,

@@ -86,8 +86,8 @@ defmodule PublicAPI.Handlers.EventSources.List do
     })
     |> CanvasesClient.list_event_sources()
     |> case do
-      {:ok, response} ->
-        response
+      {:ok, sources} ->
+        sources
         |> PublicAPI.Handlers.EventSources.Formatter.list(ctx)
         |> set_response(conn)
 
