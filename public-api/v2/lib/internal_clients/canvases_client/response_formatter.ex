@@ -12,6 +12,30 @@ defmodule InternalClients.Canvases.ResponseFormatter do
     {:ok, r.canvas}
   end
 
+  def process_response({:ok, r = %API.CreateEventSourceResponse{}}) do
+    {:ok, r.event_source}
+  end
+
+  def process_response({:ok, r = %API.DescribeEventSourceResponse{}}) do
+    {:ok, r.event_source}
+  end
+
+  def process_response({:ok, r = %API.CreateStageResponse{}}) do
+    {:ok, r.stage}
+  end
+
+  def process_response({:ok, r = %API.DescribeStageResponse{}}) do
+    {:ok, r.stage}
+  end
+
+  def process_response({:ok, r = %API.ListStageEventsResponse{}}) do
+    {:ok, r.events}
+  end
+
+  def process_response({:ok, r = %API.ApproveStageEventResponse{}}) do
+    {:ok, r.event}
+  end
+
   @doc """
   Error responses are GRPC.RPCError structs. We pattern match on the status code and
   return a tuple with the error code and message.

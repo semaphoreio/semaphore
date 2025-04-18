@@ -14,7 +14,7 @@ defmodule InternalApi.Delivery.Connection.FilterType do
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:FILTER_TYPE_UNKNOWN, 0)
-  field(:FILTER_TYPE_EXPRESSION, 1)
+  field(:FILTER_TYPE_DATA, 1)
 end
 
 defmodule InternalApi.Delivery.Connection.FilterOperator do
@@ -32,8 +32,7 @@ defmodule InternalApi.Delivery.RunTemplate.Type do
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:TYPE_UNKNOWN, 0)
-  field(:TYPE_SEMAPHORE_WORKFLOW, 1)
-  field(:TYPE_SEMAPHORE_TASK, 2)
+  field(:TYPE_SEMAPHORE, 1)
 end
 
 defmodule InternalApi.Delivery.StageEvent.State do
@@ -116,6 +115,7 @@ defmodule InternalApi.Delivery.DescribeStageRequest do
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:organization_id, 3, type: :string, json_name: "organizationId")
+  field(:canvas_id, 4, type: :string, json_name: "canvasId")
 end
 
 defmodule InternalApi.Delivery.DescribeStageResponse do
@@ -171,29 +171,15 @@ defmodule InternalApi.Delivery.Connection.Filter do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:type, 1, type: InternalApi.Delivery.Connection.FilterType, enum: true)
-  field(:expression, 2, type: InternalApi.Delivery.Connection.ExpressionFilter)
+  field(:data, 2, type: InternalApi.Delivery.Connection.DataFilter)
 end
 
-defmodule InternalApi.Delivery.Connection.ExpressionFilter.Variable do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-  field(:path, 2, type: :string)
-end
-
-defmodule InternalApi.Delivery.Connection.ExpressionFilter do
+defmodule InternalApi.Delivery.Connection.DataFilter do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:expression, 1, type: :string)
-
-  field(:variables, 2,
-    repeated: true,
-    type: InternalApi.Delivery.Connection.ExpressionFilter.Variable
-  )
 end
 
 defmodule InternalApi.Delivery.Connection do
@@ -247,26 +233,10 @@ defmodule InternalApi.Delivery.RunTemplate do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:type, 1, type: InternalApi.Delivery.RunTemplate.Type, enum: true)
-
-  field(:semaphore_workflow, 2,
-    type: InternalApi.Delivery.WorkflowTemplate,
-    json_name: "semaphoreWorkflow"
-  )
-
-  field(:semaphore_task, 3, type: InternalApi.Delivery.TaskTemplate, json_name: "semaphoreTask")
+  field(:semaphore, 2, type: InternalApi.Delivery.SemaphoreRunTemplate)
 end
 
-defmodule InternalApi.Delivery.WorkflowTemplate do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:project_id, 1, type: :string, json_name: "projectId")
-  field(:branch, 2, type: :string)
-  field(:pipeline_file, 3, type: :string, json_name: "pipelineFile")
-end
-
-defmodule InternalApi.Delivery.TaskTemplate.ParametersEntry do
+defmodule InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry do
   @moduledoc false
 
   use Protobuf, map: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
@@ -275,19 +245,19 @@ defmodule InternalApi.Delivery.TaskTemplate.ParametersEntry do
   field(:value, 2, type: :string)
 end
 
-defmodule InternalApi.Delivery.TaskTemplate do
+defmodule InternalApi.Delivery.SemaphoreRunTemplate do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:project_id, 1, type: :string, json_name: "projectId")
-  field(:task_id, 2, type: :string, json_name: "taskId")
-  field(:branch, 3, type: :string)
-  field(:pipeline_file, 4, type: :string, json_name: "pipelineFile")
+  field(:branch, 2, type: :string)
+  field(:pipeline_file, 3, type: :string, json_name: "pipelineFile")
+  field(:task_id, 4, type: :string, json_name: "taskId")
 
   field(:parameters, 5,
     repeated: true,
-    type: InternalApi.Delivery.TaskTemplate.ParametersEntry,
+    type: InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry,
     map: true
   )
 end
@@ -362,7 +332,9 @@ defmodule InternalApi.Delivery.ListStageEventsRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:stage_id, 1, type: :string, json_name: "stageId")
-  field(:states, 2, repeated: true, type: InternalApi.Delivery.StageEvent.State, enum: true)
+  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:canvas_id, 3, type: :string, json_name: "canvasId")
+  field(:states, 4, repeated: true, type: InternalApi.Delivery.StageEvent.State, enum: true)
 end
 
 defmodule InternalApi.Delivery.ListStageEventsResponse do
@@ -399,14 +371,18 @@ defmodule InternalApi.Delivery.ApproveStageEventRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:stage_id, 1, type: :string, json_name: "stageId")
-  field(:event_id, 2, type: :string, json_name: "eventId")
-  field(:requester_id, 3, type: :string, json_name: "requesterId")
+  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:canvas_id, 3, type: :string, json_name: "canvasId")
+  field(:event_id, 4, type: :string, json_name: "eventId")
+  field(:requester_id, 5, type: :string, json_name: "requesterId")
 end
 
 defmodule InternalApi.Delivery.ApproveStageEventResponse do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:event, 1, type: InternalApi.Delivery.StageEvent)
 end
 
 defmodule InternalApi.Delivery.Delivery.Service do
@@ -450,7 +426,11 @@ defmodule InternalApi.Delivery.Delivery.Service do
     InternalApi.Delivery.DescribeEventSourceResponse
   )
 
-  rpc(:ListStages, InternalApi.Delivery.ListStagesRequest, InternalApi.Delivery.ListStagesRequest)
+  rpc(
+    :ListStages,
+    InternalApi.Delivery.ListStagesRequest,
+    InternalApi.Delivery.ListStagesResponse
+  )
 
   rpc(
     :ListEventSources,

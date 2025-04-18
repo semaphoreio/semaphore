@@ -23,6 +23,14 @@ defmodule InternalClients.Canvases do
 
   def create_canvas(params), do: execute(API.CreateCanvasRequest, params)
   def describe_canvas(params), do: execute(API.DescribeCanvasRequest, params)
+  def create_event_source(params), do: execute(API.CreateEventSourceRequest, params)
+  def describe_event_source(params), do: execute(API.DescribeEventSourceRequest, params)
+  def list_event_sources(params), do: execute(API.ListEventSourcesRequest, params)
+  def create_stage(params), do: execute(API.CreateStageRequest, params)
+  def describe_stage(params), do: execute(API.DescribeStageRequest, params)
+  def list_stages(params), do: execute(API.ListStagesRequest, params)
+  def list_stage_events(params), do: execute(API.ListStageEventsRequest, params)
+  def approve_stage_event(params), do: execute(API.ApproveStageEventRequest, params)
 
   defp execute(request_module, params) do
     PublicAPI.Util.Metrics.benchmark(

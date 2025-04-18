@@ -13,6 +13,8 @@ defmodule PublicAPI.Router do
   alias PublicAPI.Handlers.Dashboards, as: Dash
   alias PublicAPI.Handlers.DeploymentTargets, as: DeploymentTargets
   alias PublicAPI.Handlers.Canvases, as: Canvases
+  alias PublicAPI.Handlers.EventSources, as: EventSources
+  alias PublicAPI.Handlers.Stages, as: Stages
   alias PublicAPI.Handlers.Spec
 
   plug(Plug.Logger)
@@ -158,6 +160,21 @@ defmodule PublicAPI.Router do
 
   match("/canvases", via: :post, to: Canvases.Create)
   match("/canvases/:id_or_name", via: :get, to: Canvases.Describe)
+
+  match("/canvases/:canvas_id_or_name/sources", via: :get, to: EventSources.List)
+  # match("/canvases/:id_or_name/sources", via: :post, to: EventSources.Create)
+  match("/canvases/:canvas_id_or_name/sources/:id_or_name", via: :get, to: EventSources.Describe)
+
+  match("/canvases/:canvas_id_or_name/stages", via: :get, to: Stages.List)
+  # match("/canvases/:id_or_name/stages", via: :post, to: Stages.Create)
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name", via: :get, to: Stages.Describe)
+
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name/events", via: :get, to: Stages.ListEvents)
+
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name/events/:id/approve",
+    via: :get,
+    to: Stages.ApproveEvent
+  )
 
   # sobelow_skip ["XSS.SendResp"]
   def handle_errors(conn, %{kind: _kind, reason: reason, stack: _stack}) do

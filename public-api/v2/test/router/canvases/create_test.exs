@@ -17,10 +17,11 @@ defmodule Router.Canvases.CreateTest do
     end
 
     test "create a canvas", ctx do
-      canvas = construct_canvas(%{
-        organization_id: ctx.org_id,
-        name: "canvas-1"
-      })
+      canvas =
+        construct_canvas(%{
+          organization_id: ctx.org_id,
+          name: "canvas-1"
+        })
 
       {:ok, response} = create_canvas(ctx, canvas)
       created_canvas = Jason.decode!(response.body)
