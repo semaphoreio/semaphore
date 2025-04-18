@@ -70,6 +70,7 @@ defmodule Guard.Application do
     rabbit = System.get_env("RABBIT_CONSUMER") || "true"
     id = System.get_env("ID_API") || "false"
     instance_config_api = System.get_env("INSTANCE_CONFIG_API") || "false"
+    organization_cleaner = System.get_env("START_ORGANIZATION_CLEANER") || "false"
 
     services
     |> add_grpc_service(grpc)
@@ -77,6 +78,7 @@ defmodule Guard.Application do
     |> add_id_service(id)
     |> add_instance_config_api(instance_config_api)
     |> add_rabbit_workers(rabbit)
+    |> add_organization_cleaner(organization_cleaner)
   end
 
   defp add_grpc_service(services, "true") do
@@ -124,6 +126,12 @@ defmodule Guard.Application do
 
   defp add_rabbit_workers(services, _), do: services
 
+  defp add_organization_cleaner(services, "true") do
+    services ++ organization_cleaner()
+  end
+
+  defp add_organization_cleaner(services, _), do: services
+
   defp select_active(workers) do
     workers
     |> Enum.filter(fn %{worker: _w, active: active} -> active end)
@@ -137,6 +145,8 @@ defmodule Guard.Application do
       {Services.OrganizationMachinesChanged, []}
     ]
   end
+
+  defp organization_cleaner, do: [{Guard.OrganizationCleaner, []}]
 
   defp caches do
     select_active([

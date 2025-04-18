@@ -145,4 +145,52 @@ defmodule FrontWeb.GroupsController.Test do
       end
     end
   end
+
+  describe "destroy group" do
+    test "when user does not have permissions", ctx do
+      PermissionPatrol.remove_all_permissions()
+
+      PermissionPatrol.allow_everything_except(
+        ctx.organization.id,
+        ctx.user.id,
+        "organization.people.manage"
+      )
+
+      group = create_group(ctx)
+      conn = ctx.conn |> delete("/groups/#{group.id}")
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "when something goes wrong, return error message", ctx do
+      conn = ctx.conn |> delete("/groups/#{Ecto.UUID.generate()}")
+
+      assert response(conn, 302) =~ "/people"
+      assert get_flash(conn, :alert) =~ "An error occurred: Group not found"
+    end
+
+    test "successfully destroy group", ctx do
+      group = create_group(ctx)
+      conn = ctx.conn |> delete("/groups/#{group.id}")
+
+      assert response(conn, 302) =~ "/people"
+      assert get_flash(conn, :notice) =~ "Request for deleting the group has been sent"
+    end
+  end
+
+  ###
+  ### Helper functions
+  ###
+
+  alias Support.Stubs.DB
+
+  defp create_group(ctx) do
+    DB.insert(:groups, %{
+      id: Ecto.UUID.generate(),
+      name: "test_group",
+      description: "test_description",
+      org_id: ctx.organization.id,
+      member_ids: [Ecto.UUID.generate()]
+    })
+  end
 end

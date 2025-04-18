@@ -254,9 +254,9 @@ defmodule Projecthub.Models.Project do
     |> unique_constraint(:request_id, name: :index_projects_on_request_id)
   end
 
-  def find(id) do
+  def find(id, deleted \\ false) do
     if id_is_uuid?(id) do
-      case from(Project) |> where([p], p.id == ^id) |> where_undeleted() |> Repo.one() do
+      case from(Project) |> where([p], p.id == ^id) |> query_deleted_at(deleted) |> Repo.one() do
         nil -> {:error, :not_found}
         project -> {:ok, project}
       end
@@ -266,10 +266,10 @@ defmodule Projecthub.Models.Project do
     |> unwrap(&preload_repository/1)
   end
 
-  def find_in_org(org_id, id) do
+  def find_in_org(org_id, id, deleted \\ false) do
     if id_is_uuid?(id) and id_is_uuid?(org_id) do
       case from(Project)
-           |> where_undeleted()
+           |> query_deleted_at(deleted)
            |> where([p], p.id == ^id and p.organization_id == ^org_id)
            |> Repo.one() do
         nil -> {:error, :not_found}
@@ -288,9 +288,9 @@ defmodule Projecthub.Models.Project do
     end
   end
 
-  def find_by_name(name, org_id) do
+  def find_by_name(name, org_id, deleted \\ false) do
     case from(Project)
-         |> where_undeleted()
+         |> query_deleted_at(deleted)
          |> where([p], p.name == ^name and p.organization_id == ^org_id)
          |> Repo.one() do
       nil -> {:error, :not_found}
@@ -306,33 +306,54 @@ defmodule Projecthub.Models.Project do
     {:ok, nil}
   end
 
-  def hard_destroy(project, user) do
-    {:ok, repository} = Repository.find_for_project(project.id)
-    {:ok, _} = Repository.destroy(repository)
+  def hard_destroy(project, user_id) do
+    with {:ok, repository} <- Repository.find_for_project(project.id),
+         {:ok, _} <- Repository.destroy(repository),
+         {:ok, _} <- Repo.delete(project),
+         {:ok, _} <- Schedulers.delete_all(project, user_id),
+         {:ok, _} <- Events.ProjectDeleted.publish(project) do
+      {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
+      {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
 
-    {:ok, _} = Repo.delete(project)
-    {:ok, _} = Schedulers.delete_all(project, user.id)
-    {:ok, _} = Events.ProjectDeleted.publish(project)
-
-    {:ok, _} = Task.start(Projecthub.Artifact, :destroy, [project.artifact_store_id, project.id])
-    {:ok, _} = Task.start(Projecthub.Cache, :destroy, [project.cache_id, project.id])
-
-    {:ok, nil}
+      {:ok, nil}
+    end
   end
 
-  def find_many(org_id, ids) do
+  def restore(project) do
+    {:ok, project} = update_record(project, %{deleted_at: nil, deleted_by: nil})
+    {:ok, _} = Events.ProjectRestored.publish(project)
+
+    {:ok, project}
+  end
+
+  def find_candidates_for_hard_destroy() do
+    grace_period_days = Application.get_env(:projecthub, :hard_destroy_grace_period_days)
+
+    grace_period =
+      DateTime.utc_now()
+      |> DateTime.add(-grace_period_days * 24 * 60 * 60)
+      |> DateTime.truncate(:second)
+
     Project
-    |> where([p], p.organization_id == ^org_id)
-    |> where([p], p.id in ^ids)
-    |> where_undeleted()
+    |> where([p], not is_nil(p.deleted_at) and p.deleted_at < ^grace_period)
+    |> lock("FOR UPDATE SKIP LOCKED")
     |> Repo.all()
     |> preload_repositories()
   end
 
-  def count_in_org(org_id) do
+  def find_many(org_id, ids, deleted \\ false) do
     Project
     |> where([p], p.organization_id == ^org_id)
-    |> where_undeleted()
+    |> where([p], p.id in ^ids)
+    |> query_deleted_at(deleted)
+    |> Repo.all()
+    |> preload_repositories()
+  end
+
+  def count_in_org(org_id, deleted \\ false) do
+    Project
+    |> where([p], p.organization_id == ^org_id)
+    |> query_deleted_at(deleted)
     |> Repo.aggregate(:count, :id)
   end
 
@@ -354,7 +375,7 @@ defmodule Projecthub.Models.Project do
 
     Project
     |> filter_by(options)
-    |> where_undeleted()
+    |> query_deleted_at(options[:soft_deleted])
     |> Repo.paginate(page: page, page_size: page_size)
     |> case do
       %{entries: entries} = paged_result ->
@@ -386,7 +407,7 @@ defmodule Projecthub.Models.Project do
 
     Project
     |> filter_by(options)
-    |> where_undeleted()
+    |> query_deleted_at(options[:show_deleted])
     |> order_by([p], asc: p.organization_id, asc: p.name)
     |> Repo.cursor_paginate(
       cursor_fields: [:organization_id, :name],
@@ -509,8 +530,8 @@ defmodule Projecthub.Models.Project do
     end)
   end
 
-  defp where_undeleted(query) do
-    query
-    |> where([project], is_nil(project.deleted_at))
-  end
+  defp query_deleted_at(query, show_deleted)
+  defp query_deleted_at(query, true), do: query |> where([p], not is_nil(p.deleted_at))
+  defp query_deleted_at(query, false), do: query |> where([p], is_nil(p.deleted_at))
+  defp query_deleted_at(query, _), do: query_deleted_at(query, false)
 end

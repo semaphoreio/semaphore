@@ -118,4 +118,12 @@ end
 
 config :guard, :front_git_integration_path, "/settings/git_integrations"
 
+config :guard, Guard.OrganizationCleaner,
+  jobs: [
+    # Every Midnight
+    {"0 0 * * *", {Guard.OrganizationCleaner, :process, []}}
+  ]
+
+config :guard, :hard_destroy_grace_period_days, 30
+
 import_config "#{config_env()}.exs"

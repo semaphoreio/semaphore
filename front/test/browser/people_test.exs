@@ -154,11 +154,8 @@ defmodule Front.Browser.PeopleTest do
 
   defp test_remove_user(ctx) do
     number = get_number_of_members(ctx.page)
-
     new_page = ctx.page |> remove_user()
-
     new_number = get_number_of_members(new_page)
-
     assert number == new_number + 1
 
     true

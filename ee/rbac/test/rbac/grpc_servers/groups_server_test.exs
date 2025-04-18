@@ -2,6 +2,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
   use Rbac.RepoCase, async: false
 
   alias InternalApi.Groups.Groups.Stub
+  alias InternalApi.Groups
   alias Support.Factories
 
   import Ecto.Query
@@ -20,7 +21,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
   end
 
   describe "list_groups/2" do
-    alias InternalApi.Groups.ListGroupsRequest, as: Request
+    alias Groups.ListGroupsRequest, as: Request
 
     test "invalid requests", state do
       requests = [
@@ -85,7 +86,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
   end
 
   describe "modify_group/2" do
-    alias InternalApi.Groups.ModifyGroupRequest, as: Request
+    alias Groups.ModifyGroupRequest, as: Request
 
     setup state do
       {:ok, group} = Support.Factories.Group.insert(org_id: @org_id)
@@ -101,21 +102,21 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
         },
         {
           %Request{
-            group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+            group: %Groups.Group{id: Ecto.UUID.generate()},
             requester_id: ""
           },
           "Invalid uuid passed as an argument where uuid v4 was expected."
         },
         {
           %Request{
-            group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+            group: %Groups.Group{id: Ecto.UUID.generate()},
             requester_id: "not-valid"
           },
           "Invalid uuid passed as an argument where uuid v4 was expected."
         },
         {
           %Request{
-            group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+            group: %Groups.Group{id: Ecto.UUID.generate()},
             requester_id: @requester_id,
             org_id: ""
           },
@@ -123,7 +124,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
         },
         {
           %Request{
-            group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+            group: %Groups.Group{id: Ecto.UUID.generate()},
             requester_id: @requester_id,
             org_id: "not-valid"
           },
@@ -133,7 +134,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
           %Request{
             requester_id: @requester_id,
             org_id: @org_id,
-            group: %InternalApi.Groups.Group{}
+            group: %Groups.Group{}
           },
           "Invalid uuid passed as an argument where uuid v4 was expected."
         },
@@ -141,7 +142,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
           %Request{
             requester_id: @requester_id,
             org_id: @org_id,
-            group: %InternalApi.Groups.Group{id: "not-valid"}
+            group: %Groups.Group{id: "not-valid"}
           },
           "Invalid uuid passed as an argument where uuid v4 was expected."
         }
@@ -158,7 +159,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
 
     test "unauthorized requests", state do
       request = %Request{
-        group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+        group: %Groups.Group{id: Ecto.UUID.generate()},
         requester_id: @requester_id,
         org_id: @org_id
       }
@@ -170,7 +171,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
 
     test "group for update does not exist", state do
       request = %Request{
-        group: %InternalApi.Groups.Group{id: Ecto.UUID.generate()},
+        group: %Groups.Group{id: Ecto.UUID.generate()},
         requester_id: @requester_id,
         org_id: @org_id
       }
@@ -184,7 +185,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       {:ok, user1} = Support.Factories.RbacUser.insert()
 
       request = %Request{
-        group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
+        group: %Groups.Group{id: state.group.id, name: "New Name"},
         members_to_add: [user1.id],
         requester_id: @requester_id,
         org_id: @org_id
@@ -197,7 +198,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
 
     test "updated only name", state do
       request = %Request{
-        group: %InternalApi.Groups.Group{id: state.group.id, name: "New Name"},
+        group: %Groups.Group{id: state.group.id, name: "New Name"},
         requester_id: @requester_id,
         org_id: @org_id
       }
@@ -213,7 +214,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
 
     test "updated only desc", state do
       request = %Request{
-        group: %InternalApi.Groups.Group{id: state.group.id, description: "New Description"},
+        group: %Groups.Group{id: state.group.id, description: "New Description"},
         requester_id: @requester_id,
         org_id: @org_id
       }
@@ -240,7 +241,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       |> Enum.each(&Support.Rbac.assign_org_role_by_name(@org_id, &1, "Member"))
 
       request = %Request{
-        group: %InternalApi.Groups.Group{id: state.group.id},
+        group: %Groups.Group{id: state.group.id},
         members_to_add: [user1.id, user2.id],
         members_to_remove: [user3.id],
         requester_id: @requester_id,
@@ -248,21 +249,23 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       }
 
       {:ok, _} = state.grpc_channel |> Stub.modify_group(request)
-      assert_request_created(user1.id, state.group.id, :add)
-      assert_request_created(user2.id, state.group.id, :add)
-      assert_request_created(user3.id, state.group.id, :remove)
+      assert_request_created(user1.id, state.group.id, :add_user)
+      assert_request_created(user2.id, state.group.id, :add_user)
+      assert_request_created(user3.id, state.group.id, :remove_user)
       assert Rbac.Repo.GroupManagementRequest |> Rbac.Repo.aggregate(:count, :id) == 3
     end
   end
 
   describe "create_group/2" do
+    alias Groups.CreateGroupRequest, as: Request
+
     test "invalid requests", state do
       requests = [
-        %InternalApi.Groups.CreateGroupRequest{},
-        %InternalApi.Groups.CreateGroupRequest{requester_id: ""},
-        %InternalApi.Groups.CreateGroupRequest{requester_id: "not-valid"},
-        %InternalApi.Groups.CreateGroupRequest{requester_id: @requester_id, org_id: ""},
-        %InternalApi.Groups.CreateGroupRequest{
+        %Request{},
+        %Request{requester_id: ""},
+        %Request{requester_id: "not-valid"},
+        %Request{requester_id: @requester_id, org_id: ""},
+        %Request{
           requester_id: @requester_id,
           org_id: "not-valid"
         }
@@ -278,10 +281,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "unauthorized requests", state do
-      request = %InternalApi.Groups.CreateGroupRequest{
-        requester_id: @requester_id,
-        org_id: @org_id
-      }
+      request = %Request{requester_id: @requester_id, org_id: @org_id}
 
       {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.create_group(request)
       assert status == GRPC.Status.permission_denied()
@@ -289,10 +289,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "when group data is missing, we return an error", state do
-      request = %InternalApi.Groups.CreateGroupRequest{
-        requester_id: @requester_id,
-        org_id: @org_id
-      }
+      request = %Request{requester_id: @requester_id, org_id: @org_id}
 
       assert {:error, %{status: status, message: msg}} =
                state.grpc_channel |> Stub.create_group(request)
@@ -302,22 +299,23 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
     end
 
     test "when group name is missing, we return an error", state do
-      request = %InternalApi.Groups.CreateGroupRequest{
-        group: %InternalApi.Groups.Group{},
-        requester_id: @requester_id,
-        org_id: @org_id
-      }
+      groups = [%Groups.Group{description: "test"}, %Groups.Group{name: "test"}]
 
-      assert {:error, %{status: status, message: msg}} =
-               state.grpc_channel |> Stub.create_group(request)
+      error_messages =
+        groups
+        |> Enum.map(&%Request{group: &1, requester_id: @requester_id, org_id: @org_id})
+        |> Enum.map(&(state.grpc_channel |> Stub.create_group(&1)))
+        |> Enum.map(fn {:error, %{status: status, message: msg}} ->
+          assert status == GRPC.Status.invalid_argument()
+          msg
+        end)
 
-      assert status == GRPC.Status.invalid_argument()
-      assert msg == "Group name is required"
+      assert error_messages == ["Group name is required", "Group description is required"]
     end
 
     test "when members are not part of the org, we return an error", state do
-      request = %InternalApi.Groups.CreateGroupRequest{
-        group: %InternalApi.Groups.Group{
+      request = %Request{
+        group: %Groups.Group{
           name: "Test Group",
           description: "Test group description",
           member_ids: [Ecto.UUID.generate()]
@@ -338,8 +336,8 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       Support.Rbac.create_org_roles(@org_id)
       Support.Rbac.assign_org_role_by_name(@org_id, user1.id, "Member")
 
-      request = %InternalApi.Groups.CreateGroupRequest{
-        group: %InternalApi.Groups.Group{
+      request = %Request{
+        group: %Groups.Group{
           name: "Test Group",
           description: "Test group description",
           member_ids: [user1.id]
@@ -354,8 +352,46 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       assert group.name == "Test Group"
       assert group.description == "Test group description"
 
-      assert_request_created(user1.id, group.id, "add")
+      assert_request_created(user1.id, group.id, "add_user")
       assert Rbac.Repo.GroupManagementRequest |> Rbac.Repo.aggregate(:count, :id) == 1
+    end
+  end
+
+  describe "destroy_group/2" do
+    alias Groups.DestroyGroupRequest, as: Request
+
+    setup do
+      {:ok, group} = Factories.Group.insert(org_id: @org_id)
+      {:ok, %{group: group}}
+    end
+
+    test "when request is successful", %{grpc_channel: channel, group: group} do
+      request = %Request{group_id: group.id, requester_id: @requester_id}
+      {:ok, %Groups.DestroyGroupResponse{}} = channel |> Stub.destroy_group(request)
+
+      assert Rbac.Repo.GroupManagementRequest
+             |> where(
+               [r],
+               r.group_id == ^group.id and r.action == :destroy_group and
+                 r.requester_id == ^@requester_id
+             )
+             |> Rbac.Repo.exists?()
+    end
+
+    test "when group doesn't exist", %{grpc_channel: channel} do
+      request = %Request{group_id: Ecto.UUID.generate(), requester_id: @requester_id}
+
+      {:error, response} = channel |> Stub.destroy_group(request)
+      assert response.status == GRPC.Status.not_found()
+      assert response.message =~ "does not exist"
+    end
+
+    test "when unauthorized due to missing role bindings", %{grpc_channel: channel, group: group} do
+      {:ok, user} = Factories.RbacUser.insert()
+
+      request = %Request{group_id: group.id, requester_id: user.id}
+      {:error, response} = channel |> Stub.destroy_group(request)
+      assert response.status == GRPC.Status.permission_denied()
     end
   end
 

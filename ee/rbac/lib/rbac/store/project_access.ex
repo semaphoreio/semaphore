@@ -8,7 +8,7 @@ defmodule Rbac.Store.ProjectAccess do
   require Logger
 
   import Ecto.Query
-  alias Rbac.Repo.{RbacUser, UserGroupBinding, SubjectRoleBinding}
+  alias Rbac.Repo.SubjectRoleBinding
   alias Rbac.RoleBindingIdentification, as: RBI
 
   @store_backend Application.compile_env(:rbac, :key_value_store_backend)
@@ -236,25 +236,8 @@ defmodule Rbac.Store.ProjectAccess do
     Rbac.Repo.stream(query, max_rows: batch_size, timeout: 60_000)
   end
 
-  defp gen_user_to_group_bindings_query(user_id) do
-    RbacUser
-    |> join(:inner, [u], ugb in UserGroupBinding, on: u.id == ugb.user_id)
-    |> select([u, ugb], %{user_id: u.id, subject_id: ugb.group_id})
-    |> add_where_clause_for_specific_user(user_id)
-  end
-
-  defp gen_user_to_subject_bindings_query(user_id) do
-    RbacUser
-    |> select([u], %{user_id: u.id, subject_id: u.id})
-    |> add_where_clause_for_specific_user(user_id)
-  end
-
   defp gen_user_to_list_of_projects_per_org_query(rbi) do
-    user_to_group_bindings = gen_user_to_group_bindings_query(rbi.user_id)
-
-    user_to_subject_bindings =
-      gen_user_to_subject_bindings_query(rbi.user_id)
-      |> union_all(^user_to_group_bindings)
+    user_to_subject_bindings = Rbac.Repo.Queries.user_to_subject_bindings_query(rbi.user_id)
 
     SubjectRoleBinding
     |> join(:inner, [srb], u in subquery(user_to_subject_bindings),
@@ -269,11 +252,6 @@ defmodule Rbac.Store.ProjectAccess do
     })
     |> add_where_clause_for_specific_org(rbi.org_id)
   end
-
-  defp add_where_clause_for_specific_user(query, nil), do: query
-
-  defp add_where_clause_for_specific_user(query, user_id),
-    do: query |> where([u], u.id == ^user_id)
 
   defp add_where_clause_for_specific_org(query, nil), do: query
 

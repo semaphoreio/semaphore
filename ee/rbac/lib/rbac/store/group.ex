@@ -108,14 +108,14 @@ defmodule Rbac.Store.Group do
     Finds all the groups a given user belongs to (within the given organization)
     and creates requests for asynchronously removing the user from each of them
   """
-  def remove_member_from_all_org_groups(member_id, org_id) do
+  def remove_member_from_all_org_groups(member_id, org_id, requester_id) do
     Rbac.Repo.UserGroupBinding
     |> where([ugb], ugb.user_id == ^member_id)
     |> join(:inner, [ugb], g in assoc(ugb, :group))
     |> where([_, g], g.org_id == ^org_id)
     |> select([ugb, _], ugb.group_id)
     |> Rbac.Repo.all()
-    |> Enum.each(&Rbac.Repo.GroupManagementRequest.create_new_request(member_id, &1, :remove))
+    |> Enum.each(&create_request(member_id, &1, :remove_user, requester_id))
   end
 
   def modify_metadata(group_id, "", ""), do: fetch_group(group_id)
@@ -130,6 +130,48 @@ defmodule Rbac.Store.Group do
       :ok -> fetch_group(group_id)
       error_tuple -> error_tuple
     end
+  end
+
+  @spec destroy(String.t()) :: :ok | {:error, atom() | String.t()}
+  def destroy(group_id) do
+    Watchman.benchmark("groups.destroy.duration", fn ->
+      case fetch_group(group_id) do
+        {:ok, group} ->
+          {:ok, rbi} = RBI.new(org_id: group.org_id)
+
+          ecto_transaction =
+            Ecto.Multi.new()
+            |> Ecto.Multi.run(:clear_all_permissions, fn _, _ -> remove_user_permissions(rbi) end)
+            |> Ecto.Multi.run(:clear_all_project_access, fn _, _ -> clear_project_access(rbi) end)
+            |> Ecto.Multi.delete_all(
+              :delete_user_group_bindings,
+              Rbac.Repo.UserGroupBinding |> where([ugb], ugb.group_id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_subject_role_bindings,
+              Rbac.Repo.SubjectRoleBinding |> where([srb], srb.subject_id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_group,
+              Rbac.Repo.Group |> where([g], g.id == ^group_id)
+            )
+            |> Ecto.Multi.delete_all(
+              :delete_subject,
+              Rbac.Repo.Subject |> where([s], s.id == ^group_id)
+            )
+            |> Ecto.Multi.run(:recalculate_all_permissions, fn _, _ ->
+              add_user_permissions(rbi)
+            end)
+            |> Ecto.Multi.run(:recalculate_all_project_access, fn _, _ ->
+              add_project_access(rbi)
+            end)
+
+          execute_transaction(ecto_transaction, "destroy_group")
+
+        {:error, :not_found} ->
+          :ok
+      end
+    end)
   end
 
   #
@@ -208,4 +250,8 @@ defmodule Rbac.Store.Group do
       {:error, :cant_remove_keys_from_project_access_store}
     end
   end
+
+  defdelegate create_request(user_id_or_ids, group_id, action, requester_id),
+    to: Rbac.Repo.GroupManagementRequest,
+    as: :create_new_request
 end

@@ -383,6 +383,7 @@ defmodule InternalApi.Projecthub.ListRequest do
   field :pagination, 2, type: InternalApi.Projecthub.PaginationRequest
   field :owner_id, 3, type: :string, json_name: "ownerId"
   field :repo_url, 4, type: :string, json_name: "repoUrl"
+  field :soft_deleted, 5, type: :bool, json_name: "softDeleted"
 end
 
 defmodule InternalApi.Projecthub.ListResponse do
@@ -429,6 +430,7 @@ defmodule InternalApi.Projecthub.DescribeRequest do
   field :id, 2, type: :string
   field :name, 3, type: :string
   field :detailed, 4, type: :bool
+  field :soft_deleted, 5, type: :bool
 end
 
 defmodule InternalApi.Projecthub.DescribeResponse do
@@ -447,6 +449,7 @@ defmodule InternalApi.Projecthub.DescribeManyRequest do
 
   field :metadata, 1, type: InternalApi.Projecthub.RequestMeta
   field :ids, 2, repeated: true, type: :string
+  field :soft_deleted, 3, type: :bool
 end
 
 defmodule InternalApi.Projecthub.DescribeManyResponse do

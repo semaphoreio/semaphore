@@ -8,8 +8,9 @@ defmodule Rbac.Repo.GroupManagementRequest do
     field(:state, Ecto.Enum, values: [:pending, :processing, :done, :failed], default: :pending)
     field(:user_id, :binary_id)
     field(:group_id, :binary_id)
-    field(:action, Ecto.Enum, values: [:add, :remove])
+    field(:action, Ecto.Enum, values: [:add_user, :remove_user, :destroy_group])
     field(:retries, :integer, default: 0)
+    field(:requester_id, :binary_id)
 
     timestamps()
   end
@@ -28,11 +29,23 @@ defmodule Rbac.Repo.GroupManagementRequest do
     end
   end
 
-  def create_new_request(user_ids, group_id, action) when is_list(user_ids),
-    do: Enum.each(user_ids, &create_new_request(&1, group_id, action))
+  def create_new_request(user_ids, group_id, action, requester_id) when is_list(user_ids) do
+    Rbac.Repo.transaction(fn ->
+      Enum.map(user_ids, fn user_id ->
+        try do
+          {:ok, request} = create_new_request(user_id, group_id, action, requester_id)
+          request
+        rescue
+          e ->
+            Rbac.Repo.rollback(e)
+        end
+      end)
+    end)
+  end
 
-  def create_new_request(user_id, group_id, action) do
-    %__MODULE__{user_id: user_id, group_id: group_id, action: action} |> insert()
+  def create_new_request(user_id, group_id, action, requester_id) do
+    %__MODULE__{user_id: user_id, group_id: group_id, action: action, requester_id: requester_id}
+    |> insert()
   end
 
   def finish_processing(%__MODULE__{} = req) do
