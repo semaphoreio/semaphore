@@ -23,17 +23,15 @@ defmodule E2E.UI.GitIntegrationsTest do
     test "has two main sections: Integrations and Connect new", %{session: session} do
       session
       |> assert_has(
-        Wallaby.Query.css(".bb.b--black-075.w-100-l.mb4.br3.shadow-3.bg-white",
-          count: 2
-        )
+        Wallaby.Query.css("[data-testid='integration-box']", count: 2)
       )
       |> assert_has(
-        Wallaby.Query.css(".bb.bw1.b--black-075.br3.br--top .flex.items-center .b",
+        Wallaby.Query.css("[data-testid='integration-box'] .b",
           text: "Integrations"
         )
       )
       |> assert_has(
-        Wallaby.Query.css(".bb.bw1.b--black-075.br3.br--top .flex.items-center .b",
+        Wallaby.Query.css("[data-testid='integration-box'] .b",
           text: "Connect new"
         )
       )
@@ -42,9 +40,7 @@ defmodule E2E.UI.GitIntegrationsTest do
     test "has at least one connected integration", %{session: session} do
       session
       |> assert_has(
-        Wallaby.Query.css(".bb.b--black-075.w-100-l .ph3.pv2.mv2",
-          minimum: 1
-        )
+        Wallaby.Query.css("[data-testid='integration-card']", minimum: 1)
       )
 
       has_github_or_gitlab =
@@ -60,8 +56,7 @@ defmodule E2E.UI.GitIntegrationsTest do
     test "has available integrations to connect", %{session: session} do
       session
       |> assert_has(
-        Wallaby.Query.css(".bb.b--black-075.w-100-l:nth-of-type(2) .ph3.pv2.mv2",
-          minimum: 1,
+        Wallaby.Query.css("[data-testid='integration-card']", minimum: 1,
           timeout: 10_000
         )
       )
@@ -86,10 +81,7 @@ defmodule E2E.UI.GitIntegrationsTest do
       # Find the edit button and click it - we use a simpler direct approach
       session
       |> click(
-        Wallaby.Query.css(".material-symbols-outlined.f5.b.btn.pointer.pa1.btn-secondary.ml3",
-          count: 2,
-          at: 0
-        )
+        Wallaby.Query.link("edit", count: 2, at: 0)
       )
       |> assert_has(Wallaby.Query.text("Configuration parameters"))
 
@@ -99,14 +91,14 @@ defmodule E2E.UI.GitIntegrationsTest do
     test "has correct page structure and navigation", %{session: session} do
       session
       |> assert_has(Wallaby.Query.link("← Back to Integration"))
-      |> assert_has(Wallaby.Query.css("h2.f3.f2-m.mb0"))
+      |> assert_has(Wallaby.Query.css("[data-testid='integration-title']"))
     end
 
     test "shows connection status", %{session: session} do
       session
       |> assert_has(Wallaby.Query.text("GitHub App Connection"))
       # Green circle indicator
-      |> assert_has(Wallaby.Query.css("circle[fill='#00a569']"))
+      |> assert_has(Wallaby.Query.css("[data-testid='connection-status']"))
     end
 
     test "has required permissions section", %{session: session} do
@@ -127,8 +119,11 @@ defmodule E2E.UI.GitIntegrationsTest do
     setup %{session: session, organization: organization, base_domain: base_domain} do
       session = navigate_to_git_integrations(session, organization, base_domain)
 
+      # #git-integration-app > div > div:nth-child(4) > div.ph3.pv2.mv2 > div:nth-child(3) > div.flex.items-center.justify-end > a
+
       session
-      |> click(Wallaby.Query.css("a.btn.btn-primary.btn-small", at: 0))
+      |> find(Wallaby.Query.css("[data-testid='integration-box']", count: 2, at: 1))
+      |> click(Wallaby.Query.link("Connect"))
 
       session
       |> assert_has(Wallaby.Query.text("Integration Setup"))
