@@ -1,4 +1,3 @@
-
 import * as types from "../types";
 
 interface Props {
@@ -7,11 +6,11 @@ interface Props {
 
 export const ConnectionStatus = ({ status }: Props) => {
   if (status === types.Integration.IntegrationStatus.Connected) {
-    return connectionOkSvg;
+    return <span data-testid="connection-status">{connectionOkSvg}</span>;
   }
 
   return (
-    <span className="f6 normal ml1 ph1 br2 bg-red white pointer">
+    <span className="f6 normal ml1 ph1 br2 bg-red white pointer" data-testid="connection-status">
       Disconnected
     </span>
   );
