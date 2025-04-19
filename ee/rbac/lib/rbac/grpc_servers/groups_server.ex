@@ -68,7 +68,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
 
     with {:ok, _} <- Group.fetch_group(req.group.id),
          {:ok, group} <-
-           Group.modify_metadata(req.group.id, req.group.name, req.group.description) do
+           Group.modify_metadata(req.group.id, req.org_id, req.group.name, req.group.description) do
       {:ok, _} = create_request(req.members_to_remove, group.id, :remove_user, req.requester_id)
       {:ok, _} = create_request(req.members_to_add, group.id, :add_user, req.requester_id)
 
@@ -76,6 +76,9 @@ defmodule Rbac.GrpcServers.GroupsServer do
     else
       {:error, :not_found} ->
         grpc_error!(:invalid_argument, "The group you are trying to modify does not exist")
+
+      {:error, :name_taken} ->
+        grpc_error!(:invalid_argument, "The new group name is already in use")
 
       {:error, _error_msg} ->
         Watchman.increment("modify_group.failure")

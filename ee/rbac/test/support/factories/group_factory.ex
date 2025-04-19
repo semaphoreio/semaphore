@@ -4,16 +4,20 @@ defmodule Support.Factories.Group do
   def insert(options \\ []) do
     id = get_id(options[:group_id])
 
-    %Rbac.Repo.Subject{id: id, name: get_name(options[:name]), type: "group"}
-    |> Rbac.Repo.insert()
+    {:ok, subject} =
+      %Rbac.Repo.Subject{id: id, name: get_name(options[:name]), type: "group"}
+      |> Rbac.Repo.insert()
 
-    %Rbac.Repo.Group{
-      id: id,
-      org_id: get_id(options[:org_id]),
-      creator_id: get_id(options[:creator_id]),
-      description: get_name(options[:description])
-    }
-    |> Rbac.Repo.insert()
+    {:ok, group} =
+      %Rbac.Repo.Group{
+        id: id,
+        org_id: get_id(options[:org_id]),
+        creator_id: get_id(options[:creator_id]),
+        description: get_name(options[:description])
+      }
+      |> Rbac.Repo.insert()
+
+    {:ok, Map.merge(group, subject)}
   end
 
   defp get_id(nil), do: UUID.generate()
