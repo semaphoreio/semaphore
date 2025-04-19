@@ -24,6 +24,31 @@ defmodule Rbac.Store.Group.Test do
      }}
   end
 
+  describe "modify_metadata/3" do
+    test "when new name is already taken", ctx do
+      {:ok, new_group} = Support.Factories.Group.insert(org_id: @org_id)
+      {:error, :name_taken} = Group.modify_metadata(ctx.group.id, @org_id, new_group.name, "")
+
+      assert match?({:ok, _}, Group.fetch_group_by_name(ctx.group.name, @org_id))
+    end
+
+    test "when name is changed", ctx do
+      new_name = "new_group_name"
+      {:ok, _} = Group.modify_metadata(ctx.group.id, @org_id, new_name, "")
+      {:ok, group} = Group.fetch_group_by_name(new_name, @org_id)
+
+      assert group.description == ctx.group.description
+    end
+
+    test "when description is changed", ctx do
+      new_description = "new_description"
+      {:ok, _} = Group.modify_metadata(ctx.group.id, @org_id, "", new_description)
+      {:ok, group} = Group.fetch_group_by_name(ctx.group.name, @org_id)
+
+      assert group.description == new_description
+    end
+  end
+
   describe "create_group/3" do
     test "when group name already exists", ctx do
       {:error, :name_taken} = Group.create_group(ctx.group, ctx.group.org_id, ctx.user_id)
