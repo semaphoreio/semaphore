@@ -136,12 +136,12 @@ defmodule Rbac.Store.Group do
     |> Enum.each(&create_request(member_id, &1, :remove_user, requester_id))
   end
 
-  def modify_metadata(group_id, "", ""), do: fetch_group(group_id)
+  def modify_metadata(group_id, _org_id, "", ""), do: fetch_group(group_id)
 
-  def modify_metadata(group_id, new_name, new_description) do
+  def modify_metadata(group_id, org_id, new_name, new_description) do
     ecto_transaction =
       Ecto.Multi.new()
-      |> maybe_add_subject_update(group_id, new_name)
+      |> maybe_add_subject_update(group_id, org_id, new_name)
       |> maybe_add_group_update(group_id, new_description)
 
     case execute_transaction(ecto_transaction, "modify_group") do
@@ -212,14 +212,24 @@ defmodule Rbac.Store.Group do
     end
   end
 
-  defp maybe_add_subject_update(ecto_multi, subject_id, new_name) do
+  defp maybe_add_subject_update(ecto_multi, subject_id, org_id, new_name) do
     if new_name == "" do
       ecto_multi
     else
-      subject = Rbac.Repo.Subject.find_by_id(subject_id)
+      case fetch_group_by_name(new_name, org_id) do
+        {:ok, _} ->
+          ecto_multi
+          |> Ecto.Multi.error(:update_subject, :name_taken)
 
-      ecto_multi
-      |> Ecto.Multi.update(:subject, subject |> Rbac.Repo.Subject.changeset(%{name: new_name}))
+        {:error, :not_found} ->
+          subject = Rbac.Repo.Subject.find_by_id(subject_id)
+
+          ecto_multi
+          |> Ecto.Multi.update(
+            :subject,
+            subject |> Rbac.Repo.Subject.changeset(%{name: new_name})
+          )
+      end
     end
   end
 
