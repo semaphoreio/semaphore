@@ -82,7 +82,7 @@ defmodule PublicAPI.Handlers.Stages.List do
     }
 
     Map.merge(conn.params, %{
-      organization_id: conn.assigns[:organization_id],
+      organization_id: conn.assigns[:organization_id]
     })
     |> CanvasesClient.list_stages()
     |> case do

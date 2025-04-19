@@ -14,19 +14,23 @@ defmodule Router.Stages.ApproveEventTest do
       canvas = Support.Stubs.Canvases.create_canvas(org, name: "canvas-1")
       source = Support.Stubs.Canvases.create_source(org, canvas.id, name: "source-1")
       stage = Support.Stubs.Canvases.create_stage(org, canvas.id, name: "stage-1")
-      event = Support.Stubs.Canvases.create_stage_event(org, canvas.id, stage.id, source.id, name: "stage-1")
+
+      event =
+        Support.Stubs.Canvases.create_stage_event(org, canvas.id, stage.id, source.id,
+          name: "stage-1"
+        )
 
       # TODO: this permission should be updated
       PermissionPatrol.add_permissions(org_id, user_id, "organization.dashboards.manage")
 
       {:ok,
        %{
-        org_id: org_id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        event_id: event.id
+         org_id: org_id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         event_id: event.id
        }}
     end
 
@@ -54,16 +58,20 @@ defmodule Router.Stages.ApproveEventTest do
       canvas = Support.Stubs.Canvases.create_canvas(org, name: "canvas-1")
       source = Support.Stubs.Canvases.create_source(org, canvas.id, name: "source-1")
       stage = Support.Stubs.Canvases.create_stage(org, canvas.id, name: "stage-1")
-      event = Support.Stubs.Canvases.create_stage_event(org, canvas.id, stage.id, source.id, name: "stage-1")
+
+      event =
+        Support.Stubs.Canvases.create_stage_event(org, canvas.id, stage.id, source.id,
+          name: "stage-1"
+        )
 
       {:ok,
        %{
-        org_id: org.id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        event_id: event.id
+         org_id: org.id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         event_id: event.id
        }}
     end
 

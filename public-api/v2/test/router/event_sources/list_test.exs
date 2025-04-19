@@ -19,10 +19,10 @@ defmodule Router.EventSources.ListTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id
+         org_id: org_id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id
        }}
     end
 
@@ -47,10 +47,10 @@ defmodule Router.EventSources.ListTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: %{id: org_id},
-        user_id: user_id,
-        canvas_id: canvas.id
+         org_id: org_id,
+         org: %{id: org_id},
+         user_id: user_id,
+         canvas_id: canvas.id
        }}
     end
 

@@ -5,7 +5,17 @@ defmodule Support.Stubs.Canvases do
     DB.add_table(:canvases, [:id, :name, :org_id])
     DB.add_table(:stages, [:id, :name, :org_id, :canvas_id, :api_model])
     DB.add_table(:sources, [:id, :name, :org_id, :canvas_id])
-    DB.add_table(:stage_events, [:id, :org_id, :canvas_id, :stage_id, :state, :source_id, :source_type, :approved_at])
+
+    DB.add_table(:stage_events, [
+      :id,
+      :org_id,
+      :canvas_id,
+      :stage_id,
+      :state,
+      :source_id,
+      :source_type,
+      :approved_at
+    ])
 
     __MODULE__.Grpc.init()
   end
@@ -122,7 +132,7 @@ defmodule Support.Stubs.Canvases do
               id: canvas.id,
               name: canvas.name,
               organization_id: canvas.org_id,
-              created_at: %Google.Protobuf.Timestamp{seconds: canvas.created_at}
+              created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
             }
           }
 
@@ -199,9 +209,7 @@ defmodule Support.Stubs.Canvases do
         [event] ->
           DB.update(
             :stage_events,
-            %{event |
-              approved_at: 1_549_885_252
-            },
+            %{event | approved_at: 1_549_885_252},
             id: event.id
           )
 
@@ -339,8 +347,7 @@ defmodule Support.Stubs.Canvases do
           DB.insert(:canvases, %{
             id: id,
             name: req.name,
-            org_id: org_id,
-            created_at: 1_549_885_252
+            org_id: org_id
           })
 
           %InternalApi.Delivery.CreateCanvasResponse{

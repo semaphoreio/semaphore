@@ -14,38 +14,40 @@ defmodule Router.Stages.DescribeTest do
       org = Support.Stubs.Organization.create(org_id: org_id)
       canvas = Support.Stubs.Canvases.create_canvas(org, name: "canvas-1")
       source = Support.Stubs.Canvases.create_source(org, canvas.id, name: "source-1")
-      stage = Support.Stubs.Canvases.create_stage(org, canvas.id,
-        name: "stage-1",
-        connections: [
-          %API.Connection{
-            name: source.name,
-            type: API.Connection.Type.value(:TYPE_EVENT_SOURCE),
-            filter_operator: API.Connection.FilterOperator.value(:FILTER_OPERATOR_AND),
-            filters: [
-              %API.Connection.Filter{
-                type: API.Connection.FilterType.value(:FILTER_TYPE_DATA),
-                data: %API.Connection.DataFilter{
-                  expression: "ref_type == 'tag'"
+
+      stage =
+        Support.Stubs.Canvases.create_stage(org, canvas.id,
+          name: "stage-1",
+          connections: [
+            %API.Connection{
+              name: source.name,
+              type: API.Connection.Type.value(:TYPE_EVENT_SOURCE),
+              filter_operator: API.Connection.FilterOperator.value(:FILTER_OPERATOR_AND),
+              filters: [
+                %API.Connection.Filter{
+                  type: API.Connection.FilterType.value(:FILTER_TYPE_DATA),
+                  data: %API.Connection.DataFilter{
+                    expression: "ref_type == 'tag'"
+                  }
                 }
-              }
-            ]
-          }
-        ]
-      )
+              ]
+            }
+          ]
+        )
 
       # TODO: this permission should be updated
       PermissionPatrol.add_permissions(org_id, user_id, "organization.dashboards.view")
 
       {:ok,
        %{
-        org_id: org_id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        stage_name: stage.name,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org_id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         stage_name: stage.name,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 
@@ -77,14 +79,14 @@ defmodule Router.Stages.DescribeTest do
 
       {:ok,
        %{
-        org_id: org.id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        stage_name: stage.name,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org.id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         stage_name: stage.name,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 

@@ -11,14 +11,15 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   end
 
   def list_events(events) do
-    {:ok, %{
-      next_page_token: nil,
-      page_size: 100,
-      entries: Enum.map(events, fn event -> stage_event_from_pb(event) end)
-    }}
+    {:ok,
+     %{
+       next_page_token: nil,
+       page_size: 100,
+       entries: Enum.map(events, fn event -> stage_event_from_pb(event) end)
+     }}
   end
 
-  defp stage_event_from_pb(%API.StageEvent{} = event) do
+  defp stage_event_from_pb(event = %API.StageEvent{}) do
     %{
       id: event.id,
       source_id: event.source_id,
@@ -36,14 +37,15 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   defp event_state_from_pb(_), do: ""
 
   def list(stages, ctx) do
-    {:ok, %{
-      next_page_token: nil,
-      page_size: 100,
-      entries: Enum.map(stages, fn stage -> stage_from_pb(stage, ctx) end)
-    }}
+    {:ok,
+     %{
+       next_page_token: nil,
+       page_size: 100,
+       entries: Enum.map(stages, fn stage -> stage_from_pb(stage, ctx) end)
+     }}
   end
 
-  defp stage_from_pb(%API.Stage{} = stage, ctx) do
+  defp stage_from_pb(stage = %API.Stage{}, ctx) do
     organization = %{id: stage.organization_id, name: ctx.organization.name}
     canvas = %{id: stage.canvas_id}
 
@@ -62,13 +64,14 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
       },
       spec: %{
         approval_required: stage.approval_required,
-        connections: Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
+        connections:
+          Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
         run: run_template_from_pb(stage.run_template)
       }
     }
   end
 
-  defp run_template_from_pb(%API.RunTemplate{} = run_template) do
+  defp run_template_from_pb(run_template = %API.RunTemplate{}) do
     %{
       type: run_template_type_from_pb(run_template.type),
       semaphore: semaphore_run_template_from_pb(run_template.type, run_template)
@@ -80,7 +83,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   defp run_template_type_from_pb(:TYPE_SEMAPHORE), do: "SEMAPHORE"
   defp run_template_type_from_pb(_), do: ""
 
-  defp semaphore_run_template_from_pb(:TYPE_SEMAPHORE, %API.RunTemplate{} = run_template) do
+  defp semaphore_run_template_from_pb(:TYPE_SEMAPHORE, run_template = %API.RunTemplate{}) do
     task_id =
       if run_template.semaphore.task_id != "",
         do: run_template.semaphore.task_id,
@@ -100,7 +103,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
 
   defp semaphore_run_template_from_pb(_, _), do: nil
 
-  defp connection_from_pb(%API.Connection{} = connection) do
+  defp connection_from_pb(connection = %API.Connection{}) do
     %{
       type: connection_type_from_pb(connection.type),
       name: connection.name,
@@ -109,7 +112,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
     }
   end
 
-  defp filter_from_pb(%API.Connection.Filter{} = filter) do
+  defp filter_from_pb(filter = %API.Connection.Filter{}) do
     %{
       type: filter_type_from_pb(filter.type),
       data: data_filter_from_pb(filter.type, filter.data)

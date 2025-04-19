@@ -15,14 +15,15 @@ defmodule Router.Stages.CreateTest do
       # TODO: update these permissions
       PermissionPatrol.add_permissions(org_id, user_id, "organization.dashboards.manage")
 
-      {:ok, %{
-        org_id: org_id,
-        user_id: user_id,
-        org: org,
-        canvas_id: canvas.id,
-        source_id: source.id,
-        source_name: source.name
-      }}
+      {:ok,
+       %{
+         org_id: org_id,
+         user_id: user_id,
+         org: org,
+         canvas_id: canvas.id,
+         source_id: source.id,
+         source_name: source.name
+       }}
     end
 
     test "create a stage", ctx do
@@ -68,13 +69,14 @@ defmodule Router.Stages.CreateTest do
       # TODO: update these permissions
       PermissionPatrol.add_permissions(org.id, user_id, "organization.dashboards.view")
 
-      {:ok, %{
-        org_id: org.id,
-        user_id: user_id,
-        org: org.id,
-        canvas_id: canvas.id,
-        source_id: source.id
-      }}
+      {:ok,
+       %{
+         org_id: org.id,
+         user_id: user_id,
+         org: org.id,
+         canvas_id: canvas.id,
+         source_id: source.id
+       }}
     end
 
     test "create a stage", ctx do
@@ -111,7 +113,7 @@ defmodule Router.Stages.CreateTest do
     }
 
     canvas = %{
-      id: params.canvas_id,
+      id: params.canvas_id
     }
 
     connection = hd(default.spec.connections)
@@ -122,11 +124,7 @@ defmodule Router.Stages.CreateTest do
     ]
 
     connections = [
-      %{connection |
-        name: params.source_name,
-        type: "EVENT_SOURCE",
-        filters: filters
-      }
+      %{connection | name: params.source_name, type: "EVENT_SOURCE", filters: filters}
     ]
 
     default

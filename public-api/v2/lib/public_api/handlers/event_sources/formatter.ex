@@ -9,11 +9,12 @@ defmodule PublicAPI.Handlers.EventSources.Formatter do
   end
 
   def list(sources, ctx) do
-    {:ok, %{
-      next_page_token: nil,
-      page_size: 100,
-      entries: Enum.map(sources, fn source -> source_from_pb(source, ctx) end)
-    }}
+    {:ok,
+     %{
+       next_page_token: nil,
+       page_size: 100,
+       entries: Enum.map(sources, fn source -> source_from_pb(source, ctx) end)
+     }}
   end
 
   defp source_from_pb(%API.EventSource{} = source, ctx) do

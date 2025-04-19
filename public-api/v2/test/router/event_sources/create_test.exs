@@ -14,12 +14,13 @@ defmodule Router.EventSources.CreateTest do
       # TODO: update these permissions
       PermissionPatrol.add_permissions(org_id, user_id, "organization.dashboards.manage")
 
-      {:ok, %{
-        org_id: org_id,
-        user_id: user_id,
-        org: org,
-        canvas_id: canvas.id
-      }}
+      {:ok,
+       %{
+         org_id: org_id,
+         user_id: user_id,
+         org: org,
+         canvas_id: canvas.id
+       }}
     end
 
     test "create an event source", ctx do
@@ -63,12 +64,13 @@ defmodule Router.EventSources.CreateTest do
       # TODO: update these permissions
       PermissionPatrol.add_permissions(org.id, user_id, "organization.dashboards.view")
 
-      {:ok, %{
-        org_id: org.id,
-        user_id: user_id,
-        org: org.id,
-        canvas_id: canvas.id
-      }}
+      {:ok,
+       %{
+         org_id: org.id,
+         user_id: user_id,
+         org: org.id,
+         canvas_id: canvas.id
+       }}
     end
 
     test "create a source", ctx do
@@ -104,7 +106,7 @@ defmodule Router.EventSources.CreateTest do
     }
 
     canvas = %{
-      id: params.canvas_id,
+      id: params.canvas_id
     }
 
     default

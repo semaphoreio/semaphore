@@ -85,7 +85,7 @@ defmodule PublicAPI.Handlers.Stages.ListEvents do
   def list_events(conn, _opts) do
     Map.merge(conn.params, %{
       stage_id: conn.params.id_or_name,
-      organization_id: conn.assigns[:organization_id],
+      organization_id: conn.assigns[:organization_id]
     })
     |> CanvasesClient.list_stage_events()
     |> case do

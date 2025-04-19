@@ -20,14 +20,14 @@ defmodule Router.Stages.ListTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        stage_name: stage.name,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org_id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         stage_name: stage.name,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 
@@ -53,14 +53,14 @@ defmodule Router.Stages.ListTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: %{id: org_id},
-        user_id: user_id,
-        canvas_id: canvas.id,
-        stage_id: stage.id,
-        stage_name: stage.name,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org_id,
+         org: %{id: org_id},
+         user_id: user_id,
+         canvas_id: canvas.id,
+         stage_id: stage.id,
+         stage_name: stage.name,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 

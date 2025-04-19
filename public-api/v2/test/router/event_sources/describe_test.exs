@@ -19,12 +19,12 @@ defmodule Router.EventSources.DescribeTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: org,
-        user_id: user_id,
-        canvas_id: canvas.id,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org_id,
+         org: org,
+         user_id: user_id,
+         canvas_id: canvas.id,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 
@@ -55,12 +55,12 @@ defmodule Router.EventSources.DescribeTest do
 
       {:ok,
        %{
-        org_id: org_id,
-        org: %{id: org_id},
-        user_id: user_id,
-        canvas_id: canvas.id,
-        source_id: source.id,
-        source_name: source.name
+         org_id: org_id,
+         org: %{id: org_id},
+         user_id: user_id,
+         canvas_id: canvas.id,
+         source_id: source.id,
+         source_name: source.name
        }}
     end
 
