@@ -5,11 +5,11 @@ defmodule PublicAPI.Schemas.Stages.StageEvent do
   use PublicAPI.SpecHelpers.Schema
 
   OpenApiSpex.schema(%{
+    title: "Stages.StageEvent",
     type: :object,
     required: [],
     properties: %{
       id: PublicAPI.Schemas.Common.ResourceId.schema(),
-      stage_id: PublicAPI.Schemas.Common.ResourceId.schema(),
       source_id: PublicAPI.Schemas.Common.ResourceId.schema(),
       source_type: %Schema{
         type: :string,

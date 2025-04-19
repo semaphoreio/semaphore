@@ -30,7 +30,7 @@ defmodule PublicAPI.Handlers.Stages.ApproveEvent do
     permissions: ["organization.dashboards.manage"]
   )
 
-  plug(PublicAPI.Plugs.Metrics, tags: ["list", "stage_events"])
+  plug(PublicAPI.Plugs.Metrics, tags: ["approve", "stage_events"])
   plug(:approve_event)
   plug(PublicAPI.Plugs.ObjectFilter)
 
@@ -41,8 +41,8 @@ defmodule PublicAPI.Handlers.Stages.ApproveEvent do
   def open_api_operation(_) do
     %Operation{
       tags: ["StageEvents"],
-      summary: "List events in the stage queue",
-      description: "List events in the stage queue.",
+      summary: "Approve stage event",
+      description: "Approve stage event.",
       operationId: @operation_id,
       parameters: [
         Operation.parameter(
@@ -71,7 +71,7 @@ defmodule PublicAPI.Handlers.Stages.ApproveEvent do
         ),
         Operation.parameter(
           :event_id,
-          :path,
+          :query,
           %Schema{
             anyOf: [
               PublicAPI.Schemas.Common.ResourceId.schema()
@@ -95,15 +95,14 @@ defmodule PublicAPI.Handlers.Stages.ApproveEvent do
 
   def approve_event(conn, _opts) do
     Map.merge(conn.params, %{
-      id: conn.assigns[:event_id],
-      stage_id: conn.assigns[:id],
-      organization_id: conn.assigns[:organization_id],
-      canvas_id: conn.assigns[:canvas_id]
+      id: conn.params.event_id,
+      stage_id: conn.params.id_or_name,
+      organization_id: conn.assigns[:organization_id]
     })
     |> CanvasesClient.approve_stage_event()
     |> case do
-      {:ok, response} ->
-        response
+      {:ok, event} ->
+        event
         |> PublicAPI.Handlers.Stages.Formatter.event()
         |> set_response(conn)
 

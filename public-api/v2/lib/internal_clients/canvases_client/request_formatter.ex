@@ -46,7 +46,7 @@ defmodule InternalClients.Canvases.RequestFormatter do
   def form_request({API.CreateEventSourceRequest, params}) do
     {:ok,
      %API.CreateEventSourceRequest{
-       name: from_params(params, :name),
+       name: from_params!(params.metadata, :name),
        canvas_id: from_params!(params, :canvas_id),
        organization_id: from_params!(params, :organization_id),
        requester_id: from_params!(params, :user_id)
@@ -82,13 +82,13 @@ defmodule InternalClients.Canvases.RequestFormatter do
   def form_request({API.CreateStageRequest, params}) do
     {:ok,
      %API.CreateStageRequest{
-       name: from_params(params, :name),
+       name: from_params(params.metadata, :name),
        canvas_id: from_params!(params, :canvas_id),
        organization_id: from_params!(params, :organization_id),
        requester_id: from_params!(params, :user_id),
-       approval_required: from_params(params, :approval_required),
-       connections: from_params(params, :connections),
-       run_template: from_params(params, :run_template)
+       approval_required: from_params(params.spec, :approval_required),
+       connections: stage_connections(params),
+       run_template: from_params(params.spec, :run_template)
      }}
   rescue
     e in RuntimeError ->
@@ -184,4 +184,43 @@ defmodule InternalClients.Canvases.RequestFormatter do
 
       {:error, {:user, error}}
   end
+
+  defp stage_connections(params) do
+    Enum.map(from_params(params.spec, :connections), fn c ->
+      %API.Connection{
+        type: connection_type(c.type),
+        name: c.name,
+        filter_operator: filter_operator(c.filter_operator),
+        filters: connection_filters(c.filters)
+      }
+    end)
+  end
+
+  defp connection_type("STAGE"), do: API.Connection.Type.value(:TYPE_STAGE)
+  defp connection_type("EVENT_SOURCE"), do: API.Connection.Type.value(:TYPE_EVENT_SOURCE)
+  defp connection_type(_), do: API.Connection.Type.value(:TYPE_UNKNOWN)
+
+  defp filter_operator("AND"), do: API.Connection.FilterOperator.value(:FILTER_OPERATOR_AND)
+  defp filter_operator("OR"), do: API.Connection.FilterOperator.value(:FILTER_OPERATOR_OR)
+  defp filter_operator(_), do: API.Connection.FilterOperator.value(:FILTER_OPERATOR_AND)
+
+  defp connection_filters(filters) do
+    Enum.map(filters, fn f ->
+      %API.Connection.Filter{
+        type: filter_type(f.type),
+        data: filter_data(f.type, f)
+      }
+    end)
+  end
+
+  defp filter_type("DATA"), do: API.Connection.FilterType.value(:FILTER_TYPE_DATA)
+  defp filter_type(_), do: API.Connection.FilterType.value(:FILTER_TYPE_UNKNOWN)
+
+  defp filter_data("DATA", f) do
+    %API.Connection.DataFilter{
+      expression: f.data.expression
+    }
+  end
+
+  defp filter_data(_, _), do: nil
 end

@@ -216,24 +216,24 @@ defmodule PublicAPI.ApiSpec do
             %{verb: :get, plug: PublicAPI.Handlers.EventSources.List, opts: []},
             %{verb: :post, plug: PublicAPI.Handlers.EventSources.Create, opts: []}
           ]),
-        "/canvases/{id_or_name}/sources/{id_or_name}" =>
+        "/canvases/{canvas_id_or_name}/sources/{id_or_name}" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :get, plug: PublicAPI.Handlers.EventSources.Describe, opts: []}
           ]),
-        "/canvases/{id_or_name}/stages" =>
+        "/canvases/{canvas_id_or_name}/stages" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :get, plug: PublicAPI.Handlers.Stages.List, opts: []},
             %{verb: :post, plug: PublicAPI.Handlers.Stages.Create, opts: []}
           ]),
-        "/canvases/{id_or_name}/stages/{id_or_name}" =>
+        "/canvases/{canvas_id_or_name}/stages/{id_or_name}" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :get, plug: PublicAPI.Handlers.Stages.Describe, opts: []}
           ]),
-        "/canvases/{id_or_name}/stages/{id_or_name}/events" =>
+        "/canvases/{canvas_id_or_name}/stages/{id_or_name}/events" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :get, plug: PublicAPI.Handlers.Stages.ListEvents, opts: []}
           ]),
-        "/canvases/{id_or_name}/stages/{id_or_name}/events/{id}/approve" =>
+        "/canvases/{canvas_id_or_name}/stages/{id_or_name}/approve" =>
           OpenApiSpex.PathItem.from_routes([
             %{verb: :patch, plug: PublicAPI.Handlers.Stages.ApproveEvent, opts: []}
           ])

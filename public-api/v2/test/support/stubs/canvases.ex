@@ -103,12 +103,15 @@ defmodule Support.Stubs.Canvases do
   defmodule Grpc do
     def init do
       GrpcMock.stub(CanvasMock, :create_canvas, &__MODULE__.create_canvas/2)
+      GrpcMock.stub(CanvasMock, :create_event_source, &__MODULE__.create_event_source/2)
+      GrpcMock.stub(CanvasMock, :create_stage, &__MODULE__.create_stage/2)
       GrpcMock.stub(CanvasMock, :describe_canvas, &__MODULE__.describe_canvas/2)
       GrpcMock.stub(CanvasMock, :describe_event_source, &__MODULE__.describe_event_source/2)
       GrpcMock.stub(CanvasMock, :describe_stage, &__MODULE__.describe_stage/2)
       GrpcMock.stub(CanvasMock, :list_stages, &__MODULE__.list_stages/2)
       GrpcMock.stub(CanvasMock, :list_event_sources, &__MODULE__.list_event_sources/2)
       GrpcMock.stub(CanvasMock, :list_stage_events, &__MODULE__.list_stage_events/2)
+      GrpcMock.stub(CanvasMock, :approve_stage_event, &__MODULE__.approve_stage_event/2)
     end
 
     def describe_canvas(req, _call) do
@@ -184,7 +187,7 @@ defmodule Support.Stubs.Canvases do
 
     def approve_stage_event(req, _call) do
       DB.filter(:stage_events,
-        id: req.id,
+        id: req.event_id,
         stage_id: req.stage_id,
         org_id: req.organization_id,
         canvas_id: req.canvas_id
@@ -196,15 +199,22 @@ defmodule Support.Stubs.Canvases do
         [event] ->
           DB.update(
             :stage_events,
-            %{
-              id: event.id,
-              org_id: event.org_id,
-              canvas_id: event.canvas_id,
-              stage_id: event.stage_id,
-              api_model: Map.update(event.api_model, :approved_at, nil, DateTime.utc_now())
+            %{event |
+              approved_at: 1_549_885_252
             },
             id: event.id
           )
+
+          %InternalApi.Delivery.ApproveStageEventResponse{
+            event: %InternalApi.Delivery.StageEvent{
+              id: event.id,
+              source_id: event.source_id,
+              source_type: InternalApi.Delivery.Connection.Type.value(event.source_type),
+              state: InternalApi.Delivery.StageEvent.State.value(event.state),
+              created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+              approved_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+            }
+          }
       end
     end
 
@@ -242,6 +252,76 @@ defmodule Support.Stubs.Canvases do
 
         {:error, message} ->
           raise GRPC.RPCError, status: :not_found, message: message
+      end
+    end
+
+    def create_stage(req, _call) do
+      id = UUID.gen()
+      org_id = req.organization_id
+      canvas_id = req.canvas_id
+
+      DB.filter(:stages, org_id: req.organization_id, canvas_id: req.canvas_id, name: req.name)
+      |> case do
+        [] ->
+          stage = %InternalApi.Delivery.Stage{
+            id: id,
+            name: req.name,
+            organization_id: org_id,
+            canvas_id: canvas_id,
+            created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+            approval_required: req.approval_required,
+            connections: req.connections,
+            run_template: req.run_template
+          }
+
+          DB.insert(:stages, %{
+            id: id,
+            name: req.name,
+            org_id: org_id,
+            canvas_id: canvas_id,
+            api_model: stage
+          })
+
+          %InternalApi.Delivery.CreateStageResponse{
+            stage: stage
+          }
+
+        _ ->
+          raise GRPC.RPCError,
+            status: :already_exists,
+            message: "Stage #{req.name} already exists"
+      end
+    end
+
+    def create_event_source(req, _call) do
+      id = UUID.gen()
+      org_id = req.organization_id
+      canvas_id = req.canvas_id
+
+      DB.filter(:sources, org_id: req.organization_id, canvas_id: req.canvas_id, name: req.name)
+      |> case do
+        [] ->
+          DB.insert(:sources, %{
+            id: id,
+            name: req.name,
+            org_id: org_id,
+            canvas_id: canvas_id
+          })
+
+          %InternalApi.Delivery.CreateEventSourceResponse{
+            event_source: %InternalApi.Delivery.EventSource{
+              id: id,
+              name: req.name,
+              organization_id: org_id,
+              canvas_id: canvas_id,
+              created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+            }
+          }
+
+        _ ->
+          raise GRPC.RPCError,
+            status: :already_exists,
+            message: "Canvas #{req.name} already exists"
       end
     end
 

@@ -94,10 +94,10 @@ defmodule Router.Canvases.CreateTest do
     |> Map.put(:metadata, Map.put(default.metadata, :name, params.name))
   end
 
-  defp create_canvas(ctx, dashboard) do
+  defp create_canvas(ctx, canvas) do
     url = url() <> "/canvases"
 
-    body = Jason.encode!(dashboard)
+    body = Jason.encode!(canvas)
 
     HTTPoison.post(url, body, headers(ctx))
   end

@@ -162,17 +162,17 @@ defmodule PublicAPI.Router do
   match("/canvases/:id_or_name", via: :get, to: Canvases.Describe)
 
   match("/canvases/:canvas_id_or_name/sources", via: :get, to: EventSources.List)
-  # match("/canvases/:canvas_id_or_name/sources", via: :post, to: EventSources.Create)
+  match("/canvases/:canvas_id_or_name/sources", via: :post, to: EventSources.Create)
   match("/canvases/:canvas_id_or_name/sources/:id_or_name", via: :get, to: EventSources.Describe)
 
   match("/canvases/:canvas_id_or_name/stages", via: :get, to: Stages.List)
-  # match("/canvases/:canvas_id_or_name/stages", via: :post, to: Stages.Create)
+  match("/canvases/:canvas_id_or_name/stages", via: :post, to: Stages.Create)
   match("/canvases/:canvas_id_or_name/stages/:id_or_name", via: :get, to: Stages.Describe)
 
   match("/canvases/:canvas_id_or_name/stages/:id_or_name/events", via: :get, to: Stages.ListEvents)
 
-  match("/canvases/:canvas_id_or_name/stages/:id_or_name/events/:id/approve",
-    via: :get,
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name/approve",
+    via: :patch,
     to: Stages.ApproveEvent
   )
 
