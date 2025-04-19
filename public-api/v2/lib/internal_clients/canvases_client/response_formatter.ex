@@ -13,7 +13,7 @@ defmodule InternalClients.Canvases.ResponseFormatter do
   end
 
   def process_response({:ok, r = %API.CreateEventSourceResponse{}}) do
-    {:ok, r.event_source}
+    {:ok, r}
   end
 
   def process_response({:ok, r = %API.DescribeEventSourceResponse{}}) do

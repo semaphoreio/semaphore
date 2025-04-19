@@ -95,8 +95,7 @@ defmodule PublicAPI.Handlers.EventSources.Describe do
     |> get_resource()
     |> case do
       {:ok, source} ->
-        source
-        |> PublicAPI.Handlers.EventSources.Formatter.describe(ctx)
+        PublicAPI.Handlers.EventSources.Formatter.describe(ctx, source)
         |> set_response(conn)
 
       {:error, _} = error ->

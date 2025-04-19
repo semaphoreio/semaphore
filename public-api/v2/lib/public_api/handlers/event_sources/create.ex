@@ -2,6 +2,7 @@ defmodule PublicAPI.Handlers.EventSources.Create do
   @moduledoc false
 
   alias InternalClients.Canvases, as: CanvasesClient
+  alias PublicAPI.Handlers.EventSources.Formatter
   alias PublicAPI.Schemas
 
   import PublicAPI.Util.PlugContextHelper
@@ -92,9 +93,8 @@ defmodule PublicAPI.Handlers.EventSources.Create do
     })
     |> CanvasesClient.create_event_source()
     |> case do
-      {:ok, source} ->
-        source
-        |> PublicAPI.Handlers.EventSources.Formatter.describe(ctx)
+      {:ok, response} ->
+        Formatter.describe(ctx, response.event_source, response.key)
         |> set_response(conn)
 
       {:error, _} = error ->

@@ -21,6 +21,7 @@ defmodule PublicAPI.Schemas.EventSources.EventSource do
       kind: ResourceKind.schema(),
       metadata: %Schema{
         type: :object,
+        required: [:id, :name, :canvas, :organization, :timeline],
         description: "Metadata of the event sources, all fields are read only",
         properties: %{
           id: PublicAPI.Schemas.Common.ResourceId.schema(),
@@ -32,6 +33,19 @@ defmodule PublicAPI.Schemas.EventSources.EventSource do
             properties: %{
               created_at: PublicAPI.Schemas.Common.timestamp(),
               created_by: PublicAPI.Schemas.Common.Requester.schema()
+            }
+          },
+          status: %Schema{
+            type: :object,
+            nullable: true,
+            description: "Status of the event source",
+            properties: %{
+              key: %Schema{
+                type: :string,
+                nullable: true,
+                description: "Key used to sign the events",
+                example: "..."
+              }
             }
           }
         },
