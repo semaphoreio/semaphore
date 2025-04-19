@@ -17,6 +17,9 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Event payload can be up to 32k in size
+const MaxEventSize = 32 * 1024 * 1024
+
 type Server struct {
 	httpServer            *http.Server
 	encryptor             encryptor.Encryptor
@@ -121,8 +124,25 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//
+	// Only read up to the maximum event size we allow,
+	// and only proceed if payload is below that.
+	//
+	r.Body = http.MaxBytesReader(w, r.Body, MaxEventSize)
+	defer r.Body.Close()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		if _, ok := err.(*http.MaxBytesError); ok {
+			http.Error(
+				w,
+				fmt.Sprintf("Request body is too large - must be up to %d bytes", MaxEventSize),
+				http.StatusRequestEntityTooLarge,
+			)
+
+			return
+		}
+
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
 		return
 	}

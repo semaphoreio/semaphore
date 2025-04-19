@@ -45,6 +45,7 @@ func (e *StageEvent) Approve(requesterID string) error {
 
 	return database.Conn().
 		Model(e).
+		Clauses(clause.Returning{}).
 		Update("state", StageEventPending).
 		Update("approved_at", &now).
 		Update("approved_by", requesterID).

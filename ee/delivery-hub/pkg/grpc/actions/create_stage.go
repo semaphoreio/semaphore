@@ -67,25 +67,15 @@ func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
 	}
 
 	switch in.Type {
-	case pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW:
+	case pb.RunTemplate_TYPE_SEMAPHORE:
 		return &models.RunTemplate{
-			Type: models.RunTemplateTypeSemaphoreWorkflow,
-			SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
-				ProjectID:    in.SemaphoreWorkflow.ProjectId,
-				Branch:       in.SemaphoreWorkflow.Branch,
-				PipelineFile: in.SemaphoreWorkflow.PipelineFile,
-			},
-		}, nil
-
-	case pb.RunTemplate_TYPE_SEMAPHORE_TASK:
-		return &models.RunTemplate{
-			Type: models.RunTemplateTypeSemaphoreTask,
-			SemaphoreTask: &models.SemaphoreTaskTemplate{
-				ProjectID:    in.SemaphoreTask.ProjectId,
-				TaskID:       in.SemaphoreTask.TaskId,
-				Branch:       in.SemaphoreTask.Branch,
-				PipelineFile: in.SemaphoreTask.PipelineFile,
-				Parameters:   in.SemaphoreTask.Parameters,
+			Type: models.RunTemplateTypeSemaphore,
+			Semaphore: &models.SemaphoreRunTemplate{
+				ProjectID:    in.Semaphore.ProjectId,
+				Branch:       in.Semaphore.Branch,
+				PipelineFile: in.Semaphore.PipelineFile,
+				Parameters:   in.Semaphore.Parameters,
+				TaskID:       in.Semaphore.TaskId,
 			},
 		}, nil
 
@@ -135,14 +125,14 @@ func validateFilters(in []*pb.Connection_Filter) ([]models.StageConnectionFilter
 
 func validateFilter(filter *pb.Connection_Filter) (*models.StageConnectionFilter, error) {
 	switch filter.Type {
-	case pb.Connection_FILTER_TYPE_EXPRESSION:
-		return validateExpressionFilter(filter.Expression)
+	case pb.Connection_FILTER_TYPE_DATA:
+		return validateDataFilter(filter.Data)
 	default:
 		return nil, fmt.Errorf("invalid filter type: %s", filter.Type)
 	}
 }
 
-func validateExpressionFilter(filter *pb.Connection_ExpressionFilter) (*models.StageConnectionFilter, error) {
+func validateDataFilter(filter *pb.Connection_DataFilter) (*models.StageConnectionFilter, error) {
 	if filter == nil {
 		return nil, fmt.Errorf("no filter provided")
 	}
@@ -151,39 +141,12 @@ func validateExpressionFilter(filter *pb.Connection_ExpressionFilter) (*models.S
 		return nil, fmt.Errorf("expression is empty")
 	}
 
-	variables, err := validateExpressionVariables(filter.Variables)
-	if err != nil {
-		return nil, fmt.Errorf("invalid variables: %v", err)
-	}
-
 	return &models.StageConnectionFilter{
-		Type: models.FilterTypeExpression,
-		Expression: &models.ExpressionFilter{
+		Type: models.FilterTypeData,
+		Data: &models.DataFilter{
 			Expression: filter.Expression,
-			Variables:  variables,
 		},
 	}, nil
-}
-
-func validateExpressionVariables(in []*pb.Connection_ExpressionFilter_Variable) ([]models.ExpressionVariable, error) {
-	variables := make([]models.ExpressionVariable, len(in))
-
-	for i, v := range in {
-		if v.Name == "" {
-			return nil, fmt.Errorf("variable name is empty")
-		}
-
-		if v.Path == "" {
-			return nil, fmt.Errorf("path for variable '%s' is empty", v.Name)
-		}
-
-		variables[i] = models.ExpressionVariable{
-			Name: v.Name,
-			Path: v.Path,
-		}
-	}
-
-	return variables, nil
 }
 
 func protoToFilterOperator(in pb.Connection_FilterOperator) string {
@@ -221,20 +184,11 @@ func serializeFilters(in []models.StageConnectionFilter) ([]*pb.Connection_Filte
 
 func serializeFilter(in models.StageConnectionFilter) (*pb.Connection_Filter, error) {
 	switch in.Type {
-	case models.FilterTypeExpression:
-		vars := []*pb.Connection_ExpressionFilter_Variable{}
-		for _, v := range in.Expression.Variables {
-			vars = append(vars, &pb.Connection_ExpressionFilter_Variable{
-				Name: v.Name,
-				Path: v.Path,
-			})
-		}
-
+	case models.FilterTypeData:
 		return &pb.Connection_Filter{
-			Type: pb.Connection_FILTER_TYPE_EXPRESSION,
-			Expression: &pb.Connection_ExpressionFilter{
-				Expression: in.Expression.Expression,
-				Variables:  vars,
+			Type: pb.Connection_FILTER_TYPE_DATA,
+			Data: &pb.Connection_DataFilter{
+				Expression: in.Data.Expression,
 			},
 		}, nil
 	default:
@@ -364,25 +318,15 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 
 func serializeRunTemplate(runTemplate models.RunTemplate) (*pb.RunTemplate, error) {
 	switch runTemplate.Type {
-	case models.RunTemplateTypeSemaphoreWorkflow:
+	case models.RunTemplateTypeSemaphore:
 		return &pb.RunTemplate{
-			Type: pb.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
-			SemaphoreWorkflow: &pb.WorkflowTemplate{
-				ProjectId:    runTemplate.SemaphoreWorkflow.ProjectID,
-				Branch:       runTemplate.SemaphoreWorkflow.Branch,
-				PipelineFile: runTemplate.SemaphoreWorkflow.PipelineFile,
-			},
-		}, nil
-
-	case models.RunTemplateTypeSemaphoreTask:
-		return &pb.RunTemplate{
-			Type: pb.RunTemplate_TYPE_SEMAPHORE_TASK,
-			SemaphoreTask: &pb.TaskTemplate{
-				ProjectId:    runTemplate.SemaphoreTask.ProjectID,
-				TaskId:       runTemplate.SemaphoreTask.TaskID,
-				Branch:       runTemplate.SemaphoreTask.Branch,
-				PipelineFile: runTemplate.SemaphoreTask.PipelineFile,
-				Parameters:   runTemplate.SemaphoreTask.Parameters,
+			Type: pb.RunTemplate_TYPE_SEMAPHORE,
+			Semaphore: &pb.SemaphoreRunTemplate{
+				ProjectId:    runTemplate.Semaphore.ProjectID,
+				Branch:       runTemplate.Semaphore.Branch,
+				PipelineFile: runTemplate.Semaphore.PipelineFile,
+				Parameters:   runTemplate.Semaphore.Parameters,
+				TaskId:       runTemplate.Semaphore.TaskID,
 			},
 		}, nil
 

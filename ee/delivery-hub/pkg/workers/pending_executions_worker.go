@@ -59,12 +59,12 @@ func (w *PendingExecutionsWorker) Tick() error {
 // There is an issue here where, if we are having issues updating the state of the execution in the database,
 // we might end up creating more executions than we should.
 func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *models.Stage, execution models.StageExecution) error {
-	event, err := execution.GetEvent()
+	eventData, err := execution.GetEventData()
 	if err != nil {
-		return fmt.Errorf("error getting event: %v", err)
+		return fmt.Errorf("error getting event data: %v", err)
 	}
 
-	executionID, err := w.StartExecution(logger, stage, stage.RunTemplate.Data(), event)
+	executionID, err := w.StartExecution(logger, stage, eventData)
 	if err != nil {
 		return fmt.Errorf("error starting execution: %v", err)
 	}
@@ -80,52 +80,26 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 }
 
 // TODO: implement some retry and give up mechanism
-func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, runTemplate models.RunTemplate, event map[string]any) (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
+func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, e map[string]any) (string, error) {
+	switch stage.RunTemplate.Data().Type {
+	case models.RunTemplateTypeSemaphore:
+		//
+		// If a task ID is specified, we trigger a task instead of a plain workflow.
+		//
+		if stage.RunTemplate.Data().Semaphore.TaskID != "" {
+			return w.TriggerSemaphoreTask(logger, stage, e)
+		}
 
-	switch runTemplate.Type {
-	case models.RunTemplateTypeSemaphoreWorkflow:
-		return w.StartSemaphoreWorkflow(ctx, logger, stage, runTemplate.SemaphoreWorkflow)
-	case models.RunTemplateTypeSemaphoreTask:
-		return w.TriggerSemaphoreTask(ctx, logger, stage, runTemplate.SemaphoreTask, event)
+		return w.StartPlainWorkflow(logger, stage, e)
 	default:
 		return "", fmt.Errorf("unknown run template type")
 	}
-
 }
 
-func (w *PendingExecutionsWorker) StartSemaphoreWorkflow(ctx context.Context, l *log.Entry, s *models.Stage, t *models.SemaphoreWorkflowTemplate) (string, error) {
-	conn, err := grpc.NewClient(w.RepoProxyURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return "", fmt.Errorf("error connecting to repo proxy API: %v", err)
-	}
+func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage, eventData map[string]any) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
-	defer conn.Close()
-
-	// TODO: call RBAC API to check if s.CreatedBy can create workflow
-
-	client := repoproxyproto.NewRepoProxyServiceClient(conn)
-	res, err := client.Create(ctx, &repoproxyproto.CreateRequest{
-		ProjectId:      t.ProjectID,
-		RequestToken:   uuid.New().String(),
-		RequesterId:    s.CreatedBy.String(),
-		DefinitionFile: t.PipelineFile,
-		TriggeredBy:    wfproto.TriggeredBy_API,
-		Git: &repoproxyproto.CreateRequest_Git{
-			Reference: "refs/heads/" + t.Branch,
-		},
-	})
-
-	if err != nil {
-		return "", fmt.Errorf("error calling repo proxy API: %v", err)
-	}
-
-	l.Infof("Semaphore workflow created: workflow=%s", res.WorkflowId)
-	return res.WorkflowId, nil
-}
-
-func (w *PendingExecutionsWorker) TriggerSemaphoreTask(ctx context.Context, l *log.Entry, s *models.Stage, t *models.SemaphoreTaskTemplate, event map[string]any) (string, error) {
 	conn, err := grpc.NewClient(w.SchedulerURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return "", fmt.Errorf("error connecting to task API: %v", err)
@@ -134,14 +108,16 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(ctx context.Context, l *l
 	defer conn.Close()
 
 	// TODO: call RBAC API to check if s.CreatedBy can create workflow
+	// TODO: check if eventData is using DSL and if so, resolve everything there.
 
+	template := stage.RunTemplate.Data().Semaphore
 	client := schedulerproto.NewPeriodicServiceClient(conn)
-	res, err := client.RunNow(context.Background(), &schedulerproto.RunNowRequest{
-		Id:              t.TaskID,
-		Requester:       s.CreatedBy.String(),
-		Branch:          t.Branch,
-		PipelineFile:    t.PipelineFile,
-		ParameterValues: buildParameters(t.Parameters),
+	res, err := client.RunNow(ctx, &schedulerproto.RunNowRequest{
+		Id:              template.TaskID,
+		Requester:       stage.CreatedBy.String(),
+		Branch:          template.Branch,
+		PipelineFile:    template.PipelineFile,
+		ParameterValues: buildParameters(template.Parameters),
 	})
 
 	if err != nil {
@@ -152,8 +128,43 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(ctx context.Context, l *l
 		return "", fmt.Errorf("task API returned %v: %s", res.Status.Code, res.Status.Message)
 	}
 
-	l.Infof("Semaphore task triggered - workflow=%s", res.Trigger.ScheduledWorkflowId)
+	logger.Infof("Semaphore task triggered - workflow=%s", res.Trigger.ScheduledWorkflowId)
 	return res.Trigger.ScheduledWorkflowId, nil
+}
+
+func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *models.Stage, eventData map[string]any) (string, error) {
+	template := stage.RunTemplate.Data().Semaphore
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := grpc.NewClient(w.RepoProxyURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return "", fmt.Errorf("error connecting to repo proxy API: %v", err)
+	}
+
+	defer conn.Close()
+
+	// TODO: call RBAC API to check if s.CreatedBy can create workflow
+	// TODO: check if eventData is using DSL and if so, resolve everything there.
+
+	client := repoproxyproto.NewRepoProxyServiceClient(conn)
+	res, err := client.Create(ctx, &repoproxyproto.CreateRequest{
+		ProjectId:      template.ProjectID,
+		RequestToken:   uuid.New().String(),
+		RequesterId:    stage.CreatedBy.String(),
+		DefinitionFile: template.PipelineFile,
+		TriggeredBy:    wfproto.TriggeredBy_API,
+		Git: &repoproxyproto.CreateRequest_Git{
+			Reference: "refs/heads/" + template.Branch,
+		},
+	})
+
+	if err != nil {
+		return "", fmt.Errorf("error calling repo proxy API: %v", err)
+	}
+
+	logger.Infof("Semaphore workflow created: workflow=%s", res.WorkflowId)
+	return res.WorkflowId, nil
 }
 
 func buildParameters(parameters map[string]string) []*schedulerproto.ParameterValue {

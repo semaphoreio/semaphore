@@ -1,9 +1,10 @@
 package public
 
 import (
+	"bytes"
+	"crypto/rand"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -40,7 +41,7 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 	eventSource, err := canvas.CreateEventSource("github-repo-1", []byte("my-key"))
 	require.NoError(t, err)
 
-	validEvent := `{"action": "created"}`
+	validEvent := []byte(`{"action": "created"}`)
 	validSignature := "sha256=ee9f99fa8d06b44ffc69ee1c2a7e32e848e8b40536bb5e8405dabb3bbbcaf619"
 	validURL := "/sources/" + eventSource.ID.String() + "/github"
 
@@ -162,8 +163,6 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 		})
 
 		assert.Equal(t, 200, response.Code)
-
-		// event is stored in database
 		events, err := models.ListEventsBySourceID(eventSource.ID)
 		require.NoError(t, err)
 		require.Len(t, events, 1)
@@ -172,19 +171,33 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 		assert.Equal(t, []byte(`{"action": "created"}`), []byte(events[0].Raw))
 		assert.NotNil(t, events[0].ReceivedAt)
 	})
+
+	t.Run("event data is limited to 32k", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       orgID.String(),
+			body:        generateBigBody(t),
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, response.Code)
+		assert.Equal(t, "Request body is too large - must be up to 33554432 bytes\n", response.Body.String())
+	})
 }
 
 type requestParams struct {
 	method      string
 	path        string
 	orgID       string
-	body        string
+	body        []byte
 	signature   string
 	contentType string
 }
 
 func execRequest(server *Server, params requestParams) *httptest.ResponseRecorder {
-	req, _ := http.NewRequest(params.method, params.path, strings.NewReader(params.body))
+	req, _ := http.NewRequest(params.method, params.path, bytes.NewReader(params.body))
 
 	if params.contentType != "" {
 		req.Header.Add("Content-Type", params.contentType)
@@ -201,4 +214,11 @@ func execRequest(server *Server, params requestParams) *httptest.ResponseRecorde
 	res := httptest.NewRecorder()
 	server.Router.ServeHTTP(res, req)
 	return res
+}
+
+func generateBigBody(t *testing.T) []byte {
+	b := make([]byte, 64*1024*1024)
+	_, err := rand.Read(b)
+	require.NoError(t, err)
+	return b
 }

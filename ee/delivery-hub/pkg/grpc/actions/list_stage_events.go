@@ -91,26 +91,30 @@ func protoToState(state pb.StageEvent_State) (string, error) {
 func serializeStageEvents(in []models.StageEvent) []*pb.StageEvent {
 	out := []*pb.StageEvent{}
 	for _, i := range in {
-		e := &pb.StageEvent{
-			Id:         i.ID.String(),
-			State:      stateToProto(i.State),
-			CreatedAt:  timestamppb.New(*i.CreatedAt),
-			SourceId:   i.SourceID.String(),
-			SourceType: pb.Connection_TYPE_EVENT_SOURCE,
-		}
-
-		if i.ApprovedAt != nil {
-			e.ApprovedAt = timestamppb.New(*i.ApprovedAt)
-		}
-
-		if i.ApprovedBy != nil {
-			e.ApprovedBy = i.ApprovedBy.String()
-		}
-
-		out = append(out, e)
+		out = append(out, serializeStageEvent(i))
 	}
 
 	return out
+}
+
+func serializeStageEvent(in models.StageEvent) *pb.StageEvent {
+	e := pb.StageEvent{
+		Id:         in.ID.String(),
+		State:      stateToProto(in.State),
+		CreatedAt:  timestamppb.New(*in.CreatedAt),
+		SourceId:   in.SourceID.String(),
+		SourceType: pb.Connection_TYPE_EVENT_SOURCE,
+	}
+
+	if in.ApprovedAt != nil {
+		e.ApprovedAt = timestamppb.New(*in.ApprovedAt)
+	}
+
+	if in.ApprovedBy != nil {
+		e.ApprovedBy = in.ApprovedBy.String()
+	}
+
+	return &e
 }
 
 func stateToProto(state string) pb.StageEvent_State {

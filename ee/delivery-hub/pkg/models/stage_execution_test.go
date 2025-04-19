@@ -31,7 +31,7 @@ func Test__StageExecution(t *testing.T) {
 	t.Run("can get event data for execution", func(t *testing.T) {
 		stageExecution, err := CreateStageExecution(stage.ID, stageEvent.ID)
 		require.NoError(t, err)
-		raw, err := stageExecution.GetEvent()
+		raw, err := stageExecution.GetEventData()
 		require.NoError(t, err)
 		require.Equal(t, map[string]any{"hello": "world"}, raw)
 	})

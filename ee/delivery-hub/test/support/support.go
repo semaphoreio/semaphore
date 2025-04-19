@@ -85,11 +85,12 @@ func CreateExecution(t *testing.T, source *models.EventSource, stage *models.Sta
 
 func RunTemplate() models.RunTemplate {
 	return models.RunTemplate{
-		Type: models.RunTemplateTypeSemaphoreWorkflow,
-		SemaphoreWorkflow: &models.SemaphoreWorkflowTemplate{
+		Type: models.RunTemplateTypeSemaphore,
+		Semaphore: &models.SemaphoreRunTemplate{
 			ProjectID:    "demo-project",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
+			Parameters:   map[string]string{},
 		},
 	}
 }
@@ -100,8 +101,8 @@ func WorkflowRunTemplate() models.RunTemplate {
 
 func TaskRunTemplate() models.RunTemplate {
 	return models.RunTemplate{
-		Type: models.RunTemplateTypeSemaphoreTask,
-		SemaphoreTask: &models.SemaphoreTaskTemplate{
+		Type: models.RunTemplateTypeSemaphore,
+		Semaphore: &models.SemaphoreRunTemplate{
 			ProjectID:    "demo-project",
 			TaskID:       "demo-task",
 			Branch:       "main",
@@ -116,11 +117,12 @@ func TaskRunTemplate() models.RunTemplate {
 
 func ProtoRunTemplate() *protos.RunTemplate {
 	return &protos.RunTemplate{
-		Type: protos.RunTemplate_TYPE_SEMAPHORE_WORKFLOW,
-		SemaphoreWorkflow: &protos.WorkflowTemplate{
+		Type: protos.RunTemplate_TYPE_SEMAPHORE,
+		Semaphore: &protos.SemaphoreRunTemplate{
 			ProjectId:    "test",
 			Branch:       "main",
 			PipelineFile: ".semaphore/semaphore.yml",
+			Parameters:   map[string]string{},
 		},
 	}
 }

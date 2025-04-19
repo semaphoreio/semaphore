@@ -9,8 +9,7 @@ import (
 )
 
 const (
-	RunTemplateTypeSemaphoreWorkflow = "semaphore-workflow"
-	RunTemplateTypeSemaphoreTask     = "semaphore-task"
+	RunTemplateTypeSemaphore = "semaphore"
 )
 
 type Stage struct {
@@ -29,28 +28,17 @@ type RunTemplate struct {
 	Type string `json:"type"`
 
 	//
-	// Triggers a workflow run on an existing Semaphore project.
+	// Triggers a workflow on an existing Semaphore project/task.
 	//
-	SemaphoreWorkflow *SemaphoreWorkflowTemplate `json:"semaphore_workflow,omitempty"`
-
-	//
-	// Triggers a task on an existing Semaphore project.
-	//
-	SemaphoreTask *SemaphoreTaskTemplate `json:"semaphore_task,omitempty"`
+	Semaphore *SemaphoreRunTemplate `json:"semaphore_workflow,omitempty"`
 }
 
-type SemaphoreWorkflowTemplate struct {
-	ProjectID    string `json:"project_id"`
-	Branch       string `json:"branch"`
-	PipelineFile string `json:"pipeline_file"`
-}
-
-type SemaphoreTaskTemplate struct {
+type SemaphoreRunTemplate struct {
 	ProjectID    string            `json:"project_id"`
-	TaskID       string            `json:"task_id"`
 	Branch       string            `json:"branch"`
 	PipelineFile string            `json:"pipeline_file"`
 	Parameters   map[string]string `json:"parameters"`
+	TaskID       string            `json:"task_id"`
 }
 
 func FindStageByIDOnly(id uuid.UUID) (*Stage, error) {

@@ -44,7 +44,7 @@ type StageExecution struct {
 	ReferenceID string
 }
 
-func (e *StageExecution) GetEvent() (map[string]any, error) {
+func (e *StageExecution) GetEventData() (map[string]any, error) {
 	var data struct {
 		Raw datatypes.JSON
 	}

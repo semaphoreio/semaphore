@@ -66,42 +66,6 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "invalid connection: event source source-does-not-exist not found", s.Message())
 	})
 
-	t.Run("stage with invalid connection filter expression variables -> error", func(t *testing.T) {
-		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
-			OrganizationId: r.Org.String(),
-			CanvasId:       r.Canvas.ID.String(),
-			Name:           "test",
-			RequesterId:    r.User.String(),
-			RunTemplate:    support.ProtoRunTemplate(),
-			Connections: []*protos.Connection{
-				{
-					Name:           r.Source.Name,
-					Type:           protos.Connection_TYPE_EVENT_SOURCE,
-					FilterOperator: protos.Connection_FILTER_OPERATOR_AND,
-					Filters: []*protos.Connection_Filter{
-						{
-							Type: protos.Connection_FILTER_TYPE_EXPRESSION,
-							Expression: &protos.Connection_ExpressionFilter{
-								Expression: "true",
-								Variables: []*protos.Connection_ExpressionFilter_Variable{
-									{
-										Name: "",
-										Path: "test",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		})
-
-		s, ok := status.FromError(err)
-		assert.True(t, ok)
-		assert.Equal(t, codes.InvalidArgument, s.Code())
-		assert.Equal(t, "invalid filter [0]: invalid variables: variable name is empty", s.Message())
-	})
-
 	t.Run("stage with connection with filters", func(t *testing.T) {
 		runTemplate := support.ProtoRunTemplate()
 		res, err := CreateStage(context.Background(), &protos.CreateStageRequest{
@@ -116,15 +80,9 @@ func Test__CreateStage(t *testing.T) {
 					Type: protos.Connection_TYPE_EVENT_SOURCE,
 					Filters: []*protos.Connection_Filter{
 						{
-							Type: protos.Connection_FILTER_TYPE_EXPRESSION,
-							Expression: &protos.Connection_ExpressionFilter{
+							Type: protos.Connection_FILTER_TYPE_DATA,
+							Data: &protos.Connection_DataFilter{
 								Expression: "test == 12",
-								Variables: []*protos.Connection_ExpressionFilter_Variable{
-									{
-										Name: "test",
-										Path: "test",
-									},
-								},
 							},
 						},
 					},

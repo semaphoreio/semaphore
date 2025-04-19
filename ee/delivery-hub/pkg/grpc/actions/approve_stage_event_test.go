@@ -79,7 +79,7 @@ func Test__ApproveStageEvent(t *testing.T) {
 		assert.Equal(t, "event not found", s.Message())
 	})
 
-	t.Run("stage with stage events -> list", func(t *testing.T) {
+	t.Run("stage with stage events -> approves and returns event", func(t *testing.T) {
 		res, err := ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
 			OrganizationId: r.Canvas.OrganizationID.String(),
 			CanvasId:       r.Canvas.ID.String(),
@@ -90,5 +90,12 @@ func Test__ApproveStageEvent(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, res)
+		require.NotNil(t, res.Event)
+		assert.Equal(t, event.ID.String(), res.Event.Id)
+		assert.Equal(t, r.Source.ID.String(), res.Event.SourceId)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, res.Event.SourceType)
+		assert.Equal(t, protos.StageEvent_PENDING, res.Event.State)
+		assert.NotNil(t, res.Event.CreatedAt)
+		assert.NotNil(t, res.Event.ApprovedAt)
 	})
 }

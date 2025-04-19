@@ -13,14 +13,8 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a == 1 && b == 2`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-							{Name: "b", Path: "b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1 && b == 2`},
 				},
 			}),
 		}
@@ -36,14 +30,8 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a == 1 && b == 2`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-							{Name: "b", Path: "b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1 && b == 2`},
 				},
 			}),
 		}
@@ -59,14 +47,8 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a.b == 2 && b == 2`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-							{Name: "b", Path: "a.b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a.b == 2`},
 				},
 			}),
 		}
@@ -82,13 +64,8 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `1 in a`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `1 in a`},
 				},
 			}),
 		}
@@ -104,42 +81,15 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a.b == 2 && b == 2`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-							{Name: "b", Path: "a.b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a.b == 2`},
 				},
 			}),
 		}
 
 		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`)}
 		_, err := conn.Accept(event)
-		require.ErrorContains(t, err, "key 'a' is not a map")
-	})
-
-	t.Run("single expression filter with missing variable -> error", func(t *testing.T) {
-		conn := StageConnection{
-			FilterOperator: FilterOperatorAnd,
-			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
-				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a == 1 && b == 2`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-						},
-					},
-				},
-			}),
-		}
-
-		event := &Event{Raw: []byte(`{"a": 1, "b": 3}`)}
-		_, err := conn.Accept(event)
-		require.ErrorContains(t, err, "unknown name b")
+		require.ErrorContains(t, err, "error compiling expression: type float64 has no field b")
 	})
 
 	t.Run("multiple expression filters with AND", func(t *testing.T) {
@@ -147,22 +97,12 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a == 1`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1`},
 				},
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `b == 3`,
-						Variables: []ExpressionVariable{
-							{Name: "b", Path: "b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `b == 3`},
 				},
 			}),
 		}
@@ -178,22 +118,12 @@ func Test__StageConnectionFilter(t *testing.T) {
 			FilterOperator: FilterOperatorOr,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `a == 1`,
-						Variables: []ExpressionVariable{
-							{Name: "a", Path: "a"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1`},
 				},
 				{
-					Type: FilterTypeExpression,
-					Expression: &ExpressionFilter{
-						Expression: `b == 3`,
-						Variables: []ExpressionVariable{
-							{Name: "b", Path: "b"},
-						},
-					},
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `b == 3`},
 				},
 			}),
 		}

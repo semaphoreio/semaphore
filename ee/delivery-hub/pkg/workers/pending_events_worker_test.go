@@ -147,13 +147,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 				FilterOperator: models.FilterOperatorAnd,
 				Filters: []models.StageConnectionFilter{
 					{
-						Type: models.FilterTypeExpression,
-						Expression: &models.ExpressionFilter{
+						Type: models.FilterTypeData,
+						Data: &models.DataFilter{
 							Expression: "a == 1 && b == 2",
-							Variables: []models.ExpressionVariable{
-								{Name: "a", Path: "a"},
-								{Name: "b", Path: "b"},
-							},
 						},
 					},
 				},
@@ -169,13 +165,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 				FilterOperator: models.FilterOperatorAnd,
 				Filters: []models.StageConnectionFilter{
 					{
-						Type: models.FilterTypeExpression,
-						Expression: &models.ExpressionFilter{
+						Type: models.FilterTypeData,
+						Data: &models.DataFilter{
 							Expression: "a == 0 && b == 0",
-							Variables: []models.ExpressionVariable{
-								{Name: "a", Path: "a"},
-								{Name: "b", Path: "b"},
-							},
 						},
 					},
 				},

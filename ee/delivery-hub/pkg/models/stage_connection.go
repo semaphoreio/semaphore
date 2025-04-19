@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	FilterTypeExpression = "expression"
-	FilterOperatorAnd    = "and"
-	FilterOperatorOr     = "or"
+	FilterTypeData    = "data"
+	FilterOperatorAnd = "and"
+	FilterOperatorOr  = "or"
 )
 
 type StageConnection struct {
@@ -74,9 +74,8 @@ func (c *StageConnection) any(event *Event) (bool, error) {
 }
 
 type StageConnectionFilter struct {
-	Type       string
-	Expression *ExpressionFilter
-	Time       *TimeFilter
+	Type string
+	Data *DataFilter
 }
 
 func (f *StageConnectionFilter) EvaluateExpression(event *Event) (bool, error) {
@@ -93,19 +92,19 @@ func (f *StageConnectionFilter) EvaluateExpression(event *Event) (bool, error) {
 		"ctx": ctx,
 	}
 
-	for _, variable := range f.Expression.Variables {
-		value, err := event.GetNestedField(variable.Path)
-		if err != nil {
-			return false, err
-		}
+	data, err := event.GetData()
+	if err != nil {
+		return false, err
+	}
 
-		variables[variable.Name] = value
+	for key, value := range data {
+		variables[key] = value
 	}
 
 	//
 	// Compile and run our expression.
 	//
-	program, err := expr.Compile(f.Expression.Expression,
+	program, err := expr.Compile(f.Data.Expression,
 		expr.Env(variables),
 		expr.AsBool(),
 		expr.WithContext("ctx"),
@@ -134,7 +133,7 @@ func (f *StageConnectionFilter) EvaluateExpression(event *Event) (bool, error) {
 
 func (f *StageConnectionFilter) Evaluate(event *Event) (bool, error) {
 	switch f.Type {
-	case FilterTypeExpression:
+	case FilterTypeData:
 		return f.EvaluateExpression(event)
 
 	default:
@@ -142,19 +141,8 @@ func (f *StageConnectionFilter) Evaluate(event *Event) (bool, error) {
 	}
 }
 
-type ExpressionFilter struct {
+type DataFilter struct {
 	Expression string
-	Variables  []ExpressionVariable
-}
-
-type ExpressionVariable struct {
-	Name string
-	Path string
-}
-
-type TimeFilter struct {
-	Start string
-	Stop  string
 }
 
 func ListConnectionsForSource(sourceID uuid.UUID, connectionType string) ([]StageConnection, error) {

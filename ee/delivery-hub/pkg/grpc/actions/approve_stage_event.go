@@ -52,5 +52,7 @@ func ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*
 
 	logging.ForStage(stage).Infof("event %s approved", event.ID)
 
-	return &pb.ApproveStageEventResponse{}, nil
+	return &pb.ApproveStageEventResponse{
+		Event: serializeStageEvent(*event),
+	}, nil
 }
