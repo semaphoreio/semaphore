@@ -175,6 +175,8 @@ Parameters:
 
 - `project_id` (**required**) - ID of a project.
 - `branch_name` (*optional*) - Name of branch (used as a filter).
+- `created_after` (*optional*) - Only workflows created after this Unix timestamp will be returned.
+- `created_before` (*optional*) - Only workflows created before this Unix timestamp will be returned.
 
 Response:
 
@@ -184,8 +186,12 @@ HTTP status: 200
 [
   {
     "wf_id": "a99a75c3-f921-4fa9-a43f-69b2cede6274",
+    "triggered_by": 1,
+    "rerun_of": "",
     "requester_id": "fcd7fe34-f73f-4686-821b-ce02cb970b22",
+    "repository_id": "4ac16f29-43d2-4695-bd4e-d851563a350c",
     "project_id": "c394d20b-b3c6-4c90-b743-a9a65fa95a78",
+    "organization_id": "f3c1a7e9-8b6d-4b1a-b1ef-7d2a4f65c931",
     "initial_ppl_id": "e1a678ba-ed2d-412f-b350-7333579bb0d3",
     "hook_id": "4a1d3cf7-c3d5-42ec-aa22-c31dffa9f05d",
     "created_at": {
@@ -198,8 +204,12 @@ HTTP status: 200
   },
   {
     "wf_id": "e08a7a60-413c-4224-a208-9c67302d3ba1",
+    "triggered_by": 1,
+    "rerun_of": "",
     "requester_id": "fcd7fe34-f73f-4686-821b-ce02cb970b22",
+    "repository_id": "4ac16f29-43d2-4695-bd4e-d851563a350c",
     "project_id": "c394d20b-b3c6-4c90-b743-a9a65fa95a78",
+    "organization_id": "f3c1a7e9-8b6d-4b1a-b1ef-7d2a4f65c931",
     "initial_ppl_id": "64dc1837-aaad-4907-a7db-aedfe091a987",
     "hook_id": "84de6482-8f5b-4f31-996f-528b6d8fa771",
     "created_at": {
@@ -217,7 +227,7 @@ Example:
 
 ```shell
 curl -i -H "Authorization: Token {api_token}" \
-     "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows\?project_id\=:project_id"
+     "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows?project_id=:project_id"
 ```
 
 ### Rerun a workflow
@@ -246,7 +256,7 @@ Example:
 
 ```shell
 curl -i -X POST -H "Authorization: Token {api_token}" \
-        "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows/:workflow_id/reschedule\?request_token\=:request_token"
+        "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows/:workflow_id/reschedule?request_token=:request_token"
 ```
 
 ### Stop a workflow
