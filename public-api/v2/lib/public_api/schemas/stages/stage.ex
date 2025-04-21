@@ -22,6 +22,7 @@ defmodule PublicAPI.Schemas.Stages.Stage do
       metadata: %Schema{
         type: :object,
         description: "Metadata of the stages, all fields are read only",
+        required: [:name, :canvas],
         properties: %{
           id: PublicAPI.Schemas.Common.ResourceId.schema(),
           name: PublicAPI.Schemas.Common.Name.schema(),
@@ -35,13 +36,12 @@ defmodule PublicAPI.Schemas.Stages.Stage do
             }
           }
         },
-        readOnly: true,
-        required: [:id, :organization, :canvas, :name, :timeline]
+        readOnly: true
       },
       spec: %Schema{
         type: :object,
         description: "Specification of the stage",
-        required: [:approval_required, :connections],
+        required: [:approval_required, :connections, :run],
         properties: %{
           approval_required: %Schema{
             type: :boolean,

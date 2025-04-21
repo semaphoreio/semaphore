@@ -35,7 +35,7 @@ defmodule PublicAPI.Schemas.Canvases.Canvas do
           }
         },
         readOnly: true,
-        required: [:id, :organization, :name, :timeline]
+        required: [:name]
       },
 
       #

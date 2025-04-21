@@ -14,6 +14,7 @@ defmodule PublicAPI.Schemas.Stages.RunTemplate do
       type: %Schema{
         type: :string,
         enum: ~w(SEMAPHORE),
+        default: "SEMAPHORE",
         description: "The type of execution to create"
       },
       semaphore: PublicAPI.Schemas.Stages.RunTemplateSemaphore.schema()

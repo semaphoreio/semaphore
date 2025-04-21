@@ -21,7 +21,7 @@ defmodule PublicAPI.Schemas.EventSources.EventSource do
       kind: ResourceKind.schema(),
       metadata: %Schema{
         type: :object,
-        required: [:id, :name, :canvas, :organization, :timeline],
+        required: [:name, :canvas],
         description: "Metadata of the event sources, all fields are read only",
         properties: %{
           id: PublicAPI.Schemas.Common.ResourceId.schema(),
@@ -50,7 +50,6 @@ defmodule PublicAPI.Schemas.EventSources.EventSource do
           }
         },
         readOnly: true,
-        required: [:id, :organization, :canvas, :name, :timeline]
       },
 
       #

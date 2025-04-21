@@ -10,6 +10,7 @@ defmodule PublicAPI.Schemas.Stages.RunTemplateSemaphore do
     type: :object,
     nullable: true,
     description: "A run template for triggering Semaphore workflows and tasks",
+    required: [:project_id, :branch, :pipeline_file],
     properties: %{
       project_id: PublicAPI.Schemas.Common.ResourceId.schema(),
       task_id: %Schema{
@@ -30,6 +31,7 @@ defmodule PublicAPI.Schemas.Stages.RunTemplateSemaphore do
       },
       parameters: %Schema{
         type: :array,
+        default: [],
         items: %Schema{
           type: :object,
           properties: %{

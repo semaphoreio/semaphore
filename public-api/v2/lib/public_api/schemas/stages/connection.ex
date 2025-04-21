@@ -7,6 +7,7 @@ defmodule PublicAPI.Schemas.Stages.Connection do
   OpenApiSpex.schema(%{
     title: "Stages.Connection",
     type: :object,
+    required: [:type, :name],
     description: "A stage connection contains details about sources / stages with filters",
     properties: %{
       type: %Schema{
@@ -21,10 +22,12 @@ defmodule PublicAPI.Schemas.Stages.Connection do
       filter_operator: %Schema{
         type: :string,
         enum: ~w(AND OR),
+        default: "AND",
         description: "The operator used to combine filters"
       },
       filters: %Schema{
         type: :array,
+        default: [],
         items: PublicAPI.Schemas.Stages.ConnectionFilter.schema()
       }
     }
