@@ -88,7 +88,7 @@ defmodule InternalClients.Canvases.RequestFormatter do
        requester_id: from_params!(params, :user_id),
        approval_required: from_params(params.spec, :approval_required),
        connections: stage_connections(params),
-       run_template: from_params(params.spec, :run_template)
+       run_template: run_template(params.spec)
      }}
   rescue
     e in RuntimeError ->
@@ -223,4 +223,26 @@ defmodule InternalClients.Canvases.RequestFormatter do
   end
 
   defp filter_data(_, _), do: nil
+
+  defp run_template(spec) do
+    %API.RunTemplate{
+      type: run_template_type(spec.run.type),
+      semaphore: run_template_semaphore(spec.run.type, spec.run)
+    }
+  end
+
+  defp run_template_type("SEMAPHORE"), do: API.RunTemplate.Type.value(:TYPE_SEMAPHORE)
+  defp run_template_type(_), do: API.RunTemplate.Type.value(:TYPE_UNKNOWN)
+
+  defp run_template_semaphore("SEMAPHORE", template) do
+    %API.SemaphoreRunTemplate{
+      project_id: template.semaphore.project_id,
+      task_id: template.semaphore.task_id,
+      branch: template.semaphore.branch,
+      pipeline_file: template.semaphore.pipeline_file,
+      parameters: Enum.reduce(template.semaphore.parameters, %{}, fn parameter, acc ->
+        Map.put(acc, parameter.name, parameter.value)
+      end)
+    }
+  end
 end
