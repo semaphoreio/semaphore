@@ -1,0 +1,12 @@
+<.flash_group flash={@flash} />
+<h1>Rendering Canvas - {@canvas.name}</h1>
+<div class="fixed inset-0 w-full h-full min-w-0 min-h-0 overflow-hidden">
+  <.react
+    ssr={false}
+    name="Canvas"
+    socket={@socket}
+    canvas={@canvas}
+    stages={@stages}
+    event_sources={@event_sources}
+  />
+</div>

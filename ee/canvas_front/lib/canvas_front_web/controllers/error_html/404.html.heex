@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <title>404 Page Not Found · Semaphore</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <meta name="msapplication-TileColor" content="#00d477">
+    <meta name="theme-color" content="#ffffff">
+
+    <LiveReact.Reload.vite_assets assets={["/js/app.js", "/css/app.css"]}>
+      <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+      <script type="module" phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+      </script>
+    </LiveReact.Reload.vite_assets> 
+
+    <style>
+      body {
+        background:
+          linear-gradient(135deg, #1a237e 25%, transparent 25%) -150px 0,
+          linear-gradient(225deg, #92c9ff 25%, #b33f3f00 25%) -150px 0,
+          linear-gradient(315deg, #505ee2 25%, transparent 25%),
+          linear-gradient(45deg,  #f3f1ec 25%, transparent 25%);
+        background-size: 300px 300px;
+        background-color: #00a569 !important;
+        animation: move-bg 30s linear infinite;
+      }
+
+      @keyframes move-bg {
+        0%   { background-position: -150px 0, -150px 0, 0 0, 0 0; }
+        100% { background-position: 150px 0, 150px 0, 300px 0, 300px 0; }
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <header class="text-white px-3 pt-3 pb-4 md:pb-6" style="background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);">
+      <div class="md:flex items-center justify-between">
+        <a href={"https://me.#{Application.fetch_env!(:canvas_front, :domain)}/"} class="block">
+          <.img name="semaphore-logo-full-white.svg" alt="Semaphore Logo" />
+        </a>
+        <div class="md:flex items-center">
+          <div class="text-sm font-medium pr-2 my-3 md:my-0 flex justify-center">
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="text-center pt-3 px-3">
+      <div class="max-w-md mx-auto rounded-lg shadow-md py-5 bg-white px-3">
+        <h1 class="font-light leading-none mb-3" style="font-size: 112px">404</h1>
+        <h2 class="text-2xl font-medium text-gray-800 mb-0">Page not found</h2>
+      </div>
+    </div>
+
+  </body>
+</html>

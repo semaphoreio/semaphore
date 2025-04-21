@@ -1,0 +1,33 @@
+{
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host -l warn",
+    "build": "tsc && vite build"
+  },
+  "devDependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@types/react": "^18.3.20",
+    "@types/react-dom": "^18.3.6",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.18"
+  },
+  "dependencies": {
+    "@tippyjs/react": "^4.2.6",
+    "@types/phoenix": "^1.6.6",
+    "@types/phoenix_live_view": "^1.0.0",
+    "@xyflow/react": "^12.6.0",
+    "live_react": "file:../deps/live_react",
+    "phoenix": "file:../deps/phoenix",
+    "phoenix_html": "file:../deps/phoenix_html",
+    "phoenix_live_view": "file:../deps/phoenix_live_view",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "topbar": "^2.0.2",
+    "yjs": "^13.6.26"
+  }
+}
