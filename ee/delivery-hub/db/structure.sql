@@ -75,6 +75,7 @@ CREATE TABLE public.event_sources (
 CREATE TABLE public.events (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     source_id uuid NOT NULL,
+    source_name character varying(128) NOT NULL,
     source_type character varying(64) NOT NULL,
     received_at timestamp without time zone NOT NULL,
     raw jsonb NOT NULL,
@@ -100,6 +101,7 @@ CREATE TABLE public.stage_connections (
     id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
     stage_id uuid NOT NULL,
     source_id uuid NOT NULL,
+    source_name character varying(128) NOT NULL,
     source_type character varying(64) NOT NULL,
     filter_operator character varying(16) NOT NULL,
     filters jsonb NOT NULL
@@ -115,6 +117,7 @@ CREATE TABLE public.stage_events (
     stage_id uuid NOT NULL,
     event_id uuid NOT NULL,
     source_id uuid NOT NULL,
+    source_name character varying(128) NOT NULL,
     source_type character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
     created_at timestamp without time zone NOT NULL,

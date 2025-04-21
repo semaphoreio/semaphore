@@ -14,7 +14,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 	w := PendingEventsWorker{}
 
 	t.Run("source is not connected to any stage -> event is discarded", func(t *testing.T) {
-		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 
 		err = w.Tick()
@@ -50,7 +50,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -108,7 +108,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Simulating a stage completion event coming in for the first stage.
 		//
-		event, err := models.CreateEvent(firstStage.ID, models.SourceTypeStage, []byte(`{}`))
+		event, err := models.CreateEvent(firstStage.ID, firstStage.Name, models.SourceTypeStage, []byte(`{}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -179,7 +179,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)

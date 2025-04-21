@@ -5,6 +5,7 @@ CREATE TABLE stage_events (
   stage_id    uuid NOT NULL,
   event_id    uuid NOT NULL,
   source_id   uuid NOT NULL,
+  source_name CHARACTER VARYING(128) NOT NULL,
   source_type CHARACTER VARYING(64) NOT NULL,
   state       CHARACTER VARYING(64) NOT NULL,
   created_at  TIMESTAMP NOT NULL,

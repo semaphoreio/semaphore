@@ -73,7 +73,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create pending execution.
 		//
-		e, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
+		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
 		require.NoError(t, err)
 		event, err := models.CreateStageEvent(stage.ID, e)
 		require.NoError(t, err)

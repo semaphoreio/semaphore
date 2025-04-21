@@ -23,6 +23,7 @@ const (
 type Event struct {
 	ID         uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
 	SourceID   uuid.UUID
+	SourceName string
 	SourceType string
 	State      string
 	ReceivedAt *time.Time
@@ -55,11 +56,12 @@ func (e *Event) GetData() (map[string]any, error) {
 	return obj, nil
 }
 
-func CreateEvent(sourceID uuid.UUID, sourceType string, raw []byte) (*Event, error) {
+func CreateEvent(sourceID uuid.UUID, sourceName, sourceType string, raw []byte) (*Event, error) {
 	now := time.Now()
 
 	event := Event{
 		SourceID:   sourceID,
+		SourceName: sourceName,
 		SourceType: sourceType,
 		State:      EventStatePending,
 		ReceivedAt: &now,

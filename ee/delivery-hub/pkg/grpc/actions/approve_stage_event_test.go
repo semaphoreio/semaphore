@@ -16,7 +16,7 @@ import (
 
 func Test__ApproveStageEvent(t *testing.T) {
 	r := support.Setup(t)
-	e, err := models.CreateEvent(r.Source.ID, models.SourceTypeEventSource, []byte(`{}`))
+	e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
 	require.NoError(t, err)
 	event, err := models.CreateStageEvent(r.Stage.ID, e)
 	require.NoError(t, err)

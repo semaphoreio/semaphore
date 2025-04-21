@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/resolver"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
@@ -59,12 +60,13 @@ func (w *PendingExecutionsWorker) Tick() error {
 // There is an issue here where, if we are having issues updating the state of the execution in the database,
 // we might end up creating more executions than we should.
 func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *models.Stage, execution models.StageExecution) error {
-	eventData, err := execution.GetEventData()
+	resolver := resolver.NewResolver(execution, stage.RunTemplate.Data())
+	template, err := resolver.Resolve()
 	if err != nil {
-		return fmt.Errorf("error getting event data: %v", err)
+		return fmt.Errorf("error resolving run template: %v", err)
 	}
 
-	executionID, err := w.StartExecution(logger, stage, eventData)
+	executionID, err := w.StartExecution(logger, stage, *template)
 	if err != nil {
 		return fmt.Errorf("error starting execution: %v", err)
 	}
@@ -80,23 +82,23 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 }
 
 // TODO: implement some retry and give up mechanism
-func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, e map[string]any) (string, error) {
+func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, template models.RunTemplate) (string, error) {
 	switch stage.RunTemplate.Data().Type {
 	case models.RunTemplateTypeSemaphore:
 		//
 		// If a task ID is specified, we trigger a task instead of a plain workflow.
 		//
 		if stage.RunTemplate.Data().Semaphore.TaskID != "" {
-			return w.TriggerSemaphoreTask(logger, stage, e)
+			return w.TriggerSemaphoreTask(logger, stage)
 		}
 
-		return w.StartPlainWorkflow(logger, stage, e)
+		return w.StartPlainWorkflow(logger, stage)
 	default:
 		return "", fmt.Errorf("unknown run template type")
 	}
 }
 
-func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage, eventData map[string]any) (string, error) {
+func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -132,7 +134,7 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage 
 	return res.Trigger.ScheduledWorkflowId, nil
 }
 
-func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *models.Stage, eventData map[string]any) (string, error) {
+func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *models.Stage) (string, error) {
 	template := stage.RunTemplate.Data().Semaphore
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

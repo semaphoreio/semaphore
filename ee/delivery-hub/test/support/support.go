@@ -66,7 +66,7 @@ func SetupWithOptions(t *testing.T, options SetupOptions) *ResourceRegistry {
 }
 
 func CreateStageEvent(t *testing.T, source *models.EventSource, stage *models.Stage) *models.StageEvent {
-	event, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+	event, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, []byte(`{}`))
 	require.NoError(t, err)
 	stageEvent, err := models.CreateStageEvent(stage.ID, event)
 	require.NoError(t, err)
@@ -74,7 +74,11 @@ func CreateStageEvent(t *testing.T, source *models.EventSource, stage *models.St
 }
 
 func CreateExecution(t *testing.T, source *models.EventSource, stage *models.Stage) *models.StageExecution {
-	e, err := models.CreateEvent(source.ID, models.SourceTypeEventSource, []byte(`{}`))
+	return CreateExecutionWithData(t, source, stage, []byte(`{}`))
+}
+
+func CreateExecutionWithData(t *testing.T, source *models.EventSource, stage *models.Stage, data []byte) *models.StageExecution {
+	e, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, data)
 	require.NoError(t, err)
 	event, err := models.CreateStageEvent(stage.ID, e)
 	require.NoError(t, err)

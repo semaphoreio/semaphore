@@ -1,0 +1,55 @@
+package resolver
+
+import (
+	"testing"
+
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func Test__Resolve(t *testing.T) {
+	r := support.Setup(t)
+
+	t.Run("no variables to resolve", func(t *testing.T) {
+		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(`{"data": {"branch": "hello"}}`))
+		template := support.RunTemplate()
+		resolver := NewResolver(*execution, template)
+		newTemplate, err := resolver.Resolve()
+		require.NoError(t, err)
+		require.NotNil(t, newTemplate)
+		assert.Equal(t, models.RunTemplateTypeSemaphore, newTemplate.Type)
+		assert.Equal(t, "demo-project", newTemplate.Semaphore.ProjectID)
+		assert.Equal(t, ".semaphore/semaphore.yml", newTemplate.Semaphore.PipelineFile)
+		assert.Equal(t, "main", newTemplate.Semaphore.Branch)
+		assert.Equal(t, map[string]string{}, newTemplate.Semaphore.Parameters)
+		assert.Empty(t, newTemplate.Semaphore.TaskID)
+	})
+
+	t.Run("with variables to resolve", func(t *testing.T) {
+		e := `{"branch":"hello","project":"other","param1":"value1","param2":"value2"}`
+		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(e))
+		template := support.RunTemplate()
+		template.Semaphore.Branch = "${{self.GetConnection('gh').branch}}"
+		template.Semaphore.ProjectID = "${{self.GetConnection('gh').project}}"
+		template.Semaphore.Parameters = map[string]string{
+			"PARAM_1": "${{self.GetConnection('gh').param1}}",
+			"PARAM_2": "${{self.GetConnection('gh').param2}}",
+		}
+
+		resolver := NewResolver(*execution, template)
+		newTemplate, err := resolver.Resolve()
+		require.NoError(t, err)
+		require.NotNil(t, newTemplate)
+		assert.Equal(t, models.RunTemplateTypeSemaphore, newTemplate.Type)
+		assert.Equal(t, "other", newTemplate.Semaphore.ProjectID)
+		assert.Equal(t, "hello", newTemplate.Semaphore.Branch)
+		assert.Equal(t, ".semaphore/semaphore.yml", newTemplate.Semaphore.PipelineFile)
+		assert.Empty(t, newTemplate.Semaphore.TaskID)
+		assert.Equal(t, map[string]string{
+			"PARAM_1": "value1",
+			"PARAM_2": "value2",
+		}, newTemplate.Semaphore.Parameters)
+	})
+}

@@ -71,6 +71,23 @@ func (e *StageExecution) GetEventData() (map[string]any, error) {
 	return m, nil
 }
 
+func (e *StageExecution) FindSource() (string, error) {
+	var sourceName string
+	err := database.Conn().
+		Table("stage_executions").
+		Select("stage_events.source_name").
+		Joins("inner join stage_events ON stage_executions.stage_event_id = stage_events.id").
+		Where("stage_executions.id = ?", e.ID).
+		Scan(&sourceName).
+		Error
+
+	if err != nil {
+		return "", err
+	}
+
+	return sourceName, nil
+}
+
 func (e *StageExecution) Start(referenceID string) error {
 	now := time.Now()
 

@@ -23,7 +23,7 @@ func Test__StageExecution(t *testing.T) {
 	require.NoError(t, err)
 
 	data := `{"hello": "world"}`
-	event, err := CreateEvent(source.ID, SourceTypeEventSource, []byte(data))
+	event, err := CreateEvent(source.ID, source.Name, SourceTypeEventSource, []byte(data))
 	require.NoError(t, err)
 	stageEvent, err := CreateStageEvent(stage.ID, event)
 	require.NoError(t, err)

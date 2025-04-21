@@ -21,6 +21,7 @@ type StageConnection struct {
 	ID             uuid.UUID `gorm:"type:uuid;default:uuid_generate_v4()"`
 	StageID        uuid.UUID
 	SourceID       uuid.UUID
+	SourceName     string
 	SourceType     string
 	Filters        datatypes.JSONSlice[StageConnectionFilter]
 	FilterOperator string

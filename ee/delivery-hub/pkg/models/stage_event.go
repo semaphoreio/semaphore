@@ -25,6 +25,7 @@ type StageEvent struct {
 	StageID    uuid.UUID
 	EventID    uuid.UUID
 	SourceID   uuid.UUID
+	SourceName string
 	SourceType string
 	State      string
 	CreatedAt  *time.Time
@@ -78,6 +79,7 @@ func CreateStageEventInTransaction(tx *gorm.DB, stageID uuid.UUID, event *Event)
 		StageID:    stageID,
 		EventID:    event.ID,
 		SourceID:   event.SourceID,
+		SourceName: event.SourceName,
 		SourceType: event.SourceType,
 		State:      StageEventPending,
 		CreatedAt:  &now,

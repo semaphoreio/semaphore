@@ -100,6 +100,7 @@ func validateConnections(canvas *models.Canvas, connections []*pb.Connection) ([
 
 		cs = append(cs, models.StageConnection{
 			SourceID:       *sourceID,
+			SourceName:     connection.Name,
 			SourceType:     protoToConnectionType(connection.Type),
 			FilterOperator: protoToFilterOperator(connection.FilterOperator),
 			Filters:        filters,

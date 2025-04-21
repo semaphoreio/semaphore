@@ -157,13 +157,18 @@ func (c *PipelineDoneConsumer) resolveExecutionResult(logger *log.Entry, pipelin
 }
 
 func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution) error {
+	stage, err := models.FindStageByIDOnly(execution.StageID)
+	if err != nil {
+		return err
+	}
+
 	e := events.NewStageExecutionCompletion(execution)
 	raw, err := json.Marshal(&e)
 	if err != nil {
 		return fmt.Errorf("error marshaling event: %v", err)
 	}
 
-	event, err := models.CreateEvent(execution.StageID, models.SourceTypeStage, raw)
+	event, err := models.CreateEvent(execution.StageID, stage.Name, models.SourceTypeStage, raw)
 	if err != nil {
 		return fmt.Errorf("error creating event: %v", err)
 	}
