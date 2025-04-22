@@ -26,8 +26,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
       source_type: connection_type_from_pb(event.source_type),
       state: event_state_from_pb(event.state),
       created_at: PublicAPI.Util.Timestamps.to_timestamp(event.created_at),
-      approved_at: PublicAPI.Util.Timestamps.to_timestamp(event.approved_at),
-      approved_by: nil
+      approved_at: PublicAPI.Util.Timestamps.to_timestamp(event.approved_at)
     }
   end
 

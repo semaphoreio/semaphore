@@ -7,7 +7,7 @@ defmodule PublicAPI.Schemas.Stages.StageEvent do
   OpenApiSpex.schema(%{
     title: "Stages.StageEvent",
     type: :object,
-    required: [],
+    required: [:id, :source_id, :source_type, :state, :created_at],
     properties: %{
       id: PublicAPI.Schemas.Common.ResourceId.schema(),
       source_id: PublicAPI.Schemas.Common.ResourceId.schema(),
@@ -20,7 +20,11 @@ defmodule PublicAPI.Schemas.Stages.StageEvent do
         enum: ~w(PENDING WAITING_FOR_APPROVAL PROCESSED)
       },
       created_at: PublicAPI.Schemas.Common.timestamp(),
-      approved_at: PublicAPI.Schemas.Common.timestamp()
+      approved_at: %Schema{
+        type: :string,
+        format: :"date-time",
+        nullable: true
+      }
     }
   })
 end
