@@ -570,7 +570,7 @@ defmodule Guard.Store.OrganizationTest do
       assert {:error, {:not_found, _message}} =
                Organization.get_by_username(soft_deleted_org.username)
 
-      half_timestamp = (DateTime.utc_now() |> DateTime.to_unix(:second)) / 1000
+      half_timestamp = Integer.floor_div(DateTime.utc_now() |> DateTime.to_unix(:second), 1000)
       assert soft_deleted_org.username =~ "#{username}-deleted-#{half_timestamp}"
     end
   end
