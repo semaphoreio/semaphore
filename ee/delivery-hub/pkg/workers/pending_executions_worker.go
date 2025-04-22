@@ -83,22 +83,22 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 
 // TODO: implement some retry and give up mechanism
 func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, template models.RunTemplate) (string, error) {
-	switch stage.RunTemplate.Data().Type {
+	switch template.Type {
 	case models.RunTemplateTypeSemaphore:
 		//
 		// If a task ID is specified, we trigger a task instead of a plain workflow.
 		//
-		if stage.RunTemplate.Data().Semaphore.TaskID != "" {
-			return w.TriggerSemaphoreTask(logger, stage)
+		if template.Semaphore.TaskID != "" {
+			return w.TriggerSemaphoreTask(logger, stage, template.Semaphore)
 		}
 
-		return w.StartPlainWorkflow(logger, stage)
+		return w.StartPlainWorkflow(logger, stage, template.Semaphore)
 	default:
 		return "", fmt.Errorf("unknown run template type")
 	}
 }
 
-func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage) (string, error) {
+func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage, template *models.SemaphoreRunTemplate) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -112,7 +112,6 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage 
 	// TODO: call RBAC API to check if s.CreatedBy can create workflow
 	// TODO: check if eventData is using DSL and if so, resolve everything there.
 
-	template := stage.RunTemplate.Data().Semaphore
 	client := schedulerproto.NewPeriodicServiceClient(conn)
 	res, err := client.RunNow(ctx, &schedulerproto.RunNowRequest{
 		Id:              template.TaskID,
@@ -134,8 +133,7 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage 
 	return res.Trigger.ScheduledWorkflowId, nil
 }
 
-func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *models.Stage) (string, error) {
-	template := stage.RunTemplate.Data().Semaphore
+func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *models.Stage, template *models.SemaphoreRunTemplate) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

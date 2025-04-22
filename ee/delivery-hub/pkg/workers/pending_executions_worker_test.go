@@ -56,7 +56,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, "refs/heads/main", repoProxyReq.Git.Reference)
 	})
 
-	t.Run("semaphore task is triggered", func(t *testing.T) {
+	t.Run("semaphore task is triggered with simple parameters", func(t *testing.T) {
 		//
 		// Create stage that trigger Semaphore task.
 		//
@@ -105,6 +105,64 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		}))
 		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
 			return v.Name == "PARAM_2" && v.Value == "VALUE_2"
+		}))
+	})
+
+	t.Run("semaphore task with resolved parameters is triggered", func(t *testing.T) {
+		//
+		// Create stage that trigger Semaphore task.
+		//
+		template := support.TaskRunTemplate()
+		template.Semaphore.Parameters = map[string]string{
+			"REF":      "${{ self.GetConnection('gh').ref }}",
+			"REF_TYPE": "${{ self.GetConnection('gh').ref_type }}",
+		}
+
+		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), false, template, []models.StageConnection{
+			{
+				SourceID:   r.Source.ID,
+				SourceType: models.SourceTypeEventSource,
+			},
+		}))
+
+		stage, err := r.Canvas.FindStageByName("stage-task-2")
+		require.NoError(t, err)
+
+		//
+		// Create pending execution.
+		//
+		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
+		require.NoError(t, err)
+		event, err := models.CreateStageEvent(stage.ID, e)
+		require.NoError(t, err)
+		execution, err := models.CreateStageExecution(stage.ID, event.ID)
+		require.NoError(t, err)
+
+		//
+		// Trigger the worker, and verify that request to scheduler was sent,
+		// and that execution was moved to 'started' state.
+		//
+		err = w.Tick()
+		require.NoError(t, err)
+		execution, err = stage.FindExecutionByID(execution.ID)
+		require.NoError(t, err)
+		assert.Equal(t, models.StageExecutionStarted, execution.State)
+		assert.NotEmpty(t, execution.ReferenceID)
+		assert.NotEmpty(t, execution.StartedAt)
+
+		req := r.Grpc.SchedulerService.GetLastRunNowRequest()
+		require.NotNil(t, req)
+		assert.Equal(t, "demo-task", req.Id)
+		assert.Equal(t, "main", req.Branch)
+		assert.Equal(t, ".semaphore/run.yml", req.PipelineFile)
+		assert.Equal(t, stage.CreatedBy.String(), req.Requester)
+
+		require.Len(t, req.ParameterValues, 2)
+		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+			return v.Name == "REF" && v.Value == "refs/heads/test"
+		}))
+		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+			return v.Name == "REF_TYPE" && v.Value == "branch"
 		}))
 	})
 }
