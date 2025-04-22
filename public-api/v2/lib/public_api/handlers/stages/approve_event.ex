@@ -97,7 +97,8 @@ defmodule PublicAPI.Handlers.Stages.ApproveEvent do
     Map.merge(conn.params, %{
       id: conn.params.event_id,
       stage_id: conn.params.id_or_name,
-      organization_id: conn.assigns[:organization_id]
+      organization_id: conn.assigns[:organization_id],
+      user_id: conn.assigns[:user_id]
     })
     |> CanvasesClient.approve_stage_event()
     |> case do

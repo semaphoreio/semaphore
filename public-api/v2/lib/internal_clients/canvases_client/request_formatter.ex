@@ -173,7 +173,8 @@ defmodule InternalClients.Canvases.RequestFormatter do
        event_id: from_params!(params, :id),
        canvas_id: from_params!(params, :canvas_id),
        organization_id: from_params!(params, :organization_id),
-       stage_id: from_params!(params, :stage_id)
+       stage_id: from_params!(params, :stage_id),
+       requester_id: from_params!(params, :user_id)
      }}
   rescue
     e in RuntimeError ->
