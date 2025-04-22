@@ -5,7 +5,6 @@ defmodule Rbac.Store.Group do
   alias Rbac.Store.{UserPermissions, ProjectAccess}
   import Ecto.Query
 
-  @spec fetch_all_org_groups(String.t(), integer(), integer()) :: [map()]
   def fetch_all_org_groups(org_id, page_no, page_size) do
     Rbac.Repo.Group
     |> where([g], g.org_id == ^org_id)
@@ -29,32 +28,51 @@ defmodule Rbac.Store.Group do
     end
   end
 
+  def fetch_group_by_name(name, org_id) do
+    Rbac.Repo.Group
+    |> where([g], g.org_id == ^org_id)
+    |> join(:inner, [g], s in assoc(g, :subject))
+    |> where([_g, s], s.name == ^name)
+    |> select([g, s], %{id: g.id, org_id: g.org_id, name: s.name, description: g.description})
+    |> Rbac.Repo.one()
+    |> case do
+      nil -> {:error, :not_found}
+      group -> {:ok, group}
+    end
+  end
+
   def create_group(nil, _org_id, _creator_id), do: {:error, :group_data_not_provided}
 
   def create_group(group, org_id, creator_id) do
     alias Rbac.Repo.{Group, Subject}
 
-    group_id = Ecto.UUID.generate()
+    case fetch_group_by_name(group.name, org_id) do
+      {:ok, _} ->
+        {:error, :name_taken}
 
-    subject_changeset =
-      Subject.changeset(%Subject{}, %{id: group_id, name: group.name, type: "group"})
+      {:error, :not_found} ->
+        group_id = Ecto.UUID.generate()
 
-    group_changeset =
-      Group.changeset(%Group{}, %{
-        id: group_id,
-        org_id: org_id,
-        description: group.description,
-        creator_id: creator_id
-      })
+        subject_changeset =
+          Subject.changeset(%Subject{}, %{id: group_id, name: group.name, type: "group"})
 
-    ecto_transaction =
-      Ecto.Multi.new()
-      |> Ecto.Multi.insert(:subject, subject_changeset)
-      |> Ecto.Multi.insert(:group, group_changeset)
+        group_changeset =
+          Group.changeset(%Group{}, %{
+            id: group_id,
+            org_id: org_id,
+            description: group.description,
+            creator_id: creator_id
+          })
 
-    case execute_transaction(ecto_transaction, "create_group") do
-      :ok -> fetch_group(group_id)
-      error_tuple -> error_tuple
+        ecto_transaction =
+          Ecto.Multi.new()
+          |> Ecto.Multi.insert(:subject, subject_changeset)
+          |> Ecto.Multi.insert(:group, group_changeset)
+
+        case execute_transaction(ecto_transaction, "create_group") do
+          :ok -> fetch_group(group_id)
+          error_tuple -> error_tuple
+        end
     end
   end
 
@@ -118,12 +136,12 @@ defmodule Rbac.Store.Group do
     |> Enum.each(&create_request(member_id, &1, :remove_user, requester_id))
   end
 
-  def modify_metadata(group_id, "", ""), do: fetch_group(group_id)
+  def modify_metadata(group_id, _org_id, "", ""), do: fetch_group(group_id)
 
-  def modify_metadata(group_id, new_name, new_description) do
+  def modify_metadata(group_id, org_id, new_name, new_description) do
     ecto_transaction =
       Ecto.Multi.new()
-      |> maybe_add_subject_update(group_id, new_name)
+      |> maybe_add_subject_update(group_id, org_id, new_name)
       |> maybe_add_group_update(group_id, new_description)
 
     case execute_transaction(ecto_transaction, "modify_group") do
@@ -194,14 +212,24 @@ defmodule Rbac.Store.Group do
     end
   end
 
-  defp maybe_add_subject_update(ecto_multi, subject_id, new_name) do
+  defp maybe_add_subject_update(ecto_multi, subject_id, org_id, new_name) do
     if new_name == "" do
       ecto_multi
     else
-      subject = Rbac.Repo.Subject.find_by_id(subject_id)
+      case fetch_group_by_name(new_name, org_id) do
+        {:ok, _} ->
+          ecto_multi
+          |> Ecto.Multi.error(:update_subject, :name_taken)
 
-      ecto_multi
-      |> Ecto.Multi.update(:subject, subject |> Rbac.Repo.Subject.changeset(%{name: new_name}))
+        {:error, :not_found} ->
+          subject = Rbac.Repo.Subject.find_by_id(subject_id)
+
+          ecto_multi
+          |> Ecto.Multi.update(
+            :subject,
+            subject |> Rbac.Repo.Subject.changeset(%{name: new_name})
+          )
+      end
     end
   end
 
