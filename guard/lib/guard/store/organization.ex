@@ -309,9 +309,12 @@ defmodule Guard.Store.Organization do
   @spec soft_destroy(Guard.FrontRepo.Organization.t()) ::
           {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
   def soft_destroy(%Guard.FrontRepo.Organization{} = organization) do
+    timestamp = DateTime.utc_now() |> DateTime.to_unix(:second)
+    soft_deleted_org_username = "#{organization.username}-deleted-#{timestamp}"
+
     result =
       organization
-      |> Guard.FrontRepo.Organization.changeset(%{deleted_at: DateTime.utc_now()})
+      |> Guard.FrontRepo.Organization.changeset(%{username: soft_deleted_org_username, deleted_at: DateTime.utc_now()})
       |> Guard.FrontRepo.update()
 
     case result do

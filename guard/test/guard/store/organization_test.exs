@@ -557,6 +557,7 @@ defmodule Guard.Store.OrganizationTest do
   describe "soft_destroy/1" do
     test "marks an organization as deleted", %{org_id: org_id} do
       organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
+      username = organization.username
 
       assert {:ok, deleted_org} = Organization.soft_destroy(organization)
       assert deleted_org.id == org_id
@@ -568,6 +569,9 @@ defmodule Guard.Store.OrganizationTest do
 
       assert {:error, {:not_found, _message}} =
                Organization.get_by_username(soft_deleted_org.username)
+
+      half_timestamp = (DateTime.utc_now() |> DateTime.to_unix(:second)) / 1000
+      assert soft_deleted_org.username =~ "#{username}-deleted-#{half_timestamp}"
     end
   end
 
