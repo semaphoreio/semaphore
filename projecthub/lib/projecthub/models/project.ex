@@ -300,7 +300,12 @@ defmodule Projecthub.Models.Project do
   end
 
   def soft_destroy(project, user) do
-    {:ok, _} = update_record(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
+    current_datetime = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    deleted_project_name = "#{project.name}-deleted-#{current_datetime |> DateTime.to_unix(:second)}"
+
+    {:ok, _} = update_record(project, %{name: deleted_project_name, deleted_at: current_datetime, deleted_by: user.id})
+
     {:ok, _} = Events.ProjectDeleted.publish(project, soft_delete: true)
 
     {:ok, nil}
