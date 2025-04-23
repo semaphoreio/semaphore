@@ -631,8 +631,7 @@ defmodule InternalApi.Repository.ClearExternalDataResponse do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
 
-  field :cleared_webhook, 1, type: :bool, json_name: "clearedWebhook"
-  field :cleared_deploy_key, 2, type: :bool, json_name: "clearedDeployKey"
+  field :repository, 1, type: InternalApi.Repository.Repository
 end
 
 defmodule InternalApi.Repository.RepositoryService.Service do
