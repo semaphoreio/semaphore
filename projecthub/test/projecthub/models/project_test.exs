@@ -551,6 +551,9 @@ defmodule Projecthub.Models.ProjectTest do
       soft_deleted_project = Project |> Repo.get(project.id)
       assert soft_deleted_project.deleted_at != nil
       assert soft_deleted_project.deleted_by == user.id
+
+      cut_timestamp = create_cut_timestamp()
+      assert soft_deleted_project.name =~ "#{project.name}-deleted-#{cut_timestamp}"
     end
   end
 
@@ -599,9 +602,10 @@ defmodule Projecthub.Models.ProjectTest do
       project = create_and_soft_destroy()
 
       {:ok, found_project} = Project.find(project.id, true)
-
+      cut_timestamp = create_cut_timestamp()
       assert found_project.id == project.id
       assert found_project.name == project.name
+      assert found_project.name =~ "-deleted-#{cut_timestamp}"
     end
   end
 
@@ -637,8 +641,11 @@ defmodule Projecthub.Models.ProjectTest do
 
       {:ok, found_project} = Project.find_by_name(project.name, project.organization_id, true)
 
+      cut_timestamp = create_cut_timestamp()
+
       assert found_project.id == project.id
       assert found_project.name == project.name
+      assert found_project.name =~ "-deleted-#{cut_timestamp}"
     end
   end
 
@@ -697,7 +704,9 @@ defmodule Projecthub.Models.ProjectTest do
 
       projects = Project.find_many(org_id, [project1.id, project2.id], true)
 
+      cut_timestamp = create_cut_timestamp()
       assert Enum.count(projects) == 2
+      assert Enum.all?(projects, fn project -> project.name =~ "-deleted-#{cut_timestamp}" end)
     end
   end
 
@@ -739,6 +748,7 @@ defmodule Projecthub.Models.ProjectTest do
     test "it returns a page of soft deleted projects" do
       org_id = Ecto.UUID.generate()
 
+      cut_timestamp = create_cut_timestamp()
       create_and_soft_destroy_many(org_id: org_id, quantity: 4)
 
       {:ok, _non_deleted_project} = Support.Factories.Project.create()
@@ -752,6 +762,7 @@ defmodule Projecthub.Models.ProjectTest do
 
       entries = page.entries
       assert Enum.count(entries) == 3
+      assert Enum.all?(entries, fn project -> project.name =~ "-deleted-#{cut_timestamp}" end)
     end
 
     test "it filter projects by owner_id" do
@@ -886,7 +897,13 @@ defmodule Projecthub.Models.ProjectTest do
     user = %User{id: Ecto.UUID.generate(), github_token: "token"}
 
     {:ok, _} = Project.soft_destroy(project, user)
-
+    {:ok, project} = Project.find(project.id, true)
     project
+  end
+
+  defp create_cut_timestamp do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:second)
+    |> Integer.floor_div(1000)
   end
 end

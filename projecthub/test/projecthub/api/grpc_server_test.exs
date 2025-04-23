@@ -660,7 +660,8 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.metadata.status ==
                InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
 
-      assert response.project.metadata.name == project.name
+      cut_timestamp = create_cut_timestamp()
+      assert response.project.metadata.name =~ "#{project.name}-deleted-#{cut_timestamp}"
       assert response.project.metadata.id == project.id
       assert response.project.metadata.org_id == project.organization_id
       assert response.project.metadata.description == project.description
@@ -825,11 +826,12 @@ defmodule Projecthub.Api.GrpcServerTest do
 
     test "when a soft_deleted project is requested by name and soft_deleted param is true => returns the project" do
       {:ok, project} = Support.Factories.Project.create_with_repo()
-      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
+      {:ok, nil} = Project.soft_destroy(project, %User{github_token: "token"})
+      {:ok, soft_deleted_project} = Project.find(project.id, true)
 
       {:ok, _project_with_same_name} =
         Support.Factories.Project.create(%{
-          name: project.name
+          name: soft_deleted_project.name
         })
 
       {:ok, channel} =
@@ -848,11 +850,11 @@ defmodule Projecthub.Api.GrpcServerTest do
               api_version: "",
               kind: "",
               req_id: "",
-              org_id: project.organization_id,
+              org_id: soft_deleted_project.organization_id,
               user_id: Ecto.UUID.generate()
             ),
           id: "",
-          name: project.name,
+          name: soft_deleted_project.name,
           soft_deleted: true
         )
 
@@ -861,13 +863,15 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.metadata.status ==
                InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
 
-      assert response.project.metadata.name == project.name
-      assert response.project.metadata.id == project.id
-      assert response.project.metadata.org_id == project.organization_id
-      assert response.project.metadata.description == project.description
-      assert response.project.spec.repository.url == project.repository.url
-      assert response.project.spec.repository.name == project.repository.name
-      assert response.project.spec.repository.owner == project.repository.owner
+      cut_timestamp = create_cut_timestamp()
+      assert response.project.metadata.name == soft_deleted_project.name
+      assert response.project.metadata.name =~ "#{project.name}-deleted-#{cut_timestamp}"
+      assert response.project.metadata.id == soft_deleted_project.id
+      assert response.project.metadata.org_id == soft_deleted_project.organization_id
+      assert response.project.metadata.description == soft_deleted_project.description
+      assert response.project.spec.repository.url == soft_deleted_project.repository.url
+      assert response.project.spec.repository.name == soft_deleted_project.repository.name
+      assert response.project.spec.repository.owner == soft_deleted_project.repository.owner
     end
 
     test "when the project description is empty => returns the project" do
@@ -1182,9 +1186,11 @@ defmodule Projecthub.Api.GrpcServerTest do
 
       assert Enum.count(response.projects) == 2
 
+      cut_timestamp = create_cut_timestamp()
       names = Enum.map(response.projects, fn p -> p.metadata.name end)
-      assert Enum.member?(names, project1.name)
-      assert Enum.member?(names, project2.name)
+      assert Enum.any?(names, fn name -> name =~ "#{project1.name}-deleted-#{cut_timestamp}" end)
+      assert Enum.any?(names, fn name -> name =~ "#{project2.name}-deleted-#{cut_timestamp}" end)
+      assert Enum.all?(names, fn name -> name =~ "-deleted-#{cut_timestamp}" end)
     end
 
     test "when there are no projects => returns empty list" do
@@ -3178,5 +3184,11 @@ defmodule Projecthub.Api.GrpcServerTest do
                  InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
       end
     end
+  end
+
+  defp create_cut_timestamp do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:second)
+    |> Integer.floor_div(1000)
   end
 end
