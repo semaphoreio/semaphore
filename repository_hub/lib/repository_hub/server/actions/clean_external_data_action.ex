@@ -1,9 +1,9 @@
-defprotocol RepositoryHub.Server.CleanExternalDataAction do
-  alias InternalApi.Repository.{CleanExternalDataRequest, CleanExternalDataResponse}
+defprotocol RepositoryHub.Server.ClearExternalDataAction do
+  alias InternalApi.Repository.{ClearExternalDataRequest, ClearExternalDataResponse}
 
-  @spec execute(t, CleanExternalDataRequest.t()) :: Toolkit.tupled_result(CleanExternalDataResponse.t())
+  @spec execute(t, ClearExternalDataRequest.t()) :: Toolkit.tupled_result(ClearExternalDataResponse.t())
   def execute(adapter, request)
 
-  @spec validate(t, CleanExternalDataRequest.t()) :: Toolkit.tupled_result(CleanExternalDataRequest.t())
+  @spec validate(t, ClearExternalDataRequest.t()) :: Toolkit.tupled_result(ClearExternalDataRequest.t())
   def validate(adapter, request)
 end

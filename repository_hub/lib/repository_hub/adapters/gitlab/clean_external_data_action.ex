@@ -1,7 +1,6 @@
-defimpl RepositoryHub.Server.CleanExternalDataAction, for: RepositoryHub.GitlabAdapter do
-  alias RepositoryHub.{GitlabAdapter, GitlabClient, Model}
-  alias RepositoryHub.Toolkit
-  alias InternalApi.Repository.CleanExternalDataResponse
+defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabAdapter do
+  alias RepositoryHub.{GitlabAdapter, GitlabClient, Model, Toolkit, Validator}
+  alias InternalApi.Repository.ClearExternalDataResponse
   import Toolkit
 
   @impl true
@@ -32,7 +31,7 @@ defimpl RepositoryHub.Server.CleanExternalDataAction, for: RepositoryHub.GitlabA
 
       Model.Repositories.to_grpc_model(repository)
       |> then(fn grpc_repository ->
-        %CleanExternalDataResponse{repository: grpc_repository}
+        %ClearExternalDataResponse{repository: grpc_repository}
         |> wrap()
       end)
     end
