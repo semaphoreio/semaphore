@@ -618,6 +618,23 @@ defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
   field :valid, 1, type: :bool
 end
 
+defmodule InternalApi.Repository.ClearExternalDataRequest do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
+
+  field :repository_id, 1, type: :string, json_name: "repositoryId"
+end
+
+defmodule InternalApi.Repository.ClearExternalDataResponse do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.14.0", syntax: :proto3
+
+  field :cleared_webhook, 1, type: :bool, json_name: "clearedWebhook"
+  field :cleared_deploy_key, 2, type: :bool, json_name: "clearedDeployKey"
+end
+
 defmodule InternalApi.Repository.RepositoryService.Service do
   @moduledoc false
 
@@ -694,6 +711,10 @@ defmodule InternalApi.Repository.RepositoryService.Service do
   rpc :VerifyWebhookSignature,
       InternalApi.Repository.VerifyWebhookSignatureRequest,
       InternalApi.Repository.VerifyWebhookSignatureResponse
+
+  rpc :ClearExternalData,
+      InternalApi.Repository.ClearExternalDataRequest,
+      InternalApi.Repository.ClearExternalDataResponse
 end
 
 defmodule InternalApi.Repository.RepositoryService.Stub do
