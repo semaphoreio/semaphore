@@ -5,6 +5,8 @@ defmodule FrontWeb.SettingsController do
   alias Front.Audit
   alias Front.Models
 
+  require Logger
+
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
   plug(FrontWeb.Plugs.PageAccess, permissions: "organization.view")
   plug(FrontWeb.Plugs.Header when action not in [:update, :destroy])
@@ -194,6 +196,8 @@ defmodule FrontWeb.SettingsController do
 
               notice =
                 "Organization #{organization.name} deleted." |> Poison.encode!(escape: :html_safe)
+
+              Logger.info("Organization #{organization.name} deleted by #{conn.assigns.user_id}")
 
               conn
               |> redirect(external: "https://me.#{domain}/?notice=#{notice}")
