@@ -306,6 +306,10 @@ defmodule Guard.GrpcServers.UserServer do
           User.User.new(id: user_id)
 
         {:ok, user} ->
+          if Guard.Api.Project.user_has_any_project?(user_id) do
+            grpc_error!(:invalid_argument, "User #{user_id} is owner of projects.")
+          end
+
           handle_delete_with_owned_orgs(user.id)
       end
     end)
