@@ -255,7 +255,7 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       |> Enum.each(&Support.Rbac.assign_org_role_by_name(@org_id, &1, "Member"))
 
       request = %Request{
-        group: %Groups.Group{id: state.group.id},
+        group: %Groups.Group{id: state.group.id, name: state.group.name},
         members_to_add: [user1.id, user2.id],
         members_to_remove: [user3.id],
         requester_id: @requester_id,
