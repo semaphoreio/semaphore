@@ -314,7 +314,10 @@ defmodule Guard.Store.Organization do
 
     result =
       organization
-      |> Guard.FrontRepo.Organization.changeset(%{username: soft_deleted_org_username, deleted_at: DateTime.utc_now()})
+      |> Guard.FrontRepo.Organization.changeset(%{
+        username: soft_deleted_org_username,
+        deleted_at: DateTime.utc_now()
+      })
       |> Guard.FrontRepo.update()
 
     case result do
