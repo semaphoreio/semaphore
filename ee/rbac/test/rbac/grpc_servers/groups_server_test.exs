@@ -228,6 +228,20 @@ defmodule Rbac.GrpcServers.GroupsServer.Test do
       assert updated_group.description == "New Description"
     end
 
+    test "new name is already in use", state do
+      {:ok, new_group} = Support.Factories.Group.insert(org_id: @org_id)
+
+      request = %Request{
+        group: %Groups.Group{id: state.group.id, name: new_group.name},
+        requester_id: @requester_id,
+        org_id: @org_id
+      }
+
+      {:error, %{status: status, message: msg}} = state.grpc_channel |> Stub.modify_group(request)
+      assert status == GRPC.Status.invalid_argument()
+      assert msg == "The new group name is already in use"
+    end
+
     # Here we only check if the request was created. How the
     # request is handled is tested in the Rbac.Store.Groups.Test tests.
     test "adds/removes user to a group", state do
