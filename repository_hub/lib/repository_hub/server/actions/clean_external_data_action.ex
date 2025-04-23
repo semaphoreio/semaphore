@@ -1,4 +1,4 @@
-defmodule RepositoryHub.Server.CleanExternalDataAction do
+defprotocol RepositoryHub.Server.CleanExternalDataAction do
   alias InternalApi.Repository.{CleanExternalDataRequest, CleanExternalDataResponse}
 
   @spec execute(t, CleanExternalDataRequest.t()) :: Toolkit.tupled_result(CleanExternalDataResponse.t())
