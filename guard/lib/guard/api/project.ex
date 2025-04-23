@@ -86,7 +86,7 @@ defmodule Guard.Api.Project do
     InternalApi.Projecthub.ListRequest.new(
       metadata:
         InternalApi.Projecthub.RequestMeta.new(
-          owner_id: opts[:owner_id] || "",
+          user_id: opts[:owner_id] || "",
           org_id: opts[:org_id] || ""
         ),
       pagination:
