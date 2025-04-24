@@ -11,6 +11,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
   alias RepositoryHub.Server.ClearExternalDataAction
   alias InternalApi.Repository.ClearExternalDataResponse
   alias RepositoryHub.InternalApiFactory
+  alias RepositoryHub.GithubClient
 
   import Mock
 
@@ -105,8 +106,22 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
       assert current_repository.owner == repository.owner
     end
 
-    test "should propagate not error when remove_deploy_key fails", %{github_adapter: adapter} do
+    test "should propagate error when remove_deploy_key fails", %{github_adapter: adapter} do
       with_mock GithubClient, remove_deploy_key: fn _, _ -> {:error, :not_found} end do
+        repository =
+          RepositoryModelFactory.github_repo(
+            name: "repository",
+            owner: "dummy"
+          )
+
+        request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
+
+        assert {:error, _} = ClearExternalDataAction.execute(adapter, request)
+      end
+    end
+
+    test "should propagate error when remove_webhook fails", %{github_adapter: adapter} do
+      with_mock GithubClient, remove_webhook: fn _, _ -> {:error, :not_found} end do
         repository =
           RepositoryModelFactory.github_repo(
             name: "repository",
