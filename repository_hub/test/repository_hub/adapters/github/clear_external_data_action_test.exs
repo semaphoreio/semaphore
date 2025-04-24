@@ -15,11 +15,11 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
 
   import Mock
 
-  setup_with_mocks(GithubClientFactory.mocks()) do
-    %{github_adapter: Adapters.github_app()}
-  end
+  describe "Github ClearExternalDataAction with successful response" do
+    setup_with_mocks(GithubClientFactory.mocks()) do
+      %{github_adapter: Adapters.github_app()}
+    end
 
-  describe "Github ClearExternalDataAction" do
     test "should validate request", %{github_adapter: adapter} do
       request = InternalApiFactory.clear_external_data_request()
 
@@ -105,7 +105,9 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
       assert current_repository.name == repository.name
       assert current_repository.owner == repository.owner
     end
+  end
 
+  describe "Github ClearExternalDataAction with error response" do
     test "should propagate error when remove_deploy_key fails", %{github_adapter: adapter} do
       with_mock GithubClient, [:passthrough], remove_deploy_key: fn _, _ -> {:error, :not_found} end do
         repository =
