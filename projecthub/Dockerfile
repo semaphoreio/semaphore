@@ -1,9 +1,9 @@
 ARG ELIXIR_VERSION=1.12.3
 ARG OTP_VERSION=24.3.4.17
-ARG UBUNTU_VERSION=focal-20250404
+ARG ALPINE_VERSION=3.20.3
 
-ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-ubuntu-${UBUNTU_VERSION}"
-ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
+ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
+ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
 FROM ${BUILDER_IMAGE} AS base
 
@@ -16,8 +16,13 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME for $MIX_ENV environment started"
 
 # install build dependencies
-RUN apt-get update -y && apt-get install --no-install-recommends -y build-essential git curl ca-certificates gnupg openssh-client \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+RUN apk update && \
+    apk add --no-cache \
+    openssh \
+    git \
+    openssl \
+    ncurses-libs \
+    libstdc++
 
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts
@@ -70,8 +75,9 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
-RUN apt-get update -y && apt-get install --no-install-recommends -y libstdc++6 openssl libncurses5 locales openssh-client \
-  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+RUN apk update && \
+    apk add --no-cache \
+    openssh-keygen openssl ncurses-libs libstdc++
 
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
