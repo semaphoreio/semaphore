@@ -1,10 +1,10 @@
-defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
+defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
   alias RepositoryHub.DeployKeysModelFactory
   use RepositoryHub.ServerActionCase, async: false
 
   alias RepositoryHub.{
     Adapters,
-    GitlabClientFactory,
+    GithubClientFactory,
     RepositoryModelFactory
   }
 
@@ -14,26 +14,26 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
 
   import Mock
 
-  setup_with_mocks(GitlabClientFactory.mocks()) do
-    %{gitlab_adapter: Adapters.gitlab()}
+  setup_with_mocks(GithubClientFactory.mocks()) do
+    %{github_adapter: Adapters.github()}
   end
 
-  describe "GitLab ClearExternalDataAction" do
-    test "should validate request", %{gitlab_adapter: adapter} do
+  describe "Github ClearExternalDataAction" do
+    test "should validate request", %{github_adapter: adapter} do
       request = InternalApiFactory.clear_external_data_request()
 
       assert {:ok, _} = ClearExternalDataAction.validate(adapter, request)
     end
 
-    test "should fail validation with invalid repository id", %{gitlab_adapter: adapter} do
+    test "should fail validation with invalid repository id", %{github_adapter: adapter} do
       request = InternalApiFactory.clear_external_data_request(repository_id: "invalid-id")
 
       assert {:error, _} = ClearExternalDataAction.validate(adapter, request)
     end
 
-    test "should clear repository external data", %{gitlab_adapter: adapter} do
+    test "should clear repository external data", %{github_adapter: adapter} do
       repository =
-        RepositoryModelFactory.gitlab_repo(
+        RepositoryModelFactory.github_repo(
           name: "repository",
           owner: "dummy",
           hook_id: "123"
@@ -48,9 +48,9 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
       assert current_repository.owner == repository.owner
     end
 
-    test "should clear a repository with deploy key", %{gitlab_adapter: adapter} do
+    test "should clear a repository with deploy key", %{github_adapter: adapter} do
       repository =
-        RepositoryModelFactory.gitlab_repo(
+        RepositoryModelFactory.github_repo(
           name: "repository",
           owner: "dummy"
         )
@@ -72,9 +72,9 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
       assert {:error, _} = RepositoryHub.Model.DeployKeyQuery.get_by_repository_id(repository.id)
     end
 
-    test "should handle missing deploy key gracefully", %{gitlab_adapter: adapter} do
+    test "should handle missing deploy key gracefully", %{github_adapter: adapter} do
       repository =
-        RepositoryModelFactory.gitlab_repo(
+        RepositoryModelFactory.github_repo(
           name: "repository",
           owner: "dummy"
         )
@@ -88,9 +88,9 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
       assert current_repository.owner == repository.owner
     end
 
-    test "should handle missing webhook gracefully", %{gitlab_adapter: adapter} do
+    test "should handle missing webhook gracefully", %{github_adapter: adapter} do
       repository =
-        RepositoryModelFactory.gitlab_repo(
+        RepositoryModelFactory.github_repo(
           name: "repository",
           owner: "dummy",
           hook_id: ""
