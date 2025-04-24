@@ -5,18 +5,10 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.Bitbuck
 
   @impl true
   def execute(adapter, request) do
-    case BitbucketAdapter.context(adapter, request.repository_id) do
-      {:ok, adapter_context} ->
-        repository = adapter_context.repository
-        bitbucket_token = adapter_context.bitbucket_token
-
-        remove_deploy_key(repository, bitbucket_token)
-        remove_webhook(repository, bitbucket_token)
-
-        build_response(repository)
-
-      error ->
-        error
+    with {:ok, adapter_context} <- BitbucketAdapter.context(adapter, request.repository_id),
+         {:ok, _} <- remove_deploy_key(adapter_context.repository, adapter_context.bitbucket_token),
+         {:ok, _} <- remove_webhook(adapter_context.repository, adapter_context.bitbucket_token) do
+      build_response(adapter_context.repository)
     end
   end
 

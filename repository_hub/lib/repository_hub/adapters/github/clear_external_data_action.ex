@@ -5,18 +5,10 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GithubA
 
   @impl true
   def execute(adapter, request) do
-    case GithubAdapter.context(adapter, request.repository_id) do
-      {:ok, adapter_context} ->
-        repository = adapter_context.repository
-        github_token = adapter_context.github_token
-
-        remove_deploy_key(repository, github_token)
-        remove_webhook(repository, github_token)
-
-        build_response(repository)
-
-      error ->
-        error
+    with {:ok, adapter_context} <- GithubAdapter.context(adapter, request.repository_id),
+         {:ok, _} <- remove_deploy_key(adapter_context.repository, adapter_context.github_token),
+         {:ok, _} <- remove_webhook(adapter_context.repository, adapter_context.github_token) do
+      build_response(adapter_context.repository)
     end
   end
 

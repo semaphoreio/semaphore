@@ -5,18 +5,10 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabA
 
   @impl true
   def execute(adapter, request) do
-    case GitlabAdapter.context(adapter, request.repository_id) do
-      {:ok, adapter_context} ->
-        repository = adapter_context.repository
-        gitlab_token = adapter_context.gitlab_token
-
-        remove_deploy_key(repository, gitlab_token)
-        remove_webhook(repository, gitlab_token)
-
-        build_response(repository)
-
-      error ->
-        error
+    with {:ok, adapter_context} <- GitlabAdapter.context(adapter, request.repository_id),
+         {:ok, _} <- remove_deploy_key(adapter_context.repository, adapter_context.gitlab_token),
+         {:ok, _} <- remove_webhook(adapter_context.repository, adapter_context.gitlab_token) do
+      build_response(adapter_context.repository)
     end
   end
 
