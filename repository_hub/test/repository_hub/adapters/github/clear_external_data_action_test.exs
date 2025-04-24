@@ -114,6 +114,13 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
             owner: "dummy"
           )
 
+        {:ok, _deploy_key} =
+          DeployKeysModelFactory.create_deploy_key(
+            repository_id: repository.id,
+            remote_id: 456,
+            project_id: repository.project_id
+          )
+
         request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
 
         assert {:error, _} = ClearExternalDataAction.execute(adapter, request)
@@ -126,12 +133,6 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
           RepositoryModelFactory.github_repo(
             name: "repository",
             owner: "dummy"
-          )
-
-        {:ok, _deploy_key} =
-          DeployKeysModelFactory.create_deploy_key(
-            repository_id: repository.id,
-            remote_id: 456
           )
 
         request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
