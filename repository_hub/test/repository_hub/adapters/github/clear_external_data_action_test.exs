@@ -107,7 +107,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
     end
 
     test "should propagate error when remove_deploy_key fails", %{github_adapter: adapter} do
-      with_mock GithubClient, remove_deploy_key: fn _, _ -> {:error, :not_found} end do
+      with_mock GithubClient, [:passthrough], remove_deploy_key: fn _, _ -> {:error, :not_found} end do
         repository =
           RepositoryModelFactory.github_repo(
             name: "repository",
@@ -121,7 +121,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
     end
 
     test "should propagate error when remove_webhook fails", %{github_adapter: adapter} do
-      with_mock GithubClient, remove_webhook: fn _, _ -> {:error, :not_found} end do
+      with_mock GithubClient, [:passthrough], remove_webhook: fn _, _ -> {:error, :not_found} end do
         repository =
           RepositoryModelFactory.github_repo(
             name: "repository",
