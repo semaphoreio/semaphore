@@ -108,6 +108,10 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
   end
 
   describe "Github ClearExternalDataAction with error response" do
+    setup do
+      %{github_adapter: Adapters.github_app()}
+    end
+
     test "should propagate error when remove_deploy_key fails", %{github_adapter: adapter} do
       with_mock GithubClient, [:passthrough], remove_deploy_key: fn _, _ -> {:error, :not_found} end do
         repository =
