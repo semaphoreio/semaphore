@@ -9,7 +9,7 @@
             <%= if !@is_group? do %>
               <%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %>
             <% else %>
-              <span class="black"><%= @member.name %></span>
+              <span class="black pointer" style="cursor: pointer;" name="modify-group-btn" group_id="<%= @member.id %>"><%= @member.name %></span>
             <% end %>
           </span>
           <%= render "members/__role_labels.html", role_bindings: @member.subject_role_bindings %>
