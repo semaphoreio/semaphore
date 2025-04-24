@@ -104,5 +104,19 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
       assert current_repository.name == repository.name
       assert current_repository.owner == repository.owner
     end
+
+    test "should propagate not error when remove_deploy_key fails", %{github_adapter: adapter} do
+      with_mock BitbucketClient, remove_deploy_key: fn _ -> {:error, :not_found} end do
+        repository =
+          RepositoryModelFactory.github_repo(
+            name: "repository",
+            owner: "dummy"
+          )
+
+        request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
+
+        assert {:error, _} = ClearExternalDataAction.execute(adapter, request)
+      end
+    end
   end
 end
