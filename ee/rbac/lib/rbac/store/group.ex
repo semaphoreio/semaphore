@@ -217,11 +217,11 @@ defmodule Rbac.Store.Group do
       ecto_multi
     else
       case fetch_group_by_name(new_name, org_id) do
-        {:ok, _} ->
+        {:ok, group} when group.id != subject_id ->
           ecto_multi
           |> Ecto.Multi.error(:update_subject, :name_taken)
 
-        {:error, :not_found} ->
+        _ ->
           subject = Rbac.Repo.Subject.find_by_id(subject_id)
 
           ecto_multi
