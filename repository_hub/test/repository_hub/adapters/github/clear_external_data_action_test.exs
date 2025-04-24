@@ -15,7 +15,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
   import Mock
 
   setup_with_mocks(GithubClientFactory.mocks()) do
-    %{github_adapter: Adapters.github()}
+    %{github_adapter: Adapters.github_app()}
   end
 
   describe "Github ClearExternalDataAction" do
