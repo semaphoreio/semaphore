@@ -15,7 +15,8 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.Bitbuck
 
         build_response(repository)
 
-      error -> error
+      error ->
+        error
     end
   end
 
@@ -36,7 +37,8 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.Bitbuck
         )
         |> unwrap_error(fn _ -> wrap(:not_found) end)
 
-      _ -> {:ok, nil}
+      _ ->
+        {:ok, nil}
     end
   end
 
