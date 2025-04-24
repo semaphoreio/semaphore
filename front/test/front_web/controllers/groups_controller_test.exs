@@ -45,16 +45,12 @@ defmodule FrontWeb.GroupsController.Test do
     end
 
     test "when something goes wrong, return error message", ctx do
-      with_mocks [
-        {Front.RBAC.Groups, [], [modify_group: fn _, _, _, _, _, _, _ -> {:error, ""} end]}
-      ] do
-        conn =
-          ctx.conn
-          |> put("/groups/#{Ecto.UUID.generate()}")
+      conn =
+        ctx.conn
+        |> put("/groups/#{Ecto.UUID.generate()}?name=test&description=test")
 
-        assert response(conn, 302) =~ "/people"
-        assert get_flash(conn, :alert) =~ "An error occured while modifying"
-      end
+      assert response(conn, 302) =~ "/people"
+      assert get_flash(conn, :alert) =~ "Group not found"
     end
 
     test "succesfully modify group", ctx do

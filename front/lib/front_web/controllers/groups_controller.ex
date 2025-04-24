@@ -64,7 +64,7 @@ defmodule FrontWeb.GroupsController do
         )
 
         conn
-        |> put_flash(:alert, message)
+        |> put_flash(:alert, URI.decode(message))
         |> redirect(to: people_path(conn, :organization))
     end
   end
