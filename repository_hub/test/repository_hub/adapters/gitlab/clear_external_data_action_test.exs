@@ -111,8 +111,7 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
         repository =
           RepositoryModelFactory.gitlab_repo(
             name: "repository",
-            owner: "dummy",
-            hook_id: "123"
+            owner: "dummy"
           )
 
         request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
@@ -127,12 +126,6 @@ defmodule RepositoryHub.Server.GitLab.ClearExternalDataActionTest do
           RepositoryModelFactory.gitlab_repo(
             name: "repository",
             owner: "dummy"
-          )
-
-        {:ok, _deploy_key} =
-          DeployKeysModelFactory.create_deploy_key(
-            repository_id: repository.id,
-            remote_id: 456
           )
 
         request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)

@@ -111,8 +111,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
         repository =
           RepositoryModelFactory.github_repo(
             name: "repository",
-            owner: "dummy",
-            hook_id: "123"
+            owner: "dummy"
           )
 
         request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
