@@ -27,7 +27,7 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabA
           %{repository_id: repository.remote_id, key_id: deploy_key.remote_id},
           token: gitlab_token
         )
-        |> unwrap_error(fn _ -> wrap(:not_found) end)
+        |> unwrap_error(fn _ -> {:error, :not_found} end)
 
       _ ->
         {:ok, nil}
@@ -40,7 +40,7 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabA
         %{repository_id: repository.remote_id, webhook_id: repository.hook_id},
         token: gitlab_token
       )
-      |> unwrap_error(fn _ -> wrap(:not_found) end)
+      |> unwrap_error(fn _ -> {:error, :not_found} end)
     else
       {:ok, nil}
     end

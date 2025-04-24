@@ -11,6 +11,7 @@ defmodule RepositoryHub.Server.Bitbucket.ClearExternalDataActionTest do
   alias RepositoryHub.Server.ClearExternalDataAction
   alias InternalApi.Repository.ClearExternalDataResponse
   alias RepositoryHub.InternalApiFactory
+  alias RepositoryHub.BitbucketClient
 
   import Mock
 
@@ -103,6 +104,41 @@ defmodule RepositoryHub.Server.Bitbucket.ClearExternalDataActionTest do
 
       assert current_repository.name == repository.name
       assert current_repository.owner == repository.owner
+    end
+
+    test "should propagate error when remove_deploy_key fails", %{bitbucket_adapter: adapter} do
+      with_mock BitbucketClient, [:passthrough], remove_deploy_key: fn _, _ -> {:error, :not_found} end do
+        repository =
+          RepositoryModelFactory.bitbucket_repo(
+            name: "repository",
+            owner: "dummy",
+            hook_id: "123"
+          )
+
+        request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
+
+        assert {:error, _} = ClearExternalDataAction.execute(adapter, request)
+      end
+    end
+
+    test "should propagate error when remove_webhook fails", %{bitbucket_adapter: adapter} do
+      with_mock BitbucketClient, [:passthrough], remove_webhook: fn _, _ -> {:error, :not_found} end do
+        repository =
+          RepositoryModelFactory.bitbucket_repo(
+            name: "repository",
+            owner: "dummy"
+          )
+
+        {:ok, _deploy_key} =
+          DeployKeysModelFactory.create_deploy_key(
+            repository_id: repository.id,
+            remote_id: 456
+          )
+
+        request = InternalApiFactory.clear_external_data_request(repository_id: repository.id)
+
+        assert {:error, _} = ClearExternalDataAction.execute(adapter, request)
+      end
     end
   end
 end

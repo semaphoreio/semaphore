@@ -15,7 +15,7 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
 
   import Mock
 
-  describe "Github ClearExternalDataAction with successful response" do
+  describe "Github ClearExternalDataAction" do
     setup_with_mocks(GithubClientFactory.mocks()) do
       %{github_adapter: Adapters.github_app()}
     end
@@ -104,12 +104,6 @@ defmodule RepositoryHub.Server.Github.ClearExternalDataActionTest do
 
       assert current_repository.name == repository.name
       assert current_repository.owner == repository.owner
-    end
-  end
-
-  describe "Github ClearExternalDataAction with error response" do
-    setup do
-      %{github_adapter: Adapters.github_app()}
     end
 
     test "should propagate error when remove_deploy_key fails", %{github_adapter: adapter} do
