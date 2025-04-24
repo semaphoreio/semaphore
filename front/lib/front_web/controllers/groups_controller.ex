@@ -57,17 +57,14 @@ defmodule FrontWeb.GroupsController do
         )
         |> redirect(to: people_path(conn, :organization))
 
-      {:error, err_msg} ->
+      {:error, %{status: _, message: message}} ->
         Logger.error(
-          "Error while creating a group: #{inspect(err_msg)}." <>
+          "Error while modifying a group: #{inspect(message)}." <>
             "Org #{inspect(org_id)} name #{inspect(name)} description #{inspect(description)} requestor #{inspect(requester_id)}"
         )
 
         conn
-        |> put_flash(
-          :alert,
-          "An error occured while modifying the group. Please contact our support team."
-        )
+        |> put_flash(:alert, message)
         |> redirect(to: people_path(conn, :organization))
     end
   end
