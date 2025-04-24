@@ -41,7 +41,8 @@ defmodule FrontWeb.SchedulersController do
           |> render("tasks/last_run.html",
             project: conn.assigns.project,
             scheduler_id: scheduler_id,
-            trigger: latest_trigger
+            trigger: latest_trigger,
+            permissions: conn.assigns.permissions
           )
 
         _ ->
