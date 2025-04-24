@@ -24,6 +24,7 @@ defmodule Projecthub.RepositoryHubClient do
     CreateResponse,
     CheckDeployKeyRequest,
     CheckWebhookRequest,
+    ClearExternalDataRequest,
     RegenerateDeployKeyRequest,
     RegenerateDeployKeyResponse,
     RegenerateWebhookRequest,
@@ -105,6 +106,14 @@ defmodule Projecthub.RepositoryHubClient do
       request
       |> decorate(DeleteRequest)
       |> grpc_call(:delete, with_default_opts(opts))
+
+  @spec clear_external_data(rpc_request(ClearExternalDataRequest.t()), opts()) ::
+          rpc_response(ClearExternalDataResponse.t())
+  def clear_external_data(request, opts \\ []),
+    do:
+      request
+      |> decorate(ClearExternalDataRequest)
+      |> grpc_call(:clear_external_data, with_default_opts(opts))
 
   @spec update(rpc_request(UpdateRequest.t()), opts()) :: rpc_response(UpdateResponse.t())
   def update(request, opts \\ []),
