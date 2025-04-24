@@ -5,35 +5,17 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabA
 
   @impl true
   def execute(adapter, request) do
-    with {:ok, adapter_context} <- GitlabAdapter.context(adapter, request.repository_id) do
-      repository = adapter_context.repository
-      gitlab_token = adapter_context.gitlab_token
+    case GitlabAdapter.context(adapter, request.repository_id) do
+      {:ok, adapter_context} ->
+        repository = adapter_context.repository
+        gitlab_token = adapter_context.gitlab_token
 
-      # Remove deploy key if exists
-      with {:ok, deploy_key} <- Model.DeployKeyQuery.get_by_repository_id(repository.id) do
-        Model.DeployKeyQuery.delete(deploy_key.id)
+        remove_deploy_key(repository, gitlab_token)
+        remove_webhook(repository, gitlab_token)
 
-        GitlabClient.remove_deploy_key(
-          %{repository_id: repository.remote_id, key_id: deploy_key.remote_id},
-          token: gitlab_token
-        )
-        |> unwrap_error(fn _ -> wrap(:not_found) end)
-      end
+        build_response(repository)
 
-      # Remove webhook if exists
-      if repository.hook_id != "" do
-        GitlabClient.remove_webhook(
-          %{repository_id: repository.remote_id, webhook_id: repository.hook_id},
-          token: gitlab_token
-        )
-        |> unwrap_error(fn _ -> wrap(:not_found) end)
-      end
-
-      Model.Repositories.to_grpc_model(repository)
-      |> then(fn grpc_repository ->
-        %ClearExternalDataResponse{repository: grpc_repository}
-        |> wrap()
-      end)
+      error -> error
     end
   end
 
@@ -41,5 +23,41 @@ defimpl RepositoryHub.Server.ClearExternalDataAction, for: RepositoryHub.GitlabA
   def validate(_adapter, request) do
     request
     |> Validator.validate(chain: [{:from!, :repository_id}, :is_uuid])
+  end
+
+  defp remove_deploy_key(repository, gitlab_token) do
+    case Model.DeployKeyQuery.get_by_repository_id(repository.id) do
+      {:ok, deploy_key} ->
+        Model.DeployKeyQuery.delete(deploy_key.id)
+
+        GitlabClient.remove_deploy_key(
+          %{repository_id: repository.remote_id, key_id: deploy_key.remote_id},
+          token: gitlab_token
+        )
+        |> unwrap_error(fn _ -> wrap(:not_found) end)
+
+      _ -> {:ok, nil}
+    end
+  end
+
+  defp remove_webhook(repository, gitlab_token) do
+    if repository.hook_id != "" do
+      GitlabClient.remove_webhook(
+        %{repository_id: repository.remote_id, webhook_id: repository.hook_id},
+        token: gitlab_token
+      )
+      |> unwrap_error(fn _ -> wrap(:not_found) end)
+    else
+      {:ok, nil}
+    end
+  end
+
+  defp build_response(repository) do
+    repository
+    |> Model.Repositories.to_grpc_model()
+    |> then(fn grpc_repository ->
+      %ClearExternalDataResponse{repository: grpc_repository}
+      |> wrap()
+    end)
   end
 end
