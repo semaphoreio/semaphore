@@ -6,6 +6,7 @@ import (
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 const (
@@ -41,10 +42,14 @@ type SemaphoreRunTemplate struct {
 	TaskID       string            `json:"task_id"`
 }
 
-func FindStageByIDOnly(id uuid.UUID) (*Stage, error) {
+func FindStageByID(id uuid.UUID) (*Stage, error) {
+	return FindStageByIDInTransaction(database.Conn(), id)
+}
+
+func FindStageByIDInTransaction(tx *gorm.DB, id uuid.UUID) (*Stage, error) {
 	var stage Stage
 
-	err := database.Conn().
+	err := tx.
 		Where("id = ?", id).
 		First(&stage).
 		Error

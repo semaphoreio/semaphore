@@ -31,11 +31,11 @@ func Test__Resolve(t *testing.T) {
 		e := `{"branch":"hello","project":"other","param1":"value1","param2":"value2"}`
 		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(e))
 		template := support.RunTemplate()
-		template.Semaphore.Branch = "${{self.GetConnection('gh').branch}}"
-		template.Semaphore.ProjectID = "${{self.GetConnection('gh').project}}"
+		template.Semaphore.Branch = "${{self.Conn('gh').branch}}"
+		template.Semaphore.ProjectID = "${{self.Conn('gh').project}}"
 		template.Semaphore.Parameters = map[string]string{
-			"PARAM_1": "${{self.GetConnection('gh').param1}}",
-			"PARAM_2": "${{self.GetConnection('gh').param2}}",
+			"PARAM_1": "${{self.Conn('gh').param1}}",
+			"PARAM_2": "${{self.Conn('gh').param2}}",
 		}
 
 		resolver := NewResolver(*execution, template)

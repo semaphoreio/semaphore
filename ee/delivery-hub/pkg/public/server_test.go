@@ -3,20 +3,25 @@ package public
 import (
 	"bytes"
 	"crypto/rand"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
+	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test__HealthCheckEndpoint(t *testing.T) {
-	server, err := NewServer(&encryptor.NoOpEncryptor{}, "")
+	signer := jwt.NewSigner("test")
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, signer, "")
 	require.NoError(t, err)
 
 	response := execRequest(server, requestParams{
@@ -30,7 +35,8 @@ func Test__HealthCheckEndpoint(t *testing.T) {
 func Test__ReceiveGitHubEvent(t *testing.T) {
 	require.NoError(t, database.TruncateTables())
 
-	server, err := NewServer(&encryptor.NoOpEncryptor{}, "")
+	signer := jwt.NewSigner("test")
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, signer, "")
 	require.NoError(t, err)
 
 	orgID := uuid.New()
@@ -172,7 +178,7 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 		assert.NotNil(t, events[0].ReceivedAt)
 	})
 
-	t.Run("event data is limited to 32k", func(t *testing.T) {
+	t.Run("event data is limited to 64k", func(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
@@ -183,7 +189,162 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 		})
 
 		assert.Equal(t, http.StatusRequestEntityTooLarge, response.Code)
-		assert.Equal(t, "Request body is too large - must be up to 33554432 bytes\n", response.Body.String())
+		assert.Equal(t, "Request body is too large - must be up to 65536 bytes\n", response.Body.String())
+	})
+}
+
+func Test__HandleExecutionOutputs(t *testing.T) {
+	r := support.Setup(t)
+
+	signer := jwt.NewSigner("test")
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, signer, "")
+	require.NoError(t, err)
+
+	execution := support.CreateExecution(t, r.Source, r.Stage)
+	validURL := "/executions/" + execution.ID.String() + "/outputs"
+	validToken, err := signer.Generate(execution.ID.String(), time.Hour)
+	require.NoError(t, err)
+	outputs := []byte(`{"version":"1.0.0","sha":"078fc8755c051"}`)
+
+	t.Run("missing organization header -> 404", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       "",
+			body:        outputs,
+			contentType: "application/json",
+			authToken:   validToken,
+		})
+
+		require.Equal(t, 404, response.Code)
+	})
+
+	t.Run("invalid organization header -> 404", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       "not-a-uuid",
+			body:        outputs,
+			contentType: "application/json",
+			authToken:   validToken,
+		})
+
+		require.Equal(t, 404, response.Code)
+	})
+
+	t.Run("event for invalid execution -> 404", func(t *testing.T) {
+		invalidURL := "/executions/invalidsource/outputs"
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        invalidURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			authToken:   validToken,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "execution not found\n", response.Body.String())
+	})
+
+	t.Run("missing Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			contentType: "",
+			authToken:   validToken,
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
+	t.Run("unsupported Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			contentType: "application/x-www-form-urlencoded",
+			authToken:   validToken,
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
+	t.Run("event for execution that does not exist -> 404", func(t *testing.T) {
+		invalidURL := "/executions/" + uuid.New().String() + "/outputs"
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        invalidURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			contentType: "application/json",
+			authToken:   validToken,
+		})
+
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "execution not found\n", response.Body.String())
+	})
+
+	t.Run("event with missing authorization header -> 401", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			signature:   "",
+			authToken:   "",
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 401, response.Code)
+		assert.Equal(t, "Missing Authorization header\n", response.Body.String())
+	})
+
+	t.Run("invalid auth token -> 403", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			authToken:   "invalid",
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 401, response.Code)
+		assert.Equal(t, "Invalid token\n", response.Body.String())
+	})
+
+	t.Run("proper request -> 200 and outputs are saved in execution", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        outputs,
+			authToken:   validToken,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 200, response.Code)
+		execution, err := models.FindExecutionByID(execution.ID)
+		require.NoError(t, err)
+		compareJSONB(t, outputs, []byte(execution.Outputs))
+	})
+
+	t.Run("outputs are limited to 4k", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			orgID:       r.Org.String(),
+			body:        generateBigBody(t),
+			authToken:   validToken,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, response.Code)
+		assert.Equal(t, "Request body is too large - must be up to 4096 bytes\n", response.Body.String())
 	})
 }
 
@@ -193,6 +354,7 @@ type requestParams struct {
 	orgID       string
 	body        []byte
 	signature   string
+	authToken   string
 	contentType string
 }
 
@@ -211,6 +373,10 @@ func execRequest(server *Server, params requestParams) *httptest.ResponseRecorde
 		req.Header.Add("X-Hub-Signature-256", params.signature)
 	}
 
+	if params.authToken != "" {
+		req.Header.Add("Authorization", "Bearer "+params.authToken)
+	}
+
 	res := httptest.NewRecorder()
 	server.Router.ServeHTTP(res, req)
 	return res
@@ -221,4 +387,18 @@ func generateBigBody(t *testing.T) []byte {
 	_, err := rand.Read(b)
 	require.NoError(t, err)
 	return b
+}
+
+func compareJSONB(t *testing.T, a, b []byte) {
+	var dataA map[string]any
+	err := json.Unmarshal(a, &dataA)
+	require.NoError(t, err)
+
+	var dataB map[string]any
+	err = json.Unmarshal(a, &dataB)
+	require.NoError(t, err)
+
+	for k, v := range dataA {
+		assert.Equal(t, v, dataB[k])
+	}
 }

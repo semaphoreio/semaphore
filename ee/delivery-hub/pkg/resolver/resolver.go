@@ -133,12 +133,10 @@ type Self struct {
 	execution models.StageExecution
 }
 
-// TODO: if we want a lower-letter function
-// - getConnection() - we'd have to use expr.Function()
-func (s Self) GetConnection(name string) (map[string]any, error) {
+func (s Self) Conn(name string) (map[string]any, error) {
 	sourceName, err := s.execution.FindSource()
 	if err != nil {
-		return nil, fmt.Errorf("error finding source for execution")
+		return nil, fmt.Errorf("error finding source for execution: %v", err)
 	}
 
 	//
@@ -148,11 +146,30 @@ func (s Self) GetConnection(name string) (map[string]any, error) {
 	if name == sourceName {
 		data, err := s.execution.GetEventData()
 		if err != nil {
-			return nil, fmt.Errorf("error finding event data for execution")
+			return nil, fmt.Errorf("error finding event data for execution: %v", err)
 		}
 
 		return data, nil
 	}
 
-	return nil, fmt.Errorf("only current connection is supported for now")
+	connection, err := models.FindStageConnection(s.execution.StageID, name)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find connection with name %s: %w", name, err)
+	}
+
+	//
+	// TODO
+	// we'll need to differentiate things here a little bit depending on the type of the connection.
+	// For example, for stages, we are only interested in the last stage __completion__ event.
+	// We only have that type of stage event now, but we might end up having more.
+	//
+	// Also, right now, we are erroring if there is no event for the connection yet,
+	// but we might want to handle that differently.
+	//
+	data, err := models.FindLastEventBySourceID(connection.SourceID)
+	if err != nil {
+		return nil, fmt.Errorf("error finding last event for connection %s: %v", name, err)
+	}
+
+	return data, nil
 }

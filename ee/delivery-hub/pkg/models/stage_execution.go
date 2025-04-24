@@ -42,6 +42,9 @@ type StageExecution struct {
 	// that all IDs will be UUIDs.
 	//
 	ReferenceID string
+
+	// TODO: I'm storing the outputs here, but it should probably go to its own table
+	Outputs datatypes.JSON
 }
 
 func (e *StageExecution) GetEventData() (map[string]any, error) {
@@ -99,16 +102,23 @@ func (e *StageExecution) Start(referenceID string) error {
 		Error
 }
 
-func (e *StageExecution) Finish(result string) error {
+func (e *StageExecution) FinishInTransaction(tx *gorm.DB, result string) error {
 	now := time.Now()
 
-	return database.Conn().
-		Model(e).
+	return tx.Model(e).
 		Clauses(clause.Returning{}).
 		Update("result", result).
 		Update("state", StageExecutionFinished).
 		Update("updated_at", &now).
 		Update("finished_at", &now).
+		Error
+}
+
+func (e *StageExecution) UpdateOutputs(outputs []byte) error {
+	return database.Conn().Model(e).
+		Clauses(clause.Returning{}).
+		Update("outputs", outputs).
+		Update("updated_at", time.Now()).
 		Error
 }
 

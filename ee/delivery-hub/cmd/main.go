@@ -7,12 +7,13 @@ import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
 	grpc "github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/public"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/workers"
 	log "github.com/sirupsen/logrus"
 )
 
-func startWorkers() {
+func startWorkers(jwtSigner *jwt.Signer) {
 	log.Println("Starting Workers")
 
 	if os.Getenv("START_PENDING_EVENTS_WORKER") == "yes" {
@@ -60,6 +61,7 @@ func startWorkers() {
 		w := workers.PendingExecutionsWorker{
 			RepoProxyURL: repoProxyURL,
 			SchedulerURL: schedulerURL,
+			JwtSigner:    jwtSigner,
 		}
 
 		go w.Start()
@@ -71,7 +73,7 @@ func startInternalAPI(encryptor encryptor.Encryptor) {
 	grpc.RunServer(encryptor, 50051)
 }
 
-func startPublicAPI(encryptor encryptor.Encryptor) {
+func startPublicAPI(encryptor encryptor.Encryptor, jwtSigner *jwt.Signer) {
 	log.Println("Starting Public API")
 
 	basePath := os.Getenv("PUBLIC_API_BASE_PATH")
@@ -79,7 +81,7 @@ func startPublicAPI(encryptor encryptor.Encryptor) {
 		panic("PUBLIC_API_BASE_PATH must be set")
 	}
 
-	server, err := public.NewServer(encryptor, basePath)
+	server, err := public.NewServer(encryptor, jwtSigner, basePath)
 	if err != nil {
 		log.Panicf("Error creating public API server: %v", err)
 	}
@@ -100,15 +102,22 @@ func main() {
 
 	encryptor := encryptor.NewGrpcEncryptor(encryptorURL)
 
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		panic("JWT_SECRET must be set")
+	}
+
+	jwtSigner := jwt.NewSigner(jwtSecret)
+
 	if os.Getenv("START_PUBLIC_API") == "yes" {
-		go startPublicAPI(encryptor)
+		go startPublicAPI(encryptor, jwtSigner)
 	}
 
 	if os.Getenv("START_INTERNAL_API") == "yes" {
 		go startInternalAPI(encryptor)
 	}
 
-	startWorkers()
+	startWorkers(jwtSigner)
 
 	log.Println("Delivery Hub is UP.")
 

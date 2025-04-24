@@ -161,6 +161,21 @@ func ListConnectionsForSource(sourceID uuid.UUID, connectionType string) ([]Stag
 	return connections, nil
 }
 
+func FindStageConnection(stageID uuid.UUID, sourceName string) (*StageConnection, error) {
+	var connection StageConnection
+	err := database.Conn().
+		Where("stage_id = ?", stageID).
+		Where("source_name = ?", sourceName).
+		First(&connection).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &connection, nil
+}
+
 func ListConnectionsForStage(stageID uuid.UUID) ([]StageConnection, error) {
 	var connections []StageConnection
 	err := database.Conn().

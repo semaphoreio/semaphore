@@ -1,6 +1,8 @@
 package events
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
@@ -15,16 +17,17 @@ const (
 )
 
 type StageExecutionCompletion struct {
-	Type           string          `json:"type"`
-	Stage          *Stage          `json:"stage,omitempty"`
-	StageExecution *StageExecution `json:"stage_execution,omitempty"`
+	Type      string            `json:"type"`
+	Stage     *Stage            `json:"stage,omitempty"`
+	Execution *Execution        `json:"execution,omitempty"`
+	Outputs   map[string]string `json:"outputs,omitempty"`
 }
 
 type Stage struct {
 	ID string `json:"id"`
 }
 
-type StageExecution struct {
+type Execution struct {
 	ID         string     `json:"id"`
 	Result     string     `json:"result"`
 	CreatedAt  *time.Time `json:"created_at,omitempty"`
@@ -32,18 +35,27 @@ type StageExecution struct {
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 }
 
-func NewStageExecutionCompletion(execution *models.StageExecution) *StageExecutionCompletion {
+func NewStageExecutionCompletion(execution *models.StageExecution) (*StageExecutionCompletion, error) {
+	var outputs map[string]string
+	if execution.Outputs != nil {
+		err := json.Unmarshal(execution.Outputs, &outputs)
+		if err != nil {
+			return nil, fmt.Errorf("error building outputs: %v", err)
+		}
+	}
+
 	return &StageExecutionCompletion{
 		Type: StageExecutionCompletionType,
 		Stage: &Stage{
 			ID: execution.StageID.String(),
 		},
-		StageExecution: &StageExecution{
+		Execution: &Execution{
 			ID:         execution.ID.String(),
 			Result:     execution.Result,
 			CreatedAt:  execution.CreatedAt,
 			StartedAt:  execution.StartedAt,
 			FinishedAt: execution.FinishedAt,
 		},
-	}
+		Outputs: outputs,
+	}, nil
 }

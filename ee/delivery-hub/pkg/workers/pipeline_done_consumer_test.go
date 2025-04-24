@@ -80,11 +80,11 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, events.StageExecutionCompletionType, e.Type)
 		require.Equal(t, r.Stage.ID.String(), e.Stage.ID)
-		require.Equal(t, execution.ID.String(), e.StageExecution.ID)
-		require.Equal(t, models.StageExecutionResultFailed, e.StageExecution.Result)
-		require.NotEmpty(t, e.StageExecution.CreatedAt)
-		require.NotEmpty(t, e.StageExecution.StartedAt)
-		require.NotEmpty(t, e.StageExecution.FinishedAt)
+		require.Equal(t, execution.ID.String(), e.Execution.ID)
+		require.Equal(t, models.StageExecutionResultFailed, e.Execution.Result)
+		require.NotEmpty(t, e.Execution.CreatedAt)
+		require.NotEmpty(t, e.Execution.StartedAt)
+		require.NotEmpty(t, e.Execution.FinishedAt)
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -137,11 +137,11 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, events.StageExecutionCompletionType, e.Type)
 		require.Equal(t, r.Stage.ID.String(), e.Stage.ID)
-		require.Equal(t, execution.ID.String(), e.StageExecution.ID)
-		require.Equal(t, models.StageExecutionResultPassed, e.StageExecution.Result)
-		require.NotEmpty(t, e.StageExecution.CreatedAt)
-		require.NotEmpty(t, e.StageExecution.StartedAt)
-		require.NotEmpty(t, e.StageExecution.FinishedAt)
+		require.Equal(t, execution.ID.String(), e.Execution.ID)
+		require.Equal(t, models.StageExecutionResultPassed, e.Execution.Result)
+		require.NotEmpty(t, e.Execution.CreatedAt)
+		require.NotEmpty(t, e.Execution.StartedAt)
+		require.NotEmpty(t, e.Execution.FinishedAt)
 	})
 }
 

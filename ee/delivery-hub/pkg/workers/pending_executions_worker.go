@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/resolver"
@@ -22,6 +23,7 @@ import (
 type PendingExecutionsWorker struct {
 	RepoProxyURL string
 	SchedulerURL string
+	JwtSigner    *jwt.Signer
 }
 
 func (w *PendingExecutionsWorker) Start() {
@@ -42,7 +44,7 @@ func (w *PendingExecutionsWorker) Tick() error {
 	}
 
 	for _, execution := range executions {
-		stage, err := models.FindStageByIDOnly(execution.StageID)
+		stage, err := models.FindStageByID(execution.StageID)
 		if err != nil {
 			return fmt.Errorf("error finding stage %s: %v", execution.StageID, err)
 		}
@@ -66,7 +68,7 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 		return fmt.Errorf("error resolving run template: %v", err)
 	}
 
-	executionID, err := w.StartExecution(logger, stage, *template)
+	executionID, err := w.StartExecution(logger, stage, execution, *template)
 	if err != nil {
 		return fmt.Errorf("error starting execution: %v", err)
 	}
@@ -82,14 +84,14 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 }
 
 // TODO: implement some retry and give up mechanism
-func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, template models.RunTemplate) (string, error) {
+func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *models.Stage, execution models.StageExecution, template models.RunTemplate) (string, error) {
 	switch template.Type {
 	case models.RunTemplateTypeSemaphore:
 		//
 		// If a task ID is specified, we trigger a task instead of a plain workflow.
 		//
 		if template.Semaphore.TaskID != "" {
-			return w.TriggerSemaphoreTask(logger, stage, template.Semaphore)
+			return w.TriggerSemaphoreTask(logger, stage, execution, template.Semaphore)
 		}
 
 		return w.StartPlainWorkflow(logger, stage, template.Semaphore)
@@ -98,7 +100,7 @@ func (w *PendingExecutionsWorker) StartExecution(logger *log.Entry, stage *model
 	}
 }
 
-func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage, template *models.SemaphoreRunTemplate) (string, error) {
+func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage *models.Stage, execution models.StageExecution, template *models.SemaphoreRunTemplate) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -110,7 +112,11 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage 
 	defer conn.Close()
 
 	// TODO: call RBAC API to check if s.CreatedBy can create workflow
-	// TODO: check if eventData is using DSL and if so, resolve everything there.
+
+	parameters, err := w.buildParameters(execution, template.Parameters)
+	if err != nil {
+		return "", fmt.Errorf("error building parameters: %v", err)
+	}
 
 	client := schedulerproto.NewPeriodicServiceClient(conn)
 	res, err := client.RunNow(ctx, &schedulerproto.RunNowRequest{
@@ -118,7 +124,7 @@ func (w *PendingExecutionsWorker) TriggerSemaphoreTask(logger *log.Entry, stage 
 		Requester:       stage.CreatedBy.String(),
 		Branch:          template.Branch,
 		PipelineFile:    template.PipelineFile,
-		ParameterValues: buildParameters(template.Parameters),
+		ParameterValues: parameters,
 	})
 
 	if err != nil {
@@ -145,7 +151,6 @@ func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *m
 	defer conn.Close()
 
 	// TODO: call RBAC API to check if s.CreatedBy can create workflow
-	// TODO: check if eventData is using DSL and if so, resolve everything there.
 
 	client := repoproxyproto.NewRepoProxyServiceClient(conn)
 	res, err := client.Create(ctx, &repoproxyproto.CreateRequest{
@@ -167,8 +172,30 @@ func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *m
 	return res.WorkflowId, nil
 }
 
-func buildParameters(parameters map[string]string) []*schedulerproto.ParameterValue {
-	var parameterValues []*schedulerproto.ParameterValue
+func (w *PendingExecutionsWorker) buildParameters(execution models.StageExecution, parameters map[string]string) ([]*schedulerproto.ParameterValue, error) {
+	//
+	// Aside from the parameters specified in the run template,
+	// we also need to include the token for the execution to push outputs.
+	//
+	parameterValues := []*schedulerproto.ParameterValue{
+		{Name: "SEMAPHORE_STAGE_ID", Value: execution.StageID.String()},
+		{Name: "SEMAPHORE_STAGE_EXECUTION_ID", Value: execution.ID.String()},
+	}
+
+	token, err := w.JwtSigner.Generate(execution.ID.String(), 24*time.Hour)
+	if err != nil {
+		return nil, fmt.Errorf("error generating outputs token: %v", err)
+	}
+
+	//
+	// TODO: this is a sensitive value, so we can't display it in the UI.
+	// We'd need to update plumber to support sensitive parameters if we are gonna do it this way.
+	// Otherwise, we'd need to expose these values from zebra.
+	//
+	parameterValues = append(parameterValues, &schedulerproto.ParameterValue{
+		Name:  "SEMAPHORE_STAGE_EXECUTION_TOKEN",
+		Value: token,
+	})
 
 	for key, value := range parameters {
 		parameterValues = append(parameterValues, &schedulerproto.ParameterValue{
@@ -177,5 +204,5 @@ func buildParameters(parameters map[string]string) []*schedulerproto.ParameterVa
 		})
 	}
 
-	return parameterValues
+	return parameterValues, nil
 }

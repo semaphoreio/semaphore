@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/renderedtext/go-tackle"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
@@ -105,23 +106,25 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	// Update the stage execution accordingly.
 	//
 	result := c.resolveExecutionResult(logger, pipeline)
-	if err := execution.Finish(result); err != nil {
-		logger.Errorf("Error updating execution state: %v", err)
-		return err
-	}
 
-	logger.Infof("Execution state updated: %s", result)
+	return database.Conn().Transaction(func(tx *gorm.DB) error {
+		if err := execution.FinishInTransaction(tx, result); err != nil {
+			logger.Errorf("Error updating execution state: %v", err)
+			return err
+		}
 
-	//
-	// Lastly, since the stage for this execution might be connected to other stages,
-	// we create a new event for the completion of this stage.
-	//
-	if err := c.createStageCompletionEvent(logger, execution); err != nil {
-		logger.Errorf("Error creating stage completion event: %v", err)
-		return err
-	}
+		//
+		// Lastly, since the stage for this execution might be connected to other stages,
+		// we create a new event for the completion of this stage.
+		//
+		if err := c.createStageCompletionEvent(tx, execution); err != nil {
+			logger.Errorf("Error creating stage completion event: %v", err)
+			return err
+		}
 
-	return nil
+		logger.Infof("Execution state updated: %s", result)
+		return nil
+	})
 }
 
 func (c *PipelineDoneConsumer) describePipeline(id string) (*pplproto.Pipeline, error) {
@@ -156,24 +159,26 @@ func (c *PipelineDoneConsumer) resolveExecutionResult(logger *log.Entry, pipelin
 	}
 }
 
-func (c *PipelineDoneConsumer) createStageCompletionEvent(logger *log.Entry, execution *models.StageExecution) error {
-	stage, err := models.FindStageByIDOnly(execution.StageID)
+func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution *models.StageExecution) error {
+	stage, err := models.FindStageByIDInTransaction(tx, execution.StageID)
 	if err != nil {
 		return err
 	}
 
-	e := events.NewStageExecutionCompletion(execution)
+	e, err := events.NewStageExecutionCompletion(execution)
+	if err != nil {
+		return fmt.Errorf("error creating stage completion event: %v", err)
+	}
+
 	raw, err := json.Marshal(&e)
 	if err != nil {
 		return fmt.Errorf("error marshaling event: %v", err)
 	}
 
-	event, err := models.CreateEvent(execution.StageID, stage.Name, models.SourceTypeStage, raw)
+	_, err = models.CreateEventInTransaction(tx, execution.StageID, stage.Name, models.SourceTypeStage, raw)
 	if err != nil {
 		return fmt.Errorf("error creating event: %v", err)
 	}
-
-	logger.Infof("Created event %s", event.ID)
 
 	return nil
 }

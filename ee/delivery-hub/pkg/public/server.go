@@ -13,25 +13,33 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	log "github.com/sirupsen/logrus"
 )
 
-// Event payload can be up to 32k in size
-const MaxEventSize = 32 * 1024 * 1024
+const (
+	// Event payload can be up to 64k in size
+	MaxEventSize = 64 * 1024
+
+	// The size of a stage execution can be up to 4k
+	MaxExecutionOutputsSize = 4 * 1024
+)
 
 type Server struct {
 	httpServer            *http.Server
 	encryptor             encryptor.Encryptor
+	jwt                   *jwt.Signer
 	timeoutHandlerTimeout time.Duration
 	Router                *mux.Router
 	BasePath              string
 }
 
-func NewServer(encryptor encryptor.Encryptor, basePath string, middlewares ...mux.MiddlewareFunc) (*Server, error) {
+func NewServer(encryptor encryptor.Encryptor, jwtSigner *jwt.Signer, basePath string, middlewares ...mux.MiddlewareFunc) (*Server, error) {
 	server := &Server{
 		timeoutHandlerTimeout: 15 * time.Second,
 		encryptor:             encryptor,
+		jwt:                   jwtSigner,
 		BasePath:              basePath,
 	}
 
@@ -50,6 +58,11 @@ func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
 
 	authenticatedRoute.
 		HandleFunc(s.BasePath+"/sources/{sourceID}/github", s.HandleGithubWebhook).
+		Headers("Content-Type", "application/json").
+		Methods("POST")
+
+	authenticatedRoute.
+		HandleFunc(s.BasePath+"/executions/{executionID}/outputs", s.HandleExecutionOutputs).
 		Headers("Content-Type", "application/json").
 		Methods("POST")
 
@@ -90,6 +103,67 @@ func (s *Server) Close() {
 	if err := s.httpServer.Close(); err != nil {
 		log.Errorf("Error closing server: %v", err)
 	}
+}
+
+func (s *Server) HandleExecutionOutputs(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	executionID, err := uuid.Parse(vars["executionID"])
+	if err != nil {
+		http.Error(w, "execution not found", http.StatusNotFound)
+		return
+	}
+
+	execution, err := models.FindExecutionByID(executionID)
+	if err != nil {
+		http.Error(w, "execution not found", http.StatusNotFound)
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		return
+	}
+
+	headerParts := strings.Split(authHeader, "Bearer ")
+	if len(headerParts) != 2 {
+		http.Error(w, "Malformed Authorization header", http.StatusUnauthorized)
+		return
+	}
+
+	token := headerParts[1]
+	err = s.jwt.Validate(token, execution.ID.String())
+	if err != nil {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, MaxExecutionOutputsSize)
+	defer r.Body.Close()
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		if _, ok := err.(*http.MaxBytesError); ok {
+			http.Error(
+				w,
+				fmt.Sprintf("Request body is too large - must be up to %d bytes", MaxExecutionOutputsSize),
+				http.StatusRequestEntityTooLarge,
+			)
+
+			return
+		}
+
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	err = execution.UpdateOutputs(body)
+	if err != nil {
+		http.Error(w, "Error updating outputs", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {

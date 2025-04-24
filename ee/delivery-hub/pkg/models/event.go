@@ -2,6 +2,7 @@ package models
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -57,6 +58,10 @@ func (e *Event) GetData() (map[string]any, error) {
 }
 
 func CreateEvent(sourceID uuid.UUID, sourceName, sourceType string, raw []byte) (*Event, error) {
+	return CreateEventInTransaction(database.Conn(), sourceID, sourceName, sourceType, raw)
+}
+
+func CreateEventInTransaction(tx *gorm.DB, sourceID uuid.UUID, sourceName, sourceType string, raw []byte) (*Event, error) {
 	now := time.Now()
 
 	event := Event{
@@ -68,7 +73,7 @@ func CreateEvent(sourceID uuid.UUID, sourceName, sourceType string, raw []byte) 
 		Raw:        datatypes.JSON(raw),
 	}
 
-	err := database.Conn().
+	err := tx.
 		Clauses(clause.Returning{}).
 		Create(&event).
 		Error
@@ -93,4 +98,27 @@ func ListPendingEvents() ([]Event, error) {
 func FindEventByID(id uuid.UUID) (*Event, error) {
 	var event Event
 	return &event, database.Conn().Where("id = ?", id).First(&event).Error
+}
+
+func FindLastEventBySourceID(sourceID uuid.UUID) (map[string]any, error) {
+	var event Event
+	err := database.Conn().
+		Table("events").
+		Select("raw").
+		Where("source_id = ?", sourceID).
+		Order("received_at DESC").
+		First(&event).
+		Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error finding event: %v", err)
+	}
+
+	var m map[string]any
+	err = json.Unmarshal(event.Raw, &m)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling data: %v", err)
+	}
+
+	return m, nil
 }

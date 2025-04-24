@@ -7,6 +7,7 @@ CREATE TABLE stage_executions (
   reference_id   CHARACTER VARYING(64) NOT NULL,
   state          CHARACTER VARYING(64) NOT NULL,
   result         CHARACTER VARYING(64) NOT NULL,
+  outputs        jsonb,
   created_at     TIMESTAMP NOT NULL,
   updated_at     TIMESTAMP NOT NULL,
   started_at     TIMESTAMP,

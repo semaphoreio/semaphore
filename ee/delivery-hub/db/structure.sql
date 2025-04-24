@@ -137,6 +137,7 @@ CREATE TABLE public.stage_executions (
     reference_id character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
     result character varying(64) NOT NULL,
+    outputs jsonb,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL,
     started_at timestamp without time zone,

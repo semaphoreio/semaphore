@@ -1,9 +1,13 @@
 package workers
 
 import (
+	"encoding/json"
 	"slices"
 	"testing"
 
+	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	schedulepb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/periodic_scheduler"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
@@ -12,10 +16,11 @@ import (
 )
 
 func Test__PendingExecutionsWorker(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Grpc: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
 	w := PendingExecutionsWorker{
 		RepoProxyURL: "0.0.0.0:50052",
 		SchedulerURL: "0.0.0.0:50052",
+		JwtSigner:    jwt.NewSigner("test"),
 	}
 
 	t.Run("semaphore workflow is created", func(t *testing.T) {
@@ -98,14 +103,10 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, "main", req.Branch)
 		assert.Equal(t, ".semaphore/run.yml", req.PipelineFile)
 		assert.Equal(t, stage.CreatedBy.String(), req.Requester)
-
-		require.Len(t, req.ParameterValues, 2)
-		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
-			return v.Name == "PARAM_1" && v.Value == "VALUE_1"
-		}))
-		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
-			return v.Name == "PARAM_2" && v.Value == "VALUE_2"
-		}))
+		assertParameters(t, req, execution, map[string]string{
+			"PARAM_1": "VALUE_1",
+			"PARAM_2": "VALUE_2",
+		})
 	})
 
 	t.Run("semaphore task with resolved parameters is triggered", func(t *testing.T) {
@@ -114,14 +115,21 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		template := support.TaskRunTemplate()
 		template.Semaphore.Parameters = map[string]string{
-			"REF":      "${{ self.GetConnection('gh').ref }}",
-			"REF_TYPE": "${{ self.GetConnection('gh').ref_type }}",
+			"REF":             "${{ self.Conn('gh').ref }}",
+			"REF_TYPE":        "${{ self.Conn('gh').ref_type }}",
+			"STAGE_1_VERSION": "${{ self.Conn('stage-1').outputs.version }}",
 		}
 
 		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), false, template, []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
+				SourceName: r.Source.Name,
 				SourceType: models.SourceTypeEventSource,
+			},
+			{
+				SourceID:   r.Stage.ID,
+				SourceName: r.Stage.Name,
+				SourceType: models.SourceTypeStage,
 			},
 		}))
 
@@ -129,7 +137,15 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Create pending execution.
+		// Since we use the outputs of a stage in the template for the execution,
+		// we need a previous event for that stage to be available, so we create it here.
+		//
+		data := createStageCompletionEvent(t, r, map[string]string{"version": "1.0.0"})
+		_, err = models.CreateEvent(r.Stage.ID, r.Stage.Name, models.SourceTypeStage, data)
+		require.NoError(t, err)
+
+		//
+		// Create pending execution for a new event source event.
 		//
 		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
 		require.NoError(t, err)
@@ -156,13 +172,49 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, "main", req.Branch)
 		assert.Equal(t, ".semaphore/run.yml", req.PipelineFile)
 		assert.Equal(t, stage.CreatedBy.String(), req.Requester)
-
-		require.Len(t, req.ParameterValues, 2)
-		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
-			return v.Name == "REF" && v.Value == "refs/heads/test"
-		}))
-		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
-			return v.Name == "REF_TYPE" && v.Value == "branch"
-		}))
+		assertParameters(t, req, execution, map[string]string{
+			"REF":             "refs/heads/test",
+			"REF_TYPE":        "branch",
+			"STAGE_1_VERSION": "1.0.0",
+		})
 	})
+}
+
+func assertParameters(t *testing.T, req *schedulepb.RunNowRequest, execution *models.StageExecution, parameters map[string]string) {
+	all := map[string]string{
+		"SEMAPHORE_STAGE_ID":           execution.StageID.String(),
+		"SEMAPHORE_STAGE_EXECUTION_ID": execution.ID.String(),
+	}
+
+	for k, v := range parameters {
+		all[k] = v
+	}
+
+	assert.Len(t, req.ParameterValues, len(all)+1)
+	for name, value := range all {
+		assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+			return v.Name == name && v.Value == value
+		}))
+	}
+
+	assert.True(t, slices.ContainsFunc(req.ParameterValues, func(v *schedulepb.ParameterValue) bool {
+		return v.Name == "SEMAPHORE_STAGE_EXECUTION_TOKEN" && v.Value != ""
+	}))
+}
+
+func createStageCompletionEvent(t *testing.T, r *support.ResourceRegistry, outputs map[string]string) []byte {
+	o, err := json.Marshal(outputs)
+	require.NoError(t, err)
+	e, err := events.NewStageExecutionCompletion(&models.StageExecution{
+		ID:      uuid.New(),
+		StageID: r.Stage.ID,
+		Result:  models.StageExecutionResultPassed,
+		Outputs: o,
+	})
+
+	require.NoError(t, err)
+	data, err := json.Marshal(e)
+	require.NoError(t, err)
+
+	return data
 }
