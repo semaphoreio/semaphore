@@ -542,18 +542,26 @@ defmodule Projecthub.Models.ProjectTest do
 
       user = %User{github_token: "token"}
 
-      {:ok, _} = Project.soft_destroy(project, user)
+      with_mocks([
+        {Repository, [:passthrough], [clear_external_data: fn r -> {:ok, r} end]},
+        {Events.ProjectDeleted, [], [publish: fn _, _ -> {:ok, nil} end]}
+      ]) do
+        {:ok, _} = Project.soft_destroy(project, user)
 
-      # Assert project is not found by default find function
-      assert {:error, :not_found} = Project.find(project.id)
+        assert_called(Events.ProjectDeleted.publish(project, soft_delete: true))
+        assert_called(Repository.clear_external_data(project.repository))
 
-      # Assert soft deleted project
-      soft_deleted_project = Project |> Repo.get(project.id)
-      assert soft_deleted_project.deleted_at != nil
-      assert soft_deleted_project.deleted_by == user.id
+        # Assert project is not found by default find function
+        assert {:error, :not_found} = Project.find(project.id)
 
-      cut_timestamp = create_cut_timestamp()
-      assert soft_deleted_project.name =~ "#{project.name}-deleted-#{cut_timestamp}"
+        # Assert soft deleted project
+        soft_deleted_project = Project |> Repo.get(project.id)
+        assert soft_deleted_project.deleted_at != nil
+        assert soft_deleted_project.deleted_by == user.id
+
+        cut_timestamp = create_cut_timestamp()
+        assert soft_deleted_project.name =~ "#{project.name}-deleted-#{cut_timestamp}"
+      end
     end
   end
 

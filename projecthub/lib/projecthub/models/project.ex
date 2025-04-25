@@ -308,6 +308,14 @@ defmodule Projecthub.Models.Project do
 
     {:ok, _} = Events.ProjectDeleted.publish(project, soft_delete: true)
 
+    with {:ok, repository} <- Repository.find_for_project(project.id),
+         {:ok, _} <- Repository.clear_external_data(repository) do
+      Logger.info("External Repository data cleared for project #{project.id}")
+    else
+      {:error, e} ->
+        Logger.error("Failed to clear external repository data for project #{project.id}: #{inspect(e)}")
+    end
+
     {:ok, nil}
   end
 

@@ -122,6 +122,11 @@ defmodule Projecthub.Models.Repository do
     |> unwrap_with_repository()
   end
 
+  def clear_external_data(repository) do
+    RepositoryHubClient.clear_external_data(%{repository_id: repository.id})
+    |> unwrap_with_repository()
+  end
+
   def find_for_project(project_id) do
     RepositoryHubClient.describe_many(%{project_ids: [project_id]})
     |> unwrap(fn

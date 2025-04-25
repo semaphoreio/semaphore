@@ -13,6 +13,7 @@ defmodule RepositoryHub.InternalApiFactory do
     GetFilesRequest,
     GetChangedFilePathsRequest,
     GetChangedFilePathsRequest,
+    ClearExternalDataRequest,
     CommitRequest,
     CommitRequest,
     CommitRequest,
@@ -96,6 +97,14 @@ defmodule RepositoryHub.InternalApiFactory do
       |> with_defaults(repository_id: Ecto.UUID.generate())
 
     struct(DeleteRequest, params)
+  end
+
+  def clear_external_data_request(params \\ []) do
+    params =
+      params
+      |> with_defaults(repository_id: Ecto.UUID.generate())
+
+    struct(ClearExternalDataRequest, params)
   end
 
   def list_request(params \\ []) do

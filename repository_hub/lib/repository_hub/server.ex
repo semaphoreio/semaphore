@@ -105,6 +105,11 @@ defmodule RepositoryHub.Server do
     execute(request, Server.DeleteAction)
   end
 
+  @spec clear_external_data(ClearExternalDataRequest.t(), ServerStream.t()) :: ClearExternalDataResponse.t()
+  def clear_external_data(request, _stream) do
+    execute(request, Server.ClearExternalDataAction)
+  end
+
   @spec get_file(GetFileRequest.t(), ServerStream.t()) :: GetFileResponse.t()
   def get_file(request, _stream) do
     execute(request, Server.GetFileAction)
