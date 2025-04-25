@@ -14,7 +14,6 @@ defimpl RepositoryHub.Server.VerifyWebhookSignatureAction, for: RepositoryHub.Un
          {:ok, result} <-
            Repositories.hook_signature_valid?(
              repository,
-             request.organization_id,
              request.payload,
              request.signature
            ) do

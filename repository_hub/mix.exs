@@ -58,11 +58,9 @@ defmodule RepositoryHub.MixProject do
       {:sentry, "~> 8.0"},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:amqp, "~> 3.0", override: true},
-      {:cachex, "~> 3.6"},
       {:broadway_rabbitmq, "~> 0.7"},
       {:tesla, "~> 1.9"},
-      {:gun, "~> 2.0.0", override: true},
-      {:feature_provider, path: "../feature_provider"}
+      {:gun, "~> 2.0.0", override: true}
     ]
   end
 
