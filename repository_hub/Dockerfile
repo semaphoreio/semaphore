@@ -31,10 +31,8 @@ COPY repository_hub/mix.* ./
 COPY repository_hub/config config
 COPY repository_hub/lib lib
 COPY repository_hub/priv priv
-COPY feature_provider ../feature_provider
 RUN mix do deps.get, deps.compile
 
-#
 # Dev stage
 #
 FROM base AS dev
@@ -58,7 +56,7 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 

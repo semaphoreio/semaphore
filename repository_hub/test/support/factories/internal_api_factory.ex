@@ -38,8 +38,6 @@ defmodule RepositoryHub.InternalApiFactory do
     UpdateRequest
   }
 
-  @organization_with_strict_hook_verification "9290123e-6066-41ae-8ae3-321964100dce"
-
   def describe_request(params \\ []) do
     params =
       params
@@ -314,10 +312,7 @@ defmodule RepositoryHub.InternalApiFactory do
   def verify_webhook_signature_request(params \\ []) do
     params =
       params
-      |> with_defaults(
-        organization_id: @organization_with_strict_hook_verification,
-        repository_id: Ecto.UUID.generate()
-      )
+      |> with_defaults(repository_id: Ecto.UUID.generate())
 
     struct(VerifyWebhookSignatureRequest, params)
   end

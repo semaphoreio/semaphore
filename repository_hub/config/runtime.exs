@@ -27,7 +27,6 @@ if config_env() == :prod do
     user_grpc_server: System.get_env("USER_GRPC_URL"),
     repository_integrator_grpc_server: System.get_env("REPOSITORY_INTEGRATOR_GRPC_URL"),
     organization_grpc_endpoint: System.get_env("ORGANIZATION_GRPC_URL"),
-    feature_grpc_endpoint: System.get_env("FEATURE_GRPC_URL"),
     webhook_host: System.get_env("HOOKS_HOST") || "example.com/hooks"
 
   log_level =
@@ -52,25 +51,7 @@ if config_env() == :prod do
 
   config :repository_hub, RepositoryHub.WebhookSecretEncryptor,
     module: {RepositoryHub.GRPCEncryptor, url: System.get_env("ENCRYPTOR_URL")}
-
-  config :repository_hub, RepositoryHub.WebhookEncryptor,
-    start: System.get_env("START_WEBHOOK_ENCRYPTION_WORKER") == "true"
 end
 
 on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
 config :repository_hub, :on_prem?, on_prem?
-
-feature_provider =
-  System.get_env("FEATURE_YAML_PATH")
-  |> case do
-    nil ->
-      {RepositoryHub.FeatureHubProvider,
-       [
-         cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
-       ]}
-
-    path ->
-      {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
-  end
-
-config FeatureProvider, :provider, feature_provider

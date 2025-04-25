@@ -37,20 +37,16 @@ config :repository_hub,
   user_grpc_server: "127.0.0.1:50051",
   repository_integrator_grpc_server: "127.0.0.1:50051",
   organization_grpc_endpoint: "127.0.0.1:50051",
-  feature_grpc_endpoint: "127.0.0.1:50051",
   grpc_stubs: [
     RepositoryHub.Stub.ProjectHub,
     RepositoryHub.Stub.RepositoryIntegrator,
     RepositoryHub.Stub.User,
-    RepositoryHub.Stub.Organization,
-    RepositoryHub.Stub.Feature
+    RepositoryHub.Stub.Organization
   ]
 
 config :watchman,
   host: "0.0.0.0",
   port: 8125,
   prefix: "repository_hub.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
-
-config :repository_hub, RepositoryHub.WebhookEncryptor, start: false
 
 import_config "#{config_env()}.exs"
