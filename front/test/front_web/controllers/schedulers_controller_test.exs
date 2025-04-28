@@ -820,7 +820,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       user_id: user_id
     } do
       PermissionPatrol.remove_all_permissions()
-      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.manage")
+      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.run_manually")
       scheduler = prepare_scheduler_for_just_run()
 
       conn = form_just_run(conn, scheduler)
@@ -940,7 +940,7 @@ defmodule FrontWeb.SchedulersControllerTest do
     test "when user is not allowed it renders 404",
          %{conn: conn, project_name: project_name, org_id: org_id, user_id: user_id} do
       PermissionPatrol.remove_all_permissions()
-      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.manage")
+      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.run_manually")
       scheduler = prepare_scheduler_for_just_run()
 
       conn = trigger_just_run(conn, scheduler)

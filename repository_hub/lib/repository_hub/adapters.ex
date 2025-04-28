@@ -15,6 +15,7 @@ defmodule RepositoryHub.Adapters do
     CommitRequest,
     ListCollaboratorsRequest,
     CreateBuildStatusRequest,
+    ClearExternalDataRequest,
     ListAccessibleRepositoriesRequest,
     ForkRequest,
     CheckDeployKeyRequest,
@@ -123,6 +124,7 @@ defmodule RepositoryHub.Adapters do
       ListRequest -> universal() |> wrap()
       CreateRequest -> from_integration_type(request)
       DeleteRequest -> from_repository_id(request)
+      ClearExternalDataRequest -> from_repository_id(request)
       GetSshKeyRequest -> universal() |> wrap()
       GetFileRequest -> from_repository_id(request)
       GetFilesRequest -> from_repository_id(request)
