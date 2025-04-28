@@ -108,15 +108,10 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	//
 	result := c.resolveExecutionResult(logger, pipeline)
 
-	return database.Conn().Transaction(func(tx *gorm.DB) error {
+	err = database.Conn().Transaction(func(tx *gorm.DB) error {
 		if err := execution.FinishInTransaction(tx, result); err != nil {
 			logger.Errorf("Error updating execution state: %v", err)
 			return err
-		}
-
-		err = messages.NewExecutionFinishedMessage(execution).Publish()
-		if err != nil {
-			logger.Errorf("Error publishing execution finished message: %v", err)
 		}
 
 		//
@@ -131,6 +126,15 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 		logger.Infof("Execution state updated: %s", result)
 		return nil
 	})
+
+	if err == nil {
+		err = messages.NewExecutionFinishedMessage(execution).Publish()
+		if err != nil {
+			logger.Errorf("Error publishing execution finished message: %v", err)
+		}
+	}
+
+	return err
 }
 
 func (c *PipelineDoneConsumer) describePipeline(id string) (*pplproto.Pipeline, error) {

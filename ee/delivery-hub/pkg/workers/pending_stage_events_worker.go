@@ -111,11 +111,6 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 			return fmt.Errorf("error creating stage execution: %v", err)
 		}
 
-		err = messages.NewExecutionCreatedMessage(execution).Publish()
-		if err != nil {
-			logging.ForStage(stage).Errorf("failed to publish execution created message: %v", err)
-		}
-
 		logger.Infof("Created stage execution %s", execution.ID)
 
 		if err := event.UpdateStateInTransaction(tx, models.StageEventProcessed); err != nil {
@@ -128,6 +123,11 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 
 	if err != nil {
 		return err
+	}
+
+	err = messages.NewExecutionCreatedMessage(execution).Publish()
+	if err != nil {
+		logging.ForStage(stage).Errorf("failed to publish execution created message: %v", err)
 	}
 
 	logging.ForStage(stage).Infof("Started execution %s", execution.ID)
