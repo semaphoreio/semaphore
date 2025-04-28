@@ -9,7 +9,7 @@ import (
 
 const DeliveryHubExchange = "deliveryhub"
 
-func Publish(message []byte, routingKey string) error {
+func Publish(exchange string, routingKey string, message []byte) error {
 	amqpURL, err := config.RabbitMQURL()
 
 	if err != nil {
@@ -20,7 +20,7 @@ func Publish(message []byte, routingKey string) error {
 		Body:       message,
 		AmqpURL:    amqpURL,
 		RoutingKey: routingKey,
-		Exchange:   DeliveryHubExchange,
+		Exchange:   exchange,
 	})
 }
 

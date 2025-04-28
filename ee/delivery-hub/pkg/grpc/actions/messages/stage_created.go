@@ -3,7 +3,11 @@ package messages
 import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+const StageCreatedExchange = "DeliveryHub.StageExchange"
+const StageCreatedRoutingKey = "created"
 
 type StageCreatedMessage struct {
 	message *pb.StageCreated
@@ -12,11 +16,12 @@ type StageCreatedMessage struct {
 func NewStageCreatedMessage(stage *models.Stage) StageCreatedMessage {
 	return StageCreatedMessage{
 		message: &pb.StageCreated{
-			StageId: stage.ID.String(),
+			StageId:   stage.ID.String(),
+			Timestamp: timestamppb.Now(),
 		},
 	}
 }
 
 func (m StageCreatedMessage) Publish() error {
-	return Publish(toJSON(m.message), "created")
+	return Publish(StageCreatedExchange, StageCreatedRoutingKey, toJSON(m.message))
 }
