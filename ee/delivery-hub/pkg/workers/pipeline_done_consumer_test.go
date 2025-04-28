@@ -2,6 +2,7 @@ package workers
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -39,6 +41,11 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		workflowID := uuid.New().String()
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
+
+		routingKey := fmt.Sprintf("%s.%s", "finished", execution.StageID.String())
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Mock failed result and publish pipeline done message.
@@ -85,6 +92,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NotEmpty(t, e.Execution.CreatedAt)
 		require.NotEmpty(t, e.Execution.StartedAt)
 		require.NotEmpty(t, e.Execution.FinishedAt)
+		require.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -96,6 +104,11 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		workflowID := uuid.New().String()
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
+
+		routingKey := fmt.Sprintf("%s.%s", "finished", execution.StageID.String())
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Mock failed result and publish pipeline done message.
@@ -142,6 +155,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NotEmpty(t, e.Execution.CreatedAt)
 		require.NotEmpty(t, e.Execution.StartedAt)
 		require.NotEmpty(t, e.Execution.FinishedAt)
+		require.True(t, testconsumer.HasReceivedMessage())
 	})
 }
 

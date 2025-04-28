@@ -110,7 +110,7 @@ func Test__CreateStage(t *testing.T) {
 		assert.Len(t, res.Stage.Connections, 1)
 		assert.Len(t, res.Stage.Connections[0].Filters, 1)
 		assert.Equal(t, protos.Connection_FILTER_OPERATOR_AND, res.Stage.Connections[0].FilterOperator)
-		assert.Equal(t, true, testconsumer.HasReceivedMessage())
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("stage name already used -> error", func(t *testing.T) {

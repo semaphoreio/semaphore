@@ -94,7 +94,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
 
 		for _, consumer := range consumers {
-			assert.Equal(t, true, consumer.HasReceivedMessage())
+			assert.True(t, consumer.HasReceivedMessage())
 			consumer.Stop()
 		}
 	})

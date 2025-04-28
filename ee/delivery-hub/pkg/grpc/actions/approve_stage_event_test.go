@@ -106,6 +106,6 @@ func Test__ApproveStageEvent(t *testing.T) {
 		assert.Equal(t, protos.StageEvent_PENDING, res.Event.State)
 		assert.NotNil(t, res.Event.CreatedAt)
 		assert.NotNil(t, res.Event.ApprovedAt)
-		assert.Equal(t, true, testconsumer.HasReceivedMessage())
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 }

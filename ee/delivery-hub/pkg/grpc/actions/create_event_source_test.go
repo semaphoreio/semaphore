@@ -57,7 +57,7 @@ func Test__CreateEventSource(t *testing.T) {
 		assert.Equal(t, "test", response.EventSource.Name)
 		assert.Equal(t, r.Org.String(), response.EventSource.OrganizationId)
 		assert.Equal(t, r.Canvas.ID.String(), response.EventSource.CanvasId)
-		assert.Equal(t, true, testconsumer.HasReceivedMessage())
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("name already used -> error", func(t *testing.T) {
