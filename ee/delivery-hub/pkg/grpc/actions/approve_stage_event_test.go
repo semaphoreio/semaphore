@@ -83,9 +83,9 @@ func Test__ApproveStageEvent(t *testing.T) {
 	})
 
 	t.Run("stage with stage events -> approves and returns event", func(t *testing.T) {
-		amqpUrl, _ := config.RabbitMQURL()
+		amqpURL, _ := config.RabbitMQURL()
 		routingKey := fmt.Sprintf("%s.%s", "approved", r.Stage.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.StageEventExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageEventExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

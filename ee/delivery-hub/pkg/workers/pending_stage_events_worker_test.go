@@ -16,7 +16,7 @@ import (
 func Test__PendingStageEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
 	w := PendingStageEventsWorker{}
-	amqpUrl, _ := config.RabbitMQURL()
+	amqpURL, _ := config.RabbitMQURL()
 
 	t.Run("stage does not require approval -> creates execution", func(t *testing.T) {
 		//
@@ -33,7 +33,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -104,7 +104,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

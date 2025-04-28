@@ -70,9 +70,9 @@ func Test__CreateStage(t *testing.T) {
 	})
 
 	t.Run("stage with connection with filters", func(t *testing.T) {
-		amqpUrl, _ := config.RabbitMQURL()
+		amqpURL, _ := config.RabbitMQURL()
 		routingKey := fmt.Sprintf("%s.%s", "created", r.Canvas.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.StageExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

@@ -25,7 +25,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		SchedulerURL: "0.0.0.0:50052",
 		JwtSigner:    jwt.NewSigner("test"),
 	}
-	amqpUrl, _ := config.RabbitMQURL()
+	amqpURL, _ := config.RabbitMQURL()
 
 	t.Run("semaphore workflow is created", func(t *testing.T) {
 		//
@@ -42,7 +42,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		routingKey := fmt.Sprintf("%s.%s", "started", stage.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -96,7 +96,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		routingKey := fmt.Sprintf("%s.%s", "started", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -171,7 +171,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		routingKey := fmt.Sprintf("%s.%s", "started", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

@@ -50,7 +50,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		amqpUrl, _ := config.RabbitMQURL()
+		amqpURL, _ := config.RabbitMQURL()
 
 		stage1, _ := r.Canvas.FindStageByName("stage-1")
 		stage2, _ := r.Canvas.FindStageByName("stage-2")
@@ -60,7 +60,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		for _, stage := range stages {
 			routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-			testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.StageEventExchange", routingKey)
+			testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageEventExchange", routingKey)
 			testconsumer.Start()
 			consumers = append(consumers, testconsumer)
 		}

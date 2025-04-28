@@ -36,9 +36,9 @@ func Test__CreateEventSource(t *testing.T) {
 	})
 
 	t.Run("name still not used -> event source is created", func(t *testing.T) {
-		amqpUrl, _ := config.RabbitMQURL()
+		amqpURL, _ := config.RabbitMQURL()
 		routingKey := fmt.Sprintf("%s.%s", "created", r.Canvas.ID.String())
-		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.EventSourceExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.EventSourceExchange", routingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

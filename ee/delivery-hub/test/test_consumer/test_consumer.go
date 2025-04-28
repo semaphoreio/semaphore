@@ -11,16 +11,16 @@ import (
 const TestConsumerService = "TestConsumerService"
 
 type TestConsumer struct {
-	amqpUrl        string
+	amqpURL        string
 	exchangeName   string
 	routingKey     string
 	consumer       *tackle.Consumer
 	messageChannel chan bool
 }
 
-func New(amqpUrl string, exchangeName string, routingKey string) TestConsumer {
+func New(amqpURL string, exchangeName string, routingKey string) TestConsumer {
 	return TestConsumer{
-		amqpUrl:        amqpUrl,
+		amqpURL:        amqpURL,
 		exchangeName:   exchangeName,
 		routingKey:     routingKey,
 		messageChannel: make(chan bool),
@@ -32,7 +32,7 @@ func (c *TestConsumer) Start() {
 	randomServiceName := fmt.Sprintf("%s.%s", TestConsumerService, uuid.NewString())
 
 	go c.consumer.Start(&tackle.Options{
-		URL:            c.amqpUrl,
+		URL:            c.amqpURL,
 		RemoteExchange: c.exchangeName,
 		Service:        randomServiceName,
 		RoutingKey:     c.routingKey,
