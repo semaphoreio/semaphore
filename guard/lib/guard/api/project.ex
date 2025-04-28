@@ -43,6 +43,20 @@ defmodule Guard.Api.Project do
     end
   end
 
+  def user_has_any_project?(user_id) do
+    {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:guard, :projecthub_grpc_endpoint))
+
+    req = build_list_by_owner_id_request(user_id, 1)
+
+    case InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000) do
+      {:ok, response} when response.metadata.status.code == 0 ->
+        response.projects |> length > 0
+
+      _ ->
+        false
+    end
+  end
+
   defp delete_project(channel, project_id, org_id, user_id) do
     req =
       InternalApi.Projecthub.DestroyRequest.new(
@@ -62,12 +76,22 @@ defmodule Guard.Api.Project do
     end
   end
 
-  defp build_list_by_org_id_request(org_id, page) do
+  defp build_list_by_org_id_request(org_id, page),
+    do: build_list_request(org_id: org_id, page: page)
+
+  defp build_list_by_owner_id_request(owner_id, page),
+    do: build_list_request(owner_id: owner_id, page: page)
+
+  def build_list_request(opts) do
     InternalApi.Projecthub.ListRequest.new(
-      metadata: InternalApi.Projecthub.RequestMeta.new(org_id: org_id),
+      metadata:
+        InternalApi.Projecthub.RequestMeta.new(
+          user_id: opts[:owner_id] || "",
+          org_id: opts[:org_id] || ""
+        ),
       pagination:
         InternalApi.Projecthub.PaginationRequest.new(
-          page: page,
+          page: opts[:page] || 1,
           page_size: @project_page_size
         )
     )

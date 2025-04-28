@@ -41,7 +41,8 @@ defmodule FrontWeb.SchedulersController do
           |> render("tasks/last_run.html",
             project: conn.assigns.project,
             scheduler_id: scheduler_id,
-            trigger: latest_trigger
+            trigger: latest_trigger,
+            permissions: conn.assigns.permissions
           )
 
         _ ->
@@ -526,7 +527,7 @@ defmodule FrontWeb.SchedulersController do
       project = conn.assigns.project
       scheduler_id = params["id"]
 
-      with true <- conn.assigns.permissions["project.scheduler.manage"],
+      with true <- conn.assigns.permissions["project.scheduler.run_manually"],
            {:ok, scheduler} <- find_scheduler(scheduler_id, project.id),
            just_run_params <- parse_just_run_trigger_params(params, scheduler),
            {:ok, %{parameters: run_now_params}} <-

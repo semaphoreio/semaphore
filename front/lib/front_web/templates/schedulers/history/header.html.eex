@@ -14,10 +14,10 @@
         <button class="btn btn-secondary" disabled>Delete</button>
       <% end %>
     </div>
-    <%= if @permissions["project.scheduler.manage"] do %>
+    <%= if @permissions["project.scheduler.run_manually"] do %>
       <%= link "Run Now", to: schedulers_path(@conn, :form_just_run, @project.name, @scheduler.id), class: "btn btn-primary ml3 btn-small" %>
     <% else %>
-      <button class="btn btn-primary ml3 btn-small" disabled>Run Now</button>
+      <button class="btn btn-primary ml3 btn-small" disabled title="You don't have permissions to run tasks">Run Now</button>
     <% end %>
   </div>
 </div>

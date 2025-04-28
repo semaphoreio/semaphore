@@ -5,7 +5,17 @@
 
       <div>
         <div class="flex items-center">
-          <span class="ml1 b"><%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %></span>
+          <span class="ml1 b">
+            <%= if !@is_group? do %>
+              <%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %>
+            <% else %>
+              <%= if @permissions["organization.people.manage"] do %>
+                <span class="black pointer" style="cursor: pointer;" name="modify-group-btn" group_id="<%= @member.id %>"><%= @member.name %></span>
+              <% else %>
+                <span class="black"><%= @member.name %></span>
+              <% end %>
+            <% end %>
+          </span>
           <%= render "members/__role_labels.html", role_bindings: @member.subject_role_bindings %>
         </div>
         <%= render "members/__metadata.html", member: @member %>

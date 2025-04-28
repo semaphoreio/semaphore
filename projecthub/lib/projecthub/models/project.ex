@@ -300,8 +300,21 @@ defmodule Projecthub.Models.Project do
   end
 
   def soft_destroy(project, user) do
-    {:ok, _} = update_record(project, %{deleted_at: DateTime.utc_now(), deleted_by: user.id})
+    current_datetime = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    deleted_project_name = "#{project.name}-deleted-#{current_datetime |> DateTime.to_unix(:second)}"
+
+    {:ok, _} = update_record(project, %{name: deleted_project_name, deleted_at: current_datetime, deleted_by: user.id})
+
     {:ok, _} = Events.ProjectDeleted.publish(project, soft_delete: true)
+
+    with {:ok, repository} <- Repository.find_for_project(project.id),
+         {:ok, _} <- Repository.clear_external_data(repository) do
+      Logger.info("External Repository data cleared for project #{project.id}")
+    else
+      {:error, e} ->
+        Logger.error("Failed to clear external repository data for project #{project.id}: #{inspect(e)}")
+    end
 
     {:ok, nil}
   end

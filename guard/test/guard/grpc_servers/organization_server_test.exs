@@ -1360,6 +1360,9 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
         soft_deleted_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, organization.id)
         assert soft_deleted_org.deleted_at != nil
 
+        half_timestamp = Integer.floor_div(DateTime.utc_now() |> DateTime.to_unix(:second), 1000)
+        assert soft_deleted_org.username =~ "#{organization.username}-deleted-#{half_timestamp}"
+
         assert {:error, {:not_found, _message}} =
                  Guard.Store.Organization.get_by_id(soft_deleted_org.id)
 
