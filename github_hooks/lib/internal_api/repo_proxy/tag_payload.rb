@@ -9,19 +9,23 @@ module InternalApi::RepoProxy
 
       reference = repo_host.reference(project.repo_owner_and_name, ref.delete_prefix("refs/"))
 
-      commit = repo_host.commit(project.repo_owner_and_name, commit_sha(reference, repo_host, project))
+      tag_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(reference, repo_host, project))
 
-      repo_url = commit[:html_url].split("/").first(5).join("/")
+      repo_url = tag_commit[:html_url].split("/").first(5).join("/")
       author_name  = user.github_repo_host_account.name
       author_email = user.email
       github_uid = user.github_repo_host_account.github_uid
       avatar = ::Avatar.avatar_url(github_uid)
 
       commit = {
-        "message" => commit.commit.message,
-        "id" => commit.sha,
-        "url" => commit.html_url,
-        "author" => { "name" => "", "email" => "" },
+        "message" => tag_commit.commit.message,
+        "id" => tag_commit.sha,
+        "url" => tag_commit.html_url,
+        "author" => {
+          "name" => tag_commit.commit.author&.name || "",
+          "email" => tag_commit.commit.author&.email || "",
+          "username" => tag_commit.author&.login
+        },
         "timestamp" => ""
       }
 
