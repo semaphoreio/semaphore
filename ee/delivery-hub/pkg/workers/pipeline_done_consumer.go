@@ -10,6 +10,7 @@ import (
 	"github.com/renderedtext/go-tackle"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
@@ -111,6 +112,11 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 		if err := execution.FinishInTransaction(tx, result); err != nil {
 			logger.Errorf("Error updating execution state: %v", err)
 			return err
+		}
+
+		err = messages.NewExecutionFinishedMessage(execution).Publish()
+		if err != nil {
+			logger.Errorf("Error publishing execution finished message: %v", err)
 		}
 
 		//

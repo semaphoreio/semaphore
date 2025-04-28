@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -108,6 +109,11 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 		execution, err = models.CreateStageExecutionInTransaction(tx, stage.ID, event.ID)
 		if err != nil {
 			return fmt.Errorf("error creating stage execution: %v", err)
+		}
+
+		err = messages.NewExecutionCreatedMessage(execution).Publish()
+		if err != nil {
+			logging.ForStage(stage).Errorf("failed to publish execution created message: %v", err)
 		}
 
 		logger.Infof("Created stage execution %s", execution.ID)

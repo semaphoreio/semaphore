@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
@@ -71,6 +72,11 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 	executionID, err := w.StartExecution(logger, stage, execution, *template)
 	if err != nil {
 		return fmt.Errorf("error starting execution: %v", err)
+	}
+
+	err = messages.NewExecutionStartedMessage(&execution).Publish()
+	if err != nil {
+		return fmt.Errorf("error publishing execution started message: %v", err)
 	}
 
 	err = execution.Start(executionID)

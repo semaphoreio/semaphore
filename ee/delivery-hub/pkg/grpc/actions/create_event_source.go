@@ -3,7 +3,6 @@ package actions
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
@@ -55,7 +54,7 @@ func CreateEventSource(ctx context.Context, encryptor encryptor.Encryptor, req *
 	err = messages.NewEventSourceCreatedMessage(eventSource).Publish()
 
 	if err != nil {
-		return nil, fmt.Errorf("error sending AMQP message: %v", err)
+		logger.Errorf("failed to publish event source created message: %v", err)
 	}
 
 	return response, nil
