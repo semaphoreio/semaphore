@@ -42,7 +42,6 @@ export const Component = (): VNode => {
               </a>
               {` `}
               with Helm
-              <components.ResetTokenButton/>
             </div>
             <components.PreCopy
               title={`Install agent-k8s-controller`}
@@ -50,8 +49,7 @@ export const Component = (): VNode => {
               helm upgrade --install semaphore-controller renderedtext/controller \\
                 --namespace semaphore \\
                 --create-namespace \\
-                --set endpoint=${hostname} \\
-                --set apiToken=${state.token}`}
+                --set endpoint=${hostname}`}
             />
           </li>
           <li>
@@ -59,6 +57,7 @@ export const Component = (): VNode => {
               Create a secret to register the agent type in the Kubernetes
               cluster. Create a new YAML resource file.
             </div>
+            <components.ResetTokenButton/>
             <components.PreCopy
               title={`semaphore-secret.yml`}
               content={`
@@ -71,7 +70,7 @@ export const Component = (): VNode => {
                       semaphoreci.com/resource-type: agent-type-configuration
               stringData:
                   agentTypeName: ${state.type.name}
-                  registrationToken: <BASE64_ENCODED_TOKEN>`}
+                  registrationToken: ${state.token}`}
             />
             <div className="mt2">
               The custom controllers looks for the label shown below to know
