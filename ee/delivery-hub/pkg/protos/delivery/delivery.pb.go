@@ -2119,6 +2119,411 @@ func (x *Connection_DataFilter) GetExpression() string {
 	return ""
 }
 
+type StageCreated struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	StageId       string                      `protobuf:"bytes,1,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageCreated) Reset() {
+	*x = StageCreated{}
+	mi := &file_delivery_proto_msgTypes[34] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageCreated) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageCreated) ProtoMessage() {}
+
+func (x *StageCreated) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[34] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageCreated) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{34} // Ajuste este índice conforme necessário
+}
+
+func (x *StageCreated) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *StageCreated) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type EventSourceCreated struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	SourceId      string                      `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EventSourceCreated) Reset() {
+	*x = EventSourceCreated{}
+	mi := &file_delivery_proto_msgTypes[35] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EventSourceCreated) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EventSourceCreated) ProtoMessage() {}
+
+func (x *EventSourceCreated) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[35] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*EventSourceCreated) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{35} // Ajuste este índice conforme necessário
+}
+
+func (x *EventSourceCreated) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+func (x *EventSourceCreated) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type StageEventCreated struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	EventId       string                      `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageEventCreated) Reset() {
+	*x = StageEventCreated{}
+	mi := &file_delivery_proto_msgTypes[36] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageEventCreated) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageEventCreated) ProtoMessage() {}
+
+func (x *StageEventCreated) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[36] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageEventCreated) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{36} // Ajuste este índice conforme necessário
+}
+
+func (x *StageEventCreated) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StageEventCreated) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type StageEventApproved struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	EventId       string                      `protobuf:"bytes,1,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageEventApproved) Reset() {
+	*x = StageEventApproved{}
+	mi := &file_delivery_proto_msgTypes[37] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageEventApproved) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageEventApproved) ProtoMessage() {}
+
+func (x *StageEventApproved) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[37] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageEventApproved) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{37} // Ajuste este índice conforme necessário
+}
+
+func (x *StageEventApproved) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StageEventApproved) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type StageExecutionCreated struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	ExecutionId   string                      `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                      `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageExecutionCreated) Reset() {
+	*x = StageExecutionCreated{}
+	mi := &file_delivery_proto_msgTypes[38] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageExecutionCreated) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageExecutionCreated) ProtoMessage() {}
+
+func (x *StageExecutionCreated) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[38] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageExecutionCreated) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{38} // Ajuste este índice conforme necessário
+}
+
+func (x *StageExecutionCreated) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *StageExecutionCreated) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *StageExecutionCreated) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StageExecutionCreated) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type StageExecutionStarted struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	ExecutionId   string                      `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                      `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageExecutionStarted) Reset() {
+	*x = StageExecutionStarted{}
+	mi := &file_delivery_proto_msgTypes[39] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageExecutionStarted) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageExecutionStarted) ProtoMessage() {}
+
+func (x *StageExecutionStarted) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[39] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageExecutionStarted) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{39} // Ajuste este índice conforme necessário
+}
+
+func (x *StageExecutionStarted) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *StageExecutionStarted) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *StageExecutionStarted) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StageExecutionStarted) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+type StageExecutionFinished struct {
+	state         protoimpl.MessageState      `protogen:"open.v1"`
+	ExecutionId   string                      `protobuf:"bytes,1,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                      `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StageExecutionFinished) Reset() {
+	*x = StageExecutionFinished{}
+	mi := &file_delivery_proto_msgTypes[40] // Ajuste este índice conforme necessário
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StageExecutionFinished) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StageExecutionFinished) ProtoMessage() {}
+
+func (x *StageExecutionFinished) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[40] // Ajuste este índice conforme necessário
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+func (*StageExecutionFinished) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{40} // Ajuste este índice conforme necessário
+}
+
+func (x *StageExecutionFinished) GetExecutionId() string {
+	if x != nil {
+		return x.ExecutionId
+	}
+	return ""
+}
+
+func (x *StageExecutionFinished) GetStageId() string {
+	if x != nil {
+		return x.StageId
+	}
+	return ""
+}
+
+func (x *StageExecutionFinished) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
+func (x *StageExecutionFinished) GetTimestamp() *timestamp.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
 var File_delivery_proto protoreflect.FileDescriptor
 
 const file_delivery_proto_rawDesc = "" +
