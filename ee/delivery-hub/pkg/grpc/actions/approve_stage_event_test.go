@@ -2,12 +2,15 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -80,6 +83,12 @@ func Test__ApproveStageEvent(t *testing.T) {
 	})
 
 	t.Run("stage with stage events -> approves and returns event", func(t *testing.T) {
+		amqpUrl, _ := config.RabbitMQURL()
+		routingKey := fmt.Sprintf("%s.%s", "approved", r.Stage.ID.String())
+		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.StageEventExchange", routingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		res, err := ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
 			OrganizationId: r.Canvas.OrganizationID.String(),
 			CanvasId:       r.Canvas.ID.String(),
@@ -97,5 +106,6 @@ func Test__ApproveStageEvent(t *testing.T) {
 		assert.Equal(t, protos.StageEvent_PENDING, res.Event.State)
 		assert.NotNil(t, res.Event.CreatedAt)
 		assert.NotNil(t, res.Event.ApprovedAt)
+		assert.Equal(t, true, testconsumer.HasReceivedMessage())
 	})
 }

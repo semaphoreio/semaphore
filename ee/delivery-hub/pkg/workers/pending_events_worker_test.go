@@ -1,10 +1,13 @@
 package workers
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +29,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 	})
 
 	t.Run("source is connected to many stages -> event is added to each stage queue", func(t *testing.T) {
+
 		//
 		// Create two stages, connecting event source to them.
 		//
@@ -46,6 +50,20 @@ func Test__PendingEventsWorker(t *testing.T) {
 		})
 
 		require.NoError(t, err)
+		amqpUrl, _ := config.RabbitMQURL()
+
+		stage1, _ := r.Canvas.FindStageByName("stage-1")
+		stage2, _ := r.Canvas.FindStageByName("stage-2")
+
+		stages := []models.Stage{*stage1, *stage2}
+		consumers := make([]testconsumer.TestConsumer, 0, 2)
+
+		for _, stage := range stages {
+			routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
+			testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.StageEventExchange", routingKey)
+			testconsumer.Start()
+			consumers = append(consumers, testconsumer)
+		}
 
 		//
 		// Create an event for the source, and trigger the worker.
@@ -65,9 +83,6 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Two pending stage events are created: one for each stage.
 		//
-
-		stage1, _ := r.Canvas.FindStageByName("stage-1")
-		stage2, _ := r.Canvas.FindStageByName("stage-2")
 		stage1Events, err := stage1.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
@@ -77,6 +92,11 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
+
+		for _, consumer := range consumers {
+			assert.Equal(t, true, consumer.HasReceivedMessage())
+			consumer.Stop()
+		}
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {

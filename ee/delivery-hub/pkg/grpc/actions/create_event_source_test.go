@@ -2,12 +2,15 @@ package actions
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
 	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
@@ -33,6 +36,12 @@ func Test__CreateEventSource(t *testing.T) {
 	})
 
 	t.Run("name still not used -> event source is created", func(t *testing.T) {
+		amqpUrl, _ := config.RabbitMQURL()
+		routingKey := fmt.Sprintf("%s.%s", "created", r.Canvas.ID.String())
+		testconsumer := testconsumer.New(amqpUrl, "DeliveryHub.EventSourceExchange", routingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		response, err := CreateEventSource(context.Background(), encryptor, &protos.CreateEventSourceRequest{
 			OrganizationId: r.Org.String(),
 			CanvasId:       r.Canvas.ID.String(),
@@ -48,6 +57,7 @@ func Test__CreateEventSource(t *testing.T) {
 		assert.Equal(t, "test", response.EventSource.Name)
 		assert.Equal(t, r.Org.String(), response.EventSource.OrganizationId)
 		assert.Equal(t, r.Canvas.ID.String(), response.EventSource.CanvasId)
+		assert.Equal(t, true, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("name already used -> error", func(t *testing.T) {
