@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.14.5
-ARG OTP_VERSION=24.0.6
-ARG UBUNTU_VERSION=focal-20230126
+ARG OTP_VERSION=24.2.2
+ARG UBUNTU_VERSION=jammy-20250404
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-ubuntu-${UBUNTU_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -17,7 +17,7 @@ RUN echo "Build of $APP_NAME for $MIX_ENV environment started"
 
 # install build dependencies
 RUN apt-get update -y && apt-get install --no-install-recommends -y build-essential git curl ca-certificates gnupg openssh-client \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts
@@ -27,7 +27,7 @@ WORKDIR /app
 
 # install hex + rebar
 RUN mix local.hex --force --if-missing && \
-    mix local.rebar --force --if-missing
+  mix local.rebar --force --if-missing
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
