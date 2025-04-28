@@ -58,7 +58,7 @@ func (c *TestConsumer) HasReceivedMessage() bool {
 	select {
 	case <-c.messageChannel:
 		return true
-	case <-time.After(3000 * time.Millisecond):
+	case <-time.After(1000 * time.Millisecond):
 		return false
 	}
 }
