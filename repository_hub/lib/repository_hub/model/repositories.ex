@@ -76,27 +76,21 @@ defmodule RepositoryHub.Model.Repositories do
 
   @doc """
     Validates if incoming hook has a valid signature.
-    Depends on the `experimental_strict_hook_verification` feature flag.
 
-    When the feature flag is enabled, the signature is verified using the secret stored in the database.
-    When the feature flag is disabled, the signature is not verified returning true.
-
-    We are checking if the signature is valid or if instead of segnature the provider send us a secret token
+    The signature is verified using the secret stored in the database.
   """
   @spec hook_signature_valid?(
           repository :: t(),
-          organization_id :: String.t(),
           payload :: String.t(),
           signature :: String.t()
         ) :: Toolkit.tupled_result(boolean)
-  def hook_signature_valid?(repository, organization_id, payload, signature) do
-    with true <- should_check_signature?(organization_id),
-         {:ok, secret} <- get_signing_secret(repository) do
-      {:ok, compare_signature(signature, secret, payload) || compare_secret(signature, secret)}
+  def hook_signature_valid?(repository, payload, signature) do
+    with {:ok, secret} <- get_signing_secret(repository),
+         signature_matches? <- compare_signature(signature, secret, payload),
+         secret_matches? <- compare_secret(signature, secret),
+         result <- signature_matches? or secret_matches? do
+      {:ok, result}
     else
-      false ->
-        {:ok, true}
-
       {:error, :no_secret} ->
         {:ok, false}
     end
@@ -136,11 +130,6 @@ defmodule RepositoryHub.Model.Repositories do
 
   defp secure_compare(left, right) do
     byte_size(left) == byte_size(right) and :crypto.hash_equals(left, right)
-  end
-
-  @spec should_check_signature?(organization_id :: String.t()) :: boolean
-  defp should_check_signature?(organization_id) do
-    FeatureProvider.feature_enabled?("experimental_strict_hook_verification", param: organization_id)
   end
 
   @spec generate_hook_secret(t()) :: {:ok, {String.t(), binary()}} | {:error, any()}

@@ -42,14 +42,6 @@ spec:
 {{- end }}
 {{- end }}
       automountServiceAccountToken: false
-      volumes:
-        - name: features-volume
-          configMap:
-            defaultMode: 0644
-            name: features
-            items:
-            - key: features.yml
-              path: features.yml
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
       containers:
@@ -62,18 +54,11 @@ spec:
             capabilities:
               drop:
                 - ALL
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/app/features.yml"
-              readOnly: true
-              subPath: features.yml
           ports:
             - name: grpc-port
               containerPort: 50051
           env:
             {{- include "env.db.elixir" . | indent 12 }}
-            - name: FEATURE_YAML_PATH
-              value: "/app/features.yml"
             - name: POSTGRES_DB_SSL
               value: {{ .Values.global.database.ssl | quote }}
             - name: POSTGRES_DB_NAME
