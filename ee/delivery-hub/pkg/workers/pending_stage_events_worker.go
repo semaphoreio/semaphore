@@ -125,7 +125,7 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 		return err
 	}
 
-	err = messages.NewExecutionCreatedMessage(execution).Publish()
+	err = messages.NewExecutionCreatedMessage(stage.CanvasID.String(), execution).Publish()
 	if err != nil {
 		logging.ForStage(stage).Errorf("failed to publish execution created message: %v", err)
 	}

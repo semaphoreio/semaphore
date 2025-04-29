@@ -13,9 +13,11 @@ type StageEventApprovedMessage struct {
 	message *pb.StageEventApproved
 }
 
-func NewStageEventApprovedMessage(eventSource *models.StageEvent) StageEventApprovedMessage {
+func NewStageEventApprovedMessage(canvasId string, eventSource *models.StageEvent) StageEventApprovedMessage {
 	return StageEventApprovedMessage{
 		message: &pb.StageEventApproved{
+			CanvasId:  canvasId,
+			StageId:   eventSource.StageID.String(),
 			EventId:   eventSource.ID.String(),
 			Timestamp: timestamppb.Now(),
 		},

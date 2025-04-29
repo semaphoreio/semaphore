@@ -158,7 +158,7 @@ func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.
 				return fmt.Errorf("error creating pending stage event: %v", err)
 			}
 
-			err = messages.NewStageEventCreatedMessage(event).Publish()
+			err = messages.NewStageEventCreatedMessage(stage.CanvasID.String(), event).Publish()
 			if err != nil {
 				logging.ForStage(&stage).Errorf("failed to publish stage event created message: %v", err)
 			}

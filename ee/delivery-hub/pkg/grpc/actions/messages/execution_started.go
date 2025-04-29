@@ -13,9 +13,10 @@ type ExecutionStartedMessage struct {
 	message *pb.StageExecutionStarted
 }
 
-func NewExecutionStartedMessage(execution *models.StageExecution) ExecutionStartedMessage {
+func NewExecutionStartedMessage(canvasId string, execution *models.StageExecution) ExecutionStartedMessage {
 	return ExecutionStartedMessage{
 		message: &pb.StageExecutionStarted{
+			CanvasId:    canvasId,
 			ExecutionId: execution.ID.String(),
 			StageId:     execution.StageID.String(),
 			EventId:     execution.StageEventID.String(),

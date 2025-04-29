@@ -51,7 +51,7 @@ func ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*
 		return nil, err
 	}
 
-	err = messages.NewStageEventApprovedMessage(event).Publish()
+	err = messages.NewStageEventApprovedMessage(canvas.ID.String(), event).Publish()
 	if err != nil {
 		logging.ForStage(stage).Errorf("failed to publish event approved message: %v", err)
 	}

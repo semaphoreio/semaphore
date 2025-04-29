@@ -13,9 +13,10 @@ type ExecutionFinishedMessage struct {
 	message *pb.StageExecutionFinished
 }
 
-func NewExecutionFinishedMessage(execution *models.StageExecution) ExecutionFinishedMessage {
+func NewExecutionFinishedMessage(canvasId string, execution *models.StageExecution) ExecutionFinishedMessage {
 	return ExecutionFinishedMessage{
 		message: &pb.StageExecutionFinished{
+			CanvasId:    canvasId,
 			ExecutionId: execution.ID.String(),
 			StageId:     execution.StageID.String(),
 			EventId:     execution.StageEventID.String(),

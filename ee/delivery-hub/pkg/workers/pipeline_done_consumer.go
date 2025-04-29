@@ -128,7 +128,13 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	})
 
 	if err == nil {
-		err = messages.NewExecutionFinishedMessage(execution).Publish()
+		stage, err := models.FindStageByID(execution.StageID)
+		if err != nil {
+			logger.Errorf("Error finding stage for execution: %v", err)
+			return err
+		}
+
+		err = messages.NewExecutionFinishedMessage(stage.CanvasID.String(), execution).Publish()
 		if err != nil {
 			logger.Errorf("Error publishing execution finished message: %v", err)
 		}

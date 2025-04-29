@@ -16,6 +16,7 @@ const EventSourceCreatedRoutingKey = "event-source-created"
 func NewEventSourceCreatedMessage(eventSource *models.EventSource) EventSourceCreatedMessage {
 	return EventSourceCreatedMessage{
 		message: &pb.EventSourceCreated{
+			CanvasId:  eventSource.CanvasID.String(),
 			SourceId:  eventSource.ID.String(),
 			Timestamp: timestamppb.Now(),
 		},

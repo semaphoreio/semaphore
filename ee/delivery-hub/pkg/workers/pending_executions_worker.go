@@ -79,7 +79,7 @@ func (w *PendingExecutionsWorker) ProcessExecution(logger *log.Entry, stage *mod
 		return fmt.Errorf("error moving execution to started state: %v", err)
 	}
 
-	err = messages.NewExecutionStartedMessage(&execution).Publish()
+	err = messages.NewExecutionStartedMessage(stage.CanvasID.String(), &execution).Publish()
 	if err != nil {
 		return fmt.Errorf("error publishing execution started message: %v", err)
 	}

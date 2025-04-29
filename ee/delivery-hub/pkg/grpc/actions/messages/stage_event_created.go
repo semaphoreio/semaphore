@@ -13,9 +13,11 @@ type StageEventCreatedMessage struct {
 	message *pb.StageEventCreated
 }
 
-func NewStageEventCreatedMessage(eventSource *models.StageEvent) StageEventCreatedMessage {
+func NewStageEventCreatedMessage(canvasId string, eventSource *models.StageEvent) StageEventCreatedMessage {
 	return StageEventCreatedMessage{
 		message: &pb.StageEventCreated{
+			CanvasId:  canvasId,
+			StageId:   eventSource.StageID.String(),
 			EventId:   eventSource.ID.String(),
 			Timestamp: timestamppb.Now(),
 		},

@@ -16,6 +16,7 @@ type StageCreatedMessage struct {
 func NewStageCreatedMessage(stage *models.Stage) StageCreatedMessage {
 	return StageCreatedMessage{
 		message: &pb.StageCreated{
+			CanvasId:  stage.CanvasID.String(),
 			StageId:   stage.ID.String(),
 			Timestamp: timestamppb.Now(),
 		},
