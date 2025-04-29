@@ -1,10 +1,10 @@
 package messages
 
 import (
-	"encoding/json"
-
 	"github.com/renderedtext/go-tackle"
 	config "github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const DeliveryHubCanvasExchange = "delivery-hub.canvas-exchange"
@@ -24,8 +24,8 @@ func Publish(exchange string, routingKey string, message []byte) error {
 	})
 }
 
-func toJSON(m interface{}) []byte {
-	body, err := json.Marshal(m)
+func toBytes(m protoreflect.ProtoMessage) []byte {
+	body, err := proto.Marshal(m)
 	if err != nil {
 		return nil
 	}

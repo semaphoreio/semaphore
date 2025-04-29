@@ -24,5 +24,5 @@ func NewStageEventCreatedMessage(canvasId string, eventSource *models.StageEvent
 }
 
 func (m StageEventCreatedMessage) Publish() error {
-	return Publish(DeliveryHubCanvasExchange, StageEventCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, StageEventCreatedRoutingKey, toBytes(m.message))
 }

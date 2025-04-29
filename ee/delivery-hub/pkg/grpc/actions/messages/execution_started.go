@@ -25,5 +25,5 @@ func NewExecutionStartedMessage(canvasId string, execution *models.StageExecutio
 }
 
 func (m ExecutionStartedMessage) Publish() error {
-	return Publish(DeliveryHubCanvasExchange, ExecutionStartedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, ExecutionStartedRoutingKey, toBytes(m.message))
 }

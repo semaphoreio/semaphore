@@ -23,5 +23,5 @@ func NewEventSourceCreatedMessage(eventSource *models.EventSource) EventSourceCr
 }
 
 func (m EventSourceCreatedMessage) Publish() error {
-	return Publish(DeliveryHubCanvasExchange, EventSourceCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, EventSourceCreatedRoutingKey, toBytes(m.message))
 }

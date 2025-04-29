@@ -23,5 +23,5 @@ func NewStageCreatedMessage(stage *models.Stage) StageCreatedMessage {
 }
 
 func (m StageCreatedMessage) Publish() error {
-	return Publish(DeliveryHubCanvasExchange, StageCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, StageCreatedRoutingKey, toBytes(m.message))
 }
