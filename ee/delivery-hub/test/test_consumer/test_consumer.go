@@ -9,7 +9,7 @@ import (
 )
 
 const TestConsumerService = "TestConsumerService"
-const TestExchangeName = "DeliveryHub.CanvasExchange"
+const TestExchangeName = "delivery-hub.canvas-exchange"
 
 type TestConsumer struct {
 	amqpURL        string
