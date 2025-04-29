@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
@@ -16,6 +15,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const StageEventApprovedRoutingKey = "stage-event-approved"
 
 func Test__ApproveStageEvent(t *testing.T) {
 	r := support.Setup(t)
@@ -84,8 +85,7 @@ func Test__ApproveStageEvent(t *testing.T) {
 
 	t.Run("stage with stage events -> approves and returns event", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
-		routingKey := fmt.Sprintf("%s.%s", "approved", r.Stage.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageEventExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, StageEventApprovedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

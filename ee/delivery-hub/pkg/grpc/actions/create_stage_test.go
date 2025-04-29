@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
@@ -15,6 +14,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const StageCreatedRoutingKey = "stage-created"
 
 func Test__CreateStage(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
@@ -71,8 +72,7 @@ func Test__CreateStage(t *testing.T) {
 
 	t.Run("stage with connection with filters", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
-		routingKey := fmt.Sprintf("%s.%s", "created", r.Canvas.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, StageCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

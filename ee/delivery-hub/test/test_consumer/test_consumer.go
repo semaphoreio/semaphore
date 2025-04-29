@@ -9,6 +9,7 @@ import (
 )
 
 const TestConsumerService = "TestConsumerService"
+const TestExchangeName = "DeliveryHub.CanvasExchange"
 
 type TestConsumer struct {
 	amqpURL        string
@@ -18,10 +19,10 @@ type TestConsumer struct {
 	messageChannel chan bool
 }
 
-func New(amqpURL string, exchangeName string, routingKey string) TestConsumer {
+func New(amqpURL string, routingKey string) TestConsumer {
 	return TestConsumer{
 		amqpURL:        amqpURL,
-		exchangeName:   exchangeName,
+		exchangeName:   TestExchangeName,
 		routingKey:     routingKey,
 		messageChannel: make(chan bool),
 		consumer:       tackle.NewConsumer(),

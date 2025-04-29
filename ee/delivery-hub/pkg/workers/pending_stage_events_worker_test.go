@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/google/uuid"
@@ -12,6 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const ExecutionCreatedRoutingKey = "execution-created"
 
 func Test__PendingStageEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
@@ -32,8 +33,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		stage, err := r.Canvas.FindStageByName("stage-no-approval-1")
 		require.NoError(t, err)
 
-		routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -103,8 +103,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		stage, err := r.Canvas.FindStageByName("stage-with-approval-2")
 		require.NoError(t, err)
 
-		routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

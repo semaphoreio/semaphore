@@ -1,7 +1,6 @@
 package workers
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
@@ -11,6 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const EventCreatedRoutingKey = "stage-event-created"
 
 func Test__PendingEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
@@ -55,15 +56,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 		stage1, _ := r.Canvas.FindStageByName("stage-1")
 		stage2, _ := r.Canvas.FindStageByName("stage-2")
 
-		stages := []models.Stage{*stage1, *stage2}
-		consumers := make([]testconsumer.TestConsumer, 0, 2)
-
-		for _, stage := range stages {
-			routingKey := fmt.Sprintf("%s.%s", "created", stage.ID.String())
-			testconsumer := testconsumer.New(amqpURL, "DeliveryHub.StageEventExchange", routingKey)
-			testconsumer.Start()
-			consumers = append(consumers, testconsumer)
-		}
+		testconsumer := testconsumer.New(amqpURL, EventCreatedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Create an event for the source, and trigger the worker.
@@ -92,11 +87,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
-
-		for _, consumer := range consumers {
-			assert.True(t, consumer.HasReceivedMessage())
-			consumer.Stop()
-		}
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {

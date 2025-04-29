@@ -2,7 +2,6 @@ package actions
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	uuid "github.com/google/uuid"
@@ -16,6 +15,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const EventSourceCreatedRoutingKey = "event-source-created"
 
 func Test__CreateEventSource(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{})
@@ -37,8 +38,7 @@ func Test__CreateEventSource(t *testing.T) {
 
 	t.Run("name still not used -> event source is created", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
-		routingKey := fmt.Sprintf("%s.%s", "created", r.Canvas.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.EventSourceExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, EventSourceCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

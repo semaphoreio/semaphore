@@ -2,7 +2,6 @@ package workers
 
 import (
 	"encoding/json"
-	"fmt"
 	"slices"
 	"testing"
 
@@ -17,6 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const ExecutionStartedRoutingKey = "execution-started"
 
 func Test__PendingExecutionsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
@@ -41,8 +42,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
 
-		routingKey := fmt.Sprintf("%s.%s", "started", stage.ID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -95,8 +95,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
 
-		routingKey := fmt.Sprintf("%s.%s", "started", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -170,8 +169,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
 
-		routingKey := fmt.Sprintf("%s.%s", "started", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 

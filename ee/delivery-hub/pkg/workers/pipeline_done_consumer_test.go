@@ -2,7 +2,6 @@ package workers
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
@@ -17,6 +16,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
+
+const ExecutionFinishedRoutingKey = "execution-finished"
 
 func Test__PipelineDoneConsumer(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
@@ -42,8 +43,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
 
-		routingKey := fmt.Sprintf("%s.%s", "finished", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
@@ -105,8 +105,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
 
-		routingKey := fmt.Sprintf("%s.%s", "finished", execution.StageID.String())
-		testconsumer := testconsumer.New(amqpURL, "DeliveryHub.ExecutionExchange", routingKey)
+		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
 
