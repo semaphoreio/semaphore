@@ -2023,114 +2023,18 @@ func (x *ApproveStageEventResponse) GetEvent() *StageEvent {
 	return nil
 }
 
-type Connection_Filter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Type          Connection_FilterType  `protobuf:"varint,1,opt,name=type,proto3,enum=InternalApi.Delivery.Connection_FilterType" json:"type,omitempty"`
-	Data          *Connection_DataFilter `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Connection_Filter) Reset() {
-	*x = Connection_Filter{}
-	mi := &file_delivery_proto_msgTypes[29]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Connection_Filter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Connection_Filter) ProtoMessage() {}
-
-func (x *Connection_Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[29]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Connection_Filter.ProtoReflect.Descriptor instead.
-func (*Connection_Filter) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{12, 0}
-}
-
-func (x *Connection_Filter) GetType() Connection_FilterType {
-	if x != nil {
-		return x.Type
-	}
-	return Connection_FILTER_TYPE_UNKNOWN
-}
-
-func (x *Connection_Filter) GetData() *Connection_DataFilter {
-	if x != nil {
-		return x.Data
-	}
-	return nil
-}
-
-type Connection_DataFilter struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Expression    string                 `protobuf:"bytes,1,opt,name=expression,proto3" json:"expression,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
-}
-
-func (x *Connection_DataFilter) Reset() {
-	*x = Connection_DataFilter{}
-	mi := &file_delivery_proto_msgTypes[30]
-	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-	ms.StoreMessageInfo(mi)
-}
-
-func (x *Connection_DataFilter) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*Connection_DataFilter) ProtoMessage() {}
-
-func (x *Connection_DataFilter) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[30]
-	if x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use Connection_DataFilter.ProtoReflect.Descriptor instead.
-func (*Connection_DataFilter) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{12, 1}
-}
-
-func (x *Connection_DataFilter) GetExpression() string {
-	if x != nil {
-		return x.Expression
-	}
-	return ""
-}
-
 type StageCreated struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageCreated) Reset() {
 	*x = StageCreated{}
-	mi := &file_delivery_proto_msgTypes[34]
+	mi := &file_delivery_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2142,7 +2046,7 @@ func (x *StageCreated) String() string {
 func (*StageCreated) ProtoMessage() {}
 
 func (x *StageCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[34]
+	mi := &file_delivery_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2153,8 +2057,9 @@ func (x *StageCreated) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageCreated.ProtoReflect.Descriptor instead.
 func (*StageCreated) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{34}
+	return file_delivery_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *StageCreated) GetCanvasId() string {
@@ -2179,17 +2084,17 @@ func (x *StageCreated) GetTimestamp() *timestamp.Timestamp {
 }
 
 type EventSourceCreated struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	SourceId      string                      `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	SourceId      string                 `protobuf:"bytes,2,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EventSourceCreated) Reset() {
 	*x = EventSourceCreated{}
-	mi := &file_delivery_proto_msgTypes[35]
+	mi := &file_delivery_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2201,7 +2106,7 @@ func (x *EventSourceCreated) String() string {
 func (*EventSourceCreated) ProtoMessage() {}
 
 func (x *EventSourceCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[35]
+	mi := &file_delivery_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2212,8 +2117,9 @@ func (x *EventSourceCreated) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use EventSourceCreated.ProtoReflect.Descriptor instead.
 func (*EventSourceCreated) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{35}
+	return file_delivery_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *EventSourceCreated) GetCanvasId() string {
@@ -2238,18 +2144,18 @@ func (x *EventSourceCreated) GetTimestamp() *timestamp.Timestamp {
 }
 
 type StageEventCreated struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	EventId       string                      `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                 `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageEventCreated) Reset() {
 	*x = StageEventCreated{}
-	mi := &file_delivery_proto_msgTypes[36]
+	mi := &file_delivery_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2261,7 +2167,7 @@ func (x *StageEventCreated) String() string {
 func (*StageEventCreated) ProtoMessage() {}
 
 func (x *StageEventCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[36]
+	mi := &file_delivery_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2272,8 +2178,9 @@ func (x *StageEventCreated) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageEventCreated.ProtoReflect.Descriptor instead.
 func (*StageEventCreated) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{36}
+	return file_delivery_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *StageEventCreated) GetCanvasId() string {
@@ -2305,18 +2212,18 @@ func (x *StageEventCreated) GetTimestamp() *timestamp.Timestamp {
 }
 
 type StageEventApproved struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	EventId       string                      `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,2,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                 `protobuf:"bytes,3,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,4,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageEventApproved) Reset() {
 	*x = StageEventApproved{}
-	mi := &file_delivery_proto_msgTypes[37]
+	mi := &file_delivery_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2328,7 +2235,7 @@ func (x *StageEventApproved) String() string {
 func (*StageEventApproved) ProtoMessage() {}
 
 func (x *StageEventApproved) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[37]
+	mi := &file_delivery_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2339,8 +2246,9 @@ func (x *StageEventApproved) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageEventApproved.ProtoReflect.Descriptor instead.
 func (*StageEventApproved) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{37}
+	return file_delivery_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *StageEventApproved) GetCanvasId() string {
@@ -2357,6 +2265,13 @@ func (x *StageEventApproved) GetStageId() string {
 	return ""
 }
 
+func (x *StageEventApproved) GetEventId() string {
+	if x != nil {
+		return x.EventId
+	}
+	return ""
+}
+
 func (x *StageEventApproved) GetTimestamp() *timestamp.Timestamp {
 	if x != nil {
 		return x.Timestamp
@@ -2365,19 +2280,19 @@ func (x *StageEventApproved) GetTimestamp() *timestamp.Timestamp {
 }
 
 type StageExecutionCreated struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	ExecutionId   string                      `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	EventId       string                      `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	ExecutionId   string                 `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                 `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageExecutionCreated) Reset() {
 	*x = StageExecutionCreated{}
-	mi := &file_delivery_proto_msgTypes[38]
+	mi := &file_delivery_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2389,7 +2304,7 @@ func (x *StageExecutionCreated) String() string {
 func (*StageExecutionCreated) ProtoMessage() {}
 
 func (x *StageExecutionCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[38]
+	mi := &file_delivery_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2400,8 +2315,9 @@ func (x *StageExecutionCreated) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageExecutionCreated.ProtoReflect.Descriptor instead.
 func (*StageExecutionCreated) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{38}
+	return file_delivery_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *StageExecutionCreated) GetCanvasId() string {
@@ -2440,19 +2356,19 @@ func (x *StageExecutionCreated) GetTimestamp() *timestamp.Timestamp {
 }
 
 type StageExecutionStarted struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	ExecutionId   string                      `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	EventId       string                      `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	ExecutionId   string                 `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                 `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageExecutionStarted) Reset() {
 	*x = StageExecutionStarted{}
-	mi := &file_delivery_proto_msgTypes[39]
+	mi := &file_delivery_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2464,7 +2380,7 @@ func (x *StageExecutionStarted) String() string {
 func (*StageExecutionStarted) ProtoMessage() {}
 
 func (x *StageExecutionStarted) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[39]
+	mi := &file_delivery_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2475,8 +2391,9 @@ func (x *StageExecutionStarted) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageExecutionStarted.ProtoReflect.Descriptor instead.
 func (*StageExecutionStarted) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{39}
+	return file_delivery_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *StageExecutionStarted) GetCanvasId() string {
@@ -2515,19 +2432,19 @@ func (x *StageExecutionStarted) GetTimestamp() *timestamp.Timestamp {
 }
 
 type StageExecutionFinished struct {
-	state         protoimpl.MessageState      `protogen:"open.v1"`
-	CanvasId      string                      `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
-	ExecutionId   string                      `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
-	StageId       string                      `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
-	EventId       string                      `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
-	Timestamp     *timestamp.Timestamp        `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	CanvasId      string                 `protobuf:"bytes,1,opt,name=canvas_id,json=canvasId,proto3" json:"canvas_id,omitempty"`
+	ExecutionId   string                 `protobuf:"bytes,2,opt,name=execution_id,json=executionId,proto3" json:"execution_id,omitempty"`
+	StageId       string                 `protobuf:"bytes,3,opt,name=stage_id,json=stageId,proto3" json:"stage_id,omitempty"`
+	EventId       string                 `protobuf:"bytes,4,opt,name=event_id,json=eventId,proto3" json:"event_id,omitempty"`
+	Timestamp     *timestamp.Timestamp   `protobuf:"bytes,5,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *StageExecutionFinished) Reset() {
 	*x = StageExecutionFinished{}
-	mi := &file_delivery_proto_msgTypes[40]
+	mi := &file_delivery_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2539,7 +2456,7 @@ func (x *StageExecutionFinished) String() string {
 func (*StageExecutionFinished) ProtoMessage() {}
 
 func (x *StageExecutionFinished) ProtoReflect() protoreflect.Message {
-	mi := &file_delivery_proto_msgTypes[40]
+	mi := &file_delivery_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2550,8 +2467,9 @@ func (x *StageExecutionFinished) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
+// Deprecated: Use StageExecutionFinished.ProtoReflect.Descriptor instead.
 func (*StageExecutionFinished) Descriptor() ([]byte, []int) {
-	return file_delivery_proto_rawDescGZIP(), []int{40}
+	return file_delivery_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *StageExecutionFinished) GetCanvasId() string {
@@ -2587,6 +2505,102 @@ func (x *StageExecutionFinished) GetTimestamp() *timestamp.Timestamp {
 		return x.Timestamp
 	}
 	return nil
+}
+
+type Connection_Filter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Type          Connection_FilterType  `protobuf:"varint,1,opt,name=type,proto3,enum=InternalApi.Delivery.Connection_FilterType" json:"type,omitempty"`
+	Data          *Connection_DataFilter `protobuf:"bytes,2,opt,name=data,proto3" json:"data,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Connection_Filter) Reset() {
+	*x = Connection_Filter{}
+	mi := &file_delivery_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Connection_Filter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Connection_Filter) ProtoMessage() {}
+
+func (x *Connection_Filter) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Connection_Filter.ProtoReflect.Descriptor instead.
+func (*Connection_Filter) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{12, 0}
+}
+
+func (x *Connection_Filter) GetType() Connection_FilterType {
+	if x != nil {
+		return x.Type
+	}
+	return Connection_FILTER_TYPE_UNKNOWN
+}
+
+func (x *Connection_Filter) GetData() *Connection_DataFilter {
+	if x != nil {
+		return x.Data
+	}
+	return nil
+}
+
+type Connection_DataFilter struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Expression    string                 `protobuf:"bytes,1,opt,name=expression,proto3" json:"expression,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Connection_DataFilter) Reset() {
+	*x = Connection_DataFilter{}
+	mi := &file_delivery_proto_msgTypes[37]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Connection_DataFilter) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Connection_DataFilter) ProtoMessage() {}
+
+func (x *Connection_DataFilter) ProtoReflect() protoreflect.Message {
+	mi := &file_delivery_proto_msgTypes[37]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Connection_DataFilter.ProtoReflect.Descriptor instead.
+func (*Connection_DataFilter) Descriptor() ([]byte, []int) {
+	return file_delivery_proto_rawDescGZIP(), []int{12, 1}
+}
+
+func (x *Connection_DataFilter) GetExpression() string {
+	if x != nil {
+		return x.Expression
+	}
+	return ""
 }
 
 var File_delivery_proto protoreflect.FileDescriptor
@@ -2756,7 +2770,43 @@ const file_delivery_proto_rawDesc = "" +
 	"\bevent_id\x18\x04 \x01(\tR\aeventId\x12!\n" +
 	"\frequester_id\x18\x05 \x01(\tR\vrequesterId\"S\n" +
 	"\x19ApproveStageEventResponse\x126\n" +
-	"\x05event\x18\x01 \x01(\v2 .InternalApi.Delivery.StageEventR\x05event2\xbc\t\n" +
+	"\x05event\x18\x01 \x01(\v2 .InternalApi.Delivery.StageEventR\x05event\"\x80\x01\n" +
+	"\fStageCreated\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12\x19\n" +
+	"\bstage_id\x18\x02 \x01(\tR\astageId\x128\n" +
+	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\x88\x01\n" +
+	"\x12EventSourceCreated\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12\x1b\n" +
+	"\tsource_id\x18\x02 \x01(\tR\bsourceId\x128\n" +
+	"\ttimestamp\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xa0\x01\n" +
+	"\x11StageEventCreated\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12\x19\n" +
+	"\bstage_id\x18\x02 \x01(\tR\astageId\x12\x19\n" +
+	"\bevent_id\x18\x03 \x01(\tR\aeventId\x128\n" +
+	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xa1\x01\n" +
+	"\x12StageEventApproved\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12\x19\n" +
+	"\bstage_id\x18\x02 \x01(\tR\astageId\x12\x19\n" +
+	"\bevent_id\x18\x03 \x01(\tR\aeventId\x128\n" +
+	"\ttimestamp\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xc7\x01\n" +
+	"\x15StageExecutionCreated\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12!\n" +
+	"\fexecution_id\x18\x02 \x01(\tR\vexecutionId\x12\x19\n" +
+	"\bstage_id\x18\x03 \x01(\tR\astageId\x12\x19\n" +
+	"\bevent_id\x18\x04 \x01(\tR\aeventId\x128\n" +
+	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xc7\x01\n" +
+	"\x15StageExecutionStarted\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12!\n" +
+	"\fexecution_id\x18\x02 \x01(\tR\vexecutionId\x12\x19\n" +
+	"\bstage_id\x18\x03 \x01(\tR\astageId\x12\x19\n" +
+	"\bevent_id\x18\x04 \x01(\tR\aeventId\x128\n" +
+	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\"\xc8\x01\n" +
+	"\x16StageExecutionFinished\x12\x1b\n" +
+	"\tcanvas_id\x18\x01 \x01(\tR\bcanvasId\x12!\n" +
+	"\fexecution_id\x18\x02 \x01(\tR\vexecutionId\x12\x19\n" +
+	"\bstage_id\x18\x03 \x01(\tR\astageId\x12\x19\n" +
+	"\bevent_id\x18\x04 \x01(\tR\aeventId\x128\n" +
+	"\ttimestamp\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp2\xbc\t\n" +
 	"\bDelivery\x12e\n" +
 	"\fCreateCanvas\x12).InternalApi.Delivery.CreateCanvasRequest\x1a*.InternalApi.Delivery.CreateCanvasResponse\x12t\n" +
 	"\x11CreateEventSource\x12..InternalApi.Delivery.CreateEventSourceRequest\x1a/.InternalApi.Delivery.CreateEventSourceResponse\x12b\n" +
@@ -2784,7 +2834,7 @@ func file_delivery_proto_rawDescGZIP() []byte {
 }
 
 var file_delivery_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 32)
+var file_delivery_proto_msgTypes = make([]protoimpl.MessageInfo, 39)
 var file_delivery_proto_goTypes = []any{
 	(Connection_Type)(0),                // 0: InternalApi.Delivery.Connection.Type
 	(Connection_FilterType)(0),          // 1: InternalApi.Delivery.Connection.FilterType
@@ -2820,30 +2870,37 @@ var file_delivery_proto_goTypes = []any{
 	(*StageEvent)(nil),                  // 31: InternalApi.Delivery.StageEvent
 	(*ApproveStageEventRequest)(nil),    // 32: InternalApi.Delivery.ApproveStageEventRequest
 	(*ApproveStageEventResponse)(nil),   // 33: InternalApi.Delivery.ApproveStageEventResponse
-	(*Connection_Filter)(nil),           // 34: InternalApi.Delivery.Connection.Filter
-	(*Connection_DataFilter)(nil),       // 35: InternalApi.Delivery.Connection.DataFilter
-	nil,                                 // 36: InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry
-	(*timestamp.Timestamp)(nil),         // 37: google.protobuf.Timestamp
+	(*StageCreated)(nil),                // 34: InternalApi.Delivery.StageCreated
+	(*EventSourceCreated)(nil),          // 35: InternalApi.Delivery.EventSourceCreated
+	(*StageEventCreated)(nil),           // 36: InternalApi.Delivery.StageEventCreated
+	(*StageEventApproved)(nil),          // 37: InternalApi.Delivery.StageEventApproved
+	(*StageExecutionCreated)(nil),       // 38: InternalApi.Delivery.StageExecutionCreated
+	(*StageExecutionStarted)(nil),       // 39: InternalApi.Delivery.StageExecutionStarted
+	(*StageExecutionFinished)(nil),      // 40: InternalApi.Delivery.StageExecutionFinished
+	(*Connection_Filter)(nil),           // 41: InternalApi.Delivery.Connection.Filter
+	(*Connection_DataFilter)(nil),       // 42: InternalApi.Delivery.Connection.DataFilter
+	nil,                                 // 43: InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry
+	(*timestamp.Timestamp)(nil),         // 44: google.protobuf.Timestamp
 }
 var file_delivery_proto_depIdxs = []int32{
-	37, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
+	44, // 0: InternalApi.Delivery.Canvas.created_at:type_name -> google.protobuf.Timestamp
 	5,  // 1: InternalApi.Delivery.CreateCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
 	5,  // 2: InternalApi.Delivery.DescribeCanvasResponse.canvas:type_name -> InternalApi.Delivery.Canvas
-	37, // 3: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
+	44, // 3: InternalApi.Delivery.EventSource.created_at:type_name -> google.protobuf.Timestamp
 	18, // 4: InternalApi.Delivery.DescribeStageResponse.stage:type_name -> InternalApi.Delivery.Stage
 	10, // 5: InternalApi.Delivery.CreateEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
 	10, // 6: InternalApi.Delivery.DescribeEventSourceResponse.event_source:type_name -> InternalApi.Delivery.EventSource
 	0,  // 7: InternalApi.Delivery.Connection.type:type_name -> InternalApi.Delivery.Connection.Type
-	34, // 8: InternalApi.Delivery.Connection.filters:type_name -> InternalApi.Delivery.Connection.Filter
+	41, // 8: InternalApi.Delivery.Connection.filters:type_name -> InternalApi.Delivery.Connection.Filter
 	2,  // 9: InternalApi.Delivery.Connection.filter_operator:type_name -> InternalApi.Delivery.Connection.FilterOperator
-	37, // 10: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
+	44, // 10: InternalApi.Delivery.Stage.created_at:type_name -> google.protobuf.Timestamp
 	17, // 11: InternalApi.Delivery.Stage.connections:type_name -> InternalApi.Delivery.Connection
 	20, // 12: InternalApi.Delivery.Stage.run_template:type_name -> InternalApi.Delivery.RunTemplate
 	17, // 13: InternalApi.Delivery.CreateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
 	20, // 14: InternalApi.Delivery.CreateStageRequest.run_template:type_name -> InternalApi.Delivery.RunTemplate
 	3,  // 15: InternalApi.Delivery.RunTemplate.type:type_name -> InternalApi.Delivery.RunTemplate.Type
 	21, // 16: InternalApi.Delivery.RunTemplate.semaphore:type_name -> InternalApi.Delivery.SemaphoreRunTemplate
-	36, // 17: InternalApi.Delivery.SemaphoreRunTemplate.parameters:type_name -> InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry
+	43, // 17: InternalApi.Delivery.SemaphoreRunTemplate.parameters:type_name -> InternalApi.Delivery.SemaphoreRunTemplate.ParametersEntry
 	18, // 18: InternalApi.Delivery.CreateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
 	17, // 19: InternalApi.Delivery.UpdateStageRequest.connections:type_name -> InternalApi.Delivery.Connection
 	18, // 20: InternalApi.Delivery.UpdateStageResponse.stage:type_name -> InternalApi.Delivery.Stage
@@ -2853,38 +2910,45 @@ var file_delivery_proto_depIdxs = []int32{
 	31, // 24: InternalApi.Delivery.ListStageEventsResponse.events:type_name -> InternalApi.Delivery.StageEvent
 	0,  // 25: InternalApi.Delivery.StageEvent.source_type:type_name -> InternalApi.Delivery.Connection.Type
 	4,  // 26: InternalApi.Delivery.StageEvent.state:type_name -> InternalApi.Delivery.StageEvent.State
-	37, // 27: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
-	37, // 28: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
+	44, // 27: InternalApi.Delivery.StageEvent.created_at:type_name -> google.protobuf.Timestamp
+	44, // 28: InternalApi.Delivery.StageEvent.approved_at:type_name -> google.protobuf.Timestamp
 	31, // 29: InternalApi.Delivery.ApproveStageEventResponse.event:type_name -> InternalApi.Delivery.StageEvent
-	1,  // 30: InternalApi.Delivery.Connection.Filter.type:type_name -> InternalApi.Delivery.Connection.FilterType
-	35, // 31: InternalApi.Delivery.Connection.Filter.data:type_name -> InternalApi.Delivery.Connection.DataFilter
-	6,  // 32: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
-	13, // 33: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
-	19, // 34: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
-	8,  // 35: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
-	11, // 36: InternalApi.Delivery.Delivery.DescribeStage:input_type -> InternalApi.Delivery.DescribeStageRequest
-	15, // 37: InternalApi.Delivery.Delivery.DescribeEventSource:input_type -> InternalApi.Delivery.DescribeEventSourceRequest
-	25, // 38: InternalApi.Delivery.Delivery.ListStages:input_type -> InternalApi.Delivery.ListStagesRequest
-	27, // 39: InternalApi.Delivery.Delivery.ListEventSources:input_type -> InternalApi.Delivery.ListEventSourcesRequest
-	29, // 40: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
-	23, // 41: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
-	32, // 42: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
-	7,  // 43: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
-	14, // 44: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
-	22, // 45: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
-	9,  // 46: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
-	12, // 47: InternalApi.Delivery.Delivery.DescribeStage:output_type -> InternalApi.Delivery.DescribeStageResponse
-	16, // 48: InternalApi.Delivery.Delivery.DescribeEventSource:output_type -> InternalApi.Delivery.DescribeEventSourceResponse
-	26, // 49: InternalApi.Delivery.Delivery.ListStages:output_type -> InternalApi.Delivery.ListStagesResponse
-	28, // 50: InternalApi.Delivery.Delivery.ListEventSources:output_type -> InternalApi.Delivery.ListEventSourcesResponse
-	30, // 51: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
-	24, // 52: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
-	33, // 53: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
-	43, // [43:54] is the sub-list for method output_type
-	32, // [32:43] is the sub-list for method input_type
-	32, // [32:32] is the sub-list for extension type_name
-	32, // [32:32] is the sub-list for extension extendee
-	0,  // [0:32] is the sub-list for field type_name
+	44, // 30: InternalApi.Delivery.StageCreated.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 31: InternalApi.Delivery.EventSourceCreated.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 32: InternalApi.Delivery.StageEventCreated.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 33: InternalApi.Delivery.StageEventApproved.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 34: InternalApi.Delivery.StageExecutionCreated.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 35: InternalApi.Delivery.StageExecutionStarted.timestamp:type_name -> google.protobuf.Timestamp
+	44, // 36: InternalApi.Delivery.StageExecutionFinished.timestamp:type_name -> google.protobuf.Timestamp
+	1,  // 37: InternalApi.Delivery.Connection.Filter.type:type_name -> InternalApi.Delivery.Connection.FilterType
+	42, // 38: InternalApi.Delivery.Connection.Filter.data:type_name -> InternalApi.Delivery.Connection.DataFilter
+	6,  // 39: InternalApi.Delivery.Delivery.CreateCanvas:input_type -> InternalApi.Delivery.CreateCanvasRequest
+	13, // 40: InternalApi.Delivery.Delivery.CreateEventSource:input_type -> InternalApi.Delivery.CreateEventSourceRequest
+	19, // 41: InternalApi.Delivery.Delivery.CreateStage:input_type -> InternalApi.Delivery.CreateStageRequest
+	8,  // 42: InternalApi.Delivery.Delivery.DescribeCanvas:input_type -> InternalApi.Delivery.DescribeCanvasRequest
+	11, // 43: InternalApi.Delivery.Delivery.DescribeStage:input_type -> InternalApi.Delivery.DescribeStageRequest
+	15, // 44: InternalApi.Delivery.Delivery.DescribeEventSource:input_type -> InternalApi.Delivery.DescribeEventSourceRequest
+	25, // 45: InternalApi.Delivery.Delivery.ListStages:input_type -> InternalApi.Delivery.ListStagesRequest
+	27, // 46: InternalApi.Delivery.Delivery.ListEventSources:input_type -> InternalApi.Delivery.ListEventSourcesRequest
+	29, // 47: InternalApi.Delivery.Delivery.ListStageEvents:input_type -> InternalApi.Delivery.ListStageEventsRequest
+	23, // 48: InternalApi.Delivery.Delivery.UpdateStage:input_type -> InternalApi.Delivery.UpdateStageRequest
+	32, // 49: InternalApi.Delivery.Delivery.ApproveStageEvent:input_type -> InternalApi.Delivery.ApproveStageEventRequest
+	7,  // 50: InternalApi.Delivery.Delivery.CreateCanvas:output_type -> InternalApi.Delivery.CreateCanvasResponse
+	14, // 51: InternalApi.Delivery.Delivery.CreateEventSource:output_type -> InternalApi.Delivery.CreateEventSourceResponse
+	22, // 52: InternalApi.Delivery.Delivery.CreateStage:output_type -> InternalApi.Delivery.CreateStageResponse
+	9,  // 53: InternalApi.Delivery.Delivery.DescribeCanvas:output_type -> InternalApi.Delivery.DescribeCanvasResponse
+	12, // 54: InternalApi.Delivery.Delivery.DescribeStage:output_type -> InternalApi.Delivery.DescribeStageResponse
+	16, // 55: InternalApi.Delivery.Delivery.DescribeEventSource:output_type -> InternalApi.Delivery.DescribeEventSourceResponse
+	26, // 56: InternalApi.Delivery.Delivery.ListStages:output_type -> InternalApi.Delivery.ListStagesResponse
+	28, // 57: InternalApi.Delivery.Delivery.ListEventSources:output_type -> InternalApi.Delivery.ListEventSourcesResponse
+	30, // 58: InternalApi.Delivery.Delivery.ListStageEvents:output_type -> InternalApi.Delivery.ListStageEventsResponse
+	24, // 59: InternalApi.Delivery.Delivery.UpdateStage:output_type -> InternalApi.Delivery.UpdateStageResponse
+	33, // 60: InternalApi.Delivery.Delivery.ApproveStageEvent:output_type -> InternalApi.Delivery.ApproveStageEventResponse
+	50, // [50:61] is the sub-list for method output_type
+	39, // [39:50] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_delivery_proto_init() }
@@ -2898,7 +2962,7 @@ func file_delivery_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_delivery_proto_rawDesc), len(file_delivery_proto_rawDesc)),
 			NumEnums:      5,
-			NumMessages:   32,
+			NumMessages:   39,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
