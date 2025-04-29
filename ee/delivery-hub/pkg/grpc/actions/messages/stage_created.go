@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const StageCreatedExchange = "DeliveryHub.CanvasExchange"
 const StageCreatedRoutingKey = "stage-created"
 
 type StageCreatedMessage struct {
@@ -24,5 +23,5 @@ func NewStageCreatedMessage(stage *models.Stage) StageCreatedMessage {
 }
 
 func (m StageCreatedMessage) Publish() error {
-	return Publish(StageCreatedExchange, StageCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, StageCreatedRoutingKey, toJSON(m.message))
 }

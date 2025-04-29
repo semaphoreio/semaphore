@@ -7,7 +7,7 @@ import (
 	config "github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 )
 
-const DeliveryHubExchange = "deliveryhub"
+const DeliveryHubCanvasExchange = "DeliveryHub.CanvasExchange"
 
 func Publish(exchange string, routingKey string, message []byte) error {
 	amqpURL, err := config.RabbitMQURL()

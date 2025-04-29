@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const ExecutionCreatedExchange = "DeliveryHub.CanvasExchange"
 const ExecutionCreatedRoutingKey = "execution-created"
 
 type ExecutionCreatedMessage struct {
@@ -26,5 +25,5 @@ func NewExecutionCreatedMessage(canvasId string, execution *models.StageExecutio
 }
 
 func (m ExecutionCreatedMessage) Publish() error {
-	return Publish(ExecutionCreatedExchange, ExecutionCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, ExecutionCreatedRoutingKey, toJSON(m.message))
 }

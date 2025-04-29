@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const StageEventApprovedExchange = "DeliveryHub.CanvasExchange"
 const StageEventApprovedRoutingKey = "stage-event-approved"
 
 type StageEventApprovedMessage struct {
@@ -25,5 +24,5 @@ func NewStageEventApprovedMessage(canvasId string, eventSource *models.StageEven
 }
 
 func (m StageEventApprovedMessage) Publish() error {
-	return Publish(StageEventApprovedExchange, StageEventApprovedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, StageEventApprovedRoutingKey, toJSON(m.message))
 }

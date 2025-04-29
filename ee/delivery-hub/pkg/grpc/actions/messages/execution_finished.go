@@ -6,7 +6,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-const ExecutionFinishedExchange = "DeliveryHub.CanvasExchange"
 const ExecutionFinishedRoutingKey = "execution-finished"
 
 type ExecutionFinishedMessage struct {
@@ -26,5 +25,5 @@ func NewExecutionFinishedMessage(canvasId string, execution *models.StageExecuti
 }
 
 func (m ExecutionFinishedMessage) Publish() error {
-	return Publish(ExecutionFinishedExchange, ExecutionFinishedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, ExecutionFinishedRoutingKey, toJSON(m.message))
 }

@@ -10,7 +10,6 @@ type EventSourceCreatedMessage struct {
 	message *pb.EventSourceCreated
 }
 
-const EventSourceCreatedExchange = "DeliveryHub.CanvasExchange"
 const EventSourceCreatedRoutingKey = "event-source-created"
 
 func NewEventSourceCreatedMessage(eventSource *models.EventSource) EventSourceCreatedMessage {
@@ -24,5 +23,5 @@ func NewEventSourceCreatedMessage(eventSource *models.EventSource) EventSourceCr
 }
 
 func (m EventSourceCreatedMessage) Publish() error {
-	return Publish(EventSourceCreatedExchange, EventSourceCreatedRoutingKey, toJSON(m.message))
+	return Publish(DeliveryHubCanvasExchange, EventSourceCreatedRoutingKey, toJSON(m.message))
 }
