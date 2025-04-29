@@ -53,9 +53,6 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		amqpURL, _ := config.RabbitMQURL()
 
-		stage1, _ := r.Canvas.FindStageByName("stage-1")
-		stage2, _ := r.Canvas.FindStageByName("stage-2")
-
 		testconsumer := testconsumer.New(amqpURL, EventCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
@@ -78,6 +75,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Two pending stage events are created: one for each stage.
 		//
+		stage1, _ := r.Canvas.FindStageByName("stage-1")
+		stage2, _ := r.Canvas.FindStageByName("stage-2")
+
 		stage1Events, err := stage1.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
