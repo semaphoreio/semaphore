@@ -27,28 +27,26 @@ RUN mkdir -p -m 0600 ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hos
 
 # -- elixir stage
 FROM base AS elixir
-WORKDIR /elixir/canvas_front
+WORKDIR /elixir
 RUN mix local.hex --force \
     && mix local.rebar --force
-COPY ee/canvas_front/mix.* ./
-COPY feature_provider ../../feature_provider
+COPY mix.* ./
 RUN mix do deps.get, deps.compile
 
-COPY ee/canvas_front/config config
-COPY ee/canvas_front/priv priv
-COPY ee/canvas_front/lib lib
-COPY ee/canvas_front/test test
-COPY ee/canvas_front/.formatter.exs ./
+COPY config config
+COPY priv priv
+COPY lib lib
+COPY test test
+COPY .formatter.exs ./
 # -- elixir stage
 
 # -- node stage
 FROM base AS node
 WORKDIR /node
-COPY ee/canvas_front/assets/package.json ee/canvas_front/assets/package-lock.json ./
+COPY assets/package.json assets/package-lock.json ./
 RUN npm install
-RUN mkdir -p /assets
 WORKDIR /assets
-COPY ee/canvas_front/assets /assets
+COPY assets /assets
 RUN mv /node/node_modules /assets/node_modules
 # -- node stage
 
@@ -58,7 +56,7 @@ WORKDIR /app
 RUN apk update \
     && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg
 
-COPY --from=elixir /elixir/canvas_front ./
+COPY --from=elixir /elixir ./
 COPY --from=node /assets ./assets
 WORKDIR /app/assets
 # RUN node build.js
@@ -70,7 +68,7 @@ CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
 # -- builder stage - build artifacts are created here
 FROM elixir AS builder
 WORKDIR /app
-COPY --from=elixir /elixir/canvas_front ./
+COPY --from=elixir /elixir ./
 COPY --from=node /assets ./assets
 RUN mix assets.deploy
 RUN mix release

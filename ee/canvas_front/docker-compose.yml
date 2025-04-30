@@ -4,8 +4,8 @@ services:
   app:
     image: ${IMAGE:-canvas_front-app}:${IMAGE_TAG:-latest}
     build:
-      context: ../..
-      dockerfile: ee/canvas_front/Dockerfile
+      context: .
+      dockerfile: Dockerfile
       target: dev
       args:
         - MIX_ENV=${MIX_ENV:-dev}

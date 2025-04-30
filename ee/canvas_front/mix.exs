@@ -57,7 +57,7 @@ defmodule CanvasFront.MixProject do
       {:dns_cluster, "~> 0.1.1"},
       {:bandit, "~> 1.5"},
       {:live_react, "~> 1.0.1"},
-      {:feature_provider, path: "../../feature_provider"},
+      {:feature_provider, github: "semaphoreio/semaphore", sparse: "feature_provider"},
       {:grpc_mock, github: "renderedtext/grpc-mock", only: [:dev, :test]},
       {:watchman, github: "renderedtext/ex-watchman"},
       {:cachex, "~> 4.0"},

@@ -2,7 +2,7 @@ export MIX_ENV?=dev
 
 include ../../Makefile
 
-DOCKER_BUILD_PATH=../..
+DOCKER_BUILD_PATH=.
 APP_NAME?=canvas_front
 SHELL := /bin/bash
 PROTOC_TAG=1.18.3-3.20.1-0.14.1
