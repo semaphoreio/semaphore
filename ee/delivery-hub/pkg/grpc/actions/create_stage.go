@@ -7,6 +7,8 @@ import (
 	"sort"
 
 	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"google.golang.org/grpc/codes"
@@ -56,6 +58,12 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 
 	response := &pb.CreateStageResponse{
 		Stage: serialized,
+	}
+
+	err = messages.NewStageCreatedMessage(stage).Publish()
+
+	if err != nil {
+		logging.ForStage(stage).Errorf("failed to publish stage created message: %v", err)
 	}
 
 	return response, nil

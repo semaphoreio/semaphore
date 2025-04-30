@@ -4,15 +4,20 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+const ExecutionCreatedRoutingKey = "execution-created"
+
 func Test__PendingStageEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
 	w := PendingStageEventsWorker{}
+	amqpURL, _ := config.RabbitMQURL()
 
 	t.Run("stage does not require approval -> creates execution", func(t *testing.T) {
 		//
@@ -27,6 +32,10 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 
 		stage, err := r.Canvas.FindStageByName("stage-no-approval-1")
 		require.NoError(t, err)
+
+		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Create a pending stage event, and trigger the worker.
@@ -48,6 +57,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		assert.Equal(t, execution.StageID, stage.ID)
 		assert.Equal(t, execution.StageEventID, event.ID)
 		assert.Equal(t, execution.State, models.StageExecutionPending)
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("stage requires approval and none was given -> waiting-for-approval state", func(t *testing.T) {
@@ -93,6 +103,10 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		stage, err := r.Canvas.FindStageByName("stage-with-approval-2")
 		require.NoError(t, err)
 
+		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		//
 		// Create a pending stage event, approve it, and trigger the worker.
 		//
@@ -114,6 +128,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		assert.Equal(t, execution.StageID, stage.ID)
 		assert.Equal(t, execution.StageEventID, event.ID)
 		assert.Equal(t, execution.State, models.StageExecutionPending)
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("another execution already in progress -> remains in pending state", func(t *testing.T) {

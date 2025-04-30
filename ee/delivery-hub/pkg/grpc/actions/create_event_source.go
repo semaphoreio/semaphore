@@ -6,6 +6,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/crypto"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/encryptor"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
@@ -49,6 +50,12 @@ func CreateEventSource(ctx context.Context, encryptor encryptor.Encryptor, req *
 	}
 
 	logger.Infof("Created event source. Request: %v", req)
+
+	err = messages.NewEventSourceCreatedMessage(eventSource).Publish()
+
+	if err != nil {
+		logger.Errorf("failed to publish event source created message: %v", err)
+	}
 
 	return response, nil
 }

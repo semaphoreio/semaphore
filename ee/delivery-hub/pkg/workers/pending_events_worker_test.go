@@ -3,11 +3,15 @@ package workers
 import (
 	"testing"
 
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+const EventCreatedRoutingKey = "stage-event-created"
 
 func Test__PendingEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
@@ -26,6 +30,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 	})
 
 	t.Run("source is connected to many stages -> event is added to each stage queue", func(t *testing.T) {
+
 		//
 		// Create two stages, connecting event source to them.
 		//
@@ -46,6 +51,11 @@ func Test__PendingEventsWorker(t *testing.T) {
 		})
 
 		require.NoError(t, err)
+		amqpURL, _ := config.RabbitMQURL()
+
+		testconsumer := testconsumer.New(amqpURL, EventCreatedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Create an event for the source, and trigger the worker.
@@ -65,9 +75,9 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Two pending stage events are created: one for each stage.
 		//
-
 		stage1, _ := r.Canvas.FindStageByName("stage-1")
 		stage2, _ := r.Canvas.FindStageByName("stage-2")
+
 		stage1Events, err := stage1.ListPendingEvents()
 		require.NoError(t, err)
 		require.Len(t, stage1Events, 1)
@@ -77,6 +87,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
+		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
@@ -48,6 +49,11 @@ func ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*
 	err = event.Approve(req.RequesterId)
 	if err != nil {
 		return nil, err
+	}
+
+	err = messages.NewStageEventApprovedMessage(canvas.ID.String(), event).Publish()
+	if err != nil {
+		logging.ForStage(stage).Errorf("failed to publish event approved message: %v", err)
 	}
 
 	logging.ForStage(stage).Infof("event %s approved", event.ID)
