@@ -51,9 +51,6 @@ defmodule Guard.Api.Project do
     case InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000) do
       {:ok, response} when response.metadata.status.code == 0 ->
         response.projects |> length > 0
-
-      _ ->
-        false
     end
   end
 
