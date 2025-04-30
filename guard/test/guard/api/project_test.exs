@@ -43,4 +43,49 @@ defmodule Guard.Api.ProjectTest do
       end
     end
   end
+
+  describe "user_has_any_project?/1" do
+    test "returns true when user has at least one project" do
+      user_id = "user_with_projects"
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub,
+        list: fn _channel, _req, _opts ->
+          {:ok,
+           %{
+             metadata: %{status: %{code: 0}},
+             projects: [
+               %{metadata: %{id: 1, org_id: "org_id", owner_id: user_id}}
+             ]
+           }}
+        end do
+        assert Project.user_has_any_project?(user_id) == true
+      end
+    end
+
+    test "returns false when user has no projects" do
+      user_id = "user_without_projects"
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub,
+        list: fn _channel, _req, _opts ->
+          {:ok,
+           %{
+             metadata: %{status: %{code: 0}},
+             projects: []
+           }}
+        end do
+        assert Project.user_has_any_project?(user_id) == false
+      end
+    end
+
+    test "returns false when there is an error retrieving projects" do
+      user_id = "user_with_error"
+
+      with_mock InternalApi.Projecthub.ProjectService.Stub,
+        list: fn _channel, _req, _opts ->
+          {:error, "Failed to retrieve projects"}
+        end do
+        assert Project.user_has_any_project?(user_id) == false
+      end
+    end
+  end
 end
