@@ -133,12 +133,21 @@ main {
 
 .repo-link {
   margin-bottom: 15px;
+  word-break: break-all;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .repo-link a {
   color: #0366d6;
   text-decoration: none;
+  font-size: 14px;
   word-break: break-all;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  display: inline;
 }
 
 .repo-event h4 {
@@ -731,6 +740,10 @@ main {
 
 .repo-link {
   margin-bottom: 15px;
+  word-break: break-all;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
 }
 
 .repo-link a {
@@ -738,6 +751,10 @@ main {
   text-decoration: none;
   font-size: 14px;
   word-break: break-all;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  display: inline;
 }
 
 .repo-link a:hover {
