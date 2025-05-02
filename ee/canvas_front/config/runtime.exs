@@ -32,14 +32,16 @@ config :watchman,
 feature_provider =
   System.get_env("FEATURE_YAML_PATH")
   |> case do
-  nil ->
-    {CanvasFront.FeatureProvider,
-      [
-        cache: {FeatureProvider.CachexCache, name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
-      ]}
+    nil ->
+      {CanvasFront.FeatureProvider,
+       [
+         cache:
+           {FeatureProvider.CachexCache,
+            name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
+       ]}
 
-  path ->
-    {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
+    path ->
+      {FeatureProvider.YamlProvider, [yaml_path: path, agent_name: :feature_provider_agent]}
   end
 
 config FeatureProvider, :provider, feature_provider

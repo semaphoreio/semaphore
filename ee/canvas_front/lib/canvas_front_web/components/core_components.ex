@@ -605,6 +605,7 @@ defmodule CanvasFrontWeb.CoreComponents do
 
   def img(assigns) do
     assets_path = Application.fetch_env!(:canvas_front, :assets_path)
+
     ~H"""
     <img src={"#{assets_path}/images/#{@name}"} alt={@alt} />
     """
