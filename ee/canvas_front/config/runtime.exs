@@ -47,6 +47,7 @@ feature_provider =
 config FeatureProvider, :provider, feature_provider
 
 config :canvas_front, unique_service_name: System.get_env("UNIQUE_SERVICE_NAME") || "canvas_front"
+config :canvas_front, amqp_url: System.get_env("AMQP_URL") || "amqp://127.0.0.1:5672"
 
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
