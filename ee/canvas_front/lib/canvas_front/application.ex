@@ -7,17 +7,18 @@ defmodule CanvasFront.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      CanvasFrontWeb.Telemetry,
-      {DNSCluster, query: Application.get_env(:canvas_front, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: CanvasFront.PubSub},
-      # Start the Finch HTTP client for sending emails
-      {Finch, name: CanvasFront.Finch},
-      # Start a worker by calling: CanvasFront.Worker.start_link(arg)
-      # {CanvasFront.Worker, arg},
-      # Start to serve requests, typically the last entry
-      CanvasFrontWeb.Endpoint
-    ] ++ cache()
+    children =
+      [
+        CanvasFrontWeb.Telemetry,
+        {DNSCluster, query: Application.get_env(:canvas_front, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: CanvasFront.PubSub},
+        # Start the Finch HTTP client for sending emails
+        {Finch, name: CanvasFront.Finch},
+        # Start a worker by calling: CanvasFront.Worker.start_link(arg)
+        # {CanvasFront.Worker, arg},
+        # Start to serve requests, typically the last entry
+        CanvasFrontWeb.Endpoint
+      ] ++ cache()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
