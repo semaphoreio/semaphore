@@ -18,3 +18,5 @@ config :phoenix_live_view,
   enable_expensive_runtime_checks: true
 
 config :canvas_front, delivery_grpc_endpoint: "127.0.0.1:50052"
+
+config :canvas_front, dev_routes: true
