@@ -5,7 +5,8 @@ defmodule CanvasFrontWeb.ErrorHTMLTest do
   import Phoenix.Template
 
   test "renders 404.html" do
-    assert render_to_string(CanvasFrontWeb.ErrorHTML, "404", "html", []) == "Not Found"
+    assert render_to_string(CanvasFrontWeb.ErrorHTML, "404", "html", []) =~
+             "404 Page Not Found · Semaphore"
   end
 
   test "renders 500.html" do
