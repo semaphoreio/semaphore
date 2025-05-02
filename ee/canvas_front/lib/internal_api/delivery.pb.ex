@@ -386,8 +386,9 @@ defmodule InternalApi.Delivery.StageCreated do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :stage_id, 1, type: :string, json_name: "stageId"
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :stage_id, 2, type: :string, json_name: "stageId"
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.EventSourceCreated do
@@ -395,8 +396,9 @@ defmodule InternalApi.Delivery.EventSourceCreated do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :source_id, 1, type: :string, json_name: "sourceId"
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :source_id, 2, type: :string, json_name: "sourceId"
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.StageEventCreated do
@@ -404,8 +406,10 @@ defmodule InternalApi.Delivery.StageEventCreated do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :event_id, 1, type: :string, json_name: "eventId"
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :stage_id, 2, type: :string, json_name: "stageId"
+  field :event_id, 3, type: :string, json_name: "eventId"
+  field :timestamp, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.StageEventApproved do
@@ -413,8 +417,10 @@ defmodule InternalApi.Delivery.StageEventApproved do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :event_id, 1, type: :string, json_name: "eventId"
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :stage_id, 2, type: :string, json_name: "stageId"
+  field :event_id, 3, type: :string, json_name: "eventId"
+  field :timestamp, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.StageExecutionCreated do
@@ -422,10 +428,11 @@ defmodule InternalApi.Delivery.StageExecutionCreated do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :execution_id, 1, type: :string, json_name: "executionId"
-  field :stage_id, 2, type: :string, json_name: "stageId"
-  field :event_id, 3, type: :string, json_name: "eventId"
-  field :timestamp, 4, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :execution_id, 2, type: :string, json_name: "executionId"
+  field :stage_id, 3, type: :string, json_name: "stageId"
+  field :event_id, 4, type: :string, json_name: "eventId"
+  field :timestamp, 5, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.StageExecutionStarted do
@@ -433,10 +440,11 @@ defmodule InternalApi.Delivery.StageExecutionStarted do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :execution_id, 1, type: :string, json_name: "executionId"
-  field :stage_id, 2, type: :string, json_name: "stageId"
-  field :event_id, 3, type: :string, json_name: "eventId"
-  field :timestamp, 4, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :execution_id, 2, type: :string, json_name: "executionId"
+  field :stage_id, 3, type: :string, json_name: "stageId"
+  field :event_id, 4, type: :string, json_name: "eventId"
+  field :timestamp, 5, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.StageExecutionFinished do
@@ -444,10 +452,11 @@ defmodule InternalApi.Delivery.StageExecutionFinished do
 
   use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
 
-  field :execution_id, 1, type: :string, json_name: "executionId"
-  field :stage_id, 2, type: :string, json_name: "stageId"
-  field :event_id, 3, type: :string, json_name: "eventId"
-  field :timestamp, 4, type: Google.Protobuf.Timestamp
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :execution_id, 2, type: :string, json_name: "executionId"
+  field :stage_id, 3, type: :string, json_name: "stageId"
+  field :event_id, 4, type: :string, json_name: "eventId"
+  field :timestamp, 5, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Delivery.Delivery.Service do
