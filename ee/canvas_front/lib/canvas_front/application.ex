@@ -9,6 +9,7 @@ defmodule CanvasFront.Application do
   def start(_type, _args) do
     children =
       [
+        CanvasFront.CanvasConsumer,
         CanvasFrontWeb.Telemetry,
         {DNSCluster, query: Application.get_env(:canvas_front, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: CanvasFront.PubSub},
