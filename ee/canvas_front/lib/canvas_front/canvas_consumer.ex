@@ -3,7 +3,7 @@ defmodule CanvasFront.CanvasConsumer do
 
   use Tackle.Multiconsumer,
     url: Application.get_env(:canvas_front, :amqp_url),
-    service: "canvas_consumer",
+    service: "canvas_consumer.#{Application.get_env(:canvas_front, :unique_service_name)}",
     service_per_exchange: true,
     routes: [
       {"delivery-hub.canvas-exchange", "stage-event-created", :event_created},
@@ -18,9 +18,27 @@ defmodule CanvasFront.CanvasConsumer do
   @metric_name "canvas_consumer.process"
   @log_prefix "[CANVAS CONSUMER]"
 
+  defp broadcast_to_canvas(canvas_id, event_type, payload) do
+    topic = "canvas:#{canvas_id}"
+
+    Phoenix.PubSub.broadcast(
+      CanvasFront.PubSub,
+      topic,
+      {event_type, payload}
+    )
+
+    Logger.debug("#{@log_prefix} Broadcasted #{event_type} to #{topic}")
+  end
+
   def event_approved(message) do
     Watchman.benchmark({@metric_name, ["event-approved"]}, fn ->
       decoded_message = InternalApi.Delivery.StageEventApproved.decode(message)
+
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :stage_event_approved,
+        decoded_message
+      )
 
       Logger.info(
         "#{@log_prefix} [EVENT APPROVED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -32,6 +50,12 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["event-created"]}, fn ->
       decoded_message = InternalApi.Delivery.StageEventCreated.decode(message)
 
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :stage_event_created,
+        decoded_message
+      )
+
       Logger.info(
         "#{@log_prefix} [EVENT CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
       )
@@ -41,6 +65,12 @@ defmodule CanvasFront.CanvasConsumer do
   def event_source_created(message) do
     Watchman.benchmark({@metric_name, ["event-source-created"]}, fn ->
       decoded_message = InternalApi.Delivery.EventSourceCreated.decode(message)
+
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :event_source_created,
+        decoded_message
+      )
 
       Logger.info(
         "#{@log_prefix} [EVENT SOURCE CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -52,6 +82,12 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["execution-created"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionCreated.decode(message)
 
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :execution_created,
+        decoded_message
+      )
+
       Logger.info(
         "#{@log_prefix} [EXECUTION CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
       )
@@ -61,6 +97,12 @@ defmodule CanvasFront.CanvasConsumer do
   def execution_started(message) do
     Watchman.benchmark({@metric_name, ["execution-started"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionStarted.decode(message)
+
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :execution_started,
+        decoded_message
+      )
 
       Logger.info(
         "#{@log_prefix} [EXECUTION STARTED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -72,6 +114,12 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["execution-finished"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionFinished.decode(message)
 
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :execution_finished,
+        decoded_message
+      )
+
       Logger.info(
         "#{@log_prefix} [EXECUTION FINISHED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
       )
@@ -81,6 +129,12 @@ defmodule CanvasFront.CanvasConsumer do
   def stage_created(message) do
     Watchman.benchmark({@metric_name, ["stage-created"]}, fn ->
       decoded_message = InternalApi.Delivery.StageCreated.decode(message)
+
+      broadcast_to_canvas(
+        decoded_message.canvas_id,
+        :stage_created,
+        decoded_message
+      )
 
       Logger.info(
         "#{@log_prefix} [STAGE CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
