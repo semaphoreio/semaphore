@@ -46,7 +46,7 @@ defmodule CanvasFrontWeb.DevDashboard.EventSourceManagerLive.New do
     }
 
     case Support.Stubs.Delivery.seed_event_source(params) do
-      %{id: id} = event_source ->
+      %{id: id} ->
         {:noreply,
          socket
          |> put_flash(:info, "Event Source created successfully!")

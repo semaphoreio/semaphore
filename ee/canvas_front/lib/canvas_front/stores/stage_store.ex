@@ -5,12 +5,10 @@ defmodule CanvasFront.Stores.Stage do
   """
 
   alias InternalApi.Delivery.{
-    Delivery,
     Delivery.Stub,
     ListStagesRequest,
     ListStagesResponse,
     UpdateStageRequest,
-    UpdateStageResponse,
     CreateStageRequest,
     CreateStageResponse,
     Stage,

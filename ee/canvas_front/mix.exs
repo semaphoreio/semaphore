@@ -62,7 +62,8 @@ defmodule CanvasFront.MixProject do
       {:watchman, github: "renderedtext/ex-watchman"},
       {:cachex, "~> 4.0"},
       {:sentry, "~> 10.9.0"},
-      {:grpc, "~> 0.9"}
+      {:grpc, "~> 0.9"},
+      {:uuid, "~> 1.1"}
     ]
   end
 

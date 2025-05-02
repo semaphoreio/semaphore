@@ -17,7 +17,7 @@ defmodule Mix.Tasks.Dev.Server do
     maybe_init_stubs()
     # Support.Stubs.build_shared_factories()
     user = Support.Stubs.User.create_default()
-    org = Support.Stubs.Organization.create_default(owner_id: user.id)
+    Support.Stubs.Organization.create_default(owner_id: user.id)
     Support.Stubs.Delivery.seed_default_data()
   end
 

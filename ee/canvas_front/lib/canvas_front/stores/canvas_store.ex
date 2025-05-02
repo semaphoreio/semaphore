@@ -5,21 +5,26 @@ defmodule CanvasFront.Stores.Canvas do
   """
 
   alias InternalApi.Delivery.{
-    Delivery,
-    Delivery.Stub,
-    ListStagesRequest,
-    ListStagesResponse,
+    # Delivery,
+    # Delivery.Stub,
+    # ListStagesRequest,
+    # ListStagesResponse,
     DescribeCanvasRequest,
     DescribeCanvasResponse,
     CreateCanvasRequest,
-    CreateCanvasResponse,
-    Canvas
+    CreateCanvasResponse
+    # Canvas
   }
 
   require Logger
 
   defp grpc_channel do
     GRPC.Stub.connect(Application.fetch_env!(:canvas_front, :delivery_grpc_endpoint))
+  end
+
+  def list(_params) do
+    # TODO: implement
+    []
   end
 
   @doc "Get a canvas by id. Returns nil if not found."

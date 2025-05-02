@@ -11,8 +11,8 @@ defmodule CanvasFront.Stores.EventSource do
     DescribeEventSourceRequest,
     DescribeEventSourceResponse,
     CreateEventSourceRequest,
-    CreateEventSourceResponse,
-    EventSource
+    CreateEventSourceResponse
+    # EventSource
   }
 
   defp grpc_channel do

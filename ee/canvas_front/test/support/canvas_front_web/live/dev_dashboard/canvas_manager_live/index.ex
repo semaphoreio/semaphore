@@ -1,6 +1,5 @@
 defmodule CanvasFrontWeb.DevDashboard.CanvasManagerLive.Index do
   use CanvasFrontWeb, :live_view
-  alias CanvasFront.Stores.Canvas
 
   @impl true
   def mount(_params, _session, socket) do
