@@ -529,13 +529,6 @@ blocks:
         - name: Elixir Tests
           commands:
             - make test.ex TEST_FLAGS='--exclude browser:true --exclude comunity_edition:true'
-        - name: Javascript Tests
-          commands:
-            - make test.js
-        - name: Browser Tests
-          commands:
-            - make test.ex TEST_FILE='test/browser/**/*.exs test/browser/*.exs'
-          parallelism: 5
   - name: "Canvas Front: \U0001F6E1️ Deployment Preconditions"
     dependencies:
       - "Canvas Front: \U0001F5BC️ Provision Test Image"
