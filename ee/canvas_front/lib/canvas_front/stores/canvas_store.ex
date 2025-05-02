@@ -5,14 +5,14 @@ defmodule CanvasFront.Stores.Canvas do
   """
 
   alias InternalApi.Delivery.{
-    # Delivery,
-    # Delivery.Stub,
-    # ListStagesRequest,
-    # ListStagesResponse,
+    Delivery.Stub,
     DescribeCanvasRequest,
     DescribeCanvasResponse,
     CreateCanvasRequest,
     CreateCanvasResponse
+    # Delivery,
+    # ListStagesRequest,
+    # ListStagesResponse,
     # Canvas
   }
 
