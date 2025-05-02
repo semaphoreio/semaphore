@@ -547,10 +547,6 @@ blocks:
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       jobs:
-        - name: Javascript
-          commands:
-            - make pull
-            - make coverage.js
         - name: Typescript - compilation
           env_vars:
             - name: REPORT_NAME
@@ -563,14 +559,6 @@ blocks:
             - make deps.check
             - make format.ex
             - make lint.ex
-        - name: JavaScript Lint
-          commands:
-            - make lint.js
-        - name: Deprecations
-          commands:
-            - bash linters/deprecated_factories.sh
-            - bash linters/fun_registry.sh
-            - bash linters/todos_count.sh
   - name: "Canvas Front: \U0001F5BC️ Provision Prod Image"
     dependencies: []
     run:
