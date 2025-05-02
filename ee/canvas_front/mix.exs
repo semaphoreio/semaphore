@@ -62,7 +62,10 @@ defmodule CanvasFront.MixProject do
       {:watchman, github: "renderedtext/ex-watchman"},
       {:cachex, "~> 4.0"},
       {:sentry, "~> 10.9.0"},
-      {:grpc, "~> 0.9"}
+      {:grpc, "~> 0.9"},
+      {:tackle, github: "renderedtext/ex-tackle"},
+      {:rabbit_common, "~> 3.13.4", override: true},
+      {:ranch, "~> 1.8.0", override: true}
     ]
   end
 
