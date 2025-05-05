@@ -21,6 +21,9 @@ defmodule Front.Decorators.Header.Job do
       is_tab_active?(conn, tab_path, ~r"\/test_results") ->
         true
 
+      is_tab_active?(conn, tab_path, ~r"\/report") ->
+        true
+
       is_job_path?(tab_path) and is_job_path?(conn.request_path) ->
         true
 

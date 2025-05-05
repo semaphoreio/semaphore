@@ -65,6 +65,7 @@ defmodule Mix.Tasks.Dev.Server do
     |> Enum.each(fn project_type ->
       project = create_project(project_type, org, user)
       Stubs.RBAC.add_member(org.id, user.id, project.id)
+      Stubs.Project.set_project_state(project, :READY)
     end)
 
     {user, org}
@@ -418,19 +419,20 @@ defmodule Mix.Tasks.Dev.Server do
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{build_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/pipeline/build.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/pipeline/build.json"
     )
 
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{test_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/pipeline/test.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/pipeline/test.json"
     )
 
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{deploy_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/failed/invalid_junit_json/junit.json"
+      url:
+        "#{Application.get_env(:front, :artifact_host)}/test-results/failed/invalid_junit_json/junit.json"
     )
 
     %{api_model: %{jobs: jobs}} =
@@ -447,7 +449,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/build/build_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/build/build_#{index}.json"
       )
     end)
 
@@ -465,7 +468,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/test/test_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/test/test_#{index}.json"
       )
 
       Stubs.Velocity.create_job_summary(pipeline_id: test_pipeline.id, job_id: job.id)
@@ -485,7 +489,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/deploy/deploy_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/deploy/deploy_#{index}.json"
       )
     end)
 
@@ -624,7 +629,7 @@ defmodule Mix.Tasks.Dev.Server do
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{debug_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/debug/junit.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/debug/junit.json"
     )
 
     %{api_model: %{jobs: jobs}} =
@@ -641,7 +646,7 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/debug/junit.json"
+        url: "#{Application.get_env(:front, :artifact_host)}/test-results/debug/junit.json"
       )
     end)
 

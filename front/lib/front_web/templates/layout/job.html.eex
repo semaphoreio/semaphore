@@ -87,6 +87,15 @@
         '),
         to: artifacts_path(@conn, :jobs, @job.id),
         class: Front.Decorators.Header.Job.tab_class(@conn, artifacts_path(@conn, :jobs, @job.id)) %>
+
+    <%= if FeatureProvider.feature_enabled?(:ui_reports, param: @conn.assigns[:organization_id]) do %>
+      <%= link raw(~s'
+            <svg width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M2.025 2.025A3.5 3.5 0 001 4.5v7A3.5 3.5 0 004.5 15h7a3.5 3.5 0 003.5-3.5v-7A3.5 3.5 0 0011.5 1h-7a3.5 3.5 0 00-2.475 1.025zm.99.99A2.1 2.1 0 014.5 2.4h7a2.1 2.1 0 012.1 2.1v7a2.1 2.1 0 01-2.1 2.1h-7a2.1 2.1 0 01-2.1-2.1v-7a2.1 2.1 0 01.615-1.485zM4.7 4a.7.7 0 100 1.4h3.194a.7.7 0 100-1.4H4.7zM4 8a.7.7 0 01.7-.7h4.975a.7.7 0 110 1.4H4.7A.7.7 0 014 8zm4.731 2.594a.7.7 0 100 1.4h2.788a.7.7 0 000-1.4H8.73zm-4.731.7a.7.7 0 01.7-.7h1.787a.7.7 0 110 1.4H4.7a.7.7 0 01-.7-.7zM10.512 4a.7.7 0 100 1.4h1.007a.7.7 0 000-1.4h-1.007z"/></svg>
+            <span>Report</span>
+          '),
+          to: report_path(@conn, :job, @job.id),
+          class: Front.Decorators.Header.Job.tab_class(@conn, report_path(@conn, :job, @job.id)) %>
+      <% end %>
     <% end %>
   </div>
   <%= Map.get(assigns, :nested_layout) || @inner_content %>

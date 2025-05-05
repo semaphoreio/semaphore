@@ -68,6 +68,18 @@ defmodule Support.Stubs.Task do
     })
   end
 
+  def add_report(job_id, filename \\ "reports/job_report.md") do
+    Artifacthub.create(job_id,
+      path: ".semaphore/REPORT.md",
+      scope: "jobs",
+      url:
+        Path.join(
+          Application.get_env(:front, :artifact_host),
+          filename
+        )
+    )
+  end
+
   def change_state(task, :running) do
     alias InternalApi.Task.Task.State
 
