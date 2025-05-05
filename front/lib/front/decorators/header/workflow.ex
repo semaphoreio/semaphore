@@ -18,6 +18,9 @@ defmodule Front.Decorators.Header.Workflow do
       is_tab_active?(conn, tab_path, ~r"\/workflows\/(.+)/summary(.*)") ->
         true
 
+      is_tab_active?(conn, tab_path, ~r"\/workflows\/(.+)/report(.*)") ->
+        true
+
       is_workflow_path?(tab_path) and is_workflow_path?(conn.request_path) ->
         true
 
