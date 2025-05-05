@@ -3,7 +3,7 @@ defmodule CanvasFront.CanvasConsumer do
 
   use Tackle.Multiconsumer,
     url: Application.get_env(:canvas_front, :amqp_url),
-    service: "canvas_consumer.#{Application.get_env(:canvas_front, :unique_service_name)}",
+    service: "canvas_consumer",
     service_per_exchange: true,
     routes: [
       {"delivery-hub.canvas-exchange", "stage-event-created", :event_created},
@@ -13,7 +13,14 @@ defmodule CanvasFront.CanvasConsumer do
       {"delivery-hub.canvas-exchange", "execution-started", :execution_started},
       {"delivery-hub.canvas-exchange", "execution-finished", :execution_finished},
       {"delivery-hub.canvas-exchange", "stage-created", :stage_created}
-    ]
+    ],
+    queue: :dynamic,
+    queue_opts: [
+      durable: false,
+      auto_delete: true,
+      exclusive: true
+    ],
+    connection_id: CanvasFront.CanvasConsumer
 
   @metric_name "canvas_consumer.process"
   @log_prefix "[CANVAS CONSUMER]"
