@@ -45,7 +45,7 @@ defmodule CanvasFrontWeb.Plug.DevelopmentHeaders do
 
   defp set_org_header?(conn) do
     ## We don't set header on me.<DOMAIN> pages in tests
-    domain = Application.fetch_env!(:front, :domain)
+    domain = Application.fetch_env!(:canvas_front, :domain)
 
     not (conn.host =~ "me.#{domain}") and get_req_header(conn, "x-semaphore-org-id") == []
   end

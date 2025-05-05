@@ -116,9 +116,9 @@ defmodule CanvasFront.Models.User do
       :org_id => user.user.org_id
     }
 
-    github = Enum.find(user.repository_providers, fn rp -> Type.key(rp.type) == :GITHUB end)
-    bitbucket = Enum.find(user.repository_providers, fn rp -> Type.key(rp.type) == :BITBUCKET end)
-    gitlab = Enum.find(user.repository_providers, fn rp -> Type.key(rp.type) == :GITLAB end)
+    github = Enum.find(user.repository_providers, fn rp -> rp.type == :GITHUB end)
+    bitbucket = Enum.find(user.repository_providers, fn rp -> rp.type == :BITBUCKET end)
+    gitlab = Enum.find(user.repository_providers, fn rp -> rp.type == :GITLAB end)
 
     data
     |> merge_provider(github, "github")
@@ -147,7 +147,7 @@ defmodule CanvasFront.Models.User do
   end
 
   defp map_repository_provider_scope(nil), do: :NONE
-  defp map_repository_provider_scope(provider), do: RepositoryProvider.Scope.key(provider.scope)
+  defp map_repository_provider_scope(provider), do: provider.scope
 
   defp map_repository_provider_login(nil), do: nil
   defp map_repository_provider_login(provider), do: provider.login
@@ -160,6 +160,6 @@ defmodule CanvasFront.Models.User do
   end
 
   def channel() do
-    GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+    GRPC.Stub.connect(Application.fetch_env!(:canvas_front, :guard_user_grpc_endpoint))
   end
 end

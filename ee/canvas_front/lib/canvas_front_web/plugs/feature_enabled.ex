@@ -30,6 +30,9 @@ defmodule CanvasFrontWeb.Plugs.FeatureEnabled do
   defp feature_enabled?(conn, features) do
     organization_id = conn.assigns.organization_id
 
+    require Logger
+    Logger.info("org_id: #{organization_id}")
+
     features
     |> Enum.reduce_while(true, fn feature, acc ->
       case acc do

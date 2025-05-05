@@ -422,7 +422,7 @@ defmodule Support.Stubs.RBAC do
         ) do
       alias InternalApi.RBAC
 
-      page_size = Application.get_env(:front, :test_page_size) || page.page_size
+      page_size = Application.get_env(:canvas_front, :test_page_size) || page.page_size
       project_id = if project_id == "", do: nil, else: project_id
 
       all_org_subject_role_bindings =

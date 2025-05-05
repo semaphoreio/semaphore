@@ -32,7 +32,7 @@ defmodule Front.RBAC.Permissions do
   end
 
   def has?(user_id, org_id, project_id, permissions) do
-    if Application.fetch_env!(:front, :use_rbac_api) do
+    if Application.fetch_env!(:canvas_front, :use_rbac_api) do
       res = with_rbac_api(user_id, org_id, project_id, permissions)
 
       Logger.debug(
@@ -141,11 +141,11 @@ defmodule Front.RBAC.Permissions do
     end
 
     defp api_endpoint do
-      Application.fetch_env!(:front, :permission_patrol_grpc_endpoint)
+      Application.fetch_env!(:canvas_front, :permission_patrol_grpc_endpoint)
     end
 
     def timeout do
-      Application.fetch_env!(:front, :permission_patrol_timeout)
+      Application.fetch_env!(:canvas_front, :permission_patrol_timeout)
     end
   end
 
@@ -156,11 +156,11 @@ defmodule Front.RBAC.Permissions do
     end
 
     defp api_endpoint do
-      Application.fetch_env!(:front, :rbac_grpc_endpoint)
+      Application.fetch_env!(:canvas_front, :rbac_grpc_endpoint)
     end
 
     def timeout do
-      Application.fetch_env!(:front, :guard_grpc_timeout)
+      Application.fetch_env!(:canvas_front, :guard_grpc_timeout)
     end
   end
 end

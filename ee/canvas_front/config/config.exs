@@ -13,11 +13,13 @@ config :canvas_front,
   organization_api_grpc_endpoint: "127.0.0.1:50051",
   permission_patrol_grpc_endpoint: "127.0.0.1:50051",
   rbac_grpc_endpoint: "127.0.0.1:50051",
-  feature_grpc_endpoint: "127.0.0.1:50051"
+  feature_grpc_endpoint: "127.0.0.1:50051",
+  guard_user_grpc_endpoint: "127.0.0.1:50051"
 
 config :canvas_front,
   guard_grpc_timeout: 5000,
-  permission_patrol_timeout: 5000
+  permission_patrol_timeout: 5000,
+  use_rbac_api: true
 
 # Configures the endpoint
 config :canvas_front, CanvasFrontWeb.Endpoint,
@@ -39,6 +41,8 @@ config :logger, :console,
 config :phoenix, :json_library, Jason
 
 config :sentry, client: CanvasFront.SentryFinchHTTPClient
+
+config :canvas_front, :environment, config_env()
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
