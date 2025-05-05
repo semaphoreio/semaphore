@@ -6,7 +6,7 @@ TAG_NAME=$(shell git describe --exact-match --tags HEAD 2>/dev/null)
 # If we are building on a tag, we use the branch name which contains the tag.
 #
 ifneq ($(TAG_NAME),)
-	export BRANCH?=$(shell git branch --contains tags/$(TAG_NAME) | sed '/HEAD/d' | sed 's/[^a-z]//g' | cut -c 1-40)
+	export BRANCH?=$(shell git branch --contains tags/$(TAG_NAME) | head -n 1 | sed '/HEAD/d' | sed 's/[^a-z]//g' | cut -c 1-40)
 else
 	export BRANCH?=$(shell git rev-parse --abbrev-ref HEAD | sed 's/[^a-z]//g' | cut -c 1-40)
 endif

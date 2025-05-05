@@ -19,6 +19,21 @@ module InternalApi::RepoProxy
         raise PrNotMergeableError, "Pull Request ##{number} is not mergeable (#{pr[:html_url]})"
       end
 
+      repo_host = ::RepoHost::Factory.create_from_project(project)
+      pr_commit = repo_host.commit(project.repo_owner_and_name, pr[:head][:sha])
+
+      commit = {
+        "message" => pr_commit.commit.message,
+        "id" => pr_commit.sha,
+        "url" => pr_commit.html_url,
+        "author" => {
+          "name" => pr_commit.commit.author&.name || "",
+          "email" => pr_commit.commit.author&.email || "",
+          "username" => pr_commit.author&.login
+        },
+        "timestamp" => ""
+      }
+
       repo_url = pr[:html_url].split("/").first(5).join("/")
       author_name  = user.github_repo_host_account.name
       author_email = user.email
@@ -38,6 +53,7 @@ module InternalApi::RepoProxy
           "base" => pr["base"].to_h,
           "head" => pr["head"].to_h
         },
+        "commits" => [commit],
         "single" => true,
         "created" => true,
         "after" => "",
