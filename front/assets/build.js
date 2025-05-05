@@ -15,15 +15,15 @@ const outputDir = '../priv/static/assets'
 // Function to copy static assets
 const copyAssets = () => {
   console.log('Copying original assets to output directory...')
-  
+
   fs.ensureDirSync(path.join(outputDir, 'css'))
   fs.ensureDirSync(path.join(outputDir, 'fonts'))
   fs.ensureDirSync(path.join(outputDir, 'images'))
-  
+
   fs.copySync('css', path.join(outputDir, 'css'), { overwrite: true })
   fs.copySync('fonts', path.join(outputDir, 'fonts'), { overwrite: true })
   fs.copySync('images', path.join(outputDir, 'images'), { overwrite: true })
-  
+
   console.log('Assets copied successfully')
 }
 

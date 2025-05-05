@@ -82,3 +82,5 @@ config :front, :connect_github_app_url, "http://localhost:4004/github_app_manife
 config :front,
   support_app_id: "du8TzC9z2pBIrojNZo10I232e5vsD69O",
   support_app_secret: "d27Yd4IrbHcJ1jmz1QDrGjx3ji7COoJq"
+
+config :front, :artifact_host, "http://localhost:9000"
