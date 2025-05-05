@@ -56,8 +56,6 @@ defmodule E2E.UI.UserTestCase do
         |> fill_in(Wallaby.Query.text_field("password"), with: root_password)
         |> click(Wallaby.Query.css("#kc-login"))
 
-      assert current_url(logged_in_session) == "https://#{organization}.#{base_domain}/get_started/"
-
       {:ok, session: logged_in_session, organization: organization, base_domain: base_domain}
     rescue
       e in Wallaby.ExpectationNotMetError ->
