@@ -241,7 +241,7 @@ defmodule Support.Stubs.Delivery do
     DB.delete(:stage, id)
   end
 
-  def list_canvases() do
+  def list_canvases do
     list(:canvas)
   end
 

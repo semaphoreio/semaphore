@@ -157,7 +157,7 @@ defmodule CanvasFront.Models.User do
     "#{@cache_prefix}-#{id}-#{field}"
   end
 
-  def channel() do
+  def channel do
     GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
   end
 end
