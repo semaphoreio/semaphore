@@ -13,29 +13,32 @@ defmodule E2E.API.TaskTest do
     name = "test-project-#{:rand.uniform(1_000_000)}"
 
     # Create project with a task
-    task_definitions = [%{
-      "name" => "test-task",
-      "status" => "ACTIVE",
-      "description" => "Test periodic task",
-      "at" => "0 * * * *",
-      "pipeline_file" => ".semaphore/semaphore.yml",
-      "branch" => "main",
-      "parameters" => []
-    }]
+    task_definitions = [
+      %{
+        "name" => "test-task",
+        "status" => "ACTIVE",
+        "description" => "Test periodic task",
+        "at" => "0 * * * *",
+        "pipeline_file" => ".semaphore/semaphore.yml",
+        "branch" => "main",
+        "parameters" => []
+      }
+    ]
 
     {:ok, created_project} = Support.prepare_project(name, repository_url, task_definitions)
+
     on_exit(fn ->
       :ok = Project.delete(name)
     end)
 
     task = created_project["spec"]["tasks"] |> hd
-    {:ok,
-      project_id: created_project["metadata"]["id"],
-      task_id: task["id"]
-    }
+    {:ok, project_id: created_project["metadata"]["id"], task_id: task["id"]}
   end
 
-  test "run task with run_now and wait for completion", %{project_id: project_id, task_id: task_id} do
+  test "run task with run_now and wait for completion", %{
+    project_id: project_id,
+    task_id: task_id
+  } do
     # Trigger run_now
     {:ok, response} = E2E.Clients.Task.run_now(task_id)
 
