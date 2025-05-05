@@ -153,7 +153,9 @@ defmodule Support.Stubs.Organization do
       }
     rescue
       _ ->
-        reraise(%GRPC.RPCError{status: GRPC.Status.invalid_argument(), message: "Bad request"})
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def update(req, _) do
@@ -178,7 +180,9 @@ defmodule Support.Stubs.Organization do
       %UpdateResponse{organization: updated.api_model}
     rescue
       _ ->
-        reraise(%GRPC.RPCError{message: "Error", status: GRPC.Status.invalid_argument()})
+        reraise GRPC.RPCError,
+                [message: "Error", status: GRPC.Status.invalid_argument()],
+                __STACKTRACE__
     end
 
     def list(_req, _) do
@@ -189,7 +193,7 @@ defmodule Support.Stubs.Organization do
       %ListResponse{status: ok(), organizations: orgs}
     end
 
-    def is_valid(req, _) do
+    def valid?(req, _) do
       username = req.org_username
 
       org_usernames =

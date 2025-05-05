@@ -212,9 +212,9 @@ defmodule CanvasFrontWeb.DevDashboard.EventSourceManagerLive.Index do
   defp format_position(_position), do: "No position"
 
   defp query_params(assigns) do
-    cond do
-      assigns.canvas_id -> "?canvas_id=#{assigns.canvas_id}"
-      true -> ""
+    case assigns.canvas_id do
+      nil -> ""
+      canvas_id -> "?canvas_id=#{canvas_id}"
     end
   end
 end

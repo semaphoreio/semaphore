@@ -618,10 +618,9 @@ defmodule Support.Stubs.RBAC do
       }
     rescue
       _ ->
-        reraise(%GRPC.RPCError{
-          status: GRPC.Status.invalid_argument(),
-          message: "Bad request"
-        })
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def list_accessible_projects(req, _) do
@@ -634,10 +633,9 @@ defmodule Support.Stubs.RBAC do
       }
     rescue
       _ ->
-        reraise(%GRPC.RPCError{
-          status: GRPC.Status.invalid_argument(),
-          message: "Bad request"
-        })
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def refresh_collaborators(_req, _) do
