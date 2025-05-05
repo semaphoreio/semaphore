@@ -76,3 +76,4 @@ config :junit_formatter,
   include_filename?: true
 
 config :front, me_host: "me.", me_path: "/"
+config :front, :artifact_host, "http://localhost:9000"
