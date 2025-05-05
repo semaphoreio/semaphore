@@ -342,7 +342,7 @@ defmodule Support.Stubs.Feature do
         _ -> false
       end)
       |> Enum.map(& &1.model)
-      |> then(&%API.ListOrganizationFeaturesResponse{organization_features: &1})
+      |> then(&struct(API.ListOrganizationFeaturesResponse, organization_features: &1))
     end
 
     def list_organization_machines(request, _) do

@@ -158,6 +158,6 @@ defmodule CanvasFront.Models.User do
   end
 
   def channel do
-    GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+    GRPC.Stub.connect(Application.fetch_env!(:canvas_front, :guard_user_grpc_endpoint))
   end
 end

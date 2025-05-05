@@ -19,19 +19,15 @@ defmodule CanvasFrontWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
 
-    if Enum.member?([:dev, :test], Application.compile_env(:canvas_front, :environment)) do
-      plug(FrontWeb.Plug.DevelopmentHeaders)
+    if Application.compile_env(:canvas_front, :dev_routes) do
+      plug(CanvasFrontWeb.Plug.DevelopmentHeaders)
     end
 
     plug(CanvasFrontWeb.Plug.AssignUserInfo)
     plug(CanvasFrontWeb.Plug.AssignOrgInfo)
     plug(CanvasFrontWeb.Plugs.FetchPermissions, scope: "org")
-    plug(CanvasFrontWeb.Plugs.PageAccess, permissions: "organization.view")
+    # plug(CanvasFrontWeb.Plugs.PageAccess, permissions: "organization.view")
     plug(CanvasFrontWeb.Plugs.FeatureEnabled, [:experimental_canvas_ui])
-  end
-
-  pipeline :api do
-    plug :accepts, ["json"]
   end
 
   scope "/", CanvasFrontWeb do
@@ -39,11 +35,6 @@ defmodule CanvasFrontWeb.Router do
 
     live "/canvas/:canvas_id", CanvasLive, :show
   end
-
-  # Other scopes may use custom stacks.
-  # scope "/api", CanvasFrontWeb do
-  #   pipe_through :api
-  # end
 
   # Enable LiveDashboard in development
   if Application.compile_env(:canvas_front, :dev_routes) do

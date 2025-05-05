@@ -15,9 +15,18 @@ defmodule Mix.Tasks.Dev.Server do
 
     # Attempt to call Support.Stubs.init/0 if it exists
     maybe_init_stubs()
-    # Support.Stubs.build_shared_factories()
+    Support.Stubs.PermissionPatrol.allow_everything()
+    Support.Stubs.Feature.seed()
+
     user = Support.Stubs.User.create_default()
-    Support.Stubs.Organization.create_default(owner_id: user.id)
+
+    org =
+      Support.Stubs.Organization.create_default(owner_id: user.id)
+      |> tap(fn %{id: org_id} ->
+        Support.Stubs.Feature.set_org_defaults(org_id)
+      end)
+
+    Support.Stubs.RBAC.add_owner(org.id, user.id)
     Support.Stubs.Delivery.seed_default_data()
   end
 

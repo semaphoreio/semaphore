@@ -48,7 +48,7 @@ defmodule CanvasFront.FeatureProvider do
   end
 
   defp channel do
-    Application.fetch_env!(:github_notifier, :feature_grpc_endpoint)
+    Application.fetch_env!(:canvas_front, :feature_grpc_endpoint)
     |> GRPC.Stub.connect()
   end
 
