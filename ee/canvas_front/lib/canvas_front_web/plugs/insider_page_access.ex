@@ -12,14 +12,14 @@ defmodule CanvasFrontWeb.Plugs.InsiderPageAccess do
   def init(default), do: default
 
   def call(conn, _opts) do
-    if is_insider?(conn) do
+    if insider?(conn) do
       conn
     else
       render404(conn)
     end
   end
 
-  defp is_insider?(conn),
+  defp insider?(conn),
     do: Front.RBAC.Permissions.has?(conn.assigns.user_id, @nil_uuid, "insider.view")
 
   defp render404(conn) do
