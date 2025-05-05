@@ -63,7 +63,8 @@ defmodule CanvasFront.MixProject do
       {:cachex, "~> 4.0"},
       {:sentry, "~> 10.9.0"},
       {:grpc, "~> 0.9"},
-      {:uuid, "~> 1.1"}
+      {:uuid, "~> 1.1"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 

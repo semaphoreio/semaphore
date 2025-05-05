@@ -618,10 +618,10 @@ defmodule Support.Stubs.RBAC do
       }
     rescue
       _ ->
-        raise %GRPC.RPCError{
+        reraise(%GRPC.RPCError{
           status: GRPC.Status.invalid_argument(),
           message: "Bad request"
-        }
+        })
     end
 
     def list_accessible_projects(req, _) do
@@ -634,10 +634,10 @@ defmodule Support.Stubs.RBAC do
       }
     rescue
       _ ->
-        raise %GRPC.RPCError{
+        reraise(%GRPC.RPCError{
           status: GRPC.Status.invalid_argument(),
           message: "Bad request"
-        }
+        })
     end
 
     def refresh_collaborators(_req, _) do
@@ -648,7 +648,7 @@ defmodule Support.Stubs.RBAC do
     ### Helpers
     ###
 
-    def raise_if_unauthenticated(_user_id = ""),
+    def raise_if_unauthenticated("" = _user_id),
       do: raise(GRPC.RPCError, status: GRPC.Status.unauthenticated(), message: "Unauthenticaded")
 
     def raise_if_unauthenticated(_user_id), do: nil
