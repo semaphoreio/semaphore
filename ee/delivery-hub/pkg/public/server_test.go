@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -193,6 +195,174 @@ func Test__ReceiveGitHubEvent(t *testing.T) {
 	})
 }
 
+func Test__ReceiveSemaphoreEvent(t *testing.T) {
+	require.NoError(t, database.TruncateTables())
+
+	signer := jwt.NewSigner("test")
+	server, err := NewServer(&encryptor.NoOpEncryptor{}, signer, "")
+	require.NoError(t, err)
+
+	orgID := uuid.New()
+	userID := uuid.New()
+	canvas, err := models.CreateCanvas(orgID, userID, "test")
+	require.NoError(t, err)
+
+	eventSource, err := canvas.CreateEventSource("semaphore-source-1", []byte("my-key"))
+	require.NoError(t, err)
+
+	// Create a valid event that includes the organization ID in the payload
+	validEvent := []byte(fmt.Sprintf(`{"event_type": "workflow_completed", "organization": {"id": "%s"}}`, orgID.String()))
+	validSignature := "sha256=ee9f99fa8d06b44ffc69ee1c2a7e32e848e8b40536bb5e8405dabb3bbbcaf619"
+	validURL := "/sources/" + eventSource.ID.String() + "/semaphore"
+
+	t.Run("missing organization data in payload -> 404", func(t *testing.T) {
+		invalidPayload := []byte(`{"event_type": "workflow_completed"}`)
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        invalidPayload,
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		require.Equal(t, 404, response.Code)
+	})
+
+	t.Run("invalid organization format in payload -> 404", func(t *testing.T) {
+		invalidPayload := []byte(`{"event_type": "workflow_completed", "organization": {"id": "not-a-uuid"}}`)
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        invalidPayload,
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		require.Equal(t, 404, response.Code)
+	})
+
+	t.Run("event for invalid source -> 404", func(t *testing.T) {
+		invalidURL := "/sources/invalidsource/semaphore"
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        invalidURL,
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "source ID not found\n", response.Body.String())
+	})
+
+	t.Run("missing Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:    "POST",
+			path:      validURL,
+			body:      validEvent,
+			signature: validSignature,
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
+	t.Run("unsupported Content-Type header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/x-www-form-urlencoded",
+		})
+
+		assert.Equal(t, 404, response.Code)
+	})
+
+	t.Run("event for source that does not exist -> 404", func(t *testing.T) {
+		invalidURL := "/sources/" + uuid.New().String() + "/semaphore"
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        invalidURL,
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 404, response.Code)
+		assert.Equal(t, "source ID not found\n", response.Body.String())
+	})
+
+	t.Run("event with missing signature header -> 400", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        validEvent,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 400, response.Code)
+		assert.Equal(t, "Missing X-Semaphore-Signature-256 header\n", response.Body.String())
+	})
+
+	t.Run("invalid signature -> 403", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        validEvent,
+			signature:   "sha256=invalid-signature",
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 403, response.Code)
+		assert.Equal(t, "Invalid signature\n", response.Body.String())
+	})
+
+	t.Run("properly signed event is received -> 200", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        validEvent,
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, 200, response.Code)
+		events, err := models.ListEventsBySourceID(eventSource.ID)
+		require.NoError(t, err)
+		require.Len(t, events, 1)
+		assert.Equal(t, eventSource.ID, events[0].SourceID)
+		assert.Equal(t, models.EventStatePending, events[0].State)
+
+		// Compare the event payload
+		var savedEvent map[string]interface{}
+		err = json.Unmarshal([]byte(events[0].Raw), &savedEvent)
+		require.NoError(t, err)
+
+		var expectedEvent map[string]interface{}
+		err = json.Unmarshal(validEvent, &expectedEvent)
+		require.NoError(t, err)
+
+		assert.Equal(t, expectedEvent["event_type"], savedEvent["event_type"])
+		assert.Equal(t, expectedEvent["organization"].(map[string]interface{})["id"],
+			savedEvent["organization"].(map[string]interface{})["id"])
+
+		assert.NotNil(t, events[0].ReceivedAt)
+	})
+
+	t.Run("event data is limited to 64k", func(t *testing.T) {
+		response := execRequest(server, requestParams{
+			method:      "POST",
+			path:        validURL,
+			body:        generateBigBody(t),
+			signature:   validSignature,
+			contentType: "application/json",
+		})
+
+		assert.Equal(t, http.StatusRequestEntityTooLarge, response.Code)
+		assert.Equal(t, "Request body is too large - must be up to 65536 bytes\n", response.Body.String())
+	})
+}
+
 func Test__HandleExecutionOutputs(t *testing.T) {
 	r := support.Setup(t)
 
@@ -369,8 +539,16 @@ func execRequest(server *Server, params requestParams) *httptest.ResponseRecorde
 		req.Header.Add("x-semaphore-org-id", params.orgID)
 	}
 
+	// Set the appropriate signature header based on the path
 	if params.signature != "" {
-		req.Header.Add("X-Hub-Signature-256", params.signature)
+		if strings.Contains(params.path, "/github") {
+			req.Header.Add("X-Hub-Signature-256", params.signature)
+		} else if strings.Contains(params.path, "/semaphore") {
+			req.Header.Add("X-Semaphore-Signature-256", params.signature)
+		} else {
+			// Default to GitHub header for backward compatibility
+			req.Header.Add("X-Hub-Signature-256", params.signature)
+		}
 	}
 
 	if params.authToken != "" {
