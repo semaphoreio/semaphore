@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
@@ -37,6 +38,7 @@ func ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*
 		return nil, err
 	}
 
+	logger := logging.ForStage(stage)
 	event, err := models.FindStageEventByID(req.EventId, req.StageId)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -46,19 +48,30 @@ func ApproveStageEvent(ctx context.Context, req *pb.ApproveStageEventRequest) (*
 		return nil, err
 	}
 
-	err = event.Approve(req.RequesterId)
+	err = event.Approve(uuid.MustParse(req.RequesterId))
 	if err != nil {
+		if errors.Is(err, models.ErrEventAlreadyApprovedByRequester) {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+
+		logger.Errorf("failed to approve event: %v", err)
 		return nil, err
 	}
 
+	logger.Infof("event %s approved", event.ID)
+
 	err = messages.NewStageEventApprovedMessage(canvas.ID.String(), event).Publish()
 	if err != nil {
-		logging.ForStage(stage).Errorf("failed to publish event approved message: %v", err)
+		logger.Errorf("failed to publish event approved message: %v", err)
 	}
 
-	logging.ForStage(stage).Infof("event %s approved", event.ID)
+	serialized, err := serializeStageEvent(*event)
+	if err != nil {
+		logger.Errorf("failed to serialize stage event: %v", err)
+		return nil, err
+	}
 
 	return &pb.ApproveStageEventResponse{
-		Event: serializeStageEvent(*event),
+		Event: serialized,
 	}, nil
 }

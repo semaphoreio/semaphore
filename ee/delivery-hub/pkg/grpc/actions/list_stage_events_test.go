@@ -65,8 +65,14 @@ func Test__ListStageEvents(t *testing.T) {
 		assert.Empty(t, res.Events)
 	})
 
-	t.Run("stage with stage events -> list", func(t *testing.T) {
+	t.Run("stage with stage events - list", func(t *testing.T) {
+		// event without approval
 		support.CreateStageEvent(t, r.Source, r.Stage)
+
+		// event with approval
+		userID := uuid.New()
+		event := support.CreateStageEvent(t, r.Source, r.Stage)
+		require.NoError(t, event.Approve(userID))
 
 		res, err := ListStageEvents(context.Background(), &protos.ListStageEventsRequest{
 			OrganizationId: r.Org.String(),
@@ -76,13 +82,28 @@ func Test__ListStageEvents(t *testing.T) {
 
 		require.NoError(t, err)
 		require.NotNil(t, res)
-		require.Len(t, res.Events, 1)
-		assert.NotEmpty(t, res.Events[0].Id)
-		assert.NotEmpty(t, res.Events[0].CreatedAt)
-		assert.Equal(t, r.Source.ID.String(), res.Events[0].SourceId)
-		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, res.Events[0].SourceType)
-		assert.Equal(t, protos.StageEvent_PENDING, res.Events[0].State)
-		assert.Empty(t, res.Events[0].ApprovedAt)
-		assert.Empty(t, res.Events[0].ApprovedBy)
+		require.Len(t, res.Events, 2)
+
+		// event with approvals
+		e := res.Events[0]
+		assert.NotEmpty(t, e.Id)
+		assert.NotEmpty(t, e.CreatedAt)
+		assert.Equal(t, r.Source.ID.String(), e.SourceId)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, e.SourceType)
+		assert.Equal(t, protos.StageEvent_STATE_PENDING, e.State)
+		assert.Equal(t, protos.StageEvent_STATE_REASON_UNKNOWN, e.StateReason)
+		require.Len(t, e.Approvals, 1)
+		assert.Equal(t, userID.String(), e.Approvals[0].ApprovedBy)
+		assert.NotEmpty(t, userID, e.Approvals[0].ApprovedAt)
+
+		// event with no approvals
+		e = res.Events[1]
+		assert.NotEmpty(t, e.Id)
+		assert.NotEmpty(t, e.CreatedAt)
+		assert.Equal(t, r.Source.ID.String(), e.SourceId)
+		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, e.SourceType)
+		assert.Equal(t, protos.StageEvent_STATE_PENDING, e.State)
+		assert.Equal(t, protos.StageEvent_STATE_REASON_UNKNOWN, e.StateReason)
+		require.Len(t, e.Approvals, 0)
 	})
 }

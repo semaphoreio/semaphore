@@ -20,7 +20,10 @@ import (
 const ExecutionStartedRoutingKey = "execution-started"
 
 func Test__PendingExecutionsWorker(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{
+		Source: true, Stage: true, Grpc: true, Approvals: 1,
+	})
+
 	w := PendingExecutionsWorker{
 		RepoProxyURL: "0.0.0.0:50052",
 		SchedulerURL: "0.0.0.0:50052",
@@ -32,7 +35,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create stage that creates Semaphore workflows.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-wf", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-wf", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -75,7 +78,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create stage that trigger Semaphore task.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-task", r.User.String(), false, support.TaskRunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-task", r.User.String(), []models.StageCondition{}, support.TaskRunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -135,7 +138,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 			"STAGE_1_VERSION": "${{ self.Conn('stage-1').outputs.version }}",
 		}
 
-		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), []models.StageCondition{}, template, []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceName: r.Source.Name,

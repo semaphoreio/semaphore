@@ -140,20 +140,20 @@ func (c *Canvas) ListStages() ([]Stage, error) {
 	return stages, nil
 }
 
-func (c *Canvas) CreateStage(name, createdBy string, approvalRequired bool, template RunTemplate, connections []StageConnection) error {
+func (c *Canvas) CreateStage(name, createdBy string, conditions []StageCondition, template RunTemplate, connections []StageConnection) error {
 	now := time.Now()
 	ID := uuid.New()
 
 	return database.Conn().Transaction(func(tx *gorm.DB) error {
 		stage := &Stage{
-			ID:               ID,
-			OrganizationID:   c.OrganizationID,
-			CanvasID:         c.ID,
-			Name:             name,
-			ApprovalRequired: approvalRequired,
-			CreatedAt:        &now,
-			CreatedBy:        uuid.Must(uuid.Parse(createdBy)),
-			RunTemplate:      datatypes.NewJSONType(template),
+			ID:             ID,
+			OrganizationID: c.OrganizationID,
+			CanvasID:       c.ID,
+			Name:           name,
+			Conditions:     datatypes.NewJSONSlice(conditions),
+			CreatedAt:      &now,
+			CreatedBy:      uuid.Must(uuid.Parse(createdBy)),
+			RunTemplate:    datatypes.NewJSONType(template),
 		}
 
 		err := tx.Clauses(clause.Returning{}).Create(&stage).Error

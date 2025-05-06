@@ -43,8 +43,13 @@ func ListStageEvents(ctx context.Context, req *pb.ListStageEventsRequest) (*pb.L
 		return nil, err
 	}
 
+	serialized, err := serializeStageEvents(events)
+	if err != nil {
+		return nil, err
+	}
+
 	response := &pb.ListStageEventsResponse{
-		Events: serializeStageEvents(events),
+		Events: serialized,
 	}
 
 	return response, nil
@@ -56,9 +61,9 @@ func validateStageEventStates(in []pb.StageEvent_State) ([]string, error) {
 	//
 	if len(in) == 0 {
 		return []string{
-			models.StageEventPending,
-			models.StageEventWaitingForApproval,
-			models.StageEventProcessed,
+			models.StageEventStatePending,
+			models.StageEventStateWaiting,
+			models.StageEventStateProcessed,
 		}, nil
 	}
 
@@ -77,55 +82,78 @@ func validateStageEventStates(in []pb.StageEvent_State) ([]string, error) {
 
 func protoToState(state pb.StageEvent_State) (string, error) {
 	switch state {
-	case pb.StageEvent_PENDING:
-		return models.StageEventPending, nil
-	case pb.StageEvent_WAITING_FOR_APPROVAL:
-		return models.StageEventWaitingForApproval, nil
-	case pb.StageEvent_PROCESSED:
-		return models.StageEventProcessed, nil
+	case pb.StageEvent_STATE_PENDING:
+		return models.StageEventStatePending, nil
+	case pb.StageEvent_STATE_WAITING:
+		return models.StageEventStateWaiting, nil
+	case pb.StageEvent_STATE_PROCESSED:
+		return models.StageEventStateProcessed, nil
 	default:
 		return "", fmt.Errorf("invalid state: %v", state)
 	}
 }
 
-func serializeStageEvents(in []models.StageEvent) []*pb.StageEvent {
+func serializeStageEvents(in []models.StageEvent) ([]*pb.StageEvent, error) {
 	out := []*pb.StageEvent{}
 	for _, i := range in {
-		out = append(out, serializeStageEvent(i))
+		e, err := serializeStageEvent(i)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, e)
 	}
 
-	return out
+	return out, nil
 }
 
-func serializeStageEvent(in models.StageEvent) *pb.StageEvent {
+// TODO: very inefficient way of querying the approvals that we should fix later
+func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 	e := pb.StageEvent{
-		Id:         in.ID.String(),
-		State:      stateToProto(in.State),
-		CreatedAt:  timestamppb.New(*in.CreatedAt),
-		SourceId:   in.SourceID.String(),
-		SourceType: pb.Connection_TYPE_EVENT_SOURCE,
+		Id:          in.ID.String(),
+		State:       stateToProto(in.State),
+		StateReason: stateReasonToProto(in.StateReason),
+		CreatedAt:   timestamppb.New(*in.CreatedAt),
+		SourceId:    in.SourceID.String(),
+		SourceType:  pb.Connection_TYPE_EVENT_SOURCE,
+		Approvals:   []*pb.StageEventApproval{},
 	}
 
-	if in.ApprovedAt != nil {
-		e.ApprovedAt = timestamppb.New(*in.ApprovedAt)
+	approvals, err := in.FindApprovals()
+	if err != nil {
+		return nil, err
 	}
 
-	if in.ApprovedBy != nil {
-		e.ApprovedBy = in.ApprovedBy.String()
+	for _, approval := range approvals {
+		e.Approvals = append(e.Approvals, &pb.StageEventApproval{
+			ApprovedBy: approval.ApprovedBy.String(),
+			ApprovedAt: timestamppb.New(*approval.ApprovedAt),
+		})
 	}
 
-	return &e
+	return &e, nil
 }
 
 func stateToProto(state string) pb.StageEvent_State {
 	switch state {
-	case models.StageEventPending:
-		return pb.StageEvent_PENDING
-	case models.StageEventWaitingForApproval:
-		return pb.StageEvent_WAITING_FOR_APPROVAL
-	case models.StageEventProcessed:
-		return pb.StageEvent_PROCESSED
+	case models.StageEventStatePending:
+		return pb.StageEvent_STATE_PENDING
+	case models.StageEventStateWaiting:
+		return pb.StageEvent_STATE_WAITING
+	case models.StageEventStateProcessed:
+		return pb.StageEvent_STATE_PROCESSED
 	default:
-		return pb.StageEvent_UNKNOWN
+		return pb.StageEvent_STATE_UNKNOWN
+	}
+}
+
+func stateReasonToProto(stateReason string) pb.StageEvent_StateReason {
+	switch stateReason {
+	case models.StageEventStateReasonApproval:
+		return pb.StageEvent_STATE_REASON_APPROVAL
+	case models.StageEventStateReasonTimeWindow:
+		return pb.StageEvent_STATE_REASON_TIME_WINDOW
+	default:
+		return pb.StageEvent_STATE_REASON_UNKNOWN
 	}
 }

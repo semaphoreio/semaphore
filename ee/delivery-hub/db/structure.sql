@@ -109,6 +109,18 @@ CREATE TABLE public.stage_connections (
 
 
 --
+-- Name: stage_event_approvals; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_event_approvals (
+    id uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    stage_event_id uuid NOT NULL,
+    approved_at timestamp without time zone NOT NULL,
+    approved_by uuid NOT NULL
+);
+
+
+--
 -- Name: stage_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -120,9 +132,8 @@ CREATE TABLE public.stage_events (
     source_name character varying(128) NOT NULL,
     source_type character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
-    created_at timestamp without time zone NOT NULL,
-    approved_at timestamp without time zone,
-    approved_by uuid
+    state_reason character varying(64),
+    created_at timestamp without time zone NOT NULL
 );
 
 
@@ -156,8 +167,8 @@ CREATE TABLE public.stages (
     canvas_id uuid NOT NULL,
     created_at timestamp without time zone NOT NULL,
     created_by uuid NOT NULL,
-    approval_required boolean DEFAULT false NOT NULL,
-    run_template jsonb NOT NULL
+    run_template jsonb NOT NULL,
+    conditions jsonb
 );
 
 
@@ -226,6 +237,22 @@ ALTER TABLE ONLY public.stage_connections
 
 
 --
+-- Name: stage_event_approvals stage_event_approvals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_event_approvals
+    ADD CONSTRAINT stage_event_approvals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: stage_event_approvals stage_event_approvals_stage_event_id_approved_by_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_event_approvals
+    ADD CONSTRAINT stage_event_approvals_stage_event_id_approved_by_key UNIQUE (stage_event_id, approved_by);
+
+
+--
 -- Name: stage_events stage_events_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -286,6 +313,13 @@ CREATE INDEX uix_stage_connections_stage ON public.stage_connections USING btree
 
 
 --
+-- Name: uix_stage_event_approvals_events; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX uix_stage_event_approvals_events ON public.stage_event_approvals USING btree (stage_event_id);
+
+
+--
 -- Name: uix_stage_events_source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -334,6 +368,14 @@ ALTER TABLE ONLY public.event_sources
 
 ALTER TABLE ONLY public.stage_connections
     ADD CONSTRAINT stage_connections_stage_id_fkey FOREIGN KEY (stage_id) REFERENCES public.stages(id);
+
+
+--
+-- Name: stage_event_approvals stage_event_approvals_stage_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_event_approvals
+    ADD CONSTRAINT stage_event_approvals_stage_event_id_fkey FOREIGN KEY (stage_event_id) REFERENCES public.stage_events(id);
 
 
 --
@@ -395,7 +437,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250413124818	f
+20250505203708	f
 \.
 
 

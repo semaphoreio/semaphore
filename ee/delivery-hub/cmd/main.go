@@ -16,6 +16,11 @@ import (
 func startWorkers(jwtSigner *jwt.Signer) {
 	log.Println("Starting Workers")
 
+	rabbitMQURL, err := config.RabbitMQURL()
+	if err != nil {
+		panic(err)
+	}
+
 	if os.Getenv("START_PENDING_EVENTS_WORKER") == "yes" {
 		log.Println("Starting Pending Events Worker")
 		w := workers.PendingEventsWorker{}
@@ -24,17 +29,32 @@ func startWorkers(jwtSigner *jwt.Signer) {
 
 	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "yes" {
 		log.Println("Starting Pending Stage Events Worker")
-		w := workers.PendingStageEventsWorker{}
+		w, err := workers.NewPendingStageEventsWorker(time.Now)
+		if err != nil {
+			panic(err)
+		}
+
+		go w.Start()
+	}
+
+	if os.Getenv("START_TIME_WINDOW_WORKER") == "yes" {
+		log.Println("Starting Time Window Worker")
+		w, err := workers.NewTimeWindowWorker(time.Now)
+		if err != nil {
+			panic(err)
+		}
+
+		go w.Start()
+	}
+
+	if os.Getenv("START_STAGE_EVENT_APPROVED_CONSUMER") == "yes" {
+		log.Println("Starting Stage Event Approved Consumer")
+		w := workers.NewStageEventApprovedConsumer(rabbitMQURL)
 		go w.Start()
 	}
 
 	if os.Getenv("START_PIPELINE_DONE_CONSUMER") == "yes" {
 		log.Println("Starting Pipeline Done Consumer")
-
-		rabbitMQURL, err := config.RabbitMQURL()
-		if err != nil {
-			panic(err)
-		}
 
 		pipelineAPIURL, err := config.PipelineAPIURL()
 		if err != nil {
