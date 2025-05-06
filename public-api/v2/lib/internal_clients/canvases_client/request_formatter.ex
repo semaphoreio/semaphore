@@ -230,7 +230,7 @@ defmodule InternalClients.Canvases.RequestFormatter do
   defp time_window_condition("TIME_WINDOW", condition) do
     %API.ConditionTimeWindow{
       start: condition.start,
-      end: condition[:end],
+      end: condition.end,
       week_days: condition.week_days
     }
   end

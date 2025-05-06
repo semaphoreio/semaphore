@@ -153,7 +153,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
   defp approval_condition_from_pb(_, _), do: nil
 
   defp time_window_condition_from_pb(:CONDITION_TYPE_TIME_WINDOW, condition) do
-    %{start: condition.start, end: condition[:end], week_days: condition.week_days}
+    %{start: condition.start, end: condition.end, week_days: condition.week_days}
   end
 
   defp time_window_condition_from_pb(_, _), do: nil
