@@ -7,7 +7,7 @@ defmodule PublicAPI.Schemas.Stages.Condition do
   OpenApiSpex.schema(%{
     title: "Stages.Condition",
     type: :object,
-    required: [:type, :approval, :time_window],
+    required: [:type],
     description: "A stage condition controls how and when events exit the stage queue",
     properties: %{
       type: %Schema{
