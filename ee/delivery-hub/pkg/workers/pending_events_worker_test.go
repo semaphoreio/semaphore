@@ -34,7 +34,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create two stages, connecting event source to them.
 		//
-		err := r.Canvas.CreateStage("stage-1", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-1", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -43,7 +43,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = r.Canvas.CreateStage("stage-2", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-2", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -96,7 +96,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// First stage is connected to event source.
 		// Second stage is connected fo first stage.
 		//
-		err := r.Canvas.CreateStage("stage-3", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-3", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -107,7 +107,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		firstStage, err := r.Canvas.FindStageByName("stage-3")
 		require.NoError(t, err)
 
-		err = r.Canvas.CreateStage("stage-4", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-4", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   firstStage.ID,
 				SourceType: models.SourceTypeStage,
@@ -142,7 +142,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, events, 1)
 		assert.Equal(t, firstStage.ID, events[0].SourceID)
-		assert.Equal(t, models.StageEventPending, events[0].State)
+		assert.Equal(t, models.StageEventStatePending, events[0].State)
 	})
 
 	t.Run("event is filtered", func(t *testing.T) {
@@ -151,7 +151,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		// First stage has a filter that should pass our event,
 		// but the second stage has a filter that should not pass.
 		//
-		err := r.Canvas.CreateStage("stage-5", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err := r.Canvas.CreateStage("stage-5", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:       r.Source.ID,
 				SourceType:     models.SourceTypeEventSource,
@@ -169,7 +169,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 
 		require.NoError(t, err)
 
-		err = r.Canvas.CreateStage("stage-6", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		err = r.Canvas.CreateStage("stage-6", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:       r.Source.ID,
 				SourceType:     models.SourceTypeEventSource,

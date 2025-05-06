@@ -20,7 +20,9 @@ import (
 const ExecutionFinishedRoutingKey = "execution-finished"
 
 func Test__PipelineDoneConsumer(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{
+		Source: true, Stage: true, Approvals: 1, Grpc: true,
+	})
 
 	amqpURL := "amqp://guest:guest@rabbitmq:5672"
 	w := NewPipelineDoneConsumer(amqpURL, "0.0.0.0:50052")
@@ -80,7 +82,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		list, err := models.ListEventsBySourceID(r.Stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].State, models.StageEventStatePending)
 		require.Equal(t, list[0].SourceID, r.Stage.ID)
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
@@ -142,7 +144,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		list, err := models.ListEventsBySourceID(r.Stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].State, models.StageEventStatePending)
 		require.Equal(t, list[0].SourceID, r.Stage.ID)
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)

@@ -10,19 +10,38 @@ import (
 )
 
 const (
-	RunTemplateTypeSemaphore = "semaphore"
+	RunTemplateTypeSemaphore     = "semaphore"
+	StageConditionTypeApproval   = "approval"
+	StageConditionTypeTimeWindow = "time-window"
 )
 
 type Stage struct {
-	ID               uuid.UUID `gorm:"type:uuid;primary_key;"`
-	OrganizationID   uuid.UUID
-	CanvasID         uuid.UUID
-	Name             string
-	CreatedAt        *time.Time
-	CreatedBy        uuid.UUID
-	ApprovalRequired bool
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;"`
+	OrganizationID uuid.UUID
+	CanvasID       uuid.UUID
+	Name           string
+	CreatedAt      *time.Time
+	CreatedBy      uuid.UUID
 
+	Conditions  datatypes.JSONSlice[StageCondition]
 	RunTemplate datatypes.JSONType[RunTemplate]
+}
+
+type StageCondition struct {
+	Type       string               `json:"type"`
+	Approval   *ApprovalCondition   `json:"approval,omitempty"`
+	TimeWindow *TimeWindowCondition `json:"time,omitempty"`
+}
+
+type TimeWindowCondition struct {
+	Start    string   `json:"start"`
+	End      string   `json:"end"`
+	TimeZone string   `json:"time_zone"`
+	WeekDays []string `json:"week_days"`
+}
+
+type ApprovalCondition struct {
+	Count int `json:"count"`
 }
 
 type RunTemplate struct {
@@ -78,8 +97,28 @@ func FindStage(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	return &stage, nil
 }
 
+func (s *Stage) ApprovalsRequired() int {
+	for _, condition := range s.Conditions {
+		if condition.Type == StageConditionTypeApproval {
+			return condition.Approval.Count
+		}
+	}
+
+	return 0
+}
+
+func (s *Stage) HasApprovalCondition() bool {
+	for _, condition := range s.Conditions {
+		if condition.Type == StageConditionTypeApproval {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *Stage) ListPendingEvents() ([]StageEvent, error) {
-	return s.ListEvents([]string{StageEventPending})
+	return s.ListEvents([]string{StageEventStatePending})
 }
 
 func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
@@ -87,6 +126,7 @@ func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
 	err := database.Conn().
 		Where("stage_id = ?", s.ID).
 		Where("state IN ?", states).
+		Order("created_at DESC").
 		Find(&events).
 		Error
 

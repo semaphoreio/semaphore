@@ -37,7 +37,12 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = canvas.CreateStage(req.Name, req.RequesterId, req.ApprovalRequired, *template, connections)
+	conditions, err := validateConditions(req.Conditions)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	err = canvas.CreateStage(req.Name, req.RequesterId, conditions, *template, connections)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -116,6 +121,76 @@ func validateConnections(canvas *models.Canvas, connections []*pb.Connection) ([
 	}
 
 	return cs, nil
+}
+
+func validateConditions(conditions []*pb.Condition) ([]models.StageCondition, error) {
+	cs := []models.StageCondition{}
+
+	for _, condition := range conditions {
+		c, err := validateCondition(condition)
+		if err != nil {
+			return nil, fmt.Errorf("invalid condition: %v", err)
+		}
+
+		cs = append(cs, *c)
+	}
+
+	return cs, nil
+}
+
+func validateCondition(condition *pb.Condition) (*models.StageCondition, error) {
+	switch condition.Type {
+	case pb.Condition_CONDITION_TYPE_APPROVAL:
+		if condition.Approval == nil {
+			return nil, fmt.Errorf("missing approval settings")
+		}
+
+		if condition.Approval.Count == 0 {
+			return nil, fmt.Errorf("invalid approval condition: count must be greater than 0")
+		}
+
+		return &models.StageCondition{
+			Type: models.StageConditionTypeApproval,
+			Approval: &models.ApprovalCondition{
+				Count: int(condition.Approval.Count),
+			},
+		}, nil
+
+	case pb.Condition_CONDITION_TYPE_TIME_WINDOW:
+		if condition.TimeWindow == nil {
+			return nil, fmt.Errorf("missing time window settings")
+		}
+
+		t := condition.TimeWindow
+		if t.Start == "" {
+			return nil, fmt.Errorf("invalid time window condition: missing window start")
+		}
+
+		if t.End == "" {
+			return nil, fmt.Errorf("invalid time window condition: missing window end")
+		}
+
+		if t.Timezone == "" {
+			return nil, fmt.Errorf("invalid time window condition: missing time zone")
+		}
+
+		if len(t.WeekDays) == 0 {
+			return nil, fmt.Errorf("invalid time window condition: missing week day list")
+		}
+
+		return &models.StageCondition{
+			Type: models.StageConditionTypeTimeWindow,
+			TimeWindow: &models.TimeWindowCondition{
+				Start:    condition.TimeWindow.Start,
+				End:      condition.TimeWindow.End,
+				TimeZone: condition.TimeWindow.Timezone,
+				WeekDays: condition.TimeWindow.WeekDays,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("invalid condition type: %s", condition.Type)
+	}
 }
 
 func validateFilters(in []*pb.Connection_Filter) ([]models.StageConnectionFilter, error) {
@@ -313,16 +388,62 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 		return nil, err
 	}
 
+	conditions, err := serializeConditions(stage.Conditions)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.Stage{
-		Id:               stage.ID.String(),
-		Name:             stage.Name,
-		OrganizationId:   stage.OrganizationID.String(),
-		CanvasId:         stage.CanvasID.String(),
-		CreatedAt:        timestamppb.New(*stage.CreatedAt),
-		Connections:      connections,
-		RunTemplate:      runTemplate,
-		ApprovalRequired: stage.ApprovalRequired,
+		Id:             stage.ID.String(),
+		Name:           stage.Name,
+		OrganizationId: stage.OrganizationID.String(),
+		CanvasId:       stage.CanvasID.String(),
+		CreatedAt:      timestamppb.New(*stage.CreatedAt),
+		Conditions:     conditions,
+		Connections:    connections,
+		RunTemplate:    runTemplate,
 	}, nil
+}
+
+func serializeConditions(conditions []models.StageCondition) ([]*pb.Condition, error) {
+	cs := []*pb.Condition{}
+
+	for _, condition := range conditions {
+		c, err := serializeCondition(condition)
+		if err != nil {
+			return nil, fmt.Errorf("invalid condition: %v", err)
+		}
+
+		cs = append(cs, c)
+	}
+
+	return cs, nil
+}
+
+func serializeCondition(condition models.StageCondition) (*pb.Condition, error) {
+	switch condition.Type {
+	case models.StageConditionTypeApproval:
+		return &pb.Condition{
+			Type: pb.Condition_CONDITION_TYPE_APPROVAL,
+			Approval: &pb.ConditionApproval{
+				Count: uint32(condition.Approval.Count),
+			},
+		}, nil
+
+	case models.StageConditionTypeTimeWindow:
+		return &pb.Condition{
+			Type: pb.Condition_CONDITION_TYPE_TIME_WINDOW,
+			TimeWindow: &pb.ConditionTimeWindow{
+				Start:    condition.TimeWindow.Start,
+				End:      condition.TimeWindow.End,
+				Timezone: condition.TimeWindow.TimeZone,
+				WeekDays: condition.TimeWindow.WeekDays,
+			},
+		}, nil
+
+	default:
+		return nil, fmt.Errorf("invalid condition type: %s", condition.Type)
+	}
 }
 
 func serializeRunTemplate(runTemplate models.RunTemplate) (*pb.RunTemplate, error) {

@@ -1,16 +1,15 @@
 begin;
 
 CREATE TABLE stage_events (
-  id          uuid NOT NULL DEFAULT uuid_generate_v4(),
-  stage_id    uuid NOT NULL,
-  event_id    uuid NOT NULL,
-  source_id   uuid NOT NULL,
-  source_name CHARACTER VARYING(128) NOT NULL,
-  source_type CHARACTER VARYING(64) NOT NULL,
-  state       CHARACTER VARYING(64) NOT NULL,
-  created_at  TIMESTAMP NOT NULL,
-  approved_at TIMESTAMP,
-  approved_by uuid,
+  id           uuid NOT NULL DEFAULT uuid_generate_v4(),
+  stage_id     uuid NOT NULL,
+  event_id     uuid NOT NULL,
+  source_id    uuid NOT NULL,
+  source_name  CHARACTER VARYING(128) NOT NULL,
+  source_type  CHARACTER VARYING(64) NOT NULL,
+  state        CHARACTER VARYING(64) NOT NULL,
+  state_reason CHARACTER VARYING(64),
+  created_at   TIMESTAMP NOT NULL,
 
   PRIMARY KEY (id),
   FOREIGN KEY (stage_id) REFERENCES stages(id)

@@ -70,7 +70,7 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "invalid connection: event source source-does-not-exist not found", s.Message())
 	})
 
-	t.Run("stage with connection with filters", func(t *testing.T) {
+	t.Run("stage is created", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
 		testconsumer := testconsumer.New(amqpURL, StageCreatedRoutingKey)
 		testconsumer.Start()
@@ -83,6 +83,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    runTemplate,
 			RequesterId:    r.User.String(),
+			Conditions: []*protos.Condition{
+				{
+					Type:     protos.Condition_CONDITION_TYPE_APPROVAL,
+					Approval: &protos.ConditionApproval{Count: 1},
+				},
+			},
 			Connections: []*protos.Connection{
 				{
 					Name: r.Source.Name,
@@ -107,9 +113,12 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, r.Canvas.ID.String(), res.Stage.CanvasId)
 		assert.Equal(t, "test", res.Stage.Name)
 		assert.Equal(t, runTemplate, res.Stage.RunTemplate)
-		assert.Len(t, res.Stage.Connections, 1)
+		require.Len(t, res.Stage.Connections, 1)
 		assert.Len(t, res.Stage.Connections[0].Filters, 1)
 		assert.Equal(t, protos.Connection_FILTER_OPERATOR_AND, res.Stage.Connections[0].FilterOperator)
+		require.Len(t, res.Stage.Conditions, 1)
+		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, res.Stage.Conditions[0].Type)
+		assert.Equal(t, uint32(1), res.Stage.Conditions[0].Approval.Count)
 		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 

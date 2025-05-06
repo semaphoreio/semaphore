@@ -21,15 +21,17 @@ type ResourceRegistry struct {
 }
 
 type SetupOptions struct {
-	Source bool
-	Stage  bool
-	Grpc   bool
+	Source    bool
+	Stage     bool
+	Grpc      bool
+	Approvals int
 }
 
 func Setup(t *testing.T) *ResourceRegistry {
 	return SetupWithOptions(t, SetupOptions{
-		Source: true,
-		Stage:  true,
+		Source:    true,
+		Stage:     true,
+		Approvals: 1,
 	})
 }
 
@@ -51,7 +53,14 @@ func SetupWithOptions(t *testing.T, options SetupOptions) *ResourceRegistry {
 	}
 
 	if options.Stage {
-		err = r.Canvas.CreateStage("stage-1", r.User.String(), true, RunTemplate(), []models.StageConnection{})
+		conditions := []models.StageCondition{
+			{
+				Type:     models.StageConditionTypeApproval,
+				Approval: &models.ApprovalCondition{Count: options.Approvals},
+			},
+		}
+
+		err = r.Canvas.CreateStage("stage-1", r.User.String(), conditions, RunTemplate(), []models.StageConnection{})
 		require.NoError(t, err)
 		r.Stage, err = r.Canvas.FindStageByName("stage-1")
 		require.NoError(t, err)

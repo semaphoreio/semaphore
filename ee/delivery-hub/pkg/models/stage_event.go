@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -10,47 +12,75 @@ import (
 )
 
 const (
-	StageEventPending = "pending"
+	StageEventStatePending   = "pending"
+	StageEventStateWaiting   = "waiting"
+	StageEventStateProcessed = "processed"
 
-	// TODO: might be easier to have a waiting state,
-	// and a separate WaitReason field, but we can revisit that later.
-	StageEventWaitingForApproval   = "waiting-for-approval"
-	StageEventWaitingForTimeWindow = "waiting-for-time-window"
+	StageEventStateReasonApproval   = "approval"
+	StageEventStateReasonTimeWindow = "time-window"
+)
 
-	StageEventProcessed = "processed"
+var (
+	ErrEventAlreadyApprovedByRequester = fmt.Errorf("event already approved by requester")
 )
 
 type StageEvent struct {
-	ID         uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
-	StageID    uuid.UUID
-	EventID    uuid.UUID
-	SourceID   uuid.UUID
-	SourceName string
-	SourceType string
-	State      string
-	CreatedAt  *time.Time
-	ApprovedAt *time.Time
-	ApprovedBy *uuid.UUID
+	ID          uuid.UUID `gorm:"primary_key;default:uuid_generate_v4()"`
+	StageID     uuid.UUID
+	EventID     uuid.UUID
+	SourceID    uuid.UUID
+	SourceName  string
+	SourceType  string
+	State       string
+	StateReason string
+	CreatedAt   *time.Time
 }
 
-func (e *StageEvent) UpdateState(state string) error {
-	return e.UpdateStateInTransaction(database.Conn(), state)
+func (e *StageEvent) UpdateState(state, reason string) error {
+	return e.UpdateStateInTransaction(database.Conn(), state, reason)
 }
 
-func (e *StageEvent) UpdateStateInTransaction(tx *gorm.DB, state string) error {
-	return tx.Model(e).Update("state", state).Error
+func (e *StageEvent) UpdateStateInTransaction(tx *gorm.DB, state, reason string) error {
+	return tx.Model(e).
+		Clauses(clause.Returning{}).
+		Update("state", state).
+		Update("state_reason", reason).
+		Error
 }
 
-func (e *StageEvent) Approve(requesterID string) error {
+func (e *StageEvent) Approve(requesterID uuid.UUID) error {
 	now := time.Now()
 
-	return database.Conn().
-		Model(e).
-		Clauses(clause.Returning{}).
-		Update("state", StageEventPending).
-		Update("approved_at", &now).
-		Update("approved_by", requesterID).
+	approval := StageEventApproval{
+		StageEventID: e.ID,
+		ApprovedAt:   &now,
+		ApprovedBy:   &requesterID,
+	}
+
+	err := database.Conn().Create(&approval).Error
+	if err != nil {
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return ErrEventAlreadyApprovedByRequester
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (e *StageEvent) FindApprovals() ([]StageEventApproval, error) {
+	var approvals []StageEventApproval
+	err := database.Conn().
+		Where("stage_event_id = ?", e.ID).
+		Find(&approvals).
 		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return approvals, nil
 }
 
 func FindStageEventByID(id, stageID string) (*StageEvent, error) {
@@ -81,7 +111,7 @@ func CreateStageEventInTransaction(tx *gorm.DB, stageID uuid.UUID, event *Event)
 		SourceID:   event.SourceID,
 		SourceName: event.SourceName,
 		SourceType: event.SourceType,
-		State:      StageEventPending,
+		State:      StageEventStatePending,
 		CreatedAt:  &now,
 	}
 
@@ -100,7 +130,7 @@ func FindOldestPendingStageEvent(stageID uuid.UUID) (*StageEvent, error) {
 	var event StageEvent
 
 	err := database.Conn().
-		Where("state = ?", StageEventPending).
+		Where("state = ?", StageEventStatePending).
 		Where("stage_id = ?", stageID).
 		Order("created_at ASC").
 		First(&event).
@@ -119,7 +149,7 @@ func FindStagesWithPendingEvents() ([]uuid.UUID, error) {
 	err := database.Conn().
 		Table("stage_events").
 		Distinct("stage_id").
-		Where("state = ?", StageEventPending).
+		Where("state = ?", StageEventStatePending).
 		Find(&stageIDs).
 		Error
 

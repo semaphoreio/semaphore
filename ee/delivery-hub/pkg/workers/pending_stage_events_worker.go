@@ -85,20 +85,18 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 	}
 
 	//
-	// If the stage requires manual approval and none was given yet,
-	// we move the event to the waiting-for-approval state.
+	// Process all conditions
 	//
-	if stage.ApprovalRequired && event.ApprovedAt == nil {
-		if err := event.UpdateState(models.StageEventWaitingForApproval); err != nil {
-			return fmt.Errorf("error update event state: %v", err)
+	for _, condition := range stage.Conditions {
+		proceed, err := w.checkCondition(logger, event, condition)
+		if err != nil {
+			return err
 		}
 
-		logger.Infof("Event %s waiting for approval", event.ID)
-
-		return nil
+		if !proceed {
+			return nil
+		}
 	}
-
-	// TODO: any other conditions must be checked here.
 
 	//
 	// If we get here, we can start an execution for this event.
@@ -113,7 +111,7 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 
 		logger.Infof("Created stage execution %s", execution.ID)
 
-		if err := event.UpdateStateInTransaction(tx, models.StageEventProcessed); err != nil {
+		if err := event.UpdateStateInTransaction(tx, models.StageEventStateProcessed, ""); err != nil {
 			return fmt.Errorf("error updating event state: %v", err)
 		}
 
@@ -132,4 +130,38 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 
 	logging.ForStage(stage).Infof("Started execution %s", execution.ID)
 	return nil
+}
+
+func (w *PendingStageEventsWorker) checkCondition(logger *log.Entry, event *models.StageEvent, condition models.StageCondition) (bool, error) {
+	switch condition.Type {
+	case models.StageConditionTypeApproval:
+		return w.checkApprovalCondition(logger, event, condition)
+	default:
+		return false, fmt.Errorf("unknown condition type: %s", condition.Type)
+	}
+}
+
+func (w *PendingStageEventsWorker) checkApprovalCondition(logger *log.Entry, event *models.StageEvent, condition models.StageCondition) (bool, error) {
+	approvals, err := event.FindApprovals()
+	if err != nil {
+		return false, err
+	}
+
+	//
+	// The event has the necessary amount of approvals,
+	// so we can proceed to the next condition.
+	//
+	if len(approvals) >= int(condition.Approval.Count) {
+		logger.Infof("Approval condition met for event %s", event.ID)
+		return true, nil
+	}
+
+	//
+	// The event does not have the necessary amount of approvals,
+	// so we move it to the waiting state, and do not proceed to the next condition.
+	//
+	return false, event.UpdateState(
+		models.StageEventStateWaiting,
+		models.StageEventStateReasonApproval,
+	)
 }

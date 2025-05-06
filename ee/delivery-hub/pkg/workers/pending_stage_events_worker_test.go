@@ -23,7 +23,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that does not require approval.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-1", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-1", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -49,7 +49,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventProcessed, event.State)
+		require.Equal(t, models.StageEventStateProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -64,7 +64,11 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-1", r.User.String(), true, support.RunTemplate(), []models.StageConnection{
+		conditions := []models.StageCondition{
+			{Type: models.StageConditionTypeApproval, Approval: &models.ApprovalCondition{Count: 1}},
+		}
+
+		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-1", r.User.String(), conditions, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -86,14 +90,18 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventWaitingForApproval, event.State)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonApproval, event.StateReason)
 	})
 
 	t.Run("stage requires approval and approval was given -> creates execution", func(t *testing.T) {
 		//
 		// Create stage that requires approval.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-2", r.User.String(), true, support.RunTemplate(), []models.StageConnection{
+		conditions := []models.StageCondition{
+			{Type: models.StageConditionTypeApproval, Approval: &models.ApprovalCondition{Count: 1}},
+		}
+		require.NoError(t, r.Canvas.CreateStage("stage-with-approval-2", r.User.String(), conditions, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -111,7 +119,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		// Create a pending stage event, approve it, and trigger the worker.
 		//
 		event := support.CreateStageEvent(t, r.Source, stage)
-		require.NoError(t, event.Approve(uuid.New().String()))
+		require.NoError(t, event.Approve(uuid.New()))
 		err = w.Tick()
 		require.NoError(t, err)
 
@@ -120,7 +128,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventProcessed, event.State)
+		require.Equal(t, models.StageEventStateProcessed, event.State)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -135,7 +143,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		//
 		// Create stage that does not requires approval.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-3", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-3", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -154,7 +162,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventProcessed, event.State)
+		require.Equal(t, models.StageEventStateProcessed, event.State)
 
 		//
 		// Add another pending event for this stage,
@@ -165,6 +173,6 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventPending, event.State)
+		require.Equal(t, models.StageEventStatePending, event.State)
 	})
 }
