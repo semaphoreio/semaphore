@@ -1342,8 +1342,7 @@ type ConditionTimeWindow struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Start         string                 `protobuf:"bytes,1,opt,name=start,proto3" json:"start,omitempty"`
 	End           string                 `protobuf:"bytes,2,opt,name=end,proto3" json:"end,omitempty"`
-	Timezone      string                 `protobuf:"bytes,3,opt,name=timezone,proto3" json:"timezone,omitempty"`
-	WeekDays      []string               `protobuf:"bytes,4,rep,name=week_days,json=weekDays,proto3" json:"week_days,omitempty"`
+	WeekDays      []string               `protobuf:"bytes,3,rep,name=week_days,json=weekDays,proto3" json:"week_days,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1388,13 +1387,6 @@ func (x *ConditionTimeWindow) GetStart() string {
 func (x *ConditionTimeWindow) GetEnd() string {
 	if x != nil {
 		return x.End
-	}
-	return ""
-}
-
-func (x *ConditionTimeWindow) GetTimezone() string {
-	if x != nil {
-		return x.Timezone
 	}
 	return ""
 }
@@ -3024,12 +3016,11 @@ const file_delivery_proto_rawDesc = "" +
 	"\x17CONDITION_TYPE_APPROVAL\x10\x01\x12\x1e\n" +
 	"\x1aCONDITION_TYPE_TIME_WINDOW\x10\x02\")\n" +
 	"\x11ConditionApproval\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\rR\x05count\"v\n" +
+	"\x05count\x18\x01 \x01(\rR\x05count\"Z\n" +
 	"\x13ConditionTimeWindow\x12\x14\n" +
 	"\x05start\x18\x01 \x01(\tR\x05start\x12\x10\n" +
-	"\x03end\x18\x02 \x01(\tR\x03end\x12\x1a\n" +
-	"\btimezone\x18\x03 \x01(\tR\btimezone\x12\x1b\n" +
-	"\tweek_days\x18\x04 \x03(\tR\bweekDays\"\xdc\x02\n" +
+	"\x03end\x18\x02 \x01(\tR\x03end\x12\x1b\n" +
+	"\tweek_days\x18\x03 \x03(\tR\bweekDays\"\xdc\x02\n" +
 	"\x12CreateStageRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12'\n" +
 	"\x0forganization_id\x18\x02 \x01(\tR\x0eorganizationId\x12\x1b\n" +

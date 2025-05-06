@@ -70,6 +70,146 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "invalid connection: event source source-does-not-exist not found", s.Message())
 	})
 
+	t.Run("invalid approval condition -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{Type: protos.Condition_CONDITION_TYPE_APPROVAL, Approval: &protos.ConditionApproval{}},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid approval condition: count must be greater than 0", s.Message())
+	})
+
+	t.Run("time window condition with no start -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{
+					Type:       protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid time window condition: invalid start", s.Message())
+	})
+
+	t.Run("time window condition with no end -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{
+					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{
+						Start: "08:00",
+					},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid time window condition: invalid end", s.Message())
+	})
+
+	t.Run("time window condition with invalid start -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{
+					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{
+						Start: "52:00",
+					},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid time window condition: invalid start", s.Message())
+	})
+
+	t.Run("time window condition with no week days list -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{
+					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{
+						Start: "08:00",
+						End:   "17:00",
+					},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid time window condition: missing week day list", s.Message())
+	})
+
+	t.Run("time window condition with invalid day -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Connections:    []*protos.Connection{},
+			Conditions: []*protos.Condition{
+				{
+					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{
+						Start:    "08:00",
+						End:      "17:00",
+						WeekDays: []string{"Monday", "DoesNotExist"},
+					},
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid condition: invalid time window condition: invalid day DoesNotExist", s.Message())
+	})
+
 	t.Run("stage is created", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
 		testconsumer := testconsumer.New(amqpURL, StageCreatedRoutingKey)
@@ -87,6 +227,14 @@ func Test__CreateStage(t *testing.T) {
 				{
 					Type:     protos.Condition_CONDITION_TYPE_APPROVAL,
 					Approval: &protos.ConditionApproval{Count: 1},
+				},
+				{
+					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
+					TimeWindow: &protos.ConditionTimeWindow{
+						Start:    "08:00",
+						End:      "17:00",
+						WeekDays: []string{"Monday", "Tuesday"},
+					},
 				},
 			},
 			Connections: []*protos.Connection{
@@ -116,9 +264,13 @@ func Test__CreateStage(t *testing.T) {
 		require.Len(t, res.Stage.Connections, 1)
 		assert.Len(t, res.Stage.Connections[0].Filters, 1)
 		assert.Equal(t, protos.Connection_FILTER_OPERATOR_AND, res.Stage.Connections[0].FilterOperator)
-		require.Len(t, res.Stage.Conditions, 1)
+		require.Len(t, res.Stage.Conditions, 2)
 		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, res.Stage.Conditions[0].Type)
 		assert.Equal(t, uint32(1), res.Stage.Conditions[0].Approval.Count)
+		assert.Equal(t, protos.Condition_CONDITION_TYPE_TIME_WINDOW, res.Stage.Conditions[1].Type)
+		assert.Equal(t, "08:00", res.Stage.Conditions[1].TimeWindow.Start)
+		assert.Equal(t, "17:00", res.Stage.Conditions[1].TimeWindow.End)
+		assert.Equal(t, []string{"Monday", "Tuesday"}, res.Stage.Conditions[1].TimeWindow.WeekDays)
 		assert.True(t, testconsumer.HasReceivedMessage())
 	})
 

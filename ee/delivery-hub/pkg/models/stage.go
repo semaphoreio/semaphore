@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+	"slices"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -36,8 +38,88 @@ type StageCondition struct {
 type TimeWindowCondition struct {
 	Start    string   `json:"start"`
 	End      string   `json:"end"`
-	TimeZone string   `json:"time_zone"`
 	WeekDays []string `json:"week_days"`
+}
+
+func NewTimeWindowCondition(start, end string, days []string) (*TimeWindowCondition, error) {
+	if err := validateTime(start); err != nil {
+		return nil, fmt.Errorf("invalid start")
+	}
+
+	if err := validateTime(end); err != nil {
+		return nil, fmt.Errorf("invalid end")
+	}
+
+	if len(days) == 0 {
+		return nil, fmt.Errorf("missing week day list")
+	}
+
+	if err := validateWeekDays(days); err != nil {
+		return nil, err
+	}
+
+	return &TimeWindowCondition{
+		Start:    start,
+		End:      end,
+		WeekDays: days,
+	}, nil
+}
+
+// Copied from Golang's time package
+var layout = "15:04"
+var longDayNames = []string{
+	"Sunday",
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday",
+}
+
+func validateTime(t string) error {
+	_, err := time.Parse(layout, t)
+	return err
+}
+
+func validateWeekDays(days []string) error {
+	for _, day := range days {
+		if !slices.Contains(longDayNames, day) {
+			return fmt.Errorf("invalid day %s", day)
+		}
+	}
+
+	return nil
+}
+
+func (c *TimeWindowCondition) Evaluate(t *time.Time) error {
+	weekDay := t.Weekday().String()
+	if !slices.Contains(c.WeekDays, weekDay) {
+		return fmt.Errorf("current day - %s - is outside week days allowed - %v", weekDay, c.WeekDays)
+	}
+
+	hourAndMinute := fmt.Sprintf("%02d:%02d", t.Hour(), t.Minute())
+	now, err := time.Parse(layout, hourAndMinute)
+	if err != nil {
+		return err
+	}
+
+	if !c.inTimeWindow(now) {
+		return fmt.Errorf("%s is not in time window %s-%s", hourAndMinute, c.Start, c.End)
+	}
+
+	return nil
+}
+
+func (c *TimeWindowCondition) inTimeWindow(now time.Time) bool {
+	start, _ := time.Parse(layout, c.Start)
+	end, _ := time.Parse(layout, c.End)
+
+	if start.Before(end) {
+		return (now.After(start) || now.Equal(start)) && now.Before(end)
+	} else {
+		return (now.After(start) || now.Equal(start)) || now.Before(end)
+	}
 }
 
 type ApprovalCondition struct {

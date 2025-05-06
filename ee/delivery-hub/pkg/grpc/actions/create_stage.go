@@ -161,31 +161,15 @@ func validateCondition(condition *pb.Condition) (*models.StageCondition, error) 
 			return nil, fmt.Errorf("missing time window settings")
 		}
 
-		t := condition.TimeWindow
-		if t.Start == "" {
-			return nil, fmt.Errorf("invalid time window condition: missing window start")
-		}
-
-		if t.End == "" {
-			return nil, fmt.Errorf("invalid time window condition: missing window end")
-		}
-
-		if t.Timezone == "" {
-			return nil, fmt.Errorf("invalid time window condition: missing time zone")
-		}
-
-		if len(t.WeekDays) == 0 {
-			return nil, fmt.Errorf("invalid time window condition: missing week day list")
+		c := condition.TimeWindow
+		t, err := models.NewTimeWindowCondition(c.Start, c.End, c.WeekDays)
+		if err != nil {
+			return nil, fmt.Errorf("invalid time window condition: %v", err)
 		}
 
 		return &models.StageCondition{
-			Type: models.StageConditionTypeTimeWindow,
-			TimeWindow: &models.TimeWindowCondition{
-				Start:    condition.TimeWindow.Start,
-				End:      condition.TimeWindow.End,
-				TimeZone: condition.TimeWindow.Timezone,
-				WeekDays: condition.TimeWindow.WeekDays,
-			},
+			Type:       models.StageConditionTypeTimeWindow,
+			TimeWindow: t,
 		}, nil
 
 	default:
@@ -436,7 +420,6 @@ func serializeCondition(condition models.StageCondition) (*pb.Condition, error) 
 			TimeWindow: &pb.ConditionTimeWindow{
 				Start:    condition.TimeWindow.Start,
 				End:      condition.TimeWindow.End,
-				Timezone: condition.TimeWindow.TimeZone,
 				WeekDays: condition.TimeWindow.WeekDays,
 			},
 		}, nil

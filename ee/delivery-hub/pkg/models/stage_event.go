@@ -7,6 +7,7 @@ import (
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"gorm.io/datatypes"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -158,4 +159,29 @@ func FindStagesWithPendingEvents() ([]uuid.UUID, error) {
 	}
 
 	return stageIDs, nil
+}
+
+type StageEventWithConditions struct {
+	ID         uuid.UUID
+	StageID    uuid.UUID
+	Conditions datatypes.JSONSlice[StageCondition]
+}
+
+func FindStageEventsWaitingForTimeWindow() ([]StageEventWithConditions, error) {
+	var events []StageEventWithConditions
+
+	err := database.Conn().
+		Table("stage_events AS e").
+		Joins("INNER JOIN stages AS s ON e.stage_id = s.id").
+		Select("e.id, e.stage_id, s.conditions").
+		Where("e.state = ?", StageEventStateWaiting).
+		Where("e.state_reason = ?", StageEventStateReasonTimeWindow).
+		Find(&events).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
 }

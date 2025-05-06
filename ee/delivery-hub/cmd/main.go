@@ -29,7 +29,21 @@ func startWorkers(jwtSigner *jwt.Signer) {
 
 	if os.Getenv("START_PENDING_STAGE_EVENTS_WORKER") == "yes" {
 		log.Println("Starting Pending Stage Events Worker")
-		w := workers.PendingStageEventsWorker{}
+		w, err := workers.NewPendingStageEventsWorker(time.Now)
+		if err != nil {
+			panic(err)
+		}
+
+		go w.Start()
+	}
+
+	if os.Getenv("START_TIME_WINDOW_WORKER") == "yes" {
+		log.Println("Starting Time Window Worker")
+		w, err := workers.NewTimeWindowWorker(time.Now)
+		if err != nil {
+			panic(err)
+		}
+
 		go w.Start()
 	}
 
