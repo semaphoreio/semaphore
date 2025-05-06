@@ -26,6 +26,16 @@ defmodule InternalApi.Delivery.Connection.FilterOperator do
   field(:FILTER_OPERATOR_OR, 1)
 end
 
+defmodule InternalApi.Delivery.Condition.Type do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:CONDITION_TYPE_UNKNOWN, 0)
+  field(:CONDITION_TYPE_APPROVAL, 1)
+  field(:CONDITION_TYPE_TIME_WINDOW, 2)
+end
+
 defmodule InternalApi.Delivery.RunTemplate.Type do
   @moduledoc false
 
@@ -40,11 +50,20 @@ defmodule InternalApi.Delivery.StageEvent.State do
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:UNKNOWN, 0)
-  field(:PENDING, 1)
-  field(:WAITING_FOR_APPROVAL, 2)
-  field(:WAITING_FOR_TIME_WINDOW, 3)
-  field(:PROCESSED, 4)
+  field(:STATE_UNKNOWN, 0)
+  field(:STATE_PENDING, 1)
+  field(:STATE_WAITING, 2)
+  field(:STATE_PROCESSED, 4)
+end
+
+defmodule InternalApi.Delivery.StageEvent.StateReason do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:STATE_REASON_UNKNOWN, 0)
+  field(:STATE_REASON_APPROVAL, 1)
+  field(:STATE_REASON_TIME_WINDOW, 2)
 end
 
 defmodule InternalApi.Delivery.Canvas do
@@ -209,8 +228,36 @@ defmodule InternalApi.Delivery.Stage do
   field(:canvas_id, 4, type: :string, json_name: "canvasId")
   field(:created_at, 5, type: Google.Protobuf.Timestamp, json_name: "createdAt")
   field(:connections, 6, repeated: true, type: InternalApi.Delivery.Connection)
-  field(:approval_required, 7, type: :bool, json_name: "approvalRequired")
+  field(:conditions, 7, repeated: true, type: InternalApi.Delivery.Condition)
   field(:run_template, 8, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
+end
+
+defmodule InternalApi.Delivery.Condition do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:type, 1, type: InternalApi.Delivery.Condition.Type, enum: true)
+  field(:approval, 2, type: InternalApi.Delivery.ConditionApproval)
+  field(:time_window, 3, type: InternalApi.Delivery.ConditionTimeWindow, json_name: "timeWindow")
+end
+
+defmodule InternalApi.Delivery.ConditionApproval do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:count, 1, type: :uint32)
+end
+
+defmodule InternalApi.Delivery.ConditionTimeWindow do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:start, 1, type: :string)
+  field(:end, 2, type: :string)
+  field(:week_days, 3, repeated: true, type: :string, json_name: "weekDays")
 end
 
 defmodule InternalApi.Delivery.CreateStageRequest do
@@ -221,9 +268,9 @@ defmodule InternalApi.Delivery.CreateStageRequest do
   field(:name, 1, type: :string)
   field(:organization_id, 2, type: :string, json_name: "organizationId")
   field(:canvas_id, 3, type: :string, json_name: "canvasId")
-  field(:connections, 4, repeated: true, type: InternalApi.Delivery.Connection)
-  field(:approval_required, 5, type: :bool, json_name: "approvalRequired")
-  field(:requester_id, 6, type: :string, json_name: "requesterId")
+  field(:requester_id, 4, type: :string, json_name: "requesterId")
+  field(:connections, 5, repeated: true, type: InternalApi.Delivery.Connection)
+  field(:conditions, 6, repeated: true, type: InternalApi.Delivery.Condition)
   field(:run_template, 7, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
 end
 
@@ -360,9 +407,24 @@ defmodule InternalApi.Delivery.StageEvent do
   )
 
   field(:state, 4, type: InternalApi.Delivery.StageEvent.State, enum: true)
-  field(:created_at, 5, type: Google.Protobuf.Timestamp, json_name: "createdAt")
-  field(:approved_at, 6, type: Google.Protobuf.Timestamp, json_name: "approvedAt")
-  field(:approved_by, 7, type: :string, json_name: "approvedBy")
+
+  field(:state_reason, 5,
+    type: InternalApi.Delivery.StageEvent.StateReason,
+    json_name: "stateReason",
+    enum: true
+  )
+
+  field(:created_at, 6, type: Google.Protobuf.Timestamp, json_name: "createdAt")
+  field(:approvals, 7, repeated: true, type: InternalApi.Delivery.StageEventApproval)
+end
+
+defmodule InternalApi.Delivery.StageEventApproval do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:approved_by, 1, type: :string, json_name: "approvedBy")
+  field(:approved_at, 2, type: Google.Protobuf.Timestamp, json_name: "approvedAt")
 end
 
 defmodule InternalApi.Delivery.ApproveStageEventRequest do
@@ -383,6 +445,84 @@ defmodule InternalApi.Delivery.ApproveStageEventResponse do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:event, 1, type: InternalApi.Delivery.StageEvent)
+end
+
+defmodule InternalApi.Delivery.StageCreated do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:stage_id, 2, type: :string, json_name: "stageId")
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.EventSourceCreated do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:source_id, 2, type: :string, json_name: "sourceId")
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageEventCreated do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:stage_id, 2, type: :string, json_name: "stageId")
+  field(:event_id, 3, type: :string, json_name: "eventId")
+  field(:timestamp, 4, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageEventApproved do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:stage_id, 2, type: :string, json_name: "stageId")
+  field(:event_id, 3, type: :string, json_name: "eventId")
+  field(:timestamp, 4, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageExecutionCreated do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:execution_id, 2, type: :string, json_name: "executionId")
+  field(:stage_id, 3, type: :string, json_name: "stageId")
+  field(:event_id, 4, type: :string, json_name: "eventId")
+  field(:timestamp, 5, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageExecutionStarted do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:execution_id, 2, type: :string, json_name: "executionId")
+  field(:stage_id, 3, type: :string, json_name: "stageId")
+  field(:event_id, 4, type: :string, json_name: "eventId")
+  field(:timestamp, 5, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageExecutionFinished do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:execution_id, 2, type: :string, json_name: "executionId")
+  field(:stage_id, 3, type: :string, json_name: "stageId")
+  field(:event_id, 4, type: :string, json_name: "eventId")
+  field(:timestamp, 5, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Delivery.Delivery.Service do

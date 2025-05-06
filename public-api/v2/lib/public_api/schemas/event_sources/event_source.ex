@@ -49,7 +49,7 @@ defmodule PublicAPI.Schemas.EventSources.EventSource do
             }
           }
         },
-        readOnly: true,
+        readOnly: true
       },
 
       #

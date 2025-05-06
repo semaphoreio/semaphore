@@ -17,13 +17,17 @@ defmodule PublicAPI.Schemas.Stages.StageEvent do
       },
       state: %Schema{
         type: :string,
-        enum: ~w(PENDING WAITING_FOR_APPROVAL PROCESSED)
+        enum: ~w(PENDING WAITING PROCESSED)
+      },
+      state_reason: %Schema{
+        type: :string,
+        nullable: true,
+        enum: ~w(APPROVAL TIME_WINDOW)
       },
       created_at: PublicAPI.Schemas.Common.timestamp(),
-      approved_at: %Schema{
-        type: :string,
-        format: :"date-time",
-        nullable: true
+      approvals: %Schema{
+        type: :array,
+        items: PublicAPI.Schemas.Stages.StageEventApproval.schema()
       }
     }
   })

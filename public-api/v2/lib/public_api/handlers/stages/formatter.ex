@@ -25,15 +25,26 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
       source_id: event.source_id,
       source_type: connection_type_from_pb(event.source_type),
       state: event_state_from_pb(event.state),
+      state_reason: event_state_reason_from_pb(event.state_reason),
       created_at: PublicAPI.Util.Timestamps.to_timestamp(event.created_at),
-      approved_at: PublicAPI.Util.Timestamps.to_timestamp(event.approved_at)
+      approvals:
+        Enum.map(event.approvals, fn approval ->
+          %{
+            approved_by: approval.approved_by,
+            approved_at: PublicAPI.Util.Timestamps.to_timestamp(approval.approved_at)
+          }
+        end)
     }
   end
 
-  defp event_state_from_pb(:PENDING), do: "PENDING"
-  defp event_state_from_pb(:WAITING_FOR_APPROVAL), do: "WAITING_FOR_APPROVAL"
-  defp event_state_from_pb(:PROCESSED), do: "PROCESSED"
-  defp event_state_from_pb(_), do: ""
+  defp event_state_from_pb(:STATE_PENDING), do: "PENDING"
+  defp event_state_from_pb(:STATE_WAITING), do: "WAITING"
+  defp event_state_from_pb(:STATE_PROCESSED), do: "PROCESSED"
+  defp event_state_from_pb(_), do: nil
+
+  defp event_state_reason_from_pb(:STATE_REASON_APPROVAL), do: "APPROVAL"
+  defp event_state_reason_from_pb(:STATE_REASON_TIME_WINDOW), do: "TIME_WINDOW"
+  defp event_state_reason_from_pb(_), do: nil
 
   def list(stages, ctx) do
     {:ok,
@@ -62,7 +73,7 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
         }
       },
       spec: %{
-        approval_required: stage.approval_required,
+        conditions: Enum.map(stage.conditions, fn condition -> condition_from_pb(condition) end),
         connections:
           Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
         run: run_template_from_pb(stage.run_template)
@@ -102,6 +113,14 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
 
   defp semaphore_run_template_from_pb(_, _), do: nil
 
+  defp condition_from_pb(condition = %API.Condition{}) do
+    %{
+      type: condition_type_from_pb(condition.type),
+      approval: approval_condition_from_pb(condition.type, condition.approval),
+      time_window: time_window_condition_from_pb(condition.type, condition.time_window)
+    }
+  end
+
   defp connection_from_pb(connection = %API.Connection{}) do
     %{
       type: connection_type_from_pb(connection.type),
@@ -127,9 +146,25 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
 
   defp data_filter_from_pb(_, _), do: nil
 
+  defp approval_condition_from_pb(:CONDITION_TYPE_APPROVAL, condition) do
+    %{count: condition.count}
+  end
+
+  defp approval_condition_from_pb(_, _), do: nil
+
+  defp time_window_condition_from_pb(:CONDITION_TYPE_TIME_WINDOW, condition) do
+    %{start: condition.start, end: condition[:end], week_days: condition.week_days}
+  end
+
+  defp time_window_condition_from_pb(_, _), do: nil
+
   defp connection_type_from_pb(:TYPE_STAGE), do: "STAGE"
   defp connection_type_from_pb(:TYPE_EVENT_SOURCE), do: "EVENT_SOURCE"
   defp connection_type_from_pb(_), do: ""
+
+  defp condition_type_from_pb(:CONDITION_TYPE_APPROVAL), do: "APPROVAL"
+  defp condition_type_from_pb(:CONDITION_TYPE_TIME_WINDOW), do: "TIME_WINDOW"
+  defp condition_type_from_pb(_), do: ""
 
   defp filter_operator_from_pb(:FILTER_OPERATOR_AND), do: "AND"
   defp filter_operator_from_pb(:FILTER_OPERATOR_OR), do: "OR"

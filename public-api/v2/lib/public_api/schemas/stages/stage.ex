@@ -41,12 +41,11 @@ defmodule PublicAPI.Schemas.Stages.Stage do
       spec: %Schema{
         type: :object,
         description: "Specification of the stage",
-        required: [:approval_required, :connections, :run],
+        required: [:conditions, :connections, :run],
         properties: %{
-          approval_required: %Schema{
-            type: :boolean,
-            description: "Require manual approval to trigger executions",
-            default: true
+          conditions: %Schema{
+            type: :array,
+            items: PublicAPI.Schemas.Stages.Condition.schema()
           },
           connections: %Schema{
             type: :array,

@@ -12,9 +12,10 @@ defmodule Support.Stubs.Canvases do
       :canvas_id,
       :stage_id,
       :state,
+      :state_reason,
       :source_id,
       :source_type,
-      :approved_at
+      :approvals
     ])
 
     __MODULE__.Grpc.init()
@@ -38,7 +39,7 @@ defmodule Support.Stubs.Canvases do
     defaults = [
       id: UUID.gen(),
       name: "stage-1",
-      approval_required: true,
+      conditions: [],
       connections: [],
       run_template: %InternalApi.Delivery.RunTemplate{
         type: InternalApi.Delivery.RunTemplate.Type.value(:TYPE_SEMAPHORE),
@@ -67,7 +68,7 @@ defmodule Support.Stubs.Canvases do
         organization_id: org.id,
         canvas_id: canvas_id,
         created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
-        approval_required: params[:approval_required],
+        conditions: params[:conditions],
         run_template: params[:run_template],
         connections: params[:connections]
       }
@@ -92,7 +93,8 @@ defmodule Support.Stubs.Canvases do
   def create_stage_event(org, canvas_id, stage_id, source_id, params \\ []) do
     defaults = [
       id: UUID.gen(),
-      state: :PENDING,
+      state: :STATE_PENDING,
+      state_reason: :STATE_REASON_UNKNOWN,
       source_type: :TYPE_EVENT_SOURCE
     ]
 
@@ -101,12 +103,13 @@ defmodule Support.Stubs.Canvases do
     DB.insert(:stage_events, %{
       id: params[:id],
       state: params[:state],
+      state_reason: params[:state_reason],
       org_id: org.id,
       stage_id: stage_id,
       canvas_id: canvas_id,
       source_id: source_id,
       source_type: params[:source_type],
-      approved_at: nil
+      approvals: []
     })
   end
 
@@ -207,9 +210,18 @@ defmodule Support.Stubs.Canvases do
           raise GRPC.RPCError, status: :not_found, message: "Stage event not found"
 
         [event] ->
+          approvals =
+            event.approvals ++
+              [
+                %InternalApi.Delivery.StageEventApproval{
+                  approved_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+                  approved_by: req.requester_id
+                }
+              ]
+
           DB.update(
             :stage_events,
-            %{event | approved_at: 1_549_885_252},
+            %{event | approvals: approvals},
             id: event.id
           )
 
@@ -219,8 +231,9 @@ defmodule Support.Stubs.Canvases do
               source_id: event.source_id,
               source_type: InternalApi.Delivery.Connection.Type.value(event.source_type),
               state: InternalApi.Delivery.StageEvent.State.value(event.state),
+              state_reason: InternalApi.Delivery.StageEvent.StateReason.value(event.state_reason),
               created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
-              approved_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+              approvals: approvals
             }
           }
       end
@@ -252,7 +265,7 @@ defmodule Support.Stubs.Canvases do
               canvas_id: stage.canvas_id,
               organization_id: stage.org_id,
               created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
-              approval_required: stage.api_model.approval_required,
+              conditions: stage.api_model.conditions,
               run_template: stage.api_model.run_template,
               connections: stage.api_model.connections
             }
@@ -277,7 +290,7 @@ defmodule Support.Stubs.Canvases do
             organization_id: org_id,
             canvas_id: canvas_id,
             created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
-            approval_required: req.approval_required,
+            conditions: req.conditions,
             connections: req.connections,
             run_template: req.run_template
           }
