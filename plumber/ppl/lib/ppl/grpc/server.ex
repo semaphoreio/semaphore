@@ -224,6 +224,7 @@ defmodule Ppl.Grpc.Server do
   # ListKeyset
 
   def list_keyset(request, _) do
+    IO.puts("SERVER lsit_keyset")
     InFlightCounter.register(:list)
 
     Metrics.benchmark("Ppl.list_keyset", __MODULE__,  fn ->

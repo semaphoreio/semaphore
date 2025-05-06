@@ -13,6 +13,7 @@ defmodule Ppl.Actions.ListKeysetImpl do
     only: [validate_timestamps: 2, either_project_or_wf_id_present: 3, non_empty_value_or_default: 3]
 
   def list_keyset(request) do
+    IO.puts("LIST KEYSET IMPL list_keyset")
     with tf_map                     <- %{Timestamp => {Ppl.Actions.ListImpl, :timestamp_to_datetime},
                                          GitRefType => {Ppl.Actions.ListImpl, :atom_to_lower_string}},
          {:ok, params}              <- Proto.to_map(request, transformations: tf_map),
@@ -50,6 +51,7 @@ defmodule Ppl.Actions.ListKeysetImpl do
     pr_head_branch: :skip, pr_target_branch: :skip}, keyset_params
   ) when (is_list(ref_types) and length(ref_types) == 1 and label != :skip) or
           (ref_types == :skip and label == :skip) do
+          IO.puts("DO LISTING FIRST")
     params
     |> prepare_branch_name(ref_types, label)
     |> PplsQueries.list_keyset_using_pipelines_only(keyset_params)
@@ -58,9 +60,11 @@ defmodule Ppl.Actions.ListKeysetImpl do
     queue_id: :skip, git_ref_types: :skip, wf_id: :skip, label:  :skip,
     done_before: :skip, done_after: :skip}, keyset_params
   ) do
+    IO.puts("DO LISTING SECOND")
     PplsQueries.list_keyset_using_requests_only(params, keyset_params)
   end
   defp do_listing(query_params, keyset_params) do
+    IO.puts("DO LISTING THIRD")
     PplsQueries.list_keyset(query_params, keyset_params)
   end
 

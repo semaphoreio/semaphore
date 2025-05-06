@@ -134,6 +134,7 @@ defmodule Ppl.Actions do
   # ListKeyset
 
   def list_keyset(params) do
+    IO.puts("ACTIONS LIST KEYSET")
     Watchman.increment({@list_keyset_metric, [:request]})
 
     case ListKeysetImpl.list_keyset(params) do

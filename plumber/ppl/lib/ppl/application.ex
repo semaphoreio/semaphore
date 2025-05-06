@@ -10,6 +10,7 @@ defmodule Ppl.Application do
   require Logger
 
   def start(_type, _args) do
+    IO.puts("NEW TEST")
     Logger.info("Running plumber in #{get_env()} environment")
 
     Application.stop(:watchman)

@@ -150,6 +150,9 @@ defmodule Ppl.Ppls.Model.PplsQueries do
   set can be found using only the pipelines table
   """
   def list_keyset_using_pipelines_only(params, keyset_params) do
+    IO.puts("LIST KEYSET PIPELINES ONLY")
+    IO.inspect(params)
+    IO.inspect(keyset_params)
     with {:ok, result_page} <- do_optimized_list_keyset(params, keyset_params),
          ids <- Enum.map(result_page.pipelines, fn ppl -> ppl.ppl_id end),
          {:ok, pipelines}   <- get_details_for_all(ids),
@@ -190,6 +193,7 @@ defmodule Ppl.Ppls.Model.PplsQueries do
   highly unlikely.
   """
   def list_keyset_using_requests_only(params, keyset_params) do
+    IO.puts("list_keyset_using_requests_only")
     with {:ok, result_page} <- do_list_keyset_requests_only(params, keyset_params),
           ids <- Enum.map(result_page.pipelines, fn ppl -> ppl.id end),
           {:ok, pipelines}   <- get_details_for_all(ids),
@@ -226,6 +230,7 @@ defmodule Ppl.Ppls.Model.PplsQueries do
   Returns pipelines that match given search params paginated via keyset approach.
   """
   def list_keyset(params, keyset_params) do
+      IO.puts("PLAIN LIST KEYSET")
     query =
       join_request_trace_and_ppl()
       |> filter_by_project_id(params.project_id)

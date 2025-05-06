@@ -87,6 +87,7 @@ defmodule FrontWeb.BranchController do
   end
 
   def workflows(conn, params) do
+    IO.puts("BRANCH WORKFLOWS")
     page_token = params["page_token"] || ""
     direction = params["direction"] || ""
 

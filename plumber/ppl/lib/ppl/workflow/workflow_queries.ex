@@ -470,33 +470,42 @@ defmodule Ppl.WorkflowQueries do
   """
   def list_keyset(params = %{requester_id: requester_id, projects: projects}, keyset_params)
     when is_binary(requester_id) and is_list(projects) do
+    IO.puts("LIST KS 1")
       Metrics.benchmark("WorkflowPB.queries", "my_work_legacy",  fn ->
         list_keyset_(params, keyset_params)
       end)
   end
   def list_keyset(params = %{requesters: requesters, projects: projects}, keyset_params)
     when is_list(requesters) and is_list(projects) do
+    IO.puts("LIST KS 2")
       Metrics.benchmark("WorkflowPB.queries", "my_work",  fn ->
         list_keyset_(params, keyset_params)
       end)
   end
   def list_keyset(params = %{requesters: :skip, projects: projects}, keyset_params)
     when is_list(projects) do
+    IO.puts("LIST KS 3")
       Metrics.benchmark("WorkflowPB.queries", "everyones",  fn ->
         list_keyset_(params, keyset_params)
       end)
   end
   def list_keyset(params = %{requesters: :skip, project_id: project_id, branch_name: branch_name}, keyset_params)
     when is_binary(branch_name) and is_binary(project_id) do
+    IO.puts("LIST KS 4")
       Metrics.benchmark("WorkflowPB.queries", "branch_page",  fn ->
         list_keyset_(params, keyset_params)
       end)
   end
   def list_keyset(params, keyset_params) do
+    IO.puts("LIST KS 4")
     list_keyset_(params, keyset_params)
   end
 
   defp list_keyset_(params, keyset_params) do
+    IO.puts("LIST KS _")
+    IO.inspect(params)
+    IO.inspect(keyset_params)
+
     page =
       PplRequests
       |> where([p], p.initial_request)
@@ -513,6 +522,9 @@ defmodule Ppl.WorkflowQueries do
       |> order_by([p], desc: p.inserted_at, desc: p.id)
       |> select_workflow_details()
       |> paginate(keyset_params)
+
+    IO.puts("PAGE")
+    IO.inspect(page)
 
     {:ok,
      %{

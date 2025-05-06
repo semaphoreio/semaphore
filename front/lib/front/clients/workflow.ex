@@ -90,6 +90,7 @@ defmodule Front.Clients.Workflow do
   end
 
   def list_keyset(request) do
+  IO.puts("CLIENTS.WORKFLOW.list)keyset")
     Watchman.benchmark("workflow.list_keyset.duration", fn ->
       response =
         channel()

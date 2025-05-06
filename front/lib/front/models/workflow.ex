@@ -212,6 +212,7 @@ defmodule Front.Models.Workflow do
     do: InternalApi.PlumberWF.ListLatestWorkflowsRequest.Direction.value(:NEXT)
 
   def list_keyset(params \\ []) do
+  IO.puts("MODELS.WORKFLOW.list_keyset")
     defaults = [
       page_size: 20,
       page_token: ""

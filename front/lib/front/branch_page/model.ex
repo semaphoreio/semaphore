@@ -47,10 +47,13 @@ defmodule Front.BranchPage.Model do
 
   @spec get(LoadParams.t()) :: {:ok, __MODULE__.t()} | {:error, String.t()}
   def get(params, opts \\ []) do
+    IO.puts("GET")
     with true <- first_page?(params) do
+      IO.puts("FIRST PAGE")
       fetch_from_cache(params, opts[:force_cold_boot])
     else
       false ->
+        IO.puts(" NOT FIRST PAGE")
         load_from_api(params)
     end
   end
@@ -105,6 +108,7 @@ defmodule Front.BranchPage.Model do
   end
 
   def load_from_api(params) do
+    IO.puts("LOAD FROM API")
     fetch_workflows = Async.run(fn -> list_workflows(params) end)
 
     fetch_organization = Async.run(fn -> Models.Organization.find(params.organization_id) end)

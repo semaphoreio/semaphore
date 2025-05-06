@@ -247,6 +247,7 @@ defmodule Plumber.WorkflowAPI.Server do
   end
 
   def list_keyset(list_req, _) do
+    IO.puts("LIST KEYSET WORKFLOWS")
     InFlightCounter.register(:list)
 
     Metrics.benchmark("WorkflowPB.list_keyset", __MODULE__,  fn ->
