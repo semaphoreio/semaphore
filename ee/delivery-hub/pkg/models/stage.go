@@ -65,8 +65,12 @@ func NewTimeWindowCondition(start, end string, days []string) (*TimeWindowCondit
 	}, nil
 }
 
-// Copied from Golang's time package
+// We only need HH:mm precision, so we use time.TimeOnly format
+// but without the seconds part.
+// See: https://pkg.go.dev/time#pkg-constants.
 var layout = "15:04"
+
+// Copied from Golang's time package
 var longDayNames = []string{
 	"Sunday",
 	"Monday",
