@@ -77,14 +77,14 @@ defmodule Guard.Api.ProjectTest do
       end
     end
 
-    test "returns false when there is an error retrieving projects" do
+    test "If communication with projecthub fails, we consider that user does own projects" do
       user_id = "user_with_error"
 
       with_mock InternalApi.Projecthub.ProjectService.Stub,
         list: fn _channel, _req, _opts ->
           {:error, "Failed to retrieve projects"}
         end do
-        assert Project.user_has_any_project?(user_id) == false
+        assert Project.user_has_any_project?(user_id)
       end
     end
   end

@@ -49,8 +49,8 @@ defmodule Guard.Api.Project do
     req = build_list_by_owner_id_request(user_id, 1)
 
     case InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000) do
-      {:ok, response} when response.metadata.status.code == 0 ->
-        response.projects |> length > 0
+      {:ok, response} when response.metadata.status.code == 0 -> length(response.projects) > 0
+      _ -> true
     end
   end
 
