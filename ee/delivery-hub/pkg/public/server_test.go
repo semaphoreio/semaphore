@@ -2,7 +2,10 @@ package public
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -210,9 +213,14 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 	eventSource, err := canvas.CreateEventSource("semaphore-source-1", []byte("my-key"))
 	require.NoError(t, err)
 
-	// Create a valid event that includes the organization ID in the payload
-	validEvent := []byte(fmt.Sprintf(`{"event_type": "workflow_completed", "organization": {"id": "%s"}}`, orgID.String()))
-	validSignature := "sha256=ee9f99fa8d06b44ffc69ee1c2a7e32e848e8b40536bb5e8405dabb3bbbcaf619"
+	validEvent := []byte(fmt.Sprintf(`{"version": "1.0.0", "organization": {"id": "%s", "name": "test"}}`, orgID.String()))
+
+	key := []byte("my-key")
+	mac := hmac.New(sha256.New, key)
+	mac.Write(validEvent)
+	validSignatureBytes := mac.Sum(nil)
+	validSignature := "sha256=" + hex.EncodeToString(validSignatureBytes)
+
 	validURL := "/sources/" + eventSource.ID.String() + "/semaphore"
 
 	t.Run("missing organization data in payload -> 404", func(t *testing.T) {
