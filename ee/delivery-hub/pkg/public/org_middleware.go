@@ -14,6 +14,14 @@ import (
 
 type contextKey string
 
+type RequestTooLargeError struct {
+	MaxSize int
+}
+
+func (e RequestTooLargeError) Error() string {
+	return fmt.Sprintf("Request body is too large - must be up to %d bytes", e.MaxSize)
+}
+
 var orgIDKey contextKey = "org-id"
 
 type SourceType string
@@ -29,6 +37,13 @@ func OrganizationMiddleware(next http.Handler) http.Handler {
 
 		organizationID, bodyBytes, err := getOrganizationIDForSource(w, r, sourceType)
 		if err != nil {
+			// Check if this is a RequestTooLargeError
+			if tooLargeErr, ok := err.(RequestTooLargeError); ok {
+				http.Error(w, tooLargeErr.Error(), http.StatusRequestEntityTooLarge)
+				return
+			}
+
+			// Otherwise, return 404 for other errors
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -37,12 +52,6 @@ func OrganizationMiddleware(next http.Handler) http.Handler {
 		if bodyBytes != nil {
 			r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 		}
-
-		//
-		// TODO
-		// Check if organization exists and if it is not suspended/blocked before proceeding
-		// or ensure that happens on the auth component.
-		//
 
 		ctx := context.WithValue(r.Context(), orgIDKey, organizationID)
 		next.ServeHTTP(w, r.WithContext(ctx))
@@ -81,7 +90,7 @@ func getOrganizationIDFromSemaphorePayload(w http.ResponseWriter, r *http.Reques
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		if _, ok := err.(*http.MaxBytesError); ok {
-			return uuid.Nil, nil, fmt.Errorf("request body is too large - must be up to %d bytes", MaxEventSize)
+			return uuid.Nil, nil, RequestTooLargeError{MaxSize: MaxEventSize}
 		}
 		return uuid.Nil, nil, fmt.Errorf("error reading request body: %w", err)
 	}
