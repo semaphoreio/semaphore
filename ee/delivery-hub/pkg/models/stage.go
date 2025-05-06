@@ -117,9 +117,9 @@ func (c *TimeWindowCondition) inTimeWindow(now time.Time) bool {
 
 	if start.Before(end) {
 		return (now.After(start) || now.Equal(start)) && now.Before(end)
-	} else {
-		return (now.After(start) || now.Equal(start)) || now.Before(end)
 	}
+
+	return (now.After(start) || now.Equal(start)) || now.Before(end)
 }
 
 type ApprovalCondition struct {
