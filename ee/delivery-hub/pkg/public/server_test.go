@@ -7,7 +7,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -213,7 +212,8 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 	eventSource, err := canvas.CreateEventSource("semaphore-source-1", []byte("my-key"))
 	require.NoError(t, err)
 
-	validEvent := []byte(fmt.Sprintf(`{"version": "1.0.0", "organization": {"id": "%s", "name": "test"}}`, orgID.String()))
+	// No need to include organization ID in the payload anymore
+	validEvent := []byte(`{"version": "1.0.0", "event_type": "workflow_completed"}`)
 
 	key := []byte("my-key")
 	mac := hmac.New(sha256.New, key)
@@ -223,12 +223,12 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 
 	validURL := "/sources/" + eventSource.ID.String() + "/semaphore"
 
-	t.Run("missing organization data in payload -> 404", func(t *testing.T) {
-		invalidPayload := []byte(`{"event_type": "workflow_completed"}`)
+	t.Run("missing organization header -> 404", func(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
-			body:        invalidPayload,
+			orgID:       "",
+			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/json",
 		})
@@ -236,12 +236,12 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		require.Equal(t, 404, response.Code)
 	})
 
-	t.Run("invalid organization format in payload -> 404", func(t *testing.T) {
-		invalidPayload := []byte(`{"event_type": "workflow_completed", "organization": {"id": "not-a-uuid"}}`)
+	t.Run("invalid organization header -> 404", func(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
-			body:        invalidPayload,
+			orgID:       "not-a-uuid",
+			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/json",
 		})
@@ -254,6 +254,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        invalidURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/json",
@@ -267,6 +268,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:    "POST",
 			path:      validURL,
+			orgID:     orgID.String(),
 			body:      validEvent,
 			signature: validSignature,
 		})
@@ -278,6 +280,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/x-www-form-urlencoded",
@@ -291,6 +294,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        invalidURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/json",
@@ -304,6 +308,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			contentType: "application/json",
 		})
@@ -316,6 +321,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			signature:   "sha256=invalid-signature",
 			contentType: "application/json",
@@ -329,6 +335,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
+			orgID:       orgID.String(),
 			body:        validEvent,
 			signature:   validSignature,
 			contentType: "application/json",
@@ -351,8 +358,6 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Equal(t, expectedEvent["event_type"], savedEvent["event_type"])
-		assert.Equal(t, expectedEvent["organization"].(map[string]interface{})["id"],
-			savedEvent["organization"].(map[string]interface{})["id"])
 
 		assert.NotNil(t, events[0].ReceivedAt)
 	})
@@ -361,6 +366,7 @@ func Test__ReceiveSemaphoreEvent(t *testing.T) {
 		response := execRequest(server, requestParams{
 			method:      "POST",
 			path:        validURL,
+			orgID:       orgID.String(),
 			body:        generateBigBody(t),
 			signature:   validSignature,
 			contentType: "application/json",
