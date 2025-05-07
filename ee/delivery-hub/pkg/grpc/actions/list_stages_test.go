@@ -66,7 +66,9 @@ func Test__ListStages(t *testing.T) {
 		assert.Equal(t, r.Org.String(), res.Stages[0].OrganizationId)
 		assert.NotEmpty(t, res.Stages[0].CreatedAt)
 		assert.NotEmpty(t, res.Stages[0].RunTemplate)
-		assert.True(t, res.Stages[0].ApprovalRequired)
+		require.Len(t, res.Stages[0].Conditions, 1)
+		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, res.Stages[0].Conditions[0].Type)
+		assert.Equal(t, uint32(1), res.Stages[0].Conditions[0].Approval.Count)
 		assert.Empty(t, res.Stages[0].Connections)
 	})
 }

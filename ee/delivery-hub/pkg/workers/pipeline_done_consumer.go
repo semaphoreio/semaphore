@@ -10,6 +10,7 @@ import (
 	"github.com/renderedtext/go-tackle"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
@@ -107,7 +108,7 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	//
 	result := c.resolveExecutionResult(logger, pipeline)
 
-	return database.Conn().Transaction(func(tx *gorm.DB) error {
+	err = database.Conn().Transaction(func(tx *gorm.DB) error {
 		if err := execution.FinishInTransaction(tx, result); err != nil {
 			logger.Errorf("Error updating execution state: %v", err)
 			return err
@@ -125,6 +126,21 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 		logger.Infof("Execution state updated: %s", result)
 		return nil
 	})
+
+	if err == nil {
+		stage, err := models.FindStageByID(execution.StageID)
+		if err != nil {
+			logger.Errorf("Error finding stage for execution: %v", err)
+			return err
+		}
+
+		err = messages.NewExecutionFinishedMessage(stage.CanvasID.String(), execution).Publish()
+		if err != nil {
+			logger.Errorf("Error publishing execution finished message: %v", err)
+		}
+	}
+
+	return err
 }
 
 func (c *PipelineDoneConsumer) describePipeline(id string) (*pplproto.Pipeline, error) {

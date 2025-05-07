@@ -1,6 +1,8 @@
 package models
 
 import (
+	"fmt"
+	"slices"
 	"time"
 
 	uuid "github.com/google/uuid"
@@ -10,19 +12,122 @@ import (
 )
 
 const (
-	RunTemplateTypeSemaphore = "semaphore"
+	RunTemplateTypeSemaphore     = "semaphore"
+	StageConditionTypeApproval   = "approval"
+	StageConditionTypeTimeWindow = "time-window"
 )
 
 type Stage struct {
-	ID               uuid.UUID `gorm:"type:uuid;primary_key;"`
-	OrganizationID   uuid.UUID
-	CanvasID         uuid.UUID
-	Name             string
-	CreatedAt        *time.Time
-	CreatedBy        uuid.UUID
-	ApprovalRequired bool
+	ID             uuid.UUID `gorm:"type:uuid;primary_key;"`
+	OrganizationID uuid.UUID
+	CanvasID       uuid.UUID
+	Name           string
+	CreatedAt      *time.Time
+	CreatedBy      uuid.UUID
 
+	Conditions  datatypes.JSONSlice[StageCondition]
 	RunTemplate datatypes.JSONType[RunTemplate]
+}
+
+type StageCondition struct {
+	Type       string               `json:"type"`
+	Approval   *ApprovalCondition   `json:"approval,omitempty"`
+	TimeWindow *TimeWindowCondition `json:"time,omitempty"`
+}
+
+type TimeWindowCondition struct {
+	Start    string   `json:"start"`
+	End      string   `json:"end"`
+	WeekDays []string `json:"week_days"`
+}
+
+func NewTimeWindowCondition(start, end string, days []string) (*TimeWindowCondition, error) {
+	if err := validateTime(start); err != nil {
+		return nil, fmt.Errorf("invalid start")
+	}
+
+	if err := validateTime(end); err != nil {
+		return nil, fmt.Errorf("invalid end")
+	}
+
+	if len(days) == 0 {
+		return nil, fmt.Errorf("missing week day list")
+	}
+
+	if err := validateWeekDays(days); err != nil {
+		return nil, err
+	}
+
+	return &TimeWindowCondition{
+		Start:    start,
+		End:      end,
+		WeekDays: days,
+	}, nil
+}
+
+// We only need HH:mm precision, so we use time.TimeOnly format
+// but without the seconds part.
+// See: https://pkg.go.dev/time#pkg-constants.
+var layout = "15:04"
+
+// Copied from Golang's time package
+var longDayNames = []string{
+	"Sunday",
+	"Monday",
+	"Tuesday",
+	"Wednesday",
+	"Thursday",
+	"Friday",
+	"Saturday",
+}
+
+func validateTime(t string) error {
+	_, err := time.Parse(layout, t)
+	return err
+}
+
+func validateWeekDays(days []string) error {
+	for _, day := range days {
+		if !slices.Contains(longDayNames, day) {
+			return fmt.Errorf("invalid day %s", day)
+		}
+	}
+
+	return nil
+}
+
+func (c *TimeWindowCondition) Evaluate(t *time.Time) error {
+	weekDay := t.Weekday().String()
+	if !slices.Contains(c.WeekDays, weekDay) {
+		return fmt.Errorf("current day - %s - is outside week days allowed - %v", weekDay, c.WeekDays)
+	}
+
+	hourAndMinute := fmt.Sprintf("%02d:%02d", t.Hour(), t.Minute())
+	now, err := time.Parse(layout, hourAndMinute)
+	if err != nil {
+		return err
+	}
+
+	if !c.inTimeWindow(now) {
+		return fmt.Errorf("%s is not in time window %s-%s", hourAndMinute, c.Start, c.End)
+	}
+
+	return nil
+}
+
+func (c *TimeWindowCondition) inTimeWindow(now time.Time) bool {
+	start, _ := time.Parse(layout, c.Start)
+	end, _ := time.Parse(layout, c.End)
+
+	if start.Before(end) {
+		return (now.After(start) || now.Equal(start)) && now.Before(end)
+	}
+
+	return (now.After(start) || now.Equal(start)) || now.Before(end)
+}
+
+type ApprovalCondition struct {
+	Count int `json:"count"`
 }
 
 type RunTemplate struct {
@@ -78,8 +183,28 @@ func FindStage(id, orgID, canvasID uuid.UUID) (*Stage, error) {
 	return &stage, nil
 }
 
+func (s *Stage) ApprovalsRequired() int {
+	for _, condition := range s.Conditions {
+		if condition.Type == StageConditionTypeApproval {
+			return condition.Approval.Count
+		}
+	}
+
+	return 0
+}
+
+func (s *Stage) HasApprovalCondition() bool {
+	for _, condition := range s.Conditions {
+		if condition.Type == StageConditionTypeApproval {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (s *Stage) ListPendingEvents() ([]StageEvent, error) {
-	return s.ListEvents([]string{StageEventPending})
+	return s.ListEvents([]string{StageEventStatePending})
 }
 
 func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
@@ -87,6 +212,7 @@ func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
 	err := database.Conn().
 		Where("stage_id = ?", s.ID).
 		Where("state IN ?", states).
+		Order("created_at DESC").
 		Find(&events).
 		Error
 

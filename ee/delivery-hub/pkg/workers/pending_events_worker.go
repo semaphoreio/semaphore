@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/grpc/actions/messages"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/logging"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -152,9 +153,14 @@ func (w *PendingEventsWorker) filterStages(logger *log.Entry, event *models.Even
 func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.Stage) error {
 	return database.Conn().Transaction(func(tx *gorm.DB) error {
 		for _, stage := range stages {
-			_, err := models.CreateStageEventInTransaction(tx, stage.ID, event)
+			event, err := models.CreateStageEventInTransaction(tx, stage.ID, event)
 			if err != nil {
 				return fmt.Errorf("error creating pending stage event: %v", err)
+			}
+
+			err = messages.NewStageEventCreatedMessage(stage.CanvasID.String(), event).Publish()
+			if err != nil {
+				logging.ForStage(&stage).Errorf("failed to publish stage event created message: %v", err)
 			}
 		}
 

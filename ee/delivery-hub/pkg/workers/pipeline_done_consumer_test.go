@@ -12,12 +12,17 @@ import (
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
+const ExecutionFinishedRoutingKey = "execution-finished"
+
 func Test__PipelineDoneConsumer(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{
+		Source: true, Stage: true, Approvals: 1, Grpc: true,
+	})
 
 	amqpURL := "amqp://guest:guest@rabbitmq:5672"
 	w := NewPipelineDoneConsumer(amqpURL, "0.0.0.0:50052")
@@ -39,6 +44,10 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		workflowID := uuid.New().String()
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
+
+		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Mock failed result and publish pipeline done message.
@@ -73,7 +82,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		list, err := models.ListEventsBySourceID(r.Stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].State, models.StageEventStatePending)
 		require.Equal(t, list[0].SourceID, r.Stage.ID)
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
@@ -85,6 +94,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NotEmpty(t, e.Execution.CreatedAt)
 		require.NotEmpty(t, e.Execution.StartedAt)
 		require.NotEmpty(t, e.Execution.FinishedAt)
+		require.True(t, testconsumer.HasReceivedMessage())
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -96,6 +106,10 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		workflowID := uuid.New().String()
 		execution := support.CreateExecution(t, r.Source, r.Stage)
 		require.NoError(t, execution.Start(workflowID))
+
+		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Mock failed result and publish pipeline done message.
@@ -130,7 +144,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		list, err := models.ListEventsBySourceID(r.Stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventPending)
+		require.Equal(t, list[0].State, models.StageEventStatePending)
 		require.Equal(t, list[0].SourceID, r.Stage.ID)
 		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
@@ -142,6 +156,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		require.NotEmpty(t, e.Execution.CreatedAt)
 		require.NotEmpty(t, e.Execution.StartedAt)
 		require.NotEmpty(t, e.Execution.FinishedAt)
+		require.True(t, testconsumer.HasReceivedMessage())
 	})
 }
 

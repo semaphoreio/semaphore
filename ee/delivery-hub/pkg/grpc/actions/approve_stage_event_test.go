@@ -5,14 +5,18 @@ import (
 	"testing"
 
 	uuid "github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+const StageEventApprovedRoutingKey = "stage-event-approved"
 
 func Test__ApproveStageEvent(t *testing.T) {
 	r := support.Setup(t)
@@ -20,6 +24,8 @@ func Test__ApproveStageEvent(t *testing.T) {
 	require.NoError(t, err)
 	event, err := models.CreateStageEvent(r.Stage.ID, e)
 	require.NoError(t, err)
+
+	userID := uuid.New().String()
 
 	t.Run("no org ID -> error", func(t *testing.T) {
 		_, err := ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
@@ -79,13 +85,18 @@ func Test__ApproveStageEvent(t *testing.T) {
 		assert.Equal(t, "event not found", s.Message())
 	})
 
-	t.Run("stage with stage events -> approves and returns event", func(t *testing.T) {
+	t.Run("approves and returns event", func(t *testing.T) {
+		amqpURL, _ := config.RabbitMQURL()
+		testconsumer := testconsumer.New(amqpURL, StageEventApprovedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		res, err := ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
 			OrganizationId: r.Canvas.OrganizationID.String(),
 			CanvasId:       r.Canvas.ID.String(),
 			StageId:        r.Stage.ID.String(),
 			EventId:        event.ID.String(),
-			RequesterId:    uuid.New().String(),
+			RequesterId:    userID,
 		})
 
 		require.NoError(t, err)
@@ -94,8 +105,27 @@ func Test__ApproveStageEvent(t *testing.T) {
 		assert.Equal(t, event.ID.String(), res.Event.Id)
 		assert.Equal(t, r.Source.ID.String(), res.Event.SourceId)
 		assert.Equal(t, protos.Connection_TYPE_EVENT_SOURCE, res.Event.SourceType)
-		assert.Equal(t, protos.StageEvent_PENDING, res.Event.State)
+		assert.Equal(t, protos.StageEvent_STATE_PENDING, res.Event.State)
 		assert.NotNil(t, res.Event.CreatedAt)
-		assert.NotNil(t, res.Event.ApprovedAt)
+		require.Len(t, res.Event.Approvals, 1)
+		assert.Equal(t, userID, res.Event.Approvals[0].ApprovedBy)
+		assert.NotNil(t, res.Event.Approvals[0].ApprovedAt)
+
+		assert.True(t, testconsumer.HasReceivedMessage())
+	})
+
+	t.Run("approves with same requester ID -> error", func(t *testing.T) {
+		_, err := ApproveStageEvent(context.Background(), &protos.ApproveStageEventRequest{
+			OrganizationId: r.Canvas.OrganizationID.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			StageId:        r.Stage.ID.String(),
+			EventId:        event.ID.String(),
+			RequesterId:    userID,
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "event already approved by requester", s.Message())
 	})
 }

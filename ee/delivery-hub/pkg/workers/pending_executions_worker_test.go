@@ -6,28 +6,36 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/events"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/jwt"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	schedulepb "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/periodic_scheduler"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
+	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+const ExecutionStartedRoutingKey = "execution-started"
+
 func Test__PendingExecutionsWorker(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Grpc: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{
+		Source: true, Stage: true, Grpc: true, Approvals: 1,
+	})
+
 	w := PendingExecutionsWorker{
 		RepoProxyURL: "0.0.0.0:50052",
 		SchedulerURL: "0.0.0.0:50052",
 		JwtSigner:    jwt.NewSigner("test"),
 	}
+	amqpURL, _ := config.RabbitMQURL()
 
 	t.Run("semaphore workflow is created", func(t *testing.T) {
 		//
 		// Create stage that creates Semaphore workflows.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-wf", r.User.String(), false, support.RunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-wf", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -36,6 +44,10 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 
 		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
+
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
 
 		//
 		// Create pending execution.
@@ -53,6 +65,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, models.StageExecutionStarted, execution.State)
 		assert.NotEmpty(t, execution.ReferenceID)
 		assert.NotEmpty(t, execution.StartedAt)
+		assert.True(t, testconsumer.HasReceivedMessage())
 		repoProxyReq := r.Grpc.RepoProxyService.GetLastCreateRequest()
 		require.NotNil(t, repoProxyReq)
 		assert.Equal(t, "demo-project", repoProxyReq.ProjectId)
@@ -65,7 +78,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create stage that trigger Semaphore task.
 		//
-		require.NoError(t, r.Canvas.CreateStage("stage-task", r.User.String(), false, support.TaskRunTemplate(), []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-task", r.User.String(), []models.StageCondition{}, support.TaskRunTemplate(), []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
@@ -85,6 +98,10 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
 
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		//
 		// Trigger the worker, and verify that request to scheduler was sent,
 		// and that execution was moved to 'started' state.
@@ -96,6 +113,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, models.StageExecutionStarted, execution.State)
 		assert.NotEmpty(t, execution.ReferenceID)
 		assert.NotEmpty(t, execution.StartedAt)
+		assert.True(t, testconsumer.HasReceivedMessage())
 
 		req := r.Grpc.SchedulerService.GetLastRunNowRequest()
 		require.NotNil(t, req)
@@ -120,7 +138,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 			"STAGE_1_VERSION": "${{ self.Conn('stage-1').outputs.version }}",
 		}
 
-		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), false, template, []models.StageConnection{
+		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), []models.StageCondition{}, template, []models.StageConnection{
 			{
 				SourceID:   r.Source.ID,
 				SourceName: r.Source.Name,
@@ -154,6 +172,10 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		execution, err := models.CreateStageExecution(stage.ID, event.ID)
 		require.NoError(t, err)
 
+		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
 		//
 		// Trigger the worker, and verify that request to scheduler was sent,
 		// and that execution was moved to 'started' state.
@@ -165,6 +187,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		assert.Equal(t, models.StageExecutionStarted, execution.State)
 		assert.NotEmpty(t, execution.ReferenceID)
 		assert.NotEmpty(t, execution.StartedAt)
+		assert.True(t, testconsumer.HasReceivedMessage())
 
 		req := r.Grpc.SchedulerService.GetLastRunNowRequest()
 		require.NotNil(t, req)

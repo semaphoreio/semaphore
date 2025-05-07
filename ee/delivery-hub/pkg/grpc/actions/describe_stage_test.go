@@ -14,7 +14,7 @@ import (
 )
 
 func Test__DescribeStage(t *testing.T) {
-	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true})
+	r := support.SetupWithOptions(t, support.SetupOptions{Source: true, Stage: true, Approvals: 1})
 
 	t.Run("canvas does not exist -> error", func(t *testing.T) {
 		_, err := DescribeStage(context.Background(), &protos.DescribeStageRequest{
@@ -67,9 +67,11 @@ func Test__DescribeStage(t *testing.T) {
 		require.Equal(t, r.Canvas.ID.String(), response.Stage.CanvasId)
 		require.Equal(t, r.Org.String(), response.Stage.OrganizationId)
 		require.NotNil(t, response.Stage.CreatedAt)
-		require.True(t, response.Stage.ApprovalRequired)
 		require.NotNil(t, response.Stage.RunTemplate)
 		require.Len(t, response.Stage.Connections, 0)
+		require.Len(t, response.Stage.Conditions, 1)
+		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, response.Stage.Conditions[0].Type)
+		assert.Equal(t, uint32(1), response.Stage.Conditions[0].Approval.Count)
 	})
 
 	t.Run("with ID", func(t *testing.T) {
@@ -85,8 +87,10 @@ func Test__DescribeStage(t *testing.T) {
 		require.Equal(t, r.Canvas.ID.String(), response.Stage.CanvasId)
 		require.Equal(t, r.Org.String(), response.Stage.OrganizationId)
 		require.NotNil(t, response.Stage.CreatedAt)
-		require.True(t, response.Stage.ApprovalRequired)
+		require.Len(t, response.Stage.Conditions, 1)
 		require.NotNil(t, response.Stage.RunTemplate)
 		require.Len(t, response.Stage.Connections, 0)
+		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, response.Stage.Conditions[0].Type)
+		assert.Equal(t, uint32(1), response.Stage.Conditions[0].Approval.Count)
 	})
 }
