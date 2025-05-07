@@ -25,3 +25,4 @@ e2e-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 /out/
+.envrc
