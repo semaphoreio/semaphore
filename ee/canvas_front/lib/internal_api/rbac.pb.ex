@@ -375,45 +375,57 @@ defmodule InternalApi.RBAC.RBAC.Service do
 
   use GRPC.Service, name: "InternalApi.RBAC.RBAC", protoc_gen_elixir_version: "0.14.1"
 
-  rpc :ListUserPermissions,
-      InternalApi.RBAC.ListUserPermissionsRequest,
-      InternalApi.RBAC.ListUserPermissionsResponse
+  rpc(
+    :ListUserPermissions,
+    InternalApi.RBAC.ListUserPermissionsRequest,
+    InternalApi.RBAC.ListUserPermissionsResponse
+  )
 
-  rpc :ListExistingPermissions,
-      InternalApi.RBAC.ListExistingPermissionsRequest,
-      InternalApi.RBAC.ListExistingPermissionsResponse
+  rpc(
+    :ListExistingPermissions,
+    InternalApi.RBAC.ListExistingPermissionsRequest,
+    InternalApi.RBAC.ListExistingPermissionsResponse
+  )
 
-  rpc :AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse
+  rpc(:AssignRole, InternalApi.RBAC.AssignRoleRequest, InternalApi.RBAC.AssignRoleResponse)
 
-  rpc :RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse
+  rpc(:RetractRole, InternalApi.RBAC.RetractRoleRequest, InternalApi.RBAC.RetractRoleResponse)
 
-  rpc :SubjectsHaveRoles,
-      InternalApi.RBAC.SubjectsHaveRolesRequest,
-      InternalApi.RBAC.SubjectsHaveRolesResponse
+  rpc(
+    :SubjectsHaveRoles,
+    InternalApi.RBAC.SubjectsHaveRolesRequest,
+    InternalApi.RBAC.SubjectsHaveRolesResponse
+  )
 
-  rpc :ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse
+  rpc(:ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse)
 
-  rpc :DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse
+  rpc(:DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse)
 
-  rpc :ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse
+  rpc(:ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse)
 
-  rpc :DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse
+  rpc(:DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse)
 
-  rpc :ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse
+  rpc(:ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse)
 
-  rpc :CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse
+  rpc(:CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse)
 
-  rpc :ListAccessibleOrgs,
-      InternalApi.RBAC.ListAccessibleOrgsRequest,
-      InternalApi.RBAC.ListAccessibleOrgsResponse
+  rpc(
+    :ListAccessibleOrgs,
+    InternalApi.RBAC.ListAccessibleOrgsRequest,
+    InternalApi.RBAC.ListAccessibleOrgsResponse
+  )
 
-  rpc :ListAccessibleProjects,
-      InternalApi.RBAC.ListAccessibleProjectsRequest,
-      InternalApi.RBAC.ListAccessibleProjectsResponse
+  rpc(
+    :ListAccessibleProjects,
+    InternalApi.RBAC.ListAccessibleProjectsRequest,
+    InternalApi.RBAC.ListAccessibleProjectsResponse
+  )
 
-  rpc :RefreshCollaborators,
-      InternalApi.RBAC.RefreshCollaboratorsRequest,
-      InternalApi.RBAC.RefreshCollaboratorsResponse
+  rpc(
+    :RefreshCollaborators,
+    InternalApi.RBAC.RefreshCollaboratorsRequest,
+    InternalApi.RBAC.RefreshCollaboratorsResponse
+  )
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do

@@ -44,6 +44,17 @@ config :sentry, client: CanvasFront.SentryFinchHTTPClient
 
 config :canvas_front, :environment, config_env()
 
+if System.get_env("AMQP_URL") != nil do
+  config :amqp,
+    connections: [
+      amqp: [
+        url: System.get_env("AMQP_URL"),
+        name: "#{System.get_env("HOSTNAME", "canvas_front")}"
+      ]
+    ],
+    channels: []
+end
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

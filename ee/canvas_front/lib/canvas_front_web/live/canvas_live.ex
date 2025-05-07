@@ -30,7 +30,8 @@ defmodule CanvasFrontWeb.CanvasLive do
         canvas_id: canvas_id,
         stages: stages,
         canvas: canvas,
-        event_sources: event_sources
+        event_sources: event_sources,
+        executions: []
       )
 
     # subscribe to PubSub topic for live updates
@@ -73,6 +74,114 @@ defmodule CanvasFrontWeb.CanvasLive do
       end
 
     {:noreply, push_event(socket, "event_source_added", event_source)}
+  end
+
+  @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_created", payload: stage}, socket) do
+    stage =
+      if Map.has_key?(stage, :created_at) do
+        Map.update!(stage, :created_at, &ts_to_iso/1)
+      else
+        stage
+      end
+
+    stages = [stage | socket.assigns.stages]
+    {:noreply, socket |> assign(:stages, stages) |> push_event("stage_created", stage)}
+  end
+
+  @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_event_created", payload: event}, socket) do
+    {:noreply, push_event(socket, "stage_event_created", event)}
+  end
+
+  @impl true
+  def handle_info(
+        %Phoenix.Socket.Broadcast{event: "stage_event_approved", payload: event},
+        socket
+      ) do
+    {:noreply, push_event(socket, "stage_event_approved", event)}
+  end
+
+  @impl true
+  def handle_info(
+        %Phoenix.Socket.Broadcast{event: "execution_created", payload: execution},
+        socket
+      ) do
+    execution =
+      if Map.has_key?(execution, :created_at) do
+        Map.update!(execution, :created_at, &ts_to_iso/1)
+      else
+        execution
+      end
+
+    executions = [execution | socket.assigns.executions]
+
+    {:noreply,
+     socket |> assign(:executions, executions) |> push_event("execution_created", execution)}
+  end
+
+  @impl true
+  def handle_info(
+        %Phoenix.Socket.Broadcast{event: "execution_started", payload: execution},
+        socket
+      ) do
+    updated_executions =
+      Enum.map(socket.assigns.executions, fn existing ->
+        if existing.id == execution.id do
+          if Map.has_key?(execution, :started_at) do
+            Map.update!(execution, :started_at, &ts_to_iso/1)
+          else
+            execution
+          end
+        else
+          existing
+        end
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:executions, updated_executions)
+     |> push_event("execution_started", execution)}
+  end
+
+  @impl true
+  def handle_info(
+        %Phoenix.Socket.Broadcast{event: "execution_finished", payload: execution},
+        socket
+      ) do
+    updated_executions =
+      Enum.map(socket.assigns.executions, fn existing ->
+        if existing.id == execution.id do
+          if Map.has_key?(execution, :finished_at) do
+            Map.update!(execution, :finished_at, &ts_to_iso/1)
+          else
+            execution
+          end
+        else
+          existing
+        end
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:executions, updated_executions)
+     |> push_event("execution_finished", execution)}
+  end
+
+  @impl true
+  def handle_info(%Phoenix.Socket.Broadcast{event: event, payload: payload}, socket) do
+    Logger.debug("Received unhandled event: #{event} with payload: #{inspect(payload)}")
+    {:noreply, socket}
+  end
+
+  def update_stage_with_event(stages, event) do
+    Enum.map(stages, fn stage ->
+      if stage.id == event.stage_id do
+        stage
+      else
+        stage
+      end
+    end)
   end
 
   defp ts_to_iso(%Google.Protobuf.Timestamp{seconds: s, nanos: _}) do

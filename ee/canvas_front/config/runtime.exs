@@ -46,6 +46,8 @@ feature_provider =
 
 config FeatureProvider, :provider, feature_provider
 
+config :canvas_front, amqp_url: System.get_env("AMQP_URL") || "amqp://127.0.0.1:5672"
+
 if config_env() == :prod do
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
@@ -75,6 +77,17 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base
+
+  if System.get_env("AMQP_URL") != nil do
+    config :amqp,
+      connections: [
+        amqp: [
+          url: System.get_env("AMQP_URL"),
+          name: "#{System.get_env("HOSTNAME", "canvas_front")}"
+        ]
+      ],
+      channels: []
+  end
 
   config :canvas_front,
     delivery_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_DELIVERY"),
