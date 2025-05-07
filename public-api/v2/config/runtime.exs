@@ -32,7 +32,7 @@ config :public_api,
   gofer_grpc_endpoint: System.get_env("GOFER_GRPC_URL") || "127.0.0.1:50052",
   secrethub_grpc_endpoint: System.get_env("SECRETHUB_GRPC_URL") || "127.0.0.1:50052",
   dashboardhub_grpc_endpoint: System.get_env("DASHBOARDHUB_GRPC_URL") || "127.0.0.1:50052",
-  canvas_grpc_endpoint: System.get_env("INTERNAL_API_URL_CANVAS") || "127.0.0.1:50052",
+  canvas_grpc_endpoint: System.get_env("INTERNAL_API_URL_DELIVERY") || "127.0.0.1:50052",
   self_hosted_hub_grpc_endpoint: System.get_env("SELF_HOSTED_HUB_URL") || "127.0.0.1:50052",
   notifications_grpc_endpoint: System.get_env("NOTIFICATIONS_GRPC_URL") || "127.0.0.1:50052",
   projecthub_grpc_endpoint: System.get_env("PROJECTHUB_GRPC_URL") || "127.0.0.1:50052"
