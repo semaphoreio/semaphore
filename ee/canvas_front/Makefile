@@ -29,6 +29,11 @@ CONTAINER_ENV_VARS = \
 	-e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
 	-e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
 
+test.ex.setup: export MIX_ENV=test
+test.ex.setup:
+ifneq ($(CI),)
+	sem-service start rabbitmq 3.8
+endif
 
 pb.gen.internal:
 	rm -rf $(TMP_REPO_DIR)
