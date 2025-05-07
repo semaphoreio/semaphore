@@ -83,8 +83,6 @@ defmodule Support.Stubs.RBAC do
   ]
 
   def init do
-    Logger.info("rbac api init")
-
     DB.add_table(:rbac_roles, [
       :id,
       :name,
@@ -105,7 +103,6 @@ defmodule Support.Stubs.RBAC do
     DB.add_table(:permissions, [:id, :name, :description, :scope_id])
 
     seed_data()
-    Logger.info("rbac api init done")
   end
 
   def seed_data do

@@ -1,25 +1,24 @@
 import React, { useMemo, useEffect, useCallback } from "react";
 import { ReactFlow, Controls, Background, useNodesState, useEdgesState, Node } from "@xyflow/react";
-import { useCanvasContext } from "../contexts/CanvasContext";
+import { useCanvasStore } from "../store/canvasStore";
 import '@xyflow/react/dist/style.css';
 
 
 import DeploymentCard from '../components/nodes/DeploymentCard';
 import GithubIntegration from '../components/nodes/GithubIntegration';
-import type { NodeTypes } from '@xyflow/react';
-import type { ComponentType } from 'react';
+// import type { NodeTypes } from '@xyflow/react';
 
-// Cast our components to satisfy ReactFlow's NodeTypes requirements
 export const nodeTypes = {
-  deploymentCard: DeploymentCard as ComponentType<any>,
-  githubIntegration: GithubIntegration as ComponentType<any>,
-} as unknown as NodeTypes;
+  deploymentCard: DeploymentCard,
+  githubIntegration: GithubIntegration,
+}
+// } as NodeTypes;
 
 /**
  * Renders the canvas data as React Flow nodes and edges.
  */
 export const FlowRenderer: React.FC = () => {
-  const { stages, event_sources, updateNodePosition } = useCanvasContext();
+  const { stages, event_sources, updateNodePosition } = useCanvasStore();
   
   // Create initial nodes and edges (only run once when the data changes)
   const initialNodes = useMemo(() => 

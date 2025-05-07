@@ -65,7 +65,7 @@ defmodule CanvasFront.Stores.Stage do
         organization_id: Map.get(params, :organization_id),
         canvas_id: Map.get(params, :canvas_id),
         connections: Map.get(params, :connections),
-        approval_required: Map.get(params, :approval_required),
+        conditions: Map.get(params, :conditions),
         requester_id: Map.get(params, :requester_id),
         run_template: Map.get(params, :run_template)
       }
@@ -126,5 +126,6 @@ defmodule CanvasFront.Stores.Stage do
     stage
     |> Map.from_struct()
     |> Map.update(:connections, [], fn conns -> Enum.map(conns, &Map.from_struct/1) end)
+    |> Map.update(:conditions, [], fn conditions -> Enum.map(conditions, &Map.from_struct/1) end)
   end
 end
