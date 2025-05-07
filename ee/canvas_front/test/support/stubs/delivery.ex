@@ -241,12 +241,12 @@ defmodule Support.Stubs.Delivery do
     DB.delete(:stage, id)
   end
 
-  def list_canvases() do
+  def list_canvases do
     list(:canvas)
   end
 
   @doc "Seeds an event source into the mock store"
-  defp seed_event_source(attrs) do
+  def seed_event_source(attrs) do
     id = attrs[:id] || Ecto.UUID.generate()
     now = %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0}
 

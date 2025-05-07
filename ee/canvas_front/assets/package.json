@@ -3,7 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host -l warn",
-    "build": "tsc && vite build"
+    "build": "tsc && vite build",
+    "tsc.check": "tsc --noEmit | npx typescript-xunit-xml | tee ../out/compile-ts-junit-report.xml"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",

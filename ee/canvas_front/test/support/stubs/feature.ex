@@ -71,12 +71,12 @@ defmodule Support.Stubs.Feature do
     availability = availability_from_opts(opts)
 
     feature =
-      API.Feature.new(%{
+      %API.Feature{
         type: feature_type,
         name: name,
         description: description,
         availability: availability
-      })
+      }
 
     DB.upsert(:features, %{
       id: feature_type,
@@ -104,7 +104,7 @@ defmodule Support.Stubs.Feature do
     {vcpu, ram, disk} = specs_from_opts(opts)
 
     machine =
-      API.Machine.new(%{
+      %API.Machine{
         type: machine_type,
         availability: availability,
         platform: platform,
@@ -113,7 +113,7 @@ defmodule Support.Stubs.Feature do
         vcpu: vcpu,
         ram: ram,
         disk: disk
-      })
+      }
 
     DB.upsert(:machines, %{
       id: machine_type,
@@ -187,11 +187,10 @@ defmodule Support.Stubs.Feature do
     availability = availability_from_opts(opts, feature.availability)
 
     organization_feature =
-      API.OrganizationFeature.new(%{
-        org_id: org_id,
+      %API.OrganizationFeature{
         feature: feature,
         availability: availability
-      })
+      }
 
     DB.upsert(:organization_features, %{
       id: {org_id, feature_type},
@@ -217,10 +216,10 @@ defmodule Support.Stubs.Feature do
     availability = availability_from_opts(opts, machine.availability)
 
     organization_machine =
-      API.OrganizationMachine.new(%{
+      %API.OrganizationMachine{
         machine: machine,
         availability: availability
-      })
+      }
 
     DB.upsert(:organization_machines, %{
       id: {org_id, machine_type},
@@ -241,7 +240,7 @@ defmodule Support.Stubs.Feature do
          os_images <- opts[:os_images] || defaults[platform],
          default_image <- opts[:os_default_image] || hd(os_images),
          platform <- "#{platform}" |> String.upcase() |> String.to_existing_atom() do
-      {API.Machine.Platform.value(platform), os_images, default_image}
+      {platform, os_images, default_image}
     end
   end
 
@@ -281,13 +280,13 @@ defmodule Support.Stubs.Feature do
         availability
 
       :ENABLED ->
-        %{availability | state: API.Availability.State.value(:ENABLED)}
+        %{availability | state: :ENABLED}
 
       :HIDDEN ->
-        %{availability | state: API.Availability.State.value(:HIDDEN)}
+        %{availability | state: :HIDDEN}
 
       :ZERO_STATE ->
-        %{availability | state: API.Availability.State.value(:ZERO_STATE)}
+        %{availability | state: :ZERO_STATE}
 
       state ->
         raise "Unknown state: #{state}"
@@ -354,19 +353,19 @@ defmodule Support.Stubs.Feature do
         _ -> false
       end)
       |> Enum.map(& &1.model)
-      |> then(&API.ListOrganizationMachinesResponse.new(organization_machines: &1))
+      |> then(&%API.ListOrganizationMachinesResponse{organization_machines: &1})
     end
 
     def list_machines(_request, _) do
       DB.all(:machines)
       |> Enum.map(& &1.model)
-      |> then(&API.ListMachinesResponse.new(machines: &1))
+      |> then(&%API.ListMachinesResponse{machines: &1})
     end
 
     def list_features(_request, _) do
       DB.all(:features)
       |> Enum.map(& &1.model)
-      |> then(&API.ListFeaturesResponse.new(features: &1))
+      |> then(&%API.ListFeaturesResponse{features: &1})
     end
   end
 end

@@ -39,7 +39,7 @@ defmodule CanvasFrontWeb.DevDashboard.EventSourceManagerLive.Edit do
       y: parse_int(params["position_y"])
     }
 
-    # Update event source 
+    # Update event source
     update_attrs = %{
       id: socket.assigns.event_source.id,
       name: params["name"],

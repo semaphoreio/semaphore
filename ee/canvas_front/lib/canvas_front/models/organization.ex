@@ -58,7 +58,7 @@ defmodule CanvasFront.Models.Organization do
 
     {:ok, res} = Stub.describe(channel(), req, timeout: 30_000)
 
-    if res.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
+    if res.status.code == :OK do
       org = construct(res.organization)
 
       Enum.each(@cacheble_fields, fn {f, timeout} ->

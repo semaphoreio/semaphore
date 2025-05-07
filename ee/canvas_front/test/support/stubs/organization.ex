@@ -48,7 +48,7 @@ defmodule Support.Stubs.Organization do
       settings: []
     ]
 
-    api_model = default |> Keyword.merge(params) |> Organization.new()
+    api_model = default |> Keyword.merge(params) |> then(&struct(Organization, &1))
 
     DB.insert(:organizations, %{
       id: api_model.org_id,
@@ -71,11 +71,11 @@ defmodule Support.Stubs.Organization do
     default = [
       origin: "Automatic/Billing",
       description: "Trial expired",
-      reason: Suspension.Reason.value(:INSUFFICIENT_FUNDS),
+      reason: :INSUFFICIENT_FUNDS,
       created_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543}
     ]
 
-    api_model = default |> Keyword.merge(params) |> Suspension.new()
+    api_model = default |> Keyword.merge(params) |> then(&struct(Suspension, &1))
 
     DB.insert(:suspensions, %{
       id: Ecto.UUID.generate(),
@@ -86,7 +86,7 @@ defmodule Support.Stubs.Organization do
 
   def put_settings(org, settings) do
     alias InternalApi.Organization.OrganizationSetting, as: Setting
-    settings = Enum.into(settings, [], &Setting.new(key: elem(&1, 0), value: elem(&1, 1)))
+    settings = Enum.into(settings, [], &%Setting{key: elem(&1, 0), value: elem(&1, 1)})
     new_org = Map.merge(org.api_model, %{settings: settings})
 
     DB.update(:organizations, %{
@@ -116,43 +116,46 @@ defmodule Support.Stubs.Organization do
     use GRPC.Server, service: InternalApi.Organization.OrganizationService.Service
 
     def destroy(_, _) do
-      Google.Protobuf.Empty.new()
+      %Google.Protobuf.Empty{}
     end
 
     def describe(req, _) do
       org = DB.find(:organizations, req.org_id)
 
       if req.include_quotas do
-        DescribeResponse.new(
+        %DescribeResponse{
           status: ok(),
-          organization:
-            InternalApi.Organization.Organization.new(
-              org_username: org.api_model.org_username,
-              name: org.api_model.name,
-              org_id: org.api_model.org_id,
-              created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543),
-              deny_member_workflows: org.api_model.deny_member_workflows,
-              deny_non_member_workflows: org.api_model.deny_non_member_workflows,
-              quotas: []
-            )
-        )
+          organization: %InternalApi.Organization.Organization{
+            org_username: org.api_model.org_username,
+            name: org.api_model.name,
+            org_id: org.api_model.org_id,
+            created_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543},
+            deny_member_workflows: org.api_model.deny_member_workflows,
+            deny_non_member_workflows: org.api_model.deny_non_member_workflows
+          }
+        }
       else
-        DescribeResponse.new(status: ok(), organization: org.api_model)
+        %DescribeResponse{
+          status: ok(),
+          organization: org.api_model
+        }
       end
     rescue
       _ ->
-        DescribeResponse.new(status: bad_param())
+        %DescribeResponse{status: bad_param()}
     end
 
     def describe_many(req, _) do
       orgs = DB.find_many(:organizations, req.org_ids)
 
-      InternalApi.Organization.DescribeManyResponse.new(
+      %InternalApi.Organization.DescribeManyResponse{
         organizations: Enum.map(orgs, & &1.api_model)
-      )
+      }
     rescue
       _ ->
-        reraise GRPC.RPCError, status: GRPC.Status.invalid_argument(), message: "Bad request"
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def update(req, _) do
@@ -174,10 +177,12 @@ defmodule Support.Stubs.Organization do
           api_model: new_org
         })
 
-      UpdateResponse.new(organization: updated.api_model)
+      %UpdateResponse{organization: updated.api_model}
     rescue
       _ ->
-        reraise(GRPC.RPCError, message: "Error", status: GRPC.Status.invalid_argument())
+        reraise GRPC.RPCError,
+                [message: "Error", status: GRPC.Status.invalid_argument()],
+                __STACKTRACE__
     end
 
     def list(_req, _) do
@@ -185,10 +190,10 @@ defmodule Support.Stubs.Organization do
         DB.all(:organizations)
         |> Enum.map(fn o -> o.api_model end)
 
-      ListResponse.new(status: ok(), organizations: orgs)
+      %ListResponse{status: ok(), organizations: orgs}
     end
 
-    def is_valid(req, _) do
+    def valid?(req, _) do
       username = req.org_username
 
       org_usernames =
@@ -199,13 +204,13 @@ defmodule Support.Stubs.Organization do
       (username in org_usernames)
       |> case do
         true ->
-          IsValidResponse.new(
+          %IsValidResponse{
             is_valid: false,
             errors: "Organization name is already taken"
-          )
+          }
 
         _ ->
-          IsValidResponse.new(is_valid: true)
+          %IsValidResponse{is_valid: true}
       end
     end
 
@@ -219,19 +224,19 @@ defmodule Support.Stubs.Organization do
 
       Support.Stubs.RBAC.add_member(entry.api_model.org_id, entry.api_model.owner_id, nil)
 
-      CreateResponse.new(
-        status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
+      %CreateResponse{
+        status: %InternalApi.ResponseStatus{code: :OK},
         organization: entry.api_model
-      )
+      }
     end
 
     def list_suspensions(req, _) do
       suspensions = DB.find_all_by(:suspensions, :organization_id, req.org_id)
 
-      ListSuspensionsResponse.new(
-        status: Google.Rpc.Status.new(code: Google.Rpc.Code.value(:OK)),
+      %ListSuspensionsResponse{
+        status: %Google.Rpc.Status{code: :OK},
         suspensions: Enum.map(suspensions, fn s -> s.api_model end)
-      )
+      }
     end
 
     def members(req, _) do
@@ -248,37 +253,37 @@ defmodule Support.Stubs.Organization do
           end
         end)
 
-      MembersResponse.new(
+      %MembersResponse{
         status: ok(),
         members:
           Enum.map(users, fn user ->
-            InternalApi.Organization.Member.new(
+            %InternalApi.Organization.Member{
               screen_name: user.api_model.name,
               avatar_url: user.api_model.avatar_url,
               user_id: user.api_model.user_id,
               github_username: user.api_model.github_login,
               membership_id: Ecto.UUID.generate()
-            )
+            }
           end),
         not_logged_in_members: []
-      )
+      }
     end
 
     def delete_member(_req, _) do
-      DeleteMemberResponse.new(status: Google.Rpc.Status.new(code: Google.Rpc.Code.value(:OK)))
+      %DeleteMemberResponse{status: %Google.Rpc.Status{code: :OK}}
     end
 
     def add_members(_req, _) do
-      AddMembersResponse.new(
-        member: [InternalApi.Organization.Member.new(screen_name: "example_screen_name")]
-      )
+      %AddMembersResponse{
+        members: [%InternalApi.Organization.Member{screen_name: "example_screen_name"}]
+      }
     end
 
     def add_member(_req, _) do
-      AddMemberResponse.new(
-        member: InternalApi.Organization.Member.new(screen_name: "example_screen_name"),
-        status: Google.Rpc.Status.new(code: Google.Rpc.Code.value(:OK))
-      )
+      %AddMemberResponse{
+        member: %InternalApi.Organization.Member{screen_name: "example_screen_name"},
+        status: %Google.Rpc.Status{code: :OK}
+      }
     end
 
     def fetch_organization_contacts(req, _) do
@@ -287,17 +292,17 @@ defmodule Support.Stubs.Organization do
 
       contacts = DB.find_all_by(:organization_contacts, :org_id, req.org_id)
 
-      FetchOrganizationContactsResponse.new(
+      %FetchOrganizationContactsResponse{
         org_contacts:
           Enum.map(
             contacts,
-            &OrganizationContact.new(
+            &%OrganizationContact{
               org_id: &1.org_id,
-              type: OrganizationContact.ContactType.value(&1.type |> String.to_atom()),
+              type: &1.type |> String.to_atom(),
               name: &1.name
-            )
+            }
           )
-      )
+      }
     end
 
     def modify_organization_contact(req, _) do
@@ -306,18 +311,18 @@ defmodule Support.Stubs.Organization do
       DB.insert(:organization_contacts, %{
         id: Support.Stubs.UUID.gen(),
         org_id: req.org_contact.org_id,
-        type: OrganizationContact.ContactType.key(req.org_contact.type) |> Atom.to_string(),
+        type: req.org_contact.type |> String.to_atom(),
         name: req.org_contact.name
       })
 
-      InternalApi.Organization.ModifyOrganizationContactResponse.new()
+      %InternalApi.Organization.ModifyOrganizationContactResponse{}
     end
 
     def fetch_organization_settings(req, _) do
       alias InternalApi.Organization.FetchOrganizationSettingsResponse
       org = DB.find(:organizations, req.org_id)
       settings = (org && org.api_model.settings) || []
-      FetchOrganizationSettingsResponse.new(settings: settings)
+      %FetchOrganizationSettingsResponse{settings: settings}
     end
 
     def modify_organization_settings(req, _) do
@@ -332,38 +337,34 @@ defmodule Support.Stubs.Organization do
         old_settings
         |> Map.merge(new_settings)
         |> Enum.reject(fn {_, v} -> v == "" end)
-        |> Enum.into([], &Setting.new(key: elem(&1, 0), value: elem(&1, 1)))
+        |> Enum.into([], &%Setting{key: elem(&1, 0), value: elem(&1, 1)})
 
       new_org = Map.merge(org.api_model, %{settings: settings})
 
       DB.update(:organizations, %{id: org.id, name: org.name, api_model: new_org})
-      ModifyOrganizationSettingsResponse.new(settings: new_org.settings)
+      %ModifyOrganizationSettingsResponse{settings: new_org.settings}
     end
 
     def repository_integrators(req, _) do
       case DB.find(:organization_repo_integrators, req.org_id) do
         nil ->
           available = []
-          RepositoryIntegratorsResponse.new(primary: nil, enabled: available)
+          %RepositoryIntegratorsResponse{primary: nil, enabled: available}
 
         record ->
-          RepositoryIntegratorsResponse.new(
+          %RepositoryIntegratorsResponse{
             primary: List.first(record.types),
             enabled: record.types
-          )
+          }
       end
     end
 
-    def billing_org_status(_req, _) do
-      InternalApi.Billing.OrganizationStatusResponse.new(plan_type_slug: "free")
-    end
-
     defp ok do
-      InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK))
+      %InternalApi.ResponseStatus{code: :OK}
     end
 
     defp bad_param do
-      InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:BAD_PARAM))
+      %InternalApi.ResponseStatus{code: :BAD_PARAM}
     end
   end
 end

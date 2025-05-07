@@ -1,8 +1,6 @@
 defmodule CanvasFrontWeb.DevDashboard.EventSourceManagerLive.Show do
   use CanvasFrontWeb, :live_view
 
-  alias CanvasFront.Services
-
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     case CanvasFront.Stores.EventSource.get(%{id: id}) do

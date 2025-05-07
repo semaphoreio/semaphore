@@ -103,8 +103,6 @@ defmodule CanvasFront.Models.User do
   end
 
   def construct(user) do
-    alias InternalApi.User.RepositoryProvider.Type
-
     data = %__MODULE__{
       :id => user.user_id,
       :name => user.name,
@@ -159,7 +157,7 @@ defmodule CanvasFront.Models.User do
     "#{@cache_prefix}-#{id}-#{field}"
   end
 
-  def channel() do
+  def channel do
     GRPC.Stub.connect(Application.fetch_env!(:canvas_front, :guard_user_grpc_endpoint))
   end
 end
