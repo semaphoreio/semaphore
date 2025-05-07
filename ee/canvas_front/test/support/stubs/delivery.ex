@@ -105,7 +105,7 @@ defmodule Support.Stubs.Delivery do
             canvas_id: stage.canvas_id,
             created_at: stage.created_at,
             connections: req.connections || stage.connections,
-            conditions: req.conditions || stage.conditions,
+            conditions: stage.conditions,
             run_template: stage.run_template
           }
 

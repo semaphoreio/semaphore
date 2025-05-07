@@ -1,5 +1,5 @@
-defmodule CanvasFront.Stores.EventStore do
-  def get(params) do
+defmodule CanvasFront.Stores.Event do
+  def get(_params) do
     # TODO: Implement once we have the GRPC service
     nil
   end
