@@ -1,3 +1,4 @@
+import type { LiveProps } from "live_react";
 // Define interfaces for our data types to ensure type safety
 export interface Stage {
   id: string;
@@ -25,12 +26,7 @@ export interface CanvasData {
 }
 
 // We need this type for the live_react handlers
-export interface LiveReactHandlers {
-  handleEvent: (event: string, callback: (payload: Record<string, any>) => void) => string;
-  removeHandleEvent: (callbackRef: string) => void;
-}
-
 export interface CanvasInitialData extends CanvasData {
-  handleEvent: LiveReactHandlers['handleEvent'];
-  removeHandleEvent: LiveReactHandlers['removeHandleEvent'];
+  handleEvent: LiveProps['handleEvent'];
+  removeHandleEvent: LiveProps['removeHandleEvent'];
 }

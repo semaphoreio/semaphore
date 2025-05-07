@@ -46,7 +46,7 @@ defmodule Support.Stubs.Delivery do
         canvas_id: req.canvas_id,
         created_at: %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0},
         connections: req.connections,
-        approval_required: req.approval_required,
+        conditions: req.conditions,
         run_template: req.run_template
       }
 
@@ -105,7 +105,7 @@ defmodule Support.Stubs.Delivery do
             canvas_id: stage.canvas_id,
             created_at: stage.created_at,
             connections: req.connections || stage.connections,
-            approval_required: stage.approval_required,
+            conditions: req.conditions || stage.conditions,
             run_template: stage.run_template
           }
 
@@ -170,7 +170,7 @@ defmodule Support.Stubs.Delivery do
     }
 
     put(:canvas, canvas)
-    canvas
+    Map.from_struct(canvas)
   end
 
   @doc """
@@ -187,7 +187,7 @@ defmodule Support.Stubs.Delivery do
       canvas_id: attrs[:canvas_id] || id,
       created_at: attrs[:created_at] || now,
       connections: attrs[:connections] || [],
-      approval_required: attrs[:approval_required] || false,
+      conditions: attrs[:conditions] || [],
       run_template: attrs[:run_template] || nil
     }
 
@@ -243,6 +243,7 @@ defmodule Support.Stubs.Delivery do
 
   def list_canvases() do
     list(:canvas)
+    |> Enum.map(&Map.from_struct/1)
   end
 
   @doc "Seeds an event source into the mock store"

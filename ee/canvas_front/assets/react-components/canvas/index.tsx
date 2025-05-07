@@ -1,8 +1,9 @@
 import React, { StrictMode, useEffect } from "react";
-import { CanvasProvider } from "./contexts/CanvasContext";
 import { FlowRenderer } from "./components/FlowRenderer";
 import { useLiveReact } from "live_react";
 import type { Stage, EventSource } from "./types";
+import { ReactFlowProvider } from "@xyflow/react";
+import { useCanvasStore } from "./store/canvasStore";
 
 interface CanvasProps {
   canvas?: Record<string, any>;
@@ -16,6 +17,7 @@ export function Canvas({
   event_sources = [],
 }: CanvasProps) {
   const { handleEvent, removeHandleEvent } = useLiveReact();
+  const { initialize, setupLiveViewHandlers } = useCanvasStore();
   
   useEffect(() => {
     console.log("Canvas mounted with:", {
@@ -23,22 +25,30 @@ export function Canvas({
       stagesCount: stages.length,
       eventSourcesCount: event_sources.length
     });
-  }, [canvas, stages, event_sources]);
-  
-  // Now including the required handleEvent and removeHandleEvent properties
-  const providerData = {
-    canvas,
-    stages: Array.isArray(stages) ? stages : [], 
-    event_sources: Array.isArray(event_sources) ? event_sources : [],
-    handleEvent, 
-    removeHandleEvent
-  };
+    
+    // Initialize the store with the provided data
+    const initialData = {
+      canvas,
+      stages: Array.isArray(stages) ? stages : [], 
+      event_sources: Array.isArray(event_sources) ? event_sources : [],
+      handleEvent, 
+      removeHandleEvent
+    };
+    
+    initialize(initialData);
+    
+    // Set up LiveView event handlers and get cleanup function
+    const cleanup = setupLiveViewHandlers(initialData);
+    
+    // Return cleanup function to remove event handlers on unmount
+    return cleanup;
+  }, [canvas, stages, event_sources, handleEvent, removeHandleEvent, initialize, setupLiveViewHandlers]);
   
   return (
     <StrictMode>
-      <CanvasProvider initialData={providerData}>
+      <ReactFlowProvider>
         <FlowRenderer />
-      </CanvasProvider>
+      </ReactFlowProvider>
     </StrictMode>
   );
 }

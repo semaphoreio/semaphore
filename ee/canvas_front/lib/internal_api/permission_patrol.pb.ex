@@ -37,11 +37,9 @@ defmodule InternalApi.PermissionPatrol.PermissionPatrol.Service do
     name: "InternalApi.PermissionPatrol.PermissionPatrol",
     protoc_gen_elixir_version: "0.14.1"
 
-  rpc(
-    :HasPermissions,
-    InternalApi.PermissionPatrol.HasPermissionsRequest,
-    InternalApi.PermissionPatrol.HasPermissionsResponse
-  )
+  rpc :HasPermissions,
+      InternalApi.PermissionPatrol.HasPermissionsRequest,
+      InternalApi.PermissionPatrol.HasPermissionsResponse
 end
 
 defmodule InternalApi.PermissionPatrol.PermissionPatrol.Stub do

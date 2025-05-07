@@ -1,31 +1,21 @@
 import React, { useState, ReactNode } from 'react';
-import type { NodeProps, Node } from '@xyflow/react';
-import { Handle, Position } from '@xyflow/react';
+import type { NodeProps } from '@xyflow/react';
+import { Position } from '@xyflow/react';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
+import CustomBarHandle from './CustomBarHandle';
+import { EventSourceNodeType } from '@/canvas/types/flow';
 
 // Define the data type for the deployment card
 // Using Record<string, unknown> to satisfy ReactFlow's Node constraint
-interface DeploymentCardNodeData extends Record<string, unknown> {
-  label: string;
-  labels: string[];
-  status?: string;
-  timestamp?: string;
-  icon?: string;
-  queue: string[];
-}
-
-// Define the Node type using ReactFlow's Node generic
-type DeploymentCardNode = Node<DeploymentCardNodeData, 'deploymentCard'>;
-
-const DeploymentCard: React.FC<NodeProps<DeploymentCardNode>> = ({ data, selected }) => {
+export default function DeploymentCard({ data }: NodeProps<EventSourceNodeType>) {
   const [showOverlay, setShowOverlay] = useState(false);
   const handleAction = (action: string) => {
     if (action === 'code') setShowOverlay(true);
   };
   return (
-    <div className={`bg-white roundedg shadow-md border ${selected ? 'ring-2 ring-blue-500' : 'border-gray-200'} relative`}>
-      {selected && (
+    <div className={`bg-white roundedg shadow-md border ${data.selected ? 'ring-2 ring-blue-500' : 'border-gray-200'} relative`}>
+      {data.selected && (
         <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-2 bg-white shadow-lg br4 px-3 py-2 border z-10">
           <Tippy content="View code for this stage" placement="top">
             <button className="hover:bg-gray-100 p-2 br4" title="View Code" onClick={() => handleAction('code')}>
@@ -100,8 +90,8 @@ const DeploymentCard: React.FC<NodeProps<DeploymentCardNode>> = ({ data, selecte
           <div className="text-sm text-gray-500 italic">No items in queue</div>
         )}
       </div>
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+      <CustomBarHandle type="target" position={Position.Left} id="target" />
+      <CustomBarHandle type="source" position={Position.Right} id="source" />
     </div>
   );
 };
@@ -124,5 +114,3 @@ function OverlayModal({ open, onClose, children }: OverlayModalProps) {
     </div>
   );
 }
-
-export default DeploymentCard;

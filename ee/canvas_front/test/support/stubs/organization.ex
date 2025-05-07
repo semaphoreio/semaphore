@@ -7,12 +7,10 @@ defmodule Support.Stubs.Organization do
   def default_org_id, do: "92be62c2-9cf4-4dad-b168-d6efa6aa5e21"
 
   def init do
-    Logger.info("organization api init")
     DB.add_table(:organizations, [:id, :name, :api_model])
     DB.add_table(:organization_contacts, [:id, :org_id, :type, :name])
     DB.add_table(:suspensions, [:id, :organization_id, :api_model])
     DB.add_table(:organization_repo_integrators, [:id, :types])
-    Logger.info("organization api init done")
   end
 
   def create_default(params \\ []) do
