@@ -4,11 +4,11 @@ import { Position } from '@xyflow/react';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
 import CustomBarHandle from './CustomBarHandle';
-import { EventSourceNodeType } from '@/canvas/types/flow';
+import { StageNodeType } from '@/canvas/types/flow';
 
 // Define the data type for the deployment card
 // Using Record<string, unknown> to satisfy ReactFlow's Node constraint
-export default function DeploymentCard({ data }: NodeProps<EventSourceNodeType>) {
+export default function StageNode({ data }: NodeProps<StageNodeType>) {
   const [showOverlay, setShowOverlay] = useState(false);
   const handleAction = (action: string) => {
     if (action === 'code') setShowOverlay(true);

@@ -1,18 +1,16 @@
 import React, { useMemo, useEffect, useCallback } from "react";
-import { ReactFlow, Controls, Background, useNodesState, useEdgesState, Node } from "@xyflow/react";
+import { ReactFlow, Controls, Background, Node, useNodesState, useEdgesState } from "@xyflow/react";
 import { useCanvasStore } from "../store/canvasStore";
 import '@xyflow/react/dist/style.css';
 
 
-import DeploymentCard from '../components/nodes/DeploymentCard';
-import GithubIntegration from '../components/nodes/GithubIntegration';
-// import type { NodeTypes } from '@xyflow/react';
+import StageNode from './nodes/stage';
+import GithubIntegration from './nodes/event_source';
 
 export const nodeTypes = {
-  deploymentCard: DeploymentCard,
+  deploymentCard: StageNode,
   githubIntegration: GithubIntegration,
 }
-// } as NodeTypes;
 
 /**
  * Renders the canvas data as React Flow nodes and edges.

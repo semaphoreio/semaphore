@@ -38,7 +38,7 @@ defmodule CanvasFront.Stores.Stage do
 
     with {:ok, channel} <- grpc_channel(),
          {:ok, %DescribeStageResponse{stage: stage}} <- Stub.describe_stage(channel, req) do
-      Map.from_struct(stage)
+      stage_to_map(stage)
     else
       _ -> nil
     end
@@ -127,5 +127,7 @@ defmodule CanvasFront.Stores.Stage do
     |> Map.from_struct()
     |> Map.update(:connections, [], fn conns -> Enum.map(conns, &Map.from_struct/1) end)
     |> Map.update(:conditions, [], fn conditions -> Enum.map(conditions, &Map.from_struct/1) end)
+    |> Map.update(:run_template, %{}, fn run_template -> Map.from_struct(run_template) end)
+    |> Map.drop([:__unknown_fields__])
   end
 end

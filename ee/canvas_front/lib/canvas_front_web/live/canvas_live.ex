@@ -8,19 +8,16 @@ defmodule CanvasFrontWeb.CanvasLive do
   def mount(%{"canvas_id" => canvas_id}, _session, socket) do
     canvas =
       CanvasFront.Stores.Canvas.get(%{id: canvas_id})
-      |> Map.update!(:created_at, &ts_to_iso/1)
 
     Logger.info("Canvas: #{inspect(canvas)}")
 
     stages =
       CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id})
-      |> Enum.map(fn stage -> Map.update!(stage, :created_at, &ts_to_iso/1) end)
 
     Logger.info("Stages: #{inspect(stages)}")
 
     event_sources =
       CanvasFront.Stores.EventSource.list(%{canvas_id: canvas_id})
-      |> Enum.map(fn es -> Map.update!(es, :created_at, &ts_to_iso/1) end)
 
     Logger.info("Event Sources: #{inspect(event_sources)}")
 

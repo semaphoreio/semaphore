@@ -188,7 +188,17 @@ defmodule Support.Stubs.Delivery do
       created_at: attrs[:created_at] || now,
       connections: attrs[:connections] || [],
       conditions: attrs[:conditions] || [],
-      run_template: attrs[:run_template] || nil
+      run_template:
+        attrs[:run_template] ||
+          %{
+            type: :TYPE_SEMAPHORE,
+            semaphore: %{
+              project_id: UUID.uuid4(),
+              branch: "main",
+              pipeline_fle: ".semaphore/semaphore.yml",
+              task_id: UUID.uuid4()
+            }
+          }
     }
 
     put(:stage, stage)
@@ -303,6 +313,12 @@ defmodule Support.Stubs.Delivery do
         seed_stage(%{
           canvas_id: canvas.id,
           name: "Second Test Stage",
+          conditions: [
+            %{
+              type: :CONDITION_TYPE_APPROVAL,
+              approval: %{count: 1}
+            }
+          ],
           connections: [
             %{
               type: :TYPE_EVENT_SOURCE,
@@ -322,6 +338,16 @@ defmodule Support.Stubs.Delivery do
       seed_stage(%{
         canvas_id: canvas.id,
         name: "Third Test Stage",
+        conditions: [
+          %{
+            type: :CONDITION_TYPE_TIME_WINDOW,
+            time_window: %{
+              start: "09:00",
+              end: "17:00",
+              week_days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+            }
+          }
+        ],
         connections: [
           %{
             type: :TYPE_EVENT_SOURCE,
