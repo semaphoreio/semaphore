@@ -1,29 +1,12 @@
 import React from 'react';
-import { Position, NodeProps, Node } from '@xyflow/react';
+import { Position, NodeProps } from '@xyflow/react';
 import CustomBarHandle from './CustomBarHandle';
+import { EventSourceNodeType } from '@/canvas/types/flow';
 
-// Data shape for GitHub Integration node
-type LastEvent = { type: string; release: string; timestamp: string };
-// Extending Record<string, unknown> to satisfy ReactFlow's Node constraint
-type GithubIntegrationNodeData = {
-  id: string;
-  repoName: string;
-  repoUrl: string;
-  lastEvent: LastEvent;
-  selected: boolean;
-}
 
-// Define the complete node type using ReactFlow's Node generic
-type GithubIntegrationNode = Node<GithubIntegrationNodeData, 'githubIntegration'>;
-
-export default function GitHubIntegration({ data }: NodeProps<GithubIntegrationNode>) {
+export default function EventSourceNode({ data }: NodeProps<EventSourceNodeType>) {
   return (
     <div className={`bg-white roundedg shadow-md border ${data.selected ? 'ring-2 ring-blue-500' : 'border-gray-200'}`}>
-      {/* <Handle 
-        type="target" 
-        position={Position.Left} 
-        style={{ background: '#000', width: 10, height: 10 }} 
-      /> */}
       <div className="flex items-center p-3 bg-[#24292e] text-white rounded-tg">
         <span className="mr-2">
           <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor">

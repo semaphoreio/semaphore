@@ -295,37 +295,7 @@ defmodule Support.Stubs.Feature do
 
   @spec seed_machines :: [row(API.Machine.t())]
   def seed_machines do
-    mac_images = ["macos-xcode13", "macos-xcode12"]
-
-    [
-      {"g1-standard-2", platform: :linux, vcpu: "2", ram: "??", disk: "??", state: :HIDDEN},
-      {"g1-standard-4", platform: :linux, vcpu: "4", ram: "??", disk: "??", state: :HIDDEN},
-      {"e1-standard-2",
-       platform: :linux, vcpu: "2", ram: "4", disk: "25", state: :ENABLED, quantity: 8},
-      {"e1-standard-4",
-       platform: :linux, vcpu: "4", ram: "8", disk: "35", state: :ENABLED, quantity: 8},
-      {"e1-standard-8",
-       platform: :linux, vcpu: "8", ram: "16", disk: "45", state: :ENABLED, quantity: 2},
-      {"f1-standard-2", platform: :linux, vcpu: "2", ram: "8", disk: "55", state: :ZERO_STATE},
-      {"f1-standard-4", platform: :linux, vcpu: "4", ram: "16", disk: "75", state: :ZERO_STATE},
-      {"f1-standard-8", platform: :linux, vcpu: "8", ram: "32", disk: "100", state: :ZERO_STATE},
-      {"a1-standard-4",
-       platform: :mac,
-       vcpu: "4",
-       ram: "8",
-       disk: "50",
-       state: :ENABLED,
-       os_images: mac_images,
-       quantity: 2},
-      {"a1-standard-8",
-       platform: :mac,
-       vcpu: "8",
-       ram: "16",
-       disk: "50",
-       state: :ENABLED,
-       os_images: mac_images,
-       quantity: 2}
-    ]
+    []
     |> Enum.map(fn {machine_type, machine_opts} ->
       setup_machine(machine_type, machine_opts)
     end)

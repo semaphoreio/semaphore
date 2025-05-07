@@ -487,51 +487,63 @@ defmodule InternalApi.User.UserService.Service do
 
   use GRPC.Service, name: "InternalApi.User.UserService", protoc_gen_elixir_version: "0.14.1"
 
-  rpc :Describe, InternalApi.User.DescribeRequest, InternalApi.User.DescribeResponse
+  rpc(:Describe, InternalApi.User.DescribeRequest, InternalApi.User.DescribeResponse)
 
-  rpc :DescribeByRepositoryProvider,
-      InternalApi.User.DescribeByRepositoryProviderRequest,
-      InternalApi.User.User
+  rpc(
+    :DescribeByRepositoryProvider,
+    InternalApi.User.DescribeByRepositoryProviderRequest,
+    InternalApi.User.User
+  )
 
-  rpc :DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User
+  rpc(:DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User)
 
-  rpc :SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse
+  rpc(:SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse)
 
-  rpc :DescribeMany, InternalApi.User.DescribeManyRequest, InternalApi.User.DescribeManyResponse
+  rpc(:DescribeMany, InternalApi.User.DescribeManyRequest, InternalApi.User.DescribeManyResponse)
 
-  rpc :Update, InternalApi.User.UpdateRequest, InternalApi.User.UpdateResponse
+  rpc(:Update, InternalApi.User.UpdateRequest, InternalApi.User.UpdateResponse)
 
-  rpc :DeleteWithOwnedOrgs, InternalApi.User.DeleteWithOwnedOrgsRequest, InternalApi.User.User
+  rpc(:DeleteWithOwnedOrgs, InternalApi.User.DeleteWithOwnedOrgsRequest, InternalApi.User.User)
 
-  rpc :RegenerateToken,
-      InternalApi.User.RegenerateTokenRequest,
-      InternalApi.User.RegenerateTokenResponse
+  rpc(
+    :RegenerateToken,
+    InternalApi.User.RegenerateTokenRequest,
+    InternalApi.User.RegenerateTokenResponse
+  )
 
-  rpc :ListFavorites,
-      InternalApi.User.ListFavoritesRequest,
-      InternalApi.User.ListFavoritesResponse
+  rpc(
+    :ListFavorites,
+    InternalApi.User.ListFavoritesRequest,
+    InternalApi.User.ListFavoritesResponse
+  )
 
-  rpc :CreateFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
+  rpc(:CreateFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite)
 
-  rpc :DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
+  rpc(:DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite)
 
-  rpc :CheckGithubToken,
-      InternalApi.User.CheckGithubTokenRequest,
-      InternalApi.User.CheckGithubTokenResponse
+  rpc(
+    :CheckGithubToken,
+    InternalApi.User.CheckGithubTokenRequest,
+    InternalApi.User.CheckGithubTokenResponse
+  )
 
-  rpc :BlockAccount, InternalApi.User.BlockAccountRequest, InternalApi.User.User
+  rpc(:BlockAccount, InternalApi.User.BlockAccountRequest, InternalApi.User.User)
 
-  rpc :UnblockAccount, InternalApi.User.UnblockAccountRequest, InternalApi.User.User
+  rpc(:UnblockAccount, InternalApi.User.UnblockAccountRequest, InternalApi.User.User)
 
-  rpc :GetRepositoryToken,
-      InternalApi.User.GetRepositoryTokenRequest,
-      InternalApi.User.GetRepositoryTokenResponse
+  rpc(
+    :GetRepositoryToken,
+    InternalApi.User.GetRepositoryTokenRequest,
+    InternalApi.User.GetRepositoryTokenResponse
+  )
 
-  rpc :RefreshRepositoryProvider,
-      InternalApi.User.RefreshRepositoryProviderRequest,
-      InternalApi.User.RefreshRepositoryProviderResponse
+  rpc(
+    :RefreshRepositoryProvider,
+    InternalApi.User.RefreshRepositoryProviderRequest,
+    InternalApi.User.RefreshRepositoryProviderResponse
+  )
 
-  rpc :Create, InternalApi.User.CreateRequest, InternalApi.User.User
+  rpc(:Create, InternalApi.User.CreateRequest, InternalApi.User.User)
 end
 
 defmodule InternalApi.User.UserService.Stub do

@@ -39,8 +39,13 @@ defmodule CanvasFront.Stores.Canvas do
 
     with {:ok, channel} <- grpc_channel(),
          {:ok, %DescribeCanvasResponse{canvas: canvas}} <- Stub.describe_canvas(channel, req) do
-      Logger.info("Canvas found: #{inspect(canvas)}")
-      Map.from_struct(canvas)
+      %{
+        id: canvas.id,
+        name: canvas.name,
+        created_at: Google.Protobuf.to_datetime(canvas.created_at),
+        organization_id: canvas.organization_id,
+        created_by: canvas.created_by
+      }
     else
       e ->
         Logger.error("Failed to describe canvas: #{inspect(e)}")

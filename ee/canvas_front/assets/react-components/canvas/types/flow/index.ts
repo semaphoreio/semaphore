@@ -1,12 +1,19 @@
 import { Node } from "@xyflow/react";
 
-export type StageNodeType = Node<StageData, "stage">;
+// Data shape for GitHub Integration node
+type LastEvent = { type: string; release: string; timestamp: string };
 
-export type StageData = {
-
+export type EventSourceNodeData = {
+  id: string;
+  repoName: string;
+  repoUrl: string;
+  lastEvent: LastEvent;
+  selected: boolean;
 }
 
-export type EventSourceData = {
+export type EventSourceNodeType = Node<EventSourceNodeData, 'event_source'>;
+
+export type StageData = {
   label: string;
   labels: string[];
   status?: string;
@@ -16,5 +23,5 @@ export type EventSourceData = {
   selected: boolean;
 }
 
-export type EventSourceNodeType = Node<EventSourceData, 'deploymentCard'>;
+export type StageNodeType = Node<StageData, 'stage'>;
 
