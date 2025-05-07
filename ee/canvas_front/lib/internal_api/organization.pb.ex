@@ -621,109 +621,81 @@ defmodule InternalApi.Organization.OrganizationService.Service do
     name: "InternalApi.Organization.OrganizationService",
     protoc_gen_elixir_version: "0.14.1"
 
-  rpc(
-    :Describe,
-    InternalApi.Organization.DescribeRequest,
-    InternalApi.Organization.DescribeResponse
-  )
+  rpc :Describe,
+      InternalApi.Organization.DescribeRequest,
+      InternalApi.Organization.DescribeResponse
 
-  rpc(
-    :DescribeMany,
-    InternalApi.Organization.DescribeManyRequest,
-    InternalApi.Organization.DescribeManyResponse
-  )
+  rpc :DescribeMany,
+      InternalApi.Organization.DescribeManyRequest,
+      InternalApi.Organization.DescribeManyResponse
 
-  rpc(:List, InternalApi.Organization.ListRequest, InternalApi.Organization.ListResponse)
+  rpc :List, InternalApi.Organization.ListRequest, InternalApi.Organization.ListResponse
 
-  rpc(:Create, InternalApi.Organization.CreateRequest, InternalApi.Organization.CreateResponse)
+  rpc :Create, InternalApi.Organization.CreateRequest, InternalApi.Organization.CreateResponse
 
-  rpc(:Update, InternalApi.Organization.UpdateRequest, InternalApi.Organization.UpdateResponse)
+  rpc :Update, InternalApi.Organization.UpdateRequest, InternalApi.Organization.UpdateResponse
 
-  rpc(:IsValid, InternalApi.Organization.Organization, InternalApi.Organization.IsValidResponse)
+  rpc :IsValid, InternalApi.Organization.Organization, InternalApi.Organization.IsValidResponse
 
-  rpc(
-    :IsMember,
-    InternalApi.Organization.IsMemberRequest,
-    InternalApi.Organization.IsMemberResponse
-  )
+  rpc :IsMember,
+      InternalApi.Organization.IsMemberRequest,
+      InternalApi.Organization.IsMemberResponse
 
-  rpc(:IsOwner, InternalApi.Organization.IsOwnerRequest, InternalApi.Organization.IsOwnerResponse)
+  rpc :IsOwner, InternalApi.Organization.IsOwnerRequest, InternalApi.Organization.IsOwnerResponse
 
-  rpc(:MakeOwner, InternalApi.Organization.MakeOwnerRequest, Google.Protobuf.Empty)
+  rpc :MakeOwner, InternalApi.Organization.MakeOwnerRequest, Google.Protobuf.Empty
 
-  rpc(:Members, InternalApi.Organization.MembersRequest, InternalApi.Organization.MembersResponse)
+  rpc :Members, InternalApi.Organization.MembersRequest, InternalApi.Organization.MembersResponse
 
-  rpc(
-    :AddMember,
-    InternalApi.Organization.AddMemberRequest,
-    InternalApi.Organization.AddMemberResponse
-  )
+  rpc :AddMember,
+      InternalApi.Organization.AddMemberRequest,
+      InternalApi.Organization.AddMemberResponse
 
-  rpc(
-    :AddMembers,
-    InternalApi.Organization.AddMembersRequest,
-    InternalApi.Organization.AddMembersResponse
-  )
+  rpc :AddMembers,
+      InternalApi.Organization.AddMembersRequest,
+      InternalApi.Organization.AddMembersResponse
 
-  rpc(
-    :DeleteMember,
-    InternalApi.Organization.DeleteMemberRequest,
-    InternalApi.Organization.DeleteMemberResponse
-  )
+  rpc :DeleteMember,
+      InternalApi.Organization.DeleteMemberRequest,
+      InternalApi.Organization.DeleteMemberResponse
 
-  rpc(:Suspend, InternalApi.Organization.SuspendRequest, InternalApi.Organization.SuspendResponse)
+  rpc :Suspend, InternalApi.Organization.SuspendRequest, InternalApi.Organization.SuspendResponse
 
-  rpc(
-    :Unsuspend,
-    InternalApi.Organization.UnsuspendRequest,
-    InternalApi.Organization.UnsuspendResponse
-  )
+  rpc :Unsuspend,
+      InternalApi.Organization.UnsuspendRequest,
+      InternalApi.Organization.UnsuspendResponse
 
-  rpc(:Verify, InternalApi.Organization.VerifyRequest, InternalApi.Organization.Organization)
+  rpc :Verify, InternalApi.Organization.VerifyRequest, InternalApi.Organization.Organization
 
-  rpc(
-    :SetOpenSource,
-    InternalApi.Organization.SetOpenSourceRequest,
-    InternalApi.Organization.SetOpenSourceResponse
-  )
+  rpc :SetOpenSource,
+      InternalApi.Organization.SetOpenSourceRequest,
+      InternalApi.Organization.SetOpenSourceResponse
 
-  rpc(
-    :ListSuspensions,
-    InternalApi.Organization.ListSuspensionsRequest,
-    InternalApi.Organization.ListSuspensionsResponse
-  )
+  rpc :ListSuspensions,
+      InternalApi.Organization.ListSuspensionsRequest,
+      InternalApi.Organization.ListSuspensionsResponse
 
-  rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
+  rpc :Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty
 
-  rpc(
-    :RepositoryIntegrators,
-    InternalApi.Organization.RepositoryIntegratorsRequest,
-    InternalApi.Organization.RepositoryIntegratorsResponse
-  )
+  rpc :RepositoryIntegrators,
+      InternalApi.Organization.RepositoryIntegratorsRequest,
+      InternalApi.Organization.RepositoryIntegratorsResponse
 
-  rpc(
-    :FetchOrganizationContacts,
-    InternalApi.Organization.FetchOrganizationContactsRequest,
-    InternalApi.Organization.FetchOrganizationContactsResponse
-  )
+  rpc :FetchOrganizationContacts,
+      InternalApi.Organization.FetchOrganizationContactsRequest,
+      InternalApi.Organization.FetchOrganizationContactsResponse
 
-  rpc(
-    :ModifyOrganizationContact,
-    InternalApi.Organization.ModifyOrganizationContactRequest,
-    InternalApi.Organization.ModifyOrganizationContactResponse
-  )
+  rpc :ModifyOrganizationContact,
+      InternalApi.Organization.ModifyOrganizationContactRequest,
+      InternalApi.Organization.ModifyOrganizationContactResponse
 
-  rpc(
-    :FetchOrganizationSettings,
-    InternalApi.Organization.FetchOrganizationSettingsRequest,
-    InternalApi.Organization.FetchOrganizationSettingsResponse
-  )
+  rpc :FetchOrganizationSettings,
+      InternalApi.Organization.FetchOrganizationSettingsRequest,
+      InternalApi.Organization.FetchOrganizationSettingsResponse
 
-  rpc(
-    :ModifyOrganizationSettings,
-    InternalApi.Organization.ModifyOrganizationSettingsRequest,
-    InternalApi.Organization.ModifyOrganizationSettingsResponse
-  )
+  rpc :ModifyOrganizationSettings,
+      InternalApi.Organization.ModifyOrganizationSettingsRequest,
+      InternalApi.Organization.ModifyOrganizationSettingsResponse
 end
 
 defmodule InternalApi.Organization.OrganizationService.Stub do

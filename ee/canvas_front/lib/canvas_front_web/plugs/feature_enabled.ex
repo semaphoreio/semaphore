@@ -6,7 +6,7 @@ defmodule CanvasFrontWeb.Plugs.FeatureEnabled do
   def init(features), do: features
 
   def call(conn, features) do
-    enabled = feature_enabled?(conn, features) or is_insider?(conn)
+    enabled = feature_enabled?(conn, features) or insider?(conn)
 
     enabled
     |> case do
@@ -22,13 +22,16 @@ defmodule CanvasFrontWeb.Plugs.FeatureEnabled do
     end
   end
 
-  @spec is_insider?(Plug.Conn.t()) :: boolean()
-  defp is_insider?(conn),
+  @spec insider?(Plug.Conn.t()) :: boolean()
+  defp insider?(conn),
     do: Front.RBAC.Permissions.has?(conn.assigns.user_id, @nil_uuid, "insider.view")
 
   @spec feature_enabled?(Plug.Conn.t(), [feature_name]) :: boolean()
   defp feature_enabled?(conn, features) do
     organization_id = conn.assigns.organization_id
+
+    require Logger
+    Logger.info("org_id: #{organization_id}")
 
     features
     |> Enum.reduce_while(true, fn feature, acc ->

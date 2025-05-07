@@ -604,10 +604,8 @@ defmodule CanvasFrontWeb.CoreComponents do
   attr :alt, :string, required: true
 
   def img(assigns) do
-    assets_path = Application.fetch_env!(:canvas_front, :assets_path)
-
     ~H"""
-    <img src={"#{assets_path}/images/#{@name}"} alt={@alt} />
+    <img src={"#{assets_path()}/images/#{@name}"} alt={@alt} />
     """
   end
 
@@ -686,5 +684,9 @@ defmodule CanvasFrontWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  defp assets_path do
+    Application.fetch_env!(:canvas_front, :assets_path)
   end
 end

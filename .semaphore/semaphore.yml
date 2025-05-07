@@ -481,6 +481,146 @@ blocks:
         - name: "\U0001F9EA Test"
           commands:
             - make test.ex
+  # Canvas Front
+  - name: "Canvas Front: \U0001F5BC️ Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/canvas_front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e1-standard-4
+          os_image: ubuntu2004
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd ee/canvas_front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      jobs:
+        - name: Build test image
+          commands:
+            - make build
+            - make push
+  - name: "Canvas Front: \U0001F9EA QA"
+    dependencies:
+      - "Canvas Front: \U0001F5BC️ Provision Test Image"
+    run:
+      when: "change_in('/ee/canvas_front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd ee/canvas_front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+          - make build
+      jobs:
+        - name: Elixir Tests
+          commands:
+            - make test.ex TEST_FLAGS='--exclude browser:true --exclude comunity_edition:true'
+  - name: "Canvas Front: \U0001F6E1️ Deployment Preconditions"
+    dependencies:
+      - "Canvas Front: \U0001F5BC️ Provision Test Image"
+    run:
+      when: "change_in('/ee/canvas_front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd ee/canvas_front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      jobs:
+        - name: Typescript - compilation
+          env_vars:
+            - name: REPORT_NAME
+              value: Typescript compilation
+          commands:
+            - make pull
+            - make compile.ts
+        - name: Elixir code check
+          commands:
+            - make deps.check
+            - make format.ex
+            - make lint.ex
+  - name: "Canvas Front: \U0001F5BC️ Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/canvas_front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      agent:
+        machine:
+          type: e1-standard-4
+          os_image: ubuntu2004
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd ee/canvas_front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      env_vars:
+        - name: MIX_ENV
+          value: prod
+      jobs:
+        - name: Build prod image
+          commands:
+            - make build
+            - make push
+  - name: "Canvas Front: \U0001F6E1️ Security checks"
+    dependencies:
+      - "Canvas Front: \U0001F5BC️ Provision Prod Image"
+    run:
+      when: "change_in('/ee/canvas_front', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      secrets:
+        - name: semreg-semaphoredev-credentials
+      prologue:
+        commands:
+          - checkout && cd ee/canvas_front
+          - '[ -d $SEMAPHORE_GIT_DIR ] && sudo chown -R $(id -u ${USER}):$(id -g ${USER}) $SEMAPHORE_GIT_DIR || echo "$SEMAPHORE_GIT_DIR not present"'
+          - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
+          - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
+      env_vars:
+        - name: MIX_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "Canvas Front"
+      jobs:
+        - name: JS - dependencies
+          commands:
+            - make check.js.deps APP_DIRECTORY=assets
+        - name: JS - code
+          commands:
+            - export PATH=$PATH:/home/semaphore/.local/bin
+            - make check.js.code APP_DIRECTORY=assets
+        - name: Elixir - dependencies
+          commands:
+            - make check.ex.deps CHECK_DEPS_OPTS='--ignore-packages phoenix'
+        - name: Elixir - code
+          commands:
+            - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
+        - name: Docker resources
+          commands:
+            - make build
+            - make check.docker CHECK_DOCKER_OPTS='--ignore-policy security-ignore-policy.rego'
   # Dashboardhub
   - name: "Dashboardhub: \U0001F4CB Provision Test Image"
     dependencies: []

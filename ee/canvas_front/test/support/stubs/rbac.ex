@@ -83,8 +83,6 @@ defmodule Support.Stubs.RBAC do
   ]
 
   def init do
-    Logger.info("rbac api init")
-
     DB.add_table(:rbac_roles, [
       :id,
       :name,
@@ -105,7 +103,6 @@ defmodule Support.Stubs.RBAC do
     DB.add_table(:permissions, [:id, :name, :description, :scope_id])
 
     seed_data()
-    Logger.info("rbac api init done")
   end
 
   def seed_data do
@@ -266,7 +263,7 @@ defmodule Support.Stubs.RBAC do
   end
 
   defp permission_id_from_arg(permission) when is_binary(permission) do
-    case Elixir.UUID.info(permission) do
+    case UUID.info(permission) do
       {:ok, _info} -> permission
       {:error, _msg} -> permission_id_from_name(permission)
     end
@@ -370,10 +367,6 @@ defmodule Support.Stubs.RBAC do
       GrpcMock.expect(RBACMock, function, n, fn _request, _stream ->
         callback.()
       end)
-
-      ExUnit.Callbacks.on_exit(fn ->
-        __MODULE__.init()
-      end)
     end
 
     def retract_role(req, _) do
@@ -396,7 +389,7 @@ defmodule Support.Stubs.RBAC do
 
       Enum.each(for_removal, fn srb -> DB.delete(:subject_role_bindings, srb.id) end)
 
-      InternalApi.RBAC.RetractRoleResponse.new()
+      %InternalApi.RBAC.RetractRoleResponse{}
     end
 
     def count_members(%{org_id: org_id}, _) do
@@ -407,7 +400,7 @@ defmodule Support.Stubs.RBAC do
         |> Stream.filter(fn binding -> binding.project_id == nil end)
         |> Enum.count()
 
-      RBAC.CountMembersResponse.new(count: org_subject_role_bindings_count)
+      %InternalApi.RBAC.CountMembersResponse{members: org_subject_role_bindings_count}
     end
 
     def list_members(
@@ -422,7 +415,7 @@ defmodule Support.Stubs.RBAC do
         ) do
       alias InternalApi.RBAC
 
-      page_size = Application.get_env(:front, :test_page_size) || page.page_size
+      page_size = Application.get_env(:canvas_front, :test_page_size) || page.page_size
       project_id = if project_id == "", do: nil, else: project_id
 
       all_org_subject_role_bindings =
@@ -436,10 +429,9 @@ defmodule Support.Stubs.RBAC do
         |> Enum.drop(page.page_no * page_size)
         |> Enum.take(page.page_no * page_size + page_size)
 
-      string_member_type =
-        RBAC.SubjectType.key(member_type) |> Atom.to_string() |> String.downcase()
+      string_member_type = member_type |> Atom.to_string() |> String.downcase()
 
-      RBAC.ListMembersResponse.new(
+      %RBAC.ListMembersResponse{
         members:
           Enum.map(paginated_bindings, fn {subject_id, bindings} ->
             filter_f = fn entity ->
@@ -453,27 +445,25 @@ defmodule Support.Stubs.RBAC do
             if !is_nil(user) and
                  (member_name_contains == "" ||
                     String.downcase(user.name) =~ String.downcase(member_name_contains)) do
-              RBAC.ListMembersResponse.Member.new(
-                subject:
-                  RBAC.Subject.new(
-                    subject_type: member_type,
-                    subject_id: user.id,
-                    display_name: user.name
-                  ),
+              %RBAC.ListMembersResponse.Member{
+                subject: %RBAC.Subject{
+                  subject_type: member_type,
+                  subject_id: user.id,
+                  display_name: user.name
+                },
                 subject_role_bindings:
                   Enum.map(bindings, fn binding ->
                     role = DB.find_by(:rbac_roles, :id, binding.role_id)
 
-                    RBAC.SubjectRoleBinding.new(
-                      role:
-                        RBAC.Role.new(
-                          id: role.id,
-                          name: role.name
-                        ),
-                      source: RBAC.RoleBindingSource.value(:ROLE_BINDING_SOURCE_MANUALLY)
-                    )
+                    %RBAC.SubjectRoleBinding{
+                      role: %RBAC.Role{
+                        id: role.id,
+                        name: role.name
+                      },
+                      source: :ROLE_BINDING_SOURCE_MANUALLY
+                    }
                   end)
-              )
+              }
             else
               nil
             end
@@ -483,7 +473,7 @@ defmodule Support.Stubs.RBAC do
           ((user_grouped_role_bindings |> map_size()) / page_size)
           |> Float.ceil()
           |> round()
-      )
+      }
     end
 
     def list_roles(req, _) do
@@ -492,7 +482,7 @@ defmodule Support.Stubs.RBAC do
       roles = DB.all(:rbac_roles)
 
       roles =
-        case InternalApi.RBAC.Scope.key(req.scope) do
+        case req.scope do
           :SCOPE_UNSPECIFIED ->
             roles
 
@@ -506,7 +496,7 @@ defmodule Support.Stubs.RBAC do
         end
 
       grpc_roles = generate_internal_api_roles(roles)
-      InternalApi.RBAC.ListRolesResponse.new(roles: grpc_roles)
+      %InternalApi.RBAC.ListRolesResponse{roles: grpc_roles}
     end
 
     def describe_role(req, _) do
@@ -518,12 +508,12 @@ defmodule Support.Stubs.RBAC do
           message: "Role not found"
         )
       else
-        InternalApi.RBAC.DescribeRoleResponse.new(role: to_api_role(role))
+        %InternalApi.RBAC.DescribeRoleResponse{role: to_api_role(role)}
       end
     end
 
     def modify_role(req, _) do
-      role_id = if req.role.id == "", do: UUID.gen(), else: req.role.id
+      role_id = if req.role.id == "", do: UUID.uuid4(), else: req.role.id
 
       role =
         DB.upsert(:rbac_roles, %{
@@ -531,7 +521,7 @@ defmodule Support.Stubs.RBAC do
           name: req.role.name,
           description: req.role.description,
           scope_id:
-            case InternalApi.RBAC.Scope.key(req.role.scope) do
+            case req.role.scope do
               :SCOPE_UNSPECIFIED ->
                 ""
 
@@ -547,19 +537,19 @@ defmodule Support.Stubs.RBAC do
           readonly: false
         })
 
-      InternalApi.RBAC.ModifyRoleResponse.new(role: to_api_role(role))
+      %InternalApi.RBAC.ModifyRoleResponse{role: to_api_role(role)}
     end
 
     def destroy_role(req, _) do
       DB.delete(:rbac_roles, req.role_id)
-      InternalApi.RBAC.DestroyRoleResponse.new(role_id: req.role_id)
+      %InternalApi.RBAC.DestroyRoleResponse{role_id: req.role_id}
     end
 
     def list_existing_permissions(req, _) do
       alias Support.Stubs.RBAC, as: Stub
 
       permissions =
-        case InternalApi.RBAC.Scope.key(req.scope) do
+        case req.scope do
           :SCOPE_UNSPECIFIED ->
             DB.all(:permissions)
 
@@ -570,9 +560,9 @@ defmodule Support.Stubs.RBAC do
             DB.find_all_by(:permissions, :scope_id, Stub.scope_id_from_name("project_scope"))
         end
 
-      InternalApi.RBAC.ListExistingPermissionsResponse.new(
+      %InternalApi.RBAC.ListExistingPermissionsResponse{
         permissions: Enum.map(permissions, &to_api_permission/1)
-      )
+      }
     end
 
     def assign_role(req, _) do
@@ -604,14 +594,14 @@ defmodule Support.Stubs.RBAC do
         end
 
         DB.insert(:subject_role_bindings, %{
-          id: UUID.gen(),
+          id: UUID.uuid4(),
           subject_id: req.role_assignment.subject.subject_id,
           org_id: req.role_assignment.org_id,
           project_id: project_id,
           role_id: req.role_assignment.role_id
         })
 
-        InternalApi.RBAC.AssignRoleResponse.new()
+        %InternalApi.RBAC.AssignRoleResponse{}
       end
     end
 
@@ -620,12 +610,14 @@ defmodule Support.Stubs.RBAC do
         DB.find_all_by(:subject_role_bindings, :subject_id, req.user_id)
         |> Enum.filter(fn binding -> binding.project_id == nil end)
 
-      InternalApi.RBAC.ListAccessibleOrgsResponse.new(
+      %InternalApi.RBAC.ListAccessibleOrgsResponse{
         org_ids: Enum.map(subject_role_bindings, & &1.org_id)
-      )
+      }
     rescue
       _ ->
-        reraise GRPC.RPCError, status: GRPC.Status.invalid_argument(), message: "Bad request"
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def list_accessible_projects(req, _) do
@@ -633,23 +625,25 @@ defmodule Support.Stubs.RBAC do
         DB.find_all_by(:subject_role_bindings, :subject_id, req.user_id)
         |> Enum.filter(fn binding -> binding.project_id != nil end)
 
-      InternalApi.RBAC.ListAccessibleProjectsResponse.new(
+      %InternalApi.RBAC.ListAccessibleProjectsResponse{
         project_ids: Enum.map(subject_role_bindings, & &1.project_id)
-      )
+      }
     rescue
       _ ->
-        reraise GRPC.RPCError, status: GRPC.Status.invalid_argument(), message: "Bad request"
+        reraise GRPC.RPCError,
+                [status: GRPC.Status.invalid_argument(), message: "Bad request"],
+                __STACKTRACE__
     end
 
     def refresh_collaborators(_req, _) do
-      InternalApi.RBAC.RefreshCollaboratorsResponse.new()
+      %InternalApi.RBAC.RefreshCollaboratorsResponse{}
     end
 
     ###
     ### Helpers
     ###
 
-    def raise_if_unauthenticated(_user_id = ""),
+    def raise_if_unauthenticated("" = _user_id),
       do: raise(GRPC.RPCError, status: GRPC.Status.unauthenticated(), message: "Unauthenticaded")
 
     def raise_if_unauthenticated(_user_id), do: nil
@@ -662,7 +656,7 @@ defmodule Support.Stubs.RBAC do
       maps_to_role = DB.find(:rbac_roles, role.maps_to_id)
       permissions = DB.find_many(:permissions, role.permission_ids)
 
-      InternalApi.RBAC.Role.new(
+      %InternalApi.RBAC.Role{
         id: role.id,
         name: role.name,
         org_id: role.org_id,
@@ -671,35 +665,35 @@ defmodule Support.Stubs.RBAC do
         scope: scope_to_api(role.scope_id),
         rbac_permissions:
           Enum.into(permissions, [], fn permission ->
-            InternalApi.RBAC.Permission.new(
+            %InternalApi.RBAC.Permission{
               id: permission.id,
               name: permission.name,
               description: permission.description,
               scope: scope_to_api(permission.scope_id)
-            )
+            }
           end),
         readonly: role.readonly
-      )
+      }
     end
 
     defp to_api_permission(nil), do: nil
 
     defp to_api_permission(permission) do
-      InternalApi.RBAC.Permission.new(
+      %InternalApi.RBAC.Permission{
         id: permission.id,
         name: permission.name,
         description: permission.description,
         scope: scope_to_api(permission.scope_id)
-      )
+      }
     end
 
     defp scope_to_api(scope_id) do
       scope = DB.find(:scopes, scope_id)
 
       case scope.scope_name do
-        "org_scope" -> InternalApi.RBAC.Scope.value(:SCOPE_ORG)
-        "project_scope" -> InternalApi.RBAC.Scope.value(:SCOPE_PROJECT)
-        _ -> InternalApi.RBAC.Scope.value(:SCOPE_UNSPECIFIED)
+        "org_scope" -> :SCOPE_ORG
+        "project_scope" -> :SCOPE_PROJECT
+        _ -> :SCOPE_UNSPECIFIED
       end
     end
   end

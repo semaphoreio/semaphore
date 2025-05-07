@@ -1,5 +1,5 @@
 defmodule Support.Stubs.User do
-  alias Support.Stubs.{DB, Time, UUID}
+  alias Support.Stubs.DB
 
   def default_user_id, do: "78114608-be8a-465a-b9cd-81970fb802c5"
 
@@ -50,15 +50,14 @@ defmodule Support.Stubs.User do
   end
 
   alias InternalApi.User.RepositoryProvider
-  defp map_repository_provider_scope("email"), do: RepositoryProvider.Scope.value(:EMAIL)
-  defp map_repository_provider_scope("public"), do: RepositoryProvider.Scope.value(:PUBLIC)
-  defp map_repository_provider_scope("private"), do: RepositoryProvider.Scope.value(:PRIVATE)
-  defp map_repository_provider_scope(_), do: RepositoryProvider.Scope.value(:NONE)
+  defp map_repository_provider_scope("email"), do: :EMAIL
+  defp map_repository_provider_scope("public"), do: :PUBLIC
+  defp map_repository_provider_scope("private"), do: :PRIVATE
+  defp map_repository_provider_scope(_), do: :NONE
 
-  alias InternalApi.User.DescribeResponse.RepoScope
-  defp map_github_scope("public"), do: RepoScope.value(:PUBLIC)
-  defp map_github_scope("private"), do: RepoScope.value(:PRIVATE)
-  defp map_github_scope(_), do: RepoScope.value(:NONE)
+  defp map_github_scope("public"), do: :PUBLIC
+  defp map_github_scope("private"), do: :PRIVATE
+  defp map_github_scope(_), do: :NONE
 
   def build(params \\ []) do
     params =
@@ -73,39 +72,39 @@ defmodule Support.Stubs.User do
       )
 
     defaults = [
-      status:
-        InternalApi.ResponseStatus.new(
-          code: InternalApi.ResponseStatus.Code.value(:OK),
-          message: ""
-        ),
+      status: %InternalApi.ResponseStatus{
+        code: :OK,
+        message: ""
+      },
       user_id: params[:id],
       name: params[:name],
       email: params[:email],
       company: params[:company],
-      created_at:
-        Google.Protobuf.Timestamp.new(seconds: DateTime.utc_now() |> DateTime.to_unix()),
+      created_at: %Google.Protobuf.Timestamp{
+        seconds: DateTime.utc_now() |> DateTime.to_unix()
+      },
       avatar_url: "https://avatars3.githubusercontent.com/u/0?v=4",
       github_token: "c716c3715a66612b070b6408b89c1190",
       github_scope: map_github_scope(params[:github_repositry_scope]),
       github_login: "jane-doe",
       repository_providers: [
-        RepositoryProvider.new(
-          type: RepositoryProvider.Type.value(:GITHUB),
+        %RepositoryProvider{
+          type: :GITHUB,
           scope: map_repository_provider_scope(params[:github_repositry_scope]),
           login: "jane-doe",
           uid: "21684087"
-        ),
-        RepositoryProvider.new(
-          type: RepositoryProvider.Type.value(:BITBUCKET),
+        },
+        %RepositoryProvider{
+          type: :BITBUCKET,
           scope: map_repository_provider_scope(params[:bitbucket_repositry_scope]),
           login: "radwo",
           uid: "sdasd"
-        )
+        }
       ],
       user: build_user(params)
     ]
 
-    defaults |> Keyword.merge(params) |> InternalApi.User.DescribeResponse.new()
+    defaults |> Keyword.merge(params) |> then(&struct(InternalApi.User.DescribeResponse, &1))
   end
 
   def build_user(params \\ []) do
@@ -121,7 +120,7 @@ defmodule Support.Stubs.User do
       single_org_user: false
     ]
 
-    defaults |> Keyword.merge(params) |> InternalApi.User.User.new()
+    defaults |> Keyword.merge(params) |> then(&struct(InternalApi.User.User, &1))
   end
 
   def update_user(user, params \\ []) do
@@ -158,17 +157,17 @@ defmodule Support.Stubs.User do
         |> Enum.filter(fn u -> Enum.member?(req.user_ids, u.id) end)
         |> DB.extract(:api_model)
         |> Enum.map(fn u ->
-          InternalApi.User.User.new(
+          %InternalApi.User.User{
             id: u.user_id,
             avatar_url: u.avatar_url,
             github_uid: u.github_uid,
             name: u.name,
             company: u.company,
             email: u.email
-          )
+          }
         end)
 
-      Response.new(status: internal_status(:OK), users: users)
+      %Response{status: internal_status(:OK), users: users}
     end
 
     def update(req, _) do
@@ -188,17 +187,22 @@ defmodule Support.Stubs.User do
           api_model: api_model
         })
 
-        InternalApi.User.UpdateResponse.new(
+        %InternalApi.User.UpdateResponse{
           status: google_status(:OK),
           user: api_model.user
-        )
+        }
       else
-        InternalApi.User.UpdateResponse.new(status: google_status(:INVALID_ARGUMENT, "Oops"))
+        %InternalApi.User.UpdateResponse{
+          status: google_status(:INVALID_ARGUMENT, "Oops")
+        }
       end
     end
 
     def regenerate_token(_, _) do
-      InternalApi.User.RegenerateTokenResponse.new(status: google_status(:OK), api_token: "token")
+      %InternalApi.User.RegenerateTokenResponse{
+        status: google_status(:OK),
+        api_token: "token"
+      }
     end
 
     def list_favorites(req, _) do
@@ -208,15 +212,15 @@ defmodule Support.Stubs.User do
           req.user_id == f.user_id && req.organization_id == f.organization_id
         end)
         |> Enum.map(fn f ->
-          InternalApi.User.Favorite.new(
+          %InternalApi.User.Favorite{
             user_id: f.user_id,
             organization_id: f.organization_id,
             favorite_id: f.favorite_id,
-            kind: InternalApi.User.Favorite.Kind.value(f.kind)
-          )
+            kind: f.kind
+          }
         end)
 
-      InternalApi.User.ListFavoritesResponse.new(favorites: favorites)
+      %InternalApi.User.ListFavoritesResponse{favorites: favorites}
     end
 
     def create_favorite(favorite, _) do
@@ -224,7 +228,7 @@ defmodule Support.Stubs.User do
         user_id: favorite.user_id,
         organization_id: favorite.organization_id,
         favorite_id: favorite.favorite_id,
-        kind: InternalApi.User.Favorite.Kind.key(favorite.kind)
+        kind: favorite.kind
       })
 
       favorite
@@ -237,11 +241,11 @@ defmodule Support.Stubs.User do
     end
 
     def check_github_token(_req, _) do
-      InternalApi.User.CheckGithubTokenResponse.new(
+      %InternalApi.User.CheckGithubTokenResponse{
         revoked: false,
         repo: true,
         public_repo: true
-      )
+      }
     end
 
     def get_repository_token(request, _) do
@@ -250,7 +254,7 @@ defmodule Support.Stubs.User do
       else
         %InternalApi.User.GetRepositoryTokenResponse{
           token: "valid_token_value",
-          expires_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+          expires_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543}
         }
       end
     end
@@ -262,28 +266,28 @@ defmodule Support.Stubs.User do
         user.api_model.repository_providers
         |> Enum.find(fn rp -> rp.type == req.type end)
 
-      InternalApi.User.RefreshRepositoryProviderResponse.new(
+      %InternalApi.User.RefreshRepositoryProviderResponse{
         user_id: user.id,
         repository_provider: provider
-      )
+      }
     end
 
     defp internal_status(code, message \\ "") do
-      InternalApi.ResponseStatus.new(
-        code: InternalApi.ResponseStatus.Code.value(code),
+      %InternalApi.ResponseStatus{
+        code: code,
         message: message
-      )
+      }
     end
 
     defp google_status(code, message \\ "") do
-      Google.Rpc.Status.new(
-        code: Google.Rpc.Code.value(code),
+      %Google.Rpc.Status{
+        code: code,
         message: message
-      )
+      }
     end
 
     def describe_to_user(user) do
-      InternalApi.User.User.new(
+      %InternalApi.User.User{
         id: user.user_id,
         avatar_url: user.avatar_url,
         github_uid: user.repository_scopes.github.uid,
@@ -292,7 +296,7 @@ defmodule Support.Stubs.User do
         company: user.company,
         email: user.email,
         blocked_at: nil
-      )
+      }
     end
   end
 end

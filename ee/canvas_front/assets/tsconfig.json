@@ -23,6 +23,7 @@
     "noFallthroughCasesInSwitch": true,
 
     "paths": {
+      "@/canvas/*": ["./react-components/canvas/*"],
       "@/*": ["./*"]
     }
   },

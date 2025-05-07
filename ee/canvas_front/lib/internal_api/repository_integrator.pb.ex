@@ -164,47 +164,33 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
     name: "InternalApi.RepositoryIntegrator.RepositoryIntegratorService",
     protoc_gen_elixir_version: "0.14.1"
 
-  rpc(
-    :GetToken,
-    InternalApi.RepositoryIntegrator.GetTokenRequest,
-    InternalApi.RepositoryIntegrator.GetTokenResponse
-  )
+  rpc :GetToken,
+      InternalApi.RepositoryIntegrator.GetTokenRequest,
+      InternalApi.RepositoryIntegrator.GetTokenResponse
 
-  rpc(
-    :CheckToken,
-    InternalApi.RepositoryIntegrator.CheckTokenRequest,
-    InternalApi.RepositoryIntegrator.CheckTokenResponse
-  )
+  rpc :CheckToken,
+      InternalApi.RepositoryIntegrator.CheckTokenRequest,
+      InternalApi.RepositoryIntegrator.CheckTokenResponse
 
-  rpc(
-    :PreheatFileCache,
-    InternalApi.RepositoryIntegrator.PreheatFileCacheRequest,
-    Google.Protobuf.Empty
-  )
+  rpc :PreheatFileCache,
+      InternalApi.RepositoryIntegrator.PreheatFileCacheRequest,
+      Google.Protobuf.Empty
 
-  rpc(
-    :GetFile,
-    InternalApi.RepositoryIntegrator.GetFileRequest,
-    InternalApi.RepositoryIntegrator.GetFileResponse
-  )
+  rpc :GetFile,
+      InternalApi.RepositoryIntegrator.GetFileRequest,
+      InternalApi.RepositoryIntegrator.GetFileResponse
 
-  rpc(
-    :GithubInstallationInfo,
-    InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
-    InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
-  )
+  rpc :GithubInstallationInfo,
+      InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
+      InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
 
-  rpc(
-    :InitGithubInstallation,
-    InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
-    InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
-  )
+  rpc :InitGithubInstallation,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
 
-  rpc(
-    :GetRepositories,
-    InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
-    InternalApi.RepositoryIntegrator.GetRepositoriesResponse
-  )
+  rpc :GetRepositories,
+      InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
+      InternalApi.RepositoryIntegrator.GetRepositoriesResponse
 end
 
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub do

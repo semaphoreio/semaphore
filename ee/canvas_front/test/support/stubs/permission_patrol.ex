@@ -96,16 +96,16 @@ defmodule Support.Stubs.PermissionPatrol do
           acc <> permissions
         end)
 
-      InternalApi.PermissionPatrol.HasPermissionsResponse.new(
+      %InternalApi.PermissionPatrol.HasPermissionsResponse{
         has_permissions:
           Enum.reduce(permissions, %{}, fn permission, acc ->
-            if Application.get_env(:front, :environment) == :dev do
+            if Application.get_env(:canvas_front, :environment) == :dev do
               Map.put(acc, permission, true)
             else
               Map.put(acc, permission, all_permissions =~ permission)
             end
           end)
-      )
+      }
     end
 
     ###

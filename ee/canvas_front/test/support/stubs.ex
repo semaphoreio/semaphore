@@ -17,6 +17,7 @@ defmodule Support.Stubs do
     Support.Stubs.User.init()
     Support.Stubs.Feature.init()
     Support.Stubs.RBAC.init()
+    Support.Stubs.PermissionPatrol.init()
     Support.Stubs.Organization.init()
     Support.Stubs.Delivery.init()
 
@@ -46,6 +47,7 @@ defmodule Support.Stubs do
       end)
 
     Support.Stubs.RBAC.add_owner(org.id, user.id)
+    Support.Stubs.Delivery.seed_default_data()
     :ok
   end
 end

@@ -65,7 +65,9 @@ defmodule CanvasFront.MixProject do
       {:grpc, "~> 0.9"},
       {:tackle, github: "renderedtext/ex-tackle"},
       {:rabbit_common, "~> 3.13.4", override: true},
-      {:ranch, "~> 1.8.0", override: true}
+      {:ranch, "~> 1.8.0", override: true},
+      {:uuid, "~> 1.1"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 
