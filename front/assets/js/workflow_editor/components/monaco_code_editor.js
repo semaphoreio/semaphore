@@ -49,6 +49,7 @@ export class MonacoCodeEditor {
     this.activePipeline = pipeline;
 
     this.state.value = pipeline.toYaml();
+    this.isRendered = false;
     this.renderEditor();
   }
 
