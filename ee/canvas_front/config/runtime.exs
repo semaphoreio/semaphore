@@ -78,6 +78,17 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  if System.get_env("AMQP_URL") != nil do
+    config :amqp,
+      connections: [
+        amqp: [
+          url: System.get_env("AMQP_URL"),
+          name: "#{System.get_env("HOSTNAME", "canvas_front")}"
+        ]
+      ],
+      channels: []
+  end
+
   config :canvas_front,
     delivery_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_DELIVERY"),
     organization_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_ORGANIZATION"),
