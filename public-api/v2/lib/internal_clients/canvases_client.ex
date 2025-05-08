@@ -27,6 +27,7 @@ defmodule InternalClients.Canvases do
   def describe_event_source(params), do: execute(API.DescribeEventSourceRequest, params)
   def list_event_sources(params), do: execute(API.ListEventSourcesRequest, params)
   def create_stage(params), do: execute(API.CreateStageRequest, params)
+  def update_stage(params), do: execute(API.UpdateStageRequest, params)
   def describe_stage(params), do: execute(API.DescribeStageRequest, params)
   def list_stages(params), do: execute(API.ListStagesRequest, params)
   def list_stage_events(params), do: execute(API.ListStageEventsRequest, params)

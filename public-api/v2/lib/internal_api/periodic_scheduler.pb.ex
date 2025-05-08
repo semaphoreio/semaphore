@@ -324,7 +324,10 @@ defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
   field(:page_token, 3, type: :string, json_name: "pageToken")
   field(:page_size, 4, type: :int32, json_name: "pageSize")
 
-  field(:direction, 5, type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction, enum: true)
+  field(:direction, 5,
+    type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction,
+    enum: true
+  )
 
   field(:order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true)
   field(:query, 7, type: :string)

@@ -54,6 +54,7 @@ defmodule InternalClients.Canvases.GrpcClient do
   defp req_to_func(%API.DescribeEventSourceRequest{}), do: &Stub.describe_event_source/3
   defp req_to_func(%API.ListEventSourcesRequest{}), do: &Stub.list_event_sources/3
   defp req_to_func(%API.CreateStageRequest{}), do: &Stub.create_stage/3
+  defp req_to_func(%API.UpdateStageRequest{}), do: &Stub.update_stage/3
   defp req_to_func(%API.DescribeStageRequest{}), do: &Stub.describe_stage/3
   defp req_to_func(%API.ListStagesRequest{}), do: &Stub.list_stages/3
   defp req_to_func(%API.ListStageEventsRequest{}), do: &Stub.list_stage_events/3

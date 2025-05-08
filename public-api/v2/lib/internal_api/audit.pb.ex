@@ -175,7 +175,10 @@ defmodule InternalApi.Audit.StreamLog do
     json_name: "firstEventTimestamp"
   )
 
-  field(:last_event_timestamp, 6, type: Google.Protobuf.Timestamp, json_name: "lastEventTimestamp")
+  field(:last_event_timestamp, 6,
+    type: Google.Protobuf.Timestamp,
+    json_name: "lastEventTimestamp"
+  )
 end
 
 defmodule InternalApi.Audit.Stream do

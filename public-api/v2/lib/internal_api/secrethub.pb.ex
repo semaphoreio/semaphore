@@ -121,7 +121,10 @@ defmodule InternalApi.Secrethub.Secret.Metadata do
   field(:created_by, 5, type: :string, json_name: "createdBy")
   field(:updated_by, 6, type: :string, json_name: "updatedBy")
 
-  field(:last_checkout, 7, type: InternalApi.Secrethub.CheckoutMetadata, json_name: "lastCheckout")
+  field(:last_checkout, 7,
+    type: InternalApi.Secrethub.CheckoutMetadata,
+    json_name: "lastCheckout"
+  )
 
   field(:created_at, 8, type: Google.Protobuf.Timestamp, json_name: "createdAt")
   field(:updated_at, 9, type: Google.Protobuf.Timestamp, json_name: "updatedAt")
