@@ -24,7 +24,7 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
       <NavLink className="gray link f6 mb2 dib" to="/">
         ← Back to Integration
       </NavLink>
-      <h2 className="f3 f2-m mb0">{integration.appName}</h2>
+      <h2 data-testid="integration-title" className="f3 f2-m mb0">{integration.appName}</h2>
       <p className="measure">
         GitHub Cloud integration through installed GitHub App.
       </p>
