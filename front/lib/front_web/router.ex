@@ -107,11 +107,6 @@ defmodule FrontWeb.Router do
       :workflows_destroy
     )
 
-    get("/jobs/:id/artifacts", ArtifactsController, :jobs)
-    get("/jobs/:id/artifacts/:resource_path", ArtifactsController, :jobs_download)
-    delete("/jobs/:id/artifacts", ArtifactsController, :jobs_destroy)
-    delete("/jobs/:id/artifacts/:resource_path", ArtifactsController, :jobs_destroy)
-
     get("/settings", SettingsController, :show)
 
     get("/settings/change_url", SettingsController, :change_url)
@@ -607,6 +602,7 @@ defmodule FrontWeb.Router do
 
     get("/workflows/:workflow_id/status", WorkflowController, :status)
     get("/workflows/:workflow_id/summary", TestResultsController, :pipeline_summary)
+    get("/workflows/:workflow_id/report", ReportController, :workflow)
     get("/workflows/:workflow_id/summary/:pipeline_id", TestResultsController, :details)
     get("/workflows/:workflow_id/pipelines/:pipeline_id", PipelineController, :show)
     get("/workflows/:workflow_id/pipelines/:pipeline_id/poll", PipelineController, :poll)
@@ -632,24 +628,32 @@ defmodule FrontWeb.Router do
     )
 
     # Job Page
-    get("/jobs/:id", JobController, :show)
-    get("/jobs/:id/status", JobController, :status)
-    get("/jobs/:id/status_badge", JobController, :status_badge)
-    get("/jobs/:id/summary", TestResultsController, :job_summary)
-    get("/jobs/:id/logs", JobController, :logs)
+    scope "/jobs/:id" do
+      get("/", JobController, :show)
+      get("/status", JobController, :status)
+      get("/status_badge", JobController, :status_badge)
+      get("/summary", TestResultsController, :job_summary)
+      get("/logs", JobController, :logs)
+      get("/report", ReportController, :job)
 
-    get("/jobs/:id/edit_workflow", JobController, :edit_workflow)
+      get("/edit_workflow", JobController, :edit_workflow)
 
-    post("/jobs/:id/stop", JobController, :stop)
+      post("/stop", JobController, :stop)
 
-    get("/jobs/:id/raw_logs.json", JobController, :events)
+      get("/raw_logs.json", JobController, :events)
 
-    get("/jobs/:id/events.json", JobController, :events)
+      get("/events.json", JobController, :events)
 
-    get("/jobs/:id/plain_logs.txt", JobController, :plain_logs)
+      get("/plain_logs.txt", JobController, :plain_logs)
 
-    # Deprecated, left here for backwards compatibility.
-    get("/jobs/:id/plain_logs.json", JobController, :plain_logs)
+      # Deprecated, left here for backwards compatibility.
+      get("/plain_logs.json", JobController, :plain_logs)
+
+      get("/artifacts", ArtifactsController, :jobs)
+      get("/artifacts/:resource_path", ArtifactsController, :jobs_download)
+      delete("/artifacts", ArtifactsController, :jobs_destroy)
+      delete("/artifacts/:resource_path", ArtifactsController, :jobs_destroy)
+    end
 
     # Support Page
     get("/support", SupportController, :new)

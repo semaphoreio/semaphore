@@ -102,6 +102,8 @@ data:
       enabled: false
     ui_monaco_workflow_code_editor:
       enabled: true
+    ui_reports:
+      enabled: true
     new_project_onboarding:
       enabled: true
 {{- else }}
@@ -203,6 +205,8 @@ data:
     ui_show_refresh_collaborators:
       enabled: true
     ui_monaco_workflow_code_editor:
+      enabled: true
+    ui_reports:
       enabled: true
     new_project_onboarding:
       enabled: true

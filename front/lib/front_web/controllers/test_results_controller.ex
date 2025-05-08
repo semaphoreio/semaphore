@@ -70,7 +70,7 @@ defmodule FrontWeb.TestResultsController do
             |> Map.put(:layout, {FrontWeb.LayoutView, "job.html"})
             |> Map.put(:user, conn.assigns.layout_model.user)
             |> put_layout_assigns(org, project, job)
-            |> Front.Breadcrumbs.Job.test_results_page(conn, :test_results)
+            |> Front.Breadcrumbs.Job.construct(conn, :test_results)
 
           render(
             conn,
@@ -82,7 +82,7 @@ defmodule FrontWeb.TestResultsController do
           assigns =
             assigns
             |> put_layout_assigns(org, project, job)
-            |> Front.Breadcrumbs.Job.test_results_page(conn, :test_results)
+            |> Front.Breadcrumbs.Job.construct(conn, :test_results)
 
           render(
             conn,
@@ -147,7 +147,7 @@ defmodule FrontWeb.TestResultsController do
             |> Map.put(:layout, {FrontWeb.LayoutView, "workflow.html"})
             |> Map.put(:user, conn.assigns.layout_model.user)
             |> put_layout_assigns(org, project, pipeline)
-            |> Front.Breadcrumbs.Job.test_results_page(conn, :test_results)
+            |> Front.Breadcrumbs.Job.construct(conn, :test_results)
 
           render(
             conn,
@@ -159,7 +159,7 @@ defmodule FrontWeb.TestResultsController do
           assigns =
             assigns
             |> put_layout_assigns(org, project, pipeline)
-            |> Front.Breadcrumbs.Job.test_results_page(conn, :test_results)
+            |> Front.Breadcrumbs.Job.construct(conn, :test_results)
 
           render(
             conn,
