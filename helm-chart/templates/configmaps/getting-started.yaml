@@ -68,7 +68,7 @@ data:
                 <div class="bg-washed-indigo pa3 ba b--black-075 mb3">
                     <p class="mb2">Create your first project by following these steps:</p>
                     <ul class="mb2">
-                        <li>Look for the <span class="b">"+ Create new"</span> button in the top right corner of your dashboard</li>
+                        <li>Look for the <span class="b">"+ Create new"</span> button in the top left corner of your dashboard</li>
                         <li>Connect your Git repository (or fork one of our demo projects to get started quickly)</li>
                         <li>Grant necessary repository access permissions to establish the connection</li>
                         <li>Choose a workflow template or create a custom one for your initial setup</li>
