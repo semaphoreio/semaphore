@@ -153,12 +153,24 @@ func (w *PendingEventsWorker) filterStages(logger *log.Entry, event *models.Even
 func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.Stage) error {
 	return database.Conn().Transaction(func(tx *gorm.DB) error {
 		for _, stage := range stages {
-			event, err := models.CreateStageEventInTransaction(tx, stage.ID, event)
+			stageEvent, err := models.CreateStageEventInTransaction(tx, stage.ID, event)
 			if err != nil {
 				return fmt.Errorf("error creating pending stage event: %v", err)
 			}
 
-			err = messages.NewStageEventCreatedMessage(stage.CanvasID.String(), event).Publish()
+			for _, tag := range stage.Tags {
+				value, err := event.EvaluateStringExpression(tag.ValueFrom)
+				if err != nil {
+					return fmt.Errorf("error finding tag value for tag %s: %v", tag.Name, err)
+				}
+
+				err = models.CreateStageEventTagInTransaction(tx, tag.Name, value, stageEvent.ID)
+				if err != nil {
+					return fmt.Errorf("error creating tag value: %v", err)
+				}
+			}
+
+			err = messages.NewStageEventCreatedMessage(stage.CanvasID.String(), stageEvent).Publish()
 			if err != nil {
 				logging.ForStage(&stage).Errorf("failed to publish stage event created message: %v", err)
 			}

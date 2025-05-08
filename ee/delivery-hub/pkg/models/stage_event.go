@@ -19,6 +19,7 @@ const (
 
 	StageEventStateReasonApproval   = "approval"
 	StageEventStateReasonTimeWindow = "time-window"
+	StageEventStateReasonExecution  = "execution"
 )
 
 var (
@@ -44,6 +45,14 @@ func (e *StageEvent) UpdateState(state, reason string) error {
 func (e *StageEvent) UpdateStateInTransaction(tx *gorm.DB, state, reason string) error {
 	return tx.Model(e).
 		Clauses(clause.Returning{}).
+		Update("state", state).
+		Update("state_reason", reason).
+		Error
+}
+
+func UpdateStageEventInTransaction(tx *gorm.DB, id uuid.UUID, state, reason string) error {
+	return tx.Table("stage_events").
+		Where("id = ?", id).
 		Update("state", state).
 		Update("state_reason", reason).
 		Error
@@ -82,6 +91,20 @@ func (e *StageEvent) FindApprovals() ([]StageEventApproval, error) {
 	}
 
 	return approvals, nil
+}
+
+func FindStageEventTags(id uuid.UUID) ([]StageEventTag, error) {
+	return FindStageEventTagsInTransaction(database.Conn(), id)
+}
+
+func FindStageEventTagsInTransaction(tx *gorm.DB, id uuid.UUID) ([]StageEventTag, error) {
+	var tags []StageEventTag
+	err := tx.Where("stage_event_id = ?", id).Find(&tags).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return tags, nil
 }
 
 func FindStageEventByID(id, stageID string) (*StageEvent, error) {

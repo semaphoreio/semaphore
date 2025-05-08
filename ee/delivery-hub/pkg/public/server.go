@@ -23,7 +23,7 @@ const (
 	MaxEventSize = 64 * 1024
 
 	// The size of a stage execution can be up to 4k
-	MaxExecutionOutputsSize = 4 * 1024
+	MaxExecutionTagsSize = 4 * 1024
 )
 
 type Server struct {
@@ -62,7 +62,7 @@ func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
 		Methods("POST")
 
 	authenticatedRoute.
-		HandleFunc(s.BasePath+"/executions/{executionID}/outputs", s.HandleExecutionOutputs).
+		HandleFunc(s.BasePath+"/executions/{executionID}/tags", s.HandleExecutionTags).
 		Headers("Content-Type", "application/json").
 		Methods("POST")
 
@@ -105,7 +105,7 @@ func (s *Server) Close() {
 	}
 }
 
-func (s *Server) HandleExecutionOutputs(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleExecutionTags(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	executionID, err := uuid.Parse(vars["executionID"])
 	if err != nil {
@@ -138,7 +138,7 @@ func (s *Server) HandleExecutionOutputs(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	r.Body = http.MaxBytesReader(w, r.Body, MaxExecutionOutputsSize)
+	r.Body = http.MaxBytesReader(w, r.Body, MaxExecutionTagsSize)
 	defer r.Body.Close()
 
 	body, err := io.ReadAll(r.Body)
@@ -146,7 +146,7 @@ func (s *Server) HandleExecutionOutputs(w http.ResponseWriter, r *http.Request) 
 		if _, ok := err.(*http.MaxBytesError); ok {
 			http.Error(
 				w,
-				fmt.Sprintf("Request body is too large - must be up to %d bytes", MaxExecutionOutputsSize),
+				fmt.Sprintf("Request body is too large - must be up to %d bytes", MaxExecutionTagsSize),
 				http.StatusRequestEntityTooLarge,
 			)
 
@@ -157,9 +157,9 @@ func (s *Server) HandleExecutionOutputs(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	err = execution.UpdateOutputs(body)
+	err = execution.AddTags(body)
 	if err != nil {
-		http.Error(w, "Error updating outputs", http.StatusInternalServerError)
+		http.Error(w, "Error updating tags", http.StatusInternalServerError)
 		return
 	}
 

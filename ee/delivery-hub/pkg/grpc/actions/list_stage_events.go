@@ -107,7 +107,7 @@ func serializeStageEvents(in []models.StageEvent) ([]*pb.StageEvent, error) {
 	return out, nil
 }
 
-// TODO: very inefficient way of querying the approvals that we should fix later
+// TODO: very inefficient way of querying the approvals/tags that we should fix later
 func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 	e := pb.StageEvent{
 		Id:          in.ID.String(),
@@ -117,9 +117,15 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 		SourceId:    in.SourceID.String(),
 		SourceType:  pb.Connection_TYPE_EVENT_SOURCE,
 		Approvals:   []*pb.StageEventApproval{},
+		Tags:        []*pb.StageEventTag{},
 	}
 
 	approvals, err := in.FindApprovals()
+	if err != nil {
+		return nil, err
+	}
+
+	tags, err := models.FindStageEventTags(in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,6 +135,10 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 			ApprovedBy: approval.ApprovedBy.String(),
 			ApprovedAt: timestamppb.New(*approval.ApprovedAt),
 		})
+	}
+
+	for _, tag := range tags {
+		e.Tags = append(e.Tags, &pb.StageEventTag{Name: tag.Name, Value: tag.Value})
 	}
 
 	return &e, nil

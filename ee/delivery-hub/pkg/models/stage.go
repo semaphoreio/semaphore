@@ -25,8 +25,15 @@ type Stage struct {
 	CreatedAt      *time.Time
 	CreatedBy      uuid.UUID
 
+	Tags        datatypes.JSONSlice[StageTagDefinition]
 	Conditions  datatypes.JSONSlice[StageCondition]
 	RunTemplate datatypes.JSONType[RunTemplate]
+}
+
+type StageTagDefinition struct {
+	Name      string   `json:"name"`
+	ValueFrom string   `json:"value_from"`
+	From      []string `json:"from"`
 }
 
 type StageCondition struct {

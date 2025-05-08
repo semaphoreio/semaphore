@@ -114,6 +114,15 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 			return err
 		}
 
+		err = models.UpdateStageEventInTransaction(
+			tx, execution.StageEventID, models.StageEventStateProcessed, "",
+		)
+
+		if err != nil {
+			logger.Errorf("Error updating stage event state: %v", err)
+			return err
+		}
+
 		//
 		// Lastly, since the stage for this execution might be connected to other stages,
 		// we create a new event for the completion of this stage.
@@ -181,7 +190,12 @@ func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution
 		return err
 	}
 
-	e, err := events.NewStageExecutionCompletion(execution)
+	tags, err := c.buildTags(tx, execution)
+	if err != nil {
+		return fmt.Errorf("error building tags: %v", err)
+	}
+
+	e, err := events.NewStageExecutionCompletion(execution, tags)
 	if err != nil {
 		return fmt.Errorf("error creating stage completion event: %v", err)
 	}
@@ -197,4 +211,32 @@ func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution
 	}
 
 	return nil
+}
+
+func (c *PipelineDoneConsumer) buildTags(tx *gorm.DB, execution *models.StageExecution) (map[string]string, error) {
+	var allTags map[string]string
+
+	//
+	// Include extra tags from execution, if any.
+	//
+	if execution.Tags != nil {
+		err := json.Unmarshal(execution.Tags, &allTags)
+		if err != nil {
+			return nil, fmt.Errorf("error adding tags from execution: %v", err)
+		}
+	}
+
+	//
+	// Include tags from event
+	//
+	tagsFromEvent, err := models.FindStageEventTagsInTransaction(tx, execution.StageEventID)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tags from stage event: %v", err)
+	}
+
+	for _, t := range tagsFromEvent {
+		allTags[t.Name] = t.Value
+	}
+
+	return allTags, nil
 }

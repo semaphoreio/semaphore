@@ -40,7 +40,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, []models.StageTagDefinition{}))
 
 		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
@@ -83,7 +83,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, []models.StageTagDefinition{}))
 
 		stage, err := r.Canvas.FindStageByName("stage-task")
 		require.NoError(t, err)
@@ -135,7 +135,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		template.Semaphore.Parameters = map[string]string{
 			"REF":             "${{ self.Conn('gh').ref }}",
 			"REF_TYPE":        "${{ self.Conn('gh').ref_type }}",
-			"STAGE_1_VERSION": "${{ self.Conn('stage-1').outputs.version }}",
+			"STAGE_1_VERSION": "${{ self.Conn('stage-1').tags.version }}",
 		}
 
 		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), []models.StageCondition{}, template, []models.StageConnection{
@@ -149,13 +149,13 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceName: r.Stage.Name,
 				SourceType: models.SourceTypeStage,
 			},
-		}))
+		}, []models.StageTagDefinition{}))
 
 		stage, err := r.Canvas.FindStageByName("stage-task-2")
 		require.NoError(t, err)
 
 		//
-		// Since we use the outputs of a stage in the template for the execution,
+		// Since we use the tags of a stage in the template for the execution,
 		// we need a previous event for that stage to be available, so we create it here.
 		//
 		data := createStageCompletionEvent(t, r, map[string]string{"version": "1.0.0"})
@@ -225,15 +225,12 @@ func assertParameters(t *testing.T, req *schedulepb.RunNowRequest, execution *mo
 	}))
 }
 
-func createStageCompletionEvent(t *testing.T, r *support.ResourceRegistry, outputs map[string]string) []byte {
-	o, err := json.Marshal(outputs)
-	require.NoError(t, err)
+func createStageCompletionEvent(t *testing.T, r *support.ResourceRegistry, tags map[string]string) []byte {
 	e, err := events.NewStageExecutionCompletion(&models.StageExecution{
 		ID:      uuid.New(),
 		StageID: r.Stage.ID,
 		Result:  models.StageExecutionResultPassed,
-		Outputs: o,
-	})
+	}, tags)
 
 	require.NoError(t, err)
 	data, err := json.Marshal(e)

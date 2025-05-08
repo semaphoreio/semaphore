@@ -121,6 +121,18 @@ CREATE TABLE public.stage_event_approvals (
 
 
 --
+-- Name: stage_event_tags; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.stage_event_tags (
+    name character varying(64) NOT NULL,
+    value character varying(128) NOT NULL,
+    stage_event_id uuid NOT NULL,
+    healthy boolean NOT NULL
+);
+
+
+--
 -- Name: stage_events; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -148,7 +160,7 @@ CREATE TABLE public.stage_executions (
     reference_id character varying(64) NOT NULL,
     state character varying(64) NOT NULL,
     result character varying(64) NOT NULL,
-    outputs jsonb,
+    tags jsonb,
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL,
     started_at timestamp without time zone,
@@ -168,7 +180,8 @@ CREATE TABLE public.stages (
     created_at timestamp without time zone NOT NULL,
     created_by uuid NOT NULL,
     run_template jsonb NOT NULL,
-    conditions jsonb
+    conditions jsonb,
+    tags jsonb
 );
 
 
@@ -250,6 +263,14 @@ ALTER TABLE ONLY public.stage_event_approvals
 
 ALTER TABLE ONLY public.stage_event_approvals
     ADD CONSTRAINT stage_event_approvals_stage_event_id_approved_by_key UNIQUE (stage_event_id, approved_by);
+
+
+--
+-- Name: stage_event_tags stage_event_tags_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_event_tags
+    ADD CONSTRAINT stage_event_tags_pkey PRIMARY KEY (name, value, stage_event_id);
 
 
 --
@@ -379,6 +400,14 @@ ALTER TABLE ONLY public.stage_event_approvals
 
 
 --
+-- Name: stage_event_tags stage_event_tags_stage_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.stage_event_tags
+    ADD CONSTRAINT stage_event_tags_stage_event_id_fkey FOREIGN KEY (stage_event_id) REFERENCES public.stage_events(id);
+
+
+--
 -- Name: stage_events stage_events_stage_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -437,7 +466,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250505203708	f
+20250508202117	f
 \.
 
 

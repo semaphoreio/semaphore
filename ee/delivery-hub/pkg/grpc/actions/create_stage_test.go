@@ -77,7 +77,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{Type: protos.Condition_CONDITION_TYPE_APPROVAL, Approval: &protos.ConditionApproval{}},
 			},
@@ -96,7 +101,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type:       protos.Condition_CONDITION_TYPE_TIME_WINDOW,
@@ -118,7 +128,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
@@ -142,7 +157,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
@@ -166,7 +186,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
@@ -191,7 +216,12 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    support.ProtoRunTemplate(),
 			RequesterId:    r.User.String(),
-			Connections:    []*protos.Connection{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type: protos.Condition_CONDITION_TYPE_TIME_WINDOW,
@@ -210,6 +240,79 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, "invalid condition: invalid time window condition: invalid day DoesNotExist", s.Message())
 	})
 
+	t.Run("empty tags -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Conditions:     []*protos.Condition{},
+			Tags:           []*protos.TagDefinition{},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "tags must not be empty", s.Message())
+	})
+
+	t.Run("tag with empty name -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Conditions:     []*protos.Condition{},
+			Tags: []*protos.TagDefinition{
+				{Name: ""},
+			},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid tag: no name or value defined", s.Message())
+	})
+
+	t.Run("tag with invalid from -> error", func(t *testing.T) {
+		_, err := CreateStage(context.Background(), &protos.CreateStageRequest{
+			OrganizationId: r.Org.String(),
+			CanvasId:       r.Canvas.ID.String(),
+			Name:           "test",
+			RunTemplate:    support.ProtoRunTemplate(),
+			RequesterId:    r.User.String(),
+			Conditions:     []*protos.Condition{},
+			Tags: []*protos.TagDefinition{
+				{Name: "version", ValueFrom: "ref", From: []string{"does-not-exist"}},
+			},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
+		})
+
+		s, ok := status.FromError(err)
+		assert.True(t, ok)
+		assert.Equal(t, codes.InvalidArgument, s.Code())
+		assert.Equal(t, "invalid tag: invalid from does-not-exist", s.Message())
+	})
+
 	t.Run("stage is created", func(t *testing.T) {
 		amqpURL, _ := config.RabbitMQURL()
 		testconsumer := testconsumer.New(amqpURL, StageCreatedRoutingKey)
@@ -223,6 +326,13 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RunTemplate:    runTemplate,
 			RequesterId:    r.User.String(),
+			Tags: []*protos.TagDefinition{
+				{
+					Name:      "version",
+					ValueFrom: "ref",
+					From:      []string{r.Source.Name},
+				},
+			},
 			Conditions: []*protos.Condition{
 				{
 					Type:     protos.Condition_CONDITION_TYPE_APPROVAL,
@@ -261,9 +371,19 @@ func Test__CreateStage(t *testing.T) {
 		assert.Equal(t, r.Canvas.ID.String(), res.Stage.CanvasId)
 		assert.Equal(t, "test", res.Stage.Name)
 		assert.Equal(t, runTemplate, res.Stage.RunTemplate)
+
+		// Assert connections are correct
 		require.Len(t, res.Stage.Connections, 1)
 		assert.Len(t, res.Stage.Connections[0].Filters, 1)
 		assert.Equal(t, protos.Connection_FILTER_OPERATOR_AND, res.Stage.Connections[0].FilterOperator)
+
+		// Assert tags are correct
+		require.Len(t, res.Stage.Tags, 1)
+		assert.Equal(t, "version", res.Stage.Tags[0].Name)
+		assert.Equal(t, "ref", res.Stage.Tags[0].ValueFrom)
+		assert.Equal(t, []string{r.Source.Name}, res.Stage.Tags[0].From)
+
+		// Assert conditions are correct
 		require.Len(t, res.Stage.Conditions, 2)
 		assert.Equal(t, protos.Condition_CONDITION_TYPE_APPROVAL, res.Stage.Conditions[0].Type)
 		assert.Equal(t, uint32(1), res.Stage.Conditions[0].Approval.Count)
@@ -281,6 +401,19 @@ func Test__CreateStage(t *testing.T) {
 			Name:           "test",
 			RequesterId:    r.User.String(),
 			RunTemplate:    support.ProtoRunTemplate(),
+			Tags: []*protos.TagDefinition{
+				{
+					Name:      "version",
+					ValueFrom: "ref",
+					From:      []string{r.Source.Name},
+				},
+			},
+			Connections: []*protos.Connection{
+				{
+					Name: r.Source.Name,
+					Type: protos.Connection_TYPE_EVENT_SOURCE,
+				},
+			},
 		})
 
 		s, ok := status.FromError(err)

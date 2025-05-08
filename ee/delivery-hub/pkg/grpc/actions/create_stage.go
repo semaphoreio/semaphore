@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 
 	uuid "github.com/google/uuid"
@@ -42,7 +43,12 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = canvas.CreateStage(req.Name, req.RequesterId, conditions, *template, connections)
+	tags, err := validateTags(req.Tags, connections)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	err = canvas.CreateStage(req.Name, req.RequesterId, conditions, *template, connections, tags)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -74,6 +80,49 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 	return response, nil
 }
 
+func validateTags(in []*pb.TagDefinition, connections []models.StageConnection) ([]models.StageTagDefinition, error) {
+	out := []models.StageTagDefinition{}
+
+	if len(in) == 0 {
+		return nil, fmt.Errorf("tags must not be empty")
+	}
+
+	for _, t := range in {
+		tag, err := validateTag(t, connections)
+		if err != nil {
+			return nil, err
+		}
+
+		out = append(out, *tag)
+	}
+
+	return out, nil
+}
+
+func validateTag(t *pb.TagDefinition, connections []models.StageConnection) (*models.StageTagDefinition, error) {
+	if t.Name == "" || t.ValueFrom == "" {
+		return nil, fmt.Errorf("invalid tag: no name or value defined")
+	}
+
+	if len(t.From) == 0 {
+		return nil, fmt.Errorf("invalid tag: no from defined")
+	}
+
+	for _, from := range t.From {
+		if !slices.ContainsFunc(connections, func(connection models.StageConnection) bool {
+			return connection.SourceName == from
+		}) {
+			return nil, fmt.Errorf("invalid tag: invalid from %s", from)
+		}
+	}
+
+	return &models.StageTagDefinition{
+		Name:      t.Name,
+		ValueFrom: t.ValueFrom,
+		From:      t.From,
+	}, nil
+}
+
 func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
 	if in == nil {
 		return nil, fmt.Errorf("missing run template")
@@ -99,6 +148,10 @@ func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
 
 func validateConnections(canvas *models.Canvas, connections []*pb.Connection) ([]models.StageConnection, error) {
 	cs := []models.StageConnection{}
+
+	if len(connections) == 0 {
+		return nil, fmt.Errorf("connections must not be empty")
+	}
 
 	for _, connection := range connections {
 		sourceID, err := findConnectionSourceID(canvas, connection)
@@ -385,8 +438,23 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 		CreatedAt:      timestamppb.New(*stage.CreatedAt),
 		Conditions:     conditions,
 		Connections:    connections,
+		Tags:           serializeTags(stage.Tags),
 		RunTemplate:    runTemplate,
 	}, nil
+}
+
+func serializeTags(tags []models.StageTagDefinition) []*pb.TagDefinition {
+	out := []*pb.TagDefinition{}
+
+	for _, t := range tags {
+		out = append(out, &pb.TagDefinition{
+			Name:      t.Name,
+			ValueFrom: t.ValueFrom,
+			From:      t.From,
+		})
+	}
+
+	return out
 }
 
 func serializeConditions(conditions []models.StageCondition) ([]*pb.Condition, error) {

@@ -17,8 +17,10 @@ func Test__PendingEventsWorker(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{Source: true})
 	w := PendingEventsWorker{}
 
+	eventData := []byte(`{"ref":"v1"}`)
+
 	t.Run("source is not connected to any stage -> event is discarded", func(t *testing.T) {
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
 		require.NoError(t, err)
 
 		err = w.Tick()
@@ -39,6 +41,8 @@ func Test__PendingEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
 		})
 
 		require.NoError(t, err)
@@ -48,6 +52,8 @@ func Test__PendingEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
 		})
 
 		require.NoError(t, err)
@@ -60,7 +66,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -101,6 +107,8 @@ func Test__PendingEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
 		})
 
 		require.NoError(t, err)
@@ -112,6 +120,8 @@ func Test__PendingEventsWorker(t *testing.T) {
 				SourceID:   firstStage.ID,
 				SourceType: models.SourceTypeStage,
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "tags.VERSION", From: []string{firstStage.Name}},
 		})
 
 		require.NoError(t, err)
@@ -119,7 +129,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Simulating a stage completion event coming in for the first stage.
 		//
-		event, err := models.CreateEvent(firstStage.ID, firstStage.Name, models.SourceTypeStage, []byte(`{}`))
+		event, err := models.CreateEvent(firstStage.ID, firstStage.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`))
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -160,11 +170,13 @@ func Test__PendingEventsWorker(t *testing.T) {
 					{
 						Type: models.FilterTypeData,
 						Data: &models.DataFilter{
-							Expression: "a == 1 && b == 2",
+							Expression: "ref == 'v1'",
 						},
 					},
 				},
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
 		})
 
 		require.NoError(t, err)
@@ -178,11 +190,13 @@ func Test__PendingEventsWorker(t *testing.T) {
 					{
 						Type: models.FilterTypeData,
 						Data: &models.DataFilter{
-							Expression: "a == 0 && b == 0",
+							Expression: "ref == 'v2'",
 						},
 					},
 				},
 			},
+		}, []models.StageTagDefinition{
+			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
 		})
 
 		require.NoError(t, err)
@@ -190,7 +204,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"a": 1, "b": 2}`))
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)

@@ -120,7 +120,7 @@ func (w *PendingStageEventsWorker) ProcessEvent(stage *models.Stage, event *mode
 
 		logger.Infof("Created stage execution %s", execution.ID)
 
-		if err := event.UpdateStateInTransaction(tx, models.StageEventStateProcessed, ""); err != nil {
+		if err := event.UpdateStateInTransaction(tx, models.StageEventStateWaiting, models.StageEventStateReasonExecution); err != nil {
 			return fmt.Errorf("error updating event state: %v", err)
 		}
 
