@@ -8,7 +8,7 @@ interface BoxProps {
 
 export const Box = (props: BoxProps) => {
   return (
-    <div className="bb b--black-075 w-100-l mb4 br3 shadow-3 bg-white">
+    <div data-testid="integration-box" className="bb b--black-075 w-100-l mb4 br3 shadow-3 bg-white">
       <div className="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
         <div>
           <div className="flex items-center">
