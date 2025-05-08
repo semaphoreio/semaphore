@@ -28,12 +28,12 @@ func UpdateStage(ctx context.Context, req *pb.UpdateStageRequest) (*pb.UpdateSta
 
 	stage, err := models.FindStageByID(stageID)
 	if err != nil {
-		return nil, status.Errorf(codes.NotFound, "stage not found: %v", err)
+		return nil, status.Errorf(codes.NotFound, "stage not found")
 	}
 
 	canvas, err := models.FindCanvasByID(stage.CanvasID.String(), stage.OrganizationID.String())
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "canvas not found: %v", err)
+		return nil, status.Errorf(codes.Internal, "canvas not found")
 	}
 
 	connections, err := validateConnections(canvas, req.Connections)
@@ -43,37 +43,37 @@ func UpdateStage(ctx context.Context, req *pb.UpdateStageRequest) (*pb.UpdateSta
 
 	err = updateStageConnections(stageID, connections, requesterID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to update stage connections: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to update stage connections")
 	}
 
 	stages, err := canvas.ListStages()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list stages: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to list stages")
 	}
 
 	sources, err := canvas.ListEventSources()
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list event sources: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to list event sources")
 	}
 
 	updatedConnections, err := models.ListConnectionsForStage(stageID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list connections: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to list connections")
 	}
 
 	serializedConnections, err := serializeConnections(stages, sources, updatedConnections)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to serialize connections: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to serialize connections")
 	}
 
 	updatedStage, err := models.FindStageByID(stageID)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get updated stage: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to get updated stage")
 	}
 
 	serializedStage, err := serializeStage(*updatedStage, serializedConnections)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to serialize stage: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to serialize stage")
 	}
 
 	err = messages.NewStageUpdatedMessage(updatedStage).Publish()

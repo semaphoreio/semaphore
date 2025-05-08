@@ -98,7 +98,7 @@ func Test__UpdateStage(t *testing.T) {
 		s, ok := status.FromError(err)
 		assert.True(t, ok)
 		assert.Equal(t, codes.InvalidArgument, s.Code())
-		assert.Contains(t, s.Message(), "invalid connections: event source source-does-not-exist not found")
+		assert.Contains(t, s.Message(), "invalid connection: event source source-does-not-exist not found")
 	})
 
 	t.Run("invalid filter -> error", func(t *testing.T) {

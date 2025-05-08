@@ -168,7 +168,9 @@ CREATE TABLE public.stages (
     created_at timestamp without time zone NOT NULL,
     created_by uuid NOT NULL,
     run_template jsonb NOT NULL,
-    conditions jsonb
+    conditions jsonb,
+    updated_at timestamp without time zone,
+    updated_by uuid
 );
 
 
@@ -437,7 +439,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250505203708	f
+20250508140336	f
 \.
 
 
