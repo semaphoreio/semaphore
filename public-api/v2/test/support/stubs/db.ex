@@ -172,7 +172,7 @@ defmodule Support.Stubs.DB do
 
     Enum.each(entry, fn {k, _} ->
       if !Enum.member?(schema, k) do
-        raise "Stub #{schema} has no #{k}. Available fields #{inspect(schema)}"
+        raise "Stub #{table_name} has no #{inspect(k)}. Available fields #{inspect(schema)}"
       end
     end)
 

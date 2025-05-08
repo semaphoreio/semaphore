@@ -118,6 +118,7 @@ defmodule Support.Stubs.Canvases do
       GrpcMock.stub(CanvasMock, :create_canvas, &__MODULE__.create_canvas/2)
       GrpcMock.stub(CanvasMock, :create_event_source, &__MODULE__.create_event_source/2)
       GrpcMock.stub(CanvasMock, :create_stage, &__MODULE__.create_stage/2)
+      GrpcMock.stub(CanvasMock, :update_stage, &__MODULE__.update_stage/2)
       GrpcMock.stub(CanvasMock, :describe_canvas, &__MODULE__.describe_canvas/2)
       GrpcMock.stub(CanvasMock, :describe_event_source, &__MODULE__.describe_event_source/2)
       GrpcMock.stub(CanvasMock, :describe_stage, &__MODULE__.describe_stage/2)
@@ -314,6 +315,27 @@ defmodule Support.Stubs.Canvases do
       end
     end
 
+    def update_stage(req, _call) do
+      case find_stage(req) do
+        {:ok, stage} ->
+          %InternalApi.Delivery.UpdateStageResponse{
+            stage: %InternalApi.Delivery.Stage{
+              id: stage.id,
+              name: stage.name,
+              organization_id: stage.org_id,
+              canvas_id: stage.canvas_id,
+              created_at: stage.created_at,
+              conditions: stage.conditions,
+              connections: stage.connections,
+              run_template: stage.run_template
+            }
+          }
+
+        {:error, message} ->
+          raise GRPC.RPCError, status: :not_found, message: message
+      end
+    end
+
     def create_event_source(req, _call) do
       id = UUID.gen()
       org_id = req.organization_id
@@ -395,6 +417,18 @@ defmodule Support.Stubs.Canvases do
 
         source ->
           {:ok, source}
+      end
+    end
+
+    defp find_stage(%InternalApi.Delivery.UpdateStageRequest{id: id}) do
+      DB.filter(:stages, id: id)
+      |> Enum.find(fn c -> c.id == id end)
+      |> case do
+        nil ->
+          {:error, "Stage not found"}
+
+        stage ->
+          {:ok, stage}
       end
     end
 
