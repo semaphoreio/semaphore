@@ -32,7 +32,7 @@ defmodule E2E.API.SecretsTest do
       name = "test-project-#{:rand.uniform(1_000_000)}"
       repository_url = "git@github.com:#{organization}/#{repository}.git"
       {:ok, project} = Support.prepare_project(name, repository_url)
-      
+
       on_exit(fn ->
         :ok = Project.delete(name)
       end)
