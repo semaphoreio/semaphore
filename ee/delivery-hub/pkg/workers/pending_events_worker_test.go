@@ -90,6 +90,25 @@ func Test__PendingEventsWorker(t *testing.T) {
 		require.Len(t, stage2Events, 1)
 		assert.Equal(t, r.Source.ID, stage2Events[0].SourceID)
 		assert.True(t, testconsumer.HasReceivedMessage())
+
+		//
+		// Tag is created for each stage event too
+		//
+		e := stage1Events[0]
+		tags, err := models.FindStageEventTags(e.ID)
+		require.NoError(t, err)
+		require.Len(t, tags, 1)
+		assert.Equal(t, []models.StageEventTag{
+			{Name: "VERSION", Value: "v1", State: models.TagStateUnknown, StageEventID: e.ID},
+		}, tags)
+
+		e = stage2Events[0]
+		tags, err = models.FindStageEventTags(e.ID)
+		require.NoError(t, err)
+		require.Len(t, tags, 1)
+		assert.Equal(t, []models.StageEventTag{
+			{Name: "VERSION", Value: "v1", State: models.TagStateUnknown, StageEventID: e.ID},
+		}, tags)
 	})
 
 	t.Run("stage completion event is processed", func(t *testing.T) {

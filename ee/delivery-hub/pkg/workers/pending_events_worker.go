@@ -296,8 +296,8 @@ func (w *PendingEventsWorker) evaluateTags(logger *log.Entry, event *models.Even
 	// If we don't use any tags from this source,
 	// no need to do anything regarding tags here.
 	//
-	if slices.Contains(tagUsage.From, event.SourceName) {
-		logger.Infof("Source %s is not in tag usage definition (%v) - skipping tags", event.SourceName, tagUsage.From)
+	if !slices.Contains(tagUsage.From, event.SourceName) {
+		logger.Infof("Source %s is not in tag usage definition (%v)", event.SourceName, tagUsage.From)
 		return map[string]string{}, nil
 	}
 
