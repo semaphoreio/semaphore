@@ -167,6 +167,8 @@ func stateReasonToProto(stateReason string) pb.StageEvent_StateReason {
 		return pb.StageEvent_STATE_REASON_APPROVAL
 	case models.StageEventStateReasonTimeWindow:
 		return pb.StageEvent_STATE_REASON_TIME_WINDOW
+	case models.StageEventStateReasonExecution:
+		return pb.StageEvent_STATE_REASON_EXECUTION
 	default:
 		return pb.StageEvent_STATE_REASON_UNKNOWN
 	}

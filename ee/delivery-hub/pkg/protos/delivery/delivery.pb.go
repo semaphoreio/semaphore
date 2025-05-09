@@ -319,6 +319,7 @@ const (
 	StageEvent_STATE_REASON_UNKNOWN     StageEvent_StateReason = 0
 	StageEvent_STATE_REASON_APPROVAL    StageEvent_StateReason = 1
 	StageEvent_STATE_REASON_TIME_WINDOW StageEvent_StateReason = 2
+	StageEvent_STATE_REASON_EXECUTION   StageEvent_StateReason = 3
 )
 
 // Enum value maps for StageEvent_StateReason.
@@ -327,11 +328,13 @@ var (
 		0: "STATE_REASON_UNKNOWN",
 		1: "STATE_REASON_APPROVAL",
 		2: "STATE_REASON_TIME_WINDOW",
+		3: "STATE_REASON_EXECUTION",
 	}
 	StageEvent_StateReason_value = map[string]int32{
 		"STATE_REASON_UNKNOWN":     0,
 		"STATE_REASON_APPROVAL":    1,
 		"STATE_REASON_TIME_WINDOW": 2,
+		"STATE_REASON_EXECUTION":   3,
 	}
 )
 
@@ -3584,7 +3587,7 @@ const file_delivery_proto_rawDesc = "" +
 	"\tcanvas_id\x18\x03 \x01(\tR\bcanvasId\x12>\n" +
 	"\x06states\x18\x04 \x03(\x0e2&.InternalApi.Delivery.StageEvent.StateR\x06states\"S\n" +
 	"\x17ListStageEventsResponse\x128\n" +
-	"\x06events\x18\x01 \x03(\v2 .InternalApi.Delivery.StageEventR\x06events\"\xfb\x04\n" +
+	"\x06events\x18\x01 \x03(\v2 .InternalApi.Delivery.StageEventR\x06events\"\x97\x05\n" +
 	"\n" +
 	"StageEvent\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
@@ -3601,11 +3604,12 @@ const file_delivery_proto_rawDesc = "" +
 	"\rSTATE_UNKNOWN\x10\x00\x12\x11\n" +
 	"\rSTATE_PENDING\x10\x01\x12\x11\n" +
 	"\rSTATE_WAITING\x10\x02\x12\x13\n" +
-	"\x0fSTATE_PROCESSED\x10\x04\"`\n" +
+	"\x0fSTATE_PROCESSED\x10\x04\"|\n" +
 	"\vStateReason\x12\x18\n" +
 	"\x14STATE_REASON_UNKNOWN\x10\x00\x12\x19\n" +
 	"\x15STATE_REASON_APPROVAL\x10\x01\x12\x1c\n" +
-	"\x18STATE_REASON_TIME_WINDOW\x10\x02\"\x8f\x01\n" +
+	"\x18STATE_REASON_TIME_WINDOW\x10\x02\x12\x1a\n" +
+	"\x16STATE_REASON_EXECUTION\x10\x03\"\x8f\x01\n" +
 	"\x0fListTagsRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value\x127\n" +
