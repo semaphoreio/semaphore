@@ -324,10 +324,10 @@ defmodule Support.Stubs.Canvases do
               name: stage.name,
               organization_id: stage.org_id,
               canvas_id: stage.canvas_id,
-              created_at: stage.created_at,
-              conditions: stage.conditions,
-              connections: stage.connections,
-              run_template: stage.run_template
+              conditions: stage.api_model.conditions,
+              connections: stage.api_model.connections,
+              run_template: stage.api_model.run_template,
+              created_at: stage.api_model.created_at
             }
           }
 
