@@ -24,6 +24,8 @@ type Stage struct {
 	Name           string
 	CreatedAt      *time.Time
 	CreatedBy      uuid.UUID
+	UpdatedAt      *time.Time
+	UpdatedBy      uuid.UUID
 
 	Conditions  datatypes.JSONSlice[StageCondition]
 	RunTemplate datatypes.JSONType[RunTemplate]
