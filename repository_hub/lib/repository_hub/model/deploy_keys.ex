@@ -54,7 +54,7 @@ defmodule RepositoryHub.Model.DeployKeys do
     File.rm!("ssh_key")
     File.rm!("ssh_key.pub")
 
-    {private_key, String.trim(public_key)}
+    {private_key, public_key}
   end
 
   def fingerprint(model) do
