@@ -62,6 +62,11 @@ func (s *Server) InitRouter(additionalMiddlewares ...mux.MiddlewareFunc) {
 		Methods("POST")
 
 	authenticatedRoute.
+		HandleFunc(s.BasePath+"/sources/{sourceID}/semaphore", s.HandleSemaphoreWebhook).
+		Headers("Content-Type", "application/json").
+		Methods("POST")
+
+	authenticatedRoute.
 		HandleFunc(s.BasePath+"/executions/{executionID}/tags", s.HandleExecutionTags).
 		Headers("Content-Type", "application/json").
 		Methods("POST")
