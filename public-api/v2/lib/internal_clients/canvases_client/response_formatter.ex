@@ -24,6 +24,10 @@ defmodule InternalClients.Canvases.ResponseFormatter do
     {:ok, r.stage}
   end
 
+  def process_response({:ok, r = %API.UpdateStageResponse{}}) do
+    {:ok, r.stage}
+  end
+
   def process_response({:ok, r = %API.DescribeStageResponse{}}) do
     {:ok, r.stage}
   end

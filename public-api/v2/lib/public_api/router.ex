@@ -167,9 +167,13 @@ defmodule PublicAPI.Router do
 
   match("/canvases/:canvas_id_or_name/stages", via: :get, to: Stages.List)
   match("/canvases/:canvas_id_or_name/stages", via: :post, to: Stages.Create)
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name", via: :put, to: Stages.Update)
   match("/canvases/:canvas_id_or_name/stages/:id_or_name", via: :get, to: Stages.Describe)
 
-  match("/canvases/:canvas_id_or_name/stages/:id_or_name/events", via: :get, to: Stages.ListEvents)
+  match("/canvases/:canvas_id_or_name/stages/:id_or_name/events",
+    via: :get,
+    to: Stages.ListEvents
+  )
 
   match("/canvases/:canvas_id_or_name/stages/:id_or_name/approve",
     via: :patch,

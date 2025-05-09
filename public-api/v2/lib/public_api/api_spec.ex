@@ -227,7 +227,8 @@ defmodule PublicAPI.ApiSpec do
           ]),
         "/canvases/{canvas_id_or_name}/stages/{id_or_name}" =>
           OpenApiSpex.PathItem.from_routes([
-            %{verb: :get, plug: PublicAPI.Handlers.Stages.Describe, opts: []}
+            %{verb: :get, plug: PublicAPI.Handlers.Stages.Describe, opts: []},
+            %{verb: :put, plug: PublicAPI.Handlers.Stages.Update, opts: []}
           ]),
         "/canvases/{canvas_id_or_name}/stages/{id_or_name}/events" =>
           OpenApiSpex.PathItem.from_routes([

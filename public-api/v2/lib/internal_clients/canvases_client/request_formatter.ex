@@ -100,6 +100,23 @@ defmodule InternalClients.Canvases.RequestFormatter do
       {:error, {:user, error}}
   end
 
+  def form_request({API.UpdateStageRequest, params}) do
+    {:ok,
+     %API.UpdateStageRequest{
+       id: from_params!(params, :id),
+       connections: stage_connections(params),
+       requester_id: from_params!(params, :user_id)
+     }}
+  rescue
+    e in RuntimeError ->
+      error = %{
+        message: e.message,
+        documentation_url: Application.get_env(:public_api, :documentation_url)
+      }
+
+      {:error, {:user, error}}
+  end
+
   def form_request({API.DescribeStageRequest, params}) do
     {:ok,
      %API.DescribeStageRequest{
