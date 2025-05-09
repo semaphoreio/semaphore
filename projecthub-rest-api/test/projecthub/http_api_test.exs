@@ -283,6 +283,190 @@ defmodule Projecthub.HttpApi.Test do
     end
   end
 
+  describe "GET /api/<version>/projects pagination" do
+    setup do
+      # Setup three projects to test pagination
+      p1_id = uuid()
+      p2_id = uuid()
+      p3_id = uuid()
+      p1 = create("project1", p1_id)
+      p2 = create("project2", p2_id)
+      p3 = create("project3", p3_id)
+
+      FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
+        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [p1_id, p2_id, p3_id])
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+        # Simulate pagination
+        page = req.pagination.page
+        page_size = req.pagination.page_size
+        all_projects = [p1, p2, p3]
+        projects = Enum.slice(all_projects, (page - 1) * page_size, page_size)
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          projects: projects,
+          pagination:
+            PH.PaginationResponse.new(
+              page_number: page,
+              page_size: page_size,
+              total_entries: length(all_projects),
+              total_pages: div(length(all_projects) + page_size - 1, page_size)
+            )
+        )
+      end)
+
+      :ok
+    end
+
+    test "returns correct pagination headers for /projects" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=2",
+          @headers
+        )
+
+      assert response.status_code == 200
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "1" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page-size" and v == "2" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-total-count" and v == "3" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "true" end)
+      projects = Poison.decode!(response.body)
+      assert length(projects) == 2
+    end
+
+    test "returns correct pagination headers for /projects when there are no more projects" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=2&page_size=2",
+          @headers
+        )
+
+      assert response.status_code == 200
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "2" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page-size" and v == "2" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-total-count" and v == "3" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects = Poison.decode!(response.body)
+      assert length(projects) == 1
+    end
+
+    test "returns 404 on out-of-range page" do
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
+            ),
+          projects: []
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=10&page_size=2",
+          @headers
+        )
+
+      assert response.status_code == 404
+    end
+
+    test "returns 400 on bad request" do
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION))
+            ),
+          projects: [],
+          pagination:
+            PH.PaginationResponse.new(
+              total_count: 0,
+              page_number: 0,
+              page_size: 0,
+              total_pages: 0
+            )
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=foo&page_size=bar",
+          @headers
+        )
+
+      assert response.status_code == 400
+    end
+
+    test "returns 400 on negative page" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=-1&page_size=2",
+          @headers
+        )
+
+      assert response.status_code == 400
+      assert Poison.decode!(response.body)["message"] =~ "page must be at least 1"
+    end
+
+    test "returns 400 on zero page_size" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=0",
+          @headers
+        )
+
+      assert response.status_code == 400
+      assert Poison.decode!(response.body)["message"] =~ "page_size must be at least 1"
+    end
+
+    test "returns 400 on too large page" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=9999&page_size=2",
+          @headers
+        )
+
+      assert response.status_code == 400 or response.status_code == 200
+
+      if response.status_code == 400 do
+        assert Poison.decode!(response.body)["message"] =~ "page must be at most"
+      end
+    end
+
+    test "returns 400 on too large page_size" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=9999",
+          @headers
+        )
+
+      assert response.status_code == 400
+      assert Poison.decode!(response.body)["message"] =~ "page_size must be at most"
+    end
+
+    test "returns 400 on non-numeric page_size" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=abc",
+          @headers
+        )
+
+      assert response.status_code == 400
+      assert Poison.decode!(response.body)["message"] =~ "page_size must be a number"
+    end
+  end
+
   describe "GET /api/<version>/projects/:name with authorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
