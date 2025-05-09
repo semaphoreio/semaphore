@@ -41,8 +41,9 @@ defmodule PublicAPI.Schemas.Stages.Stage do
       spec: %Schema{
         type: :object,
         description: "Specification of the stage",
-        required: [:conditions, :connections, :run],
+        required: [:conditions, :connections, :run, :use],
         properties: %{
+          use: PublicAPI.Schemas.Stages.TagUsageDefinition.schema(),
           conditions: %Schema{
             type: :array,
             items: PublicAPI.Schemas.Stages.Condition.schema()

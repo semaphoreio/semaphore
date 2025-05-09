@@ -64,6 +64,20 @@ defmodule InternalApi.Delivery.StageEvent.StateReason do
   field(:STATE_REASON_UNKNOWN, 0)
   field(:STATE_REASON_APPROVAL, 1)
   field(:STATE_REASON_TIME_WINDOW, 2)
+  field(:STATE_REASON_EXECUTION, 3)
+  field(:STATE_REASON_CONNECTION, 4)
+  field(:STATE_REASON_CANCELLED, 5)
+  field(:STATE_REASON_UNHEALTHY, 6)
+end
+
+defmodule InternalApi.Delivery.Tag.State do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:TAG_STATE_UNKNOWN, 0)
+  field(:TAG_STATE_HEALTHY, 1)
+  field(:TAG_STATE_UNHEALTHY, 2)
 end
 
 defmodule InternalApi.Delivery.Canvas do
@@ -229,7 +243,8 @@ defmodule InternalApi.Delivery.Stage do
   field(:created_at, 5, type: Google.Protobuf.Timestamp, json_name: "createdAt")
   field(:connections, 6, repeated: true, type: InternalApi.Delivery.Connection)
   field(:conditions, 7, repeated: true, type: InternalApi.Delivery.Condition)
-  field(:run_template, 8, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
+  field(:use, 8, type: InternalApi.Delivery.TagUsageDefinition)
+  field(:run_template, 9, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
 end
 
 defmodule InternalApi.Delivery.Condition do
@@ -271,7 +286,26 @@ defmodule InternalApi.Delivery.CreateStageRequest do
   field(:requester_id, 4, type: :string, json_name: "requesterId")
   field(:connections, 5, repeated: true, type: InternalApi.Delivery.Connection)
   field(:conditions, 6, repeated: true, type: InternalApi.Delivery.Condition)
-  field(:run_template, 7, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
+  field(:use, 7, type: InternalApi.Delivery.TagUsageDefinition)
+  field(:run_template, 8, type: InternalApi.Delivery.RunTemplate, json_name: "runTemplate")
+end
+
+defmodule InternalApi.Delivery.TagUsageDefinition do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:from, 1, repeated: true, type: :string)
+  field(:tags, 2, repeated: true, type: InternalApi.Delivery.TagDefinition)
+end
+
+defmodule InternalApi.Delivery.TagDefinition do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:name, 1, type: :string)
+  field(:valueFrom, 2, type: :string)
 end
 
 defmodule InternalApi.Delivery.RunTemplate do
@@ -382,6 +416,13 @@ defmodule InternalApi.Delivery.ListStageEventsRequest do
   field(:organization_id, 2, type: :string, json_name: "organizationId")
   field(:canvas_id, 3, type: :string, json_name: "canvasId")
   field(:states, 4, repeated: true, type: InternalApi.Delivery.StageEvent.State, enum: true)
+
+  field(:state_reasons, 5,
+    repeated: true,
+    type: InternalApi.Delivery.StageEvent.StateReason,
+    json_name: "stateReasons",
+    enum: true
+  )
 end
 
 defmodule InternalApi.Delivery.ListStageEventsResponse do
@@ -416,6 +457,66 @@ defmodule InternalApi.Delivery.StageEvent do
 
   field(:created_at, 6, type: Google.Protobuf.Timestamp, json_name: "createdAt")
   field(:approvals, 7, repeated: true, type: InternalApi.Delivery.StageEventApproval)
+  field(:tags, 8, repeated: true, type: InternalApi.Delivery.Tag)
+end
+
+defmodule InternalApi.Delivery.ListTagsRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
+  field(:states, 3, repeated: true, type: InternalApi.Delivery.Tag.State, enum: true)
+  field(:stage_id, 4, type: :string, json_name: "stageId")
+end
+
+defmodule InternalApi.Delivery.ListTagsResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:tags, 1, repeated: true, type: InternalApi.Delivery.StageTag)
+end
+
+defmodule InternalApi.Delivery.StageTag do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:stage_id, 1, type: :string, json_name: "stageId")
+
+  field(:stage_event_state, 2,
+    type: InternalApi.Delivery.StageEvent.State,
+    json_name: "stageEventState",
+    enum: true
+  )
+
+  field(:tag, 3, type: InternalApi.Delivery.Tag)
+end
+
+defmodule InternalApi.Delivery.Tag do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
+  field(:state, 3, type: InternalApi.Delivery.Tag.State, enum: true)
+end
+
+defmodule InternalApi.Delivery.UpdateTagStateRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:tag, 1, type: InternalApi.Delivery.Tag)
+end
+
+defmodule InternalApi.Delivery.UpdateTagStateResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 end
 
 defmodule InternalApi.Delivery.StageEventApproval do
@@ -448,6 +549,16 @@ defmodule InternalApi.Delivery.ApproveStageEventResponse do
 end
 
 defmodule InternalApi.Delivery.StageCreated do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:canvas_id, 1, type: :string, json_name: "canvasId")
+  field(:stage_id, 2, type: :string, json_name: "stageId")
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Delivery.StageUpdated do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
@@ -594,6 +705,14 @@ defmodule InternalApi.Delivery.Delivery.Service do
     :ApproveStageEvent,
     InternalApi.Delivery.ApproveStageEventRequest,
     InternalApi.Delivery.ApproveStageEventResponse
+  )
+
+  rpc(:ListTags, InternalApi.Delivery.ListTagsRequest, InternalApi.Delivery.ListTagsResponse)
+
+  rpc(
+    :UpdateTagState,
+    InternalApi.Delivery.UpdateTagStateRequest,
+    InternalApi.Delivery.UpdateTagStateResponse
   )
 end
 

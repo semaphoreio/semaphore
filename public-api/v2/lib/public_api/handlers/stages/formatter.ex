@@ -27,6 +27,9 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
       state: event_state_from_pb(event.state),
       state_reason: event_state_reason_from_pb(event.state_reason),
       created_at: PublicAPI.Util.Timestamps.to_timestamp(event.created_at),
+      tags: Enum.map(event.tags, fn tag ->
+        %{name: tag.name, value: tag.value, state: tag_state_from_pb(tag.state)}
+      end),
       approvals:
         Enum.map(event.approvals, fn approval ->
           %{
@@ -44,7 +47,16 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
 
   defp event_state_reason_from_pb(:STATE_REASON_APPROVAL), do: "APPROVAL"
   defp event_state_reason_from_pb(:STATE_REASON_TIME_WINDOW), do: "TIME_WINDOW"
+  defp event_state_reason_from_pb(:STATE_REASON_EXECUTION), do: "EXECUTION"
+  defp event_state_reason_from_pb(:STATE_REASON_CONNECTION), do: "CONNECTION"
+  defp event_state_reason_from_pb(:STATE_REASON_CANCELLED), do: "CANCELLED"
+  defp event_state_reason_from_pb(:STATE_REASON_UNHEALTHY), do: "UNHEALTHY"
   defp event_state_reason_from_pb(_), do: nil
+
+  defp tag_state_from_pb(:TAG_STATE_UNKNOWN), do: "UNKNOWN"
+  defp tag_state_from_pb(:TAG_STATE_HEALTHY), do: "HEALTHY"
+  defp tag_state_from_pb(:TAG_STATE_UNHEALTHY), do: "UNHEALTHY"
+  defp tag_state_from_pb(_), do: nil
 
   def list(stages, ctx) do
     {:ok,
@@ -76,8 +88,18 @@ defmodule PublicAPI.Handlers.Stages.Formatter do
         conditions: Enum.map(stage.conditions, fn condition -> condition_from_pb(condition) end),
         connections:
           Enum.map(stage.connections, fn connection -> connection_from_pb(connection) end),
-        run: run_template_from_pb(stage.run_template)
+        run: run_template_from_pb(stage.run_template),
+        use: tag_usage_def_from_pb(stage.use)
       }
+    }
+  end
+
+  defp tag_usage_def_from_pb(def = %API.TagUsageDefinition{}) do
+    %{
+      from: def.from,
+      tags: Enum.map(def.tags, fn t ->
+        %{name: t.name, valueFrom: t.valueFrom}
+      end)
     }
   end
 

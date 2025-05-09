@@ -28,6 +28,10 @@ defmodule PublicAPI.Schemas.Stages.StageEvent do
       approvals: %Schema{
         type: :array,
         items: PublicAPI.Schemas.Stages.StageEventApproval.schema()
+      },
+      tags: %Schema{
+        type: :array,
+        items: PublicAPI.Schemas.Stages.Tag.schema()
       }
     }
   })

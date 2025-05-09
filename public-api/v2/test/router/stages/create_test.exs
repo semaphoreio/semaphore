@@ -127,11 +127,19 @@ defmodule Router.Stages.CreateTest do
       %{connection | name: params.source_name, type: "EVENT_SOURCE", filters: filters}
     ]
 
+    tag_usage_def = %{
+      from: [params.source_name],
+      tags: [
+        %{name: "VERSION", valueFrom: "ref"}
+      ]
+    }
+
     default
     |> Map.put(:metadata, Map.put(default.metadata, :organization, organization))
     |> Map.put(:metadata, Map.put(default.metadata, :canvas, canvas))
     |> Map.put(:metadata, Map.put(default.metadata, :name, params.name))
     |> Map.put(:spec, Map.put(default.spec, :connections, connections))
+    |> Map.put(:spec, Map.put(default.spec, :use, tag_usage_def))
   end
 
   defp create_stage(ctx, stage) do
