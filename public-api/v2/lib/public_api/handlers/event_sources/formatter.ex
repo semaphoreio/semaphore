@@ -15,7 +15,7 @@ defmodule PublicAPI.Handlers.EventSources.Formatter do
      }}
   end
 
-  defp source_from_pb(ctx, %API.EventSource{} = source, key) do
+  defp source_from_pb(ctx, source = %API.EventSource{}, key) do
     %{
       apiVersion: "v2",
       kind: "EventSource",
