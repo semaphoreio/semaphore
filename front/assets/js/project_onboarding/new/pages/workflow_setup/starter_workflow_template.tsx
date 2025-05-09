@@ -8,6 +8,7 @@ import { FilterButton, PreviewPanel } from "../../components";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
+import { useSteps } from "../../stores/create/steps";
 
 interface TemplateOptionProps {
   template: Templates.Template;
@@ -65,6 +66,13 @@ export const StarterWorkflowTemplate = () => {
   const [searchQuery, setSearchQuery] = useState(``);
   const [selectedTemplate, setSelectedTemplate] = useState<Templates.Template>(state.templates.find(t => t.title.includes(`Fan-In`)) || state.templates[0]);
   const [isLoading, setIsLoading] = useState(false);
+
+
+  const { dispatch } = useSteps();
+
+  useEffect(() => {
+    dispatch([`SET_CURRENT`, `setup-workflow`]);
+  }, []);
 
   useEffect(() => {
     if (!selectedAgentType) {

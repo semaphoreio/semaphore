@@ -9,17 +9,14 @@ import { IntegrationType } from "../../types/provider";
 import { useSteps } from "../../stores/create/steps";
 
 export const ChooseRepo = () => {
-
+  const { integrationType } = useParams();
+  const { dispatch } = useSteps();
   const steps = [
     { id: `select-type`, title: `Select project type` },
     { id: `setup-project`, title: `Setup the project` },
     { id: `select-environment`, title: `Select the environment` },
     { id: `setup-workflow`, title: `Setup workflow` },
   ];
-
-  const { integrationType } = useParams();
-  const { dispatch } = useSteps();
-
 
   useLayoutEffect(() => {
     dispatch([`SET_STEPS`, steps]);

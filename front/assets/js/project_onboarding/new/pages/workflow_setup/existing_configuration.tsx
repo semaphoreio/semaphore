@@ -2,16 +2,22 @@
 
 import * as stores from "../../stores";
 import * as components from "../../components";
-import { useContext } from "preact/hooks";
+import { useContext, useLayoutEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
+import { useSteps } from "../../stores/create/steps";
 
 export const ExistingConfiguration = () => {
   const { state: configState } = useContext(stores.WorkflowSetup.Config.Context);
   const navigate = useNavigate();
+  const { dispatch } = useSteps();
+
+  useLayoutEffect(() => {
+    dispatch([`SET_CURRENT`, `setup-workflow`]);
+  }, []);
 
   const handleUseExisting = async () => {
     try {
