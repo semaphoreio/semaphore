@@ -145,6 +145,9 @@ defmodule Front.Models.Pipeline.Triggerer do
     ppl_triggered_by = PplTriggeredBy.key(triggerer.ppl_triggered_by)
 
     cond do
+      ppl_triggered_by == :PROMOTION ->
+        {:MANUAL_PROMOTION, :none}
+
       wf_triggered_by == :API ->
         {:API, :none}
 
@@ -156,9 +159,6 @@ defmodule Front.Models.Pipeline.Triggerer do
 
       ppl_triggered_by == :PARTIAL_RE_RUN ->
         {:PIPELINE_PARTIAL_RERUN, {:pipeline, triggerer.ppl_triggerer_id}}
-
-      ppl_triggered_by == :PROMOTION ->
-        {:MANUAL_PROMOTION, :none}
 
       ppl_triggered_by == :AUTO_PROMOTION ->
         {:AUTO_PROMOTION, :none}

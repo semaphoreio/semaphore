@@ -95,6 +95,24 @@ defmodule FrontWeb.PipelineViewTest do
       assert result =~ ~r/Manual promotion by foo/
     end
 
+    @workflow_triggers [:API, :HOOK, :SCHEDULE, :MANUAL_RUN]
+    Enum.each(@workflow_triggers, fn wf_triggered_by ->
+      test "manual promotion takes precedence over workflow trigger #{wf_triggered_by}" do
+        pipeline =
+          Factories.pipeline_with_trigger(:MANUAL_PROMOTION)
+          |> Models.Pipeline.construct()
+          |> update_triggerer(%{
+            owner: {:user, {"1", "foo"}},
+            wf_triggered_by: unquote(wf_triggered_by)
+          })
+
+        result =
+          PipelineView.format_triggerer(build_conn(), %{id: "123", project_name: "foo"}, pipeline)
+
+        assert result =~ ~r/Manual promotion by foo/
+      end
+    end)
+
     test "for an auto promotion" do
       pipeline =
         Factories.pipeline_with_trigger(:AUTO_PROMOTION)
