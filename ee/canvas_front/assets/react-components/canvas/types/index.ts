@@ -1,5 +1,7 @@
 import type { LiveProps } from "live_react";
 // Define interfaces for our data types to ensure type safety
+import { Connection, Condition, RunTemplate } from './flow';
+
 export interface Stage {
   id: string;
   name: string;
@@ -7,8 +9,10 @@ export interface Stage {
   labels?: string[];
   timestamp?: string;
   icon?: string;
-  queue?: any[];
-  connections?: Array<{name: string}>;
+  queue?: string[];
+  connections?: Connection[];
+  conditions?: Condition[];
+  run_template?: RunTemplate;
   [key: string]: any;
 }
 
@@ -16,6 +20,14 @@ export interface EventSource {
   id: string;
   name: string;
   url?: string;
+  type?: string;
+  filters?: string[];
+  filter_operator?: string;
+  lastEvent?: {
+    type: string;
+    release: string;
+    timestamp: string;
+  };
   [key: string]: any;
 }
 
