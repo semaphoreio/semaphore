@@ -43,12 +43,12 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	tags, err := validateTags(req.Tags, connections)
+	tagUsage, err := validateTagUsageDefinition(req.Use, connections)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	err = canvas.CreateStage(req.Name, req.RequesterId, conditions, *template, connections, tags)
+	err = canvas.CreateStage(req.Name, req.RequesterId, conditions, *template, connections, *tagUsage)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -80,35 +80,19 @@ func CreateStage(ctx context.Context, req *pb.CreateStageRequest) (*pb.CreateSta
 	return response, nil
 }
 
-func validateTags(in []*pb.TagDefinition, connections []models.StageConnection) ([]models.StageTagDefinition, error) {
-	out := []models.StageTagDefinition{}
-
-	if len(in) == 0 {
-		return nil, fmt.Errorf("tags must not be empty")
+func validateTagUsageDefinition(usage *pb.TagUsageDefinition, connections []models.StageConnection) (*models.StageTagUsageDefinition, error) {
+	if usage == nil {
+		return nil, fmt.Errorf("missing tag usage definition")
 	}
 
-	for _, t := range in {
-		tag, err := validateTag(t, connections)
-		if err != nil {
-			return nil, err
-		}
-
-		out = append(out, *tag)
+	out := models.StageTagUsageDefinition{
+		Tags: []models.StageTagDefinition{},
 	}
 
-	return out, nil
-}
-
-func validateTag(t *pb.TagDefinition, connections []models.StageConnection) (*models.StageTagDefinition, error) {
-	if t.Name == "" || t.ValueFrom == "" {
-		return nil, fmt.Errorf("invalid tag: no name or value defined")
-	}
-
-	if len(t.From) == 0 {
-		return nil, fmt.Errorf("invalid tag: no from defined")
-	}
-
-	for _, from := range t.From {
+	//
+	// Check if all connections used are valid.
+	//
+	for _, from := range usage.From {
 		if !slices.ContainsFunc(connections, func(connection models.StageConnection) bool {
 			return connection.SourceName == from
 		}) {
@@ -116,11 +100,23 @@ func validateTag(t *pb.TagDefinition, connections []models.StageConnection) (*mo
 		}
 	}
 
-	return &models.StageTagDefinition{
-		Name:      t.Name,
-		ValueFrom: t.ValueFrom,
-		From:      t.From,
-	}, nil
+	out.From = usage.From
+	if len(usage.Tags) == 0 {
+		return nil, fmt.Errorf("tags must not be empty")
+	}
+
+	for _, t := range usage.Tags {
+		if t.Name == "" || t.ValueFrom == "" {
+			return nil, fmt.Errorf("invalid tag: no name or value defined")
+		}
+
+		out.Tags = append(out.Tags, models.StageTagDefinition{
+			Name:      t.Name,
+			ValueFrom: t.ValueFrom,
+		})
+	}
+
+	return &out, nil
 }
 
 func validateRunTemplate(in *pb.RunTemplate) (*models.RunTemplate, error) {
@@ -438,9 +434,16 @@ func serializeStage(stage models.Stage, connections []*pb.Connection) (*pb.Stage
 		CreatedAt:      timestamppb.New(*stage.CreatedAt),
 		Conditions:     conditions,
 		Connections:    connections,
-		Tags:           serializeTags(stage.Tags),
+		Use:            serializeTagUsageDefinition(stage.Use.Data()),
 		RunTemplate:    runTemplate,
 	}, nil
+}
+
+func serializeTagUsageDefinition(def models.StageTagUsageDefinition) *pb.TagUsageDefinition {
+	return &pb.TagUsageDefinition{
+		From: def.From,
+		Tags: serializeTags(def.Tags),
+	}
 }
 
 func serializeTags(tags []models.StageTagDefinition) []*pb.TagDefinition {
@@ -450,7 +453,6 @@ func serializeTags(tags []models.StageTagDefinition) []*pb.TagDefinition {
 		out = append(out, &pb.TagDefinition{
 			Name:      t.Name,
 			ValueFrom: t.ValueFrom,
-			From:      t.From,
 		})
 	}
 

@@ -29,9 +29,7 @@ func Test__ListTags(t *testing.T) {
 				SourceType: models.SourceTypeEventSource,
 			},
 		},
-		[]models.StageTagDefinition{
-			{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
-		},
+		support.TagUsageDef(r.Source.Name),
 	)
 
 	require.NoError(t, err)
@@ -39,7 +37,7 @@ func Test__ListTags(t *testing.T) {
 	require.NoError(t, err)
 
 	event1 := support.CreateStageEvent(t, r.Source, r.Stage)
-	event2 := support.CreateStageEvent(t, r.Source, r.Stage)
+	event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`))
 	event3 := support.CreateStageEvent(t, r.Source, secondStage)
 
 	// create some healthy tags
@@ -48,8 +46,8 @@ func Test__ListTags(t *testing.T) {
 		event1.ID,
 		models.TagStateHealthy,
 		map[string]string{
-			"version": "v1",
-			"sha":     "1234",
+			"VERSION": "v1",
+			"SHA":     "1234",
 		},
 	))
 
@@ -59,8 +57,8 @@ func Test__ListTags(t *testing.T) {
 		event2.ID,
 		models.TagStateUnknown,
 		map[string]string{
-			"version": "v2",
-			"sha":     "5678",
+			"VERSION": "v2",
+			"SHA":     "5678",
 		},
 	))
 
@@ -70,8 +68,8 @@ func Test__ListTags(t *testing.T) {
 		event3.ID,
 		models.TagStateUnhealthy,
 		map[string]string{
-			"version": "v1",
-			"sha":     "1234",
+			"VERSION": "v1",
+			"SHA":     "1234",
 		},
 	))
 
@@ -88,7 +86,7 @@ func Test__ListTags(t *testing.T) {
 
 	t.Run("with name -> list", func(t *testing.T) {
 		res, err := ListTags(context.Background(), &protos.ListTagsRequest{
-			Name: "version",
+			Name: "VERSION",
 		})
 
 		require.NoError(t, err)
@@ -107,7 +105,7 @@ func Test__ListTags(t *testing.T) {
 	t.Run("with name and value -> list", func(t *testing.T) {
 		// version=v1 is in event1 and event3, so we should get 2 tags
 		res, err := ListTags(context.Background(), &protos.ListTagsRequest{
-			Name:  "version",
+			Name:  "VERSION",
 			Value: "v1",
 		})
 
@@ -116,7 +114,7 @@ func Test__ListTags(t *testing.T) {
 
 		// version=v2 is only in event2
 		res, err = ListTags(context.Background(), &protos.ListTagsRequest{
-			Name:  "version",
+			Name:  "VERSION",
 			Value: "v2",
 		})
 
@@ -126,7 +124,7 @@ func Test__ListTags(t *testing.T) {
 
 	t.Run("with inexistent name and value -> empty list", func(t *testing.T) {
 		res, err := ListTags(context.Background(), &protos.ListTagsRequest{
-			Name:  "version",
+			Name:  "VERSION",
 			Value: "v3",
 		})
 
@@ -182,7 +180,7 @@ func Test__ListTags(t *testing.T) {
 		// first stage only has one healthy tag version=v1
 		res, err := ListTags(context.Background(), &protos.ListTagsRequest{
 			StageId: r.Stage.ID.String(),
-			Name:    "version",
+			Name:    "VERSION",
 			Value:   "v1",
 			States:  []protos.Tag_State{protos.Tag_TAG_STATE_HEALTHY},
 		})

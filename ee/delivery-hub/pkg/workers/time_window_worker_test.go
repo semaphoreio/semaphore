@@ -31,7 +31,7 @@ func Test__TimeWindowWorker(t *testing.T) {
 			SourceID:   r.Source.ID,
 			SourceType: models.SourceTypeEventSource,
 		},
-	}, []models.StageTagDefinition{}))
+	}, support.TagUsageDef(r.Source.Name)))
 
 	stage, err := r.Canvas.FindStageByName("stage-1")
 	require.NoError(t, err)

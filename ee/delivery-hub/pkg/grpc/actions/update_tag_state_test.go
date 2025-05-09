@@ -15,32 +15,26 @@ import (
 )
 
 func Test__UpdateTagState(t *testing.T) {
-	r := support.Setup(t)
+	setup := func() []*models.StageEvent {
+		r := support.Setup(t)
+		event1 := support.CreateStageEvent(t, r.Source, r.Stage)
+		event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`))
 
-	event := support.CreateStageEvent(t, r.Source, r.Stage)
+		// create tags with different tag names
+		require.NoError(t, models.UpdateStageEventTagStateInBulk(
+			database.Conn(),
+			event1.ID,
+			models.TagStateUnknown,
+			map[string]string{
+				"SHA": "1234",
+			},
+		))
 
-	// create tags with different tag names
-	require.NoError(t, models.UpdateStageEventTagStateInBulk(
-		database.Conn(),
-		event.ID,
-		models.TagStateUnknown,
-		map[string]string{
-			"version": "v1",
-			"sha":     "1234",
-		},
-	))
-
-	// create tag with same name, but different value
-	require.NoError(t, models.UpdateStageEventTagStateInBulk(
-		database.Conn(),
-		event.ID,
-		models.TagStateUnknown,
-		map[string]string{
-			"version": "v2",
-		},
-	))
+		return []*models.StageEvent{event1, event2}
+	}
 
 	t.Run("missing tag name", func(t *testing.T) {
+		setup()
 		_, err := UpdateTagState(context.Background(), &delivery.UpdateTagStateRequest{
 			Tag: &delivery.Tag{},
 		})
@@ -52,8 +46,9 @@ func Test__UpdateTagState(t *testing.T) {
 	})
 
 	t.Run("missing tag value", func(t *testing.T) {
+		setup()
 		_, err := UpdateTagState(context.Background(), &delivery.UpdateTagStateRequest{
-			Tag: &delivery.Tag{Name: "version"},
+			Tag: &delivery.Tag{Name: "VERSION"},
 		})
 
 		s, ok := status.FromError(err)
@@ -62,10 +57,17 @@ func Test__UpdateTagState(t *testing.T) {
 		assert.Contains(t, s.Message(), "missing tag name or value")
 	})
 
-	t.Run("tag is marked as healthy", func(t *testing.T) {
+	t.Run("tag is marked as healthy - waiting(unhealthy) events are moved to pending", func(t *testing.T) {
+		events := setup()
+
+		// first event will be waiting(unhealthy)
+		require.NoError(t,
+			events[0].UpdateState(models.StageEventStateWaiting, models.StageEventStateReasonUnhealthy),
+		)
+
 		res, err := UpdateTagState(context.Background(), &delivery.UpdateTagStateRequest{
 			Tag: &delivery.Tag{
-				Name:  "version",
+				Name:  "VERSION",
 				Value: "v1",
 				State: delivery.Tag_TAG_STATE_HEALTHY,
 			},
@@ -77,38 +79,47 @@ func Test__UpdateTagState(t *testing.T) {
 		//
 		// Verify tags with different name were not updated
 		//
-		tags, err := models.ListStageTags("sha", "", []string{}, "", "")
+		tags, err := models.ListStageTags("SHA", "", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "sha", tags[0].TagName)
+		assert.Equal(t, "SHA", tags[0].TagName)
 		assert.Equal(t, "1234", tags[0].TagValue)
 		assert.Equal(t, models.TagStateUnknown, tags[0].TagState)
 
 		//
 		// Verify tags with same name but different values were not updated
 		//
-		tags, err = models.ListStageTags("version", "v2", []string{}, "", "")
+		tags, err = models.ListStageTags("VERSION", "v2", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "version", tags[0].TagName)
+		assert.Equal(t, "VERSION", tags[0].TagName)
 		assert.Equal(t, "v2", tags[0].TagValue)
 		assert.Equal(t, models.TagStateUnknown, tags[0].TagState)
 
 		//
 		// Verify tags with same name and value were updated
 		//
-		tags, err = models.ListStageTags("version", "v1", []string{}, "", "")
+		tags, err = models.ListStageTags("VERSION", "v1", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "version", tags[0].TagName)
+		assert.Equal(t, "VERSION", tags[0].TagName)
 		assert.Equal(t, "v1", tags[0].TagValue)
 		assert.Equal(t, models.TagStateHealthy, tags[0].TagState)
+
+		//
+		// Verify stage events in waiting(unhealthy) were moved back to pending
+		//
+		e, err := models.FindStageEventByID(events[0].ID.String(), events[0].StageID.String())
+		require.NoError(t, err)
+		assert.Equal(t, models.StageEventStatePending, e.State)
+		assert.Empty(t, e.StateReason)
 	})
 
 	t.Run("tag is marked as unhealthy", func(t *testing.T) {
+		setup()
 		res, err := UpdateTagState(context.Background(), &delivery.UpdateTagStateRequest{
 			Tag: &delivery.Tag{
-				Name:  "version",
+				Name:  "VERSION",
 				Value: "v1",
 				State: delivery.Tag_TAG_STATE_UNHEALTHY,
 			},
@@ -120,30 +131,30 @@ func Test__UpdateTagState(t *testing.T) {
 		//
 		// Verify tags with different name were not updated
 		//
-		tags, err := models.ListStageTags("sha", "", []string{}, "", "")
+		tags, err := models.ListStageTags("SHA", "", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "sha", tags[0].TagName)
+		assert.Equal(t, "SHA", tags[0].TagName)
 		assert.Equal(t, "1234", tags[0].TagValue)
 		assert.Equal(t, models.TagStateUnknown, tags[0].TagState)
 
 		//
 		// Verify tags with same name but different values were not updated
 		//
-		tags, err = models.ListStageTags("version", "v2", []string{}, "", "")
+		tags, err = models.ListStageTags("VERSION", "v2", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "version", tags[0].TagName)
+		assert.Equal(t, "VERSION", tags[0].TagName)
 		assert.Equal(t, "v2", tags[0].TagValue)
 		assert.Equal(t, models.TagStateUnknown, tags[0].TagState)
 
 		//
 		// Verify tags with same name and value were updated
 		//
-		tags, err = models.ListStageTags("version", "v1", []string{}, "", "")
+		tags, err = models.ListStageTags("VERSION", "v1", []string{}, "", "")
 		require.NoError(t, err)
 		require.Len(t, tags, 1)
-		assert.Equal(t, "version", tags[0].TagName)
+		assert.Equal(t, "VERSION", tags[0].TagName)
 		assert.Equal(t, "v1", tags[0].TagValue)
 		assert.Equal(t, models.TagStateUnhealthy, tags[0].TagState)
 	})

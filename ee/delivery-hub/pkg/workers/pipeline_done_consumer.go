@@ -120,8 +120,8 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 			return err
 		}
 
-		err = models.UpdateStageEventInTransaction(
-			tx, execution.StageEventID, models.StageEventStateProcessed, "",
+		err = models.UpdateStageEventsInTransaction(
+			tx, []string{execution.StageEventID.String()}, models.StageEventStateProcessed, "",
 		)
 
 		if err != nil {

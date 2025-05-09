@@ -32,11 +32,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		},
 	}
 
-	tags := []models.StageTagDefinition{
-		{Name: "VERSION", ValueFrom: "ref", From: []string{r.Source.Name}},
-	}
-
-	err := r.Canvas.CreateStage("stage-1", r.User.String(), []models.StageCondition{}, support.RunTemplate(), connections, tags)
+	err := r.Canvas.CreateStage("stage-1", r.User.String(), []models.StageCondition{}, support.RunTemplate(), connections, support.TagUsageDef(r.Source.Name))
 	require.NoError(t, err)
 	stage, err := r.Canvas.FindStageByName("stage-1")
 	require.NoError(t, err)

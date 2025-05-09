@@ -44,7 +44,11 @@ type StageTag struct {
 }
 
 func UpdateTagState(name, value, state string) error {
-	return database.Conn().
+	return UpdateTagStateInTransaction(database.Conn(), name, value, state)
+}
+
+func UpdateTagStateInTransaction(tx *gorm.DB, name, value, state string) error {
+	return tx.
 		Table("stage_event_tags").
 		Where("name = ?", name).
 		Where("value = ?", value).

@@ -38,7 +38,7 @@ func ListStageEvents(ctx context.Context, req *pb.ListStageEventsRequest) (*pb.L
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	events, err := stage.ListEvents(states)
+	events, err := stage.ListEvents(states, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +169,12 @@ func stateReasonToProto(stateReason string) pb.StageEvent_StateReason {
 		return pb.StageEvent_STATE_REASON_TIME_WINDOW
 	case models.StageEventStateReasonExecution:
 		return pb.StageEvent_STATE_REASON_EXECUTION
+	case models.StageEventStateReasonConnection:
+		return pb.StageEvent_STATE_REASON_CONNECTION
+	case models.StageEventStateReasonCancelled:
+		return pb.StageEvent_STATE_REASON_CANCELLED
+	case models.StageEventStateReasonUnhealthy:
+		return pb.StageEvent_STATE_REASON_UNHEALTHY
 	default:
 		return pb.StageEvent_STATE_REASON_UNKNOWN
 	}

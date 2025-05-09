@@ -25,15 +25,19 @@ type Stage struct {
 	CreatedAt      *time.Time
 	CreatedBy      uuid.UUID
 
-	Tags        datatypes.JSONSlice[StageTagDefinition]
+	Use         datatypes.JSONType[StageTagUsageDefinition]
 	Conditions  datatypes.JSONSlice[StageCondition]
 	RunTemplate datatypes.JSONType[RunTemplate]
 }
 
+type StageTagUsageDefinition struct {
+	From []string             `json:"from"`
+	Tags []StageTagDefinition `json:"tags"`
+}
+
 type StageTagDefinition struct {
-	Name      string   `json:"name"`
-	ValueFrom string   `json:"value_from"`
-	From      []string `json:"from"`
+	Name      string `json:"name"`
+	ValueFrom string `json:"value_from"`
 }
 
 type StageCondition struct {
@@ -211,18 +215,24 @@ func (s *Stage) HasApprovalCondition() bool {
 }
 
 func (s *Stage) ListPendingEvents() ([]StageEvent, error) {
-	return s.ListEvents([]string{StageEventStatePending})
+	return s.ListEvents([]string{StageEventStatePending}, []string{})
 }
 
-func (s *Stage) ListEvents(states []string) ([]StageEvent, error) {
-	var events []StageEvent
-	err := database.Conn().
-		Where("stage_id = ?", s.ID).
-		Where("state IN ?", states).
-		Order("created_at DESC").
-		Find(&events).
-		Error
+func (s *Stage) ListEvents(states, stateReasons []string) ([]StageEvent, error) {
+	return s.ListEventsInTransaction(database.Conn(), states, stateReasons)
+}
 
+func (s *Stage) ListEventsInTransaction(tx *gorm.DB, states, stateReasons []string) ([]StageEvent, error) {
+	var events []StageEvent
+	query := tx.
+		Where("stage_id = ?", s.ID).
+		Where("state IN ?", states)
+
+	if len(stateReasons) > 0 {
+		query.Where("state_reason IN ?", stateReasons)
+	}
+
+	err := query.Order("created_at DESC").Find(&events).Error
 	if err != nil {
 		return nil, err
 	}

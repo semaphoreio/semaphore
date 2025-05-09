@@ -181,7 +181,7 @@ CREATE TABLE public.stages (
     created_by uuid NOT NULL,
     run_template jsonb NOT NULL,
     conditions jsonb,
-    tags jsonb
+    use jsonb
 );
 
 

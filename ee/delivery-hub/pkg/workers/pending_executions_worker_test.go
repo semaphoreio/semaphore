@@ -40,7 +40,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}, []models.StageTagDefinition{}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
@@ -83,7 +83,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}, []models.StageTagDefinition{}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-task")
 		require.NoError(t, err)
@@ -91,13 +91,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create pending execution.
 		//
-		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		execution, err := models.CreateStageExecution(stage.ID, event.ID)
-		require.NoError(t, err)
-
+		execution := support.CreateExecution(t, r.Source, stage)
 		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
@@ -149,7 +143,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceName: r.Stage.Name,
 				SourceType: models.SourceTypeStage,
 			},
-		}, []models.StageTagDefinition{}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-task-2")
 		require.NoError(t, err)
@@ -165,13 +159,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create pending execution for a new event source event.
 		//
-		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		execution, err := models.CreateStageExecution(stage.ID, event.ID)
-		require.NoError(t, err)
-
+		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
 		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()

@@ -20,6 +20,9 @@ const (
 	StageEventStateReasonApproval   = "approval"
 	StageEventStateReasonTimeWindow = "time-window"
 	StageEventStateReasonExecution  = "execution"
+	StageEventStateReasonConnection = "connection"
+	StageEventStateReasonCancelled  = "cancelled"
+	StageEventStateReasonUnhealthy  = "unhealthy"
 )
 
 var (
@@ -50,9 +53,9 @@ func (e *StageEvent) UpdateStateInTransaction(tx *gorm.DB, state, reason string)
 		Error
 }
 
-func UpdateStageEventInTransaction(tx *gorm.DB, id uuid.UUID, state, reason string) error {
+func UpdateStageEventsInTransaction(tx *gorm.DB, ids []string, state, reason string) error {
 	return tx.Table("stage_events").
-		Where("id = ?", id).
+		Where("id IN ?", ids).
 		Update("state", state).
 		Update("state_reason", reason).
 		Error
@@ -107,6 +110,29 @@ func FindStageEventTagsInTransaction(tx *gorm.DB, id uuid.UUID) ([]StageEventTag
 	return tags, nil
 }
 
+func FindStageEventsByTag(name, value, state, reason string) ([]string, error) {
+	return FindStageEventsByTagInTransaction(database.Conn(), name, value, state, reason)
+}
+
+func FindStageEventsByTagInTransaction(tx *gorm.DB, name, value, state, reason string) ([]string, error) {
+	var ids []string
+	err := tx.Table("stage_events AS e").
+		Joins("INNER JOIN stage_event_tags AS t ON e.id = t.stage_event_id").
+		Select("e.id").
+		Where("t.name = ?", name).
+		Where("t.value = ?", value).
+		Where("e.state = ?", state).
+		Where("e.state_reason", reason).
+		Find(&ids).
+		Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ids, nil
+}
+
 func FindStageEventByID(id, stageID string) (*StageEvent, error) {
 	var event StageEvent
 
@@ -123,20 +149,21 @@ func FindStageEventByID(id, stageID string) (*StageEvent, error) {
 	return &event, nil
 }
 
-func CreateStageEvent(stageID uuid.UUID, event *Event) (*StageEvent, error) {
-	return CreateStageEventInTransaction(database.Conn(), stageID, event)
+func CreateStageEvent(stageID uuid.UUID, event *Event, state, stateReason string) (*StageEvent, error) {
+	return CreateStageEventInTransaction(database.Conn(), stageID, event, state, stateReason)
 }
 
-func CreateStageEventInTransaction(tx *gorm.DB, stageID uuid.UUID, event *Event) (*StageEvent, error) {
+func CreateStageEventInTransaction(tx *gorm.DB, stageID uuid.UUID, event *Event, state, stateReason string) (*StageEvent, error) {
 	now := time.Now()
 	stageEvent := StageEvent{
-		StageID:    stageID,
-		EventID:    event.ID,
-		SourceID:   event.SourceID,
-		SourceName: event.SourceName,
-		SourceType: event.SourceType,
-		State:      StageEventStatePending,
-		CreatedAt:  &now,
+		StageID:     stageID,
+		EventID:     event.ID,
+		SourceID:    event.SourceID,
+		SourceName:  event.SourceName,
+		SourceType:  event.SourceType,
+		State:       state,
+		StateReason: stateReason,
+		CreatedAt:   &now,
 	}
 
 	err := tx.Create(&stageEvent).
