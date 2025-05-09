@@ -185,7 +185,7 @@ defmodule Front.Models.CommitJob do
       # Clone repository using the read-only deploy key
       "checkout",
       # switch to a new branch if user configured a different target branch
-      configure_target_branch(params.initial_branch, params.target_branch),
+      configure_git_target_branch(params.initial_branch, params.target_branch),
       add_commands_for_modified_files(params),
       add_commands_for_deleted_files(params),
       # Configure the user to be author of the changes
@@ -204,11 +204,28 @@ defmodule Front.Models.CommitJob do
     |> Enum.filter(fn elem -> elem != :skip end)
   end
 
+  defp configure_git_target_branch(initial, target) do
+    if initial == target do
+      :skip
+    else
+      [
+        # Fetch remote branches
+        "git fetch origin #{target} || true",
+        # Check if branch exists on remote
+        "if git show-ref --verify --quiet refs/remotes/origin/#{target}; then",
+        "  git checkout -B #{target} origin/#{target}",
+        "else",
+        "  git checkout -B #{target} #{initial}",
+        "fi"
+      ]
+    end
+  end
+
   defp configure_target_branch(initial, target) do
     if initial == target do
       :skip
     else
-      ~s[git checkout -B #{target} #{initial}]
+      ~s[git checkout -b #{target}]
     end
   end
 

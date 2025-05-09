@@ -320,6 +320,34 @@ defmodule InternalApi.User.RegenerateTokenResponse do
   field :api_token, 3, type: :string
 end
 
+defmodule InternalApi.User.RefererRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t()
+        }
+  defstruct [:user_id]
+
+  field :user_id, 1, type: :string
+end
+
+defmodule InternalApi.User.RefererResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t(),
+          entry_url: String.t(),
+          http_referer: String.t()
+        }
+  defstruct [:user_id, :entry_url, :http_referer]
+
+  field :user_id, 1, type: :string
+  field :entry_url, 2, type: :string
+  field :http_referer, 3, type: :string
+end
+
 defmodule InternalApi.User.CheckGithubTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -412,18 +440,6 @@ defmodule InternalApi.User.DescribeByRepositoryProviderRequest do
   field :provider, 1, type: InternalApi.User.RepositoryProvider
 end
 
-defmodule InternalApi.User.DescribeByEmailRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          email: String.t()
-        }
-  defstruct [:email]
-
-  field :email, 1, type: :string
-end
-
 defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -450,26 +466,6 @@ defmodule InternalApi.User.RefreshRepositoryProviderResponse do
 
   field :user_id, 1, type: :string
   field :repository_provider, 2, type: InternalApi.User.RepositoryProvider
-end
-
-defmodule InternalApi.User.CreateRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          email: String.t(),
-          name: String.t(),
-          password: String.t(),
-          repository_providers: [InternalApi.User.RepositoryProvider.t()],
-          skip_password_change: boolean
-        }
-  defstruct [:email, :name, :password, :repository_providers, :skip_password_change]
-
-  field :email, 1, type: :string
-  field :name, 2, type: :string
-  field :password, 3, type: :string
-  field :repository_providers, 4, repeated: true, type: InternalApi.User.RepositoryProvider
-  field :skip_password_change, 5, type: :bool
 end
 
 defmodule InternalApi.User.User do
@@ -578,6 +574,22 @@ defmodule InternalApi.User.UserUpdated do
 
   field :user_id, 1, type: :string
   field :timestamp, 2, type: Google.Protobuf.Timestamp
+end
+
+defmodule InternalApi.User.UserRefererCreated do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          user_id: String.t(),
+          entry_url: String.t(),
+          http_referer: String.t()
+        }
+  defstruct [:user_id, :entry_url, :http_referer]
+
+  field :user_id, 1, type: :string
+  field :entry_url, 2, type: :string
+  field :http_referer, 3, type: :string
 end
 
 defmodule InternalApi.User.UserJoinedOrganization do
@@ -712,7 +724,6 @@ defmodule InternalApi.User.UserService.Service do
       InternalApi.User.DescribeByRepositoryProviderRequest,
       InternalApi.User.User
 
-  rpc :DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User
   rpc :SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse
   rpc :DescribeMany, InternalApi.User.DescribeManyRequest, InternalApi.User.DescribeManyResponse
   rpc :Update, InternalApi.User.UpdateRequest, InternalApi.User.UpdateResponse
@@ -728,6 +739,7 @@ defmodule InternalApi.User.UserService.Service do
 
   rpc :CreateFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
   rpc :DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
+  rpc :Referer, InternalApi.User.RefererRequest, InternalApi.User.RefererResponse
 
   rpc :CheckGithubToken,
       InternalApi.User.CheckGithubTokenRequest,
@@ -743,8 +755,6 @@ defmodule InternalApi.User.UserService.Service do
   rpc :RefreshRepositoryProvider,
       InternalApi.User.RefreshRepositoryProviderRequest,
       InternalApi.User.RefreshRepositoryProviderResponse
-
-  rpc :Create, InternalApi.User.CreateRequest, InternalApi.User.User
 end
 
 defmodule InternalApi.User.UserService.Stub do
