@@ -61,8 +61,6 @@ defmodule HooksProcessor.RabbitMQConsumer do
     ts_date_time
   end
 
-  defp verify_webhook_signature(_, "git"), do: {:ok, true}
-
   defp verify_webhook_signature(decoded_message, _) do
     RepositoryClient.verify_webhook_signature(
       decoded_message.organization_id,

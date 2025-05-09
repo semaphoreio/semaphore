@@ -79,6 +79,7 @@ defmodule InternalApi.Repository.DeployKey do
   field(:title, 1, type: :string)
   field(:fingerprint, 2, type: :string)
   field(:created_at, 3, type: Google.Protobuf.Timestamp, json_name: "createdAt")
+  field(:public_key, 4, type: :string, json_name: "publicKey")
 end
 
 defmodule InternalApi.Repository.DescribeRemoteRepositoryRequest do
@@ -334,6 +335,7 @@ defmodule InternalApi.Repository.Repository do
   field(:whitelist, 11, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist)
   field(:hook_id, 12, type: :string, json_name: "hookId")
   field(:default_branch, 13, type: :string, json_name: "defaultBranch")
+  field(:connected, 14, type: :bool)
 end
 
 defmodule InternalApi.Repository.RemoteRepository do
@@ -584,6 +586,20 @@ defmodule InternalApi.Repository.ClearExternalDataResponse do
   field(:repository, 1, type: InternalApi.Repository.Repository)
 end
 
+defmodule InternalApi.Repository.RegenerateWebhookSecretRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:repository_id, 1, type: :string, json_name: "repositoryId")
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:secret, 1, type: :string)
+end
+
 defmodule InternalApi.Repository.RepositoryService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -690,6 +706,12 @@ defmodule InternalApi.Repository.RepositoryService.Service do
     :ClearExternalData,
     InternalApi.Repository.ClearExternalDataRequest,
     InternalApi.Repository.ClearExternalDataResponse
+  )
+
+  rpc(
+    :RegenerateWebhookSecret,
+    InternalApi.Repository.RegenerateWebhookSecretRequest,
+    InternalApi.Repository.RegenerateWebhookSecretResponse
   )
 end
 

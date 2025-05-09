@@ -21,7 +21,7 @@ defimpl RepositoryHub.Server.DescribeRemoteRepositoryAction, for: RepositoryHub.
 
     Multi.new()
     |> Multi.run(:git_repository, fn _repo, _results ->
-      Model.GitRepository.new(request.url)
+      Model.GitRepository.from_bitbucket(request.url)
     end)
     |> Multi.run(:bitbucket_token, fn _repo, _context ->
       BitbucketAdapter.fetch_token(request.user_id)

@@ -41,8 +41,6 @@ config :money,
   symbol_on_right: false,
   symbol_space: false
 
-config :front, superjerry_url: "http://superjerry:8080"
-
 if System.get_env("AMQP_URL") != nil do
   config :amqp,
     connections: [

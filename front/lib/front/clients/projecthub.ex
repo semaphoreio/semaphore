@@ -8,6 +8,8 @@ defmodule Front.Clients.Projecthub do
   alias InternalApi.Projecthub.{
     DescribeRequest,
     DescribeResponse,
+    RegenerateWebhookSecretRequest,
+    RegenerateWebhookSecretResponse,
     ProjectService.Stub
   }
 
@@ -17,17 +19,22 @@ defmodule Front.Clients.Projecthub do
   def describe(request) when is_struct(request, DescribeRequest) do
     Watchman.benchmark("projecthub.describe.duration", fn ->
       grpc_send(connect(), :describe, request)
-      |> case do
-        {:ok, response} ->
-          {:ok, response}
-
-        {:error, error} ->
-          {:error, error}
-      end
     end)
   end
 
   def describe(request), do: Proto.deep_new!(DescribeRequest, request) |> describe()
+
+  @spec regenerate_webhook_secret(RegenerateWebhookSecretRequest.t() | Map.t()) ::
+          rpc_response(RegenerateWebhookSecretResponse.t())
+  def regenerate_webhook_secret(request)
+      when is_struct(request, RegenerateWebhookSecretRequest) do
+    Watchman.benchmark("projecthub.regenerate_webhook_secret.duration", fn ->
+      grpc_send(connect(), :regenerate_webhook_secret, request)
+    end)
+  end
+
+  def regenerate_webhook_secret(request),
+    do: Proto.deep_new!(RegenerateWebhookSecretRequest, request) |> regenerate_webhook_secret()
 
   defp connect, do: GRPC.Stub.connect(Application.fetch_env!(:front, :projecthub_grpc_endpoint))
 

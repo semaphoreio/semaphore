@@ -115,6 +115,10 @@ defmodule FrontWeb.Plugs.ProjectAuthorization do
   defp authorize(PO, :workflow_builder, conn), do: Auth.private(conn, :AddProject)
   defp authorize(PO, :x_workflow_builder, conn), do: Auth.private(conn, :AddProject)
   defp authorize(PO, :onboarding_index, conn), do: Auth.private(conn, :AddProject)
+
+  defp authorize(PO, :regenerate_webhook_secret, conn),
+    do: Auth.private(conn, :ManageProjectSettings)
+
   defp authorize(PO, :skip_onboarding, conn), do: Auth.private(conn, :AddProject)
 
   defp authorize(PO, :update_project_initial_pipeline_file, conn),

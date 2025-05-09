@@ -1,10 +1,23 @@
 /* eslint-disable quotes */
 
-import { useContext } from "preact/hooks";
+import { useContext, useLayoutEffect } from "preact/hooks";
 import * as stores from "../../stores";
 import * as components from "../../components";
+import { useSteps } from "../../stores/create/steps";
 
 export const SelectProjectType = () => {
+  const { dispatch } = useSteps();
+
+  const steps = [
+    { id: `select-type`, title: `Select project type` },
+    { id: `setup-project`, title: `Setup the project` },
+    { id: `select-environment`, title: `Select the environment` },
+    { id: `setup-workflow`, title: `Setup workflow` },
+  ];
+  useLayoutEffect(() => {
+    dispatch([`SET_STEPS`, steps]);
+  }, []);
+
   return (
     <div className="flex-l">
       <components.InfoPanel

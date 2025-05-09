@@ -51,7 +51,6 @@
     "phoenix_html": "^3.0.0",
     "pikaday": "^1.8.0",
     "preact": "^10.25.3",
-    "preact-router": "^4.1.0",
     "preactement": "^1.8.2",
     "querystringify": "^2.1.1",
     "react-router-dom": "^6.3.0",

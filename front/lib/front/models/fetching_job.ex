@@ -46,6 +46,11 @@ defmodule Front.Models.FetchingJob do
     {:ok, %{type: type, os_image: os_image}}
   end
 
+  defp decide_on_agent(%{"custom_machine_type" => type})
+       when is_binary(type) and type != "" do
+    {:ok, %{type: type, os_image: ""}}
+  end
+
   defp decide_on_agent(%{"plan_machine_type" => type, "plan_os_image" => os_image})
        when is_binary(type) and type != "" do
     {:ok, %{type: type, os_image: os_image}}

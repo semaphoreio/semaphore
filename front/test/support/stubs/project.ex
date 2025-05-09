@@ -239,18 +239,48 @@ defmodule Support.Stubs.Project do
       GrpcMock.stub(ProjecthubMock, :change_project_owner, &__MODULE__.change_project_owner/2)
       GrpcMock.stub(ProjecthubMock, :destroy, &__MODULE__.destroy/2)
       GrpcMock.stub(ProjecthubMock, :users, &__MODULE__.users/2)
+
+      GrpcMock.stub(
+        ProjecthubMock,
+        :regenerate_webhook_secret,
+        &__MODULE__.regenerate_webhook_secret/2
+      )
     end
 
-    def create(_req, _) do
-      status = ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))
-      meta = ResponseMeta.new(status: status)
+    def create(req, _) do
+      project =
+        Support.Stubs.Project.build(%{id: req.metadata.org_id}, %{id: req.metadata.user_id},
+          name: req.project.metadata.name
+        )
 
-      project = DB.first(:projects)
+      DB.find_by(:projects, :name, project.metadata.name)
+      |> case do
+        nil ->
+          DB.insert(:projects, %{
+            id: project.metadata.id,
+            name: project.metadata.name,
+            org_id: req.metadata.org_id,
+            api_model: project
+          })
 
-      InternalApi.Projecthub.CreateResponse.new(
-        metadata: meta,
-        project: project.api_model
-      )
+          status = ResponseMeta.Status.new(code: ResponseMeta.Code.value(:OK))
+          meta = ResponseMeta.new(status: status)
+
+          InternalApi.Projecthub.CreateResponse.new(
+            metadata: meta,
+            project: project
+          )
+
+        _project ->
+          status =
+            ResponseMeta.Status.new(
+              code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
+              message: "Project with this name already exists."
+            )
+
+          meta = ResponseMeta.new(status: status)
+          InternalApi.Projecthub.CreateResponse.new(metadata: meta)
+      end
     end
 
     def describe(req, _) do
@@ -325,7 +355,9 @@ defmodule Support.Stubs.Project do
           InternalApi.Projecthub.CheckDeployKeyResponse.DeployKey.new(
             title: "semaphore-renderedtext-guard",
             fingerprint: "SHA256:OpCrpdiCJsjelCRPNnb0oo9EXEGbluYP9c1bUVMBUo0",
-            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543),
+            public_key:
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD5jgAFlCh04eBZ9fO+p1THe/ZhPN77PkbGJNg7VxTxzMY43W8qvHWfpPRT7zDPLGg8oqiSjWub8dBJ1phFeI7KKfnLUIHxEvl3va9cOvCPyXid5pVODtVZIAyXYashtWvycM/S5XvVy1IKX2E8tLufqshCpn1+rY/DOJX/SC6jrKC4aKBqbkZQavEu+5zQyZA2U76Rum+T+aqBTodZVSreYlqKiMiGcIJQmd3//a7s2nvOXktobiyYicNHMqv0jfEDL172ev7pxfHYTC+9XPfTOO1Fa1OSc0rFtWe8jeJgm5mkgwyRgY8SqQoqxYAyTsPQ5Lcj+aFZQjIQ3X8G12EuZzZZULM6yWIeH8YMRI3+MWmmQSKQzI9nfsV1O8kX3PELLpkJgHbcasrxwSD6INFCVw9OEocB/ze7FGaHbUVdF8hZKOSBUPPwZPSVuR2AjU1PITHbWn2hmZtTIeA8lU54kLujASel4M9jlGcWHoilkl9NjL7dup5qE3K6oQ0wuZzM="
           )
       )
     end
@@ -466,6 +498,29 @@ defmodule Support.Stubs.Project do
       InternalApi.Projecthub.UsersResponse.new(
         metadata: meta(code: :OK),
         users: users
+      )
+    end
+
+    def regenerate_webhook_secret(req, _) do
+      with {:ok, project} <- find(req) do
+        updated_repository = Map.put(project.api_model.spec.repository, :connected, true)
+
+        updated_api_model =
+          Map.update!(project.api_model, :spec, fn spec ->
+            Map.put(spec, :repository, updated_repository)
+          end)
+
+        DB.update(:projects, %{
+          id: project.id,
+          name: project.name,
+          org_id: project.org_id,
+          api_model: updated_api_model
+        })
+      end
+
+      InternalApi.Projecthub.RegenerateWebhookSecretResponse.new(
+        metadata: meta(code: :OK),
+        secret: "supersecret123"
       )
     end
 

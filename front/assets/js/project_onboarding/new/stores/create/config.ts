@@ -49,7 +49,6 @@ export interface State {
   };
 }
 
-
 export const Context = createContext<State>({
   baseUrl: ``,
   domain: ``,
@@ -60,5 +59,5 @@ export const Context = createContext<State>({
   csrfToken: ``,
   duplicateCheckUrl: ``,
   createProjectUrl: ``,
-  createProjectStatusUrl: ``
+  createProjectStatusUrl: ``,
 });

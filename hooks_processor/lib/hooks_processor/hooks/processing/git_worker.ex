@@ -136,8 +136,11 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
-    "Unsuported type of the hook: '#{hook_type}'"
+  defp process_webhook(hook_type, webhook, _project, _requester_id) do
+    webhook
+    |> LT.warn("Unsupported type of the hook: '#{hook_type}'")
+
+    HooksQueries.update_webhook(webhook, %{}, "failed")
   end
 
   defp perform_actions(webhook, parsed_data) do

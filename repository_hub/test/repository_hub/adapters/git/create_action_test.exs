@@ -15,7 +15,11 @@ defmodule RepositoryHub.Server.Git.CreateActionTest do
 
   describe "Git CreateAction" do
     test "should create a repository", %{adapter: adapter} do
-      request = InternalApiFactory.create_request(integration_type: :GIT)
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GIT,
+          repository_url: "ssh://git@some-git-server.com/some/path/to/repo.git"
+        )
 
       assert {:ok, %CreateResponse{repository: _repository}} = CreateAction.execute(adapter, request)
     end
@@ -30,7 +34,7 @@ defmodule RepositoryHub.Server.Git.CreateActionTest do
         {false, integration_type: -1},
         {false, integration_type: :GITLAB},
         {false, repository_url: ""},
-        {true, integration_type: :GIT, repository_url: "https://gitlab.com/foo/bar"}
+        {true, integration_type: :GIT, repository_url: "ssh://git@some-git-server.com/some/path/to/repo.git"}
       ]
 
       for {true, params} <- assertions do
