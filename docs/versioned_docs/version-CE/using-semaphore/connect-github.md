@@ -132,7 +132,7 @@ To verify the status of a webhook:
 
 To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and GitHub.
 
-### Reconnecting moved or renamed projects
+### Reconnecting moved or renamed projects {#reconnect}
 
 There are several actions that can break the connection between GitHub and Semaphore. For example:
 
@@ -153,6 +153,20 @@ When this happens, you must update the URL of the repository in Semaphore. To do
 </Steps>
 
 After changing the URL, double-check the status of the [deploy key](#deploy-key) and the [webhook](#webhook).
+
+### File semaphore.yml is not available
+
+You might see the following error message when trying to run workflows on Semaphore:
+
+``` yaml
+semaphore.yml ERROR:
+Error: {"File '.semaphore/semaphore.yml' is not available", "Not Found"}
+```
+
+This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from the repository. There are two reasons why this might happen:
+
+1. **The file doesn't exist on your repository**: double check to make sure that the Semaphore YAML file actually exists
+2. **Repository is disconnected from Semaphore**: follow the steps [previously described](#reconnect)
 
 ## See also
 
