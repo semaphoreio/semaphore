@@ -58,10 +58,10 @@ const App = (props: { config: Config, }) => {
         </div>
 
         <div>
-          <toolbox.Tooltip
+          <toolbox.Popover
             content={
               <div className="f6">
-                Semaphore uses this SSH key to securely access your repository. Ensure it is kept private and only regenerate it if necessary.
+                Semaphore uses this SSH key to securely access your repository. Keep it private and only regenerate it if absolutely necessary to maintain security.
               </div>
             }
             anchor={<toolbox.Asset className="pointer" path="images/icn-info-15.svg"/>}
