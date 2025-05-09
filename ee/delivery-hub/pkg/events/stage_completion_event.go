@@ -1,8 +1,6 @@
 package events
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
@@ -20,7 +18,7 @@ type StageExecutionCompletion struct {
 	Type      string            `json:"type"`
 	Stage     *Stage            `json:"stage,omitempty"`
 	Execution *Execution        `json:"execution,omitempty"`
-	Outputs   map[string]string `json:"outputs,omitempty"`
+	Tags      map[string]string `json:"tags,omitempty"`
 }
 
 type Stage struct {
@@ -35,15 +33,7 @@ type Execution struct {
 	FinishedAt *time.Time `json:"finished_at,omitempty"`
 }
 
-func NewStageExecutionCompletion(execution *models.StageExecution) (*StageExecutionCompletion, error) {
-	var outputs map[string]string
-	if execution.Outputs != nil {
-		err := json.Unmarshal(execution.Outputs, &outputs)
-		if err != nil {
-			return nil, fmt.Errorf("error building outputs: %v", err)
-		}
-	}
-
+func NewStageExecutionCompletion(execution *models.StageExecution, tags map[string]string) (*StageExecutionCompletion, error) {
 	return &StageExecutionCompletion{
 		Type: StageExecutionCompletionType,
 		Stage: &Stage{
@@ -56,6 +46,6 @@ func NewStageExecutionCompletion(execution *models.StageExecution) (*StageExecut
 			StartedAt:  execution.StartedAt,
 			FinishedAt: execution.FinishedAt,
 		},
-		Outputs: outputs,
+		Tags: tags,
 	}, nil
 }

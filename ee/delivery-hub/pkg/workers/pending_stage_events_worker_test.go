@@ -32,11 +32,10 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-no-approval-1")
 		require.NoError(t, err)
-
 		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
@@ -49,11 +48,12 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Verify that a new execution record was created and event is processed.
+		// Verify that a new execution record was created and event moves to waiting(execution).
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventStateProcessed, event.State)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonExecution, event.StateReason)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -62,6 +62,40 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		assert.Equal(t, execution.StageEventID, event.ID)
 		assert.Equal(t, execution.State, models.StageExecutionPending)
 		assert.True(t, testconsumer.HasReceivedMessage())
+	})
+
+	t.Run("stage event with unhealthy tag -> moves to waiting(unhealthy)", func(t *testing.T) {
+		//
+		// Create stage that does not require approval.
+		//
+		require.NoError(t, r.Canvas.CreateStage("stage-no-approval-unhealthy-case", r.User.String(), []models.StageCondition{}, support.RunTemplate(), []models.StageConnection{
+			{
+				SourceID:   r.Source.ID,
+				SourceType: models.SourceTypeEventSource,
+			},
+		}, support.TagUsageDef(r.Source.Name)))
+
+		stage, err := r.Canvas.FindStageByName("stage-no-approval-unhealthy-case")
+		require.NoError(t, err)
+		testconsumer := testconsumer.New(amqpURL, ExecutionCreatedRoutingKey)
+		testconsumer.Start()
+		defer testconsumer.Stop()
+
+		//
+		// Create a pending stage event, mark the tag as unhealthy, and trigger the worker.
+		//
+		event := support.CreateStageEvent(t, r.Source, stage)
+		require.NoError(t, models.UpdateTagState("VERSION", "v1", models.TagStateUnhealthy))
+		err = w.Tick()
+		require.NoError(t, err)
+
+		//
+		// Verify that event moves to waiting(unhealthy).
+		//
+		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
+		require.NoError(t, err)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonUnhealthy, event.StateReason)
 	})
 
 	t.Run("stage requires approval and none was given -> waiting-for-approval state", func(t *testing.T) {
@@ -77,7 +111,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-with-approval-1")
 		require.NoError(t, err)
@@ -110,7 +144,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-with-approval-2")
 		require.NoError(t, err)
@@ -128,11 +162,12 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Verify that a new execution record was created and event is processed
+		// Verify that a new execution record was created and event moves to waiting(execution)
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventStateProcessed, event.State)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonExecution, event.StateReason)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -162,7 +197,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-with-time-window")
 		require.NoError(t, err)
@@ -211,7 +246,7 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-with-time-window-2")
 		require.NoError(t, err)
@@ -229,11 +264,12 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 		require.NoError(t, err)
 
 		//
-		// Verify that a new execution record was created and event is processed
+		// Verify that a new execution record was created and event moves to waiting(execution)
 		//
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventStateProcessed, event.State)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonExecution, event.StateReason)
 		execution, err := models.FindExecutionInState(stage.ID, []string{models.StageExecutionPending})
 		require.NoError(t, err)
 		assert.NotEmpty(t, execution.ID)
@@ -253,21 +289,22 @@ func Test__PendingStageEventsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-no-approval-3")
 		require.NoError(t, err)
 
 		//
 		// Create a pending stage event, trigger the worker,
-		// and verify that it was processed.
+		// and verify that event is moved to waiting(execution).
 		//
 		event := support.CreateStageEvent(t, r.Source, stage)
 		err = w.Tick()
 		require.NoError(t, err)
 		event, err = models.FindStageEventByID(event.ID.String(), stage.ID.String())
 		require.NoError(t, err)
-		require.Equal(t, models.StageEventStateProcessed, event.State)
+		require.Equal(t, models.StageEventStateWaiting, event.State)
+		require.Equal(t, models.StageEventStateReasonExecution, event.StateReason)
 
 		//
 		// Add another pending event for this stage,

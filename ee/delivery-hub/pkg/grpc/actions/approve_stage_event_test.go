@@ -6,7 +6,6 @@ import (
 
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/config"
-	"github.com/semaphoreio/semaphore/delivery-hub/pkg/models"
 	protos "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/delivery"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
@@ -20,11 +19,7 @@ const StageEventApprovedRoutingKey = "stage-event-approved"
 
 func Test__ApproveStageEvent(t *testing.T) {
 	r := support.Setup(t)
-	e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
-	require.NoError(t, err)
-	event, err := models.CreateStageEvent(r.Stage.ID, e)
-	require.NoError(t, err)
-
+	event := support.CreateStageEvent(t, r.Source, r.Stage)
 	userID := uuid.New().String()
 
 	t.Run("no org ID -> error", func(t *testing.T) {

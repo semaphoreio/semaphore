@@ -13,6 +13,7 @@ import (
 	pplproto "github.com/semaphoreio/semaphore/delivery-hub/pkg/protos/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/delivery-hub/test/support"
 	testconsumer "github.com/semaphoreio/semaphore/delivery-hub/test/test_consumer"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
@@ -21,8 +22,20 @@ const ExecutionFinishedRoutingKey = "execution-finished"
 
 func Test__PipelineDoneConsumer(t *testing.T) {
 	r := support.SetupWithOptions(t, support.SetupOptions{
-		Source: true, Stage: true, Approvals: 1, Grpc: true,
+		Source: true, Grpc: true,
 	})
+
+	connections := []models.StageConnection{
+		{
+			SourceID:   r.Source.ID,
+			SourceType: models.SourceTypeEventSource,
+		},
+	}
+
+	err := r.Canvas.CreateStage("stage-1", r.User.String(), []models.StageCondition{}, support.RunTemplate(), connections, support.TagUsageDef(r.Source.Name))
+	require.NoError(t, err)
+	stage, err := r.Canvas.FindStageByName("stage-1")
+	require.NoError(t, err)
 
 	amqpURL := "amqp://guest:guest@rabbitmq:5672"
 	w := NewPipelineDoneConsumer(amqpURL, "0.0.0.0:50052")
@@ -42,7 +55,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		// Create execution
 		//
 		workflowID := uuid.New().String()
-		execution := support.CreateExecution(t, r.Source, r.Stage)
+		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref":"v1"}`))
 		require.NoError(t, execution.Start(workflowID))
 
 		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
@@ -79,22 +92,32 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		//
 		// Verify that new pending event for stage completion is created.
 		//
-		list, err := models.ListEventsBySourceID(r.Stage.ID)
+		list, err := models.ListEventsBySourceID(stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventStatePending)
-		require.Equal(t, list[0].SourceID, r.Stage.ID)
-		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
+		assert.Equal(t, list[0].State, models.StageEventStatePending)
+		assert.Equal(t, list[0].SourceID, stage.ID)
+		assert.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
 		require.NoError(t, err)
-		require.Equal(t, events.StageExecutionCompletionType, e.Type)
-		require.Equal(t, r.Stage.ID.String(), e.Stage.ID)
-		require.Equal(t, execution.ID.String(), e.Execution.ID)
-		require.Equal(t, models.StageExecutionResultFailed, e.Execution.Result)
-		require.NotEmpty(t, e.Execution.CreatedAt)
-		require.NotEmpty(t, e.Execution.StartedAt)
-		require.NotEmpty(t, e.Execution.FinishedAt)
+		assert.Equal(t, events.StageExecutionCompletionType, e.Type)
+		assert.Equal(t, stage.ID.String(), e.Stage.ID)
+		assert.Equal(t, execution.ID.String(), e.Execution.ID)
+		assert.Equal(t, models.StageExecutionResultFailed, e.Execution.Result)
+		assert.NotEmpty(t, e.Execution.CreatedAt)
+		assert.NotEmpty(t, e.Execution.StartedAt)
+		assert.NotEmpty(t, e.Execution.FinishedAt)
 		require.True(t, testconsumer.HasReceivedMessage())
+
+		//
+		// Verify tags are marked as unhealthy
+		//
+		tags, err := models.ListStageTags("VERSION", "", []string{}, "", execution.StageEventID.String())
+		require.NoError(t, err)
+		require.Len(t, tags, 1)
+		assert.Equal(t, "VERSION", tags[0].TagName)
+		assert.Equal(t, "v1", tags[0].TagValue)
+		assert.Equal(t, models.TagStateUnhealthy, tags[0].TagState)
 	})
 
 	t.Run("passed pipeline -> execution passes", func(t *testing.T) {
@@ -104,7 +127,7 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		// Create execution
 		//
 		workflowID := uuid.New().String()
-		execution := support.CreateExecution(t, r.Source, r.Stage)
+		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref":"v1"}`))
 		require.NoError(t, execution.Start(workflowID))
 
 		testconsumer := testconsumer.New(amqpURL, ExecutionFinishedRoutingKey)
@@ -141,22 +164,32 @@ func Test__PipelineDoneConsumer(t *testing.T) {
 		//
 		// Verify that new pending event for stage completion is created with proper result.
 		//
-		list, err := models.ListEventsBySourceID(r.Stage.ID)
+		list, err := models.ListEventsBySourceID(stage.ID)
 		require.NoError(t, err)
 		require.Len(t, list, 1)
-		require.Equal(t, list[0].State, models.StageEventStatePending)
-		require.Equal(t, list[0].SourceID, r.Stage.ID)
-		require.Equal(t, list[0].SourceType, models.SourceTypeStage)
+		assert.Equal(t, list[0].State, models.StageEventStatePending)
+		assert.Equal(t, list[0].SourceID, stage.ID)
+		assert.Equal(t, list[0].SourceType, models.SourceTypeStage)
 		e, err := unmarshalCompletionEvent(list[0].Raw)
 		require.NoError(t, err)
-		require.Equal(t, events.StageExecutionCompletionType, e.Type)
-		require.Equal(t, r.Stage.ID.String(), e.Stage.ID)
-		require.Equal(t, execution.ID.String(), e.Execution.ID)
-		require.Equal(t, models.StageExecutionResultPassed, e.Execution.Result)
-		require.NotEmpty(t, e.Execution.CreatedAt)
-		require.NotEmpty(t, e.Execution.StartedAt)
-		require.NotEmpty(t, e.Execution.FinishedAt)
+		assert.Equal(t, events.StageExecutionCompletionType, e.Type)
+		assert.Equal(t, stage.ID.String(), e.Stage.ID)
+		assert.Equal(t, execution.ID.String(), e.Execution.ID)
+		assert.Equal(t, models.StageExecutionResultPassed, e.Execution.Result)
+		assert.NotEmpty(t, e.Execution.CreatedAt)
+		assert.NotEmpty(t, e.Execution.StartedAt)
+		assert.NotEmpty(t, e.Execution.FinishedAt)
 		require.True(t, testconsumer.HasReceivedMessage())
+
+		//
+		// Verify tags are marked as healthy
+		//
+		tags, err := models.ListStageTags("VERSION", "", []string{}, "", execution.StageEventID.String())
+		require.NoError(t, err)
+		require.Len(t, tags, 1)
+		assert.Equal(t, "VERSION", tags[0].TagName)
+		assert.Equal(t, "v1", tags[0].TagValue)
+		assert.Equal(t, models.TagStateHealthy, tags[0].TagState)
 	})
 }
 

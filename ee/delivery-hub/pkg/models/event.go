@@ -1,10 +1,13 @@
 package models
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"time"
 
+	"github.com/expr-lang/expr"
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"gorm.io/datatypes"
@@ -55,6 +58,112 @@ func (e *Event) GetData() (map[string]any, error) {
 	}
 
 	return obj, nil
+}
+
+func (e *Event) EvaluateBoolExpression(expression string) (bool, error) {
+	//
+	// We don't want the expression to run for more than 5 seconds.
+	//
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	//
+	// Build our variable map.
+	//
+	variables := map[string]interface{}{
+		"ctx": ctx,
+	}
+
+	data, err := e.GetData()
+	if err != nil {
+		return false, err
+	}
+
+	for key, value := range data {
+		variables[key] = value
+	}
+
+	//
+	// Compile and run our expression.
+	//
+	program, err := expr.Compile(expression,
+		expr.Env(variables),
+		expr.AsBool(),
+		expr.WithContext("ctx"),
+		expr.Timezone(time.UTC.String()),
+	)
+
+	if err != nil {
+		return false, fmt.Errorf("error compiling expression: %v", err)
+	}
+
+	output, err := expr.Run(program, variables)
+	if err != nil {
+		return false, fmt.Errorf("error running expression: %v", err)
+	}
+
+	//
+	// Output of the expression must be a boolean.
+	//
+	v, ok := output.(bool)
+	if !ok {
+		return false, fmt.Errorf("expression does not return a boolean")
+	}
+
+	return v, nil
+}
+
+func (e *Event) EvaluateStringExpression(expression string) (string, error) {
+	//
+	// We don't want the expression to run for more than 5 seconds.
+	//
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	//
+	// Build our variable map.
+	//
+	variables := map[string]interface{}{
+		"ctx": ctx,
+	}
+
+	data, err := e.GetData()
+	if err != nil {
+		return "", err
+	}
+
+	for key, value := range data {
+		variables[key] = value
+	}
+
+	//
+	// Compile and run our expression.
+	//
+	program, err := expr.Compile(expression,
+		expr.Env(variables),
+		expr.AsKind(reflect.String),
+		expr.WithContext("ctx"),
+		expr.Timezone(time.UTC.String()),
+	)
+
+	if err != nil {
+		return "", fmt.Errorf("error compiling expression: %v", err)
+	}
+
+	output, err := expr.Run(program, variables)
+	if err != nil {
+		return "", fmt.Errorf("error running expression: %v", err)
+	}
+
+	//
+	// Output of the expression must be a string.
+	//
+	v, ok := output.(string)
+	if !ok {
+		return "", fmt.Errorf("expression does not return a string")
+	}
+
+	return v, nil
 }
 
 func CreateEvent(sourceID uuid.UUID, sourceName, sourceType string, raw []byte) (*Event, error) {

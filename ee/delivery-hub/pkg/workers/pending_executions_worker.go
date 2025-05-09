@@ -181,7 +181,7 @@ func (w *PendingExecutionsWorker) StartPlainWorkflow(logger *log.Entry, stage *m
 func (w *PendingExecutionsWorker) buildParameters(execution models.StageExecution, parameters map[string]string) ([]*schedulerproto.ParameterValue, error) {
 	//
 	// Aside from the parameters specified in the run template,
-	// we also need to include the token for the execution to push outputs.
+	// we also need to include the token for the execution to push extra tags.
 	//
 	parameterValues := []*schedulerproto.ParameterValue{
 		{Name: "SEMAPHORE_STAGE_ID", Value: execution.StageID.String()},
@@ -190,7 +190,7 @@ func (w *PendingExecutionsWorker) buildParameters(execution models.StageExecutio
 
 	token, err := w.JwtSigner.Generate(execution.ID.String(), 24*time.Hour)
 	if err != nil {
-		return nil, fmt.Errorf("error generating outputs token: %v", err)
+		return nil, fmt.Errorf("error generating tags token: %v", err)
 	}
 
 	//

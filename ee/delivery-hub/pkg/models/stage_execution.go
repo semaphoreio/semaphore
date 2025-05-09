@@ -34,7 +34,7 @@ type StageExecution struct {
 
 	//
 	// TODO: not so sure about this column
-	// TODO: maybe we can use stage execution outputs for this?
+	// TODO: maybe we can use a special execution tag for this?
 	// The ID of the "thing" that is running.
 	// For now, since we only have workflow/task runs,
 	// this is always a Semaphore workflow ID, but we might want to support other types of executions in the future,
@@ -43,8 +43,9 @@ type StageExecution struct {
 	//
 	ReferenceID string
 
-	// TODO: I'm storing the outputs here, but it should probably go to its own table
-	Outputs datatypes.JSON
+	// TODO: I'm storing the extra tags pushed from the execution here,
+	// but I'm not sure if that is the best place for it
+	Tags datatypes.JSON
 }
 
 func (e *StageExecution) GetEventData() (map[string]any, error) {
@@ -114,10 +115,10 @@ func (e *StageExecution) FinishInTransaction(tx *gorm.DB, result string) error {
 		Error
 }
 
-func (e *StageExecution) UpdateOutputs(outputs []byte) error {
+func (e *StageExecution) AddTags(tags []byte) error {
 	return database.Conn().Model(e).
 		Clauses(clause.Returning{}).
-		Update("outputs", outputs).
+		Update("tags", tags).
 		Update("updated_at", time.Now()).
 		Error
 }

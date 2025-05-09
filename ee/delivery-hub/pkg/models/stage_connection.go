@@ -1,11 +1,8 @@
 package models
 
 import (
-	"context"
 	"fmt"
-	"time"
 
-	"github.com/expr-lang/expr"
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"gorm.io/datatypes"
@@ -80,56 +77,7 @@ type StageConnectionFilter struct {
 }
 
 func (f *StageConnectionFilter) EvaluateExpression(event *Event) (bool, error) {
-	//
-	// We don't want the expression to run for more than 5 seconds.
-	//
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	//
-	// Build our variable map.
-	//
-	variables := map[string]interface{}{
-		"ctx": ctx,
-	}
-
-	data, err := event.GetData()
-	if err != nil {
-		return false, err
-	}
-
-	for key, value := range data {
-		variables[key] = value
-	}
-
-	//
-	// Compile and run our expression.
-	//
-	program, err := expr.Compile(f.Data.Expression,
-		expr.Env(variables),
-		expr.AsBool(),
-		expr.WithContext("ctx"),
-		expr.Timezone(time.UTC.String()),
-	)
-
-	if err != nil {
-		return false, fmt.Errorf("error compiling expression: %v", err)
-	}
-
-	output, err := expr.Run(program, variables)
-	if err != nil {
-		return false, fmt.Errorf("error running expression: %v", err)
-	}
-
-	//
-	// Output of the expression must be a boolean.
-	//
-	v, ok := output.(bool)
-	if !ok {
-		return false, fmt.Errorf("expression does not return a boolean")
-	}
-
-	return v, nil
+	return event.EvaluateBoolExpression(f.Data.Expression)
 }
 
 func (f *StageConnectionFilter) Evaluate(event *Event) (bool, error) {

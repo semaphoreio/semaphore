@@ -109,8 +109,23 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 	result := c.resolveExecutionResult(logger, pipeline)
 
 	err = database.Conn().Transaction(func(tx *gorm.DB) error {
+		tags, err := c.processExecutionTags(tx, logger, execution, result)
+		if err != nil {
+			logger.Errorf("Error processing execution tags: %v", err)
+			return err
+		}
+
 		if err := execution.FinishInTransaction(tx, result); err != nil {
 			logger.Errorf("Error updating execution state: %v", err)
+			return err
+		}
+
+		err = models.UpdateStageEventsInTransaction(
+			tx, []string{execution.StageEventID.String()}, models.StageEventStateProcessed, "",
+		)
+
+		if err != nil {
+			logger.Errorf("Error updating stage event state: %v", err)
 			return err
 		}
 
@@ -118,7 +133,7 @@ func (c *PipelineDoneConsumer) Consume(delivery tackle.Delivery) error {
 		// Lastly, since the stage for this execution might be connected to other stages,
 		// we create a new event for the completion of this stage.
 		//
-		if err := c.createStageCompletionEvent(tx, execution); err != nil {
+		if err := c.createStageCompletionEvent(tx, execution, tags); err != nil {
 			logger.Errorf("Error creating stage completion event: %v", err)
 			return err
 		}
@@ -175,13 +190,13 @@ func (c *PipelineDoneConsumer) resolveExecutionResult(logger *log.Entry, pipelin
 	}
 }
 
-func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution *models.StageExecution) error {
+func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution *models.StageExecution, tags map[string]string) error {
 	stage, err := models.FindStageByIDInTransaction(tx, execution.StageID)
 	if err != nil {
 		return err
 	}
 
-	e, err := events.NewStageExecutionCompletion(execution)
+	e, err := events.NewStageExecutionCompletion(execution, tags)
 	if err != nil {
 		return fmt.Errorf("error creating stage completion event: %v", err)
 	}
@@ -197,4 +212,54 @@ func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution
 	}
 
 	return nil
+}
+
+func (c *PipelineDoneConsumer) processExecutionTags(tx *gorm.DB, logger *log.Entry, execution *models.StageExecution, result string) (map[string]string, error) {
+	allTags := map[string]string{}
+
+	//
+	// Include extra tags from execution, if any.
+	//
+	if execution.Tags != nil {
+		err := json.Unmarshal(execution.Tags, &allTags)
+		if err != nil {
+			return nil, fmt.Errorf("error adding tags from execution: %v", err)
+		}
+	}
+
+	//
+	// Include tags from event
+	//
+	tagsFromEvent, err := models.FindStageEventTagsInTransaction(tx, execution.StageEventID)
+	if err != nil {
+		return nil, fmt.Errorf("error finding tags from stage event: %v", err)
+	}
+
+	for _, t := range tagsFromEvent {
+		allTags[t.Name] = t.Value
+	}
+
+	if len(allTags) == 0 {
+		logger.Warningf("No tags")
+		return allTags, nil
+	}
+
+	newState := resolveTagState(result)
+	err = models.UpdateStageEventTagStateInBulk(tx, execution.StageEventID, newState, allTags)
+	if err != nil {
+		logger.Errorf("Error updating tags to %s state: %v", newState, err)
+		return nil, err
+	}
+
+	logger.Infof("Updated tags %v to %s state", allTags, newState)
+	return allTags, nil
+}
+
+func resolveTagState(result string) string {
+	switch result {
+	case models.StageExecutionResultPassed:
+		return models.TagStateHealthy
+	default:
+		return models.TagStateUnhealthy
+	}
 }

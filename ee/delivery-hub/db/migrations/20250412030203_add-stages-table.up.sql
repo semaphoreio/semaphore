@@ -9,6 +9,7 @@ CREATE TABLE stages (
   created_by        uuid NOT NULL,
   run_template      jsonb NOT NULL,
   conditions        jsonb,
+  use               jsonb,
 
   PRIMARY KEY (id),
   UNIQUE (organization_id, canvas_id, name),
