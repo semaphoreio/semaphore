@@ -245,3 +245,81 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 }
+
+func (s *Server) HandleSemaphoreWebhook(w http.ResponseWriter, r *http.Request) {
+	organizationID := r.Context().Value(orgIDKey).(uuid.UUID)
+
+	//
+	// Any verification that happens here must be quick
+	// so we always respond with a 200 OK to the event origin.
+	// All the event processing happen on the workers.
+	//
+
+	vars := mux.Vars(r)
+	sourceIDFromRequest := vars["sourceID"]
+	sourceID, err := uuid.Parse(sourceIDFromRequest)
+	if err != nil {
+		http.Error(w, "source ID not found", http.StatusNotFound)
+		return
+	}
+
+	signature := r.Header.Get("X-Semaphore-Signature-256")
+	if signature == "" {
+		http.Error(w, "Missing X-Semaphore-Signature-256 header", http.StatusBadRequest)
+		return
+	}
+
+	source, err := models.FindEventSource(organizationID, sourceID)
+	if err != nil {
+		http.Error(w, "source ID not found", http.StatusNotFound)
+		return
+	}
+
+	//
+	// Only read up to the maximum event size we allow,
+	// and only proceed if payload is below that.
+	//
+	r.Body = http.MaxBytesReader(w, r.Body, MaxEventSize)
+	defer r.Body.Close()
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		if _, ok := err.(*http.MaxBytesError); ok {
+			http.Error(
+				w,
+				fmt.Sprintf("Request body is too large - must be up to %d bytes", MaxEventSize),
+				http.StatusRequestEntityTooLarge,
+			)
+
+			return
+		}
+
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	key, err := s.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
+	if err != nil {
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	signature = strings.Replace(signature, "sha256=", "", 1)
+
+	if err := crypto.VerifySignature(key, body, signature); err != nil {
+		log.Errorf("Invalid signature: %v", err)
+		http.Error(w, "Invalid signature", http.StatusForbidden)
+		return
+	}
+
+	//
+	// Here, we know the event is for a valid organization/source,
+	// and comes from Semaphore, so we just want to save it and give a response back.
+	//
+	if _, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, body); err != nil {
+		http.Error(w, "Error receiving event", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}

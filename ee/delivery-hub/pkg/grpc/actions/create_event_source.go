@@ -34,6 +34,10 @@ func CreateEventSource(ctx context.Context, encryptor encryptor.Encryptor, req *
 		return nil, status.Errorf(codes.Internal, "error generating key")
 	}
 
+	// TODO: Store key in secrethub secret and create a webhook notification
+	// using Notifications API for semaphore event sources. This webhook should point
+	// to the created secret, as designed in the API.
+
 	eventSource, err := canvas.CreateEventSource(req.Name, encryptedKey)
 	if err != nil {
 		if errors.Is(err, models.ErrNameAlreadyUsed) {
