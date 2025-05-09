@@ -102,7 +102,7 @@ func (w *PendingEventsWorker) ProcessEvent(logger *log.Entry, event *models.Even
 		return nil
 	}
 
-	err = w.enqueueEvent(event, stages)
+	err = w.enqueueEvent(logger, event, stages)
 	if err != nil {
 		return err
 	}
@@ -151,18 +151,19 @@ func (w *PendingEventsWorker) filterStages(logger *log.Entry, event *models.Even
 	return filtered, nil
 }
 
-func (w *PendingEventsWorker) enqueueEvent(event *models.Event, stages []models.Stage) error {
+func (w *PendingEventsWorker) enqueueEvent(logger *log.Entry, event *models.Event, stages []models.Stage) error {
 	return database.Conn().Transaction(func(tx *gorm.DB) error {
 		for _, stage := range stages {
 
 			//
 			// Start by computing our map of tags
 			//
-			tags, err := w.buildTags(event, stage.Use.Data())
+			tags, err := w.evaluateTags(logger, event, stage.Use.Data())
 			if err != nil {
 				return err
 			}
 
+			logger.Infof("Evaluated tags: %v", tags)
 			stageEvent, err := w.createStageEvent(tx, stage, event, tags)
 			if err != nil {
 				return err
@@ -289,15 +290,18 @@ func allConnectionsReceived(events []models.StageEvent, connections []string) bo
 	return true
 }
 
-func (w *PendingEventsWorker) buildTags(event *models.Event, tagUsage models.StageTagUsageDefinition) (map[string]string, error) {
+func (w *PendingEventsWorker) evaluateTags(logger *log.Entry, event *models.Event, tagUsage models.StageTagUsageDefinition) (map[string]string, error) {
 
 	//
 	// If we don't use any tags from this source,
 	// no need to do anything regarding tags here.
 	//
 	if slices.Contains(tagUsage.From, event.SourceName) {
+		logger.Infof("Source %s is not in tag usage definition (%v) - skipping tags", event.SourceName, tagUsage.From)
 		return map[string]string{}, nil
 	}
+
+	logger.Infof("Processing tags %v...", tagUsage.Tags)
 
 	tagMap := map[string]string{}
 	for _, tagDefinition := range tagUsage.Tags {
