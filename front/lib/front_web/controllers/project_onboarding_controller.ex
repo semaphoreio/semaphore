@@ -99,14 +99,25 @@ defmodule FrontWeb.ProjectOnboardingController do
     |> Clients.Projecthub.regenerate_webhook_secret()
     |> case do
       {:ok, response} ->
-        endpoint = Application.get_env(:front, :git_hook_endpoint)
+        Models.Project.check_webhook(project.id)
+        |> case do
+          {:ok, hook} ->
+            conn
+            |> json(%{
+              message: "Webhook secret regenerated",
+              secret: response.secret,
+              endpoint: "#{hook.url}"
+            })
 
-        conn
-        |> json(%{
-          message: "Webhook secret regenerated",
-          secret: response.secret,
-          endpoint: "#{endpoint}/git?id=#{project.repo_id}"
-        })
+          {:error, message} ->
+            conn
+            |> put_status(422)
+            |> json(%{
+              message: message,
+              secret: response.secret,
+              endpoint: ""
+            })
+        end
 
       {:error, error} ->
         conn
