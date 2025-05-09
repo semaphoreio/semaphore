@@ -250,7 +250,8 @@ defmodule Support.Stubs.Canvases do
             name: stage.name,
             canvas_id: stage.canvas_id,
             organization_id: stage.org_id,
-            created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+            created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+            use: stage.api_model.use
           }
         end)
 
