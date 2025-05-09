@@ -56,6 +56,5 @@ config :front, :userpilot_token, ""
 config :front, :get_started_path, "priv/onboarding/getting_started.yaml"
 config :front, :workflow_templates_path, "workflow_templates/saas"
 config :front, :new_project_onboarding_workflow_templates_path, "workflow_templates/saas_new"
-config :front, :git_hook_endpoint, "http://localhost:4000/hooks"
 
 import_config "#{Mix.env()}.exs"
