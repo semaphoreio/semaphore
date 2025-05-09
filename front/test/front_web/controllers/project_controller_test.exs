@@ -598,7 +598,7 @@ defmodule FrontWeb.ProjectControllerTest do
         "export GIT_REPO_URL=\"${GIT_REPO_URL/git@/https:\/\/$GIT_USERNAME:$GIT_PASSWORD@}\"",
         "export SEMAPHORE_GIT_BRANCH=master",
         "checkout",
-        "git checkout -B new-branch master",
+        "git checkout -b new-branch",
         "mkdir -p ./.semaphore",
         "mv ../.changed_files/.semaphore/semaphore.yml ./.semaphore/semaphore.yml",
         "mkdir -p ./.semaphore",
