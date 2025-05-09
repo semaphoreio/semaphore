@@ -86,6 +86,7 @@ defmodule InternalClients.Canvases.RequestFormatter do
        canvas_id: from_params!(params, :canvas_id),
        organization_id: from_params!(params, :organization_id),
        requester_id: from_params!(params, :user_id),
+       use: stage_tag_usage_def(params.spec),
        connections: stage_connections(params),
        conditions: stage_conditions(params),
        run_template: run_template(params.spec)
@@ -184,6 +185,15 @@ defmodule InternalClients.Canvases.RequestFormatter do
       }
 
       {:error, {:user, error}}
+  end
+
+  defp stage_tag_usage_def(spec) do
+    %API.TagUsageDefinition{
+      from: spec.use.from,
+      tags: Enum.map(spec.use.tags, fn t ->
+        %{name: t.name, valueFrom: t.valueFrom}
+      end)
+    }
   end
 
   defp stage_conditions(params) do
