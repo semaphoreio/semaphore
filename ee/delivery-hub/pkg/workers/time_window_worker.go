@@ -37,8 +37,6 @@ func (w *TimeWindowWorker) Tick() error {
 		return err
 	}
 
-	log.Infof("Events: %v", events)
-
 	for _, event := range events {
 		err := w.ProcessEvent(event)
 		if err != nil {
