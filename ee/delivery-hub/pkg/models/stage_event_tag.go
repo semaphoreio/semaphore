@@ -4,13 +4,20 @@ import (
 	"github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+const (
+	TagStateUnknown   = "unknown"
+	TagStateHealthy   = "healthy"
+	TagStateUnhealthy = "unhealthy"
 )
 
 type StageEventTag struct {
 	Name         string
 	Value        string
 	StageEventID uuid.UUID
-	Healthy      bool
+	State        string
 }
 
 func CreateStageEventTag(name, value string, stageEventID uuid.UUID) error {
@@ -22,31 +29,78 @@ func CreateStageEventTagInTransaction(tx *gorm.DB, name, value string, stageEven
 		Name:         name,
 		Value:        value,
 		StageEventID: stageEventID,
-		Healthy:      true,
+		State:        TagStateUnknown,
 	}
 
 	return tx.Create(&v).Error
 }
 
-type StageTagState struct {
-	StageID  uuid.UUID
-	TagName  string
-	TagValue string
-	State    string
-	Healthy  bool
+type StageTag struct {
+	StageID    uuid.UUID
+	EventState string
+	TagName    string
+	TagValue   string
+	TagState   string
 }
 
-func FindTagStates(name string) ([]StageTagState, error) {
-	var values []StageTagState
-
-	err := database.Conn().
-		Table("tags AS t").
-		Joins("INNER JOIN stage_events AS e ON e.id = t.stage_event_id").
-		Select("e.stage_id, t.name, t.value, e.state, t.healthy").
+func UpdateTagState(name, value, state string) error {
+	return database.Conn().
+		Table("stage_event_tags").
 		Where("name = ?", name).
-		Find(&values).
+		Where("value = ?", value).
+		Update("state", state).
 		Error
+}
 
+func UpdateStageEventTagStateInBulk(tx *gorm.DB, stageEventID uuid.UUID, state string, tags map[string]string) error {
+	records := []StageEventTag{}
+	for tagName, tagValue := range tags {
+		records = append(records, StageEventTag{
+			Name:         tagName,
+			Value:        tagValue,
+			State:        state,
+			StageEventID: stageEventID,
+		})
+	}
+
+	return tx.
+		Clauses(clause.OnConflict{
+			OnConstraint: "stage_event_tags_pkey",
+			UpdateAll:    true,
+		}).
+		Create(&records).
+		Error
+}
+
+func ListStageTags(name, value string, states []string, stageID, stageEventID string) ([]StageTag, error) {
+	var values []StageTag
+
+	query := database.Conn().
+		Table("stage_event_tags AS t").
+		Joins("INNER JOIN stage_events AS e ON e.id = t.stage_event_id").
+		Select("e.stage_id, t.name as tag_name, t.value as tag_value, e.state as event_state, t.state as tag_state")
+
+	if name != "" {
+		query = query.Where("t.name = ?", name)
+	}
+
+	if value != "" {
+		query = query.Where("t.value = ?", value)
+	}
+
+	if len(states) > 0 {
+		query = query.Where("t.state IN ?", states)
+	}
+
+	if stageID != "" {
+		query = query.Where("e.stage_id = ?", stageID)
+	}
+
+	if stageEventID != "" {
+		query = query.Where("t.stage_event_id = ?", stageEventID)
+	}
+
+	err := query.Find(&values).Error
 	if err != nil {
 		return nil, err
 	}

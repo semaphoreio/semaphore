@@ -75,7 +75,7 @@ func SetupWithOptions(t *testing.T, options SetupOptions) *ResourceRegistry {
 }
 
 func CreateStageEvent(t *testing.T, source *models.EventSource, stage *models.Stage) *models.StageEvent {
-	event, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, []byte(`{}`))
+	event, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, []byte(`{"ref":"v1"}`))
 	require.NoError(t, err)
 	stageEvent, err := models.CreateStageEvent(stage.ID, event)
 	require.NoError(t, err)
@@ -83,14 +83,22 @@ func CreateStageEvent(t *testing.T, source *models.EventSource, stage *models.St
 }
 
 func CreateExecution(t *testing.T, source *models.EventSource, stage *models.Stage) *models.StageExecution {
-	return CreateExecutionWithData(t, source, stage, []byte(`{}`))
+	return CreateExecutionWithData(t, source, stage, []byte(`{"ref":"v1"}`))
 }
 
 func CreateExecutionWithData(t *testing.T, source *models.EventSource, stage *models.Stage, data []byte) *models.StageExecution {
 	e, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, data)
 	require.NoError(t, err)
+
 	event, err := models.CreateStageEvent(stage.ID, e)
 	require.NoError(t, err)
+
+	for _, tag := range stage.Tags {
+		v, err := e.EvaluateStringExpression(tag.ValueFrom)
+		require.NoError(t, err)
+		require.NoError(t, models.CreateStageEventTag(tag.Name, v, event.ID))
+	}
+
 	execution, err := models.CreateStageExecution(stage.ID, event.ID)
 	require.NoError(t, err)
 	return execution

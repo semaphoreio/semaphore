@@ -117,7 +117,7 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 		SourceId:    in.SourceID.String(),
 		SourceType:  pb.Connection_TYPE_EVENT_SOURCE,
 		Approvals:   []*pb.StageEventApproval{},
-		Tags:        []*pb.StageEventTag{},
+		Tags:        []*pb.Tag{},
 	}
 
 	approvals, err := in.FindApprovals()
@@ -138,7 +138,11 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 	}
 
 	for _, tag := range tags {
-		e.Tags = append(e.Tags, &pb.StageEventTag{Name: tag.Name, Value: tag.Value})
+		e.Tags = append(e.Tags, &pb.Tag{
+			Name:  tag.Name,
+			Value: tag.Value,
+			State: tagStateToProto(tag.State),
+		})
 	}
 
 	return &e, nil

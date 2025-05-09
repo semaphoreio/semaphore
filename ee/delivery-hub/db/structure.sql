@@ -128,7 +128,7 @@ CREATE TABLE public.stage_event_tags (
     name character varying(64) NOT NULL,
     value character varying(128) NOT NULL,
     stage_event_id uuid NOT NULL,
-    healthy boolean NOT NULL
+    state character varying(64) NOT NULL
 );
 
 
