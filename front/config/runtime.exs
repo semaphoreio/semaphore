@@ -71,10 +71,6 @@ if config_env() == :prod do
          :connect_github_app_url,
          "https://id.#{System.get_env("BASE_DOMAIN")}/github_app_manifest"
 
-  config :front,
-         :git_hook_endpoint,
-         "https://semaphore.#{System.get_env("BASE_DOMAIN")}/hooks"
-
   # Support Client tokens
   config :front,
     support_app_id: System.get_env("HELPSCOUT_APP_ID"),
