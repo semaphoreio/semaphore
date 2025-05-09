@@ -5,15 +5,13 @@ defmodule InternalApi.Organization.DescribeRequest do
   @type t :: %__MODULE__{
           org_id: String.t(),
           org_username: String.t(),
-          include_quotas: boolean,
-          soft_deleted: boolean
+          include_quotas: boolean
         }
-  defstruct [:org_id, :org_username, :include_quotas, :soft_deleted]
+  defstruct [:org_id, :org_username, :include_quotas]
 
   field(:org_id, 1, type: :string)
   field(:org_username, 2, type: :string)
   field(:include_quotas, 3, type: :bool)
-  field(:soft_deleted, 4, type: :bool)
 end
 
 defmodule InternalApi.Organization.DescribeResponse do
@@ -35,13 +33,11 @@ defmodule InternalApi.Organization.DescribeManyRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          org_ids: [String.t()],
-          soft_deleted: boolean
+          org_ids: [String.t()]
         }
-  defstruct [:org_ids, :soft_deleted]
+  defstruct [:org_ids]
 
   field(:org_ids, 1, repeated: true, type: :string)
-  field(:soft_deleted, 2, type: :bool)
 end
 
 defmodule InternalApi.Organization.DescribeManyResponse do
@@ -65,17 +61,15 @@ defmodule InternalApi.Organization.ListRequest do
           created_at_gt: Google.Protobuf.Timestamp.t(),
           order: integer,
           page_size: integer,
-          page_token: String.t(),
-          soft_deleted: boolean
+          page_token: String.t()
         }
-  defstruct [:user_id, :created_at_gt, :order, :page_size, :page_token, :soft_deleted]
+  defstruct [:user_id, :created_at_gt, :order, :page_size, :page_token]
 
   field(:user_id, 2, type: :string)
   field(:created_at_gt, 3, type: Google.Protobuf.Timestamp)
   field(:order, 4, type: InternalApi.Organization.ListRequest.Order, enum: true)
   field(:page_size, 5, type: :int32)
   field(:page_token, 6, type: :string)
-  field(:soft_deleted, 7, type: :bool)
 end
 
 defmodule InternalApi.Organization.ListRequest.Order do
@@ -507,18 +501,6 @@ defmodule InternalApi.Organization.ListSuspensionsResponse do
 end
 
 defmodule InternalApi.Organization.DestroyRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t()
-        }
-  defstruct [:org_id]
-
-  field(:org_id, 1, type: :string)
-end
-
-defmodule InternalApi.Organization.RestoreRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
@@ -980,20 +962,6 @@ defmodule InternalApi.Organization.OrganizationDailyUpdate do
   field(:timestamp, 11, type: Google.Protobuf.Timestamp)
 end
 
-defmodule InternalApi.Organization.OrganizationRestored do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:org_id, :timestamp]
-
-  field(:org_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-end
-
 defmodule InternalApi.Organization.OrganizationService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Organization.OrganizationService"
@@ -1066,7 +1034,6 @@ defmodule InternalApi.Organization.OrganizationService.Service do
   )
 
   rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
-  rpc(:Restore, InternalApi.Organization.RestoreRequest, Google.Protobuf.Empty)
 
   rpc(
     :RepositoryIntegrators,
