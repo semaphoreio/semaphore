@@ -9,17 +9,17 @@ defmodule CanvasFrontWeb.CanvasLive do
     canvas =
       CanvasFront.Stores.Canvas.get(%{id: canvas_id})
 
-    Logger.info("Canvas: #{inspect(canvas)}")
-
     stages =
-      CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id})
+      CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id}) |> Enum.map(fn stage ->
+        queues_by_state =CanvasFront.Stores.Stage.get_queue(%{stage_id: stage.id})
+        |> Enum.group_by(&(&1.state))
 
-    Logger.info("Stages: #{inspect(stages)}")
+        Map.put(stage, :queues_by_state, queues_by_state)
+      end)
 
     event_sources =
       CanvasFront.Stores.EventSource.list(%{canvas_id: canvas_id})
 
-    Logger.info("Event Sources: #{inspect(event_sources)}")
 
     # assign initial socket assigns
     socket =

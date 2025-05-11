@@ -1,6 +1,6 @@
 import { Node } from "@xyflow/react";
 
-// Data shape for GitHub Integration node
+// Event source node
 type LastEvent = { type: string; release: string; timestamp: string };
 
 export type EventSourceNodeData = {
@@ -12,16 +12,37 @@ export type EventSourceNodeData = {
 
 export type EventSourceNodeType = Node<EventSourceNodeData, 'event_source'>;
 
+// Stage node 
 export type StageData = {
   label: string;
   labels: string[];
   status?: string;
   timestamp?: string;
   icon?: string;
-  queue: string[];
+  queues_by_state: QueuesByState;
   connections: Connection[];
   conditions: Condition[];
   run_template: RunTemplate;
+}
+
+export type QueueItem = {
+  id: string;
+  state: string;
+  source_id: string;
+  created_at: string;
+  source_type: string;
+  state_reason: string;
+  approvals: any[];
+}
+
+export type QueuesByState = {
+  [key in QueueState]: QueueItem[];
+}
+
+export enum QueueState {
+  PENDING = 'STATE_PENDING',
+  WAITING = 'STATE_WAITING',
+  PROCESSED = 'STATE_PROCESSED',
 }
 
 export type RunTemplate = {

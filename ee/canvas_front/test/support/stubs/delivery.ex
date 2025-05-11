@@ -5,6 +5,7 @@ defmodule Support.Stubs.Delivery do
   def init do
     DB.add_table(:canvas, [:id, :api_model])
     DB.add_table(:stage, [:id, :api_model])
+    DB.add_table(:stage_events, [:id, :stage_id, :api_model])
     DB.add_table(:event_source, [:id, :api_model])
   end
 
@@ -111,6 +112,13 @@ defmodule Support.Stubs.Delivery do
 
           DB.upsert(:stage, %{id: stage.id, api_model: stage})
           %InternalApi.Delivery.UpdateStageResponse{stage: stage}
+      end
+    end
+
+    def list_stage_events(%InternalApi.Delivery.ListStageEventsRequest{} = req, _stream) do
+      case DB.find_all_by(:stage_events, :stage_id, req.stage_id) do
+        nil -> %InternalApi.Delivery.ListStageEventsResponse{events: []}
+        events -> %InternalApi.Delivery.ListStageEventsResponse{events: Enum.map(events, & &1.api_model)}
       end
     end
 
@@ -256,8 +264,55 @@ defmodule Support.Stubs.Delivery do
     |> Enum.map(&Map.from_struct/1)
   end
 
+  @doc "Lists stage events for a specific stage"
+  def list_stage_events(%{stage_id: stage_id}) do
+    events = DB.find_all_by(:stage_events, :stage_id, stage_id) |> Enum.map(& &1.api_model)
+    %InternalApi.Delivery.ListStageEventsResponse{events: events}
+  end
+
+  @doc "Creates a stage event with the given attributes, using reasonable defaults"
+  def seed_event_for_stage(attrs \\ %{}) do
+    now = %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0}
+
+    # Create approvals if specified
+    approvals = case attrs[:approval_count] do
+      count when is_integer(count) and count > 0 ->
+        Enum.map(1..count, fn i ->
+          %InternalApi.Delivery.StageEventApproval{
+            approved_by: "user-#{i}@example.com",
+            approved_at: now
+          }
+        end)
+      _ -> []
+    end
+
+    # Set up the stage event according to the protobuf definition
+    event = %InternalApi.Delivery.StageEvent{
+      id: attrs[:id] || UUID.uuid4(),
+      source_id: attrs[:source_id] || UUID.uuid4(),
+      source_type: attrs[:source_type] || :TYPE_EVENT_SOURCE,
+      state: attrs[:state] || :STATE_PENDING,
+      state_reason: attrs[:state_reason] || case attrs[:state] do
+        :STATE_WAITING -> :STATE_REASON_APPROVAL
+        _ -> :STATE_REASON_UNKNOWN
+      end,
+      created_at: attrs[:created_at] || now,
+      approvals: attrs[:approvals] || approvals
+    }
+
+    # Store additional metadata for lookup
+    stage_id = attrs[:stage_id]
+    if stage_id do
+      DB.insert(:stage_events, %{id: event.id, stage_id: stage_id, api_model: event})
+    else
+      raise "stage_id is required to create a stage event"
+    end
+
+    event
+  end
+
   @doc "Seeds an event source into the mock store"
-  def seed_event_source(attrs) do
+  def seed_event_source(attrs \\ %{}) do
     id = attrs[:id] || Ecto.UUID.generate()
     now = %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0}
 
@@ -308,6 +363,9 @@ defmodule Support.Stubs.Delivery do
             }
           ]
         })
+
+      seed_event_for_stage(%{stage_id: first_stage.id})
+      seed_event_for_stage(%{stage_id: first_stage.id, state: :STATE_PROCESSED})
 
       second_stage =
         seed_stage(%{

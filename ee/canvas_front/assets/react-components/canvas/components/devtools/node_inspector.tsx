@@ -29,8 +29,8 @@ import {
                 type={node.type || 'default'}
                 position={node.position}
                 absPosition={absPosition}
-                width={node.measured?.width ?? 0}
-                height={node.measured?.height ?? 0}
+                width={internalNode.measured?.width ?? 0}
+                height={internalNode.measured?.height ?? 0}
                 data={node.data}
               />
             );

@@ -15,7 +15,9 @@ defmodule CanvasFront.Stores.Stage do
     DescribeStageRequest,
     DescribeStageResponse,
     ApproveStageEventRequest,
-    ApproveStageEventResponse
+    ApproveStageEventResponse,
+    ListStageEventsRequest,
+    ListStageEventsResponse
   }
 
   # Helper to open a GRPC channel
@@ -97,6 +99,23 @@ defmodule CanvasFront.Stores.Stage do
     end
   end
 
+  def get_queue(params) do
+    with {:ok, channel} <- grpc_channel() do
+      req = %ListStageEventsRequest{
+        stage_id: Map.get(params, :stage_id),
+        organization_id: Map.get(params, :organization_id),
+        canvas_id: Map.get(params, :canvas_id),
+        states: Map.get(params, :states, [:STATE_PENDING, :STATE_WAITING, :STATE_PROCESSED])
+      }
+
+      with {:ok, %ListStageEventsResponse{events: events}} <- Stub.list_stage_events(channel, req) do
+        Enum.map(events, &event_to_map/1)
+      else
+        _ -> []
+      end
+    end
+  end
+
   @doc "Delete all stages for a given canvas_id. (Not implemented in GRPC API)"
   def delete(_params), do: :not_implemented
 
@@ -126,8 +145,52 @@ defmodule CanvasFront.Stores.Stage do
     stage
     |> Map.from_struct()
     |> Map.update(:connections, [], fn conns -> Enum.map(conns, &Map.from_struct/1) end)
-    |> Map.update(:conditions, [], fn conditions -> Enum.map(conditions, &Map.from_struct/1) end)
-    |> Map.update(:run_template, %{}, fn run_template -> Map.from_struct(run_template) end)
+    |> Map.update(:conditions, [], fn conditions -> Enum.map(conditions, &condition_to_map/1) end)
+    |> Map.update(:run_template, %{}, fn run_template -> run_template_to_map(run_template) end)
+    |> Map.update(:created_at, nil, &Google.Protobuf.to_datetime/1)
     |> Map.drop([:__unknown_fields__])
+  end
+
+  defp run_template_to_map(%InternalApi.Delivery.RunTemplate{} = run_template) do
+    run_template
+    |> Map.from_struct()
+    |> Map.update(:semaphore, %{}, fn semaphore -> Map.from_struct(semaphore) |> Map.drop([:__unknown_fields__]) end)
+    |> Map.drop([:__unknown_fields__])
+  end
+
+  defp condition_to_map(%InternalApi.Delivery.Condition{} = condition) do
+    condition
+    |> Map.from_struct()
+    |> Map.drop([:__unknown_fields__])
+    |> Map.update(:approval, %{}, fn approval -> condition_to_map(approval) end)
+    |> Map.update(:time_window, %{}, fn time_window -> condition_to_map(time_window) end)
+  end
+
+  defp condition_to_map(%InternalApi.Delivery.ConditionTimeWindow{} = time_window) do
+    time_window
+    |> Map.from_struct()
+    |> Map.drop([:__unknown_fields__])
+  end
+
+  defp condition_to_map(%InternalApi.Delivery.ConditionApproval{} = approval) do
+    approval
+    |> Map.from_struct()
+    |> Map.drop([:__unknown_fields__])
+  end
+
+  defp condition_to_map(nil) do
+    nil
+  end
+
+  defp event_to_map(%InternalApi.Delivery.StageEvent{} = event) do
+    event
+    |> Map.from_struct()
+    |> Map.update(:created_at, nil, &Google.Protobuf.to_datetime/1)
+    |> Map.update(:approvals, [], &approvals_to_map/1)
+    |> Map.drop([:__unknown_fields__])
+  end
+
+  defp approvals_to_map(approvals) do
+    Enum.map(approvals, &Map.from_struct/1)
   end
 end
