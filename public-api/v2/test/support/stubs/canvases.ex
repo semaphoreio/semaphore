@@ -41,6 +41,7 @@ defmodule Support.Stubs.Canvases do
       name: "stage-1",
       conditions: [],
       connections: [],
+      use: %InternalApi.Delivery.TagUsageDefinition{},
       run_template: %InternalApi.Delivery.RunTemplate{
         type: InternalApi.Delivery.RunTemplate.Type.value(:TYPE_SEMAPHORE),
         semaphore: %InternalApi.Delivery.SemaphoreRunTemplate{
@@ -70,7 +71,8 @@ defmodule Support.Stubs.Canvases do
         created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
         conditions: params[:conditions],
         run_template: params[:run_template],
-        connections: params[:connections]
+        connections: params[:connections],
+        use: params[:use]
       }
     })
   end
@@ -248,7 +250,8 @@ defmodule Support.Stubs.Canvases do
             name: stage.name,
             canvas_id: stage.canvas_id,
             organization_id: stage.org_id,
-            created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252}
+            created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
+            use: stage.api_model.use
           }
         end)
 
@@ -267,7 +270,8 @@ defmodule Support.Stubs.Canvases do
               created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
               conditions: stage.api_model.conditions,
               run_template: stage.api_model.run_template,
-              connections: stage.api_model.connections
+              connections: stage.api_model.connections,
+              use: stage.api_model.use
             }
           }
 
@@ -292,7 +296,8 @@ defmodule Support.Stubs.Canvases do
             created_at: %Google.Protobuf.Timestamp{seconds: 1_549_885_252},
             conditions: req.conditions,
             connections: req.connections,
-            run_template: req.run_template
+            run_template: req.run_template,
+            use: req.use
           }
 
           DB.insert(:stages, %{
