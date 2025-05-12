@@ -72,21 +72,67 @@ export default function StageNode(props: NodeProps<StageNodeType>) {
         </div>
       </div>
       <div className="border-t border-gray-200 p-4">
-        <h4 className="text-sm font-medium text-gray-700 mb-2">Run Queue</h4>
-        { props.data.queue && props.data.queue.length > 0 ? (
+        {/* PENDING Queue Section */}
+        <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Runs</h4>
+        { props.data.queues_by_state?.STATE_PENDING?.length > 0 ? (
           <>
-            <div className="flex items-center p-2 bg-gray-50 rounded mb-1">
-              <div className="material-symbols-outlined v-mid purple b">flaky</div>
-              <span className="text-sm ml2">{props.data.queue[0]}</span>
+            {/* Show the first pending item with details */}
+            <div className="flex items-center p-2 bg-amber-50 rounded mb-1">
+              <div className="material-symbols-outlined text-amber-600 mr-2">pending</div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">{new Date(props.data.queues_by_state.STATE_PENDING[0].created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-600">ID: {props.data.queues_by_state.STATE_PENDING[0].id.substring(0, 8)}...</div>
+              </div>
             </div>
-            {props.data.queue.length > 1 && (
-              <div className="text-xs text-blue-600 hover:text-blue-800">
-                <a href="#" className="no-underline hover:underline">{props.data.queue.length - 1} more items</a>
+            {/* Show count of additional pending items */}
+            {props.data.queues_by_state.STATE_PENDING.length > 1 && (
+              <div className="text-xs text-amber-600 hover:text-amber-800 mb-3">
+                <a href="#" className="no-underline hover:underline">{props.data.queues_by_state.STATE_PENDING.length - 1} more pending</a>
               </div>
             )}
           </>
         ) : (
-          <div className="text-sm text-gray-500 italic">No items in queue</div>
+          <div className="text-sm text-gray-500 italic mb-3">No pending items</div>
+        )}
+        
+        {/* WAITING Queue Section */}
+        {props.data.queues_by_state?.STATE_WAITING?.length > 0 && (
+          <>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 border-t pt-2">Waiting for Approval</h4>
+            <div className="flex items-center p-2 bg-blue-50 rounded mb-1">
+              <div className="material-symbols-outlined text-blue-600 mr-2">hourglass_empty</div>
+              <div className="flex-1">
+                <div className="text-sm font-medium">{new Date(props.data.queues_by_state.STATE_WAITING[0].created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-600">ID: {props.data.queues_by_state.STATE_WAITING[0].id.substring(0, 8)}...</div>
+              </div>
+            </div>
+            {props.data.queues_by_state.STATE_WAITING.length > 1 && (
+              <div className="text-xs text-blue-600 hover:text-blue-800 mb-3">
+                <a href="#" className="no-underline hover:underline">{props.data.queues_by_state.STATE_WAITING.length - 1} more waiting</a>
+              </div>
+            )}
+          </>
+        )}
+        
+        {/* PROCESSED Queue Section - Only show the count */}
+        {props.data.queues_by_state?.STATE_PROCESSED?.length > 0 && (
+          <>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 border-t pt-2">Processed Recently</h4>
+            <div className="flex items-center p-2 bg-green-50 rounded mb-1">
+              <div className="material-symbols-outlined text-green-600 mr-2">check_circle</div>
+              <div className="flex-1">
+                <div className="text-sm">{props.data.queues_by_state.STATE_PROCESSED.length} processed</div>
+                <div className="text-xs text-gray-600">Latest: {new Date(props.data.queues_by_state.STATE_PROCESSED[0].created_at).toLocaleString()}</div>
+              </div>
+            </div>
+          </>
+        )}
+        
+        {/* Show message when no queues exist */}
+        {(!props.data.queues_by_state?.STATE_PENDING?.length && 
+          !props.data.queues_by_state?.STATE_WAITING?.length && 
+          !props.data.queues_by_state?.STATE_PROCESSED?.length) && (
+          <div className="text-sm text-gray-500 italic">No queue activity</div>
         )}
       </div>
       <CustomBarHandle type="target" connections={props.data.connections} conditions={props.data.conditions}/>

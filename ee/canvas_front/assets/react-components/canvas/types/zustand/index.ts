@@ -1,12 +1,11 @@
+import {ReactFlowInstance, OnNodesChange, OnEdgesChange, Connection, Viewport} from "@xyflow/react";
+import { AllNodeType, EdgeType } from "../flow";
+
 
 export type FlowStoreType = {
     fitViewNode: (nodeId: string) => void;
     autoSaveFlow: (() => void) | undefined;
     componentsToUpdate: string[];
-    setReactFlowInstance: (
-      newState: ReactFlowInstance<AllNodeType, EdgeType>,
-    ) => void;
-    flowState: FlowState | undefined;
     nodes: AllNodeType[];
     edges: EdgeType[];
     onNodesChange: OnNodesChange<AllNodeType>;
@@ -26,20 +25,11 @@ export type FlowStoreType = {
     getNode: (id: string) => AllNodeType | undefined;
     deleteNode: (nodeId: string | Array<string>) => void;
     deleteEdge: (edgeId: string | Array<string>) => void;
-    paste: (
-      selection: { nodes: any; edges: any },
-      position: { x: number; y: number; paneX?: number; paneY?: number },
-    ) => void;
-    lastCopiedSelection: { nodes: any; edges: any } | null;
-    setLastCopiedSelection: (
-      newSelection: { nodes: any; edges: any } | null,
-      isCrop?: boolean,
-    ) => void;
     cleanFlow: () => void;
     onConnect: (connection: Connection) => void;
     unselectAll: () => void;
     playgroundPage: boolean;
-    getFlow: () => { nodes: Node[]; edges: EdgeType[]; viewport: Viewport };
+    getFlow: () => { nodes: AllNodeType[]; edges: EdgeType[]; viewport: Viewport };
     getNodePosition: (nodeId: string) => { x: number; y: number };
     handleDragging:
       | {

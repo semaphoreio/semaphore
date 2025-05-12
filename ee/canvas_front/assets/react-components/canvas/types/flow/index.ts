@@ -1,4 +1,7 @@
-import { Node } from "@xyflow/react";
+import { Node, Edge } from "@xyflow/react";
+
+export type AllNodeType = EventSourceNodeType | StageNodeType;
+export type EdgeType = Edge;
 
 // Event source node
 type LastEvent = { type: string; release: string; timestamp: string };

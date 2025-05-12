@@ -63,7 +63,7 @@ export function ChangeLogger({ limit = 20 }: ChangeLoggerProps) {
   }, [onNodesChange, limit]);
  
   return (
-    <div className="react-flow__devtools-changelogger mt-6 ml-6">
+    <div className="react-flow__devtools-changelogger">
       <div className="react-flow__devtools-title">Change Logger</div>
       {changes.length === 0 ? (
         <>no changes triggered</>
