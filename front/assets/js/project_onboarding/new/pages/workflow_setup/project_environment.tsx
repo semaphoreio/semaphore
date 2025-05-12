@@ -8,6 +8,7 @@ import Tippy from "@tippyjs/react";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
+import { useSteps } from "../../stores/create/steps";
 
 interface AgentCardProps {
   agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType;
@@ -40,6 +41,12 @@ export const Projectenvironment = () => {
   const { state: configState } = useContext(stores.WorkflowSetup.Config.Context);
   const { state: envState, setSelectedAgentType, setYamlPath } = stores.WorkflowSetup.Environment.useEnvironmentStore();
   const navigate = useNavigate();
+
+  const { dispatch } = useSteps();
+
+  useEffect(() => {
+    dispatch([`SET_CURRENT`, `select-environment`]);
+  }, []);
 
   const handleAgentSelect = useCallback((agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType) => {
     const isCloudAgent = `available_os_images` in agent;

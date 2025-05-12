@@ -29,7 +29,7 @@ services:
       SEED_SELF_HOSTED_AGENTS: "true"
       EXCLUDE_STUBS: "InstanceConfigMock"
       WORKFLOW_TEMPLATES_YAMLS_PATH: "/app/workflow_templates/saas"
-      SEED_PROJECTS: "initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket"
+      SEED_PROJECTS: "initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket,generic_git"
       SECRET_KEY_BASE: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
       SESSION_SIGNING_SALT: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
 

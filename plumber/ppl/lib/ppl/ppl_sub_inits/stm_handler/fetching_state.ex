@@ -43,11 +43,20 @@ defmodule Ppl.PplSubInits.STMHandler.FetchingState do
          {:ok, yaml, definition} <- acquire_definition(psi, ppl_req),
          {:ok, pfcs}             <- acquire_pre_flight_checks(ppl_req),
          {:ok, settings}         <- acquire_organization_settings(ppl_req),
-         {:ok, next_state}       <- Compilation.Decider.decide_on_compilation(definition, pfcs),
+         {:ok, next_state}       <- next_state(ppl_req, definition, pfcs),
          {:ok, exit_func}        <- transition_to_state(ppl_req, {yaml, pfcs, settings}, next_state) do
       {:ok, exit_func}
     else
       error -> handle_error(error)
+    end
+  end
+
+  defp next_state(ppl_req, definition, pfcs) do
+    ppl_req.request_args
+    |> Map.get("service")
+    |> case do
+      "git" -> {:ok, "compilation"}
+      _ -> Compilation.Decider.decide_on_compilation(definition, pfcs)
     end
   end
 

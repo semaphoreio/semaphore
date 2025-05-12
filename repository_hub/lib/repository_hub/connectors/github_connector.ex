@@ -21,7 +21,7 @@ defmodule RepositoryHub.GithubConnector do
   def setup(repository_id, token) do
     Model.RepositoryQuery.get_by_id(repository_id)
     |> unwrap(fn repository ->
-      Model.GitRepository.new(repository.url)
+      Model.GitRepository.from_github(repository.url)
       |> unwrap(fn git_repository ->
         %GithubConnector{
           repository: repository,
@@ -56,7 +56,7 @@ defmodule RepositoryHub.GithubConnector do
   end
 
   defp can_change_url?(connector, url) do
-    Model.GitRepository.new(url)
+    Model.GitRepository.from_github(url)
     |> unwrap(fn git_repository ->
       GithubClient.find_repository(
         %{
@@ -83,7 +83,7 @@ defmodule RepositoryHub.GithubConnector do
     |> unwrap(fn connector ->
       Multi.new()
       |> Multi.run(:new_git_repository, fn _, _ ->
-        Model.GitRepository.new(url)
+        Model.GitRepository.from_github(url)
       end)
       |> Multi.run(:updated_repository, fn _, context ->
         Model.RepositoryQuery.update(

@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.13.4
-ARG OTP_VERSION=24.3.4.9
-ARG ALPINE_VERSION=3.18.6
+ARG OTP_VERSION=24.2.2
+ARG ALPINE_VERSION=3.19.0
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -54,8 +54,6 @@ ENV MIX_ENV=$BUILD_ENV
 # install runtime dependencies
 RUN apk update && apk add --no-cache libstdc++ openssl ncurses-libs
 
-# trivyfs security updates
-RUN apk add --upgrade --no-cache libcrypto1.1 libssl1.1
 HEALTHCHECK NONE
 
 WORKDIR /app
