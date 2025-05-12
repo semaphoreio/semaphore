@@ -30,6 +30,8 @@ const (
 	Delivery_ListStageEvents_FullMethodName     = "/InternalApi.Delivery.Delivery/ListStageEvents"
 	Delivery_UpdateStage_FullMethodName         = "/InternalApi.Delivery.Delivery/UpdateStage"
 	Delivery_ApproveStageEvent_FullMethodName   = "/InternalApi.Delivery.Delivery/ApproveStageEvent"
+	Delivery_ListTags_FullMethodName            = "/InternalApi.Delivery.Delivery/ListTags"
+	Delivery_UpdateTagState_FullMethodName      = "/InternalApi.Delivery.Delivery/UpdateTagState"
 )
 
 // DeliveryClient is the client API for Delivery service.
@@ -47,6 +49,8 @@ type DeliveryClient interface {
 	ListStageEvents(ctx context.Context, in *ListStageEventsRequest, opts ...grpc.CallOption) (*ListStageEventsResponse, error)
 	UpdateStage(ctx context.Context, in *UpdateStageRequest, opts ...grpc.CallOption) (*UpdateStageResponse, error)
 	ApproveStageEvent(ctx context.Context, in *ApproveStageEventRequest, opts ...grpc.CallOption) (*ApproveStageEventResponse, error)
+	ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error)
+	UpdateTagState(ctx context.Context, in *UpdateTagStateRequest, opts ...grpc.CallOption) (*UpdateTagStateResponse, error)
 }
 
 type deliveryClient struct {
@@ -167,6 +171,26 @@ func (c *deliveryClient) ApproveStageEvent(ctx context.Context, in *ApproveStage
 	return out, nil
 }
 
+func (c *deliveryClient) ListTags(ctx context.Context, in *ListTagsRequest, opts ...grpc.CallOption) (*ListTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTagsResponse)
+	err := c.cc.Invoke(ctx, Delivery_ListTags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *deliveryClient) UpdateTagState(ctx context.Context, in *UpdateTagStateRequest, opts ...grpc.CallOption) (*UpdateTagStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateTagStateResponse)
+	err := c.cc.Invoke(ctx, Delivery_UpdateTagState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // DeliveryServer is the server API for Delivery service.
 // All implementations should embed UnimplementedDeliveryServer
 // for forward compatibility.
@@ -182,6 +206,8 @@ type DeliveryServer interface {
 	ListStageEvents(context.Context, *ListStageEventsRequest) (*ListStageEventsResponse, error)
 	UpdateStage(context.Context, *UpdateStageRequest) (*UpdateStageResponse, error)
 	ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error)
+	ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error)
+	UpdateTagState(context.Context, *UpdateTagStateRequest) (*UpdateTagStateResponse, error)
 }
 
 // UnimplementedDeliveryServer should be embedded to have
@@ -223,6 +249,12 @@ func (UnimplementedDeliveryServer) UpdateStage(context.Context, *UpdateStageRequ
 }
 func (UnimplementedDeliveryServer) ApproveStageEvent(context.Context, *ApproveStageEventRequest) (*ApproveStageEventResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ApproveStageEvent not implemented")
+}
+func (UnimplementedDeliveryServer) ListTags(context.Context, *ListTagsRequest) (*ListTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListTags not implemented")
+}
+func (UnimplementedDeliveryServer) UpdateTagState(context.Context, *UpdateTagStateRequest) (*UpdateTagStateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateTagState not implemented")
 }
 func (UnimplementedDeliveryServer) testEmbeddedByValue() {}
 
@@ -442,6 +474,42 @@ func _Delivery_ApproveStageEvent_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Delivery_ListTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).ListTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_ListTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).ListTags(ctx, req.(*ListTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Delivery_UpdateTagState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateTagStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeliveryServer).UpdateTagState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Delivery_UpdateTagState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeliveryServer).UpdateTagState(ctx, req.(*UpdateTagStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Delivery_ServiceDesc is the grpc.ServiceDesc for Delivery service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -492,6 +560,14 @@ var Delivery_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ApproveStageEvent",
 			Handler:    _Delivery_ApproveStageEvent_Handler,
+		},
+		{
+			MethodName: "ListTags",
+			Handler:    _Delivery_ListTags_Handler,
+		},
+		{
+			MethodName: "UpdateTagState",
+			Handler:    _Delivery_UpdateTagState_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

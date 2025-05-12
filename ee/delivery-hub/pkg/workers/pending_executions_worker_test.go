@@ -40,7 +40,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-wf")
 		require.NoError(t, err)
@@ -83,7 +83,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceID:   r.Source.ID,
 				SourceType: models.SourceTypeEventSource,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-task")
 		require.NoError(t, err)
@@ -91,13 +91,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create pending execution.
 		//
-		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		execution, err := models.CreateStageExecution(stage.ID, event.ID)
-		require.NoError(t, err)
-
+		execution := support.CreateExecution(t, r.Source, stage)
 		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
@@ -135,7 +129,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		template.Semaphore.Parameters = map[string]string{
 			"REF":             "${{ self.Conn('gh').ref }}",
 			"REF_TYPE":        "${{ self.Conn('gh').ref_type }}",
-			"STAGE_1_VERSION": "${{ self.Conn('stage-1').outputs.version }}",
+			"STAGE_1_VERSION": "${{ self.Conn('stage-1').tags.version }}",
 		}
 
 		require.NoError(t, r.Canvas.CreateStage("stage-task-2", r.User.String(), []models.StageCondition{}, template, []models.StageConnection{
@@ -149,13 +143,13 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 				SourceName: r.Stage.Name,
 				SourceType: models.SourceTypeStage,
 			},
-		}))
+		}, support.TagUsageDef(r.Source.Name)))
 
 		stage, err := r.Canvas.FindStageByName("stage-task-2")
 		require.NoError(t, err)
 
 		//
-		// Since we use the outputs of a stage in the template for the execution,
+		// Since we use the tags of a stage in the template for the execution,
 		// we need a previous event for that stage to be available, so we create it here.
 		//
 		data := createStageCompletionEvent(t, r, map[string]string{"version": "1.0.0"})
@@ -165,13 +159,7 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		//
 		// Create pending execution for a new event source event.
 		//
-		e, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
-		require.NoError(t, err)
-		event, err := models.CreateStageEvent(stage.ID, e)
-		require.NoError(t, err)
-		execution, err := models.CreateStageExecution(stage.ID, event.ID)
-		require.NoError(t, err)
-
+		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
 		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()
@@ -225,15 +213,12 @@ func assertParameters(t *testing.T, req *schedulepb.RunNowRequest, execution *mo
 	}))
 }
 
-func createStageCompletionEvent(t *testing.T, r *support.ResourceRegistry, outputs map[string]string) []byte {
-	o, err := json.Marshal(outputs)
-	require.NoError(t, err)
+func createStageCompletionEvent(t *testing.T, r *support.ResourceRegistry, tags map[string]string) []byte {
 	e, err := events.NewStageExecutionCompletion(&models.StageExecution{
 		ID:      uuid.New(),
 		StageID: r.Stage.ID,
 		Result:  models.StageExecutionResultPassed,
-		Outputs: o,
-	})
+	}, tags)
 
 	require.NoError(t, err)
 	data, err := json.Marshal(e)

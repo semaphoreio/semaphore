@@ -38,7 +38,7 @@ func ListStageEvents(ctx context.Context, req *pb.ListStageEventsRequest) (*pb.L
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	events, err := stage.ListEvents(states)
+	events, err := stage.ListEvents(states, []string{})
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +107,7 @@ func serializeStageEvents(in []models.StageEvent) ([]*pb.StageEvent, error) {
 	return out, nil
 }
 
-// TODO: very inefficient way of querying the approvals that we should fix later
+// TODO: very inefficient way of querying the approvals/tags that we should fix later
 func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 	e := pb.StageEvent{
 		Id:          in.ID.String(),
@@ -117,9 +117,15 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 		SourceId:    in.SourceID.String(),
 		SourceType:  pb.Connection_TYPE_EVENT_SOURCE,
 		Approvals:   []*pb.StageEventApproval{},
+		Tags:        []*pb.Tag{},
 	}
 
 	approvals, err := in.FindApprovals()
+	if err != nil {
+		return nil, err
+	}
+
+	tags, err := models.FindStageEventTags(in.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +134,14 @@ func serializeStageEvent(in models.StageEvent) (*pb.StageEvent, error) {
 		e.Approvals = append(e.Approvals, &pb.StageEventApproval{
 			ApprovedBy: approval.ApprovedBy.String(),
 			ApprovedAt: timestamppb.New(*approval.ApprovedAt),
+		})
+	}
+
+	for _, tag := range tags {
+		e.Tags = append(e.Tags, &pb.Tag{
+			Name:  tag.Name,
+			Value: tag.Value,
+			State: tagStateToProto(tag.State),
 		})
 	}
 
@@ -153,6 +167,14 @@ func stateReasonToProto(stateReason string) pb.StageEvent_StateReason {
 		return pb.StageEvent_STATE_REASON_APPROVAL
 	case models.StageEventStateReasonTimeWindow:
 		return pb.StageEvent_STATE_REASON_TIME_WINDOW
+	case models.StageEventStateReasonExecution:
+		return pb.StageEvent_STATE_REASON_EXECUTION
+	case models.StageEventStateReasonConnection:
+		return pb.StageEvent_STATE_REASON_CONNECTION
+	case models.StageEventStateReasonCancelled:
+		return pb.StageEvent_STATE_REASON_CANCELLED
+	case models.StageEventStateReasonUnhealthy:
+		return pb.StageEvent_STATE_REASON_UNHEALTHY
 	default:
 		return pb.StageEvent_STATE_REASON_UNKNOWN
 	}

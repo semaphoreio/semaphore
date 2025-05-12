@@ -5,6 +5,20 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+func ForStageEvent(event *models.StageEvent) *log.Entry {
+	if event == nil {
+		return log.WithFields(log.Fields{})
+	}
+
+	return log.WithFields(
+		log.Fields{
+			"id":          event.EventID,
+			"source_name": event.SourceName,
+			"stage_id":    event.StageID,
+		},
+	)
+}
+
 func ForStage(stage *models.Stage) *log.Entry {
 	if stage == nil {
 		return log.WithFields(log.Fields{})

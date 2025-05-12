@@ -140,7 +140,7 @@ func (c *Canvas) ListStages() ([]Stage, error) {
 	return stages, nil
 }
 
-func (c *Canvas) CreateStage(name, createdBy string, conditions []StageCondition, template RunTemplate, connections []StageConnection) error {
+func (c *Canvas) CreateStage(name, createdBy string, conditions []StageCondition, template RunTemplate, connections []StageConnection, use StageTagUsageDefinition) error {
 	now := time.Now()
 	ID := uuid.New()
 
@@ -151,6 +151,7 @@ func (c *Canvas) CreateStage(name, createdBy string, conditions []StageCondition
 			CanvasID:       c.ID,
 			Name:           name,
 			Conditions:     datatypes.NewJSONSlice(conditions),
+			Use:            datatypes.NewJSONType(use),
 			CreatedAt:      &now,
 			CreatedBy:      uuid.Must(uuid.Parse(createdBy)),
 			RunTemplate:    datatypes.NewJSONType(template),
