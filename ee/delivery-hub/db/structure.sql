@@ -79,7 +79,8 @@ CREATE TABLE public.events (
     source_type character varying(64) NOT NULL,
     received_at timestamp without time zone NOT NULL,
     raw jsonb NOT NULL,
-    state character varying(64) NOT NULL
+    state character varying(64) NOT NULL,
+    headers jsonb DEFAULT '{}'::jsonb NOT NULL
 );
 
 
@@ -466,7 +467,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-20250508202117	f
+20250512212918	f
 \.
 
 
