@@ -8,7 +8,7 @@ defmodule PublicAPI.Handlers.Canvases.Formatter do
     {:ok, canvas_from_pb(canvas, ctx)}
   end
 
-  defp canvas_from_pb(%API.Canvas{} = canvas, ctx) do
+  defp canvas_from_pb(canvas = %API.Canvas{}, ctx) do
     organization = %{id: canvas.organization_id, name: ctx.organization.name}
 
     %{

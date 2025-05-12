@@ -75,7 +75,10 @@ defmodule InternalApi.ServerFarm.Job.Job.Timeline do
   field(:started_at, 3, type: Google.Protobuf.Timestamp, json_name: "startedAt")
   field(:finished_at, 4, type: Google.Protobuf.Timestamp, json_name: "finishedAt")
 
-  field(:execution_started_at, 5, type: Google.Protobuf.Timestamp, json_name: "executionStartedAt")
+  field(:execution_started_at, 5,
+    type: Google.Protobuf.Timestamp,
+    json_name: "executionStartedAt"
+  )
 
   field(:execution_finished_at, 6,
     type: Google.Protobuf.Timestamp,
