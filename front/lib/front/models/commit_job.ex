@@ -212,11 +212,7 @@ defmodule Front.Models.CommitJob do
         # Fetch remote branches
         "git fetch origin #{target} || true",
         # Check if branch exists on remote
-        "if git show-ref --verify --quiet refs/remotes/origin/#{target}; then",
-        "  git checkout -B #{target} origin/#{target}",
-        "else",
-        "  git checkout -B #{target} #{initial}",
-        "fi"
+        "git show-ref --verify --quiet refs/remotes/origin/#{target} && git checkout -B #{target} origin/#{target} || git checkout -B #{target} #{initial}"
       ]
     end
   end
