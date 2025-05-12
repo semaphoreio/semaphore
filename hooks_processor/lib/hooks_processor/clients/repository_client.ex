@@ -4,6 +4,7 @@ defmodule HooksProcessor.Clients.RepositoryClient do
   """
 
   alias InternalApi.Repository.{RepositoryService, DescribeRevisionRequest, VerifyWebhookSignatureRequest}
+
   alias Util.{Metrics, ToTuple}
   alias LogTee, as: LT
 

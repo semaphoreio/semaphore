@@ -4,6 +4,7 @@ defmodule HooksReceiver.RepositoryClient do
   """
 
   alias Util.{Metrics, ToTuple}
+
   alias InternalApi.Repository.{RepositoryService, DescribeRequest}
 
   defp url, do: Application.get_env(:hooks_receiver, :repository_api_grpc)
@@ -32,9 +33,15 @@ defmodule HooksReceiver.RepositoryClient do
 
       channel
       |> RepositoryService.Stub.describe(request, @opts)
-      |> process_response()
+      |> case do
+        {:ok, response} ->
+          response
+          |> Map.get(:repository)
+          |> ToTuple.ok()
+
+        {:error, error} ->
+          error
+      end
     end)
   end
-
-  defp process_response({:ok, map}), do: map |> Map.get(:repository) |> ToTuple.ok()
 end

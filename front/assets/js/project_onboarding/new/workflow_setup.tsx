@@ -1,24 +1,25 @@
-import { Fragment } from "preact";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import * as pages from "./pages";
 import * as stores from "./stores";
 import { useState, useContext } from "preact/hooks";
-import { ProgressBar, OnboardingStep } from "../new/components/progress_bar";
+import { ProgressBar } from "../new/components/progress_bar";
+import { Steps } from "./stores/create";
 
 export const WorkflowSetupApp = () => {
   const [environmentStore] = useState(() => stores.WorkflowSetup.Environment.createEnvironmentStore());
   const { state: configState } = useContext(stores.WorkflowSetup.Config.Context);
-  const location = useLocation();
 
-  const getCurrentStep = (): OnboardingStep => {
-    if (location.pathname === `/starter_template`) return `setup-workflow`;
-    return `select-environment`;
-  };
+  const steps = [
+    { id: `select-type`, title: `Select project type` },
+    { id: `setup-project`, title: `Setup the project` },
+    { id: `select-environment`, title: `Select the environment` },
+    { id: `setup-workflow`, title: `Setup workflow` },
+  ];
 
   return (
-    <stores.WorkflowSetup.Environment.Context.Provider value={environmentStore}>
-      <Fragment>
-        <ProgressBar currentStep={getCurrentStep()}/>
+    <Steps.Provider state={{ steps: steps }}>
+      <stores.WorkflowSetup.Environment.Context.Provider value={environmentStore}>
+        <ProgressBar/>
         <div
           className="pa3 pa4-m bg-lightest-blue br3"
           style="min-height: calc(100vh - 184px)"
@@ -34,7 +35,7 @@ export const WorkflowSetupApp = () => {
             <Route path="/starter_template" element={<pages.WorkflowSetup.StarterWorkflowTemplate/>}/>
           </Routes>
         </div>
-      </Fragment>
-    </stores.WorkflowSetup.Environment.Context.Provider>
+      </stores.WorkflowSetup.Environment.Context.Provider>
+    </Steps.Provider>
   );
 };

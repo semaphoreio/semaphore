@@ -9,7 +9,7 @@ export class ScopeUpdate {
   method: string;
 }
 
-export enum ProviderStatus{
+export enum ProviderStatus {
   Connected = `connected`,
   WithError = `with_error`,
   NotConnected = `not_connected`,
@@ -19,5 +19,6 @@ export enum IntegrationType {
   GithubApp = `github_app`,
   GithubOauthToken = `github_oauth_token`,
   BitBucket = `bitbucket`,
-  Gitlab = `gitlab`
+  Gitlab = `gitlab`,
+  Git = `git`,
 }
