@@ -24,7 +24,7 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GitlabAdapter do
 
     Multi.new()
     |> Multi.run(:git_repository, fn _repo, _context ->
-      GitRepository.new(request.repository_url)
+      GitRepository.from_gitlab(request.repository_url)
     end)
     |> Multi.run(:gitlab_token, fn _repo, _context ->
       GitlabAdapter.fetch_token(request.user_id)
