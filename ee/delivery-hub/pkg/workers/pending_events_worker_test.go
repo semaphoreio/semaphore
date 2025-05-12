@@ -18,9 +18,10 @@ func Test__PendingEventsWorker(t *testing.T) {
 	w := PendingEventsWorker{}
 
 	eventData := []byte(`{"ref":"v1"}`)
+	eventHeaders := []byte(`{"ref":"v1"}`)
 
 	t.Run("source is not connected to any stage -> event is discarded", func(t *testing.T) {
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData, eventHeaders)
 		require.NoError(t, err)
 
 		err = w.Tick()
@@ -62,7 +63,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData, eventHeaders)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -145,7 +146,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Simulating a stage completion event coming in for the first stage.
 		//
-		event, err := models.CreateEvent(firstStage.ID, firstStage.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`))
+		event, err := models.CreateEvent(firstStage.ID, firstStage.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`), eventHeaders)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -216,7 +217,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Create an event for the source, and trigger the worker.
 		//
-		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData)
+		event, err := models.CreateEvent(r.Source.ID, r.Source.Name, models.SourceTypeEventSource, eventData, eventHeaders)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -303,7 +304,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Simulating a stage completion event coming in for the preprod1 stage.
 		//
-		event, err := models.CreateEvent(preprod1.ID, preprod1.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`))
+		event, err := models.CreateEvent(preprod1.ID, preprod1.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`), eventHeaders)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)
@@ -326,7 +327,7 @@ func Test__PendingEventsWorker(t *testing.T) {
 		//
 		// Simulating a stage completion event coming in for the preprod2 stage.
 		//
-		event, err = models.CreateEvent(preprod2.ID, preprod2.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`))
+		event, err = models.CreateEvent(preprod2.ID, preprod2.Name, models.SourceTypeStage, []byte(`{"tags":{"VERSION":"v1"}}`), eventHeaders)
 		require.NoError(t, err)
 		err = w.Tick()
 		require.NoError(t, err)

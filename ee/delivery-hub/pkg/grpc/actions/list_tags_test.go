@@ -37,7 +37,7 @@ func Test__ListTags(t *testing.T) {
 	require.NoError(t, err)
 
 	event1 := support.CreateStageEvent(t, r.Source, r.Stage)
-	event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`))
+	event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`), []byte(`{"ref":"v2"}`))
 	event3 := support.CreateStageEvent(t, r.Source, secondStage)
 
 	// create some healthy tags

@@ -13,7 +13,7 @@ func Test__Resolve(t *testing.T) {
 	r := support.Setup(t)
 
 	t.Run("no variables to resolve", func(t *testing.T) {
-		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(`{"ref":"v1","data": {"branch": "hello"}}`))
+		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(`{"ref":"v1","data": {"branch": "hello"}}`), []byte(`{"ref":"v1","data": {"branch": "hello"}}`))
 		template := support.RunTemplate()
 		resolver := NewResolver(*execution, template)
 		newTemplate, err := resolver.Resolve()
@@ -29,7 +29,7 @@ func Test__Resolve(t *testing.T) {
 
 	t.Run("with variables to resolve", func(t *testing.T) {
 		e := `{"ref":"refs/heads/hello","branch":"hello","project":"other","param1":"value1","param2":"value2"}`
-		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(e))
+		execution := support.CreateExecutionWithData(t, r.Source, r.Stage, []byte(e), []byte(`{}`))
 		template := support.RunTemplate()
 		template.Semaphore.Branch = "${{self.Conn('gh').branch}}"
 		template.Semaphore.ProjectID = "${{self.Conn('gh').project}}"

@@ -206,7 +206,7 @@ func (c *PipelineDoneConsumer) createStageCompletionEvent(tx *gorm.DB, execution
 		return fmt.Errorf("error marshaling event: %v", err)
 	}
 
-	_, err = models.CreateEventInTransaction(tx, execution.StageID, stage.Name, models.SourceTypeStage, raw)
+	_, err = models.CreateEventInTransaction(tx, execution.StageID, stage.Name, models.SourceTypeStage, raw, []byte(`{}`))
 	if err != nil {
 		return fmt.Errorf("error creating event: %v", err)
 	}

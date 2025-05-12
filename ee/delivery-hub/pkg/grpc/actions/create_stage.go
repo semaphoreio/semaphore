@@ -244,6 +244,8 @@ func validateFilter(filter *pb.Connection_Filter) (*models.StageConnectionFilter
 	switch filter.Type {
 	case pb.Connection_FILTER_TYPE_DATA:
 		return validateDataFilter(filter.Data)
+	case pb.Connection_FILTER_TYPE_HEADER:
+		return validateHeaderFilter(filter.Header)
 	default:
 		return nil, fmt.Errorf("invalid filter type: %s", filter.Type)
 	}
@@ -261,6 +263,23 @@ func validateDataFilter(filter *pb.Connection_DataFilter) (*models.StageConnecti
 	return &models.StageConnectionFilter{
 		Type: models.FilterTypeData,
 		Data: &models.DataFilter{
+			Expression: filter.Expression,
+		},
+	}, nil
+}
+
+func validateHeaderFilter(filter *pb.Connection_HeaderFilter) (*models.StageConnectionFilter, error) {
+	if filter == nil {
+		return nil, fmt.Errorf("no filter provided")
+	}
+
+	if filter.Expression == "" {
+		return nil, fmt.Errorf("expression is empty")
+	}
+
+	return &models.StageConnectionFilter{
+		Type: models.FilterTypeHeader,
+		Header: &models.HeaderFilter{
 			Expression: filter.Expression,
 		},
 	}, nil
@@ -306,6 +325,13 @@ func serializeFilter(in models.StageConnectionFilter) (*pb.Connection_Filter, er
 			Type: pb.Connection_FILTER_TYPE_DATA,
 			Data: &pb.Connection_DataFilter{
 				Expression: in.Data.Expression,
+			},
+		}, nil
+	case models.FilterTypeHeader:
+		return &pb.Connection_Filter{
+			Type: pb.Connection_FILTER_TYPE_HEADER,
+			Header: &pb.Connection_HeaderFilter{
+				Expression: in.Header.Expression,
 			},
 		}, nil
 	default:

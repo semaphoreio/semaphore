@@ -153,13 +153,13 @@ func Test__PendingExecutionsWorker(t *testing.T) {
 		// we need a previous event for that stage to be available, so we create it here.
 		//
 		data := createStageCompletionEvent(t, r, map[string]string{"version": "1.0.0"})
-		_, err = models.CreateEvent(r.Stage.ID, r.Stage.Name, models.SourceTypeStage, data)
+		_, err = models.CreateEvent(r.Stage.ID, r.Stage.Name, models.SourceTypeStage, data, []byte(`{}`))
 		require.NoError(t, err)
 
 		//
 		// Create pending execution for a new event source event.
 		//
-		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`))
+		execution := support.CreateExecutionWithData(t, r.Source, stage, []byte(`{"ref_type":"branch","ref":"refs/heads/test"}`), []byte(`{}`))
 		testconsumer := testconsumer.New(amqpURL, ExecutionStartedRoutingKey)
 		testconsumer.Start()
 		defer testconsumer.Stop()

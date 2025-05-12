@@ -387,6 +387,12 @@ func Test__CreateStage(t *testing.T) {
 								Expression: "test == 12",
 							},
 						},
+						{
+							Type: protos.Connection_FILTER_TYPE_HEADER,
+							Header: &protos.Connection_HeaderFilter{
+								Expression: "test == 12",
+							},
+						},
 					},
 				},
 			},
@@ -403,7 +409,7 @@ func Test__CreateStage(t *testing.T) {
 
 		// Assert connections are correct
 		require.Len(t, res.Stage.Connections, 1)
-		assert.Len(t, res.Stage.Connections[0].Filters, 1)
+		assert.Len(t, res.Stage.Connections[0].Filters, 2)
 		assert.Equal(t, protos.Connection_FILTER_OPERATOR_AND, res.Stage.Connections[0].FilterOperator)
 
 		// Assert tag usage definition is correct
