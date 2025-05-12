@@ -15,6 +15,11 @@ export var WorkflowList = {
 
     let updatePollman = function(container, params) {
       pollmanList.updateOptionsAndFetch(container, params);
+
+      const currentUrl = new URL(window.location.href);
+      currentUrl.searchParams.set('page_token', params.page_token);
+      currentUrl.searchParams.set('direction', params.direction);
+      window.history.pushState({}, '', currentUrl.toString());
     }
 
     this.pagination.onUpdate(updatePollman);

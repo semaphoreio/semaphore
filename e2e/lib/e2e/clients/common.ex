@@ -45,13 +45,18 @@ defmodule E2E.Clients.Common do
     url = api_url(endpoint)
     timeout = Application.get_env(:e2e, :http_timeout, 30_000)
 
-    case HTTPoison.get(url, headers, timeout: timeout, recv_timeout: timeout, follow_redirect: true) do
+    case HTTPoison.get(url, headers,
+           timeout: timeout,
+           recv_timeout: timeout,
+           follow_redirect: true
+         ) do
       {:ok, response} ->
         {:ok, response}
 
       {:error, %HTTPoison.Error{reason: :timeout}} ->
         # Retry once on timeout
         Process.sleep(1000)
+
         HTTPoison.get(url, headers, timeout: timeout, recv_timeout: timeout, follow_redirect: true)
 
       error ->
