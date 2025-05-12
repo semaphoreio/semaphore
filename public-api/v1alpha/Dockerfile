@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.13.4
-ARG OTP_VERSION=24.3.4.9
-ARG ALPINE_VERSION=3.18.6
+ARG OTP_VERSION=24.2.2
+ARG ALPINE_VERSION=3.19.0
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -63,7 +63,7 @@ HEALTHCHECK NONE
 
 # install runtime dependencies
 RUN apk update \
-    && apk add --no-cache libstdc++ openssl ncurses-libs libcrypto1.1 libssl1.1 libcrypto3 libssl3 zlib
+    && apk add --no-cache libstdc++ openssl ncurses-libs libcrypto3 libssl3 zlib
 
 ENV USER="front"
 

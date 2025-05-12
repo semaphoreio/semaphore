@@ -23,5 +23,4 @@ defmodule E2E.Clients.Job do
         {:error, reason}
     end
   end
-  
 end

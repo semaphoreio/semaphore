@@ -55,6 +55,7 @@ defmodule E2E.API.WorkflowTest do
       Enum.each(pipelines, fn pipeline ->
         if pipeline["result"] != "PASSED" do
           {:ok, job_ids} = Pipeline.failed_jobs_id(pipeline["ppl_id"])
+
           Enum.each(job_ids, fn job_id ->
             {:ok, events} = Job.events(job_id)
             Enum.each(events, fn event -> IO.puts(inspect(event)) end)
