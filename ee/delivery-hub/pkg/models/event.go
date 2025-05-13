@@ -3,7 +3,6 @@ package models
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -11,11 +10,6 @@ import (
 
 	expr "github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
-	"github.com/expr-lang/expr/checker"
-	"github.com/expr-lang/expr/compiler"
-	"github.com/expr-lang/expr/conf"
-	"github.com/expr-lang/expr/file"
-	"github.com/expr-lang/expr/optimizer"
 	"github.com/expr-lang/expr/vm"
 	uuid "github.com/google/uuid"
 	"github.com/semaphoreio/semaphore/delivery-hub/pkg/database"
@@ -250,15 +244,11 @@ func FindLastEventBySourceID(sourceID uuid.UUID) (map[string]any, error) {
 }
 
 // CompileBooleanExpression compiles a boolean expression.
-// The code below is a copy of the expr.Compile function, but with
-// some changes to make it case insensitive for headers:
-// https://github.com/expr-lang/expr/blob/master/compiler/compiler.go#L24
 //
 // variables: the variables to be used in the expression.
 // expression: the expression to be compiled.
 // caseSensitive: whether the expression should be case sensitive.
 func CompileBooleanExpression(variables map[string]any, expression string, caseSensitive bool) (*vm.Program, error) {
-	config := conf.CreateNew()
 	options := []expr.Option{
 		expr.Env(variables),
 		expr.AsBool(),
@@ -270,37 +260,7 @@ func CompileBooleanExpression(variables map[string]any, expression string, caseS
 		options = append(options, expr.Patch(&lowercaseVisitor{}))
 	}
 
-	for _, op := range options {
-		op(config)
-	}
-	for name := range config.Disabled {
-		delete(config.Builtins, name)
-	}
-
-	config.Check()
-
-	tree, err := checker.ParseCheck(expression, config)
-
-	if err != nil {
-		return nil, fmt.Errorf("error parsing expression: %v", err)
-	}
-
-	if config.Optimize {
-		err = optimizer.Optimize(&tree.Node, config)
-		if err != nil {
-			var fileError *file.Error
-			if errors.As(err, &fileError) {
-				return nil, fileError.Bind(tree.Source)
-			}
-			return nil, err
-		}
-	}
-
-	for _, option := range options {
-		option(config)
-	}
-
-	return compiler.Compile(tree, config)
+	return expr.Compile(expression, options...)
 }
 
 func parseExpressionVariables(e *Event, ctx context.Context, filterType string) (map[string]interface{}, error) {

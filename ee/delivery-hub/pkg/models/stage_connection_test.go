@@ -114,7 +114,7 @@ func Test__StageConnectionFilter(t *testing.T) {
 
 		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`)}
 		_, err := conn.Accept(event)
-		require.ErrorContains(t, err, "error parsing expression: type float64 has no field b")
+		require.ErrorContains(t, err, "error compiling expression: type float64 has no field b")
 	})
 
 	t.Run("multiple expression filters with AND", func(t *testing.T) {
