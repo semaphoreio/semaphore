@@ -11,8 +11,8 @@ defmodule CanvasFront.Stores.EventSource do
     DescribeEventSourceRequest,
     DescribeEventSourceResponse,
     CreateEventSourceRequest,
-    CreateEventSourceResponse
-    # EventSource
+    CreateEventSourceResponse,
+    EventSource
   }
 
   defp grpc_channel do
@@ -28,7 +28,7 @@ defmodule CanvasFront.Stores.EventSource do
     with {:ok, channel} <- grpc_channel(),
          {:ok, %ListEventSourcesResponse{event_sources: sources}} <-
            Stub.list_event_sources(channel, req) do
-      Enum.map(sources, &Map.from_struct/1)
+      Enum.map(sources, &event_source_to_map/1)
     else
       _ -> []
     end
@@ -51,7 +51,7 @@ defmodule CanvasFront.Stores.EventSource do
     with {:ok, channel} <- grpc_channel(),
          {:ok, %DescribeEventSourceResponse{event_source: source}} <-
            Stub.describe_event_source(channel, req) do
-      Map.from_struct(source)
+      event_source_to_map(source)
     else
       _ -> nil
     end
@@ -73,9 +73,16 @@ defmodule CanvasFront.Stores.EventSource do
     with {:ok, channel} <- grpc_channel(),
          {:ok, %CreateEventSourceResponse{event_source: source}} <-
            Stub.create_event_source(channel, req) do
-      Map.from_struct(source)
+      event_source_to_map(source)
     else
       _ -> nil
     end
+  end
+
+  defp event_source_to_map(%EventSource{} = event_source) do
+    event_source
+    |> Map.from_struct()
+    |> Map.update(:created_at, nil, &Google.Protobuf.to_datetime/1)
+    |> Map.drop([:__unknown_fields__])
   end
 end

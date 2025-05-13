@@ -8,21 +8,17 @@ defmodule CanvasFrontWeb.CanvasLive do
   def mount(%{"canvas_id" => canvas_id}, _session, socket) do
     canvas =
       CanvasFront.Stores.Canvas.get(%{id: canvas_id})
-      |> Map.update!(:created_at, &ts_to_iso/1)
-
-    Logger.info("Canvas: #{inspect(canvas)}")
 
     stages =
-      CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id})
-      |> Enum.map(fn stage -> Map.update!(stage, :created_at, &ts_to_iso/1) end)
+      CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id}) |> Enum.map(fn stage ->
+        queues =CanvasFront.Stores.Stage.get_queue(%{stage_id: stage.id})
 
-    Logger.info("Stages: #{inspect(stages)}")
+        Map.put(stage, :queues, queues)
+      end)
 
     event_sources =
       CanvasFront.Stores.EventSource.list(%{canvas_id: canvas_id})
-      |> Enum.map(fn es -> Map.update!(es, :created_at, &ts_to_iso/1) end)
 
-    Logger.info("Event Sources: #{inspect(event_sources)}")
 
     # assign initial socket assigns
     socket =
@@ -34,6 +30,7 @@ defmodule CanvasFrontWeb.CanvasLive do
         executions: []
       )
 
+    Logger.debug("assigns: #{inspect(socket.assigns)}")
     # subscribe to PubSub topic for live updates
     if connected?(socket) do
       Endpoint.subscribe("canvas:" <> canvas_id)
@@ -65,13 +62,6 @@ defmodule CanvasFrontWeb.CanvasLive do
         %Phoenix.Socket.Broadcast{event: "event_source_added", payload: event_source},
         socket
       ) do
-    # Convert any timestamp to ISO format if needed
-    event_source =
-      if Map.has_key?(event_source, :created_at) do
-        Map.update!(event_source, :created_at, &ts_to_iso/1)
-      else
-        event_source
-      end
 
     {:noreply, push_event(socket, "event_source_added", event_source)}
   end
@@ -89,9 +79,13 @@ defmodule CanvasFrontWeb.CanvasLive do
     {:noreply, socket |> assign(:stages, stages) |> push_event("stage_created", stage)}
   end
 
+  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_updated", payload: stage}, socket) do
+    {:noreply, push_event(socket, "stage_updated", stage)}
+  end
+
   @impl true
-  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_event_created", payload: event}, socket) do
-    {:noreply, push_event(socket, "stage_event_created", event)}
+  def handle_info(%Phoenix.Socket.Broadcast{event: "new_stage_event", payload: event}, socket) do
+    {:noreply, push_event(socket, "new_stage_event", event)}
   end
 
   @impl true
@@ -99,6 +93,8 @@ defmodule CanvasFrontWeb.CanvasLive do
         %Phoenix.Socket.Broadcast{event: "stage_event_approved", payload: event},
         socket
       ) do
+        Logger.info("Stage event approved: #{inspect(event)}")
+
     {:noreply, push_event(socket, "stage_event_approved", event)}
   end
 
@@ -115,6 +111,8 @@ defmodule CanvasFrontWeb.CanvasLive do
       end
 
     executions = [execution | socket.assigns.executions]
+
+    Logger.info("Execution created: #{inspect(executions)}")
 
     {:noreply,
      socket |> assign(:executions, executions) |> push_event("execution_created", execution)}
@@ -138,9 +136,10 @@ defmodule CanvasFrontWeb.CanvasLive do
         end
       end)
 
+    Logger.info("Execution started: #{inspect(execution)}")
+
     {:noreply,
      socket
-     |> assign(:executions, updated_executions)
      |> push_event("execution_started", execution)}
   end
 
@@ -162,6 +161,8 @@ defmodule CanvasFrontWeb.CanvasLive do
         end
       end)
 
+    Logger.info("Execution finished: #{inspect(execution)}")
+
     {:noreply,
      socket
      |> assign(:executions, updated_executions)
@@ -174,14 +175,10 @@ defmodule CanvasFrontWeb.CanvasLive do
     {:noreply, socket}
   end
 
-  def update_stage_with_event(stages, event) do
-    Enum.map(stages, fn stage ->
-      if stage.id == event.stage_id do
-        stage
-      else
-        stage
-      end
-    end)
+  @impl true
+  def handle_event("stage-event-approved", payload, socket) do
+    CanvasFront.Stores.Stage.approve_event(%{canvas_id: socket.assigns.canvas.id, stage_id: payload["stage_id"], event_id: payload["stage_event_id"]})
+    {:noreply, socket}
   end
 
   defp ts_to_iso(%Google.Protobuf.Timestamp{seconds: s, nanos: _}) do

@@ -44,7 +44,10 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.New do
     }
 
     case Support.Stubs.Delivery.seed_stage(stage_attrs) do
-      %{id: id} ->
+      %{id: id} = stage ->
+        # Dispatch stage creation event
+        Support.Events.stage_created(stage.canvas_id, id)
+        
         {:noreply,
          socket
          |> put_flash(:info, "Stage created successfully!")
