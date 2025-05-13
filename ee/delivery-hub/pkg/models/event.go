@@ -111,8 +111,7 @@ func (e *Event) EvaluateBoolExpression(expression string, filterType string) (bo
 	//
 	// Compile and run our expression.
 	//
-	caseSensitive := filterType != FilterTypeHeader
-	program, err := CompileBooleanExpression(variables, expression, caseSensitive)
+	program, err := CompileBooleanExpression(variables, expression, filterType)
 
 	if err != nil {
 		return false, fmt.Errorf("error compiling expression: %v", err)
@@ -259,7 +258,7 @@ func FindLastEventBySourceID(sourceID uuid.UUID) (map[string]any, error) {
 // variables: the variables to be used in the expression.
 // expression: the expression to be compiled.
 // caseSensitive: whether the expression should be case sensitive.
-func CompileBooleanExpression(variables map[string]any, expression string, caseSensitive bool) (*vm.Program, error) {
+func CompileBooleanExpression(variables map[string]any, expression string, filterType string) (*vm.Program, error) {
 	options := []expr.Option{
 		expr.Env(variables),
 		expr.AsBool(),
@@ -267,7 +266,7 @@ func CompileBooleanExpression(variables map[string]any, expression string, caseS
 		expr.Timezone(time.UTC.String()),
 	}
 
-	if !caseSensitive {
+	if filterType == FilterTypeHeader {
 		options = append(options, expr.Patch(&headerVisitor{}))
 	}
 
