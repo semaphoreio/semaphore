@@ -280,7 +280,7 @@ Run the following to install Semaphore:
 ```shell title="Install Semaphore"
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
+  --version v1.2.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name="${DOMAIN}" \
@@ -374,7 +374,7 @@ Once your have Semaphore up and running, check out the following pages to finish
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -394,12 +394,18 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     echo "GOOGLE_STATIC_IP_NAME=${GOOGLE_STATIC_IP_NAME}"
     ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
     ```
-4. Run the following command to upgrade to `v1.1.0`
+4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+
+    ```shell
+    openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
+    ```
+
+5. Run the following command to upgrade to `v1.2.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
+      --version v1.2.0 \
       --timeout 20m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \
