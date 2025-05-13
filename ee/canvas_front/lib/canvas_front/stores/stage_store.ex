@@ -191,6 +191,12 @@ defmodule CanvasFront.Stores.Stage do
   end
 
   defp approvals_to_map(approvals) do
-    Enum.map(approvals, &Map.from_struct/1)
+    Enum.map(approvals, fn approval ->
+      approval
+      |> Map.from_struct()
+      |> Map.drop([:__unknown_fields__])
+      |> Map.update(:created_at, nil, &Google.Protobuf.to_datetime/1)
+      |> Map.update(:approved_at, nil, &Google.Protobuf.to_datetime/1)
+    end)
   end
 end

@@ -62,7 +62,7 @@ export const FlowRenderer: React.FC = () => {
           status: st.status,
           timestamp: st.timestamp,
           icon: st.icon || "storage",
-          queues_by_state: st.queues_by_state || {},
+          queues: st.queues || [],
           connections: st.connections || [],
           conditions: st.conditions || [],
           run_template: st.run_template,

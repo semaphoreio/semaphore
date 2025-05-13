@@ -136,6 +136,10 @@ defmodule Support.Stubs.Delivery do
               approved_at: %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0}
             }]
           }
+          canvas = DB.find_by(:canvas, :id, req.canvas_id)
+          stage = DB.find_by(:stage, :id, req.stage_id)
+
+          Support.Events.stage_event_approved(canvas.id, stage.id, updated_event.id)
 
           DB.upsert(:stage_events, %{id: event.id, stage_id: event.stage_id, api_model: updated_event})
           %InternalApi.Delivery.ApproveStageEventResponse{event: updated_event}

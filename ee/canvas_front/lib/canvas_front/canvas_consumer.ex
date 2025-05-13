@@ -42,14 +42,14 @@ defmodule CanvasFront.CanvasConsumer do
         CanvasFront.Stores.Event.get(%{
           canvas_id: decoded_message.canvas_id,
           stage_id: decoded_message.stage_id,
-          id: decoded_message.event_id
+          event_id: decoded_message.event_id
         })
 
       if event do
         broadcast_to_canvas(
           decoded_message.canvas_id,
-          "stage_event_created",
-          event
+          "new_stage_event",
+          Map.put(event, :stage_id, decoded_message.stage_id)
         )
       end
 
@@ -67,14 +67,14 @@ defmodule CanvasFront.CanvasConsumer do
         CanvasFront.Stores.Event.get(%{
           canvas_id: decoded_message.canvas_id,
           stage_id: decoded_message.stage_id,
-          id: decoded_message.event_id,
+          event_id: decoded_message.event_id,
         })
 
       if event do
         broadcast_to_canvas(
           decoded_message.canvas_id,
           "stage_event_approved",
-          event
+          Map.put(event, :stage_id, decoded_message.stage_id)
         )
       end
 

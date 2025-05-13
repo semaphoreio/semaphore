@@ -11,10 +11,9 @@ defmodule CanvasFrontWeb.CanvasLive do
 
     stages =
       CanvasFront.Stores.Stage.list(%{canvas_id: canvas_id}) |> Enum.map(fn stage ->
-        queues_by_state =CanvasFront.Stores.Stage.get_queue(%{stage_id: stage.id})
-        |> Enum.group_by(&(&1.state))
+        queues =CanvasFront.Stores.Stage.get_queue(%{stage_id: stage.id})
 
-        Map.put(stage, :queues_by_state, queues_by_state)
+        Map.put(stage, :queues, queues)
       end)
 
     event_sources =
@@ -31,6 +30,7 @@ defmodule CanvasFrontWeb.CanvasLive do
         executions: []
       )
 
+    Logger.debug("assigns: #{inspect(socket.assigns)}")
     # subscribe to PubSub topic for live updates
     if connected?(socket) do
       Endpoint.subscribe("canvas:" <> canvas_id)
@@ -62,13 +62,6 @@ defmodule CanvasFrontWeb.CanvasLive do
         %Phoenix.Socket.Broadcast{event: "event_source_added", payload: event_source},
         socket
       ) do
-    # Convert any timestamp to ISO format if needed
-    event_source =
-      if Map.has_key?(event_source, :created_at) do
-        Map.update!(event_source, :created_at, &ts_to_iso/1)
-      else
-        event_source
-      end
 
     {:noreply, push_event(socket, "event_source_added", event_source)}
   end
@@ -91,8 +84,8 @@ defmodule CanvasFrontWeb.CanvasLive do
   end
 
   @impl true
-  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_event_created", payload: event}, socket) do
-    {:noreply, push_event(socket, "stage_event_created", event)}
+  def handle_info(%Phoenix.Socket.Broadcast{event: "new_stage_event", payload: event}, socket) do
+    {:noreply, push_event(socket, "new_stage_event", event)}
   end
 
   @impl true
@@ -100,6 +93,8 @@ defmodule CanvasFrontWeb.CanvasLive do
         %Phoenix.Socket.Broadcast{event: "stage_event_approved", payload: event},
         socket
       ) do
+        Logger.info("Stage event approved: #{inspect(event)}")
+
     {:noreply, push_event(socket, "stage_event_approved", event)}
   end
 
@@ -182,8 +177,6 @@ defmodule CanvasFrontWeb.CanvasLive do
 
   @impl true
   def handle_event("stage-event-approved", payload, socket) do
-    Logger.debug("Received stage-event-approved with payload: #{inspect(payload)}")
-
     CanvasFront.Stores.Stage.approve_event(%{canvas_id: socket.assigns.canvas.id, stage_id: payload["stage_id"], event_id: payload["stage_event_id"]})
     {:noreply, socket}
   end

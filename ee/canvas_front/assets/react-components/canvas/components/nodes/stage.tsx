@@ -1,14 +1,32 @@
-import React, { useState, ReactNode } from 'react';
+import React, { useState, ReactNode, useMemo } from 'react';
 import type { NodeProps } from '@xyflow/react';
 import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css'; 
 import CustomBarHandle from './handle';
-import { StageNodeType } from '@/canvas/types/flow';
+import { StageNodeType, QueueState } from '@/canvas/types/flow';
+// import { QueueState } from '../../types/flow';
 
 // Define the data type for the deployment card
 // Using Record<string, unknown> to satisfy ReactFlow's Node constraint
 export default function StageNode(props: NodeProps<StageNodeType>) {
   const [showOverlay, setShowOverlay] = useState(false);
+  
+  // Filter events by their state
+  const pendingEvents = useMemo(() => 
+    props.data.queues?.filter(event => event.state === QueueState.PENDING) || [], 
+    [props.data.queues]
+  );
+  
+  const waitingEvents = useMemo(() => 
+    props.data.queues?.filter(event => event.state === QueueState.WAITING) || [], 
+    [props.data.queues]
+  );
+  
+  const processedEvents = useMemo(() => 
+    props.data.queues?.filter(event => event.state === QueueState.PROCESSED) || [], 
+    [props.data.queues]
+  );
+  
   const handleAction = (action: string) => {
     if (action === 'code') setShowOverlay(true);
   };
@@ -74,20 +92,20 @@ export default function StageNode(props: NodeProps<StageNodeType>) {
       <div className="border-t border-gray-200 p-4">
         {/* PENDING Queue Section */}
         <h4 className="text-sm font-medium text-gray-700 mb-2">Pending Runs</h4>
-        { props.data.queues_by_state?.STATE_PENDING?.length > 0 ? (
+        { pendingEvents.length > 0 ? (
           <>
             {/* Show the first pending item with details */}
             <div className="flex items-center p-2 bg-amber-50 rounded mb-1">
               <div className="material-symbols-outlined text-amber-600 mr-2">pending</div>
               <div className="flex-1">
-                <div className="text-sm font-medium">{new Date(props.data.queues_by_state.STATE_PENDING[0].created_at).toLocaleString()}</div>
-                <div className="text-xs text-gray-600">ID: {props.data.queues_by_state.STATE_PENDING[0].id.substring(0, 8)}...</div>
+                <div className="text-sm font-medium">{new Date(pendingEvents[0].created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-600">ID: {pendingEvents[0].id.substring(0, 8)}...</div>
               </div>
             </div>
             {/* Show count of additional pending items */}
-            {props.data.queues_by_state.STATE_PENDING.length > 1 && (
+            {pendingEvents.length > 1 && (
               <div className="text-xs text-amber-600 hover:text-amber-800 mb-3">
-                <a href="#" className="no-underline hover:underline">{props.data.queues_by_state.STATE_PENDING.length - 1} more pending</a>
+                <a href="#" className="no-underline hover:underline">{pendingEvents.length - 1} more pending</a>
               </div>
             )}
           </>
@@ -96,50 +114,49 @@ export default function StageNode(props: NodeProps<StageNodeType>) {
         )}
         
         {/* WAITING Queue Section */}
-        {props.data.queues_by_state?.STATE_WAITING?.length > 0 && (
+        {waitingEvents.length > 0 && (
           <>
             <h4 className="text-sm font-medium text-gray-700 mb-2 border-t pt-2">Waiting for Approval</h4>
             <div className="flex items-center p-2 bg-blue-50 rounded mb-1">
               <div className="material-symbols-outlined text-blue-600 mr-2">hourglass_empty</div>
               <div className="flex-1">
-                <div className="text-sm font-medium">{new Date(props.data.queues_by_state.STATE_WAITING[0].created_at).toLocaleString()}</div>
-                <div className="text-xs text-gray-600">ID: {props.data.queues_by_state.STATE_WAITING[0].id.substring(0, 8)}...</div>
+                <div className="text-sm font-medium">{new Date(waitingEvents[0].created_at).toLocaleString()}</div>
+                <div className="text-xs text-gray-600">ID: {waitingEvents[0].id.substring(0, 8)}...</div>
               </div>
               <button 
-                onClick={() => props.data.approve_stage_event(props.data.queues_by_state.STATE_WAITING[0])}
+                onClick={() => props.data.approve_stage_event(waitingEvents[0])}
                 className="ml-2 inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Approve
               </button>
             </div>
-            {props.data.queues_by_state.STATE_WAITING.length > 1 && (
+            {waitingEvents.length > 1 && (
               <div className="text-xs text-blue-600 hover:text-blue-800 mb-3">
-                <a href="#" className="no-underline hover:underline">{props.data.queues_by_state.STATE_WAITING.length - 1} more waiting</a>
+                <a href="#" className="no-underline hover:underline">{waitingEvents.length - 1} more waiting</a>
               </div>
             )}
           </>
         )}
         
         {/* PROCESSED Queue Section - Only show the count */}
-        {props.data.queues_by_state?.STATE_PROCESSED?.length > 0 && (
+        {processedEvents.length > 0 && (
           <>
             <h4 className="text-sm font-medium text-gray-700 mb-2 border-t pt-2">Processed Recently</h4>
             <div className="flex items-center p-2 bg-green-50 rounded mb-1">
               <div className="material-symbols-outlined text-green-600 mr-2">check_circle</div>
               <div className="flex-1">
-                <div className="text-sm">{props.data.queues_by_state.STATE_PROCESSED.length} processed</div>
-                <div className="text-xs text-gray-600">Latest: {new Date(props.data.queues_by_state.STATE_PROCESSED[0].created_at).toLocaleString()}</div>
+                <div className="text-sm">{processedEvents.length} processed</div>
+                <div className="text-xs text-gray-600">Latest: {new Date(processedEvents[0].created_at).toLocaleString()}</div>
               </div>
             </div>
           </>
         )}
         
         {/* Show message when no queues exist */}
-        {(!props.data.queues_by_state?.STATE_PENDING?.length && 
-          !props.data.queues_by_state?.STATE_WAITING?.length && 
-          !props.data.queues_by_state?.STATE_PROCESSED?.length) && (
+        {(!pendingEvents.length && !waitingEvents.length && !processedEvents.length) && (
           <div className="text-sm text-gray-500 italic">No queue activity</div>
         )}
+
       </div>
       <CustomBarHandle type="target" connections={props.data.connections} conditions={props.data.conditions}/>
       <CustomBarHandle type="source"/>

@@ -23,6 +23,7 @@ export default defineConfig(({ command }) => {
     },
     resolve: {
       alias: {
+        '@/canvas': path.resolve(__dirname, './react-components/canvas'),
         "@": path.resolve(__dirname, "."),
       },
     },

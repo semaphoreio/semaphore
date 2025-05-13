@@ -66,7 +66,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
     # Create a new stage event with default values
     res = Support.Stubs.Delivery.seed_event_for_stage(%{stage_id: stage_id})
 
-    Support.Events.stage_event_created(socket.assigns.canvas_id, stage_id, res.id)
+    Support.Events.stage_event_created(socket.assigns.canvas.id, stage_id, res.id)
 
     # Refresh the list of events
     stage_events = Support.Stubs.Delivery.list_stage_events(%{stage_id: stage_id}).events || []
@@ -91,7 +91,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
       state_reason: :STATE_REASON_APPROVAL
     })
 
-    Support.Events.stage_event_created(socket.assigns.canvas_id, stage_id, res.id)
+    Support.Events.stage_event_created(socket.assigns.canvas.id, stage_id, res.id)
 
     # Refresh the list of events
     stage_events = Support.Stubs.Delivery.list_stage_events(%{stage_id: stage_id}).events || []

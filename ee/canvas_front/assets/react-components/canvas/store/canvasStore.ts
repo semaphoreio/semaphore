@@ -77,7 +77,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   },
 
   approveStageEvent: (stageEventId: string, stageId: string) => {
-    console.log("Approving stage event:", stageEventId);
+    console.log("[client action] Approving stage event:", stageEventId);
     
     const { pushEvent } = get();
     if (pushEvent) {

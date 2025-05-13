@@ -4,7 +4,9 @@ import {
   handleStageAdded, 
   handleEventSourceAdded, 
   handleCanvasUpdated,
-  handleStageUpdated 
+  handleStageUpdated,
+  handleStageEventCreated,
+  handleStageEventApproved
 } from './index';
 
 type HandlerRef = string;
@@ -47,6 +49,16 @@ export function setupEventHandlers(
     handleCanvasUpdated(payload, state);
   });
   handlerRefs.push(canvasUpdatedRef);
+
+  const stageEventCreatedRef = initialData.handleEvent('new_stage_event', (payload) => {
+    handleStageEventCreated(payload, state);
+  });
+  handlerRefs.push(stageEventCreatedRef);
+
+  const stageEventApprovedRef = initialData.handleEvent('stage_event_approved', (payload) => {
+    handleStageEventApproved(payload, state);
+  });
+  handlerRefs.push(stageEventApprovedRef);
 
   // Return cleanup function to remove all handlers
   return () => {
