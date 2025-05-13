@@ -40,18 +40,21 @@ type Event struct {
 
 type headerVisitor struct{}
 
-// Visit implements the visitor pattern for header variables
-// Header Variables should be case insensitive
+// Visit implements the visitor pattern for header variables.
+// Update header map keys to be case insensitive.
 func (v *headerVisitor) Visit(node *ast.Node) {
-	if ident, ok := (*node).(*ast.IdentifierNode); ok {
-		ident.Value = strings.ToLower(ident.Value)
-	}
+	if memberNode, ok := (*node).(*ast.MemberNode); ok {
+		memberName := strings.ToLower(memberNode.Node.String())
+		if stringNode, ok := memberNode.Property.(*ast.StringNode); ok {
+			stringNode.Value = strings.ToLower(stringNode.Value)
+		}
 
-	if call, ok := (*node).(*ast.CallNode); ok {
-		functionName := strings.ToLower(call.Callee.String())
-		if functionName == "header" {
-			ast.Patch(node, &ast.IdentifierNode{
-				Value: strings.ToLower(call.Arguments[0].(*ast.StringNode).Value),
+		if memberName == "headers" {
+			ast.Patch(node, &ast.MemberNode{
+				Node:     &ast.IdentifierNode{Value: memberName},
+				Property: memberNode.Property,
+				Optional: false,
+				Method:   false,
 			})
 		}
 	}
@@ -279,6 +282,7 @@ func parseExpressionVariables(ctx context.Context, e *Event, filterType string) 
 	}
 
 	var content map[string]any
+	headers := map[string]any{}
 	var err error
 
 	switch filterType {
@@ -300,10 +304,13 @@ func parseExpressionVariables(ctx context.Context, e *Event, filterType string) 
 	for key, value := range content {
 		if filterType == FilterTypeHeader {
 			key = strings.ToLower(key)
+			headers[key] = value
+		} else {
+			variables[key] = value
 		}
-
-		variables[key] = value
 	}
+
+	variables["headers"] = headers
 
 	return variables, nil
 }

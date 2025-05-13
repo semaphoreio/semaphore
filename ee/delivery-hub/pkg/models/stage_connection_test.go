@@ -18,7 +18,7 @@ func Test__StageConnectionFilter(t *testing.T) {
 				},
 				{
 					Type:   FilterTypeHeader,
-					Header: &HeaderFilter{Expression: `c == 3 && d == 4`},
+					Header: &HeaderFilter{Expression: `headers["c"] == 3 && headers["d"] == 4`},
 				},
 			}),
 		}
@@ -39,7 +39,7 @@ func Test__StageConnectionFilter(t *testing.T) {
 				},
 				{
 					Type:   FilterTypeHeader,
-					Header: &HeaderFilter{Expression: `header("Content-Type") == "application/json" && header("X-ExAmPlE-HeAdEr") == "value"`},
+					Header: &HeaderFilter{Expression: `headers["Content-Type"] == "application/json" && headers["X-ExAmPlE-HeAdEr"] == "value"`},
 				},
 			}),
 		}
@@ -73,7 +73,7 @@ func Test__StageConnectionFilter(t *testing.T) {
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
 				{
 					Type:   FilterTypeHeader,
-					Header: &HeaderFilter{Expression: `header("Content-Type") == "text/plain" && header("X-ExAmPlE-HeAdEr") == "some-value"`},
+					Header: &HeaderFilter{Expression: `headers["Content-Type"] == "text/plain" && headers["X-ExAmPlE-HeAdEr"] == "some-value"`},
 				},
 			}),
 		}
