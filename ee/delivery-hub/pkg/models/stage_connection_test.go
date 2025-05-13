@@ -8,7 +8,7 @@ import (
 )
 
 func Test__StageConnectionFilter(t *testing.T) {
-	t.Run("single expression filter -> true", func(t *testing.T) {
+	t.Run("single expression filters -> true", func(t *testing.T) {
 		conn := StageConnection{
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
@@ -16,10 +16,35 @@ func Test__StageConnectionFilter(t *testing.T) {
 					Type: FilterTypeData,
 					Data: &DataFilter{Expression: `a == 1 && b == 2`},
 				},
+				{
+					Type:   FilterTypeHeader,
+					Header: &HeaderFilter{Expression: `headers["c"] == 3 && headers["d"] == 4`},
+				},
 			}),
 		}
 
-		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`)}
+		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"c": 3, "d": 4}`)}
+		accept, err := conn.Accept(event)
+		require.NoError(t, err)
+		require.True(t, accept)
+	})
+
+	t.Run("expression filter with case insensitive headers -> true", func(t *testing.T) {
+		conn := StageConnection{
+			FilterOperator: FilterOperatorAnd,
+			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
+				{
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1 && b == 2`},
+				},
+				{
+					Type:   FilterTypeHeader,
+					Header: &HeaderFilter{Expression: `headers["Content-Type"] == "application/json" && headers["X-ExAmPlE-HeAdEr"] == "value"`},
+				},
+			}),
+		}
+
+		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"ContEnT-tYpE": "application/json", "x-exAmplE-hEAdEr": "value"}`)}
 		accept, err := conn.Accept(event)
 		require.NoError(t, err)
 		require.True(t, accept)
@@ -37,6 +62,23 @@ func Test__StageConnectionFilter(t *testing.T) {
 		}
 
 		event := &Event{Raw: []byte(`{"a": 1, "b": 3}`)}
+		accept, err := conn.Accept(event)
+		require.NoError(t, err)
+		require.False(t, accept)
+	})
+
+	t.Run("expression filter with case insensitive headers -> false", func(t *testing.T) {
+		conn := StageConnection{
+			FilterOperator: FilterOperatorAnd,
+			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
+				{
+					Type:   FilterTypeHeader,
+					Header: &HeaderFilter{Expression: `headers["Content-Type"] == "text/plain" && headers["X-ExAmPlE-HeAdEr"] == "some-value"`},
+				},
+			}),
+		}
+
+		event := &Event{Raw: []byte(`{"a": 1, "b": 3}`), Headers: []byte(`{"ContEnT-tYpE": "application/json", "x-exAmplE-hEAdEr": "wrong-value"}`)}
 		accept, err := conn.Accept(event)
 		require.NoError(t, err)
 		require.False(t, accept)

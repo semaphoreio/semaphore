@@ -18,7 +18,7 @@ func Test__UpdateTagState(t *testing.T) {
 	setup := func() []*models.StageEvent {
 		r := support.Setup(t)
 		event1 := support.CreateStageEvent(t, r.Source, r.Stage)
-		event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`))
+		event2 := support.CreateStageEventWithData(t, r.Source, r.Stage, []byte(`{"ref":"v2"}`), []byte(`{"ref":"v2"}`))
 
 		// create tags with different tag names
 		require.NoError(t, models.UpdateStageEventTagStateInBulk(

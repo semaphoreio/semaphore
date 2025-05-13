@@ -1,6 +1,7 @@
 package public
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -226,6 +227,12 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	headers, err := parseHeaders(&r.Header)
+	if err != nil {
+		http.Error(w, "Error parsing headers", http.StatusBadRequest)
+		return
+	}
+
 	key, err := s.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -243,7 +250,7 @@ func (s *Server) HandleGithubWebhook(w http.ResponseWriter, r *http.Request) {
 	// Here, we know the event is for a valid organization/source,
 	// and comes from GitHub, so we just want to save it and give a response back.
 	//
-	if _, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, body); err != nil {
+	if _, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, body, headers); err != nil {
 		http.Error(w, "Error receiving event", http.StatusInternalServerError)
 		return
 	}
@@ -303,6 +310,12 @@ func (s *Server) HandleSemaphoreWebhook(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	headers, err := parseHeaders(&r.Header)
+	if err != nil {
+		http.Error(w, "Error parsing headers", http.StatusBadRequest)
+		return
+	}
+
 	key, err := s.encryptor.Decrypt(r.Context(), source.Key, []byte(source.Name))
 	if err != nil {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -321,10 +334,19 @@ func (s *Server) HandleSemaphoreWebhook(w http.ResponseWriter, r *http.Request) 
 	// Here, we know the event is for a valid organization/source,
 	// and comes from Semaphore, so we just want to save it and give a response back.
 	//
-	if _, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, body); err != nil {
+	if _, err := models.CreateEvent(source.ID, source.Name, models.SourceTypeEventSource, body, headers); err != nil {
 		http.Error(w, "Error receiving event", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func parseHeaders(headers *http.Header) ([]byte, error) {
+	parsedHeaders := make(map[string]string, len(*headers))
+	for key, value := range *headers {
+		parsedHeaders[key] = value[0]
+	}
+
+	return json.Marshal(parsedHeaders)
 }
