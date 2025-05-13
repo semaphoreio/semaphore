@@ -8,7 +8,7 @@ import (
 )
 
 func Test__StageConnectionFilter(t *testing.T) {
-	t.Run("single expression filter -> true", func(t *testing.T) {
+	t.Run("single expression filters -> true", func(t *testing.T) {
 		conn := StageConnection{
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
@@ -24,6 +24,27 @@ func Test__StageConnectionFilter(t *testing.T) {
 		}
 
 		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"c": 3, "d": 4}`)}
+		accept, err := conn.Accept(event)
+		require.NoError(t, err)
+		require.True(t, accept)
+	})
+
+	t.Run("single expression filter with case insensitive header -> true", func(t *testing.T) {
+		conn := StageConnection{
+			FilterOperator: FilterOperatorAnd,
+			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
+				{
+					Type: FilterTypeData,
+					Data: &DataFilter{Expression: `a == 1 && b == 2`},
+				},
+				{
+					Type:   FilterTypeHeader,
+					Header: &HeaderFilter{Expression: `ContentType == "application/json" && XExAmPlEHeAdEr == "value"`},
+				},
+			}),
+		}
+
+		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"ContEnTtYpE": "application/json", "xexAmplEhEAdEr": "value"}`)}
 		accept, err := conn.Accept(event)
 		require.NoError(t, err)
 		require.True(t, accept)

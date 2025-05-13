@@ -266,22 +266,23 @@ func CompileBooleanExpression(variables map[string]any, expression string, caseS
 		expr.Timezone(time.UTC.String()),
 	}
 
+	if !caseSensitive {
+		options = append(options, expr.Patch(&lowercaseVisitor{}))
+	}
+
 	for _, op := range options {
 		op(config)
 	}
 	for name := range config.Disabled {
 		delete(config.Builtins, name)
 	}
+
 	config.Check()
 
 	tree, err := checker.ParseCheck(expression, config)
 
 	if err != nil {
 		return nil, fmt.Errorf("error parsing expression: %v", err)
-	}
-
-	if !caseSensitive {
-		ast.Walk(&tree.Node, &lowercaseVisitor{})
 	}
 
 	if config.Optimize {
@@ -307,33 +308,31 @@ func parseExpressionVariables(e *Event, ctx context.Context, filterType string) 
 		"ctx": ctx,
 	}
 
-	if filterType == FilterTypeData {
-		var content map[string]any
-		var err error
+	var content map[string]any
+	var err error
 
-		switch filterType {
-		case FilterTypeData:
-			content, err = e.GetData()
-			if err != nil {
-				return nil, err
-			}
-
-		case FilterTypeHeader:
-			content, err = e.GetHeaders()
-			if err != nil {
-				return nil, err
-			}
-		default:
-			return nil, fmt.Errorf("invalid filter type: %s", filterType)
+	switch filterType {
+	case FilterTypeData:
+		content, err = e.GetData()
+		if err != nil {
+			return nil, err
 		}
 
-		for key, value := range content {
-			if filterType == FilterTypeHeader {
-				key = strings.ToLower(key)
-			}
-
-			variables[key] = value
+	case FilterTypeHeader:
+		content, err = e.GetHeaders()
+		if err != nil {
+			return nil, err
 		}
+	default:
+		return nil, fmt.Errorf("invalid filter type: %s", filterType)
+	}
+
+	for key, value := range content {
+		if filterType == FilterTypeHeader {
+			key = strings.ToLower(key)
+		}
+
+		variables[key] = value
 	}
 
 	return variables, nil
