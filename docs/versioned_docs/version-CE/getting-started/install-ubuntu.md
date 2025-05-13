@@ -289,13 +289,13 @@ To upgrade Semaphore, follow these steps:
     ls certs/live/${DOMAIN}/privkey.pem
     ```
 
-5. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
 
     ```shell
     openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
     ```
 
-6. Run the following command to upgrade to `v1.2.0`
+5. Run the following command to upgrade to `v1.2.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \

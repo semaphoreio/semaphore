@@ -233,13 +233,7 @@ To upgrade Semaphore, follow these steps:
     echo "CERT_NAME=${CERT_NAME}"
     ```
 
-4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
-
-    ```shell
-    openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
-    ```
-
-5. Run the following command to upgrade to `v1.2.0`
+4. Run the following command to upgrade to `v1.2.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
