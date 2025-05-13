@@ -180,29 +180,21 @@ defmodule InternalApi.Feature.FeatureService.Service do
     name: "InternalApi.Feature.FeatureService",
     protoc_gen_elixir_version: "0.14.1"
 
-  rpc(
-    :ListOrganizationFeatures,
-    InternalApi.Feature.ListOrganizationFeaturesRequest,
-    InternalApi.Feature.ListOrganizationFeaturesResponse
-  )
+  rpc :ListOrganizationFeatures,
+      InternalApi.Feature.ListOrganizationFeaturesRequest,
+      InternalApi.Feature.ListOrganizationFeaturesResponse
 
-  rpc(
-    :ListFeatures,
-    InternalApi.Feature.ListFeaturesRequest,
-    InternalApi.Feature.ListFeaturesResponse
-  )
+  rpc :ListFeatures,
+      InternalApi.Feature.ListFeaturesRequest,
+      InternalApi.Feature.ListFeaturesResponse
 
-  rpc(
-    :ListOrganizationMachines,
-    InternalApi.Feature.ListOrganizationMachinesRequest,
-    InternalApi.Feature.ListOrganizationMachinesResponse
-  )
+  rpc :ListOrganizationMachines,
+      InternalApi.Feature.ListOrganizationMachinesRequest,
+      InternalApi.Feature.ListOrganizationMachinesResponse
 
-  rpc(
-    :ListMachines,
-    InternalApi.Feature.ListMachinesRequest,
-    InternalApi.Feature.ListMachinesResponse
-  )
+  rpc :ListMachines,
+      InternalApi.Feature.ListMachinesRequest,
+      InternalApi.Feature.ListMachinesResponse
 end
 
 defmodule InternalApi.Feature.FeatureService.Stub do

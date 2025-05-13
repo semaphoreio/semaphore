@@ -105,6 +105,12 @@ export default function StageNode(props: NodeProps<StageNodeType>) {
                 <div className="text-sm font-medium">{new Date(props.data.queues_by_state.STATE_WAITING[0].created_at).toLocaleString()}</div>
                 <div className="text-xs text-gray-600">ID: {props.data.queues_by_state.STATE_WAITING[0].id.substring(0, 8)}...</div>
               </div>
+              <button 
+                onClick={() => props.data.approve_stage_event(props.data.queues_by_state.STATE_WAITING[0])}
+                className="ml-2 inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Approve
+              </button>
             </div>
             {props.data.queues_by_state.STATE_WAITING.length > 1 && (
               <div className="text-xs text-blue-600 hover:text-blue-800 mb-3">

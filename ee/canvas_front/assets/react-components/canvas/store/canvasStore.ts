@@ -10,6 +10,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   stages: [],
   event_sources: [],
   nodePositions: {},
+  handleEvent: undefined,
+  removeHandleEvent: undefined,
+  pushEvent: undefined,
   
   // Actions (equivalent to the reducer actions in the context implementation)
   initialize: (data: CanvasInitialData) => {
@@ -18,7 +21,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       canvas: data.canvas || {},
       stages: data.stages || [],
       event_sources: data.event_sources || [],
-      nodePositions: {}
+      nodePositions: {},
+      handleEvent: data.handleEvent,
+      removeHandleEvent: data.removeHandleEvent,
+      pushEvent: data.pushEvent,
     });
     console.log("Canvas initialized with stages:", data.stages?.length || 0);
   },
@@ -68,6 +74,17 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
         [nodeId]: position
       }
     }));
+  },
+
+  approveStageEvent: (stageEventId: string, stageId: string) => {
+    console.log("Approving stage event:", stageEventId);
+    
+    const { pushEvent } = get();
+    if (pushEvent) {
+      pushEvent("stage-event-approved", { stage_event_id: stageEventId, stage_id: stageId });
+    } else {
+      console.error("pushEvent function is not available");
+    }
   },
   
   // Setup LiveView event handlers and return a cleanup function

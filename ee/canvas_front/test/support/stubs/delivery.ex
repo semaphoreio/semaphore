@@ -122,6 +122,26 @@ defmodule Support.Stubs.Delivery do
       end
     end
 
+    def approve_stage_event(%InternalApi.Delivery.ApproveStageEventRequest{} = req, _stream) do
+      case DB.find_by(:stage_events, :id, req.event_id) do
+        nil -> raise GRPC.RPCError, status: :not_found, message: "Stage event not found"
+        event ->
+          # update event state from STATE_WAITING to STATE_PENDING for event
+          updated_event = %InternalApi.Delivery.StageEvent{
+            id: event.id,
+            state: :STATE_PENDING,
+            created_at: event.api_model.created_at,
+            approvals: [%InternalApi.Delivery.StageEventApproval{
+              approved_by: "user-#{req.requester_id}@example.com",
+              approved_at: %Google.Protobuf.Timestamp{seconds: :os.system_time(:second), nanos: 0}
+            }]
+          }
+
+          DB.upsert(:stage_events, %{id: event.id, stage_id: event.stage_id, api_model: updated_event})
+          %InternalApi.Delivery.ApproveStageEventResponse{event: updated_event}
+      end
+    end
+
     # All other RPCs: not implemented
     def unimplemented(_req, _stream) do
       raise GRPC.RPCError, status: :unimplemented, message: "Unimplemented"

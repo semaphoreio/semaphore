@@ -12,7 +12,8 @@ defmodule CanvasFront.CanvasConsumer do
       {"delivery-hub.canvas-exchange", "execution-created", :execution_created},
       {"delivery-hub.canvas-exchange", "execution-started", :execution_started},
       {"delivery-hub.canvas-exchange", "execution-finished", :execution_finished},
-      {"delivery-hub.canvas-exchange", "stage-created", :stage_created}
+      {"delivery-hub.canvas-exchange", "stage-created", :stage_created},
+      {"delivery-hub.canvas-exchange", "stage-updated", :stage_updated}
     ],
     queue: :dynamic,
     queue_opts: [
@@ -39,8 +40,9 @@ defmodule CanvasFront.CanvasConsumer do
 
       event =
         CanvasFront.Stores.Event.get(%{
-          id: decoded_message.event_id,
-          stage_id: decoded_message.stage_id
+          canvas_id: decoded_message.canvas_id,
+          stage_id: decoded_message.stage_id,
+          id: decoded_message.event_id
         })
 
       if event do
@@ -63,8 +65,9 @@ defmodule CanvasFront.CanvasConsumer do
 
       event =
         CanvasFront.Stores.Event.get(%{
+          canvas_id: decoded_message.canvas_id,
+          stage_id: decoded_message.stage_id,
           id: decoded_message.event_id,
-          stage_id: decoded_message.stage_id
         })
 
       if event do
@@ -109,18 +112,18 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["execution-created"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionCreated.decode(message)
 
-      execution =
-        CanvasFront.Stores.Execution.get(%{
-          id: decoded_message.execution_id
-        })
+      # execution =
+      #   CanvasFront.Stores.Execution.get(%{
+      #     id: decoded_message.execution_id
+      #   })
 
-      if execution do
-        broadcast_to_canvas(
-          decoded_message.canvas_id,
-          "execution_created",
-          execution
-        )
-      end
+      # if execution do
+      #   broadcast_to_canvas(
+      #     decoded_message.canvas_id,
+      #     "execution_created",
+      #     execution
+      #   )
+      # end
 
       Logger.info(
         "#{@log_prefix} [EXECUTION CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -132,18 +135,18 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["execution-started"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionStarted.decode(message)
 
-      execution =
-        CanvasFront.Stores.Execution.get(%{
-          id: decoded_message.execution_id
-        })
+      # execution =
+      #   CanvasFront.Stores.Execution.get(%{
+      #     id: decoded_message.execution_id
+      #   })
 
-      if execution do
-        broadcast_to_canvas(
-          decoded_message.canvas_id,
-          "execution_started",
-          execution
-        )
-      end
+      # if execution do
+      #   broadcast_to_canvas(
+      #     decoded_message.canvas_id,
+      #     "execution_started",
+      #     execution
+      #   )
+      # end
 
       Logger.info(
         "#{@log_prefix} [EXECUTION STARTED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -155,18 +158,18 @@ defmodule CanvasFront.CanvasConsumer do
     Watchman.benchmark({@metric_name, ["execution-finished"]}, fn ->
       decoded_message = InternalApi.Delivery.StageExecutionFinished.decode(message)
 
-      execution =
-        CanvasFront.Stores.Execution.get(%{
-          id: decoded_message.execution_id
-        })
+      # execution =
+      #   CanvasFront.Stores.Execution.get(%{
+      #     id: decoded_message.execution_id
+      #   })
 
-      if execution do
-        broadcast_to_canvas(
-          decoded_message.canvas_id,
-          "execution_finished",
-          execution
-        )
-      end
+      # if execution do
+      #   broadcast_to_canvas(
+      #     decoded_message.canvas_id,
+      #     "execution_finished",
+      #     execution
+      #   )
+      # end
 
       Logger.info(
         "#{@log_prefix} [EXECUTION FINISHED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
@@ -194,6 +197,30 @@ defmodule CanvasFront.CanvasConsumer do
 
       Logger.info(
         "#{@log_prefix} [STAGE CREATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
+      )
+    end)
+  end
+
+  def stage_updated(message) do
+    Watchman.benchmark({@metric_name, ["stage-updated"]}, fn ->
+      decoded_message = InternalApi.Delivery.StageUpdated.decode(message)
+
+      stage =
+        CanvasFront.Stores.Stage.get(%{
+          id: decoded_message.stage_id,
+          canvas_id: decoded_message.canvas_id
+        })
+
+      if stage do
+        broadcast_to_canvas(
+          decoded_message.canvas_id,
+          "stage_updated",
+          stage
+        )
+      end
+
+      Logger.info(
+        "#{@log_prefix} [STAGE UPDATED] [canvas_id=#{decoded_message.canvas_id}] Processing finished"
       )
     end)
   end

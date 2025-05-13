@@ -35,7 +35,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
     # Fetch stage events and add them to socket assigns
     stage_id = socket.assigns.stage.id
     stage_events = Support.Stubs.Delivery.list_stage_events(%{stage_id: stage_id}).events || []
-    
+
     {:noreply, socket |> assign(:stage_events, stage_events)}
   end
 
@@ -62,43 +62,47 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
   @impl true
   def handle_event("seed-event", _params, socket) do
     stage_id = socket.assigns.stage.id
-    
+
     # Create a new stage event with default values
-    Support.Stubs.Delivery.seed_event_for_stage(%{stage_id: stage_id})
-    
+    res = Support.Stubs.Delivery.seed_event_for_stage(%{stage_id: stage_id})
+
+    Support.Events.stage_event_created(socket.assigns.canvas_id, stage_id, res.id)
+
     # Refresh the list of events
     stage_events = Support.Stubs.Delivery.list_stage_events(%{stage_id: stage_id}).events || []
-    
-    {:noreply, 
+
+    {:noreply,
      socket
      |> put_flash(:info, "Event added successfully")
      |> assign(:stage_events, stage_events)
     }
   end
-  
+
   @impl true
   def handle_event("seed-approval-event", _params, socket) do
     stage_id = socket.assigns.stage.id
-    
+
     # Create a new approval event
-    Support.Stubs.Delivery.seed_event_for_stage(%{
+    res = Support.Stubs.Delivery.seed_event_for_stage(%{
       stage_id: stage_id,
       source_id: "github-event-#{UUID.uuid4()}",
       source_type: :TYPE_EVENT_SOURCE,
       state: :STATE_WAITING,
       state_reason: :STATE_REASON_APPROVAL
     })
-    
+
+    Support.Events.stage_event_created(socket.assigns.canvas_id, stage_id, res.id)
+
     # Refresh the list of events
     stage_events = Support.Stubs.Delivery.list_stage_events(%{stage_id: stage_id}).events || []
-    
-    {:noreply, 
+
+    {:noreply,
      socket
      |> put_flash(:info, "Approval event added successfully")
      |> assign(:stage_events, stage_events)
     }
   end
-  
+
   @impl true
   def handle_event("delete-connection", %{"index" => index}, socket) do
     index = String.to_integer(index)
@@ -115,6 +119,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
              connections: updated_connections
            }) do
         %{id: _id} = _updated_stage ->
+          Support.Events.stage_updated(socket.assigns.canvas.id, stage.id)
           {:noreply,
            socket
            |> put_flash(:info, "Connection removed successfully")
@@ -206,7 +211,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
           </dl>
         </div>
       </div>
-      
+
     <!-- Connections -->
       <div class="mb-8">
         <div class="flex justify-between items-center mb-4">
@@ -279,7 +284,7 @@ defmodule CanvasFrontWeb.DevDashboard.StageManagerLive.Show do
           <% end %>
         </div>
       </div>
-      
+
       <!-- Stage Events Section -->
       <div class="mb-8">
         <div class="flex justify-between items-center mb-4">

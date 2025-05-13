@@ -86,6 +86,10 @@ defmodule CanvasFrontWeb.CanvasLive do
     {:noreply, socket |> assign(:stages, stages) |> push_event("stage_created", stage)}
   end
 
+  def handle_info(%Phoenix.Socket.Broadcast{event: "stage_updated", payload: stage}, socket) do
+    {:noreply, push_event(socket, "stage_updated", stage)}
+  end
+
   @impl true
   def handle_info(%Phoenix.Socket.Broadcast{event: "stage_event_created", payload: event}, socket) do
     {:noreply, push_event(socket, "stage_event_created", event)}
@@ -113,6 +117,8 @@ defmodule CanvasFrontWeb.CanvasLive do
 
     executions = [execution | socket.assigns.executions]
 
+    Logger.info("Execution created: #{inspect(executions)}")
+
     {:noreply,
      socket |> assign(:executions, executions) |> push_event("execution_created", execution)}
   end
@@ -135,9 +141,10 @@ defmodule CanvasFrontWeb.CanvasLive do
         end
       end)
 
+    Logger.info("Execution started: #{inspect(execution)}")
+
     {:noreply,
      socket
-     |> assign(:executions, updated_executions)
      |> push_event("execution_started", execution)}
   end
 
@@ -159,6 +166,8 @@ defmodule CanvasFrontWeb.CanvasLive do
         end
       end)
 
+    Logger.info("Execution finished: #{inspect(execution)}")
+
     {:noreply,
      socket
      |> assign(:executions, updated_executions)
@@ -171,14 +180,12 @@ defmodule CanvasFrontWeb.CanvasLive do
     {:noreply, socket}
   end
 
-  def update_stage_with_event(stages, event) do
-    Enum.map(stages, fn stage ->
-      if stage.id == event.stage_id do
-        stage
-      else
-        stage
-      end
-    end)
+  @impl true
+  def handle_event("stage-event-approved", payload, socket) do
+    Logger.debug("Received stage-event-approved with payload: #{inspect(payload)}")
+
+    CanvasFront.Stores.Stage.approve_event(%{canvas_id: socket.assigns.canvas.id, stage_id: payload["stage_id"], event_id: payload["stage_event_id"]})
+    {:noreply, socket}
   end
 
   defp ts_to_iso(%Google.Protobuf.Timestamp{seconds: s, nanos: _}) do

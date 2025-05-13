@@ -1,4 +1,4 @@
-import {ReactFlowInstance, OnNodesChange, OnEdgesChange, Connection, Viewport} from "@xyflow/react";
+import {OnNodesChange, OnEdgesChange, Connection, Viewport} from "@xyflow/react";
 import { AllNodeType, EdgeType } from "../flow";
 
 

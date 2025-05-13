@@ -256,8 +256,7 @@ defmodule InternalApi.Delivery.ConditionTimeWindow do
 
   field :start, 1, type: :string
   field :end, 2, type: :string
-  field :timezone, 3, type: :string
-  field :week_days, 4, repeated: true, type: :string, json_name: "weekDays"
+  field :week_days, 3, repeated: true, type: :string, json_name: "weekDays"
 end
 
 defmodule InternalApi.Delivery.CreateStageRequest do
@@ -453,6 +452,16 @@ defmodule InternalApi.Delivery.StageCreated do
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
+defmodule InternalApi.Delivery.StageUpdated do
+  @moduledoc false
+
+  use Protobuf, protoc_gen_elixir_version: "0.14.1", syntax: :proto3
+
+  field :canvas_id, 1, type: :string, json_name: "canvasId"
+  field :stage_id, 2, type: :string, json_name: "stageId"
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
+end
+
 defmodule InternalApi.Delivery.EventSourceCreated do
   @moduledoc false
 
@@ -526,71 +535,47 @@ defmodule InternalApi.Delivery.Delivery.Service do
 
   use GRPC.Service, name: "InternalApi.Delivery.Delivery", protoc_gen_elixir_version: "0.14.1"
 
-  rpc(
-    :CreateCanvas,
-    InternalApi.Delivery.CreateCanvasRequest,
-    InternalApi.Delivery.CreateCanvasResponse
-  )
+  rpc :CreateCanvas,
+      InternalApi.Delivery.CreateCanvasRequest,
+      InternalApi.Delivery.CreateCanvasResponse
 
-  rpc(
-    :CreateEventSource,
-    InternalApi.Delivery.CreateEventSourceRequest,
-    InternalApi.Delivery.CreateEventSourceResponse
-  )
+  rpc :CreateEventSource,
+      InternalApi.Delivery.CreateEventSourceRequest,
+      InternalApi.Delivery.CreateEventSourceResponse
 
-  rpc(
-    :CreateStage,
-    InternalApi.Delivery.CreateStageRequest,
-    InternalApi.Delivery.CreateStageResponse
-  )
+  rpc :CreateStage,
+      InternalApi.Delivery.CreateStageRequest,
+      InternalApi.Delivery.CreateStageResponse
 
-  rpc(
-    :DescribeCanvas,
-    InternalApi.Delivery.DescribeCanvasRequest,
-    InternalApi.Delivery.DescribeCanvasResponse
-  )
+  rpc :DescribeCanvas,
+      InternalApi.Delivery.DescribeCanvasRequest,
+      InternalApi.Delivery.DescribeCanvasResponse
 
-  rpc(
-    :DescribeStage,
-    InternalApi.Delivery.DescribeStageRequest,
-    InternalApi.Delivery.DescribeStageResponse
-  )
+  rpc :DescribeStage,
+      InternalApi.Delivery.DescribeStageRequest,
+      InternalApi.Delivery.DescribeStageResponse
 
-  rpc(
-    :DescribeEventSource,
-    InternalApi.Delivery.DescribeEventSourceRequest,
-    InternalApi.Delivery.DescribeEventSourceResponse
-  )
+  rpc :DescribeEventSource,
+      InternalApi.Delivery.DescribeEventSourceRequest,
+      InternalApi.Delivery.DescribeEventSourceResponse
 
-  rpc(
-    :ListStages,
-    InternalApi.Delivery.ListStagesRequest,
-    InternalApi.Delivery.ListStagesResponse
-  )
+  rpc :ListStages, InternalApi.Delivery.ListStagesRequest, InternalApi.Delivery.ListStagesResponse
 
-  rpc(
-    :ListEventSources,
-    InternalApi.Delivery.ListEventSourcesRequest,
-    InternalApi.Delivery.ListEventSourcesResponse
-  )
+  rpc :ListEventSources,
+      InternalApi.Delivery.ListEventSourcesRequest,
+      InternalApi.Delivery.ListEventSourcesResponse
 
-  rpc(
-    :ListStageEvents,
-    InternalApi.Delivery.ListStageEventsRequest,
-    InternalApi.Delivery.ListStageEventsResponse
-  )
+  rpc :ListStageEvents,
+      InternalApi.Delivery.ListStageEventsRequest,
+      InternalApi.Delivery.ListStageEventsResponse
 
-  rpc(
-    :UpdateStage,
-    InternalApi.Delivery.UpdateStageRequest,
-    InternalApi.Delivery.UpdateStageResponse
-  )
+  rpc :UpdateStage,
+      InternalApi.Delivery.UpdateStageRequest,
+      InternalApi.Delivery.UpdateStageResponse
 
-  rpc(
-    :ApproveStageEvent,
-    InternalApi.Delivery.ApproveStageEventRequest,
-    InternalApi.Delivery.ApproveStageEventResponse
-  )
+  rpc :ApproveStageEvent,
+      InternalApi.Delivery.ApproveStageEventRequest,
+      InternalApi.Delivery.ApproveStageEventResponse
 end
 
 defmodule InternalApi.Delivery.Delivery.Stub do

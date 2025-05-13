@@ -15,7 +15,7 @@ export function Canvas({
   stages = [],
   event_sources = [],
 }: CanvasProps) {
-  const { handleEvent, removeHandleEvent } = useLiveReact();
+  const { handleEvent, pushEvent, removeHandleEvent } = useLiveReact();
   const { initialize, setupLiveViewHandlers } = useCanvasStore();
   
   useEffect(() => {
@@ -25,7 +25,8 @@ export function Canvas({
       stages: Array.isArray(stages) ? stages : [], 
       event_sources: Array.isArray(event_sources) ? event_sources : [],
       handleEvent, 
-      removeHandleEvent
+      removeHandleEvent,
+      pushEvent
     };
     
     initialize(initialData);

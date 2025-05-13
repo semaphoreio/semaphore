@@ -3,7 +3,12 @@ import Tippy from '@tippyjs/react';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/themes/light.css';
 import React, { useRef, useEffect, useState, CSSProperties } from 'react';
-import { HandleProps, Connection, Condition } from '@/canvas/types/flow';
+import { HandleProps,
+  Connection,
+  Condition,
+ Approval,
+ TimeWindow,
+  } from '@/canvas/types/flow';
 
 const BAR_WIDTH = 48;
 const BAR_HEIGHT = 6;
@@ -128,20 +133,64 @@ function TooltipContent({ connections = [], conditions = [] }: { connections?: C
           </span>
         ))}
       </div>
+      {conditions.length > 0 && (
+      <>
       <div className="text-xs text-gray-600 font-semibold mb-1">Conditions:</div>
       <div className="flex gap-1 mb-2 flex-wrap">
         {conditions.map((condition, index) => (
-          <span
-            key={index}
-            className="bg-green-100 text-green-800 text-xs font-semibold px-2 py-0.5 rounded mr-1 mb-1 border border-green-200"
-          >
-            {condition.type}: {condition.approval && condition.approval.count > 0 ? `Requires ${condition.approval.count} approval(s)` : 'Auto'}
-          </span>
+          <ConditionContent key={index} condition={condition} />
         ))}
       </div>
+      </>
+      )}
       <div className="bg-white border border-gray-200 rounded p-2 text-xs text-gray-700 shadow-sm">
         Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse et urna fringilla, tincidunt nulla nec, dictum erat.
       </div>
     </div>
   );
+}
+
+  function ConditionContent({ condition }: { condition: Condition }) {
+  switch (condition.type) {
+    case 'CONDITION_TYPE_APPROVAL':
+      return <ApprovalContent approval={condition.approval} />;
+    case 'CONDITION_TYPE_TIME_WINDOW':
+      return <TimeWindowContent timeWindow={condition.time_window} />;
+    default:
+      return null;
+  }
+
+  function ApprovalContent({ approval }: { approval: Approval }) {
+    return (
+      <div className="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2 py-1 rounded mr-1 mb-1 border border-emerald-200 flex flex-col">
+        <div className="font-bold mb-0.5">Approval Required</div>
+        <div className="flex items-center gap-1">
+          <span className="font-medium">Approvers needed:</span> 
+          <span className="bg-emerald-200 px-1.5 py-0.5 rounded-full">{approval.count}</span>
+        </div>
+      </div>
+    );
+  }
+
+  function TimeWindowContent({ timeWindow }: { timeWindow: TimeWindow }) {
+    return (
+      <div className="bg-amber-100 text-amber-800 text-xs font-semibold px-2 py-1 rounded mr-1 mb-1 border border-amber-200 flex flex-col">
+        <div className="font-bold mb-0.5">Time Window</div>
+        <div className="flex items-center gap-1 mb-0.5">
+          <span className="font-medium">Hours:</span>
+          <span className="bg-amber-200 px-1.5 py-0.5 rounded-full">
+            {timeWindow.start} - {timeWindow.end}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="font-medium">Days:</span>
+          <div className="flex flex-wrap gap-1">
+            {timeWindow.week_days.map((day, i) => (
+              <span key={i} className="bg-amber-200 px-1.5 py-0.5 rounded-full">{day}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 }

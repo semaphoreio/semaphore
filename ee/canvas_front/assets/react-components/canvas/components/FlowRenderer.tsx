@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback } from "react";
-import { ReactFlow, Controls, Background, Node, NodeTypes } from "@xyflow/react";
+import { ReactFlow, Controls, Background, Node } from "@xyflow/react";
 import { useCanvasStore } from "../store/canvasStore";
 import { useFlowStore } from "../store/flowStore";
 import '@xyflow/react/dist/style.css';
@@ -7,7 +7,7 @@ import '@xyflow/react/dist/style.css';
 import StageNode from './nodes/stage';
 import GithubIntegration from './nodes/event_source';
 import { FlowDevTools } from './devtools';
-import { AllNodeType } from "../types/flow";
+import { AllNodeType, Event } from "../types/flow";
 
 export const nodeTypes = {
   deploymentCard: StageNode,
@@ -19,7 +19,7 @@ export const nodeTypes = {
  */
 export const FlowRenderer: React.FC = () => {
   // Get data from canvasStore (our data model)
-  const { stages, event_sources, nodePositions, updateNodePosition } = useCanvasStore();
+  const { stages, event_sources, nodePositions, updateNodePosition, approveStageEvent } = useCanvasStore();
   
   // Get flow methods from flowStore (our UI flow state)
   const { 
@@ -65,7 +65,11 @@ export const FlowRenderer: React.FC = () => {
           queues_by_state: st.queues_by_state || {},
           connections: st.connections || [],
           conditions: st.conditions || [],
-          run_template: st.run_template
+          run_template: st.run_template,
+          approve_stage_event: (event: Event) => {
+            console.log('Approve stage event', event);
+            approveStageEvent(event.id, st.id);
+          }
         },
         position: nodePositions[st.id] || { x: 600 * ((st.connections?.length || 1)), y: (idx -1) * 400 },
         draggable: true

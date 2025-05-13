@@ -26,9 +26,10 @@ export type StageData = {
   connections: Connection[];
   conditions: Condition[];
   run_template: RunTemplate;
+  approve_stage_event: (event: Event) => void;
 }
 
-export type QueueItem = {
+export type Event = {
   id: string;
   state: string;
   source_id: string;
@@ -39,7 +40,7 @@ export type QueueItem = {
 }
 
 export type QueuesByState = {
-  [key in QueueState]: QueueItem[];
+  [key in QueueState]: Event[];
 }
 
 export enum QueueState {

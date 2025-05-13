@@ -41,4 +41,5 @@ export interface CanvasData {
 export interface CanvasInitialData extends CanvasData {
   handleEvent: LiveProps['handleEvent'];
   removeHandleEvent: LiveProps['removeHandleEvent'];
+  pushEvent: LiveProps['pushEvent'];
 }

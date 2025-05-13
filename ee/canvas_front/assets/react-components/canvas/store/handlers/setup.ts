@@ -3,7 +3,8 @@ import type { CanvasState } from "../types";
 import { 
   handleStageAdded, 
   handleEventSourceAdded, 
-  handleCanvasUpdated 
+  handleCanvasUpdated,
+  handleStageUpdated 
 } from './index';
 
 type HandlerRef = string;
@@ -28,6 +29,12 @@ export function setupEventHandlers(
     handleStageAdded(payload, state);
   });
   handlerRefs.push(stageAddedRef);
+
+  // Register the stage_updated event handler
+  const stageUpdatedRef = initialData.handleEvent('stage_updated', (payload) => {
+    handleStageUpdated(payload, state);
+  });
+  handlerRefs.push(stageUpdatedRef);
 
   // Register the event_source_added event handler
   const eventSourceAddedRef = initialData.handleEvent('event_source_added', (payload) => {
