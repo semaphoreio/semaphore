@@ -136,22 +136,24 @@ Parameters:
 Response:
 
 ```json
-HTTP status: 200
-
 {
   "workflow": {
-    "wf_id": "72c434c4-6589-493d-97cd-22f46681c893",
-    "requester_id": "d32141ca-1552-4370-b0d4-4030aa9cf524",
-    "project_id": "adaede30-9de5-471f-9f95-b7d437170f10",
-    "initial_ppl_id": "f86b3b5e-c3de-4f77-849f-39e080374ce4",
-    "hook_id": "6d7ed9d3-3047-4d5e-9b27-f0b68b228409",
+    "wf_id": "b1e7b07d-2d62-4af9-83ce-1f6df09d871f",
+    "triggered_by": "HOOK",
+    "rerun_of": "",
+    "requester_id": "fae5b260-b32e-41cb-9b5f-c255c0cb2c53",
+    "repository_id": "3d8ecb01-76f2-45e3-89bb-865c41cd7f6a",
+    "project_id": "e48c5cf8-7389-4df1-9904-235c06473af1",
+    "organization_id": "2b4e4c0f-c760-4f47-9dc4-b3e84f993f63",
+    "initial_ppl_id": "8a97c0a9-4b8a-4027-9bd2-2602e9f72e37",
+    "hook_id": "5826dbe7-b47d-4d1d-8c3e-8f48d7f0d41b",
     "created_at": {
-      "seconds": 1571063401,
-      "nanos": 559492000
+      "seconds": 1744918825,
+      "nanos": 131742000
     },
-    "commit_sha": "6fe03f118b7aa7b8ea1a983c3faee4f8b54213a5",
+    "commit_sha": "6e45d083ebe3e03ec5ec01e4d7c7255e70a304aa",
     "branch_name": "master",
-    "branch_id": "e8a4ad3b-4951-4520-aed7-6292ebd70076"
+    "branch_id": "61cbde2e-760a-4d79-961e-1e49e5709677"
   }
 }
 ```
@@ -298,22 +300,74 @@ Parameters:
 Response:
 
 ```json
-HTTP status: 200
-
 {
   "pipeline": {
-    "yaml_file_name": "semaphore.yml",
-    "working_directory": ".semaphore",
-    "wf_id": "965d3c3d-bbe6-4ff7-b62a-1ff51a92bdc0",
+    "running_at": "2025-04-17 19:06:12.081227Z",
     "state": "done",
+    "branch_id": "94d4d473-191b-43f5-abe3-1a1f0c92ed04",
+    "commit_message": "Commit message here",
+    "with_after_task": false,
+    "organization_id": "3aef8d6d-c96d-4c8b-97a9-d9d9ad356d2a",
+    "repository_id": "f8932e10-8f38-4415-93c5-0c3b4aa0c4a4",
+    "pending_at": "2025-04-17 19:06:12.042455Z",
+    "ppl_id": "6d7c2931-738b-4f0f-b007-8b52c139d18c",
+    "partially_rerun_by": "",
+    "triggerer": {
+      "workflow_rerun_of": "",
+      "wf_triggerer_user_id": "0cafea89-7d80-42c1-a8c5-353f5e3a8478",
+      "wf_triggerer_provider_uid": "30660198",
+      "wf_triggerer_provider_login": "provider_login",
+      "wf_triggerer_provider_avatar": "https://avatars.githubusercontent.com/provider_login?v=4",
+      "wf_triggerer_id": "1ebde03e-1a44-4380-89bb-5dc1c0c4e59b",
+      "wf_triggered_by": 0,
+      "ppl_triggerer_user_id": "0cafea89-7d80-42c1-a8c5-353f5e3a8478",
+      "ppl_triggerer_id": "cc94c7f4-4ef8-4fa9-871f-5a7f408aef16",
+      "ppl_triggered_by": 1
+    },
+    "terminated_by": "",
+    "hook_id": "1ebde03e-1a44-4380-89bb-5dc1c0c4e59b",
+    "snapshot_id": "",
+    "project_id": "afccead6-6aa7-41b4-8a91-97bc490d1683",
+    "working_directory": ".semaphore",
+    "partial_rerun_of": "",
     "result": "passed",
-    "name": "First pipeline example",
+    "queuing_at": "2025-04-17 19:06:12.057638Z",
+    "commit_sha": "1a4f3b120d728e6ff20de0d70c589a7a1ccf6eeb",
+    "terminate_request": "",
+    "compile_task_id": "4b9a0b0d-45cb-4a4e-bf33-0d6f7e13555a",
+    "env_vars": [
+      {
+        "value": "default",
+        "name": "SPECIFIED_BRANCH"
+      }
+    ],
+    "stopping_at": "1970-01-01 00:00:00.000000Z",
+    "created_at": "2025-04-17 19:06:04.782051Z",
+    "wf_id": "acb37482-c8c1-4714-9e69-7c8674e6f3e0",
+    "name": "Pipeline 10",
+    "result_reason": "test",
     "branch_name": "master",
-    "created_at": "2019-10-14 18:31:17.293456Z"
+    "after_task_id": "",
+    "done_at": "2025-04-17 19:06:18.900644Z",
+    "error_description": "",
+    "queue": {
+      "type": 0,
+      "scope": "project",
+      "queue_id": "4c3d1a14-99bb-4a7d-88b3-cd458d35e878",
+      "project_id": "afccead6-6aa7-41b4-8a91-97bc490d1683",
+      "organization_id": "3aef8d6d-c96d-4c8b-97a9-d9d9ad356d2a",
+      "name": "master-.semaphore/pipeline_manual_WFnumber.yml"
+    },
+    "switch_id": "",
+    "promotion_of": "cc94c7f4-4ef8-4fa9-871f-5a7f408aef16",
+    "yaml_file_name": "pipeline_manual_WFnumber.yml"
   },
-  "blocks": []
+  "blocks": [
+    
+  ]
 }
 ```
+
 
 Response with `detailed=true`:
 
