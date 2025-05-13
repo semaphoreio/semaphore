@@ -257,7 +257,7 @@ func FindLastEventBySourceID(sourceID uuid.UUID) (map[string]any, error) {
 //
 // variables: the variables to be used in the expression.
 // expression: the expression to be compiled.
-// caseSensitive: whether the expression should be case sensitive.
+// filterType: the type of the filter.
 func CompileBooleanExpression(variables map[string]any, expression string, filterType string) (*vm.Program, error) {
 	options := []expr.Option{
 		expr.Env(variables),
