@@ -442,6 +442,8 @@ This section lists utility images for [sem-service](../../reference/toolbox#sem-
 | mysql:5.6 | `registry.semaphoreci.com/mysql:5.6` |    
 | mysql:5.7 | `registry.semaphoreci.com/mysql:5.7` |    
 | mysql:8.0 | `registry.semaphoreci.com/mysql:8.0` |    
+| mysql:8.0 | `registry.semaphoreci.com/mysql:8.4` |    
+| mysql:8.0 | `registry.semaphoreci.com/mysql:9.3` |    
 
 </div>
 </details>
