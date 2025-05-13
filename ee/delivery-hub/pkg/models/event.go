@@ -38,11 +38,22 @@ type Event struct {
 	Headers    datatypes.JSON
 }
 
-type lowercaseVisitor struct{}
+type headerVisitor struct{}
 
-func (v *lowercaseVisitor) Visit(node *ast.Node) {
+// Visit implements the visitor pattern for header variables
+// Header Variables should be case insensitive
+func (v *headerVisitor) Visit(node *ast.Node) {
 	if ident, ok := (*node).(*ast.IdentifierNode); ok {
 		ident.Value = strings.ToLower(ident.Value)
+	}
+
+	if call, ok := (*node).(*ast.CallNode); ok {
+		functionName := strings.ToLower(call.Callee.String())
+		if functionName == "header" {
+			ast.Patch(node, &ast.IdentifierNode{
+				Value: strings.ToLower(call.Arguments[0].(*ast.StringNode).Value),
+			})
+		}
 	}
 }
 
@@ -92,7 +103,7 @@ func (e *Event) EvaluateBoolExpression(expression string, filterType string) (bo
 	//
 	// Build our variable map.
 	//
-	variables, err := parseExpressionVariables(e, ctx, filterType)
+	variables, err := parseExpressionVariables(ctx, e, filterType)
 	if err != nil {
 		return false, fmt.Errorf("error parsing expression variables: %v", err)
 	}
@@ -257,13 +268,13 @@ func CompileBooleanExpression(variables map[string]any, expression string, caseS
 	}
 
 	if !caseSensitive {
-		options = append(options, expr.Patch(&lowercaseVisitor{}))
+		options = append(options, expr.Patch(&headerVisitor{}))
 	}
 
 	return expr.Compile(expression, options...)
 }
 
-func parseExpressionVariables(e *Event, ctx context.Context, filterType string) (map[string]interface{}, error) {
+func parseExpressionVariables(ctx context.Context, e *Event, filterType string) (map[string]interface{}, error) {
 	variables := map[string]interface{}{
 		"ctx": ctx,
 	}

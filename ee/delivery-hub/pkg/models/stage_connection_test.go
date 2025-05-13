@@ -29,7 +29,7 @@ func Test__StageConnectionFilter(t *testing.T) {
 		require.True(t, accept)
 	})
 
-	t.Run("single expression filter with case insensitive header -> true", func(t *testing.T) {
+	t.Run("expression filter with case insensitive headers -> true", func(t *testing.T) {
 		conn := StageConnection{
 			FilterOperator: FilterOperatorAnd,
 			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
@@ -39,12 +39,12 @@ func Test__StageConnectionFilter(t *testing.T) {
 				},
 				{
 					Type:   FilterTypeHeader,
-					Header: &HeaderFilter{Expression: `ContentType == "application/json" && XExAmPlEHeAdEr == "value"`},
+					Header: &HeaderFilter{Expression: `header("Content-Type") == "application/json" && header("X-ExAmPlE-HeAdEr") == "value"`},
 				},
 			}),
 		}
 
-		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"ContEnTtYpE": "application/json", "xexAmplEhEAdEr": "value"}`)}
+		event := &Event{Raw: []byte(`{"a": 1, "b": 2}`), Headers: []byte(`{"ContEnT-tYpE": "application/json", "x-exAmplE-hEAdEr": "value"}`)}
 		accept, err := conn.Accept(event)
 		require.NoError(t, err)
 		require.True(t, accept)
@@ -62,6 +62,23 @@ func Test__StageConnectionFilter(t *testing.T) {
 		}
 
 		event := &Event{Raw: []byte(`{"a": 1, "b": 3}`)}
+		accept, err := conn.Accept(event)
+		require.NoError(t, err)
+		require.False(t, accept)
+	})
+
+	t.Run("expression filter with case insensitive headers -> false", func(t *testing.T) {
+		conn := StageConnection{
+			FilterOperator: FilterOperatorAnd,
+			Filters: datatypes.NewJSONSlice([]StageConnectionFilter{
+				{
+					Type:   FilterTypeHeader,
+					Header: &HeaderFilter{Expression: `header("Content-Type") == "text/plain" && header("X-ExAmPlE-HeAdEr") == "some-value"`},
+				},
+			}),
+		}
+
+		event := &Event{Raw: []byte(`{"a": 1, "b": 3}`), Headers: []byte(`{"ContEnT-tYpE": "application/json", "x-exAmplE-hEAdEr": "wrong-value"}`)}
 		accept, err := conn.Accept(event)
 		require.NoError(t, err)
 		require.False(t, accept)
