@@ -5,6 +5,7 @@ defmodule FrontWeb.ProjectOnboardingController do
   alias Front.Async
   alias Front.Audit
   alias Front.Models
+  alias Front.Clients
 
   plug(
     FrontWeb.Plugs.OnPremBlocker
@@ -22,7 +23,6 @@ defmodule FrontWeb.ProjectOnboardingController do
            :repositories,
            :refresh,
            :initializing,
-           # new_project_onboarding
            :index,
            :check_duplicates,
            :create,
@@ -45,7 +45,7 @@ defmodule FrontWeb.ProjectOnboardingController do
            :create,
            :project_repository_status,
            :repositories,
-           :create
+           :regenerate_webhook_secret
          ]
   )
 
@@ -66,6 +66,7 @@ defmodule FrontWeb.ProjectOnboardingController do
            :project_repository_status,
            :x_workflow_builder,
            :onboarding_index,
+           :regenerate_webhook_secret,
            :skip_onboarding
          ]
   )
@@ -74,8 +75,58 @@ defmodule FrontWeb.ProjectOnboardingController do
     GITHUB_APP: :CONFIG_TYPE_GITHUB_APP,
     GITHUB_OAUTH_TOKEN: :CONFIG_TYPE_GITHUB_APP,
     BITBUCKET: :CONFIG_TYPE_BITBUCKET_APP,
-    GITLAB: :CONFIG_TYPE_GITLAB_APP
+    GITLAB: :CONFIG_TYPE_GITLAB_APP,
+    GIT: :CONFIG_TYPE_UNSPECIFIED
   }
+
+  defp get_agent_name(project) do
+    Front.Models.CommitJob.get_agent(project)
+    |> case do
+      {:ok, %{type: type}} ->
+        type
+
+      _ ->
+        ""
+    end
+  end
+
+  def regenerate_webhook_secret(conn, _params) do
+    project = conn.assigns.project
+    org_id = conn.assigns.organization_id
+    user_id = conn.assigns.user_id
+
+    %{id: project.id, metadata: %{org_id: org_id, user_id: user_id}}
+    |> Clients.Projecthub.regenerate_webhook_secret()
+    |> case do
+      {:ok, response} ->
+        Models.Project.check_webhook(project.id)
+        |> case do
+          {:ok, hook} ->
+            conn
+            |> json(%{
+              message: "Webhook secret regenerated",
+              secret: response.secret,
+              endpoint: "#{hook.url}"
+            })
+
+          {:error, message} ->
+            conn
+            |> put_status(422)
+            |> json(%{
+              message: message,
+              secret: response.secret,
+              endpoint: ""
+            })
+        end
+
+      {:error, error} ->
+        conn
+        |> put_status(422)
+        |> json(%{
+          error: error
+        })
+    end
+  end
 
   def new(conn, params) do
     Watchman.benchmark("project.new.duration", fn ->
@@ -298,7 +349,8 @@ defmodule FrontWeb.ProjectOnboardingController do
           |> json(%{
             check_url: project_onboarding_path(conn, :is_ready, project.name),
             repo_connection_url:
-              project_onboarding_path(conn, :project_repository_status, project.name)
+              project_onboarding_path(conn, :project_repository_status, project.name),
+            project_name: project.name
           })
         else
           conn
@@ -317,6 +369,7 @@ defmodule FrontWeb.ProjectOnboardingController do
 
         {:error, message} ->
           conn
+          |> put_status(200)
           |> json(%{
             error: normalize_project_creation_error(message)
           })
@@ -337,6 +390,7 @@ defmodule FrontWeb.ProjectOnboardingController do
         Async.run(fn -> Models.Organization.repository_integrators(org_id) end)
 
       {:ok, user} = Async.await(fetch_user)
+
       {:ok, {:ok, repository_integrators}} = Async.await(fetch_repository_integrators)
 
       fetch_instance_configs =
@@ -477,13 +531,19 @@ defmodule FrontWeb.ProjectOnboardingController do
 
     conn
     |> json(%{
+      project_name: project.name,
       deploy_key: key,
       deploy_key_message: key_message,
       deploy_key_regenerate_url:
         project_settings_path(conn, :regenerate_deploy_key, project.name),
       hook: hook,
       hook_message: hook_message,
-      hook_regenerate_url: project_settings_path(conn, :regenerate_webhook, project.name)
+      hook_regenerate_url: project_settings_path(conn, :regenerate_webhook, project.name),
+      connected: project.repo_connected,
+      reset_webhook_secret_url:
+        project_onboarding_path(conn, :regenerate_webhook_secret, project.name),
+      agent_name: get_agent_name(project),
+      agent_config_url: organization_pfc_path(conn, :show)
     })
   end
 
@@ -598,7 +658,8 @@ defmodule FrontWeb.ProjectOnboardingController do
         connected_to_artifacts: ReadinessCheck.artifacts_ready(project),
         connected_to_cache: ReadinessCheck.cache_ready(project),
         repo_analyzed: ReadinessCheck.analysis_ready(project),
-        permissions_setup: ReadinessCheck.permissions_ready(project)
+        permissions_setup: ReadinessCheck.permissions_ready(project),
+        is_connected: ReadinessCheck.is_connected(project)
       },
       waiting_message: ReadinessCheck.waiting_message(project),
       error_message: ReadinessCheck.error_message(project)
@@ -720,53 +781,74 @@ defmodule FrontWeb.ProjectOnboardingController do
 
   # sobelow_skip ["Traversal.FileModule"]
   defp commit_starter_template_new(conn, params) do
-    alias Front.Models.Repohub
-    alias InternalApi.Repository.CommitRequest.Change
+    conn.assigns.project.integration_type
+    |> case do
+      :GIT ->
+        org_id = conn.assigns.organization_id
 
-    repository_id = conn.assigns.project.repo_id
-    user_id = conn.assigns.user_id
-    org_id = conn.assigns.organization_id
-
-    branch = "setup-semaphore"
-    message = "Use #{params["template_title"]} starter workflow"
-
-    content = get_pipeline_from_template(params, org_id)
-    path = Map.get(params, "commit_path", Models.Project.initial_semaphore_yaml_path())
-
-    change =
-      Change.new(
-        action: Change.Action.value(:ADD_FILE),
-        file: InternalApi.Repository.File.new(path: path, content: content)
-      )
-
-    request =
-      InternalApi.Repository.CommitRequest.new(
-        repository_id: repository_id,
-        user_id: user_id,
-        branch_name: branch,
-        commit_message: message,
-        changes: [change]
-      )
-
-    case Repohub.commit(request) do
-      {:ok, res} ->
-        # signal that project onboarding is complete
-        Front.Async.run(fn ->
-          Models.Project.finish_onboarding(conn.assigns.project.id)
-        end)
+        filename = Map.get(params, "commit_path", Models.Project.initial_semaphore_yaml_path())
+        content = get_pipeline_from_template(params, org_id)
 
         conn
-        |> put_status(201)
-        |> json(%{
-          message: "Config committed. Waiting for Workflow to start.",
-          branch: branch,
-          commit_sha: res.revision.commit_sha
-        })
+        |> FrontWeb.ProjectController.commit_config(
+          params
+          |> Map.merge(%{
+            "initial_branch" => conn.assigns.project.repo_default_branch,
+            "branch" => "setup-semaphore",
+            "commit_message" => "Use #{params["template_title"]} starter workflow",
+            "added_files" => [%{filename: filename, content: content}]
+          })
+        )
 
-      {:error, error} ->
-        conn
-        |> put_status(422)
-        |> json(%{error: error.message})
+      _ ->
+        alias Front.Models.Repohub
+        alias InternalApi.Repository.CommitRequest.Change
+
+        repository_id = conn.assigns.project.repo_id
+        user_id = conn.assigns.user_id
+        org_id = conn.assigns.organization_id
+
+        branch = "setup-semaphore"
+        message = "Use #{params["template_title"]} starter workflow"
+
+        content = get_pipeline_from_template(params, org_id)
+        path = Map.get(params, "commit_path", Models.Project.initial_semaphore_yaml_path())
+
+        change =
+          Change.new(
+            action: Change.Action.value(:ADD_FILE),
+            file: InternalApi.Repository.File.new(path: path, content: content)
+          )
+
+        request =
+          InternalApi.Repository.CommitRequest.new(
+            repository_id: repository_id,
+            user_id: user_id,
+            branch_name: branch,
+            commit_message: message,
+            changes: [change]
+          )
+
+        case Repohub.commit(request) do
+          {:ok, res} ->
+            # signal that project onboarding is complete
+            Front.Async.run(fn ->
+              Models.Project.finish_onboarding(conn.assigns.project.id)
+            end)
+
+            conn
+            |> put_status(201)
+            |> json(%{
+              message: "Config committed. Waiting for Workflow to start.",
+              branch: branch,
+              commit_sha: res.revision.commit_sha
+            })
+
+          {:error, error} ->
+            conn
+            |> put_status(422)
+            |> json(%{error: error.message})
+        end
     end
   end
 

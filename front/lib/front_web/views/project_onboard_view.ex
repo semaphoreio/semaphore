@@ -20,7 +20,6 @@ defmodule FrontWeb.ProjectOnboardingView do
       "userProfileUrl" => people_path(conn, :show, conn.assigns.user.id),
       "domain" => Application.get_env(:front, :domain),
       "hasPipeline" => conn.assigns.has_pipeline_file?,
-      # "agentStats" => conn.assigns.agent_stats,
       "agentTypes" => %{
         "cloud" => conn.assigns.cloud_agents,
         "selfHosted" =>
@@ -112,8 +111,12 @@ defmodule FrontWeb.ProjectOnboardingView do
 
   defp status([], _provider), do: nil
 
+  defp status(_, :GIT), do: connection_status(:STATE_CONFIGURED)
+
   defp status(instance_configs, provider) do
-    case Map.get(instance_configs, provider) do
+    instance_configs
+    |> Map.get(provider)
+    |> case do
       nil -> connection_status(:STATE_EMPTY)
       config -> connection_status(config.state)
     end
@@ -130,6 +133,9 @@ defmodule FrontWeb.ProjectOnboardingView do
 
   defp scope_url(conn, :GITLAB),
     do: %{url: gitlab_update_scope_path(conn, :gitlab), method: :post}
+
+  defp scope_url(_conn, :GIT),
+    do: nil
 
   defp connection_status(:STATE_CONFIGURED), do: "connected"
   defp connection_status(:STATE_EMPTY), do: "not_connected"

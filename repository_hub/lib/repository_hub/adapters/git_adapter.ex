@@ -36,4 +36,15 @@ defmodule RepositoryHub.GitAdapter do
   def context(_adapter, repository_id, stream \\ nil) do
     UniversalAdapter.context(repository_id, stream)
   end
+
+  def multi(_adapter, repository_id, stream \\ nil) do
+    alias Ecto.Multi
+
+    with {:ok, context} <- UniversalAdapter.context(repository_id, stream) do
+      Enum.reduce(context, Multi.new(), fn {key, value}, multi ->
+        multi
+        |> Multi.put(key, value)
+      end)
+    end
+  end
 end
