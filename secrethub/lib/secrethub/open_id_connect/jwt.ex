@@ -99,7 +99,9 @@ defmodule Secrethub.OpenIDConnect.JWT do
     domain = Application.fetch_env!(:secrethub, :domain)
 
     common_claims = %{
+      "org" => req.org_username,
       "org_id" => req.org_id,
+      "prj" => req.project_name,
       "prj_id" => req.project_id,
       "wf_id" => req.workflow_id,
       "ppl_id" => req.pipeline_id,
@@ -117,9 +119,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "job_type" => req.job_type,
       "pr_branch" => req.git_pull_request_branch,
       "repo_slug" => req.repo_slug,
-      "trg" => req.triggerer,
-      "proj" => req.project_name,
-      "org" => req.org_username
+      "trg" => req.triggerer
     }
 
     claims =

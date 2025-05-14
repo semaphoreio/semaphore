@@ -250,9 +250,9 @@ defmodule Secrethub.OpenIDConnect.JWTClaim do
         is_mandatory: false,
         is_active: false
       },
-      "proj" => %__MODULE__{
-        name: "proj",
-        description: "Project name",
+      "prj" => %__MODULE__{
+        name: "prj",
+        description: "Project name associated with the workflow",
         is_system_claim: true,
         is_aws_tag: false,
         is_mandatory: false,

@@ -827,6 +827,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert_in_delta Map.get(jwt.fields, "exp") + req.expires_in, now, 5
 
       assert Map.get(jwt.fields, "prj_id") == req.project_id
+      assert Map.get(jwt.fields, "org_id") == org_id
       assert Map.get(jwt.fields, "wf_id") == req.workflow_id
       assert Map.get(jwt.fields, "ppl_id") == req.pipeline_id
       assert Map.get(jwt.fields, "job_id") == req.job_id
@@ -834,7 +835,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-      assert Map.get(jwt.fields, "proj") == req.project_name
+      assert Map.get(jwt.fields, "prj") == req.project_name
       assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
     end
@@ -950,7 +951,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
         # Project related claims should be present
         assert Map.get(jwt.fields, "prj_id") == req.project_id
         assert Map.get(jwt.fields, "job_type") == req.job_type
-        refute Map.has_key?(jwt.fields, "proj")
+        assert Map.get(jwt.fields, "org_id") == org_id
+        refute Map.has_key?(jwt.fields, "prj")
         refute Map.has_key?(jwt.fields, "org")
 
         # AWS tags should be filtered
