@@ -33,10 +33,10 @@ export var WorkflowList = {
     }
       
     this.pagination.onUpdate(updatePollman);
-    this.initDateFilterButtons(pollmanList);
+    this.initDateFilterButtons(updatePollman);
   },
   
-  initDateFilterButtons: function(pollmanList) {
+  initDateFilterButtons: function(updatePollman) {
     console.log("TEST")
     const filterBtn = document.getElementById('filter-workflows-btn');
     const clearBtn = document.getElementById('clear-filter-btn');
@@ -78,7 +78,7 @@ export var WorkflowList = {
         }
         
         // Manually trigger the update with all params
-        this.pagination.update(container, params);
+        updatePollman(container, params)
       });
     }
     
@@ -111,7 +111,7 @@ export var WorkflowList = {
           params.direction = direction;
         }
         
-        this.pagination.update(container, params);
+        updatePollman(container, params);
       });
     }
     
@@ -129,54 +129,6 @@ export var WorkflowList = {
     
     if (dateTo && dateToInput) {
       dateToInput.value = dateTo;
-    }
-    
-    // Set initial pollman data attributes
-    if ((dateFrom || dateTo) && document.querySelector('.pollman-container')) {
-      const container = document.querySelector('.pollman-container');
-      
-      if (dateFrom) {
-        container.setAttribute('data-poll-param-date_from', dateFrom);
-      }
-      
-      if (dateTo) {
-        container.setAttribute('data-poll-param-date_to', dateTo);
-      }
-      
-      // If we have date filters on page load, ensure they're applied immediately
-      // by triggering the first poll with the date parameters
-      if (this.pagination && (dateFrom || dateTo)) {
-        const currentParams = {};
-        
-        // Get pagination params if they exist
-        const pageToken = container.getAttribute('data-poll-param-page_token');
-        const direction = container.getAttribute('data-poll-param-direction');
-        
-        if (pageToken) {
-          currentParams.page_token = pageToken;
-        }
-        
-        if (direction) {
-          currentParams.direction = direction;
-        }
-        
-        if (dateFrom) {
-          currentParams.date_from = dateFrom;
-        }
-        
-        if (dateTo) {
-          currentParams.date_to = dateTo;
-        }
-        
-        // Wait for DOM to be ready
-        setTimeout(() => {
-          // The pollman container might not be fully initialized yet, so we'll check again
-          const pollmanContainer = document.querySelector('.pollman-container');
-          if (pollmanContainer) {
-            this.pagination.update(pollmanContainer, currentParams);
-          }
-        }, 500);
-      }
     }
   }
 }
