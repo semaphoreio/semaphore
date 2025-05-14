@@ -55,24 +55,24 @@ defmodule Front.BranchPage.Model do
     end
   end
 
-  defp fetch_from_cache(params, force_cold_boot?) do
-    if force_cold_boot? do
-      refresh(params)
-    else
-      case Cacheman.get(:front, cache_key(params)) do
-        {:ok, nil} ->
-          Watchman.increment({"branch_page_model.cache.miss", []})
-          refresh(params)
+  # defp fetch_from_cache(params, force_cold_boot?) do
+  #   if force_cold_boot? do
+  #     refresh(params)
+  #   else
+  #     case Cacheman.get(:front, cache_key(params)) do
+  #       {:ok, nil} ->
+  #         Watchman.increment({"branch_page_model.cache.miss", []})
+  #         refresh(params)
 
-        {:ok, val} ->
-          Watchman.increment({"branch_page_model.cache.hit", []})
-          {:ok, decode(val), :from_cache}
+  #       {:ok, val} ->
+  #         Watchman.increment({"branch_page_model.cache.hit", []})
+  #         {:ok, decode(val), :from_cache}
 
-        e ->
-          e
-      end
-    end
-  end
+  #       e ->
+  #         e
+  #     end
+  #   end
+  # end
 
   def cache_key(params) do
     "#{@cache_prefix}/#{@cache_version}/branch_id=#{params.branch_id}/"
@@ -252,5 +252,5 @@ defmodule Front.BranchPage.Model do
   defp map_workflow_direction("previous"), do: Direction.value(:PREVIOUS)
   defp map_workflow_direction(_), do: map_workflow_direction("next")
 
-  defp first_page?(params), do: params.page_token == ""
+  # defp first_page?(params), do: params.page_token == ""
 end
