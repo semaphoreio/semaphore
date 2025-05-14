@@ -55,24 +55,24 @@ defmodule Front.BranchPage.Model do
     end
   end
 
-  # defp fetch_from_cache(params, force_cold_boot?) do
-  #   if force_cold_boot? do
-  #     refresh(params)
-  #   else
-  #     case Cacheman.get(:front, cache_key(params)) do
-  #       {:ok, nil} ->
-  #         Watchman.increment({"branch_page_model.cache.miss", []})
-  #         refresh(params)
+  defp fetch_from_cache(params, force_cold_boot?) do
+    if force_cold_boot? do
+      refresh(params)
+    else
+      case Cacheman.get(:front, cache_key(params)) do
+        {:ok, nil} ->
+          Watchman.increment({"branch_page_model.cache.miss", []})
+          refresh(params)
 
-  #       {:ok, val} ->
-  #         Watchman.increment({"branch_page_model.cache.hit", []})
-  #         {:ok, decode(val), :from_cache}
+        {:ok, val} ->
+          Watchman.increment({"branch_page_model.cache.hit", []})
+          {:ok, decode(val), :from_cache}
 
-  #       e ->
-  #         e
-  #     end
-  #   end
-  # end
+        e ->
+          e
+      end
+    end
+  end
 
   def cache_key(params) do
     "#{@cache_prefix}/#{@cache_version}/branch_id=#{params.branch_id}/"
@@ -167,76 +167,23 @@ defmodule Front.BranchPage.Model do
     {workflows, next_page_token, previous_page_token}
   end
 
-  defp timestamp(:beginning, nil), do: nil
-  defp timestamp(:beginning, ""), do: nil
+  defp timestamp(_, timestamp) when timestamp in [nil, ""], do: nil
+  defp timestamp(direction, _) when direction not in [:beginning, :end], do: nil
 
-  defp timestamp(:beginning, date) do
-    IO.puts("Converting beginning date: #{date}")
+  @date_format "{YYYY}-{0M}-{0D}"
+  defp timestamp(direction, date) do
+    rounding_func =
+      case direction do
+        :beginning -> &Timex.beginning_of_day/1
+        :end -> &Timex.end_of_day/1
+      end
 
-    # Try parsing with explicit format
-    result = Timex.parse(date, "{YYYY}-{0M}-{0D}")
-    IO.puts("Timex.parse result: #{inspect(result)}")
-
-    case result do
+    case Timex.parse(date, @date_format) do
       {:ok, datetime} ->
-        # Convert to DateTime and set to beginning of day
-        dt = datetime |> Timex.to_datetime() |> Timex.beginning_of_day()
-        ts = to_google_timestamp(dt)
-        IO.puts("Beginning timestamp created: #{inspect(ts)}")
-        ts
+        datetime |> Timex.to_datetime() |> rounding_func.() |> to_google_timestamp()
 
       {:error, reason} ->
-        IO.puts("Error parsing beginning date: #{inspect(reason)}")
-        try_manual_parse(date, :beginning)
-    end
-  end
-
-  defp timestamp(:end, nil), do: nil
-  defp timestamp(:end, ""), do: nil
-
-  defp timestamp(:end, date) do
-    IO.puts("Converting end date: #{date}")
-
-    # Try parsing with explicit format
-    result = Timex.parse(date, "{YYYY}-{0M}-{0D}")
-    IO.puts("Timex.parse result for end date: #{inspect(result)}")
-
-    case result do
-      {:ok, datetime} ->
-        # Convert to DateTime and set to end of day
-        dt = datetime |> Timex.to_datetime() |> Timex.end_of_day()
-        ts = to_google_timestamp(dt)
-        IO.puts("End timestamp created: #{inspect(ts)}")
-        ts
-
-      {:error, reason} ->
-        IO.puts("Error parsing end date: #{inspect(reason)}")
-        try_manual_parse(date, :end)
-    end
-  end
-
-  # Fallback parsing method using basic string operations
-  defp try_manual_parse(date, time_of_day) do
-    IO.puts("Trying manual parse for: #{date}")
-
-    try do
-      [year, month, day] = String.split(date, "-") |> Enum.map(&String.to_integer/1)
-
-      {hour, minute, second} =
-        case time_of_day do
-          :beginning -> {0, 0, 0}
-          :end -> {23, 59, 59}
-        end
-
-      {:ok, naive} = NaiveDateTime.new(year, month, day, hour, minute, second)
-      seconds = naive |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
-
-      timestamp = Google.Protobuf.Timestamp.new(seconds: seconds)
-      IO.puts("Manual parse successful: #{inspect(timestamp)}")
-      timestamp
-    rescue
-      e ->
-        IO.puts("Manual parse failed: #{inspect(e)}")
+        Logger.error("Error parsing date: #{inspect(reason)}")
         nil
     end
   end
@@ -252,5 +199,6 @@ defmodule Front.BranchPage.Model do
   defp map_workflow_direction("previous"), do: Direction.value(:PREVIOUS)
   defp map_workflow_direction(_), do: map_workflow_direction("next")
 
-  # defp first_page?(params), do: params.page_token == ""
+  defp first_page?(params),
+    do: params.page_token == "" && params.date_from == "" && params.date_to == ""
 end

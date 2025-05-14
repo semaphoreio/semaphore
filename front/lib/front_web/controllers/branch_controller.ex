@@ -39,8 +39,8 @@ defmodule FrontWeb.BranchController do
     org_id = conn.assigns.organization_id
     page_token = params["page_token"] || ""
     direction = params["direction"] || ""
-    date_from = params["date_from"]
-    date_to = params["date_to"]
+    date_from = params["date_from"] || ""
+    date_to = params["date_to"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
@@ -95,8 +95,8 @@ defmodule FrontWeb.BranchController do
   def workflows(conn, params) do
     page_token = params["page_token"] || ""
     direction = params["direction"] || ""
-    date_from = params["date_from"]
-    date_to = params["date_to"]
+    date_from = params["date_from"] || ""
+    date_to = params["date_to"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
