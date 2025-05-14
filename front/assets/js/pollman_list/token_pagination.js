@@ -10,9 +10,11 @@ export class TokenPagination {
 
   handleClicks() {
     $(this.container).on("click", "[data-action=LoadPage]", (e) => {
+      console.log("Handling onclinck")
       let direction = $(e.target).data("direction")
       let token = $(e.target).data("token")
       let container = $(e.target).parents('.pollman-container')[0]
+      console.log(token)
 
       this.callback(container, {page_token: token, direction: direction})
 
