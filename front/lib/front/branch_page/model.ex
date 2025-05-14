@@ -35,6 +35,8 @@ defmodule Front.BranchPage.Model do
       field(:organization_id, String.t())
       field(:page_token, String.t())
       field(:direction, String.t())
+      field(:date_from, String.t())
+      field(:date_to, String.t())
     end
   end
 
@@ -134,19 +136,58 @@ defmodule Front.BranchPage.Model do
   end
 
   defp list_workflows(params) do
+    api_params = [
+      page_size: 10,
+      page_token: params.page_token,
+      project_id: params.project_id,
+      branch_name: params.branch_name,
+      direction: map_workflow_direction(params.direction)
+    ]
+
+    api_params =
+      if params.date_from,
+        do: Keyword.put(api_params, :created_after, timestamp(:beginning, params.date_from)),
+        else: api_params
+
+    api_params =
+      if params.date_to,
+        do: Keyword.put(api_params, :created_before, timestamp(:end, params.date_to)),
+        else: api_params
+
     {wfs, next_page_token, previous_page_token} =
-      [
-        page_size: 10,
-        page_token: params.page_token,
-        project_id: params.project_id,
-        branch_name: params.branch_name,
-        direction: map_workflow_direction(params.direction)
-      ]
+      api_params
       |> Models.Workflow.list_keyset()
 
     workflows = Front.Decorators.Workflow.decorate_many(wfs)
 
     {workflows, next_page_token, previous_page_token}
+  end
+
+  defp timestamp(:beginning, nil), do: nil
+  defp timestamp(:beginning, ""), do: nil
+
+  defp timestamp(:beginning, date) do
+    case date |> Timex.to_datetime() do
+      {:error, _} -> nil
+      s -> s |> to_google_timestamp
+    end
+  end
+
+  defp timestamp(:end, nil), do: nil
+  defp timestamp(:end, ""), do: nil
+
+  defp timestamp(:end, date) do
+    case date |> Timex.to_datetime() do
+      {:error, _} -> nil
+      s -> s |> Timex.end_of_day() |> to_google_timestamp
+    end
+  end
+
+  defp to_google_timestamp(date) do
+    case Timex.to_unix(date) do
+      {:error, _} -> nil
+      s -> Google.Protobuf.Timestamp.new(seconds: s)
+    end
   end
 
   defp map_workflow_direction("next"), do: Direction.value(:NEXT)
