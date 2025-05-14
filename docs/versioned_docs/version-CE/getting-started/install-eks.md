@@ -148,7 +148,7 @@ Install Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
+  --version v1.2.0 \
   --timeout 20m \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
@@ -214,7 +214,7 @@ Once your have Semaphore up and running, check out the following pages to finish
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -233,12 +233,12 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     echo "CERT_NAME=${CERT_NAME}"
     ```
 
-4. Run the following command to upgrade to `v1.1.0`
+4. Run the following command to upgrade to `v1.2.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
+      --version v1.2.0 \
       --timeout 20m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \
