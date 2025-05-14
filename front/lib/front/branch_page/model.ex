@@ -172,18 +172,22 @@ defmodule Front.BranchPage.Model do
 
   defp timestamp(:beginning, date) do
     IO.puts("Converting beginning date: #{date}")
-    result = Timex.to_datetime(date)
-    IO.puts("Timex.to_datetime result: #{inspect(result)}")
+
+    # Try parsing with explicit format
+    result = Timex.parse(date, "{YYYY}-{0M}-{0D}")
+    IO.puts("Timex.parse result: #{inspect(result)}")
 
     case result do
-      {:error, reason} ->
-        IO.puts("Error converting date: #{inspect(reason)}")
-        nil
-
-      s ->
-        ts = to_google_timestamp(s)
-        IO.puts("Timestamp: #{inspect(ts)}")
+      {:ok, datetime} ->
+        # Convert to DateTime and set to beginning of day
+        dt = datetime |> Timex.to_datetime() |> Timex.beginning_of_day()
+        ts = to_google_timestamp(dt)
+        IO.puts("Beginning timestamp created: #{inspect(ts)}")
         ts
+
+      {:error, reason} ->
+        IO.puts("Error parsing beginning date: #{inspect(reason)}")
+        try_manual_parse(date, :beginning)
     end
   end
 
@@ -191,9 +195,49 @@ defmodule Front.BranchPage.Model do
   defp timestamp(:end, ""), do: nil
 
   defp timestamp(:end, date) do
-    case date |> Timex.to_datetime() do
-      {:error, _} -> nil
-      s -> s |> Timex.end_of_day() |> to_google_timestamp
+    IO.puts("Converting end date: #{date}")
+
+    # Try parsing with explicit format
+    result = Timex.parse(date, "{YYYY}-{0M}-{0D}")
+    IO.puts("Timex.parse result for end date: #{inspect(result)}")
+
+    case result do
+      {:ok, datetime} ->
+        # Convert to DateTime and set to end of day
+        dt = datetime |> Timex.to_datetime() |> Timex.end_of_day()
+        ts = to_google_timestamp(dt)
+        IO.puts("End timestamp created: #{inspect(ts)}")
+        ts
+
+      {:error, reason} ->
+        IO.puts("Error parsing end date: #{inspect(reason)}")
+        try_manual_parse(date, :end)
+    end
+  end
+
+  # Fallback parsing method using basic string operations
+  defp try_manual_parse(date, time_of_day) do
+    IO.puts("Trying manual parse for: #{date}")
+
+    try do
+      [year, month, day] = String.split(date, "-") |> Enum.map(&String.to_integer/1)
+
+      {hour, minute, second} =
+        case time_of_day do
+          :beginning -> {0, 0, 0}
+          :end -> {23, 59, 59}
+        end
+
+      {:ok, naive} = NaiveDateTime.new(year, month, day, hour, minute, second)
+      seconds = naive |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+
+      timestamp = Google.Protobuf.Timestamp.new(seconds: seconds)
+      IO.puts("Manual parse successful: #{inspect(timestamp)}")
+      timestamp
+    rescue
+      e ->
+        IO.puts("Manual parse failed: #{inspect(e)}")
+        nil
     end
   end
 
