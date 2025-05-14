@@ -117,7 +117,9 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "job_type" => req.job_type,
       "pr_branch" => req.git_pull_request_branch,
       "repo_slug" => req.repo_slug,
-      "trg" => req.triggerer
+      "trg" => req.triggerer,
+      "proj" => req.project_name,
+      "org" => req.org_username
     }
 
     claims =

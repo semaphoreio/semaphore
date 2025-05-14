@@ -199,7 +199,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
                    claim_config["is_mandatory"] == claim.is_mandatory &&
                    claim_config["is_aws_tag"] == claim.is_aws_tag &&
                    claim_config["is_system_claim"] == claim.is_system_claim &&
-                   claim_config["is_active"] == true
+                   claim_config["is_active"] == claim.is_active
                end)
       end)
     end

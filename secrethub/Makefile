@@ -4,7 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=secrethub
-TMP_REPO_DIR=/tmp/internal_api
+TMP_REPO_DIR?=/tmp/internal_api
 INTERNAL_API_BRANCH ?= master
 PUBLIC_API_BRANCH ?= master
 PROTOC_TAG=1.12.1-3.17.3-0.7.1
@@ -43,13 +43,13 @@ CONTAINER_ENV_VARS= \
   -e INTERNAL_API_URL_PROJECT=$(INTERNAL_API_URL_PROJECT)
 
 pb.gen.internal:
-	rm -rf $(TMP_REPO_DIR)
-	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+#	rm -rf $(TMP_REPO_DIR)
+#	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 	scripts/vagrant_sudo rm -rf lib/internal_api && mkdir -p lib/internal_api
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(PROTOC_TAG) sh -c /home/protoc/code/scripts/internal_protos.sh
-	scripts/vagrant_sudo chown -R $$(id -u $${USER}):$$(id -g $${USER}) lib/internal_api
-	rm -rf $(TMP_REPO_DIR)
-	$(MAKE) pb.gen.format
+#	scripts/vagrant_sudo chown -R $$(id -u $${USER}):$$(id -g $${USER}) lib/internal_api
+#	rm -rf $(TMP_REPO_DIR)
+#	$(MAKE) pb.gen.format
 
 pb.gen.public:
 	rm -rf $(TMP_REPO_DIR)

@@ -199,6 +199,10 @@ console.bash:
 	docker compose $(DOCKER_COMPOSE_OPTS) build --build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) --build-arg MIX_ENV=$(MIX_ENV) app
 	docker compose $(DOCKER_COMPOSE_OPTS) run $(DOCKER_COMPOSE_RUN_OPTS) --rm app /bin/bash
 
+console.sh:
+	docker compose $(DOCKER_COMPOSE_OPTS) build --build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) --build-arg MIX_ENV=$(MIX_ENV) app
+	docker compose $(DOCKER_COMPOSE_OPTS) run $(DOCKER_COMPOSE_RUN_OPTS) --rm app /bin/sh
+
 #
 # The default test.ex.setup target does nothing.
 # Each application's Makefile should override it as it sees fit.

@@ -809,7 +809,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           workflow_id: Ecto.UUID.generate(),
           pipeline_id: Ecto.UUID.generate(),
           job_id: Ecto.UUID.generate(),
-          job_type: "pipeline_job"
+          job_type: "pipeline_job",
+          project_name: "my-project"
         )
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
@@ -833,6 +834,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+      assert Map.get(jwt.fields, "proj") == req.project_name
+      assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
     end
 
@@ -925,7 +928,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           git_ref_type: "branch",
           job_type: "debug_job",
           repo_slug: "renderedtext/front",
-          triggerer: "h:f-i:f"
+          triggerer: "h:f-i:f",
+          project_name: "front"
         )
 
       with_mock Secrethub, on_prem?: fn -> true end do
@@ -946,6 +950,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
         # Project related claims should be present
         assert Map.get(jwt.fields, "prj_id") == req.project_id
         assert Map.get(jwt.fields, "job_type") == req.job_type
+        refute Map.has_key?(jwt.fields, "proj")
+        refute Map.has_key?(jwt.fields, "org")
 
         # AWS tags should be filtered
         aws_tags = Map.get(jwt.fields, "https://aws.amazon.com/tags")

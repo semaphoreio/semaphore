@@ -4,7 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=zebra
-TMP_REPO_DIR=/tmp/internal_api
+TMP_REPO_DIR?=/tmp/internal_api
 PUBLIC_API_BRANCH ?= master
 INTERNAL_API_BRANCH ?= master
 RT_PROTOC_IMG_VSN=1.6.6-3.3.0-0.5.4
@@ -57,11 +57,11 @@ CONTAINER_ENV_VARS= \
 	-e ZEBRA_CALLBACK_TOKEN_KEYS=$(ZEBRA_CALLBACK_TOKEN_KEYS)
 
 internal.pb.gen:
-	rm -rf $(TMP_REPO_DIR)
-	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
+#	rm -rf $(TMP_REPO_DIR)
+#	git clone git@github.com:renderedtext/internal_api.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(INTERNAL_API_BRANCH) && cd -)
 	scripts/vagrant_sudo rm -rf lib/protos/internal_api && mkdir -p lib/protos/internal_api
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(RT_PROTOC_IMG_VSN) sh -c /home/protoc/code/scripts/internal_protos.sh
-	rm -rf $(TMP_REPO_DIR)
+#	rm -rf $(TMP_REPO_DIR)
 
 public.pb.gen:
 	rm -rf $(TMP_REPO_DIR)
