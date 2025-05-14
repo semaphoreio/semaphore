@@ -14,6 +14,9 @@ export class TokenPagination {
       let token = $(e.target).data("token")
       let container = $(e.target).parents('.pollman-container')[0]
 
+      console.log("CALLBACK")
+      console.log(container)
+      console.log({page_token: token, direction: direction})
       this.callback(container, {page_token: token, direction: direction})
 
       e.preventDefault();
