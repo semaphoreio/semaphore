@@ -14,45 +14,30 @@ export var WorkflowList = {
     let pollmanList = new PollmanList;
 
     let updatePollman = function(container, params) {
+      console.log("PARAMS")
+      console.log(params)
       pollmanList.updateOptionsAndFetch(container, params);
 
       const currentUrl = new URL(window.location.href);
       
-      // Handle all URL parameters consistently
-      if (params.page_token !== undefined) {
-        currentUrl.searchParams.set('page_token', params.page_token);
-      } else {
-        currentUrl.searchParams.delete('page_token');
-      }
+      const queryParams = ['page_token', 'direction', 'date_from', 'date_to'];
       
-      if (params.direction !== undefined) {
-        currentUrl.searchParams.set('direction', params.direction);
-      } else {
-        currentUrl.searchParams.delete('direction');
-      }
+      queryParams.forEach(queryParam => {
+        currentUrl.searchParams.set(queryParam, params[queryParam] || '');
+      });
       
-      if (params.date_from !== undefined) {
-        currentUrl.searchParams.set('date_from', params.date_from);
-      } else {
-        currentUrl.searchParams.delete('date_from');
-      }
-      
-      if (params.date_to !== undefined) {
-        currentUrl.searchParams.set('date_to', params.date_to);
-      } else {
-        currentUrl.searchParams.delete('date_to');
-      }
+      console.log("current url")
+      console.log(currentUrl.toString())
       
       window.history.pushState({}, '', currentUrl.toString());
     }
-
+      
     this.pagination.onUpdate(updatePollman);
-    
-    // Add event listeners for date filter buttons
     this.initDateFilterButtons(pollmanList);
   },
   
   initDateFilterButtons: function(pollmanList) {
+    console.log("TEST")
     const filterBtn = document.getElementById('filter-workflows-btn');
     const clearBtn = document.getElementById('clear-filter-btn');
     
