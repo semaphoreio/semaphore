@@ -63,7 +63,12 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       attrs = %{@valid_attrs | claims: []}
       changeset = JWTConfiguration.changeset(%JWTConfiguration{}, attrs)
       assert changeset.valid?
-      assert get_field(changeset, :claims) == []
+
+      assert Enum.all?(get_field(changeset, :claims), fn claim ->
+               Enum.any?(JWTClaim.standard_claims(), fn {name, _claim} ->
+                 claim["name"] == name
+               end)
+             end)
     end
 
     test "create_or_update_org_config creates new config" do
@@ -82,7 +87,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       assert {:ok, config} = JWTConfiguration.create_or_update_org_config(org_id, claims)
 
       assert config.org_id == org_id
-      assert config.claims == Enum.map(claims, &Map.merge(&1, %{"is_system_claim" => false}))
+      assert Enum.any?(config.claims, fn claim -> claim["name"] == "test_claim" end)
       assert config.is_active == true
     end
 
@@ -105,7 +110,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
 
       assert config.org_id == org_id
       assert config.project_id == project_id
-      assert config.claims == Enum.map(claims, &Map.merge(&1, %{"is_system_claim" => false}))
+      assert Enum.any?(config.claims, fn claim -> claim["name"] == "test_claim" end)
       assert config.is_active == true
     end
 
@@ -132,7 +137,10 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       {:ok, project_config} = JWTConfiguration.get_project_config(org_id, project_id)
 
       assert project_config.org_id == org_id
-      assert project_config.claims == org_config.claims
+
+      assert Enum.all?(project_config.claims, fn proj_claim ->
+               Enum.any?(org_config.claims, fn org_claim -> org_claim == proj_claim end)
+             end)
     end
 
     test "create_or_update_org_config with invalid claims structure" do
@@ -228,12 +236,23 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
 
       {:ok, config} = JWTConfiguration.create_or_update_org_config(org_id, custom_claims)
       assert config.org_id == org_id
-      assert config.claims == custom_claims
+
+      assert Enum.all?(custom_claims, fn custom_claim ->
+               Enum.any?(config.claims, fn stored_claim ->
+                 custom_claim == stored_claim
+               end)
+             end)
+
       assert config.is_active == true
 
       # Verify the configuration is persisted
       {:ok, stored_config} = JWTConfiguration.get_org_config(org_id)
-      assert stored_config.claims == custom_claims
+
+      assert Enum.all?(custom_claims, fn custom_claim ->
+               Enum.any?(stored_config.claims, fn stored_claim ->
+                 custom_claim == stored_claim
+               end)
+             end)
     end
 
     test "update existing org configuration" do
@@ -270,8 +289,14 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       assert updated_config.org_id == initial_config.org_id
       assert updated_config.is_active == initial_config.is_active
       assert updated_config.project_id == initial_config.project_id
-      assert updated_config.claims == updated_claims
-      refute updated_config.claims == initial_claims
+
+      assert Enum.all?(updated_claims, fn claim ->
+               Enum.any?(updated_config.claims, fn c -> c == claim end)
+             end)
+
+      refute Enum.any?(initial_claims, fn claim ->
+               Enum.any?(updated_config.claims, fn c -> c == claim end)
+             end)
     end
 
     test "create_or_update_org_config with invalid org_id" do
@@ -497,7 +522,10 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       assert config.id == org_config.id
       assert config.org_id == org_id
       assert is_nil(config.project_id)
-      assert config.claims == org_claims
+
+      assert Enum.all?(org_claims, fn claim ->
+               Enum.any?(config.claims, fn c -> c == claim end)
+             end)
     end
 
     test "get_project_config when both org and project configs exist" do
@@ -526,7 +554,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
         }
       ]
 
-      {:ok, _org_config} = JWTConfiguration.create_or_update_org_config(org_id, org_claims)
+      {:ok, org_config} = JWTConfiguration.create_or_update_org_config(org_id, org_claims)
 
       {:ok, project_config} =
         JWTConfiguration.create_or_update_project_config(org_id, project_id, project_claims)
@@ -535,8 +563,12 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       assert config.id == project_config.id
       assert config.org_id == org_id
       assert config.project_id == project_id
-      assert config.claims == project_claims
-      refute config.claims == org_claims
+
+      assert Enum.all?(project_claims, fn claim ->
+               Enum.any?(config.claims, fn c -> c == claim end)
+             end)
+
+      refute org_config.claims == config.claims
     end
 
     test "delete_project_config when neither org nor project config exists" do
@@ -891,7 +923,9 @@ defmodule Secrethub.OpenIDConnect.JWTConfigurationTest do
       assert {:ok, config} =
                JWTConfiguration.create_or_update_project_config(org_id, project_id, claims)
 
-      assert config.claims == claims
+      assert Enum.all?(claims, fn claim ->
+               Enum.any?(config.claims, fn stored_claim -> claim == stored_claim end)
+             end)
     end
 
     test "create_or_update_org_config with non-boolean is_active" do

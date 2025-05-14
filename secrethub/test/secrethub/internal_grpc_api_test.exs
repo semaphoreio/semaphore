@@ -1134,17 +1134,19 @@ defmodule Secrethub.InternalGrpcApi.Test do
           project_id: project_id
         )
 
-      {:ok, get_response} = SecretService.Stub.get_jwt_config(channel, get_req)
-      [stored_claim] = get_response.claims
-      refute is_nil(stored_claim), "Expected original valid claim to still be present"
-      assert stored_claim.name == "test_claim"
-      assert stored_claim.description == "Test claim"
-      assert stored_claim.is_active == true
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == false
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      {:ok, response} = SecretService.Stub.get_jwt_config(channel, get_req)
+
+      assert Enum.any?(response.claims, fn claim ->
+               claim == %InternalApi.Secrethub.ClaimConfig{
+                 name: "test_claim",
+                 description: "Test claim",
+                 is_active: true,
+                 # can't update for non system claims
+                 is_mandatory: false,
+                 is_aws_tag: false,
+                 is_system_claim: false
+               }
+             end)
     end
   end
 
@@ -1196,18 +1198,17 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert response.project_id == project_id
       assert response.is_active == true
 
-      [stored_claim] = response.claims
-
-      assert stored_claim.name == expected_claim.name,
-             "Expected claim name to be #{expected_claim.name}, got #{stored_claim.name}"
-
-      assert stored_claim.description == expected_claim.description
-      assert stored_claim.is_active == expected_claim.is_active
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == expected_claim.is_aws_tag
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      assert Enum.any?(response.claims, fn claim ->
+               Map.take(claim, Map.keys(expected_claim)) == %InternalApi.Secrethub.ClaimConfig{
+                 name: expected_claim.name,
+                 description: expected_claim.description,
+                 is_active: expected_claim.is_active,
+                 # can't update for non system claims
+                 is_mandatory: false,
+                 is_aws_tag: false,
+                 is_system_claim: false
+               }
+             end)
     end
 
     test "returns org config for non-existent project", %{org_id: org_id, channel: channel} do
@@ -1245,15 +1246,18 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert response.org_id == org_id
       refute is_nil(response.project_id), "Expected project_id not to be nil"
 
-      [stored_claim] = response.claims
-      assert stored_claim.name == "sub2"
-      assert stored_claim.description == "Subject identifier"
-      assert stored_claim.is_active == true
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == false
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      expected_claim = %{
+        name: "sub2",
+        description: "Subject identifier",
+        is_active: true,
+        is_mandatory: false,
+        is_aws_tag: false,
+        is_system_claim: false
+      }
+
+      assert Enum.any?(response.claims, fn claim ->
+               Map.take(claim, Map.keys(expected_claim)) == expected_claim
+             end)
     end
 
     test ".get_jwt_config returns error for empty org_id" do

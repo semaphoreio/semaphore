@@ -115,7 +115,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
         create_default_org_config(org_id)
 
       config ->
-        {:ok, config}
+        {:ok, populate_missing_standard_claims(config)}
     end
   end
 
@@ -163,7 +163,7 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
 
     case Repo.one(query) do
       nil -> get_org_config(org_id)
-      config -> {:ok, config}
+      config -> {:ok, populate_missing_standard_claims(config)}
     end
   end
 
@@ -229,7 +229,9 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
     updated_claims =
       Enum.map(claims, fn claim -> enforce_default_claim_values(claim, standard_claims) end)
 
-    put_change(changeset, :claims, updated_claims)
+    missing_claims = find_missing_standard_claims(updated_claims)
+
+    put_change(changeset, :claims, updated_claims ++ missing_claims)
   end
 
   defp enforce_default_claim_values(claim = %{"name" => name}, standard_claims)
@@ -292,4 +294,29 @@ defmodule Secrethub.OpenIDConnect.JWTConfiguration do
   end
 
   defp filter_supported_fields(claim), do: claim
+
+  # Populates missing standard claims (from JWTClaim) in the JWTConfig
+  defp populate_missing_standard_claims(config = %{claims: claims}) do
+    missing_claims = find_missing_standard_claims(claims)
+
+    %{config | claims: claims ++ missing_claims}
+  end
+
+  defp find_missing_standard_claims(claims) do
+    standard_claims = Secrethub.OpenIDConnect.JWTClaim.standard_claims()
+    present_claim_names = MapSet.new(Enum.map(claims, & &1["name"]))
+
+    standard_claims
+    |> Enum.reject(fn {name, _claim} -> name in present_claim_names end)
+    |> Enum.map(fn {_name, claim} ->
+      %{
+        "name" => claim.name,
+        "description" => claim.description,
+        "is_system_claim" => claim.is_system_claim,
+        "is_aws_tag" => claim.is_aws_tag,
+        "is_mandatory" => claim.is_mandatory,
+        "is_active" => claim.is_active
+      }
+    end)
+  end
 end
