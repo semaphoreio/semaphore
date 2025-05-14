@@ -41,10 +41,10 @@ export var WorkflowList = {
   initFilterButtons: function(updatePollman, pollmanList) {
     const filterBtn = document.getElementById('filter-workflows-btn');
     const clearBtn = document.getElementById('clear-filter-btn');
-    const container = document.querySelector('.pollman-container');
     
     if (filterBtn) {
       filterBtn.addEventListener('click', () => {
+        const container = document.querySelector('.pollman-container');
         pollmanList.clearAllOptions(container)
         const dateFrom = document.getElementById('date_from')?.value;
         const dateTo = document.getElementById('date_to')?.value;
@@ -65,6 +65,7 @@ export var WorkflowList = {
     
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
+        const container = document.querySelector('.pollman-container');
         pollmanList.clearAllOptions(container)
         const dateFrom = document.getElementById('date_from');
         const dateTo = document.getElementById('date_to');

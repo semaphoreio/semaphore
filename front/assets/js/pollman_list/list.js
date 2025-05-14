@@ -14,8 +14,6 @@ export class PollmanList {
         container.removeAttribute(attribute.name);
       }
     });
-    
-    Pollman.fetchAndReplace(container);
 
     Pollman.start();
   }
@@ -24,7 +22,6 @@ export class PollmanList {
     Pollman.stop();
 
     for(var key in options) {
-      console.log("Updating param", key, options[key])
       container.setAttribute("data-poll-param-" + key, options[key]);
     }
 
