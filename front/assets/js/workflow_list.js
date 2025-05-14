@@ -17,6 +17,8 @@ export var WorkflowList = {
     let pollmanList = new PollmanList;
 
     let updatePollman = function(container, params) {
+      console.log("Updating pollman")
+      console.log(params)
       const queryParams = ['page_token', 'direction', 'date_from', 'date_to'];
       pollmanList.updateOptionsAndFetch(container, params);
 
@@ -25,6 +27,8 @@ export var WorkflowList = {
       queryParams.forEach(queryParam => {
         currentUrl.searchParams.set(queryParam, params[queryParam] || '');
       });
+
+      console.log(currentUrl.toString())
       
       window.history.pushState({}, '', currentUrl.toString());
     }
