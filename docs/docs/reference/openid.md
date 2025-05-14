@@ -2,7 +2,7 @@
 description: OpenID Connect (OIDC) token reference
 ---
 
-# OIDC Tokens 
+# OIDC Tokens
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -23,9 +23,9 @@ Sure, here is the reordered list presented in a table with three columns: Claim,
 
 | Claim       | Description                                               | Example                              |
 |-------------|-----------------------------------------------------------|--------------------------------------|
-| iss         | The issuer of the token. The full URL of the organization | `https://<org-url>.semaphoreci.com` |
-| aud         | The intended audience of the token. The full URL of the organization | `https://<org-url>.semaphoreci.com` |
-| sub         | The subject of the token. A combination of org, project, repository, and git reference for which this token was issued<br/>Template:<br/> `org:<org-url>:`<br/>`project:{project-id}:`<br/>`repo:{repo-name}:`<br/>`ref_type:{branch or pr or tag}:`<br/>`ref:{git_reference}` | `org:{org-name}:`<br/>`project:936a5312-a3b8-4921-8b3f-2cec8baac574:`<br/>`repo:web:`<br/>`ref_type:branch:`<br/>`ref:refs/heads/main` |
+| iss         | The issuer of the token. The full URL of the organization | `https://<org-name>.semaphoreci.com` |
+| aud         | The intended audience of the token. The full URL of the organization | `https://<org-name>.semaphoreci.com` |
+| sub         | The subject of the token. A combination of org, project, repository, and git reference for which this token was issued<br/>Template:<br/> `org:<org-name>:`<br/>`project:{project-id}:`<br/>`repo:{repo-name}:`<br/>`ref_type:{branch or pr or tag}:`<br/>`ref:{git_reference}` | `org:{org-name}:`<br/>`project:936a5312-a3b8-4921-8b3f-2cec8baac574:`<br/>`repo:web:`<br/>`ref_type:branch:`<br/>`ref:refs/heads/main` |
 | exp         | The UNIX timestamp when the token expires  | `1660317851` |
 | iat         | The UNIX timestamp when the token was issued | `1660317851` |
 | nbf         | The UNIX timestamp before which the token is not valid | `1660317851` |
@@ -38,7 +38,9 @@ Sure, here is the reordered list presented in a table with three columns: Claim,
 | tag         | The name of the git tag for which the token was issued    | `v1.0.0`   |
 | repo        | The name of the repository for which the token was issued | `web` |
 | repo_slug   | Specifies the repository's name in the format `owner_name/repository_name` for the current Semaphore project. It is associated with the environment variable `SEMAPHORE_GIT_REPO_SLUG` | `semaphoreci/docs`  |
-| org_id      | The organization ID of the owner of the project for which the token was issued | `d7dd33ad-9317-498c-9cc6-51c250749be7` |
+| org         | The organization name for which the token was issued | `semaphore` |
+| org_id      | The organization ID for which the token was issued | `d7dd33ad-9317-498c-9cc6-51c250749be7` |
+| prj         | The project name for which the token was issued | `docs` |
 | prj_id      | The project ID for which the token was issued | `1e1fcfb5-09c0-487e-b051-2d0b5514c42a` |
 | wf_id       | The ID of the workflow for which the token was issued | `1be81412-6ab8-4fc0-9d0d-7af33335a6ec` |
 | ppl_id      | The pipeline ID for which the token was issued | `1e1fcfb5-09c0-487e-b051-2d0b5514c42a` |
