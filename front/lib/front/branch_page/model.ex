@@ -136,6 +136,8 @@ defmodule Front.BranchPage.Model do
   end
 
   defp list_workflows(params) do
+    IO.puts("LIST_WORKFLOW PARAMS: #{inspect(params)}")
+
     api_params = [
       page_size: 10,
       page_token: params.page_token,
@@ -154,6 +156,8 @@ defmodule Front.BranchPage.Model do
         do: Keyword.put(api_params, :created_before, timestamp(:end, params.date_to)),
         else: api_params
 
+    IO.puts("LIST_WORKFLOWS: #{inspect(api_params)}")
+
     {wfs, next_page_token, previous_page_token} =
       api_params
       |> Models.Workflow.list_keyset()
@@ -167,9 +171,19 @@ defmodule Front.BranchPage.Model do
   defp timestamp(:beginning, ""), do: nil
 
   defp timestamp(:beginning, date) do
-    case date |> Timex.to_datetime() do
-      {:error, _} -> nil
-      s -> s |> to_google_timestamp
+    IO.puts("Converting beginning date: #{date}")
+    result = Timex.to_datetime(date)
+    IO.puts("Timex.to_datetime result: #{inspect(result)}")
+
+    case result do
+      {:error, reason} ->
+        IO.puts("Error converting date: #{inspect(reason)}")
+        nil
+
+      s ->
+        ts = to_google_timestamp(s)
+        IO.puts("Timestamp: #{inspect(ts)}")
+        ts
     end
   end
 
