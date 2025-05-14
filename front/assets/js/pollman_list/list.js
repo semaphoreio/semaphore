@@ -16,10 +16,8 @@ export class PollmanList {
       container.setAttribute("data-poll-param-" + key, options[key]);
     }
 
-    console.log(Pollman.requestUrl(container))
+    Pollman.fetchAndReplace(container);
 
-    // Pollman.fetchAndReplace(container);
-
-    // Pollman.start();
+    Pollman.start();
   }
 }
