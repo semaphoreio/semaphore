@@ -230,11 +230,17 @@ export var Pollman = {
   },
 
   requestUrl: function (node) {
+    console.log("INSIDE")
     var queryParams = new URLSearchParams();
 
     Array.from(node.attributes).forEach(function (attribute) {
+      console.log("OUTER ATTRIBUTE")
+      console.log(attribute)
       if (attribute.name.startsWith("data-poll-param-")) {
+        console.log("INNER ATTRIBUTE")
+        console.log(attribute)
         var name = attribute.name.substring("data-poll-param-".length);
+        console.log(name)
         queryParams.append(name, attribute.value);
       }
     });
