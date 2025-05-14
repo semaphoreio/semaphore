@@ -33,11 +33,11 @@ export var WorkflowList = {
     }
       
     this.pagination.onUpdate(updatePollman);
-    this.initDateFilterButtons(updatePollman);
+    this.initFilterButtons(updatePollman);
+    this.initializeDateFilterValues();
   },
   
-  initDateFilterButtons: function(updatePollman) {
-    console.log("TEST")
+  initFilterButtons: function(updatePollman) {
     const filterBtn = document.getElementById('filter-workflows-btn');
     const clearBtn = document.getElementById('clear-filter-btn');
     
@@ -47,75 +47,34 @@ export var WorkflowList = {
         const dateFrom = document.getElementById('date_from')?.value;
         const dateTo = document.getElementById('date_to')?.value;
         
-        // Build params object with pagination and date filters
         const params = {};
-        
-        // Get pagination params if they exist
-        const pageToken = container.getAttribute('data-poll-param-page_token');
-        const direction = container.getAttribute('data-poll-param-direction');
-        
-        if (pageToken) {
-          params.page_token = pageToken;
-        }
-        
-        if (direction) {
-          params.direction = direction;
-        }
-        
-        // Add date filter params if they exist
+               
         if (dateFrom) {
           params.date_from = dateFrom;
-          container.setAttribute('data-poll-param-date_from', dateFrom);
-        } else {
-          container.removeAttribute('data-poll-param-date_from');
         }
         
         if (dateTo) {
           params.date_to = dateTo;
-          container.setAttribute('data-poll-param-date_to', dateTo);
-        } else {
-          container.removeAttribute('data-poll-param-date_to');
         }
         
-        // Manually trigger the update with all params
         updatePollman(container, params)
       });
     }
     
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        // Clear date inputs
         const dateFrom = document.getElementById('date_from');
         const dateTo = document.getElementById('date_to');
         
         if (dateFrom) dateFrom.value = '';
         if (dateTo) dateTo.value = '';
         
-        // Clear date params from pollman container
-        const container = document.querySelector('.pollman-container');
-        container.removeAttribute('data-poll-param-date_from');
-        container.removeAttribute('data-poll-param-date_to');
-        
-        // Trigger update with pagination params only
-        const params = {};
-        
-        // Get pagination params if they exist
-        const pageToken = container.getAttribute('data-poll-param-page_token');
-        const direction = container.getAttribute('data-poll-param-direction');
-        
-        if (pageToken) {
-          params.page_token = pageToken;
-        }
-        
-        if (direction) {
-          params.direction = direction;
-        }
-        
-        updatePollman(container, params);
+        updatePollman(container, {});
       });
     }
-    
-    // Initialize date inputs from URL params if they exist
+  },
+
+  initializeDateFilterValues: function() {
     const urlParams = new URLSearchParams(window.location.search);
     const dateFrom = urlParams.get('date_from');
     const dateTo = urlParams.get('date_to');
