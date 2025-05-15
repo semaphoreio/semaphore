@@ -35,6 +35,8 @@ defmodule Front.BranchPage.Model do
       field(:organization_id, String.t())
       field(:page_token, String.t())
       field(:direction, String.t())
+      field(:date_from, String.t())
+      field(:date_to, String.t())
     end
   end
 
@@ -136,14 +138,30 @@ defmodule Front.BranchPage.Model do
   end
 
   defp list_workflows(params) do
+    IO.puts("LIST_WORKFLOW PARAMS: #{inspect(params)}")
+
+    api_params = [
+      page_size: 10,
+      page_token: params.page_token,
+      project_id: params.project_id,
+      branch_name: params.branch_name,
+      direction: map_workflow_direction(params.direction)
+    ]
+
+    api_params =
+      if params.date_from,
+        do: Keyword.put(api_params, :created_after, timestamp(:beginning, params.date_from)),
+        else: api_params
+
+    api_params =
+      if params.date_to,
+        do: Keyword.put(api_params, :created_before, timestamp(:end, params.date_to)),
+        else: api_params
+
+    IO.puts("LIST_WORKFLOWS: #{inspect(api_params)}")
+
     {wfs, next_page_token, previous_page_token} =
-      [
-        page_size: 10,
-        page_token: params.page_token,
-        project_id: params.project_id,
-        branch_name: params.branch_name,
-        direction: map_workflow_direction(params.direction)
-      ]
+      api_params
       |> Models.Workflow.list_keyset()
 
     workflows = Front.Decorators.Workflow.decorate_many(wfs)
@@ -151,9 +169,38 @@ defmodule Front.BranchPage.Model do
     {workflows, next_page_token, previous_page_token}
   end
 
+  defp timestamp(_, timestamp) when timestamp in [nil, ""], do: nil
+  defp timestamp(direction, _) when direction not in [:beginning, :end], do: nil
+
+  @date_format "{YYYY}-{0M}-{0D}"
+  defp timestamp(direction, date) do
+    rounding_func =
+      case direction do
+        :beginning -> &Timex.beginning_of_day/1
+        :end -> &Timex.end_of_day/1
+      end
+
+    case Timex.parse(date, @date_format) do
+      {:ok, datetime} ->
+        datetime |> Timex.to_datetime() |> rounding_func.() |> to_google_timestamp()
+
+      {:error, reason} ->
+        Logger.error("Error parsing date: #{inspect(reason)}")
+        nil
+    end
+  end
+
+  defp to_google_timestamp(date) do
+    case Timex.to_unix(date) do
+      {:error, _} -> nil
+      s -> Google.Protobuf.Timestamp.new(seconds: s)
+    end
+  end
+
   defp map_workflow_direction("next"), do: Direction.value(:NEXT)
   defp map_workflow_direction("previous"), do: Direction.value(:PREVIOUS)
   defp map_workflow_direction(_), do: map_workflow_direction("next")
 
-  defp first_page?(params), do: params.page_token == ""
+  defp first_page?(params),
+    do: params.page_token == "" && params.date_from == "" && params.date_to == ""
 end
