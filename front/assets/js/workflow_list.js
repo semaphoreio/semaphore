@@ -1,7 +1,6 @@
-import $ from "jquery";
-
 import { TokenPagination } from "./pollman_list/token_pagination"
 import { PollmanList } from "./pollman_list/list"
+import toggleSpinner from "./people/spinner"
 
 export var WorkflowList = {
   initiated: false,
@@ -17,8 +16,7 @@ export var WorkflowList = {
     let pollmanList = new PollmanList;
 
     let updatePollman = function(container, params) {
-      console.log("Updating pollman")
-      console.log(params)
+      toggleSpinner()
       const queryParams = ['page_token', 'direction', 'date_from', 'date_to'];
       pollmanList.updateOptionsAndFetch(container, params);
 
@@ -28,9 +26,8 @@ export var WorkflowList = {
         currentUrl.searchParams.set(queryParam, params[queryParam] || '');
       });
 
-      console.log(currentUrl.toString())
-      
       window.history.pushState({}, '', currentUrl.toString());
+      toggleSpinner()
     }
       
     this.pagination.onUpdate(updatePollman);
