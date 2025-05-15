@@ -7,8 +7,6 @@ defmodule RepositoryHub.BitbucketClient do
   alias RepositoryHub.Toolkit
   import Toolkit
 
-  @status_title "SemaphoreCI Pipeline"
-
   @type request_options :: [token: String.t()]
   @type http_response :: {:ok, HTTPoison.Response.t() | HTTPoison.AsyncResponse.t()} | {:error, HTTPoison.Error.t()}
 
@@ -25,7 +23,7 @@ defmodule RepositoryHub.BitbucketClient do
       "state" => params.status,
       "url" => params.url,
       "description" => params.description,
-      "name" => @status_title
+      "name" => params.context
     })
     |> process_response
   end
