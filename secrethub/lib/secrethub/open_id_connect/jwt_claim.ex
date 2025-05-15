@@ -242,6 +242,22 @@ defmodule Secrethub.OpenIDConnect.JWTClaim do
         is_mandatory: false,
         is_active: true
       },
+      "org" => %__MODULE__{
+        name: "org",
+        description: "Organization name",
+        is_system_claim: true,
+        is_aws_tag: false,
+        is_mandatory: false,
+        is_active: false
+      },
+      "prj" => %__MODULE__{
+        name: "prj",
+        description: "Project name associated with the workflow",
+        is_system_claim: true,
+        is_aws_tag: false,
+        is_mandatory: false,
+        is_active: false
+      },
       "https://aws.amazon.com/tags" => %__MODULE__{
         name: "https://aws.amazon.com/tags",
         description:
