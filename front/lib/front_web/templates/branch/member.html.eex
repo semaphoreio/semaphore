@@ -34,7 +34,7 @@
     <div>
       Most recent activity on this <%= branch_type_name(@branch.type) |> String.downcase() %>
     </div>
-    <%= render FrontWeb.BranchView, "_date_filter.html" %>
+    <%= render FrontWeb.BranchView, "_filters.html" %>
   </div>
   <div id="workflow-lists">
     <%= render FrontWeb.BranchView, "_workflows.html", project: @project, workflows: @workflows, branch: @branch, conn: @conn, page: :branch, pagination: @pagination, pollman: @pollman, conflict_info: @conflict_info %>

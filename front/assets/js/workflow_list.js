@@ -1,12 +1,12 @@
 import { TokenPagination } from "./pollman_list/token_pagination"
 import { PollmanList } from "./pollman_list/list"
-import toggleSpinner from "./people/spinner"
 
 export var WorkflowList = {
   initiated: false,
   pagination: null,
   pollmanList: null,
   container: null,
+  queryParams: ['page_token', 'direction', 'date_from', 'date_to'],
 
   init: function() {
     if(this.initiated === true) { return; }
@@ -16,18 +16,32 @@ export var WorkflowList = {
     let pollmanList = new PollmanList;
 
     let updatePollman = function(container, params) {
-      toggleSpinner()
-      const queryParams = ['page_token', 'direction', 'date_from', 'date_to'];
-      pollmanList.updateOptionsAndFetch(container, params);
-
       const currentUrl = new URL(window.location.href);
+      const mergedParams = {};
       
-      queryParams.forEach(queryParam => {
-        currentUrl.searchParams.set(queryParam, params[queryParam] || '');
+      WorkflowList.queryParams.forEach(queryParam => {
+        const currentValue = currentUrl.searchParams.get(queryParam);
+        if (currentValue) {
+          mergedParams[queryParam] = currentValue;
+        }
+      });
+      
+      Object.keys(params).forEach(key => {
+        mergedParams[key] = params[key];
+      });
+      
+      pollmanList.updateOptionsAndFetch(container, mergedParams);
+      
+      WorkflowList.queryParams.forEach(queryParam => {
+        const paramValue = mergedParams[queryParam];
+        if (paramValue && paramValue !== '') {
+          currentUrl.searchParams.set(queryParam, paramValue);
+        } else {
+          currentUrl.searchParams.delete(queryParam);
+        }
       });
 
       window.history.pushState({}, '', currentUrl.toString());
-      toggleSpinner()
     }
       
     this.pagination.onUpdate(updatePollman);
@@ -41,36 +55,44 @@ export var WorkflowList = {
     
     if (filterBtn) {
       filterBtn.addEventListener('click', () => {
-        const container = document.querySelector('.pollman-container');
-        pollmanList.clearAllOptions(container)
         const dateFrom = document.getElementById('date_from')?.value;
         const dateTo = document.getElementById('date_to')?.value;
         
-        const params = {};
-               
-        if (dateFrom) {
-          params.date_from = dateFrom;
+        if (dateFrom && dateTo) {
+          const fromDate = new Date(dateFrom);
+          const toDate = new Date(dateTo);
+          
+          if (fromDate > toDate) {
+            alert('Start date must be before end date');
+            return;
+          }
         }
         
-        if (dateTo) {
-          params.date_to = dateTo;
-        }
+        let params = {'page_token': '', 'direction': ''};
+        params.date_from = dateFrom;
+        params.date_to = dateTo;
         
-        updatePollman(container, params)
+        const container = document.querySelector('.pollman-container');
+        updatePollman(container, params);
       });
     }
     
     if (clearBtn) {
       clearBtn.addEventListener('click', () => {
-        const container = document.querySelector('.pollman-container');
-        pollmanList.clearAllOptions(container)
         const dateFrom = document.getElementById('date_from');
         const dateTo = document.getElementById('date_to');
         
         if (dateFrom) dateFrom.value = '';
         if (dateTo) dateTo.value = '';
+
+        const container = document.querySelector('.pollman-container');
         
-        updatePollman(container, {});
+        const emptyParams = {};
+        WorkflowList.queryParams.forEach(param => {
+          emptyParams[param] = '';
+        });
+
+        updatePollman(container, emptyParams);
       });
     }
   },

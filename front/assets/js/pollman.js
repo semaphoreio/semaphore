@@ -175,7 +175,6 @@ export var Pollman = {
     this.startForUrl(url);
     fetch(url, { credentials: "same-origin" })
       .then(function (response) {
-        console.log("Response", response)
         if (response.status >= 200 && response.status < 300) {
           return response.text();
         } else {
@@ -184,7 +183,6 @@ export var Pollman = {
       })
       .then((body) => {
         if (Pollman.remembers(newFetch)) {
-          console.log("Updating html")
           this.withScrollSaved(document, () => {
             $(node).replaceWith(body);
           });
@@ -241,7 +239,6 @@ export var Pollman = {
       }
     });
 
-    console.log("RequestingUrl", `${node.getAttribute("data-poll-href")}?${queryParams}`)
     return `${node.getAttribute("data-poll-href")}?${queryParams}`;
   },
 };
