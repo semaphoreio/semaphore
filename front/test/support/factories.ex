@@ -3130,6 +3130,14 @@ defmodule Support.Factories do
           ]
         )
 
+      :SCHEDULED_RUN_WITH_PROMOTION ->
+        pipeline(
+          triggerer: [
+            wf_triggered_by: WfTriggeredBy.value(:SCHEDULE),
+            ppl_triggered_by: PplTriggeredBy.value(:PROMOTION)
+          ]
+        )
+
       :SCHEDULED_MANUAL_RUN ->
         pipeline(
           triggerer: [
