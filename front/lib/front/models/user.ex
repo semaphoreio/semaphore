@@ -318,7 +318,7 @@ defmodule Front.Models.User do
 
       req = InternalApi.User.CheckGithubTokenRequest.new(user_id: user_id)
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :user_grpc_endpoint))
+      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 
       case Stub.check_github_token(channel, req, metadata: metadata, timeout: 30_000) do
         {:ok, res} ->
@@ -473,18 +473,6 @@ defmodule Front.Models.User do
     end
   end
 
-  def build_user_channel(opts \\ []) do
-    organization_id = Keyword.get(opts, :organization_id, "") || ""
-
-    cond do
-      organization_id == "" ->
-        GRPC.Stub.connect(Application.fetch_env!(:front, :user_grpc_endpoint))
-
-      FeatureProvider.feature_enabled?(:use_new_user_api, param: organization_id) ->
-        GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
-
-      true ->
-        GRPC.Stub.connect(Application.fetch_env!(:front, :user_grpc_endpoint))
-    end
-  end
+  def build_user_channel(opts \\ []),
+    do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 end
