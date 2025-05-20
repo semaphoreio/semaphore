@@ -28,13 +28,9 @@ For example, you can use them to show information about your build.
 
 ![Build info report](./img/build-info.jpg)
 
-Visually show how long each command in your job takes
+Visually show how long each command in your job takes 
 
 ![Gantt commands](./img/timeline.jpg)
-
-Obtain resource utilization metrics.
-
-![Utilization metrics](./img/resource-metrics.jpg)
 
 You can even use images in your reports.
 
@@ -69,6 +65,7 @@ To view workflow reports, open the workflow and select the **Report** tab.
 To view a job report, open the workflow, then go to the job you're interested in and select the **Report** tab.
 
 ![Job reports tab location](./img/job-report.jpg)
+
 
 :::info
 
@@ -122,7 +119,7 @@ The report tab should show a report similar to this:
 
 ### Command timeline {#command-metrics}
 
-The [test results CLI](../../reference/toolbox#test-results) can generate a timeline chart showing the execution time for each command in the job.
+The [test results CLI](../../reference/toolbox#test-results) can generate a timeline chart showing the execution time for each command in the job. 
 
 The `test-results command-metrics` command generates a Mermaid diagram that shows the command timeline using a [Gantt chart](https://mermaid.js.org/syntax/gantt.html).
 
@@ -136,21 +133,6 @@ artifact push job -d .semaphore/REPORT.md timeline.md
 Produces the timeline report for that job. The command appends the report to the end of the file (if it exists). This report is useful for understanding how long each command takes to run.
 
 ![Gantt commands](./img/timeline.jpg)
-
-### Resource metrics {#resource-metrics}
-
-The [test results CLI](../../reference/toolbox#test-results) generates a Mermaid diagram that shows the [agent's](../jobs) a computer resources report.
-
-For example, appending the following lines to the end of your job commands:
-
-```shell
-test-results resource-metrics resources.md
-artifact push job -d .semaphore/REPORT.md resources.md
-```
-
-Produces the computer resource report with averages and utilization graphics. The command appends the report to the end of the file (if it exists). This report is useful for understanding how many resources the job is using while running.
-
-![Resource metrics graph](./img/resource-metrics.jpg)
 
 ### Adding images {#images}
 
@@ -320,3 +302,5 @@ The end result if a coverage report that looks like this:
 
 - [Test reports](./test-reports)
 - [Test results CLI](../../reference/toolbox#test-results)
+
+

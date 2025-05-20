@@ -1,6 +1,6 @@
 ---
 description: View all your tests in one place
-sidebar_position: 1
+sidebar_position: 2
 ---
 
 # Tests Reports
