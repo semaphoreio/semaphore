@@ -111,10 +111,14 @@ deploy:
         valuesFiles:
           - helm-chart/values.yaml
         setValues:
-          global.domain.name: "semaphoredev"
-          global.domain.ip: "192.168.49.2"
+          global.domain.name: "semaphore.localhost"
+          global.domain.ip: "192.168.49.2" # minikube ip
+          global.rootUser.email: "dev@example.com"
+          global.organization.name: "semaphore"
           ingress.className: "nginx"
           ingress.ssl.type: "custom"
+          ingress.ssl.crt: "" # use mkcert '*.semaphore.localhost' and later cat _wildcard.semaphore.localhost.pem | base64 -w 0
+          ingress.ssl.key: "" # cat _wildcard.semaphore.localhost-key.pem | base64 -w 0
         version: 0.1.0
     flags:
       upgrade: ["--timeout", "120m"]
