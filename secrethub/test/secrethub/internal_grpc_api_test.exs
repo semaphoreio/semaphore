@@ -809,7 +809,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           workflow_id: Ecto.UUID.generate(),
           pipeline_id: Ecto.UUID.generate(),
           job_id: Ecto.UUID.generate(),
-          job_type: "pipeline_job"
+          job_type: "pipeline_job",
+          project_name: "my-project"
         )
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
@@ -826,6 +827,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert_in_delta Map.get(jwt.fields, "exp") + req.expires_in, now, 5
 
       assert Map.get(jwt.fields, "prj_id") == req.project_id
+      assert Map.get(jwt.fields, "org_id") == org_id
       assert Map.get(jwt.fields, "wf_id") == req.workflow_id
       assert Map.get(jwt.fields, "ppl_id") == req.pipeline_id
       assert Map.get(jwt.fields, "job_id") == req.job_id
@@ -833,6 +835,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+      assert Map.get(jwt.fields, "prj") == req.project_name
+      assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
     end
 
@@ -925,7 +929,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           git_ref_type: "branch",
           job_type: "debug_job",
           repo_slug: "renderedtext/front",
-          triggerer: "h:f-i:f"
+          triggerer: "h:f-i:f",
+          project_name: "front"
         )
 
       with_mock Secrethub, on_prem?: fn -> true end do
@@ -946,6 +951,9 @@ defmodule Secrethub.InternalGrpcApi.Test do
         # Project related claims should be present
         assert Map.get(jwt.fields, "prj_id") == req.project_id
         assert Map.get(jwt.fields, "job_type") == req.job_type
+        assert Map.get(jwt.fields, "org_id") == org_id
+        refute Map.has_key?(jwt.fields, "prj")
+        refute Map.has_key?(jwt.fields, "org")
 
         # AWS tags should be filtered
         aws_tags = Map.get(jwt.fields, "https://aws.amazon.com/tags")
@@ -1128,17 +1136,19 @@ defmodule Secrethub.InternalGrpcApi.Test do
           project_id: project_id
         )
 
-      {:ok, get_response} = SecretService.Stub.get_jwt_config(channel, get_req)
-      [stored_claim] = get_response.claims
-      refute is_nil(stored_claim), "Expected original valid claim to still be present"
-      assert stored_claim.name == "test_claim"
-      assert stored_claim.description == "Test claim"
-      assert stored_claim.is_active == true
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == false
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      {:ok, response} = SecretService.Stub.get_jwt_config(channel, get_req)
+
+      assert Enum.any?(response.claims, fn claim ->
+               claim == %InternalApi.Secrethub.ClaimConfig{
+                 name: "test_claim",
+                 description: "Test claim",
+                 is_active: true,
+                 # can't update for non system claims
+                 is_mandatory: false,
+                 is_aws_tag: false,
+                 is_system_claim: false
+               }
+             end)
     end
   end
 
@@ -1190,18 +1200,17 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert response.project_id == project_id
       assert response.is_active == true
 
-      [stored_claim] = response.claims
-
-      assert stored_claim.name == expected_claim.name,
-             "Expected claim name to be #{expected_claim.name}, got #{stored_claim.name}"
-
-      assert stored_claim.description == expected_claim.description
-      assert stored_claim.is_active == expected_claim.is_active
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == expected_claim.is_aws_tag
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      assert Enum.any?(response.claims, fn claim ->
+               Map.take(claim, Map.keys(expected_claim)) == %InternalApi.Secrethub.ClaimConfig{
+                 name: expected_claim.name,
+                 description: expected_claim.description,
+                 is_active: expected_claim.is_active,
+                 # can't update for non system claims
+                 is_mandatory: false,
+                 is_aws_tag: false,
+                 is_system_claim: false
+               }
+             end)
     end
 
     test "returns org config for non-existent project", %{org_id: org_id, channel: channel} do
@@ -1239,15 +1248,18 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert response.org_id == org_id
       refute is_nil(response.project_id), "Expected project_id not to be nil"
 
-      [stored_claim] = response.claims
-      assert stored_claim.name == "sub2"
-      assert stored_claim.description == "Subject identifier"
-      assert stored_claim.is_active == true
-      # can't update for non system claims
-      assert stored_claim.is_mandatory == false
-      assert stored_claim.is_aws_tag == false
-      # can't update for non system claims
-      assert stored_claim.is_system_claim == false
+      expected_claim = %{
+        name: "sub2",
+        description: "Subject identifier",
+        is_active: true,
+        is_mandatory: false,
+        is_aws_tag: false,
+        is_system_claim: false
+      }
+
+      assert Enum.any?(response.claims, fn claim ->
+               Map.take(claim, Map.keys(expected_claim)) == expected_claim
+             end)
     end
 
     test ".get_jwt_config returns error for empty org_id" do

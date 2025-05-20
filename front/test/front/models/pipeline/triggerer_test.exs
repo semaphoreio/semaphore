@@ -35,6 +35,15 @@ defmodule Front.Models.Pipeline.TriggererTest do
       assert {:task, _} = triggerer.triggered_by
       assert :none == triggerer.owner
     end
+
+    test "constructs proper triggerer for promotions" do
+      pipeline = Factories.pipeline_with_trigger(:SCHEDULED_RUN_WITH_PROMOTION)
+      triggerer = Triggerer.construct(pipeline)
+
+      assert :MANUAL_PROMOTION == triggerer.trigger_type
+      assert :none = triggerer.triggered_by
+      assert {:user, _} = triggerer.owner
+    end
   end
 
   describe "#construct for scheduled manual run" do

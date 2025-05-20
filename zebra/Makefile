@@ -4,7 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=zebra
-TMP_REPO_DIR=/tmp/internal_api
+TMP_REPO_DIR?=/tmp/internal_api
 PUBLIC_API_BRANCH ?= master
 INTERNAL_API_BRANCH ?= master
 RT_PROTOC_IMG_VSN=1.6.6-3.3.0-0.5.4

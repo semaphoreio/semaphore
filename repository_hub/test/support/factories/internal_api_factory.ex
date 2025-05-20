@@ -33,6 +33,7 @@ defmodule RepositoryHub.InternalApiFactory do
     RegenerateDeployKeyRequest,
     CheckWebhookRequest,
     RegenerateWebhookRequest,
+    RegenerateWebhookSecretRequest,
     VerifyWebhookSignatureRequest,
     VerifyWebhookSignatureResponse,
     UpdateRequest
@@ -323,6 +324,14 @@ defmodule RepositoryHub.InternalApiFactory do
       |> with_defaults(valid: true)
 
     struct(VerifyWebhookSignatureResponse, params)
+  end
+
+  def regenerate_webhook_secret_request(params \\ []) do
+    params =
+      params
+      |> with_defaults(repository_id: Ecto.UUID.generate())
+
+    struct(RegenerateWebhookSecretRequest, params)
   end
 
   def revision(params \\ []) do

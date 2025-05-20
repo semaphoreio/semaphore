@@ -17,7 +17,7 @@ defimpl RepositoryHub.Server.DescribeRemoteRepositoryAction, for: RepositoryHub.
 
   @impl true
   def execute(adapter, request) do
-    with {:ok, git_repository} <- Model.GitRepository.new(request.url),
+    with {:ok, git_repository} <- Model.GitRepository.from_github(request.url),
          {:ok, github_token} <- GithubAdapter.token(adapter, request.user_id, git_repository),
          {:ok, github_repository} <- get_github_repository(adapter, git_repository, github_token),
          {:ok, remote_repository} <- build_remote_repository(github_repository, git_repository) do
