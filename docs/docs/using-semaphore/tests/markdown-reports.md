@@ -36,7 +36,7 @@ Obtain resource utilization metrics.
 
 ![Utilization metrics](./img/resource-metrics.jpg)
 
-You can even use images in your reports.
+You can even use images in your reports. The following PNG image has been generated with [dependency cruiser](https://github.com/sverweij/dependency-cruiser).
 
 ![Embedded Image](./img/markdown-reports-dependencies-example.jpg)
 
@@ -178,6 +178,7 @@ To use images in your report, you have two options:
     echo '![Alt Text](data:image/png;base64,'$(base64 -i image.png -w 0)')' >> image.md
     artifact push job -d .semaphore/REPORT.md image.md 
     ```
+
 
 ### Coverage report for Go {#coverage}
 

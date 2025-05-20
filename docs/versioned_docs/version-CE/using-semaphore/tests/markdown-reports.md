@@ -32,7 +32,7 @@ Visually show how long each command in your job takes
 
 ![Gantt commands](./img/timeline.jpg)
 
-You can even use images in your reports.
+You can even use images in your reports. The following PNG image has been generated with [dependency cruiser](https://github.com/sverweij/dependency-cruiser).
 
 ![Embedded Image](./img/markdown-reports-dependencies-example.jpg)
 
