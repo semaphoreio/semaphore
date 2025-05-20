@@ -19,20 +19,25 @@ export var WorkflowList = {
       const currentUrl = new URL(window.location.href);
       currentUrl.searchParams.set('page_token', params.page_token);
       currentUrl.searchParams.set('direction', params.direction);
-      window.history.pushState({}, '', currentUrl.toString());
+      window.history.pushState({
+        page_token: params.page_token,
+        direction: params.direction
+      }, '', currentUrl.toString());
     }
 
-    window.addEventListener('popstate', function() {
+    window.addEventListener('popstate', function(event) {
       console.log("EXECUTING POPSTATE")
-      const currentUrl = new URL(window.location.href);
-      const pageToken = currentUrl.searchParams.get('page_token');
-      const direction = currentUrl.searchParams.get('direction');
+      
+      // Use the state object that was stored with pushState
+      const state = event.state || {};
+      const pageToken = state.page_token || '';
+      const direction = state.direction || '';
+      
       console.log(container)
-      console.log(currentUrl)
+      console.log("State from history:", state)
       console.log(pageToken)
       console.log(direction)
-      console.log(currentUrl.searchParams)
-
+      
       pollmanList.updateOptionsAndFetch(container, {
         page_token: pageToken,
         direction: direction

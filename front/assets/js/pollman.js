@@ -239,6 +239,10 @@ export var Pollman = {
       }
     });
 
+    console.log("REQUEST URL")
+    console.log(node.getAttribute("data-poll-href"))
+    console.log(`${node.getAttribute("data-poll-href")}?${queryParams}`);
+
     return `${node.getAttribute("data-poll-href")}?${queryParams}`;
   },
 };

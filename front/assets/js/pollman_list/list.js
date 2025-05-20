@@ -8,6 +8,7 @@ export class PollmanList {
     Pollman.stop();
 
     for(var key in options) {
+      console.log("Setting poll parameter", key, options[key]);
       container.setAttribute("data-poll-param-" + key, options[key]);
     }
 
