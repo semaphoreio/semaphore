@@ -56,19 +56,18 @@ defmodule Front.Models.User do
       metadata = Keyword.get(opts, :metadata, nil)
       fields = Keyword.get(opts, :fields, @fields)
       use_cache = Keyword.get(opts, :use_cache, true)
-      organization_id = Keyword.get(opts, :organization_id, "")
 
-      find_(id, metadata, fields, use_cache, organization_id: organization_id)
+      find_(id, metadata, fields, use_cache)
     end)
   end
 
-  def find(id, metadata \\ nil, fields \\ @fields, use_cache \\ true, opts \\ []) do
+  def find(id, metadata \\ nil, fields \\ @fields, use_cache \\ true) do
     Watchman.benchmark("fetch_user.duration", fn ->
-      find_(id, metadata, fields, use_cache, opts)
+      find_(id, metadata, fields, use_cache)
     end)
   end
 
-  defp find_(id, metadata, fields, true, opts) do
+  defp find_(id, metadata, fields, true) do
     cache_keys = Enum.map(fields, fn f -> cache_key(id, f) end)
 
     case Front.Cache.get_all(cache_keys) do
@@ -78,15 +77,15 @@ defmodule Front.Models.User do
         struct!(__MODULE__, user)
 
       {:not_cached, _} ->
-        find(id, metadata, fields, false, opts)
+        find(id, metadata, fields, false)
     end
   end
 
-  defp find_(id, metadata, _fields, false, opts) do
+  defp find_(id, metadata, _fields, false) do
     alias InternalApi.User.UserService.Stub
     req = InternalApi.User.DescribeRequest.new(user_id: id)
 
-    {:ok, channel} = build_user_channel(opts)
+    {:ok, channel} = channel()
 
     case Stub.describe(channel, req, metadata: metadata, timeout: 30_000) do
       {:ok, res} ->
@@ -104,19 +103,16 @@ defmodule Front.Models.User do
     end
   end
 
-  def find_user_with_providers(user_id, organization_id \\ nil) do
+  def find_user_with_providers(user_id) do
     alias Front.Async
 
     fetch_user = Async.run(fn -> find(user_id) end)
 
-    fetch_github_provider =
-      Async.run(fn -> refresh_repository_provider(user_id, "github", organization_id) end)
+    fetch_github_provider = Async.run(fn -> refresh_repository_provider(user_id, "github") end)
 
-    fetch_bb_provider =
-      Async.run(fn -> refresh_repository_provider(user_id, "bitbucket", organization_id) end)
+    fetch_bb_provider = Async.run(fn -> refresh_repository_provider(user_id, "bitbucket") end)
 
-    fetch_gitlab_provider =
-      Async.run(fn -> refresh_repository_provider(user_id, "gitlab", organization_id) end)
+    fetch_gitlab_provider = Async.run(fn -> refresh_repository_provider(user_id, "gitlab") end)
 
     {:ok, user} = Async.await(fetch_user)
     {:ok, github_provider} = Async.await(fetch_github_provider)
@@ -139,7 +135,7 @@ defmodule Front.Models.User do
         integration_type: IntegrationType.value(project.integration_type)
       )
 
-    {:ok, channel} = build_user_channel(organization_id: project.organization_id)
+    {:ok, channel} = channel()
 
     case Stub.get_repository_token(channel, req, timeout: 30_000) do
       {:ok, res} ->
@@ -167,7 +163,7 @@ defmodule Front.Models.User do
           kind: kind
         )
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       {:ok, _} =
         InternalApi.User.UserService.Stub.create_favorite(channel, favorite,
@@ -193,7 +189,7 @@ defmodule Front.Models.User do
           kind: kind
         )
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       {:ok, _} =
         InternalApi.User.UserService.Stub.delete_favorite(channel, favorite,
@@ -211,7 +207,7 @@ defmodule Front.Models.User do
           organization_id: organization_id
         )
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       {:ok, response} =
         InternalApi.User.UserService.Stub.list_favorites(channel, request,
@@ -223,14 +219,14 @@ defmodule Front.Models.User do
     end)
   end
 
-  def find_many(ids, tracing_headers \\ nil, organization_id \\ nil) do
+  def find_many(ids, tracing_headers \\ nil) do
     Watchman.benchmark("fetch_many_users.duration", fn ->
       request = InternalApi.User.DescribeManyRequest.new(user_ids: ids)
 
       Logger.debug("Sending request to User API")
       Logger.debug(inspect(request))
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       {:ok, response} =
         InternalApi.User.UserService.Stub.describe_many(channel, request,
@@ -249,7 +245,7 @@ defmodule Front.Models.User do
     end)
   end
 
-  def update(user, fields, metadata \\ nil, organization_id \\ nil) do
+  def update(user, fields, metadata \\ nil) do
     alias Front.Form.RequiredParams, as: RP
     alias Google.Rpc.Status
     alias InternalApi.User.UpdateRequest, as: UpdateRequest
@@ -270,7 +266,7 @@ defmodule Front.Models.User do
                    name: fields[:name]
                  )
              ),
-           {:ok, channel} <- build_user_channel(organization_id: organization_id),
+           {:ok, channel} <- channel(),
            {:ok, res = %UpdateResponse{status: %Status{code: 0}}} <-
              InternalApi.User.UserService.Stub.update(channel, req,
                metadata: metadata,
@@ -292,11 +288,11 @@ defmodule Front.Models.User do
     end)
   end
 
-  def regenerate_token(user_id, metadata \\ nil, organization_id \\ nil) do
+  def regenerate_token(user_id, metadata \\ nil) do
     Watchman.benchmark("regenerate_token.duration", fn ->
       req = InternalApi.User.RegenerateTokenRequest.new(user_id: user_id)
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       {:ok, res} =
         InternalApi.User.UserService.Stub.regenerate_token(channel, req,
@@ -318,7 +314,8 @@ defmodule Front.Models.User do
 
       req = InternalApi.User.CheckGithubTokenRequest.new(user_id: user_id)
 
-      {:ok, channel} = GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+      {:ok, channel} =
+        GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 
       case Stub.check_github_token(channel, req, metadata: metadata, timeout: 30_000) do
         {:ok, res} ->
@@ -330,7 +327,7 @@ defmodule Front.Models.User do
     end)
   end
 
-  defp refresh_repository_provider(user_id, provider, organization_id) do
+  defp refresh_repository_provider(user_id, provider) do
     Watchman.benchmark("refresh_repository_provider.duration", fn ->
       alias InternalApi.User.UserService.Stub
 
@@ -346,7 +343,7 @@ defmodule Front.Models.User do
           type: type
         )
 
-      {:ok, channel} = build_user_channel(organization_id: organization_id)
+      {:ok, channel} = channel()
 
       case Stub.refresh_repository_provider(channel, req, timeout: 30_000) do
         {:ok, res} ->
@@ -473,6 +470,5 @@ defmodule Front.Models.User do
     end
   end
 
-  def build_user_channel(opts \\ []),
-    do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+  def channel(), do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 end
