@@ -36,6 +36,7 @@ RUN set -x \
 COPY --chown=keycloak:keycloak --from=base /usr/bin/createdb /usr/bin/createdb
 COPY --chown=keycloak:keycloak --from=base /usr/bin/dropdb /usr/bin/dropdb
 
+# libs needed for create/dropdb
 COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcom_err.so.* /usr/lib64/
 COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcrypt.so.* /usr/lib64/
 COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcrypto.so.* /usr/lib64/

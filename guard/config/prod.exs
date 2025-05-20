@@ -7,3 +7,5 @@ config :oauth2, adapter: Tesla.Adapter.Hackney
 config :tesla, adapter: Tesla.Adapter.Hackney
 
 config :guard, :github_app_install_url, "https://github.com/settings/apps/new"
+
+config :openid_connect, finch_transport_opts: [verify: :verify_none]

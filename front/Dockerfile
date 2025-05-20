@@ -58,7 +58,7 @@ RUN mv /node/node_modules /assets/node_modules
 FROM elixir AS dev
 WORKDIR /app
 RUN apk update \
-    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg
+    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg entr
 
 COPY --from=elixir /elixir ./
 COPY --from=node /assets ./assets
@@ -66,7 +66,7 @@ WORKDIR /app/assets
 RUN node build.js
 WORKDIR /app
 
-CMD [ "/bin/ash",  "-c \"while sleep 1000; do :; done\"" ]
+CMD ["sh", "-c", "find lib config | entr -n -r mix phx.server"]
 # -- dev stage
 
 # -- builder stage - build artifacts are created here

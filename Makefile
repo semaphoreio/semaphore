@@ -30,9 +30,10 @@ ifeq ($(BUILD_ENV),)
 endif
 
 IMAGE_TAG=$(BUILD_ENV)
-DOCKER_BUILD_TARGET=runner
 ifneq ($(BUILD_ENV),prod)
-	DOCKER_BUILD_TARGET=dev
+	DOCKER_BUILD_TARGET?=dev
+else
+	DOCKER_BUILD_TARGET?=runner
 endif
 
 #

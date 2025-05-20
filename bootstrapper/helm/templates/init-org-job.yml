@@ -59,6 +59,8 @@ spec:
                 name: {{ .Values.global.gitlabApp.secretName }}
 {{- end }}
           env:
+            - name: TLS_SKIP_VERIFY
+              value: "1"
 {{- if .Values.global.organization.defaultAgentType.enabled }}
             - name: DEFAULT_AGENT_TYPE_ENABLED
               value: "true"

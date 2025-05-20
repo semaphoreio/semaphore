@@ -5,10 +5,10 @@ Sidekiq.configure_client do |config|
 end
 
 # first, use IRB to create a shared secret key for sessions and commit it
-require 'securerandom'; File.open("tmp/.session.key", "w") {|f| f.write(SecureRandom.hex(32)) }
+require 'securerandom'; File.open(".session.key", "w") {|f| f.write(SecureRandom.hex(32)) }
 
 # now use the secret with a session cookie middleware
-use Rack::Session::Cookie, secret: File.read("tmp/.session.key"), same_site: true, max_age: 86400
+use Rack::Session::Cookie, secret: File.read(".session.key"), same_site: true, max_age: 86400
 
 require 'sidekiq/web'
 require 'sidekiq-scheduler/web'

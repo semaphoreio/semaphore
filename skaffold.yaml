@@ -22,9 +22,15 @@ build:
         buildCommand: "MIX_ENV=prod make build.skaffold"
       context: badge
     - image: ghcr.io/semaphoreio/front
-      custom:
-        buildCommand: "MIX_ENV=prod make build.skaffold"
       context: front
+      custom:
+        buildCommand: "DOCKER_BUILD_TARGET=dev MIX_ENV=prod make build.skaffold"
+      sync:
+        manual:
+          - src: 'lib/**/*'
+            dest: /app
+          - src: 'config/**/*.exs'
+            dest: /app
     - image: ghcr.io/semaphoreio/ppl
       custom:
         buildCommand: "MIX_ENV=prod make build.skaffold"
@@ -97,13 +103,6 @@ build:
       custom:
         buildCommand: "APP_ENV=prod make build.skaffold"
       context: keycloak/image
-#manifests:
-#  helm:
-#    releases:
-#      - name: keycloak-setup
-#        chartPath: keycloak/setup/helm
-#        setValueTemplates:
-#          imageTag: "{{.IMAGE_FULLY_QUALIFIED_ghcr_io_semaphoreio_keycloak_setup}}"
 deploy:
   helm:
     releases:
