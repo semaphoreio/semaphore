@@ -8,6 +8,10 @@
       <label for="date_to" class="db f6 mb1">To:</label>
       <input type="date" id="date_to" name="date_to" class="input-reset ba b--black-20 pa2 br2">
     </div>
+    <div class="mr2">
+      <label for="author" class="db f6 mb1">Author:</label>
+      <input type="text" id="author" name="author" placeholder="Username" class="input-reset ba b--black-20 pa2 br2">
+    </div>
     <div class="mt3">
       <button type="button" id="filter-workflows-btn" class="btn btn-sm btn-primary">Apply Filter</button>
       <button type="button" id="clear-filter-btn" class="btn btn-sm btn-link ml2">Clear</button>

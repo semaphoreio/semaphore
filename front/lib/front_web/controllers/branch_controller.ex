@@ -41,6 +41,7 @@ defmodule FrontWeb.BranchController do
     direction = params["direction"] || ""
     date_from = params["date_from"] || ""
     date_to = params["date_to"] || ""
+    author = params["author"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
@@ -54,7 +55,8 @@ defmodule FrontWeb.BranchController do
         page_token: page_token,
         direction: direction,
         date_from: date_from,
-        date_to: date_to
+        date_to: date_to,
+        author: author
       )
 
     {:ok, model, source} = params |> BranchPage.Model.get()
@@ -97,6 +99,7 @@ defmodule FrontWeb.BranchController do
     direction = params["direction"] || ""
     date_from = params["date_from"] || ""
     date_to = params["date_to"] || ""
+    author = params["author"] || ""
 
     branch = conn.assigns.branch
     project = conn.assigns.project
@@ -110,7 +113,8 @@ defmodule FrontWeb.BranchController do
         page_token: page_token,
         direction: direction,
         date_from: date_from,
-        date_to: date_to
+        date_to: date_to,
+        author: author
       )
 
     {:ok, model, source} = params |> BranchPage.Model.get()

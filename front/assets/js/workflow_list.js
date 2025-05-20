@@ -6,7 +6,7 @@ export var WorkflowList = {
   pagination: null,
   pollmanList: null,
   container: null,
-  queryParams: ['page_token', 'direction', 'date_from', 'date_to'],
+  queryParams: ['page_token', 'direction', 'date_from', 'date_to', 'author'],
 
   init: function() {
     if(this.initiated === true) { return; }
@@ -57,6 +57,7 @@ export var WorkflowList = {
       filterBtn.addEventListener('click', () => {
         const dateFrom = document.getElementById('date_from')?.value;
         const dateTo = document.getElementById('date_to')?.value;
+        const author = document.getElementById('author')?.value;
         
         if (dateFrom && dateTo) {
           const fromDate = new Date(dateFrom);
@@ -71,6 +72,7 @@ export var WorkflowList = {
         let params = {'page_token': '', 'direction': ''};
         params.date_from = dateFrom;
         params.date_to = dateTo;
+        params.author = author;
         
         const container = document.querySelector('.pollman-container');
         updatePollman(container, params);
@@ -81,9 +83,11 @@ export var WorkflowList = {
       clearBtn.addEventListener('click', () => {
         const dateFrom = document.getElementById('date_from');
         const dateTo = document.getElementById('date_to');
+        const author = document.getElementById('author');
         
         if (dateFrom) dateFrom.value = '';
         if (dateTo) dateTo.value = '';
+        if (author) author.value = '';
 
         const container = document.querySelector('.pollman-container');
         
@@ -101,9 +105,11 @@ export var WorkflowList = {
     const urlParams = new URLSearchParams(window.location.search);
     const dateFrom = urlParams.get('date_from');
     const dateTo = urlParams.get('date_to');
+    const author = urlParams.get('author');
     
     const dateFromInput = document.getElementById('date_from');
     const dateToInput = document.getElementById('date_to');
+    const authorInput = document.getElementById('author');
     
     if (dateFrom && dateFromInput) {
       dateFromInput.value = dateFrom;
@@ -111,6 +117,10 @@ export var WorkflowList = {
     
     if (dateTo && dateToInput) {
       dateToInput.value = dateTo;
+    }
+    
+    if (author && authorInput) {
+      authorInput.value = author;
     }
   }
 }
