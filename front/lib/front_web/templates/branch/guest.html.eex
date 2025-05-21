@@ -24,8 +24,8 @@
 </div>
 
 <div class="bg-washed-gray pa3 br3 ba b--black-075">
-  <div class="f5 mb2 flex-l justify-between items-center">
-    <div>
+  <div class="flex-m items-center justify-between mb3">
+    <div class="f5 gray mr3 mb3 mb0-m">
       Most recent activity on this <%= branch_type_name(@branch.type) |> String.downcase() %>
     </div>
   </div>
