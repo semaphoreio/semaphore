@@ -125,24 +125,33 @@ defmodule Support.Stubs.Workflow do
         "invalid_arg" ->
           InternalApi.PlumberWF.ScheduleResponse.new(
             status:
-              InternalApi.Status.new(code: Google.Rpc.Code.value(:INVALID_ARGUMENT), message: "Invalid argument")
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+                message: "Invalid argument"
+              )
           )
 
         "project_deleted" ->
           InternalApi.PlumberWF.ScheduleResponse.new(
             status:
-              InternalApi.Status.new(code: Google.Rpc.Code.value(:FAILED_PRECONDITION), message: "Failed precondition")
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:FAILED_PRECONDITION),
+                message: "Failed precondition"
+              )
           )
 
         "resource_exhausted" ->
           InternalApi.PlumberWF.ScheduleResponse.new(
             status:
-              InternalApi.Status.new(code: Google.Rpc.Code.value(:RESOURCE_EXHAUSTED), message: "Resource exhausted")
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:RESOURCE_EXHAUSTED),
+                message: "Resource exhausted"
+              )
           )
 
         _ ->
           user_id = UUID.uuid4()
-          branch  = Support.Stubs.Branch.create(%{id: req.project_id})
+          branch = Support.Stubs.Branch.create(%{id: req.project_id})
           hook = Support.Stubs.Hook.create(branch)
           new_workflow = Support.Stubs.Workflow.create(hook, user_id)
           new_pipeline = Support.Stubs.Pipeline.create(new_workflow)

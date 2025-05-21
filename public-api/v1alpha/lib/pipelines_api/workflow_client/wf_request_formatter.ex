@@ -23,9 +23,9 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
       git: %{
         reference: params |> Map.get("reference", "") |> ref(),
         commit_sha: params |> Map.get("commit_sha", "")
-        },
-        start_in_conceived_state: true,
-        triggered_by: :API,
+      },
+      start_in_conceived_state: true,
+      triggered_by: :API,
       env_vars: parameter_values_to_env_vars(params["parameters"])
     }
     |> Proto.deep_new(ScheduleRequest)
