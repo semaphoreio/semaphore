@@ -1,20 +1,12 @@
 <div class="flex-m items-center">
-  <form id="workflow-date-filter" class="flex items-center">
-    <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5">
+  <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5">
 
-    <div class="flex items-center mr2">
-      <span class="f6 gray mr1">From</span>
-      <input id="date_from" name="date_from" type="date" class="form-control mb3 mb0-m w4">
-    </div>
-
-    <div class="flex items-center">
-      <span class="f6 gray mr1">To</span>
-      <input id="date_to" name="date_to" type="date" class="form-control mb3 mb0-m w4">
-    </div>
-
-    <div class="mt3">
-      <button type="button" id="filter-workflows-btn" class="btn btn-sm btn-primary">Apply Filter</button>
-      <button type="button" id="clear-filter-btn" class="btn btn-sm btn-link ml2">Clear</button>
-    </div>
-  </form>
+  <div class="flex items-center mr2">
+    <span class="f6 gray mr1">From</span>
+    <input id="date_from" name="date_from" type="date" class="form-control mb3 mb0-m w4">
+  </div>
+  <div class="flex items-center">
+    <span class="f6 gray mr1">To</span>
+    <input id="date_to" name="date_to" type="date" class="form-control mb3 mb0-m w4">
+  </div>
 </div>

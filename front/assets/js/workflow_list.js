@@ -1,5 +1,6 @@
 import { TokenPagination } from "./pollman_list/token_pagination"
 import { PollmanList } from "./pollman_list/list"
+import debounce from "./debounce"
 
 export var WorkflowList = {
   initiated: false,
@@ -45,59 +46,49 @@ export var WorkflowList = {
     }
       
     this.pagination.onUpdate(updatePollman);
-    this.initFilterButtons(updatePollman, pollmanList);
+    this.initFilterButtons(updatePollman);
     this.initializeDateFilterValues();
   },
   
-  initFilterButtons: function(updatePollman, pollmanList) {
-    const filterBtn = document.getElementById('filter-workflows-btn');
-    const clearBtn = document.getElementById('clear-filter-btn');
+  initFilterButtons: function(updatePollman) {
+    const dateFromInput = document.getElementById('date_from');
+    const dateToInput = document.getElementById('date_to');
+    const authorInput = document.getElementById('author');
     
-    if (filterBtn) {
-      filterBtn.addEventListener('click', () => {
-        const dateFrom = document.getElementById('date_from')?.value;
-        const dateTo = document.getElementById('date_to')?.value;
-        const author = document.getElementById('author')?.value;
+    
+    const applyFilters = () => {
+      const dateFrom = dateFromInput?.value;
+      const dateTo = dateToInput?.value;
+      const author = authorInput?.value;
+      
+      // Validate date range
+      if (dateFrom && dateTo) {
+        const fromDate = new Date(dateFrom);
+        const toDate = new Date(dateTo);
         
-        if (dateFrom && dateTo) {
-          const fromDate = new Date(dateFrom);
-          const toDate = new Date(dateTo);
-          
-          if (fromDate > toDate) {
-            alert('Start date must be before end date');
-            return;
-          }
+        if (fromDate > toDate) {
+          alert('Start date must be before end date');
+          return;
         }
-        
-        let params = {'page_token': '', 'direction': ''};
-        params.date_from = dateFrom;
-        params.date_to = dateTo;
-        params.author = author;
-        
-        const container = document.querySelector('.pollman-container');
-        updatePollman(container, params);
-      });
-    }
+      }
+      
+      let params = {'page_token': '', 'direction': ''};
+      params.date_from = dateFrom;
+      params.date_to = dateTo;
+      params.author = author;
+      
+      const container = document.querySelector('.pollman-container');
+      updatePollman(container, params);
+    };
     
-    if (clearBtn) {
-      clearBtn.addEventListener('click', () => {
-        const dateFrom = document.getElementById('date_from');
-        const dateTo = document.getElementById('date_to');
-        const author = document.getElementById('author');
-        
-        if (dateFrom) dateFrom.value = '';
-        if (dateTo) dateTo.value = '';
-        if (author) author.value = '';
-
-        const container = document.querySelector('.pollman-container');
-        
-        const emptyParams = {};
-        WorkflowList.queryParams.forEach(param => {
-          emptyParams[param] = '';
-        });
-
-        updatePollman(container, emptyParams);
-      });
+    if (authorInput) {
+      authorInput.addEventListener('input', debounce(applyFilters, 300, false));
+    }
+    if (dateFromInput) {
+      dateFromInput.addEventListener('change', applyFilters);
+    }
+    if (dateToInput) {
+      dateToInput.addEventListener('change', applyFilters);
     }
   },
 
