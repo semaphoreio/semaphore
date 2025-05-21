@@ -151,7 +151,7 @@ global:
     secretName: ""
 
 toolbox:
-  version: "v1.23.2"
+  version: "v1.25.0"
 
 #
 # Ingress configuration
