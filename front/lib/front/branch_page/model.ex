@@ -47,11 +47,9 @@ defmodule Front.BranchPage.Model do
 
   @spec get(LoadParams.t()) :: {:ok, __MODULE__.t()} | {:error, String.t()}
   def get(params, opts \\ []) do
-    with true <- first_page?(params) do
-      fetch_from_cache(params, opts[:force_cold_boot])
-    else
-      false ->
-        load_from_api(params)
+    case first_page?(params) do
+      true -> fetch_from_cache(params, opts[:force_cold_boot])
+      false -> load_from_api(params)
     end
   end
 
