@@ -45,13 +45,12 @@ RUN mix sentry_recompile && mix compile --warnings-as-errors
 # -- elixir stage
 
 # -- node stage
-FROM base AS node
-WORKDIR /node
-COPY front/assets/package.json front/assets/package-lock.json ./
-RUN npm install
+FROM node:16-alpine as node
 WORKDIR /assets
-COPY front/assets /assets
-RUN mv /node/node_modules /assets/node_modules
+COPY front/assets/package.json front/assets/package-lock.json ./
+RUN npm set progress=false \
+    && npm install
+COPY front/assets ./
 # -- node stage
 
 # -- dev stage - for local development
