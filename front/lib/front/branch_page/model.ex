@@ -137,8 +137,6 @@ defmodule Front.BranchPage.Model do
   end
 
   defp list_workflows(params) do
-    IO.puts("LIST_WORKFLOW PARAMS: #{inspect(params)}")
-
     api_params = [
       page_size: 10,
       page_token: params.page_token,
@@ -178,8 +176,6 @@ defmodule Front.BranchPage.Model do
       else
         api_params
       end
-
-    IO.puts("LIST_WORKFLOWS: #{inspect(api_params)}")
 
     {wfs, next_page_token, previous_page_token} =
       api_params
@@ -222,8 +218,11 @@ defmodule Front.BranchPage.Model do
   defp map_workflow_direction("previous"), do: Direction.value(:PREVIOUS)
   defp map_workflow_direction(_), do: map_workflow_direction("next")
 
-  defp first_page?(params),
-    do:
-      params.page_token == "" && params.date_from == "" && params.date_to == "" &&
-        params.author == ""
+  defp first_page?(params) do
+    filter_fields = [:page_token, :date_from, :date_to, :author]
+
+    Enum.all?(filter_fields, fn field ->
+      is_nil(Map.get(params, field)) || Map.get(params, field) == ""
+    end)
+  end
 end
