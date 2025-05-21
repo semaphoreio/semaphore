@@ -137,45 +137,17 @@ defmodule Front.BranchPage.Model do
   end
 
   defp list_workflows(params) do
-    api_params = [
-      page_size: 10,
-      page_token: params.page_token,
-      project_id: params.project_id,
-      branch_name: params.branch_name,
-      direction: map_workflow_direction(params.direction)
-    ]
-
     api_params =
-      if params.date_from,
-        do: Keyword.put(api_params, :created_after, timestamp(:beginning, params.date_from)),
-        else: api_params
-
-    api_params =
-      if params.date_to,
-        do: Keyword.put(api_params, :created_before, timestamp(:end, params.date_to)),
-        else: api_params
-
-    # Handle author parameter to filter by users
-    api_params =
-      if params.author && params.author != "" do
-        case Front.RBAC.Members.list_project_members(params.organization_id, params.project_id,
-               username: params.author
-             ) do
-          {:ok, {members, _total_pages}} ->
-            user_ids = members |> Enum.map(& &1.id)
-
-            if Enum.empty?(user_ids) do
-              api_params
-            else
-              Keyword.put(api_params, :requester_ids, user_ids)
-            end
-
-          {:error, _} ->
-            api_params
-        end
-      else
-        api_params
-      end
+      [
+        page_size: 10,
+        page_token: params.page_token,
+        project_id: params.project_id,
+        branch_name: params.branch_name,
+        direction: map_workflow_direction(params.direction)
+      ]
+      |> inject_date_filter_param(params.date_from, :date_from)
+      |> inject_date_filter_param(params.date_to, :date_to)
+      |> inject_requesters_param(params.author, params.organization_id, params.project_id)
 
     {wfs, next_page_token, previous_page_token} =
       api_params
@@ -186,8 +158,30 @@ defmodule Front.BranchPage.Model do
     {workflows, next_page_token, previous_page_token}
   end
 
+  defp inject_requesters_param(api_params, author, _, _) when author in [nil, ""], do: api_params
+
+  defp inject_requesters_param(api_params, author, org_id, project_id) do
+    case Front.RBAC.Members.list_project_members(org_id, project_id, username: author) do
+      {:ok, {members, _total_pages}} ->
+        case members |> Enum.map(& &1.id) do
+          [] -> api_params
+          user_ids -> Keyword.put(api_params, :requester_ids, user_ids)
+        end
+
+      _ ->
+        api_params
+    end
+  end
+
+  defp inject_date_filter_param(api_params, date, _) when date in [nil, ""], do: api_params
+
+  defp inject_date_filter_param(api_params, date, :date_from),
+    do: Keyword.put(api_params, :created_after, timestamp(:beginning, date))
+
+  defp inject_date_filter_param(api_params, date, :date_to),
+    do: Keyword.put(api_params, :created_before, timestamp(:beginning, date))
+
   defp timestamp(_, timestamp) when timestamp in [nil, ""], do: nil
-  defp timestamp(direction, _) when direction not in [:beginning, :end], do: nil
 
   @date_format "{YYYY}-{0M}-{0D}"
   defp timestamp(direction, date) do
@@ -195,6 +189,7 @@ defmodule Front.BranchPage.Model do
       case direction do
         :beginning -> &Timex.beginning_of_day/1
         :end -> &Timex.end_of_day/1
+        _ -> nil
       end
 
     case Timex.parse(date, @date_format) do

@@ -44,7 +44,7 @@ export var WorkflowList = {
 
       window.history.pushState({}, '', currentUrl.toString());
     }
-      
+
     this.pagination.onUpdate(updatePollman);
     this.initFilterButtons(updatePollman);
     this.initializeDateFilterValues();
