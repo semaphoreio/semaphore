@@ -416,7 +416,6 @@ The available commands are:
 - `compile`: parses JUnit XML files to a well-defined JSON report file
 - `gen-pipeline-report`: fetches and combines workflow-level JUnit report and combines them
 - `publish`: parses XML JUnit file to a well-defined JSON schema and publishes results to artifacts storage
-- `command-metrics`: generates a Markdown-compatible Mermaid.js Gantt diagram showing the job commands timeline. Used to produce [Markdown Reports](../using-semaphore/tests/markdown-reports)
 
 The available flags are:
 

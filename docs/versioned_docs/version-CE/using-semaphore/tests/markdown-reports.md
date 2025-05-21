@@ -28,10 +28,6 @@ For example, you can use them to show information about your build.
 
 ![Build info report](./img/build-info.jpg)
 
-Visually show how long each command in your job takes 
-
-![Gantt commands](./img/timeline.jpg)
-
 You can even use images in your reports. The following PNG image has been generated with [dependency cruiser](https://github.com/sverweij/dependency-cruiser).
 
 ![Embedded Image](./img/markdown-reports-dependencies-example.jpg)
@@ -116,23 +112,6 @@ artifact push job -d .semaphore/REPORT.md build-info.md
 The report tab should show a report similar to this:
 
 ![Build info report](./img/build-info.jpg)
-
-### Command timeline {#command-metrics}
-
-The [test results CLI](../../reference/toolbox#test-results) can generate a timeline chart showing the execution time for each command in the job. 
-
-The `test-results command-metrics` command generates a Mermaid diagram that shows the command timeline using a [Gantt chart](https://mermaid.js.org/syntax/gantt.html).
-
-For example, appending the following lines to the *end of your job commands*:
-
-```shell
-test-results command-metrics timeline.md
-artifact push job -d .semaphore/REPORT.md timeline.md
-```
-
-Produces the timeline report for that job. The command appends the report to the end of the file (if it exists). This report is useful for understanding how long each command takes to run.
-
-![Gantt commands](./img/timeline.jpg)
 
 ### Adding images {#images}
 
