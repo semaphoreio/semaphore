@@ -16,6 +16,7 @@ defmodule Front.Breadcrumbs.Project do
   defp construct_crumb(:artifacts), do: "Artifacts"
   defp construct_crumb(:scheduler), do: "Scheduler"
   defp construct_crumb(:insights), do: "Insights"
+  defp construct_crumb(:reports), do: "Report"
   defp construct_crumb(:deployments), do: "Deployments"
   defp construct_crumb(:people), do: "People"
   defp construct_crumb(:settings), do: "Settings"
