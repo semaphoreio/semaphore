@@ -329,10 +329,11 @@ defmodule Front.Models.User do
 
   def search_users(query, limit \\ 20) do
     Watchman.benchmark("search_users.duration", fn ->
-      request = InternalApi.User.SearchUsersRequest.new(
-        query: query,
-        limit: limit
-      )
+      request =
+        InternalApi.User.SearchUsersRequest.new(
+          query: query,
+          limit: limit
+        )
 
       {:ok, channel} = channel()
 

@@ -163,11 +163,13 @@ defmodule Front.BranchPage.Model do
         case Models.User.search_users(params.author) do
           {:ok, users} ->
             user_ids = users |> Enum.map(& &1.id)
+
             if Enum.empty?(user_ids) do
               api_params
             else
               Keyword.put(api_params, :requester_ids, user_ids)
             end
+
           {:error, _} ->
             api_params
         end
@@ -219,5 +221,7 @@ defmodule Front.BranchPage.Model do
   defp map_workflow_direction(_), do: map_workflow_direction("next")
 
   defp first_page?(params),
-    do: params.page_token == "" && params.date_from == "" && params.date_to == ""
+    do:
+      params.page_token == "" && params.date_from == "" && params.date_to == "" &&
+        params.author == ""
 end
