@@ -79,11 +79,11 @@ defmodule Ppl.Actions.ScheduleImpl do
 
   # Schedule
 
-  def schedule(ctx, top_level?, initial_request?, task_workflow?) do
+  def schedule(ctx, top_level?, initial_request?, start_in_conceived?) do
     log_run_request(ctx)
 
     ctx
-    |> prepare_request_multi(top_level?, initial_request?, task_workflow?)
+    |> prepare_request_multi(top_level?, initial_request?, start_in_conceived?)
     |> persist_request
     |> case do
       {:ok, %{ppl_req: ppl_req}} ->
@@ -92,7 +92,7 @@ defmodule Ppl.Actions.ScheduleImpl do
                retry_count: publish_retry_count(), timeout_ms: publish_timeout()),
 
              predicate   <- fn query -> query |> where(ppl_id: ^ppl_req.id) end,
-             :ok         <- execute_first_state_with_predicate(predicate, task_workflow?),
+             :ok         <- execute_first_state_with_predicate(predicate, start_in_conceived?),
         do: response(ppl_req)
       # Idempotency -> return {:ok, ...}
       {:error, :ppl_req, {:request_token_exists, request_token}, _} ->
@@ -136,32 +136,32 @@ defmodule Ppl.Actions.ScheduleImpl do
     |> Map.put("suppressed_attributes", attribute_list)
   end
 
-  def prepare_request_multi(ctx, top_level?, initial_request?, task_workflow?) do
+  def prepare_request_multi(ctx, top_level?, initial_request?, start_in_conceived?) do
     ctx = RequestReviser.revise(ctx)
 
     Multi.new()
     # insert pipeline request
     |> Multi.run(:ppl_req, fn _, _ ->
       Metrics.benchmark("Ppl.schedule_break_down", ["insert_request"], fn ->
-        PplRequestsQueries.insert_request(ctx, top_level?, initial_request?, task_workflow?)
+        PplRequestsQueries.insert_request(ctx, top_level?, initial_request?, start_in_conceived?)
       end)
     end)
     # insert pipeline based on that request
     |> Multi.run(:ppl, fn _, %{ppl_req: ppl_req} ->
       Metrics.benchmark("Ppl.schedule_break_down", ["insert_pipeline"], fn ->
-        PplsQueries.insert(ppl_req, "", task_workflow?)
+        PplsQueries.insert(ppl_req, "", start_in_conceived?)
       end)
     end)
     # update pipeline to include wf_number
     |> Multi.run(:wf_num, fn _, %{ppl_req: ppl_req, ppl: ppl} ->
       Metrics.benchmark("Ppl.schedule_break_down", ["set_wf_num"], fn ->
-        set_workflow_number(ppl, ppl_req, task_workflow?)
+        set_workflow_number(ppl, ppl_req, start_in_conceived?)
       end)
     end)
     # insert pipeline sub init for this pipeline
     |> Multi.run(:ppl_sub_init, fn _, %{ppl_req: ppl_req} ->
       Metrics.benchmark("Ppl.schedule_break_down", ["insert_subinit"], fn ->
-        PplSubInitsQueries.insert(ppl_req, "regular", task_workflow?)
+        PplSubInitsQueries.insert(ppl_req, "regular", start_in_conceived?)
       end)
     end)
     # save inital_request separately for easier debug
@@ -179,25 +179,25 @@ defmodule Ppl.Actions.ScheduleImpl do
   end
 
   # promotions
-  def set_workflow_number(ppl, req = %{request_args: %{"wf_number" => num}}, task_workflow?)
+  def set_workflow_number(ppl, req = %{request_args: %{"wf_number" => num}}, start_in_conceived?)
     when is_integer(num) and num > 0 do
       with service     <- Map.get(req.request_args, "service"),
-           {:ok, _ppl} <- update_ppl(ppl, service, num, task_workflow?),
+           {:ok, _ppl} <- update_ppl(ppl, service, num, start_in_conceived?),
       do: {:ok, num}
   end
   # partial rebuilds
-  def set_workflow_number(ppl = %{partial_rebuild_of: val}, ppl_req, task_workflow?)
+  def set_workflow_number(ppl = %{partial_rebuild_of: val}, ppl_req, start_in_conceived?)
     when is_binary(val) and val != "" do
       with {:ok, l_wf} <- calculate_wf_num(ppl, ppl_req),
            service     <- Map.get(ppl_req.request_args, "service"),
-           {:ok, _ppl} <- update_ppl(ppl, service, l_wf.wf_number + 1, task_workflow?),
+           {:ok, _ppl} <- update_ppl(ppl, service, l_wf.wf_number + 1, start_in_conceived?),
       do: {:ok, l_wf.wf_number + 1}
   end
   # regular schedule and wf_rebuild
-  def set_workflow_number(ppl, ppl_req, task_workflow?) do
+  def set_workflow_number(ppl, ppl_req, start_in_conceived?) do
     with {:ok, l_wf} <- read_from_latest_wf_table(ppl, ppl_req),
          service     <- Map.get(ppl_req.request_args, "service"),
-         {:ok, _ppl} <- update_ppl(ppl, service, l_wf.wf_number + 1, task_workflow?),
+         {:ok, _ppl} <- update_ppl(ppl, service, l_wf.wf_number + 1, start_in_conceived?),
          {:ok, _}    <- LatestWfsQueries.insert_or_update(l_wf, ppl_req, l_wf.wf_number + 1),
     do: {:ok, l_wf.wf_number + 1}
   end
@@ -224,8 +224,8 @@ defmodule Ppl.Actions.ScheduleImpl do
   defp get_initial_wf_ppl(%{wf_id: wf_id}, _ppl),
     do: PplsQueries.get_initial_wf_ppl(wf_id)
 
-  defp update_ppl(ppl, service, wf_num, task_workflow?) do
-    with_repo_data? = !task_workflow?
+  defp update_ppl(ppl, service, wf_num, start_in_conceived?) do
+    with_repo_data? = !start_in_conceived?
 
     ppl
     |> Ppls.changeset(%{wf_number: wf_num}, service == "listener_proxy", with_repo_data?)
