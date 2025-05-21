@@ -37,6 +37,7 @@ defmodule Front.BranchPage.Model do
       field(:direction, String.t())
       field(:date_from, String.t())
       field(:date_to, String.t())
+      field(:author, String.t())
     end
   end
 
@@ -155,6 +156,24 @@ defmodule Front.BranchPage.Model do
       if params.date_to,
         do: Keyword.put(api_params, :created_before, timestamp(:end, params.date_to)),
         else: api_params
+
+    # Handle author parameter to filter by users
+    api_params =
+      if params.author && params.author != "" do
+        case Models.User.search_users(params.author) do
+          {:ok, users} ->
+            user_ids = users |> Enum.map(& &1.id)
+            if Enum.empty?(user_ids) do
+              api_params
+            else
+              Keyword.put(api_params, :requester_ids, user_ids)
+            end
+          {:error, _} ->
+            api_params
+        end
+      else
+        api_params
+      end
 
     IO.puts("LIST_WORKFLOWS: #{inspect(api_params)}")
 

@@ -68,7 +68,8 @@ defmodule FrontWeb.BranchController do
         page_token: page_token,
         direction: direction,
         date_from: date_from,
-        date_to: date_to
+        date_to: date_to,
+        author: author
       ]
     }
 
@@ -126,7 +127,8 @@ defmodule FrontWeb.BranchController do
         page_token: page_token,
         direction: direction,
         date_from: date_from,
-        date_to: date_to
+        date_to: date_to,
+        author: author
       ]
     }
 
