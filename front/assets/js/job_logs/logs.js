@@ -103,6 +103,14 @@ export class JobLogs {
     this.on("click", ".job-log-line.command", (e) => {
       let fold = e.target.closest(".job-log-fold")
 
+      // If job line is too big, a sticky command
+      // might hide the commands below it
+      if(e.target.offsetHeight < 600) {
+        e.target.classList.add("sticky")
+      } else {
+        e.target.classList.remove("sticky")
+      }
+
       if (FoldToggle.isTogglable(fold)) {
         FoldToggle.toggle(fold)
       }
