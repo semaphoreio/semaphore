@@ -35,6 +35,8 @@ defmodule FrontWeb.BranchController do
     end)
   end
 
+  require Logger
+
   defp common(conn, params, template) do
     org_id = conn.assigns.organization_id
     page_token = params["page_token"] || ""
@@ -59,7 +61,11 @@ defmodule FrontWeb.BranchController do
         author: author
       )
 
+    Logger.info("COMMMON #{inspect(params)}")
+
     {:ok, model, source} = params |> BranchPage.Model.get()
+
+    Logger.info("MODEL #{inspect(model)}")
 
     pollman = %{
       state: "poll",
@@ -72,6 +78,7 @@ defmodule FrontWeb.BranchController do
         author: author
       ]
     }
+
 
     assigns =
       %{
@@ -118,7 +125,9 @@ defmodule FrontWeb.BranchController do
         author: author
       )
 
+    Logger.info("WF PARAMS #{inspect(params)}")
     {:ok, model, source} = params |> BranchPage.Model.get()
+    Logger.info("MODEL #{inspect(model)}")
 
     pollman = %{
       state: "poll",
