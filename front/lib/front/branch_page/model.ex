@@ -179,7 +179,7 @@ defmodule Front.BranchPage.Model do
     do: Keyword.put(api_params, :created_after, timestamp(:beginning, date))
 
   defp inject_date_filter_param(api_params, date, :date_to),
-    do: Keyword.put(api_params, :created_before, timestamp(:beginning, date))
+    do: Keyword.put(api_params, :created_before, timestamp(:end, date))
 
   defp timestamp(_, timestamp) when timestamp in [nil, ""], do: nil
 

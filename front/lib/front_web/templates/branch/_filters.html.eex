@@ -1,5 +1,5 @@
 <div class="flex-m items-center">
-  <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5">
+  <%# <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5"> %>
 
   <div class="flex items-center mr2">
     <span class="f6 gray mr1">From</span>
