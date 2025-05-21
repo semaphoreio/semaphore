@@ -35,20 +35,20 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     :env_vars
   ]
 
-  field :service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true
-  field :repo, 3, type: InternalApi.PlumberWF.ScheduleRequest.Repo
-  field :project_id, 6, type: :string
-  field :branch_id, 7, type: :string
-  field :hook_id, 8, type: :string
-  field :request_token, 9, type: :string
-  field :snapshot_id, 10, type: :string
-  field :definition_file, 11, type: :string
-  field :requester_id, 12, type: :string
-  field :organization_id, 13, type: :string
-  field :label, 14, type: :string
-  field :triggered_by, 15, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :scheduler_task_id, 16, type: :string
-  field :env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar
+  field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
+  field(:repo, 3, type: InternalApi.PlumberWF.ScheduleRequest.Repo)
+  field(:project_id, 6, type: :string)
+  field(:branch_id, 7, type: :string)
+  field(:hook_id, 8, type: :string)
+  field(:request_token, 9, type: :string)
+  field(:snapshot_id, 10, type: :string)
+  field(:definition_file, 11, type: :string)
+  field(:requester_id, 12, type: :string)
+  field(:organization_id, 13, type: :string)
+  field(:label, 14, type: :string)
+  field(:triggered_by, 15, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:scheduler_task_id, 16, type: :string)
+  field(:env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
@@ -64,11 +64,11 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
         }
   defstruct [:owner, :repo_name, :branch_name, :commit_sha, :repository_id]
 
-  field :owner, 1, type: :string
-  field :repo_name, 2, type: :string
-  field :branch_name, 4, type: :string
-  field :commit_sha, 5, type: :string
-  field :repository_id, 6, type: :string
+  field(:owner, 1, type: :string)
+  field(:repo_name, 2, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:commit_sha, 5, type: :string)
+  field(:repository_id, 6, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.EnvVar do
@@ -81,20 +81,20 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.EnvVar do
         }
   defstruct [:name, :value]
 
-  field :name, 1, type: :string
-  field :value, 2, type: :string
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :GIT_HUB, 0
-  field :LOCAL, 1
-  field :SNAPSHOT, 2
-  field :BITBUCKET, 3
-  field :GITLAB, 4
-  field :GIT, 5
+  field(:GIT_HUB, 0)
+  field(:LOCAL, 1)
+  field(:SNAPSHOT, 2)
+  field(:BITBUCKET, 3)
+  field(:GITLAB, 4)
+  field(:GIT, 5)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do
@@ -108,9 +108,9 @@ defmodule InternalApi.PlumberWF.ScheduleResponse do
         }
   defstruct [:wf_id, :status, :ppl_id]
 
-  field :wf_id, 2, type: :string
-  field :status, 3, type: InternalApi.Status
-  field :ppl_id, 4, type: :string
+  field(:wf_id, 2, type: :string)
+  field(:status, 3, type: InternalApi.Status)
+  field(:ppl_id, 4, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.GetPathRequest do
@@ -124,9 +124,9 @@ defmodule InternalApi.PlumberWF.GetPathRequest do
         }
   defstruct [:wf_id, :first_ppl_id, :last_ppl_id]
 
-  field :wf_id, 1, type: :string
-  field :first_ppl_id, 2, type: :string
-  field :last_ppl_id, 3, type: :string
+  field(:wf_id, 1, type: :string)
+  field(:first_ppl_id, 2, type: :string)
+  field(:last_ppl_id, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.GetPathResponse do
@@ -141,10 +141,10 @@ defmodule InternalApi.PlumberWF.GetPathResponse do
         }
   defstruct [:wf_id, :wf_created_at, :path, :status]
 
-  field :wf_id, 2, type: :string
-  field :wf_created_at, 3, type: Google.Protobuf.Timestamp
-  field :path, 4, repeated: true, type: InternalApi.PlumberWF.GetPathResponse.PathElement
-  field :status, 5, type: InternalApi.Status
+  field(:wf_id, 2, type: :string)
+  field(:wf_created_at, 3, type: Google.Protobuf.Timestamp)
+  field(:path, 4, repeated: true, type: InternalApi.PlumberWF.GetPathResponse.PathElement)
+  field(:status, 5, type: InternalApi.Status)
 end
 
 defmodule InternalApi.PlumberWF.GetPathResponse.PathElement do
@@ -158,9 +158,9 @@ defmodule InternalApi.PlumberWF.GetPathResponse.PathElement do
         }
   defstruct [:ppl_id, :switch_id, :rebuild_partition]
 
-  field :ppl_id, 1, type: :string
-  field :switch_id, 2, type: :string
-  field :rebuild_partition, 3, repeated: true, type: :string
+  field(:ppl_id, 1, type: :string)
+  field(:switch_id, 2, type: :string)
+  field(:rebuild_partition, 3, repeated: true, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest do
@@ -186,32 +186,33 @@ defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest do
     :git_ref_types
   ]
 
-  field :order, 1, type: InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order, enum: true
-  field :page_size, 2, type: :int32
-  field :page_token, 3, type: :string
+  field(:order, 1, type: InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order, enum: true)
+  field(:page_size, 2, type: :int32)
+  field(:page_token, 3, type: :string)
 
-  field :direction, 4,
+  field(:direction, 4,
     type: InternalApi.PlumberWF.ListLatestWorkflowsRequest.Direction,
     enum: true
+  )
 
-  field :project_id, 5, type: :string
-  field :requester_id, 6, type: :string
-  field :git_ref_types, 7, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true
+  field(:project_id, 5, type: :string)
+  field(:requester_id, 6, type: :string)
+  field(:git_ref_types, 7, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BY_CREATION_TIME_DESC, 0
+  field(:BY_CREATION_TIME_DESC, 0)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :NEXT, 0
-  field :PREVIOUS, 1
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsResponse do
@@ -225,9 +226,9 @@ defmodule InternalApi.PlumberWF.ListLatestWorkflowsResponse do
         }
   defstruct [:workflows, :next_page_token, :previous_page_token]
 
-  field :workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
-  field :next_page_token, 2, type: :string
-  field :previous_page_token, 3, type: :string
+  field(:workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+  field(:next_page_token, 2, type: :string)
+  field(:previous_page_token, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest do
@@ -253,28 +254,28 @@ defmodule InternalApi.PlumberWF.ListGroupedKSRequest do
     :git_ref_types
   ]
 
-  field :order, 1, type: InternalApi.PlumberWF.ListGroupedKSRequest.Order, enum: true
-  field :page_size, 2, type: :int32
-  field :page_token, 3, type: :string
-  field :direction, 4, type: InternalApi.PlumberWF.ListGroupedKSRequest.Direction, enum: true
-  field :project_id, 5, type: :string
-  field :requester_id, 6, type: :string
-  field :git_ref_types, 7, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true
+  field(:order, 1, type: InternalApi.PlumberWF.ListGroupedKSRequest.Order, enum: true)
+  field(:page_size, 2, type: :int32)
+  field(:page_token, 3, type: :string)
+  field(:direction, 4, type: InternalApi.PlumberWF.ListGroupedKSRequest.Direction, enum: true)
+  field(:project_id, 5, type: :string)
+  field(:requester_id, 6, type: :string)
+  field(:git_ref_types, 7, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BY_CREATION_TIME_DESC, 0
+  field(:BY_CREATION_TIME_DESC, 0)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedKSRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :NEXT, 0
-  field :PREVIOUS, 1
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedKSResponse do
@@ -288,9 +289,9 @@ defmodule InternalApi.PlumberWF.ListGroupedKSResponse do
         }
   defstruct [:workflows, :next_page_token, :previous_page_token]
 
-  field :workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
-  field :next_page_token, 2, type: :string
-  field :previous_page_token, 3, type: :string
+  field(:workflows, 1, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+  field(:next_page_token, 2, type: :string)
+  field(:previous_page_token, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedRequest do
@@ -306,20 +307,20 @@ defmodule InternalApi.PlumberWF.ListGroupedRequest do
         }
   defstruct [:page, :page_size, :project_id, :grouped_by, :git_ref_types]
 
-  field :page, 1, type: :int32
-  field :page_size, 2, type: :int32
-  field :project_id, 3, type: :string
-  field :grouped_by, 4, type: InternalApi.PlumberWF.ListGroupedRequest.SourceType, enum: true
-  field :git_ref_types, 5, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true
+  field(:page, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
+  field(:project_id, 3, type: :string)
+  field(:grouped_by, 4, type: InternalApi.PlumberWF.ListGroupedRequest.SourceType, enum: true)
+  field(:git_ref_types, 5, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedRequest.SourceType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BRANCH, 0
-  field :TAG, 1
-  field :PULL_REQUEST, 2
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+  field(:PULL_REQUEST, 2)
 end
 
 defmodule InternalApi.PlumberWF.ListGroupedResponse do
@@ -336,12 +337,12 @@ defmodule InternalApi.PlumberWF.ListGroupedResponse do
         }
   defstruct [:status, :workflows, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :status, 1, type: InternalApi.Status
-  field :workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.PlumberWF.ListRequest do
@@ -375,17 +376,17 @@ defmodule InternalApi.PlumberWF.ListRequest do
     :git_ref_types
   ]
 
-  field :page, 1, type: :int32
-  field :page_size, 2, type: :int32
-  field :project_id, 3, type: :string
-  field :branch_name, 4, type: :string
-  field :requester_id, 5, type: :string
-  field :organization_id, 6, type: :string
-  field :project_ids, 7, repeated: true, type: :string
-  field :created_before, 8, type: Google.Protobuf.Timestamp
-  field :created_after, 9, type: Google.Protobuf.Timestamp
-  field :label, 10, type: :string
-  field :git_ref_types, 11, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true
+  field(:page, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
+  field(:project_id, 3, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:requester_id, 5, type: :string)
+  field(:organization_id, 6, type: :string)
+  field(:project_ids, 7, repeated: true, type: :string)
+  field(:created_before, 8, type: Google.Protobuf.Timestamp)
+  field(:created_after, 9, type: Google.Protobuf.Timestamp)
+  field(:label, 10, type: :string)
+  field(:git_ref_types, 11, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true)
 end
 
 defmodule InternalApi.PlumberWF.ListResponse do
@@ -402,12 +403,12 @@ defmodule InternalApi.PlumberWF.ListResponse do
         }
   defstruct [:status, :workflows, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :status, 1, type: InternalApi.Status
-  field :workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.PlumberWF.ListKeysetRequest do
@@ -449,36 +450,36 @@ defmodule InternalApi.PlumberWF.ListKeysetRequest do
     :requester_ids
   ]
 
-  field :page_size, 1, type: :int32
-  field :page_token, 2, type: :string
-  field :order, 3, type: InternalApi.PlumberWF.ListKeysetRequest.Order, enum: true
-  field :organization_id, 4, type: :string
-  field :project_id, 5, type: :string
-  field :requester_id, 6, type: :string
-  field :project_ids, 7, repeated: true, type: :string
-  field :created_before, 8, type: Google.Protobuf.Timestamp
-  field :created_after, 9, type: Google.Protobuf.Timestamp
-  field :label, 10, type: :string
-  field :git_ref_types, 11, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true
-  field :direction, 12, type: InternalApi.PlumberWF.ListKeysetRequest.Direction, enum: true
-  field :triggerers, 13, repeated: true, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :branch_name, 14, type: :string
-  field :requester_ids, 15, repeated: true, type: :string
+  field(:page_size, 1, type: :int32)
+  field(:page_token, 2, type: :string)
+  field(:order, 3, type: InternalApi.PlumberWF.ListKeysetRequest.Order, enum: true)
+  field(:organization_id, 4, type: :string)
+  field(:project_id, 5, type: :string)
+  field(:requester_id, 6, type: :string)
+  field(:project_ids, 7, repeated: true, type: :string)
+  field(:created_before, 8, type: Google.Protobuf.Timestamp)
+  field(:created_after, 9, type: Google.Protobuf.Timestamp)
+  field(:label, 10, type: :string)
+  field(:git_ref_types, 11, repeated: true, type: InternalApi.PlumberWF.GitRefType, enum: true)
+  field(:direction, 12, type: InternalApi.PlumberWF.ListKeysetRequest.Direction, enum: true)
+  field(:triggerers, 13, repeated: true, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:branch_name, 14, type: :string)
+  field(:requester_ids, 15, repeated: true, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ListKeysetRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BY_CREATION_TIME_DESC, 0
+  field(:BY_CREATION_TIME_DESC, 0)
 end
 
 defmodule InternalApi.PlumberWF.ListKeysetRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :NEXT, 0
-  field :PREVIOUS, 1
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.PlumberWF.ListKeysetResponse do
@@ -493,10 +494,10 @@ defmodule InternalApi.PlumberWF.ListKeysetResponse do
         }
   defstruct [:status, :workflows, :next_page_token, :previous_page_token]
 
-  field :status, 1, type: InternalApi.Status
-  field :workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
-  field :next_page_token, 3, type: :string
-  field :previous_page_token, 4, type: :string
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+  field(:next_page_token, 3, type: :string)
+  field(:previous_page_token, 4, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowDetails do
@@ -534,19 +535,19 @@ defmodule InternalApi.PlumberWF.WorkflowDetails do
     :organization_id
   ]
 
-  field :wf_id, 1, type: :string
-  field :initial_ppl_id, 2, type: :string
-  field :project_id, 3, type: :string
-  field :hook_id, 4, type: :string
-  field :requester_id, 5, type: :string
-  field :branch_id, 6, type: :string
-  field :branch_name, 7, type: :string
-  field :commit_sha, 8, type: :string
-  field :created_at, 9, type: Google.Protobuf.Timestamp
-  field :triggered_by, 10, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :rerun_of, 11, type: :string
-  field :repository_id, 12, type: :string
-  field :organization_id, 13, type: :string
+  field(:wf_id, 1, type: :string)
+  field(:initial_ppl_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:hook_id, 4, type: :string)
+  field(:requester_id, 5, type: :string)
+  field(:branch_id, 6, type: :string)
+  field(:branch_name, 7, type: :string)
+  field(:commit_sha, 8, type: :string)
+  field(:created_at, 9, type: Google.Protobuf.Timestamp)
+  field(:triggered_by, 10, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:rerun_of, 11, type: :string)
+  field(:repository_id, 12, type: :string)
+  field(:organization_id, 13, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.DescribeRequest do
@@ -558,7 +559,7 @@ defmodule InternalApi.PlumberWF.DescribeRequest do
         }
   defstruct [:wf_id]
 
-  field :wf_id, 1, type: :string
+  field(:wf_id, 1, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.DescribeResponse do
@@ -571,8 +572,8 @@ defmodule InternalApi.PlumberWF.DescribeResponse do
         }
   defstruct [:status, :workflow]
 
-  field :status, 1, type: InternalApi.Status
-  field :workflow, 2, type: InternalApi.PlumberWF.WorkflowDetails
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflow, 2, type: InternalApi.PlumberWF.WorkflowDetails)
 end
 
 defmodule InternalApi.PlumberWF.DescribeManyRequest do
@@ -584,7 +585,7 @@ defmodule InternalApi.PlumberWF.DescribeManyRequest do
         }
   defstruct [:wf_ids]
 
-  field :wf_ids, 1, repeated: true, type: :string
+  field(:wf_ids, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.DescribeManyResponse do
@@ -597,8 +598,8 @@ defmodule InternalApi.PlumberWF.DescribeManyResponse do
         }
   defstruct [:status, :workflows]
 
-  field :status, 1, type: InternalApi.Status
-  field :workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
 end
 
 defmodule InternalApi.PlumberWF.DescribeManyRequest do
@@ -637,8 +638,8 @@ defmodule InternalApi.PlumberWF.TerminateRequest do
         }
   defstruct [:requester_id, :wf_id]
 
-  field :requester_id, 2, type: :string
-  field :wf_id, 3, type: :string
+  field(:requester_id, 2, type: :string)
+  field(:wf_id, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.TerminateResponse do
@@ -650,7 +651,7 @@ defmodule InternalApi.PlumberWF.TerminateResponse do
         }
   defstruct [:status]
 
-  field :status, 2, type: InternalApi.Status
+  field(:status, 2, type: InternalApi.Status)
 end
 
 defmodule InternalApi.PlumberWF.ListLabelsRequest do
@@ -664,9 +665,9 @@ defmodule InternalApi.PlumberWF.ListLabelsRequest do
         }
   defstruct [:page, :page_size, :project_id]
 
-  field :page, 1, type: :int32
-  field :page_size, 2, type: :int32
-  field :project_id, 3, type: :string
+  field(:page, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
+  field(:project_id, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ListLabelsResponse do
@@ -683,12 +684,12 @@ defmodule InternalApi.PlumberWF.ListLabelsResponse do
         }
   defstruct [:status, :labels, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :status, 1, type: InternalApi.Status
-  field :labels, 2, repeated: true, type: :string
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:status, 1, type: InternalApi.Status)
+  field(:labels, 2, repeated: true, type: :string)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.PlumberWF.RescheduleRequest do
@@ -702,9 +703,9 @@ defmodule InternalApi.PlumberWF.RescheduleRequest do
         }
   defstruct [:wf_id, :requester_id, :request_token]
 
-  field :wf_id, 1, type: :string
-  field :requester_id, 2, type: :string
-  field :request_token, 3, type: :string
+  field(:wf_id, 1, type: :string)
+  field(:requester_id, 2, type: :string)
+  field(:request_token, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.GetProjectIdRequest do
@@ -716,7 +717,7 @@ defmodule InternalApi.PlumberWF.GetProjectIdRequest do
         }
   defstruct [:wf_id]
 
-  field :wf_id, 1, type: :string
+  field(:wf_id, 1, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.GetProjectIdResponse do
@@ -729,8 +730,8 @@ defmodule InternalApi.PlumberWF.GetProjectIdResponse do
         }
   defstruct [:status, :project_id]
 
-  field :status, 1, type: InternalApi.Status
-  field :project_id, 2, type: :string
+  field(:status, 1, type: InternalApi.Status)
+  field(:project_id, 2, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.CreateRequest do
@@ -747,12 +748,12 @@ defmodule InternalApi.PlumberWF.CreateRequest do
         }
   defstruct [:project_id, :label, :hook_id, :request_token, :definition_file, :requester_id]
 
-  field :project_id, 1, type: :string
-  field :label, 2, type: :string
-  field :hook_id, 3, type: :string
-  field :request_token, 4, type: :string
-  field :definition_file, 5, type: :string
-  field :requester_id, 6, type: :string
+  field(:project_id, 1, type: :string)
+  field(:label, 2, type: :string)
+  field(:hook_id, 3, type: :string)
+  field(:request_token, 4, type: :string)
+  field(:definition_file, 5, type: :string)
+  field(:requester_id, 6, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.CreateResponse do
@@ -766,73 +767,91 @@ defmodule InternalApi.PlumberWF.CreateResponse do
         }
   defstruct [:wf_id, :status, :ppl_id]
 
-  field :wf_id, 1, type: :string
-  field :status, 2, type: InternalApi.Status
-  field :ppl_id, 3, type: :string
+  field(:wf_id, 1, type: :string)
+  field(:status, 2, type: InternalApi.Status)
+  field(:ppl_id, 3, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.TriggeredBy do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :HOOK, 0
-  field :SCHEDULE, 1
-  field :API, 2
-  field :MANUAL_RUN, 3
+  field(:HOOK, 0)
+  field(:SCHEDULE, 1)
+  field(:API, 2)
+  field(:MANUAL_RUN, 3)
 end
 
 defmodule InternalApi.PlumberWF.GitRefType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BRANCH, 0
-  field :TAG, 1
-  field :PR, 2
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+  field(:PR, 2)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.PlumberWF.WorkflowService"
 
-  rpc :Schedule, InternalApi.PlumberWF.ScheduleRequest, InternalApi.PlumberWF.ScheduleResponse
-  rpc :GetPath, InternalApi.PlumberWF.GetPathRequest, InternalApi.PlumberWF.GetPathResponse
-  rpc :List, InternalApi.PlumberWF.ListRequest, InternalApi.PlumberWF.ListResponse
+  rpc(:Schedule, InternalApi.PlumberWF.ScheduleRequest, InternalApi.PlumberWF.ScheduleResponse)
+  rpc(:GetPath, InternalApi.PlumberWF.GetPathRequest, InternalApi.PlumberWF.GetPathResponse)
+  rpc(:List, InternalApi.PlumberWF.ListRequest, InternalApi.PlumberWF.ListResponse)
 
-  rpc :ListKeyset,
-      InternalApi.PlumberWF.ListKeysetRequest,
-      InternalApi.PlumberWF.ListKeysetResponse
+  rpc(
+    :ListKeyset,
+    InternalApi.PlumberWF.ListKeysetRequest,
+    InternalApi.PlumberWF.ListKeysetResponse
+  )
 
-  rpc :ListGrouped,
-      InternalApi.PlumberWF.ListGroupedRequest,
-      InternalApi.PlumberWF.ListGroupedResponse
+  rpc(
+    :ListGrouped,
+    InternalApi.PlumberWF.ListGroupedRequest,
+    InternalApi.PlumberWF.ListGroupedResponse
+  )
 
-  rpc :ListGroupedKS,
-      InternalApi.PlumberWF.ListGroupedKSRequest,
-      InternalApi.PlumberWF.ListGroupedKSResponse
+  rpc(
+    :ListGroupedKS,
+    InternalApi.PlumberWF.ListGroupedKSRequest,
+    InternalApi.PlumberWF.ListGroupedKSResponse
+  )
 
-  rpc :ListLatestWorkflows,
-      InternalApi.PlumberWF.ListLatestWorkflowsRequest,
-      InternalApi.PlumberWF.ListLatestWorkflowsResponse
+  rpc(
+    :ListLatestWorkflows,
+    InternalApi.PlumberWF.ListLatestWorkflowsRequest,
+    InternalApi.PlumberWF.ListLatestWorkflowsResponse
+  )
 
-  rpc :Describe, InternalApi.PlumberWF.DescribeRequest, InternalApi.PlumberWF.DescribeResponse
+  rpc(:Describe, InternalApi.PlumberWF.DescribeRequest, InternalApi.PlumberWF.DescribeResponse)
 
-  rpc :DescribeMany,
-      InternalApi.PlumberWF.DescribeManyRequest,
-      InternalApi.PlumberWF.DescribeManyResponse
+  rpc(
+    :DescribeMany,
+    InternalApi.PlumberWF.DescribeManyRequest,
+    InternalApi.PlumberWF.DescribeManyResponse
+  )
 
-  rpc :Terminate, InternalApi.PlumberWF.TerminateRequest, InternalApi.PlumberWF.TerminateResponse
+  rpc(:Terminate, InternalApi.PlumberWF.TerminateRequest, InternalApi.PlumberWF.TerminateResponse)
 
-  rpc :ListLabels,
-      InternalApi.PlumberWF.ListLabelsRequest,
-      InternalApi.PlumberWF.ListLabelsResponse
+  rpc(
+    :ListLabels,
+    InternalApi.PlumberWF.ListLabelsRequest,
+    InternalApi.PlumberWF.ListLabelsResponse
+  )
 
-  rpc :Reschedule, InternalApi.PlumberWF.RescheduleRequest, InternalApi.PlumberWF.ScheduleResponse
+  rpc(
+    :Reschedule,
+    InternalApi.PlumberWF.RescheduleRequest,
+    InternalApi.PlumberWF.ScheduleResponse
+  )
 
-  rpc :GetProjectId,
-      InternalApi.PlumberWF.GetProjectIdRequest,
-      InternalApi.PlumberWF.GetProjectIdResponse
+  rpc(
+    :GetProjectId,
+    InternalApi.PlumberWF.GetProjectIdRequest,
+    InternalApi.PlumberWF.GetProjectIdResponse
+  )
 
-  rpc :Create, InternalApi.PlumberWF.CreateRequest, InternalApi.PlumberWF.CreateResponse
+  rpc(:Create, InternalApi.PlumberWF.CreateRequest, InternalApi.PlumberWF.CreateResponse)
 end
 
 defmodule InternalApi.PlumberWF.WorkflowService.Stub do

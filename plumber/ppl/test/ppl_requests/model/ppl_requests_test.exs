@@ -415,6 +415,7 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
                  true
                )
     end
+  end
 
   test "changeset_conception updates request_args with missing information" do
     assert %Ecto.Changeset{valid?: true} =

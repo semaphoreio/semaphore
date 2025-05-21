@@ -15,6 +15,7 @@ defmodule PipelinesAPI.PipelinesClient.RequestFormatter do
     ValidateYamlRequest,
     PartialRebuildRequest
   }
+
   alias LogTee, as: LT
 
   # Describe
