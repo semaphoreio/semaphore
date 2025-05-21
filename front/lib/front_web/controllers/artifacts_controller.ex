@@ -166,10 +166,11 @@ defmodule FrontWeb.ArtifactsController do
       |> Audit.metadata(source_kind: source_kind, source_id: source_id, project_id: project_id)
       |> Audit.log()
 
-      with {:ok, url} <- Artifacthub.signed_url(project_id, source_kind, source_id, artifact_path) do
-        conn
-        |> redirect(external: url)
-      else
+      case Artifacthub.signed_url(project_id, source_kind, source_id, artifact_path) do
+        {:ok, url} ->
+          conn
+          |> redirect(external: url)
+
         _ ->
           conn
           |> put_flash(:alert, "Failed to fetch requested artifact.")
@@ -200,12 +201,12 @@ defmodule FrontWeb.ArtifactsController do
       |> Audit.metadata(source_kind: source_kind, source_id: source.id, project_id: project_id)
       |> Audit.log()
 
-      with {:ok, _response} <-
-             Artifacthub.destroy(project_id, source_kind, source.id, artifact_path) do
-        conn
-        |> put_flash(:notice, "Artifact resource deleted.")
-        |> redirect(to: redirect_path(conn, action, source))
-      else
+      case Artifacthub.destroy(project_id, source_kind, source.id, artifact_path) do
+        {:ok, _response} ->
+          conn
+          |> put_flash(:notice, "Artifact resource deleted.")
+          |> redirect(to: redirect_path(conn, action, source))
+
         _ ->
           conn
           |> put_flash(:alert, "Failed to delete the artifact.")

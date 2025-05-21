@@ -288,8 +288,7 @@ defmodule Support.Stubs.Scheduler do
 
       schedulers =
         DB.all(:schedulers)
-        |> Enum.filter(fn o -> o.api_model.project_id == req.project_id end)
-        |> Enum.filter(name_filter)
+        |> Enum.filter(fn o -> o.api_model.project_id == req.project_id && name_filter.(o) end)
         |> Enum.map(fn o -> o.api_model end)
 
       page_schedulers =

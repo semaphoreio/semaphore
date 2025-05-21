@@ -51,11 +51,12 @@ defmodule FrontWeb.SupportController do
 
     input = parse_support_form_data(params, user.email, billing_status)
 
-    with {:ok, _} <- SupportRequest.create(input) do
-      conn
-      |> put_flash(:notice, "Message sent.")
-      |> redirect(to: support_path(conn, :thanks))
-    else
+    case SupportRequest.create(input) do
+      {:ok, _} ->
+        conn
+        |> put_flash(:notice, "Message sent.")
+        |> redirect(to: support_path(conn, :thanks))
+
       {:error, "failed-to-submit", changeset} ->
         {:ok, can_manage_billing} = Async.await(fetch_auth)
         {:ok, org} = Async.await(fetch_org)
