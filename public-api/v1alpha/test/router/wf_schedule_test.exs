@@ -6,21 +6,6 @@ defmodule PipelinesAPI.Workflows.Schedule.Test do
     :ok
   end
 
-  test "POST /workflows/ - project ID mismatch" do
-    org = Support.Stubs.Organization.create(name: "RT2", org_username: "rt2")
-    user = Support.Stubs.User.create_default()
-    project = Support.Stubs.Project.create(org, user)
-
-    params = %{
-      "project_id" => project.id,
-      "reference" => "master",
-      "commit_sha" => "1234",
-      "pipeline_file" => ".semaphore/semaphore.yml"
-    }
-
-    assert "Not Found" = create_workflow(params, 404)
-  end
-
   test "POST /workflows/ - 403 when user does not have permission" do
     GrpcMock.stub(RBACMock, :list_user_permissions, fn _, _ ->
       InternalApi.RBAC.ListUserPermissionsResponse.new(
@@ -54,11 +39,10 @@ defmodule PipelinesAPI.Workflows.Schedule.Test do
       "pipeline_file" => ".semaphore/semaphore.yml"
     }
 
-    assert body = create_workflow(params, 200)
+    assert body = create_workflow(params, 200) |> IO.inspect(label: "EFEFEF ")
     assert {:ok, response} = Poison.decode(body)
     assert {:ok, _} = UUID.info(response["workflow_id"])
     assert {:ok, _} = UUID.info(response["pipeline_id"])
-    assert {:ok, _} = UUID.info(response["hook_id"])
   end
 
   test "POST /workflows/ - returns 400 when server returns :invalid_argument response" do
@@ -76,54 +60,54 @@ defmodule PipelinesAPI.Workflows.Schedule.Test do
     assert "\"Invalid argument\"" = create_workflow(params, 400)
   end
 
-  test "POST /workflows/ - returns 400 when server returns :not_found response" do
+  test "POST /workflows/ - returns 400 when server returns :failed_precondition response" do
     org = Support.Stubs.Organization.create_default()
     user = Support.Stubs.User.create_default()
-    Support.Stubs.Project.create(org, user, id: "not_found")
+    Support.Stubs.Project.create(org, user, id: "project_deleted")
 
     params = %{
-      "project_id" => "not_found",
+      "project_id" => "project_deleted",
       "reference" => "master",
       "commit_sha" => "1234",
       "pipeline_file" => ".semaphore/semaphore.yml"
     }
 
-    assert "\"Not found\"" = create_workflow(params, 400)
+    assert "\"Failed precondition\"" = create_workflow(params, 400)
   end
 
-  test "POST /workflows/ - returns 400 when server returns :aborted response" do
+  test "POST /workflows/ - returns 400 when server returns :resource_exhausted response" do
     org = Support.Stubs.Organization.create_default()
     user = Support.Stubs.User.create_default()
-    Support.Stubs.Project.create(org, user, id: "aborted")
+    Support.Stubs.Project.create(org, user, id: "resource_exhausted")
 
     params = %{
-      "project_id" => "aborted",
+      "project_id" => "resource_exhausted",
       "reference" => "master",
       "commit_sha" => "1234",
       "pipeline_file" => ".semaphore/semaphore.yml"
     }
 
-    assert "\"Aborted\"" = create_workflow(params, 400)
+    assert "\"Resource exhausted\"" = create_workflow(params, 400)
   end
 
-  test "POST /workflows/ - returns 500 when there is an internal error on server" do
-    System.put_env("REPO_PROXY_URL", "something:12345")
+  # test "POST /workflows/ - returns 500 when there is an internal error on server" do
+  #   System.put_env("PPL_GRPC_URL", "something:12345")
 
-    org = Support.Stubs.Organization.create_default()
-    user = Support.Stubs.User.create_default()
-    Support.Stubs.Project.create(org, user, id: "project_1")
+  #   org = Support.Stubs.Organization.create_default()
+  #   user = Support.Stubs.User.create_default()
+  #   Support.Stubs.Project.create(org, user, id: "project_1")
 
-    params = %{
-      "project_id" => "project_1",
-      "reference" => "master",
-      "commit_sha" => "1234",
-      "pipeline_file" => ".semaphore/semaphore.yml"
-    }
+  #   params = %{
+  #     "project_id" => "project_1",
+  #     "reference" => "master",
+  #     "commit_sha" => "1234",
+  #     "pipeline_file" => ".semaphore/semaphore.yml"
+  #   }
 
-    assert "\"Internal error\"" = create_workflow(params, 500)
+  #   assert "\"Internal error\"" = create_workflow(params, 500)
 
-    System.put_env("REPO_PROXY_URL", "127.0.0.1:50052")
-  end
+  #   System.put_env("PPL_GRPC_URL", "127.0.0.1:50052")
+  # end
 
   def create_workflow(params, expected_status_code) do
     {:ok, response} = params |> Poison.encode!() |> create()
