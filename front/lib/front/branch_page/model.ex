@@ -160,7 +160,9 @@ defmodule Front.BranchPage.Model do
     # Handle author parameter to filter by users
     api_params =
       if params.author && params.author != "" do
-        case Front.RBAC.Members.list_project_members(params.organization_id, params.project_id, username: params.author) do
+        case Front.RBAC.Members.list_project_members(params.organization_id, params.project_id,
+               username: params.author
+             ) do
           {:ok, {members, _total_pages}} ->
             user_ids = members |> Enum.map(& &1.id)
 

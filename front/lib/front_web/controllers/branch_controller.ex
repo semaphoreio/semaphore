@@ -79,7 +79,6 @@ defmodule FrontWeb.BranchController do
       ]
     }
 
-
     assigns =
       %{
         js: :branch_page,
