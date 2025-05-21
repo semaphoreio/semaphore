@@ -327,6 +327,27 @@ defmodule Front.Models.User do
     end)
   end
 
+  def search_users(query, limit \\ 20) do
+    Watchman.benchmark("search_users.duration", fn ->
+      request = InternalApi.User.SearchUsersRequest.new(
+        query: query,
+        limit: limit
+      )
+
+      {:ok, channel} = channel()
+
+      case InternalApi.User.UserService.Stub.search_users(channel, request) do
+        {:ok, response} ->
+          users = Enum.map(response.users, fn user -> construct(user) end)
+          {:ok, users}
+
+        {:error, error} ->
+          Logger.error("[User Model] Error while searching users: #{inspect(error)}")
+          {:error, error}
+      end
+    end)
+  end
+
   defp refresh_repository_provider(user_id, provider) do
     Watchman.benchmark("refresh_repository_provider.duration", fn ->
       alias InternalApi.User.UserService.Stub
