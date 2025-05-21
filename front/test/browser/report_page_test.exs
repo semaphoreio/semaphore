@@ -45,6 +45,18 @@ defmodule Front.Browser.ReportPageTest do
       |> visit("/jobs/#{job_id}")
       |> refute_has(Query.text("Report"))
     end
+
+    test "does not display a report tab on a project page", %{
+      session: session
+    } do
+      project_name =
+        DB.first(:projects)
+        |> Map.get(:name)
+
+      session
+      |> visit("/projects/#{project_name}")
+      |> refute_has(Query.text("Report"))
+    end
   end
 
   describe "when ui_reports feature is enabled" do
@@ -79,6 +91,18 @@ defmodule Front.Browser.ReportPageTest do
 
       session
       |> visit("/jobs/#{job_id}")
+      |> assert_has(Query.text("Report"))
+    end
+
+    test "displays a report tab on a project page", %{
+      session: session
+    } do
+      project_name =
+        DB.first(:projects)
+        |> Map.get(:name)
+
+      session
+      |> visit("/projects/#{project_name}")
       |> assert_has(Query.text("Report"))
     end
   end
