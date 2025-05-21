@@ -545,6 +545,8 @@ defmodule FrontWeb.Router do
     put("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :put)
     delete("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :delete)
 
+    get("/projects/:name_or_id/report", ReportController, :project)
+
     get("/", DashboardController, :index)
     get("/workflows", DashboardController, :workflows)
     get("/dashboards/:name", DashboardController, :show)

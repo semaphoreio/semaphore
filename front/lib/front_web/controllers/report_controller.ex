@@ -4,13 +4,7 @@ defmodule FrontWeb.ReportController do
 
   alias Front.Async
 
-  alias FrontWeb.Plugs.{
-    FetchPermissions,
-    Header,
-    PageAccess,
-    PutProjectAssigns,
-    FeatureEnabled
-  }
+  alias FrontWeb.Plugs
 
   alias Front.Models.{
     Artifacthub,
@@ -21,11 +15,11 @@ defmodule FrontWeb.ReportController do
     Workflow
   }
 
-  plug(FeatureEnabled, [:ui_reports])
-  plug(PutProjectAssigns)
-  plug(FetchPermissions, scope: "project")
-  plug(PageAccess, permissions: "project.view")
-  plug(Header when action in [:job, :workflow])
+  plug(Plugs.FeatureEnabled, [:ui_reports])
+  plug(Plugs.PutProjectAssigns)
+  plug(Plugs.FetchPermissions, scope: "project")
+  plug(Plugs.PageAccess, permissions: "project.view")
+  plug(Plugs.Header when action in [:job, :workflow, :project])
 
   def job(conn, _params) do
     Watchman.benchmark("markdown_report.job", fn ->
@@ -75,6 +69,25 @@ defmodule FrontWeb.ReportController do
         assigns
         |> workflow_assigns(org, project)
         |> Front.Breadcrumbs.Workflow.construct(conn, :reports)
+
+      render(conn, "markdown.html", assigns)
+    end)
+  end
+
+  def project(conn, _params) do
+    Watchman.benchmark("markdown_report.project", fn ->
+      project = conn.assigns.project
+
+      {assigns, org} =
+        assign_report_layout(conn, "project", project, %{
+          base_url: report_url(conn, :project, project.name),
+          project: project
+        })
+
+      assigns =
+        assigns
+        |> project_assigns(org, project)
+        |> Front.Breadcrumbs.Project.construct(conn, :reports)
 
       render(conn, "markdown.html", assigns)
     end)
@@ -152,11 +165,31 @@ defmodule FrontWeb.ReportController do
     |> Map.put(:title, "Report ・#{project.name}・#{org.name}")
   end
 
+  defp project_assigns(assigns, org, project) do
+    user = assigns.user
+
+    starred? =
+      Watchman.benchmark(
+        "project_page_check_star",
+        fn ->
+          Front.Models.User.has_favorite(user.id, org.id, project.id)
+        end
+      )
+
+    assigns
+    |> Map.put(:organization, org)
+    |> Map.put(:starred?, starred?)
+  end
+
   defp fetch_report_from_context(project, "job", job) do
     Artifacthub.signed_url(project.id, "jobs", job.id, ".semaphore/REPORT.md")
   end
 
   defp fetch_report_from_context(project, "workflow", workflow) do
     Artifacthub.signed_url(project.id, "workflows", workflow.id, ".semaphore/REPORT.md")
+  end
+
+  defp fetch_report_from_context(project, "project", project) do
+    Artifacthub.signed_url(project.id, "projects", project.id, ".semaphore/REPORT.md")
   end
 end
