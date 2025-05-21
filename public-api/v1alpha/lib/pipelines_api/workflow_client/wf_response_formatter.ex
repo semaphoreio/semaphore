@@ -49,11 +49,11 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
 
   def process_reschedule_response({:ok, reschedule_response}) do
     with true <- is_map(reschedule_response),
-          response_map <- Proto.to_map!(reschedule_response),
-          {:ok, status} <- Map.fetch(response_map, :status),
-          {:code, :OK} <- {:code, Map.get(status, :code)},
-          {:ok, wf_id} <- Map.fetch(reschedule_response, :wf_id),
-          {:ok, ppl_id} <- Map.fetch(reschedule_response, :ppl_id) do
+         response_map <- Proto.to_map!(reschedule_response),
+         {:ok, status} <- Map.fetch(response_map, :status),
+         {:code, :OK} <- {:code, Map.get(status, :code)},
+         {:ok, wf_id} <- Map.fetch(reschedule_response, :wf_id),
+         {:ok, ppl_id} <- Map.fetch(reschedule_response, :ppl_id) do
       {:ok, %{wf_id: wf_id, ppl_id: ppl_id}}
     else
       {:code, _} ->
@@ -62,7 +62,8 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
         |> Map.get(:status)
         |> ToTuple.user_error()
 
-      _ -> log_invalid_response(reschedule_response, "reschedule")
+      _ ->
+        log_invalid_response(reschedule_response, "reschedule")
     end
   end
 

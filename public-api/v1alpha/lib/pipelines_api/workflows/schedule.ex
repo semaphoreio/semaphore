@@ -27,7 +27,8 @@ defmodule PipelinesAPI.Workflows.Schedule do
           |> WorkflowClient.schedule()
           |> Common.respond(conn)
 
-        error -> Common.respond(error, conn)
+        error ->
+          Common.respond(error, conn)
       end
     end)
   end
@@ -43,10 +44,10 @@ defmodule PipelinesAPI.Workflows.Schedule do
   end
 
   defp find_repository(conn = %{params: %{"project_id" => project_id}})
-    when is_binary(project_id) and project_id != "" do
-      case ProjectClient.describe(project_id) do
-        {:ok, project} -> {:ok, Map.put(conn.params, "repository", project.spec.repository)}
-        {:error, _reason} -> {:error, {:user, "Invalid request - missing parameter 'project_id'."}}
-      end
+       when is_binary(project_id) and project_id != "" do
+    case ProjectClient.describe(project_id) do
+      {:ok, project} -> {:ok, Map.put(conn.params, "repository", project.spec.repository)}
+      {:error, _reason} -> {:error, {:user, "Invalid request - missing parameter 'project_id'."}}
+    end
   end
 end
