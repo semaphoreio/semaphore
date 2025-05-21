@@ -526,7 +526,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     assert {:ok, definition} = Definition.form_definition(ppl_req, :undefined, settings, :prod)
     assert list = Map.get(definition, "jobs") |> Enum.at(0) |> Map.get("env_vars")
     assert is_list(list)
-    assert Enum.count(list) == 18
+    assert Enum.count(list) == 19
 
     yml_path_ev = Enum.find(list, fn map -> map["name"] == "SEMAPHORE_YAML_FILE_PATH" end)
     assert yml_path_ev["value"] == ".semaphore/semaphore.yml"
