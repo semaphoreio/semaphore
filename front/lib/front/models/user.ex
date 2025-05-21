@@ -470,5 +470,5 @@ defmodule Front.Models.User do
     end
   end
 
-  def channel(), do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
+  def channel, do: GRPC.Stub.connect(Application.fetch_env!(:front, :guard_user_grpc_endpoint))
 end
