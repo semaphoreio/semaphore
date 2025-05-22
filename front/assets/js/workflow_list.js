@@ -69,9 +69,8 @@ export var WorkflowList = {
         if (fromDate > toDate && filterErrorMessage) {
           filterErrorMessage.hidden = false;
           return;
-        } else {
+        } else if (filterErrorMessage) {
           filterErrorMessage.hidden = true;
-          return;
         }
       }
       
