@@ -1,4 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
+import * as htmlToImage from 'html-to-image';
+
 import ReactFlow, {
   Controls,
   Background,
@@ -19,17 +21,33 @@ import 'tippy.js/dist/tippy.css';
 import CustomBarHandle from './CustomBarHandle';
 
 // Custom stage component for the deployment card
-const DeploymentCardStage = ({ data, selected, onIconAction }) => {
+const DeploymentCardStage = React.memo(({ data, selected, onIconAction, id, onDelete }) => {
   const [showOverlay, setShowOverlay] = React.useState(false);
-  const handleAction = (action) => {
+  const handleAction = React.useCallback((action) => {
     if (action === 'code') setShowOverlay(true);
     if (onIconAction) onIconAction(action);
-  };
+  }, [onIconAction]);
+  
+  const handleDelete = React.useCallback(() => {
+    if (onDelete) onDelete(id);
+  }, [onDelete, id]);
+  
+  // Use a fixed width to prevent resize observer loops and add white shadow
+  const nodeStyle = React.useMemo(() => ({
+    width: data.style?.width || 320,
+    boxShadow: '0 4px 12px rgba(128,128,128,0.20)', // White shadow
+  }), [data.style?.width]);
+  
   return (
-    <div className={`bg-white roundedg shadow-md border ${selected ? 'ring-2 ring-blue-500' : 'border-gray-200'} relative`}>
+    <div className={`bg-white roundedg border ${selected ? 'ring-2 ring-blue-500' : 'border-gray-200'} relative`} style={nodeStyle}>
     {/* Icon block above node when selected */}
     {selected && (
-      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-2 bg-white shadow-lg br4 px-3 py-2 border z-10">
+      <div className="absolute -top-10 left-1/2 -translate-x-1/2 flex gap-2 bg-white shadow-gray-lg br4 px-3 py-2 border z-10">
+      <Tippy content="Delete this stage" placement="top">
+      <button className="hover:bg-red-100 text-red-600 p-2 br4" title="Delete Stage" onClick={handleDelete}>
+      <span className="material-icons" style={{fontSize:20}}>delete</span>
+      </button>
+      </Tippy>
       <Tippy content="View code for this stage" placement="top">
       <button className="hover:bg-gray-100 p-2 br4" title="View Code" onClick={() => handleAction('code')}>
       <span className="material-icons" style={{fontSize:20}}>code</span>
@@ -45,6 +63,7 @@ const DeploymentCardStage = ({ data, selected, onIconAction }) => {
       <span className="material-icons" style={{fontSize:20}}>play_arrow</span>
       </button>
       </Tippy>
+
       </div>
     )}
     {/* Modal overlay for View Code */}
@@ -106,15 +125,20 @@ const DeploymentCardStage = ({ data, selected, onIconAction }) => {
     <CustomBarHandle type="source" position={Position.Right} />
     </div>
   );
-};
+});
 
 // Custom integration component for GitHub repository
 const GitHubIntegration = ({ data, selected }) => {
   // Select header color and icon based on integrationType
   const isKubernetes = data.integrationType === 'kubernetes';
   const isS3 = data.repoName === 'buckets/my-app-data';
+  // Add white shadow style
+  const nodeStyle = {
+    boxShadow: '0 4px 12px rgba(128,128,128,0.20)' // White shadow
+  };
+  
   return (
-    <div className={`bg-white roundedg shadow-md border ${selected ? 'ring-2 ring-blue-500' : 'border-gray-200'}`}>
+    <div className={`bg-white roundedg border ${selected ? 'ring-2 ring-blue-500' : 'border-gray-200'}`} style={nodeStyle}>
     <Handle 
     type="target" 
     position={Position.Left} 
@@ -173,46 +197,63 @@ const GitHubIntegration = ({ data, selected }) => {
 };
 
 // Sidebar component to display selected stage details
-const Sidebar = ({ selectedStage, onClose }) => {
+const Sidebar = React.memo(({ selectedStage, onClose }) => {
   const [activeTab, setActiveTab] = useState('general');
   const [width, setWidth] = useState(600);
   const isDragging = useRef(false);
   const sidebarRef = useRef(null);
+  const animationFrameRef = useRef(null);
   
-  // Sidebar tab definitions
-  const tabs = [
+  // Sidebar tab definitions - memoized to prevent unnecessary re-renders
+  const tabs = React.useMemo(() => [
     { key: 'general', label: 'General' },
     { key: 'history', label: 'History' },
     { key: 'queue', label: 'Queue' },
     { key: 'settings', label: 'Settings' },
-  ];
+  ], []);
   
-  // Handle mouse down on resize handle
-  const handleMouseDown = (e) => {
+  // Cleanup function for animation frame and event listeners
+  React.useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+  
+  // Handle mouse down on resize handle - memoized to prevent recreation on each render
+  const handleMouseDown = React.useCallback((e) => {
     isDragging.current = true;
     document.body.style.cursor = 'ew-resize';
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
-  };
+  }, []);
   
-  // Handle mouse move during resize
-  const handleMouseMove = (e) => {
+  // Handle mouse move during resize - memoized with dependencies
+  const handleMouseMove = React.useCallback((e) => {
     if (!isDragging.current) return;
-    const sidebarLeft = sidebarRef.current.getBoundingClientRect().left;
-    const newWidth = Math.max(300, Math.min(800, window.innerWidth - e.clientX));
-    // Only update if width changes, and batch with requestAnimationFrame
-    if (width !== newWidth) {
-      requestAnimationFrame(() => setWidth(newWidth));
+    // Cancel any pending animation frame to prevent queuing multiple updates
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
     }
-  };
+    
+    // Schedule width update in next animation frame to prevent layout thrashing
+    animationFrameRef.current = requestAnimationFrame(() => {
+      const newWidth = Math.max(300, Math.min(800, window.innerWidth - e.clientX));
+      setWidth(newWidth);
+      animationFrameRef.current = null;
+    });
+  }, []);
   
-  // Handle mouse up to stop resizing
-  const handleMouseUp = () => {
+  // Handle mouse up to stop resizing - memoized to prevent recreation
+  const handleMouseUp = React.useCallback(() => {
     isDragging.current = false;
     document.body.style.cursor = '';
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  };
+  }, []);
   
   // Render the appropriate content based on the active tab
   const renderTabContent = () => {
@@ -744,15 +785,7 @@ const Sidebar = ({ selectedStage, onClose }) => {
     />
     </aside>
   );
-};
-
-// Define stage types
-const stageTypes = {
-  deploymentCard: (props) => (
-    <DeploymentCardStage {...props} onIconAction={(action) => console.log('Icon action:', action)} />
-  ),
-  githubIntegration: GitHubIntegration,
-};
+});
 
 // Initial stages configuration
 const chainLength = 5;
@@ -1190,10 +1223,46 @@ function WorkflowEditor() {
   const [stages, setStages, onStagesChange] = useNodesState(initialStages);
   const [listeners, setListeners, onListenersChange] = useEdgesState(initialListeners);
   const [selectedStage, setSelectedStage] = useState(null);
+  const [selectedEdge, setSelectedEdge] = useState(null);
   const [iconAction, setIconAction] = useState(null); 
   const [reactFlowInstance, setReactFlowInstance] = useState(null);
   
-  const SIDEBAR_WIDTH = 400; 
+  const SIDEBAR_WIDTH = 400;
+  
+  // Handle stage deletion
+  const handleDeleteStage = (stageId) => {
+    // Remove the stage
+    setStages((currentStages) => currentStages.filter(stage => stage.id !== stageId));
+    
+    // Remove any connections to/from this stage
+    setListeners((currentListeners) => 
+      currentListeners.filter(listener => 
+        listener.source !== stageId && listener.target !== stageId
+      )
+    );
+    
+    // Close sidebar if the deleted stage was selected
+    if (selectedStage && selectedStage.id === stageId) {
+      setSelectedStage(null);
+    }
+  };
+  
+  // Handle edge deletion
+  const handleDeleteEdge = (edgeId) => {
+    // Remove the edge
+    setListeners((currentListeners) => 
+      currentListeners.filter(listener => listener.id !== edgeId)
+    );
+    
+    // Clear selected edge
+    setSelectedEdge(null);
+  };
+  
+  // Define stage types using memoization to prevent unnecessary re-renders
+  const stageTypes = React.useMemo(() => ({
+    deploymentCard: (props) => <DeploymentCardStage {...props} onDelete={handleDeleteStage} id={props.id}/>,
+    githubIntegration: GitHubIntegration,
+  }), []); 
   
   // Helper to generate a unique Stage ID
   const generateStageId = (existingStages) => {
@@ -1242,6 +1311,14 @@ function WorkflowEditor() {
   // Handle pane click to close sidebar when clicking on empty canvas
   const onPaneClick = useCallback(() => {
     setSelectedStage(null);
+    setSelectedEdge(null);
+  }, []);
+  
+  // Handle edge click to select/deselect edge
+  const onEdgeClick = useCallback((event, edge) => {
+    event.stopPropagation(); // Prevent triggering pane click
+    setSelectedEdge(prev => prev?.id === edge.id ? null : edge);
+    setSelectedStage(null); // Deselect any selected stage
   }, []);
   
   // Handle icon block actions
@@ -1250,36 +1327,123 @@ function WorkflowEditor() {
     // You can perform additional logic here, e.g., open modals, show info, etc.
   };
   
-  return (
-    <div className="relative h-full w-full">
-    <div className="flex-grow h-full" style={{ position: 'relative', zIndex: 1 }}>
+
+  
+  // Ref for the ReactFlow wrapper div
+  const reactFlowWrapper = useRef(null);
+
+  // Export handler
+  const handleExport = () => {
+    if (!reactFlowWrapper.current) return;
+    htmlToImage.toPng(reactFlowWrapper.current.querySelector('.react-flow'))
+      .then((dataUrl) => {
+        const link = document.createElement('a');
+        link.download = 'workflow-chain.png';
+        link.href = dataUrl;
+        link.click();
+      })
+      .catch((err) => {
+        alert('Failed to export image: ' + err);
+      });
+  };
+
+  // Create edge styles with selection highlight and hide labels
+  const edgesWithStyles = React.useMemo(() => {
+    return listeners.map(edge => {
+      // Create a new edge object without the label property
+      const { label, ...edgeWithoutLabel } = edge;
+      
+      return {
+        ...edgeWithoutLabel,
+        style: {
+          ...edge.style,
+          stroke: selectedEdge?.id === edge.id ? '#3b82f6' : '#888888', // Gray connectors, blue when selected
+          strokeWidth: selectedEdge?.id === edge.id ? 3 : edge.style?.strokeWidth || 2,
+        },
+        // Keep other properties but remove visible label
+        labelStyle: {
+          ...edge.labelStyle,
+          fill: 'transparent', // Make text transparent (invisible)
+        },
+        labelBgStyle: {
+          ...edge.labelBgStyle,
+          fill: 'transparent', // Make background transparent
+          fillOpacity: 0,
+        },
+      };
+    });
+  }, [listeners, selectedEdge]);
+  
+  // Use memoization to prevent unnecessary re-renders of ReactFlow
+  const reactFlowElement = React.useMemo(() => (
     <ReactFlow
-    nodes={stages}
-    edges={listeners}
-    onNodesChange={onStagesChange}
-    onEdgesChange={onListenersChange}
-    onConnect={onConnect}
-    onNodeClick={onStageClick}
-    onPaneClick={onPaneClick}
-    nodeTypes={stageTypes}
-    connectionLineType={ConnectionLineType.Bezier}
-    fitView
-    fitViewOptions={{ padding: 0.3 }}
-    minZoom={0.4}
-    maxZoom={1.5}
-    onInit={setReactFlowInstance}
+      nodes={stages}
+      edges={edgesWithStyles}
+      onNodesChange={onStagesChange}
+      onEdgesChange={onListenersChange}
+      onConnect={onConnect}
+      onNodeClick={onStageClick}
+      onEdgeClick={onEdgeClick}
+      onPaneClick={onPaneClick}
+      nodeTypes={stageTypes}
+      connectionLineType={ConnectionLineType.Bezier}
+      fitView
+      fitViewOptions={{ padding: 0.3 }}
+      minZoom={0.4}
+      maxZoom={1.5}
+      onInit={setReactFlowInstance}
+      style={{ width: '100%', height: '100%' }} // Fixed dimensions to prevent layout shifts
     >
-    <Controls />
-    <Background variant="dots" gap={12} size={1} />
+      <Controls />
+      <Background variant="dots" gap={16} size={1} color="#bbb" />
     </ReactFlow>
-    </div>
-    
-    {selectedStage && (
-      <Sidebar 
-      selectedStage={selectedStage} 
-      onClose={closeSidebar} 
-      />
-    )}
+  ), [stages, listeners, onStagesChange, onListenersChange, onConnect, onStageClick, onPaneClick, stageTypes, edgesWithStyles, onEdgeClick]);
+  
+  return (
+    <div className="relative h-full w-full" ref={reactFlowWrapper}>
+      <button
+        onClick={handleExport}
+        style={{ position: 'absolute', top: 16, left: 16, zIndex: 1000, background: '#222', color: 'white', padding: '10px 18px', borderRadius: 6, border: 'none', fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 8px rgba(128,128,128,0.20)' }}
+      >
+        Export as Image
+      </button>
+      <div className="flex-grow h-full" style={{ position: 'relative', zIndex: 1 }}>
+        {reactFlowElement}
+      </div>
+      
+      {/* Edge Delete UI */}
+      {selectedEdge && (
+        <div 
+          className="absolute flex gap-2 bg-white shadow-gray-lg px-3 py-2 border z-10 rounded-lg"
+          style={{ 
+            top: '50%', 
+            left: '50%', 
+            transform: 'translate(-50%, -50%)',
+            zIndex: 1000,
+          }}
+        >
+          <div className="flex flex-col items-center">
+            <div className="mb-2 font-medium">Selected Connection: {selectedEdge.id}</div>
+            <Tippy content="Delete this connection" placement="top">
+              <button 
+                className="hover:bg-red-100 text-red-600 p-2 rounded-md flex items-center" 
+                title="Delete Connection"
+                onClick={() => handleDeleteEdge(selectedEdge.id)}
+              >
+                <span className="material-icons" style={{fontSize:20}}>delete</span>
+                <span className="ml-2">Delete Connection</span>
+              </button>
+            </Tippy>
+          </div>
+        </div>
+      )}
+      
+      {selectedStage && (
+        <Sidebar 
+          selectedStage={selectedStage} 
+          onClose={closeSidebar} 
+        />
+      )}
     </div>
   );
 }
@@ -1320,7 +1484,7 @@ export default WorkflowEditor;
     return (
       <div className="modal is-open" aria-hidden={!open} style={{position:'fixed',top:0,left:0,right:0,bottom:0,zIndex:999999}}>
       <div className="modal-overlay" style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(40,50,50,0.6)',zIndex:999999}} onClick={onClose} />
-      <div className="modal-content" style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%, -50%)',zIndex:1000000,background:'#fff',borderRadius:8,boxShadow:'0 6px 40px rgba(0,0,0,0.18)',maxWidth:600,width:'90vw',padding:32}}>
+      <div className="modal-content" style={{position:'fixed',top:'50%',left:'50%',transform:'translate(-50%, -50%)',zIndex:1000000,background:'#fff',borderRadius:8,boxShadow:'0 6px 40px rgba(128,128,128,0.20)',maxWidth:600,width:'90vw',padding:32}}>
       <button onClick={onClose} style={{position:'absolute',top:8,right:12,background:'none',border:'none',fontSize:26,color:'#888',cursor:'pointer'}} aria-label="Close">×</button>
       {children}
       </div>
