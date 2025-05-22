@@ -39,7 +39,7 @@ defmodule PipelinesAPI.Workflows.Schedule.Test do
       "pipeline_file" => ".semaphore/semaphore.yml"
     }
 
-    assert body = create_workflow(params, 200) |> IO.inspect(label: "EFEFEF ")
+    assert body = create_workflow(params, 200)
     assert {:ok, response} = Poison.decode(body)
     assert {:ok, _} = UUID.info(response["workflow_id"])
     assert {:ok, _} = UUID.info(response["pipeline_id"])
@@ -90,29 +90,25 @@ defmodule PipelinesAPI.Workflows.Schedule.Test do
     assert "\"Resource exhausted\"" = create_workflow(params, 400)
   end
 
-  # test "POST /workflows/ - returns 500 when there is an internal error on server" do
-  #   System.put_env("PPL_GRPC_URL", "something:12345")
+  test "POST /workflows/ - returns 500 when there is an internal error on server" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    Support.Stubs.Project.create(org, user, id: "internal_error")
 
-  #   org = Support.Stubs.Organization.create_default()
-  #   user = Support.Stubs.User.create_default()
-  #   Support.Stubs.Project.create(org, user, id: "project_1")
+    params = %{
+      "project_id" => "internal_error",
+      "reference" => "master",
+      "commit_sha" => "1234",
+      "pipeline_file" => ".semaphore/semaphore.yml"
+    }
 
-  #   params = %{
-  #     "project_id" => "project_1",
-  #     "reference" => "master",
-  #     "commit_sha" => "1234",
-  #     "pipeline_file" => ".semaphore/semaphore.yml"
-  #   }
-
-  #   assert "\"Internal error\"" = create_workflow(params, 500)
-
-  #   System.put_env("PPL_GRPC_URL", "127.0.0.1:50052")
-  # end
+    assert "\"Internal error\"" = create_workflow(params, 500)
+  end
 
   def create_workflow(params, expected_status_code) do
     {:ok, response} = params |> Poison.encode!() |> create()
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
+    if(status_code != expected_status_code, do: IO.puts("Response body: #{inspect(body)}"))
     assert status_code == expected_status_code
     body
   end
