@@ -1,12 +1,21 @@
-<div class="flex-m items-center">
-  <%# <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5"> %>
+<div class="flex-m items-center justify-between mb3">
+  <div class="f5 gray mr3 mb3 mb0-m">
+    Most recent activity on this <%= branch_type_name(@branch_type) |> String.downcase() %>
+  </div>
 
-  <div class="flex items-center mr2">
-    <span class="f6 gray mr1">From</span>
-    <input id="date_from" name="date_from" type="date" class="form-control mb3 mb0-m w4">
+  <div class="flex-m items-center">
+    <%# <input id="author" name="author" type="text" placeholder="User" class="form-control mb3 mb0-m mr3 w5"> %>
+    <div class="flex items-center mr2">
+      <span class="f6 gray mr1">From</span>
+      <input id="date_from" name="date_from" type="date" class="form-control mb3 mb0-m w4">
+    </div>
+    <div class="flex items-center">
+      <span class="f6 gray mr1">To</span>
+      <input id="date_to" name="date_to" type="date" class="form-control mb3 mb0-m w4">
+    </div>
   </div>
-  <div class="flex items-center">
-    <span class="f6 gray mr1">To</span>
-    <input id="date_to" name="date_to" type="date" class="form-control mb3 mb0-m w4">
-  </div>
+</div>
+
+<div id="filter_error_message" class="mt2 f6 dark-red tr" hidden="true">
+  Error: "To" date cannot be earlier than "From" date.
 </div>
