@@ -215,7 +215,7 @@ function renderDebugJob(item, state) {
         <div class="w-25-l">
           <div class="flex flex-row-reverse-l items-center">
             <img src="${item.user_icon_path}" class="db br-100 ba b--black-50" width="32" height="32">
-            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">${relativeTime(item.created_at)} <br> by ${item.user_name}</div>
+            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">${timeAgo(item.created_at)} <br> by ${item.user_name}</div>
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ function renderDebugProject(item, state) {
         <div class="w-25-l">
           <div class="flex flex-row-reverse-l items-center">
             <img src="${item.user_icon_path}" class="db br-100 ba b--black-50" width="32" height="32">
-            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">${relativeTime(item.created_at)} <br> by ${escapeHtml(item.user_name)}</div>
+            <div class="f5 gray ml2 ml3-m ml0-l mr3-l tr-l">${timeAgo(item.created_at)} <br> by ${escapeHtml(item.user_name)}</div>
           </div>
         </div>
       </div>
