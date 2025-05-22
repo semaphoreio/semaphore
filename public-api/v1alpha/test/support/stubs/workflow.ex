@@ -149,6 +149,9 @@ defmodule Support.Stubs.Workflow do
               )
           )
 
+        "internal_error" ->
+          raise GRPC.RPCError, status: GRPC.Status.internal(), message: "Internal error"
+
         _ ->
           user_id = UUID.uuid4()
           branch = Support.Stubs.Branch.create(%{id: req.project_id})

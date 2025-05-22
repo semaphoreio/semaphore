@@ -78,7 +78,6 @@ defmodule Test.PipelinesClient do
   def describe_ppl_with_id(id, decode? \\ true, detailed \\ false, headers \\ headers()) do
     {:ok, response} = get_ppl_description(id, Atom.to_string(detailed), headers)
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
 
     body =
       case decode? do
@@ -92,7 +91,6 @@ defmodule Test.PipelinesClient do
   def describe_wf(wf_id, decode? \\ true, headers \\ headers()) do
     {:ok, response} = get_wf_description(wf_id, headers)
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
 
     body =
       case decode? do
