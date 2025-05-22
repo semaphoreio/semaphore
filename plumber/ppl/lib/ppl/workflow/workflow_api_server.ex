@@ -39,8 +39,8 @@ defmodule Plumber.WorkflowAPI.Server do
            {:ok, _org_id} <- id_present?(schedule_request, "organization_id"),
            {:ok, request_map} <- Proto.to_map(schedule_request, string_keys: true),
            {:ok, schedule_params} <- Actions.form_schedule_params(request_map),
-           task_workflow?         <- params_contain_scheduler_task_id?(schedule_params),
-           {:ok, result}          <- Actions.schedule(schedule_params, true, true, task_workflow?)
+           start_in_conceived?    <- start_in_conceived_state?(schedule_params),
+           {:ok, result}          <- Actions.schedule(schedule_params, true, true, start_in_conceived?)
       do
         schedule_response(result.wf_id, result.ppl_id)
       else
@@ -318,9 +318,8 @@ defmodule Plumber.WorkflowAPI.Server do
     end)
   end
 
-  defp params_contain_scheduler_task_id?(params) do
-    params |> Map.get("scheduler_task_id", "") |> String.length() > 0
-  end
+  defp start_in_conceived_state?(%{"scheduler_task_id" => val}) when is_binary(val) and val != "", do: true
+  defp start_in_conceived_state?(%{"start_in_conceived_state" => val}), do: val
 
   defp one_of_required_present(:skip, :skip, :skip),
     do: {:error, "One of 'project_ids', 'project_id' or 'organization_id' parameters is required."}

@@ -18,7 +18,7 @@ defmodule Ppl.PplRequests.Model.PplRequestsQueries do
   @doc """
   Inserts new PplRequest with given params in DB
   """
-  def insert_request(ctx, top_level \\ true, initial_request \\ true, task_workflow \\ false) do
+  def insert_request(ctx, top_level \\ true, initial_request \\ true, start_in_conceived? \\ false) do
     ppl_id = UUID.uuid4()
     wf_id = Map.get(ctx, "wf_id")
     request_token = Map.get(ctx, "request_token")
@@ -32,11 +32,11 @@ defmodule Ppl.PplRequests.Model.PplRequestsQueries do
                top_level: top_level, initial_request: initial_request, id: ppl_id,
                ppl_artefact_id: ppl_id, wf_id:  wf_id}
 
-    insert_request_(params, task_workflow)
+    insert_request_(params, start_in_conceived?)
   end
 
-  defp insert_request_(params, task_workflow \\ false) do
-    %PplRequests{} |> PplRequests.changeset_request(params, task_workflow) |> Repo.insert()
+  defp insert_request_(params, start_in_conceived? \\ false) do
+    %PplRequests{} |> PplRequests.changeset_request(params, start_in_conceived?) |> Repo.insert()
     |> process_response(params[:request_token])
   rescue
     e -> {:error, e}
