@@ -61,13 +61,16 @@ export var WorkflowList = {
       const dateTo = dateToInput?.value;
       const author = authorInput?.value;
       
-      // Validate date range
       if (dateFrom && dateTo) {
+        const filterErrorMessage = document.getElementById('filter_error_message');
         const fromDate = new Date(dateFrom);
         const toDate = new Date(dateTo);
         
-        if (fromDate > toDate) {
-          alert('Start date must be before end date');
+        if (fromDate > toDate && filterErrorMessage) {
+          filterErrorMessage.hidden = false;
+          return;
+        } else {
+          filterErrorMessage.hidden = true;
           return;
         }
       }
