@@ -1375,12 +1375,30 @@ li.projects-menu-item-special:hover {
     padding-right: 135px;
 }
 /* Toggle .sticky-commands on container to apply */
-.sticky-commands .job-log-line.command.sticky {
+.sticky-commands .job-log-line.command {
     position: -webkit-sticky;
     position: sticky;
     top: 0;
     z-index: 1;
+    max-height: 260px;
+    overflow-y: hidden;
 }
+
+.job-log-line-expand {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  text-align: center;
+  left: 0;
+  background: white;
+  border-bottom: 1px solid #D3DADE;
+  text-decoration: underline;
+}
+
+.job-log-line-expand:hover {
+  background-color: #D3DADE;
+}
+
 .job-log-line:hover {
     background-color: #c7edff;
 }

@@ -105,10 +105,10 @@ export class JobLogs {
 
       // If job line is too big, a sticky command
       // might hide the commands below it
-      if(e.target.offsetHeight < 600) {
-        e.target.classList.add("sticky")
+      if(e.target.offsetHeight > 250) {
+        e.target.closest(".job-log-line-expand").classList.remove("dn")
       } else {
-        e.target.classList.remove("sticky")
+        e.target.closest(".job-log-line-expand").classList.add("dn")
       }
 
       if (FoldToggle.isTogglable(fold)) {
