@@ -1380,19 +1380,20 @@ li.projects-menu-item-special:hover {
     position: sticky;
     top: 0;
     z-index: 1;
-    max-height: 260px;
+    max-height: 250px;
     overflow-y: hidden;
 }
 
 .job-log-line-expand {
-  position: absolute;
-  bottom: 0;
   width: 100%;
   text-align: center;
-  left: 0;
   background: white;
   border-bottom: 1px solid #D3DADE;
   text-decoration: underline;
+
+  position: sticky;
+  z-index: 1;
+  cursor: pointer;
 }
 
 .job-log-line-expand:hover {

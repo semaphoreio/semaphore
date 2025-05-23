@@ -101,15 +101,7 @@ export class JobLogs {
     this.update()
 
     this.on("click", ".job-log-line.command", (e) => {
-      let fold = e.target.closest(".job-log-fold")
-
-      // If job line is too big, a sticky command
-      // might hide the commands below it
-      if(e.target.offsetHeight > 250) {
-        e.target.closest(".job-log-line-expand").classList.remove("dn")
-      } else {
-        e.target.closest(".job-log-line-expand").classList.add("dn")
-      }
+      const fold = e.target.closest(".job-log-fold")
 
       if (FoldToggle.isTogglable(fold)) {
         FoldToggle.toggle(fold)
@@ -117,11 +109,51 @@ export class JobLogs {
     })
 
     this.on("click", ".job-log-line-number", (e) => {
-      let line = e.target.closest('.job-log-line');
+      const line = e.target.closest('.job-log-line');
       Highlight.highlightLine(line, event.shiftKey)
 
       e.stopPropagation()
     })
+  }
+
+  setupFoldExpandButtons() {
+    document.querySelectorAll('.job-log-line.command').forEach((element) => {
+      const fold = element.closest(".job-log-fold");
+      const expandButton = fold?.querySelector(".job-log-line-expand");
+        
+      if (element.offsetHeight >= 250) {
+        expandButton.style.top = element.offsetHeight.toString() + "px"
+        expandButton?.classList.remove("dn");
+      } else {
+        expandButton?.classList.add("dn");
+      }
+    });
+
+    this.on("click", ".job-log-line-expand", (e) => {
+      const fold = e.target.closest(".job-log-fold");
+      const jobCommand = fold.querySelector('.job-log-line.command')
+      this.toggleExpandCommand(e.target, jobCommand)
+    })
+  }
+
+  toggleExpandCommand(expandButton, jobCommand) {
+    if (jobCommand.style.maxHeight) {
+      this.collapseCommand(expandButton, jobCommand)
+    } else {
+      this.expandCommand(expandButton, jobCommand)
+    }
+  }
+
+  expandCommand(expandButton, jobCommand) {
+    jobCommand.style.maxHeight = "none"
+    expandButton.innerText = "↑ Collapse ↑"
+    expandButton.style.top = jobCommand.offsetHeight.toString() + "px"
+  }
+
+  collapseCommand(expandButton, jobCommand) {
+    jobCommand.style.maxHeight = ""
+    expandButton.innerText = "↓ Expand ↓"
+    expandButton.style.top = jobCommand.offsetHeight.toString() + "px"
   }
 
   update() {
@@ -163,6 +195,7 @@ export class JobLogs {
       if(this.config.isJobFinished === true) {
         this.logRenderDuration(this.startTime, performance.now(), "v2");
         this.scrollToLastOpenFold();
+        this.setupFoldExpandButtons()
       }
     })
   }
