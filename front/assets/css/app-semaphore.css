@@ -1380,7 +1380,26 @@ li.projects-menu-item-special:hover {
     position: sticky;
     top: 0;
     z-index: 1;
+    max-height: 250px;
+    overflow-y: hidden;
 }
+
+.job-log-line-expand {
+  width: 100%;
+  text-align: center;
+  background: white;
+  border-bottom: 1px solid #D3DADE;
+  text-decoration: underline;
+
+  position: sticky;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.job-log-line-expand:hover {
+  background-color: #D3DADE;
+}
+
 .job-log-line:hover {
     background-color: #c7edff;
 }
