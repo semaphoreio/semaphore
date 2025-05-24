@@ -21,7 +21,6 @@ spec:
       containers:
       - name: {{ .Chart.Name }}-job
         image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-        imagePullPolicy: Always
         env:
           - name: BASE_DOMAIN
             valueFrom: { configMapKeyRef: { name: {{ .Values.global.domain.configMapName }}, key: BASE_DOMAIN } }

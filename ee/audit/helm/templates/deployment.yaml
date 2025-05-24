@@ -42,7 +42,6 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           command: ["/bin/sh", "-c"]
           args: ["bin/audit eval \"Audit.Release.create_and_migrate()\" && bin/audit start"]
           ports:

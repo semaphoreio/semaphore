@@ -46,7 +46,6 @@ spec:
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["/bin/sh", "-c"]
           args: ["bin/gofer eval \"Gofer.ReleaseTasks.migrate()\" && bin/gofer start"]
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false

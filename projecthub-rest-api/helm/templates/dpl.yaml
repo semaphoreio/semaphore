@@ -43,7 +43,6 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           ports:
             - name: http-port
               containerPort: 4000
