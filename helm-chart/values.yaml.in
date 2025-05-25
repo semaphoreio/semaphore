@@ -2,6 +2,13 @@ global:
   # Edition of Semaphore to install (ce or ee)
   edition: "ce"
 
+  development:
+    #
+    # When true, mounts a writable root filesystem in containers
+    # to support local development tools.
+    #
+    writableRootFilesystem: false
+
   domain:
     ip: ""
     name: ""
