@@ -96,6 +96,10 @@ spec:
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL
               value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+{{- if .Values.development.skipTlsVerifyInternal }}
+            - name: TLS_SKIP_VERIFY_INTERNAL
+              value: "true"
+{{- end }}
             - name: INCLUDE_INSTANCE_CONFIG
               value: "true"
 
