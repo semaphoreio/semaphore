@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"net/http"
 	"os"
 	"time"
@@ -87,8 +88,20 @@ var initOrgCmd = &cobra.Command{
 func waitForIngress(domain string) {
 	url := "https://id." + domain + "/realms/semaphore/.well-known/openid-configuration"
 
+	insecure := os.Getenv("TLS_SKIP_VERIFY_INTERNAL") == "true"
+
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	if insecure {
+		tlsConfig.InsecureSkipVerify = true // #nosec G402
+	}
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
 	}
 
 	req, _ := http.NewRequest("GET", url, nil)

@@ -2,6 +2,19 @@ global:
   # Edition of Semaphore to install (ce or ee)
   edition: "ce"
 
+  development:
+    #
+    # When true, mounts a writable root filesystem in containers
+    # to support local development tools.
+    #
+    writableRootFilesystem: false
+
+    #
+    # When true, disables TLS verification for internal service-to-service calls.
+    # Use only in development environments with self-signed certificates.
+    #
+    skipTlsVerifyInternal: false
+
   domain:
     ip: ""
     name: ""
