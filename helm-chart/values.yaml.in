@@ -9,6 +9,12 @@ global:
     #
     writableRootFilesystem: false
 
+    #
+    # When true, disables TLS verification for internal service-to-service calls.
+    # Use only in development environments with self-signed certificates.
+    #
+    skipTlsVerifyInternal: false
+
   domain:
     ip: ""
     name: ""
