@@ -46,7 +46,7 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem | default true }}
             capabilities:
               drop:
                 - ALL
@@ -154,13 +154,6 @@ spec:
               path: /is_alive
               port: http-port
             periodSeconds: 2
-          securityContext:
-            privileged: false
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
 
 {{- if .Values.cacheReactor.resources }}
           resources:
