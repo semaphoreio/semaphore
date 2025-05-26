@@ -22,25 +22,25 @@ defmodule FrontWeb.DeploymentsView do
   def deployment_state(%Deployment{state: :PENDING}), do: :RUNNING
 
   defp pipeline_state(:DONE, :PASSED), do: :PASSED
-  defp pipeline_state(:DONE, :STOPPED), do: :CANCELLED
-  defp pipeline_state(:DONE, :CANCELLED), do: :CANCELLED
+  defp pipeline_state(:DONE, :STOPPED), do: :CANCELED
+  defp pipeline_state(:DONE, :CANCELED), do: :CANCELED
   defp pipeline_state(:DONE, :FAILED), do: :FAILED
   defp pipeline_state(_state, _result), do: :RUNNING
 
   def details_color(:RUNNING), do: "blue"
   def details_color(:PASSED), do: "green"
   def details_color(:FAILED), do: "red"
-  def details_color(:CANCELLED), do: "gray"
+  def details_color(:CANCELED), do: "gray"
 
   def details_title(:RUNNING), do: "Deployment in progress"
   def details_title(:PASSED), do: "Last deployment"
   def details_title(:FAILED), do: "Last deployment"
-  def details_title(:CANCELLED), do: "Last deployment"
+  def details_title(:CANCELED), do: "Last deployment"
 
   def details_circle(:RUNNING), do: "circle"
   def details_circle(:PASSED), do: "check_circle"
   def details_circle(:FAILED), do: "cancel"
-  def details_circle(:CANCELLED), do: "do_not_disturb_on"
+  def details_circle(:CANCELED), do: "do_not_disturb_on"
 
   def git_ref_icon(%RepoProxy{type: type}),
     do: git_ref_icon(type)

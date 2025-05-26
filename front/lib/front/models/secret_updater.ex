@@ -16,9 +16,11 @@ defmodule Front.Models.SecretUpdater do
       processed: [],
       new_by_old_key:
         new_ones
-        |> Enum.filter(&valid_string?(&1[old_key_as_string(type)]))
-        |> Enum.filter(&valid_string?(&1[key_as_string(type)]))
-        |> Enum.filter(&(valid_string?(&1["md5"]) || valid_string?(&1[value_as_string(type)])))
+        |> Enum.filter(fn item ->
+          valid_string?(item[old_key_as_string(type)]) &&
+            valid_string?(item[key_as_string(type)]) &&
+            (valid_string?(item["md5"]) || valid_string?(item[value_as_string(type)]))
+        end)
         |> Map.new(&{&1[old_key_as_string(type)], &1})
     }
 

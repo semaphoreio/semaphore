@@ -81,6 +81,18 @@ defmodule Support.Stubs.Project do
     Artifacthub.create(workflow.id, params)
   end
 
+  def add_report(project_id, filename \\ "reports/project_report.md") do
+    Artifacthub.create(project_id,
+      path: ".semaphore/REPORT.md",
+      scope: "projects",
+      url:
+        Path.join(
+          Application.get_env(:front, :artifact_host),
+          filename
+        )
+    )
+  end
+
   @spec set_project_state(project_stub_t(), InternalApi.Projecthub.Project.Status.State.t()) ::
           any()
   def set_project_state(project, state) do
