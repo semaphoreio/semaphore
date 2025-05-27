@@ -44,6 +44,14 @@ var initOrgCmd = &cobra.Command{
 		//
 		waitForIngress(domain)
 
+		// First check if the organization already exists
+		exists, existingOrgId := organization.OrganizationExists(orgUsername)
+		if exists {
+			log.Infof("Organization %s already exists with ID %s. Skipping organization creation.", orgUsername, existingOrgId)
+			// Return early since organization already exists
+			return
+		}
+
 		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, rootUserSecretName)
 		orgId := organization.CreateSemaphoreOrganization(orgUsername, userId)
 

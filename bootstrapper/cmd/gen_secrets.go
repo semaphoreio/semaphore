@@ -33,7 +33,7 @@ var genSecretsCmd = &cobra.Command{
 
 func generateJWTSecret(client *kubernetes.KubernetesClient) {
 	secretName := utils.AssertEnv("JWT_SECRET_NAME")
-	err := client.UpsertSecret(secretName, map[string]string{
+	err := client.CreateSecretIfNotExists(secretName, map[string]string{
 		"logs":      random.Base64String(32),
 		"artifacts": random.Base64String(32),
 	})
@@ -45,7 +45,7 @@ func generateJWTSecret(client *kubernetes.KubernetesClient) {
 
 func generateAuthenticationSecret(client *kubernetes.KubernetesClient) {
 	secretName := utils.AssertEnv("AUTHENTICATION_SECRET_NAME")
-	err := client.UpsertSecret(secretName, map[string]string{
+	err := client.CreateSecretIfNotExists(secretName, map[string]string{
 		"SESSION_SECRET_KEY_BASE":   random.Base64String(64),
 		"TOKEN_HASHING_SALT":        random.Base64String(32),
 		"OIDC_CLIENT_SECRET":        random.Base64String(32),
@@ -55,13 +55,13 @@ func generateAuthenticationSecret(client *kubernetes.KubernetesClient) {
 	})
 
 	if err != nil {
-		log.Fatalf("Failed to generate JWT secrets: %v", err)
+		log.Fatalf("Failed to generate authentication secrets: %v", err)
 	}
 }
 
 func generateEncryptionKey(client *kubernetes.KubernetesClient) {
 	secretName := utils.AssertEnv("ENCRYPTION_SECRET_NAME")
-	err := client.UpsertSecret(secretName, map[string]string{
+	err := client.CreateSecretIfNotExists(secretName, map[string]string{
 		"key": random.Base64String(32),
 	})
 
@@ -102,7 +102,7 @@ func generateOpenIDSecret(client *kubernetes.KubernetesClient) error {
 	timestamp := strconv.FormatInt(time.Now().Unix(), 10)
 	privateKeyName := fmt.Sprintf("%s.pem", timestamp)
 
-	err = client.UpsertSecret(secretName, map[string]string{
+	err = client.CreateSecretIfNotExists(secretName, map[string]string{
 		privateKeyName: string(privateKey),
 	})
 
@@ -124,7 +124,7 @@ func generateVaultSecret(client *kubernetes.KubernetesClient) error {
 	privateKeyName := fmt.Sprintf("%s.prv.pem", timestamp)
 	publicKeyName := fmt.Sprintf("%s.pub.pem", timestamp)
 
-	err = client.UpsertSecret(secretName, map[string]string{
+	err = client.CreateSecretIfNotExists(secretName, map[string]string{
 		privateKeyName: string(privateKey),
 		publicKeyName:  string(publicKey),
 	})
