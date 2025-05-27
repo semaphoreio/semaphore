@@ -30,9 +30,10 @@ ifeq ($(BUILD_ENV),)
 endif
 
 IMAGE_TAG=$(BUILD_ENV)
-DOCKER_BUILD_TARGET=runner
 ifneq ($(BUILD_ENV),prod)
-	DOCKER_BUILD_TARGET=dev
+	DOCKER_BUILD_TARGET?=dev
+else
+	DOCKER_BUILD_TARGET?=runner
 endif
 
 #
@@ -63,9 +64,10 @@ BUILDKIT_INLINE_CACHE=1
 #
 # Using tty progress output makes our job logs difficult to read
 #
-DOCKER_BUILD_PROGRESS=plain
 ifeq ($(CI),)
-	DOCKER_BUILD_PROGRESS=tty
+	DOCKER_BUILD_PROGRESS?=tty
+else
+	DOCKER_BUILD_PROGRESS?=plain
 endif
 
 DOCKER_BUILD_PATH=.
@@ -177,6 +179,20 @@ else
 		-t $(IMAGE):$(IMAGE_TAG) \
 		$(DOCKER_BUILD_PATH)
 endif
+
+build.skaffold: DOCKER_BUILD_PROGRESS=plain
+build.skaffold: pull
+ifneq ($(MIX_ENV),)
+	mkdir -p deps _build
+endif
+	docker build -f Dockerfile \
+		--target $(DOCKER_BUILD_TARGET) \
+		--progress $(DOCKER_BUILD_PROGRESS) \
+		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
+		--build-arg APP_NAME=$(APP_NAME) \
+		--build-arg BUILD_ENV=$(BUILD_ENV) \
+		-t $(IMAGE) \
+		$(DOCKER_BUILD_PATH)
 
 #
 # Development operations
