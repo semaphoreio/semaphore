@@ -26,7 +26,7 @@ log
 
 /rel/artifacts
 
-junit.xml
 .tool-versions
 .elixir_ls
 .devcontainer
+out/
