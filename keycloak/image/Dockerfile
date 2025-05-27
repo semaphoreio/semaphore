@@ -34,7 +34,23 @@ RUN set -x \
   && chown -R keycloak:keycloak /opt/keycloak
 
 COPY --chown=keycloak:keycloak --from=base /usr/bin/createdb /usr/bin/createdb
-COPY --chown=keycloak:keycloak --from=base /usr/lib64/ /usr/lib64/
+
+# libs needed for above libs
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcom_err.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcrypt.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libcrypto.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libevent-2.1.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libgssapi_krb5.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libk5crypto.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libkeyutils.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libkrb5.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libkrb5support.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/liblber.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libldap.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libpq.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libsasl2.so.* /usr/lib64/
+COPY --chown=keycloak:keycloak --from=base /usr/lib64/libssl.so.* /usr/lib64/
+
 COPY --chown=keycloak:keycloak --from=base /app/docker-entrypoint.sh /app/docker-entrypoint.sh
 COPY --chown=keycloak:keycloak --from=builder /opt/keycloak/ /opt/keycloak/
 COPY --chown=keycloak:keycloak themes/semaphore/ /opt/keycloak/themes/semaphore/

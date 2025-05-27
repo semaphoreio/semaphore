@@ -93,7 +93,8 @@ defmodule Guard.Api.Project do
         InternalApi.Projecthub.PaginationRequest.new(
           page: opts[:page] || 1,
           page_size: @project_page_size
-        )
+        ),
+      owner_id: opts[:owner_id] || ""
     )
   end
 end

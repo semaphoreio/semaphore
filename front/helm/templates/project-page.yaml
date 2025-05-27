@@ -91,7 +91,7 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem | default true }}
             capabilities:
               drop:
                 - ALL
@@ -199,6 +199,7 @@ spec:
               port: http-port
             initialDelaySeconds: 30
             periodSeconds: 10
+            failureThreshold: 3
           readinessProbe:
             httpGet:
               path: /is_alive
