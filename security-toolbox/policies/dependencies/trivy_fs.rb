@@ -16,7 +16,7 @@ class Policy::TrivyFs < Policy
       "--format template",
       "--scanners vuln,license",
       "--template '@#{@template_path}'",
-      "-o results.xml"
+      "-o dependency-scan.xml"
     ]
 
     if @ignore_policy != nil

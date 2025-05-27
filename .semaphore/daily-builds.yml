@@ -28,7 +28,7 @@ global_job_config:
   epilogue:
     always:
       commands:
-        - /home/semaphore/scripts/report.sh .
+        - /home/semaphore/semaphore/scripts/report.sh .
 after_pipeline:
   task:
     jobs:

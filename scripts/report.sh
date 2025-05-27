@@ -6,16 +6,18 @@ set -euo pipefail
 # If title starts with $, it's treated as an environment variable
 declare -A FILE_TITLES=(
     ["docker-scan-junit.xml"]="Docker Security Scan"
-    ["junit.xml"]="Unit Tests"
-    ["results.xml"]="Test Results"
-    ["out/results.xml"]="Build Results"
-    ["test-results.xml"]="Integration Tests"
-    ["junit-report.xml"]="JUnit Report"
-    ["assets/results.xml"]="Asset Tests"
-    ["out/lint-js-junit-report.xml"]="JavaScript Lint"
-    ["out/compile-ts-junit-report.xml"]="TypeScript Compile"
-    ["out/test-js-junit-report.xml"]="JavaScript Tests"
-    ["out/test-ex-junit-report.xml"]="Extended Tests"
+    ["dependency-scan.xml"]="Dependency Scan"
+    ["gosec-junit.xml"]="Gosec Security Scan"
+    ["junit.xml"]="Tests"
+    ["results.xml"]="Tests"
+    ["out/results.xml"]="Tests"
+    ["test-results.xml"]="Tests"
+    ["junit-report.xml"]="Tests"
+    ["assets/results.xml"]="Tests"
+    ["out/lint-js-junit-report.xml"]="Tests"
+    ["out/compile-ts-junit-report.xml"]="Tests"
+    ["out/test-js-junit-report.xml"]="Tests"
+    ["out/test-ex-junit-report.xml"]="Tests"
 )
 
 # Alternative: Using environment variables for titles
