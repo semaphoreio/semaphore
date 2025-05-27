@@ -7,9 +7,12 @@ TAG_NAME=$(shell git describe --exact-match --tags HEAD 2>/dev/null)
 #
 ifneq ($(TAG_NAME),)
 	export BRANCH?=$(shell git branch --contains tags/$(TAG_NAME) | head -n 1 | sed '/HEAD/d' | sed 's/[^a-z]//g' | cut -c 1-40)
+else ifneq ($(SEMAPHORE_GIT_PR_NUMBER),)
+	export BRANCH?=pr$(SEMAPHORE_GIT_PR_NUMBER)
 else
 	export BRANCH?=$(shell git rev-parse --abbrev-ref HEAD | sed 's/[^a-z]//g' | cut -c 1-40)
 endif
+
 
 export REGISTRY_HOST?=local
 export IMAGE?=$(APP_NAME)/$(BRANCH)
