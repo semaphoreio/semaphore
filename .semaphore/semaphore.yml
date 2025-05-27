@@ -815,6 +815,11 @@ blocks:
       jobs:
         - name: "\U0001F5BC️ Build test image"
           commands:
+            - git status
+            - echo $SEMAPHORE_GIT_PR_NUMBER
+            - git branch
+            - git rev-parse --abbrev-ref HEAD | sed 's/[^a-z]//g' | cut -c 1-40
+            - git rev-parse
             - make build
             - make push
   - name: "Guard: \U0001F4CB Provision Prod Image"
