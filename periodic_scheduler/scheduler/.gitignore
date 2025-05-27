@@ -35,5 +35,4 @@ log
 # asdf's tool-versions file
 .tool-versions
 
-# test results
-test-results.xml
+out/
