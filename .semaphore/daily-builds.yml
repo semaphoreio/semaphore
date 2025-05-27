@@ -3,7 +3,7 @@ name: Semaphore
 agent:
   machine:
     type: e2-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2204
 global_job_config:
   secrets:
     - name: semreg-semaphoredev-credentials
@@ -24,21 +24,14 @@ global_job_config:
       - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST || echo "Semaphore Registry login failed, but continuing the build process." && true
       - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       - sem-version ruby 3.3
+      - checkout
   epilogue:
     always:
       commands:
-        # Trivyfs security scan
-        - 'if [ -f docker-scan-junit.xml ];            then test-results --name "Docker scan"         --suite-prefix "[$SERVICE_NAME]"  publish docker-scan-junit.xml; fi'
-        - 'if [ -f junit.xml ];                        then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit.xml; fi'
-        - 'if [ -f results.xml ];                      then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish results.xml; fi'
-        - 'if [ -f out/results.xml ];                  then test-results --name "${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}"               publish out/results.xml; fi'
-        - 'if [ -f test-results.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish test-results.xml; fi'
-        - 'if [ -f junit-report.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit-report.xml; fi'
-        - 'if [ -f assets/results.xml ];               then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish assets/results.xml; fi'
-        - 'if [ -f out/lint-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/lint-js-junit-report.xml; fi'
-        - 'if [ -f out/compile-ts-junit-report.xml ];  then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/compile-ts-junit-report.xml; fi'
-        - 'if [ -f out/test-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-js-junit-report.xml; fi'
-        - 'if [ -f out/test-ex-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-ex-junit-report.xml; fi'
+        - 'if [ -f out/docker-scan-junit.xml ]; then test-results --name "Docker scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/docker-scan-junit.xml; fi'
+        - 'if [ -f out/dependency-scan.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
+        - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security Scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
+        - 'if [ -f out/test-reports.xml ]; then test-results --name "Tests" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/test-reports.xml; fi'
 after_pipeline:
   task:
     jobs:
@@ -592,8 +585,8 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-4
-          os_image: ubuntu2004
+          type: e2-standard-4
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -682,8 +675,8 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-4
-          os_image: ubuntu2004
+          type: e2-standard-4
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -2229,7 +2222,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2254,7 +2247,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2280,7 +2273,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2313,7 +2306,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:

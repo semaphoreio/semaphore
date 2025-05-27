@@ -18,7 +18,6 @@ addon-manifest.json
 tags
 .byebug_history
 .devcontainer
-junit.xml
 .irb_history
 .vscode-server/
 
