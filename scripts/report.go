@@ -10,25 +10,24 @@ import (
 )
 
 type FileConfig struct {
-	Title  string
-	Prefix string
+	Title string
 }
 
 // File configuration
 var files = map[string]FileConfig{
-	"docker-scan-junit.xml":           {Title: "Docker Security Scan", Prefix: "security"},
-	"dependency-scan.xml":             {Title: "Dependency Scan", Prefix: "security"},
-	"gosec-junit.xml":                 {Title: "Gosec Security Scan", Prefix: "security"},
-	"junit.xml":                       {Title: "Tests", Prefix: "unit"},
-	"results.xml":                     {Title: "Tests", Prefix: "integration"},
-	"out/results.xml":                 {Title: "Tests", Prefix: "build"},
-	"test-results.xml":                {Title: "Tests", Prefix: "integration"},
-	"junit-report.xml":                {Title: "Tests", Prefix: "unit"},
-	"assets/results.xml":              {Title: "Tests", Prefix: "assets"},
-	"out/lint-js-junit-report.xml":    {Title: "Tests", Prefix: "lint"},
-	"out/compile-ts-junit-report.xml": {Title: "Tests", Prefix: "compile"},
-	"out/test-js-junit-report.xml":    {Title: "Tests", Prefix: "js-unit"},
-	"out/test-ex-junit-report.xml":    {Title: "Tests", Prefix: "extended"},
+	"docker-scan-junit.xml":           {Title: "Docker Security Scan"},
+	"dependency-scan.xml":             {Title: "Dependency Scan"},
+	"gosec-junit.xml":                 {Title: "Gosec Security Scan"},
+	"junit.xml":                       {Title: "Tests"},
+	"results.xml":                     {Title: "Tests"},
+	"out/results.xml":                 {Title: "Tests"},
+	"test-results.xml":                {Title: "Tests"},
+	"junit-report.xml":                {Title: "Tests"},
+	"assets/results.xml":              {Title: "Tests"},
+	"out/lint-js-junit-report.xml":    {Title: "Tests"},
+	"out/compile-ts-junit-report.xml": {Title: "Tests"},
+	"out/test-js-junit-report.xml":    {Title: "Tests"},
+	"out/test-ex-junit-report.xml":    {Title: "Tests"},
 }
 
 func getEnvOrDefault(key, defaultValue string) string {
@@ -38,7 +37,7 @@ func getEnvOrDefault(key, defaultValue string) string {
 	return defaultValue
 }
 
-func buildSuitePrefix(filePrefix string) string {
+func buildSuitePrefix() string {
 	block := getEnvOrDefault("SEMAPHORE_BLOCK_NAME", "unknown-block")
 	job := getEnvOrDefault("SEMAPHORE_JOB_NAME", "unknown-job")
 	jobCountStr := getEnvOrDefault("SEMAPHORE_JOB_COUNT", "1")
@@ -54,7 +53,7 @@ func buildSuitePrefix(filePrefix string) string {
 		job = re.ReplaceAllString(job, "")
 	}
 
-	return fmt.Sprintf("%s/%s/%s", block, job, filePrefix)
+	return block
 }
 
 func fileExists(filename string) bool {
@@ -81,7 +80,7 @@ func main() {
 		fullPath := filepath.Join(basePath, filePath)
 
 		if fileExists(fullPath) {
-			suitePrefix := buildSuitePrefix(config.Prefix)
+			suitePrefix := buildSuitePrefix()
 
 			fmt.Printf("Found: %s (Title: '%s', Prefix: '%s')\n", fullPath, config.Title, suitePrefix)
 

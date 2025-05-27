@@ -25,7 +25,7 @@ global_job_config:
       - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       - sem-version ruby 3.3
       - checkout
-      - sem-version golang 1.23
+      - sem-version go 1.22
       - go build -o scripts/generate-report scripts/report.go
       - sudo cp scripts/generate-report /usr/local/bin/generate-report
       - sudo chmod +x /usr/local/bin/generate-report
