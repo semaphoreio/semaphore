@@ -44,7 +44,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
     assert {:ok, ppl_blk} = insert_ppl_blk(ppl_id, 0)
     assert ppl_blk.state == "waiting"
 
-    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args})),
+    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args, ppl_blk.name})),
                       status: &mocked_status(&1)] do
       assert {:ok, result_func} = WaitingState.scheduling_handler(ppl_blk)
 
@@ -65,7 +65,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
 
     insert_connections(ctx.ppl_req)
 
-    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args})),
+    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args, ppl_blk.name})),
                       status: &mocked_status(&1)] do
       assert {:ok, result_func} = WaitingState.scheduling_handler(ppl_blk)
 
@@ -86,7 +86,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
 
     insert_connections(ctx.ppl_req)
 
-    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args})),
+    with_mock Block, [schedule: &(mocked_schedule({&1, ppl_id, workflow_id, ctx.ppl_req.request_args, ppl_blk.name})),
                       status: &mocked_status(&1)] do
       assert {:ok, result_func} = WaitingState.scheduling_handler(ppl_blk)
 
@@ -122,7 +122,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
     {:ok, ppl_blk}
   end
 
-  defp mocked_schedule({schedule_request, id, workflow_id, req_args}) do
+  defp mocked_schedule({schedule_request, id, workflow_id, req_args, blk_name}) do
     assert schedule_request.ppl_id == id
     assert get_in(schedule_request.definition, ["build", "agent", "machine"]) == %{"os_image" => "bar", "type" => "foo"}
     ppl_env_vars = [%{"name" => "SEMAPHORE_WORKFLOW_ID", "value" => "#{workflow_id}"},
@@ -135,6 +135,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
                     %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_ARTEFACT_ID", "value" => "#{id}"},
                     %{"name" => "SEMAPHORE_PIPELINE_ID", "value" => "#{id}"},
+                    %{"name" => "SEMAPHORE_BLOCK_NAME", "value" => blk_name},
                     %{"name" => "SEMAPHORE_PIPELINE_RERUN", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_PROMOTION", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_PROMOTED_BY", "value" => ""},
