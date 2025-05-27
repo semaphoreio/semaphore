@@ -1,6 +1,7 @@
 # Guard
 
 Service for handling user authentication, user lifecycle management, organizations and git aplication configuration.
+Service for handling user authentication, user lifecycle management, organizations and git aplication configuration.
 
 ### Development
 
