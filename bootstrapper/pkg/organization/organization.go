@@ -23,25 +23,44 @@ func OrganizationExists(orgUsername string) (bool, string) {
 	defer conn.Close()
 	orgClient := clients.NewOrgClient(conn)
 
-	org, err := orgClient.Describe("", orgUsername)
-	if err != nil {
-		statusErr, ok := status.FromError(err)
-		if ok && statusErr.Code() == 5 { // Not found
-			// Organization doesn't exist
-			return false, ""
+	var exists bool
+	var orgId string
+
+	err = retry.WithConstantWait("checking if organization exists", 5, 10*time.Second, func() error {
+		org, err := orgClient.Describe("", orgUsername)
+		if err != nil {
+			statusErr, ok := status.FromError(err)
+			if ok && statusErr.Code() == 5 { // Not found
+				// Organization doesn't exist, no need to retry
+				exists = false
+				orgId = ""
+				return nil
+			}
+
+			// For other errors, retry the operation
+			log.Warnf("Error checking if organization exists (will retry): %v", err)
+			return err
 		}
 
-		// For other errors, log and assume the organization doesn't exist
-		log.Warnf("Error checking if organization exists: %v", err)
+		if org != nil {
+			log.Infof("Organization %s already exists with ID %s", orgUsername, org.GetOrgId())
+			exists = true
+			orgId = org.GetOrgId()
+		} else {
+			exists = false
+			orgId = ""
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		// After all retries failed, log and assume the organization doesn't exist
+		log.Warnf("Failed to check if organization exists after retries: %v", err)
 		return false, ""
 	}
 
-	if org != nil {
-		log.Infof("Organization %s already exists with ID %s", orgUsername, org.GetOrgId())
-		return true, org.GetOrgId()
-	}
-
-	return false, ""
+	return exists, orgId
 }
 
 func CreateSemaphoreOrganization(orgUsername, userId string) string {
