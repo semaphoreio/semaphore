@@ -101,6 +101,7 @@
         "using-semaphore/connect-github-oauth",
         "using-semaphore/connect-bitbucket",
         "using-semaphore/connect-gitlab",
+        "using-semaphore/connect-git-server",
         "using-semaphore/monorepo"
       ]
     },
