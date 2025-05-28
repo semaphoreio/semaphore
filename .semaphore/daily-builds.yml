@@ -25,14 +25,13 @@ global_job_config:
       - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       - sem-version ruby 3.3
       - checkout
-      - sem-version go 1.22
-      - go build -o scripts/generate-report scripts/report.go
-      - sudo cp scripts/generate-report /usr/local/bin/generate-report
-      - sudo chmod +x /usr/local/bin/generate-report
   epilogue:
     always:
       commands:
-        - generate-report
+        - 'if [ -f out/docker-scan-junit.xml ]; then test-results --name "Docker scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/docker-scan-junit.xml; fi'
+        - 'if [ -f out/dependency-scan.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
+        - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security Scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
+        - 'if [ -f out/test-reports.xml ]; then test-results --name "Tests" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/test-reports.xml; fi'
 after_pipeline:
   task:
     jobs:

@@ -23,4 +23,4 @@ erl_crash.dump
 badges-*.tar
 
 .elixir_ls
-out/results.xml
+out/
