@@ -8,7 +8,7 @@ defimpl RepositoryHub.Server.ForkAction, for: RepositoryHub.GitlabAdapter do
   def execute(_adapter, request) do
     Multi.new()
     |> Multi.run(:git_repository, fn _repo, _results ->
-      Model.GitRepository.new(request.url)
+      Model.GitRepository.from_gitlab(request.url)
     end)
     |> Multi.run(:gitlab_token, fn _repo, _context ->
       GitlabAdapter.fetch_token(request.user_id)

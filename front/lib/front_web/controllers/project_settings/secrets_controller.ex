@@ -133,23 +133,23 @@ defmodule FrontWeb.ProjectSettings.SecretsController do
         |> Audit.metadata(project_name: conn.assigns.project.name)
         |> Audit.log()
 
-      with {:ok, secret} <-
-             Models.Secret.create(
-               params["name"],
-               Params.parse_params(params),
-               %{project_id: project_id},
-               :PROJECT,
-               user_id,
-               org_id
-             ) do
-        audit
-        |> Audit.add(:resource_id, secret.id)
-        |> Audit.log()
+      case Models.Secret.create(
+             params["name"],
+             Params.parse_params(params),
+             %{project_id: project_id},
+             :PROJECT,
+             user_id,
+             org_id
+           ) do
+        {:ok, secret} ->
+          audit
+          |> Audit.add(:resource_id, secret.id)
+          |> Audit.log()
 
-        conn
-        |> put_flash(:notice, "Secret created.")
-        |> redirect(to: secrets_path(conn, :index, conn.params["name_or_id"]))
-      else
+          conn
+          |> put_flash(:notice, "Secret created.")
+          |> redirect(to: secrets_path(conn, :index, conn.params["name_or_id"]))
+
         {:error, validation_errors} ->
           maybe_permissions =
             Async.run(fn ->
@@ -235,31 +235,33 @@ defmodule FrontWeb.ProjectSettings.SecretsController do
       org_id = conn.assigns.organization_id
       project = conn.assigns.project
 
-      with {:ok, _secret} <-
-             Models.Secret.update(
-               secret_id,
-               params["name"],
-               params["description"],
-               Params.parse_env_vars(params),
-               Params.parse_files(params),
-               user_id,
-               org_id,
-               secret_level: :PROJECT,
-               project_config: %{project_id: project.id},
-               project_id: project.id
-             ) do
-        conn
-        |> Audit.new(:Secret, :Modified)
-        |> Audit.add(description: "Updated secret #{params["name"]} in the project #{project.id}")
-        |> Audit.add(resource_name: params["name"])
-        |> Audit.metadata(project_id: project.id)
-        |> Audit.metadata(project_name: project.name)
-        |> Audit.log()
+      case Models.Secret.update(
+             secret_id,
+             params["name"],
+             params["description"],
+             Params.parse_env_vars(params),
+             Params.parse_files(params),
+             user_id,
+             org_id,
+             secret_level: :PROJECT,
+             project_config: %{project_id: project.id},
+             project_id: project.id
+           ) do
+        {:ok, _secret} ->
+          conn
+          |> Audit.new(:Secret, :Modified)
+          |> Audit.add(
+            description: "Updated secret #{params["name"]} in the project #{project.id}"
+          )
+          |> Audit.add(resource_name: params["name"])
+          |> Audit.metadata(project_id: project.id)
+          |> Audit.metadata(project_name: project.name)
+          |> Audit.log()
 
-        conn
-        |> put_flash(:notice, "Secret updated.")
-        |> redirect(to: secrets_path(conn, :index, project.name))
-      else
+          conn
+          |> put_flash(:notice, "Secret updated.")
+          |> redirect(to: secrets_path(conn, :index, project.name))
+
         {:error, :not_found} ->
           conn
           |> render_404

@@ -155,7 +155,8 @@ defmodule Support.FakeServices.RepositoryService do
       pipeline_file: request.pipeline_file,
       whitelist: request.whitelist,
       commit_status: request.commit_status,
-      private: false
+      private: false,
+      connected: true
     })
   end
 
@@ -163,7 +164,8 @@ defmodule Support.FakeServices.RepositoryService do
     Repository.DeployKey.new(%{
       title: "repository-#{request.repository_id}-key",
       fingerprint: "exaple_fingerprint",
-      created_at: proto_now()
+      created_at: proto_now(),
+      public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3"
     })
   end
 

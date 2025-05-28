@@ -29,9 +29,10 @@ func CreateSemaphoreUser(kubernetesClient *kubernetes.KubernetesClient, name, em
 	user := createUser(client, email, name, password)
 	apiToken := regenerateAPIToken(client, user.GetId())
 	err = kubernetesClient.UpsertSecret(secretName, map[string]string{
-		"email":    email,
-		"password": password,
-		"token":    apiToken,
+		"ROOT_USER_ID":       user.GetId(),
+		"ROOT_USER_EMAIL":    email,
+		"ROOT_USER_PASSWORD": password,
+		"ROOT_USER_TOKEN":    apiToken,
 	})
 
 	if err != nil {

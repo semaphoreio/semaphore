@@ -17,12 +17,12 @@ RUN echo "Build of $APP_NAME for $MIX_ENV environment started"
 
 # install build dependencies
 RUN apk update && \
-    apk add --no-cache \
-    openssh \
-    git \
-    openssl \
-    ncurses-libs \
-    libstdc++
+  apk add --no-cache \
+  openssh \
+  git \
+  openssl \
+  ncurses-libs \
+  libstdc++
 
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts
@@ -32,7 +32,7 @@ WORKDIR /app
 
 # install hex + rebar
 RUN mix local.hex --force --if-missing && \
-    mix local.rebar --force --if-missing
+  mix local.rebar --force --if-missing
 
 # install mix dependencies
 COPY projecthub/mix.exs projecthub/mix.lock ./
@@ -62,7 +62,7 @@ RUN mix compile
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
-FROM base as builder
+FROM base AS builder
 
 RUN mix compile
 
@@ -71,13 +71,13 @@ RUN mix release
 FROM ${RUNNER_IMAGE} AS runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
-LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
+LABEL org.opencontainers.image.source=https://github.com/semaphoreio/semaphore
 
 HEALTHCHECK NONE
 
 RUN apk update && \
-    apk add --no-cache \
-    openssh-keygen openssl ncurses-libs libstdc++
+  apk add --no-cache \
+  openssh-keygen openssl ncurses-libs libstdc++
 
 WORKDIR "/app"
 RUN chown nobody /app
@@ -89,4 +89,4 @@ COPY --from=builder --chown=nobody:root /app/_build/${MIX_ENV}/rel/projecthub ./
 
 USER nobody
 
-CMD /app/bin/projecthub start
+CMD ["/app/bin/projecthub", "start"]

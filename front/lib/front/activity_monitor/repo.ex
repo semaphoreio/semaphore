@@ -36,9 +36,7 @@ defmodule Front.ActivityMonitor.Repo do
          ppl_ids <- Enum.map(active_pipelines, fn %{ppl_id: id} -> id end),
          debugged_ppl_ids <- Enum.map(debug_sessions, fn debug -> debug.debugged_job.ppl_id end),
          fetch_users <-
-           Async.run(fn ->
-             list_authors_of(active_pipelines, debug_sessions, tracing_headers, org_id)
-           end),
+           Async.run(fn -> list_authors_of(active_pipelines, debug_sessions, tracing_headers) end),
          fetch_jobs <- Async.run(fn -> list_active_jobs(tracing_headers, org_id, ppl_ids) end),
          fetch_debugged_ppls <-
            Async.run(fn -> describe_many_ppls(debugged_ppl_ids, tracing_headers) end),
@@ -251,7 +249,7 @@ defmodule Front.ActivityMonitor.Repo do
 
   # List Users
 
-  def list_authors_of(active_pipelines, debug_sessions, tracing_headers, organization_id \\ nil) do
+  def list_authors_of(active_pipelines, debug_sessions, tracing_headers) do
     active_pipelines
     |> Enum.reduce([], fn ppl, acc ->
       if ppl.promoter_id != "" do
@@ -262,14 +260,14 @@ defmodule Front.ActivityMonitor.Repo do
     end)
     |> Enum.concat(Enum.map(debug_sessions, fn debug -> debug.debug_user_id end))
     |> Enum.uniq()
-    |> get_users(tracing_headers, organization_id)
+    |> get_users(tracing_headers)
     |> ok_err_tuple()
   end
 
-  defp get_users(list, tracing_headers, organization_id) when is_list(list) and length(list) > 0,
-    do: User.find_many(list, tracing_headers, organization_id)
+  defp get_users(list, tracing_headers) when is_list(list) and length(list) > 0,
+    do: User.find_many(list, tracing_headers)
 
-  defp get_users(_, _, _), do: []
+  defp get_users(_, _), do: []
 
   defp ok_err_tuple(nil), do: {:error, nil}
   defp ok_err_tuple(list), do: {:ok, list}

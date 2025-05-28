@@ -716,7 +716,8 @@ defmodule Front.Models.Project do
           key = %{
             title: res.deploy_key.title,
             fingerprint: res.deploy_key.fingerprint,
-            created_at: Front.Utils.decorate_date(res.deploy_key.created_at.seconds)
+            created_at: Front.Utils.decorate_date(res.deploy_key.created_at.seconds),
+            public_key: res.deploy_key.public_key
           }
 
           {:ok, key}
@@ -747,7 +748,8 @@ defmodule Front.Models.Project do
           key = %{
             title: res.deploy_key.title,
             fingerprint: res.deploy_key.fingerprint,
-            created_at: Front.Utils.decorate_date(res.deploy_key.created_at.seconds)
+            created_at: Front.Utils.decorate_date(res.deploy_key.created_at.seconds),
+            public_key: res.deploy_key.public_key
           }
 
           {:ok, key}

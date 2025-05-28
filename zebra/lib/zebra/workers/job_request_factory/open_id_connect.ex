@@ -12,7 +12,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
       FeatureProvider.feature_enabled?(:open_id_connect, param: org_id)
   end
 
-  def load(job, repo_env_vars, org, job_type \\ :pipeline_job, spec_env_vars \\ []) do
+  def load(job, repo_env_vars, org, proj, job_type \\ :pipeline_job, spec_env_vars \\ []) do
     if enabled?(job.organization_id) do
       Watchman.benchmark("zebra.external.secrethub.generate_open_id_token", fn ->
         {wf_id, ppl_id} = find_wf_and_ppl_ids(job)
@@ -28,6 +28,7 @@ defmodule Zebra.Workers.JobRequestFactory.OpenIDConnect do
             subject:
               "org:#{org.org_username}:project:#{job.project_id}:repo:#{repo}:ref_type:#{ref_type}:ref:#{ref}",
             project_id: job.project_id,
+            project_name: proj.name,
             workflow_id: wf_id,
             pipeline_id: ppl_id,
             job_id: job.id,

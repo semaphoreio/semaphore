@@ -30,9 +30,16 @@
 </div>
 
 <div class="bg-washed-gray pa3 br3 ba b--black-075">
-  <div class="f5 mb2">
-    Most recent activity on this <%= branch_type_name(@branch.type) |> String.downcase() %>
-  </div>
+
+    <%= if FeatureProvider.feature_enabled?(:workflow_filtering, param: @organization.id) do %>
+      <%= render FrontWeb.BranchView, "_filters.html", branch_type: @branch.type %>
+    <% else %>
+      <div class="flex-m items-center justify-between mb3">
+        <div class="f5 gray mr3 mb3 mb0-m">
+          Most recent activity on this <%= branch_type_name(@branch.type) |> String.downcase() %>
+        </div>
+      </div>
+    <% end %>
   <div id="workflow-lists">
     <%= render FrontWeb.BranchView, "_workflows.html", project: @project, workflows: @workflows, branch: @branch, conn: @conn, page: :branch, pagination: @pagination, pollman: @pollman, conflict_info: @conflict_info %>
   </div>

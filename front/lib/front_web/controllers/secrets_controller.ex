@@ -204,25 +204,25 @@ defmodule FrontWeb.SecretsController do
       |> Audit.log()
 
       if conn.assigns.permissions["organization.secrets.manage"] || false do
-        with {:ok, _secret} <-
-               Models.Secret.update(
-                 secret_id,
-                 params["name"],
-                 params["description"],
-                 Params.parse_env_vars(params),
-                 Params.parse_files(params),
-                 user_id,
-                 org_id,
-                 org_config:
-                   Params.parse_org_config(
-                     params,
-                     conn.assigns.permissions["organization.secrets_policy_settings.manage"]
-                   )
-               ) do
-          conn
-          |> put_flash(:notice, "Secret updated.")
-          |> redirect(to: secrets_path(conn, :index))
-        else
+        case Models.Secret.update(
+               secret_id,
+               params["name"],
+               params["description"],
+               Params.parse_env_vars(params),
+               Params.parse_files(params),
+               user_id,
+               org_id,
+               org_config:
+                 Params.parse_org_config(
+                   params,
+                   conn.assigns.permissions["organization.secrets_policy_settings.manage"]
+                 )
+             ) do
+          {:ok, _secret} ->
+            conn
+            |> put_flash(:notice, "Secret updated.")
+            |> redirect(to: secrets_path(conn, :index))
+
           {:error, :not_found} ->
             conn
             |> render_404

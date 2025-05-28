@@ -26,7 +26,6 @@ spec:
       containers:
         - name: {{ .Chart.Name }}-bucketcleaner-worker
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false

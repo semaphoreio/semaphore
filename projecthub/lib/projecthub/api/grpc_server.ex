@@ -29,6 +29,7 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.RegenerateDeployKeyResponse
   alias InternalApi.Projecthub.CheckWebhookResponse
   alias InternalApi.Projecthub.RegenerateWebhookResponse
+  alias InternalApi.Projecthub.RegenerateWebhookSecretResponse
   alias InternalApi.Projecthub.ChangeProjectOwnerResponse
   alias InternalApi.Projecthub.GithubAppSwitchResponse
   alias InternalApi.Projecthub.FinishOnboardingResponse
@@ -391,7 +392,8 @@ defmodule Projecthub.Api.GrpcServer do
             RegenerateDeployKeyResponse.DeployKey.new(
               title: response.deploy_key.title,
               fingerprint: response.deploy_key.fingerprint,
-              created_at: response.deploy_key.created_at
+              created_at: response.deploy_key.created_at,
+              public_key: response.deploy_key.public_key
             )
         )
       else
@@ -589,6 +591,21 @@ defmodule Projecthub.Api.GrpcServer do
 
         {:error, message} ->
           RegenerateWebhookResponse.new(metadata: status_failed_precondition(req, message))
+      end
+    end)
+  end
+
+  def regenerate_webhook_secret(req, _) do
+    Watchman.benchmark("projecthub_api.regenerate_webhook_secret.duration", fn ->
+      with {:ok, project} <- find_project(req),
+           {:ok, response} <- RepositoryHubClient.regenerate_webhook_secret(%{repository_id: project.repository.id}) do
+        RegenerateWebhookSecretResponse.new(
+          metadata: status_ok(req),
+          secret: response.secret
+        )
+      else
+        {:error, message} ->
+          RegenerateWebhookSecretResponse.new(metadata: status_failed_precondition(req, message))
       end
     end)
   end
@@ -1164,8 +1181,8 @@ defmodule Projecthub.Api.GrpcServer do
       whitelist: project.repository.whitelist,
       public: !project.repository.private,
       integration_type: project.repository.integration_type,
-      connected: true,
-      default_branch: project.repository.default_branch
+      default_branch: project.repository.default_branch,
+      connected: project.repository.connected
     )
   end
 

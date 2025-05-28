@@ -4,7 +4,7 @@ include ../Makefile
 
 DOCKER_BUILD_PATH=..
 APP_NAME=secrethub
-TMP_REPO_DIR=/tmp/internal_api
+TMP_REPO_DIR?=/tmp/internal_api
 INTERNAL_API_BRANCH ?= master
 PUBLIC_API_BRANCH ?= master
 PROTOC_TAG=1.12.1-3.17.3-0.7.1

@@ -293,9 +293,7 @@ defmodule FrontWeb.Router do
     get("/projects/:name_or_id/fetch_yaml_artifacts", ProjectController, :fetch_yaml_artifacts)
 
     # Project Onboarding
-
     get("/new_project", ProjectOnboardingController, :new)
-    get("/x/new_project", ProjectOnboardingController, :index)
 
     # old choose_repository
     get("/choose_repository", ProjectOnboardingController, :choose_repository,
@@ -313,31 +311,72 @@ defmodule FrontWeb.Router do
       as: :bitbucket_choose_repository
     )
 
-    # new choose_repository
-    get("/x/new_project/github_app", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :github_app},
-      as: :github_choose_repository
-    )
+    scope "/x" do
+      get("/new_project", ProjectOnboardingController, :index)
 
-    get("/x/new_project/github_oauth_token", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :github_oauth_token},
-      as: :github_legacy_choose_repository
-    )
+      get("/new_project/github_app", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :github_app},
+        as: :github_choose_repository
+      )
 
-    get("/x/new_project/bitbucket", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :bitbucket},
-      as: :bitbucket_choose_repository
-    )
+      get("/new_project/github_oauth_token", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :github_oauth_token},
+        as: :github_legacy_choose_repository
+      )
 
-    get("/x/new_project/gitlab", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :gitlab},
-      as: :gitlab_choose_repository
-    )
+      get("/new_project/bitbucket", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :bitbucket},
+        as: :bitbucket_choose_repository
+      )
 
-    post("/x/new_project/check_duplicates", ProjectOnboardingController, :check_duplicates)
+      get("/new_project/gitlab", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :gitlab},
+        as: :gitlab_choose_repository
+      )
+
+      post("/new_project/check_duplicates", ProjectOnboardingController, :check_duplicates)
+      get("/new_project/*other", ProjectOnboardingController, :index)
+
+      post("/projects", ProjectOnboardingController, :create)
+      get("/repositories", ProjectOnboardingController, :repositories)
+
+      post(
+        "/projects/:name_or_id/skip_onboarding",
+        ProjectOnboardingController,
+        :skip_onboarding
+      )
+
+      get("/projects/:name_or_id/onboarding", ProjectOnboardingController, :onboarding_index)
+
+      get(
+        "/projects/:name_or_id/onboarding/*stage",
+        ProjectOnboardingController,
+        :onboarding_index
+      )
+
+      post(
+        "/projects/:name_or_id/workflow_builder",
+        ProjectOnboardingController,
+        :x_workflow_builder,
+        as: :x_workflow_builder
+      )
+
+      get("/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
+
+      post(
+        "/projects/:name_or_id/regenerate_webhook_secret",
+        ProjectOnboardingController,
+        :regenerate_webhook_secret
+      )
+
+      put(
+        "/projects/:name_or_id/onboarding/set_initial_yaml",
+        ProjectOnboardingController,
+        :update_project_initial_pipeline_file
+      )
+    end
 
     post("/projects", ProjectOnboardingController, :create)
-    post("/x/projects", ProjectOnboardingController, :create)
 
     get(
       "/projects/:name_or_id/repository_status",
@@ -354,12 +393,8 @@ defmodule FrontWeb.Router do
     get("/projects/:name_or_id/initializing", ProjectOnboardingController, :initializing)
 
     get("/repositories", ProjectOnboardingController, :repositories)
-    get("/x/repositories", ProjectOnboardingController, :repositories)
 
     get("/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
-    get("/x/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
-
-    post("/x/projects/:name_or_id/skip_onboarding", ProjectOnboardingController, :skip_onboarding)
 
     get(
       "/projects/:name_or_id/invite_collaborators",
@@ -375,30 +410,9 @@ defmodule FrontWeb.Router do
       :existing_configuration
     )
 
-    put(
-      "/x/projects/:name_or_id/onboarding/set_initial_yaml",
-      ProjectOnboardingController,
-      :update_project_initial_pipeline_file
-    )
-
-    get("/x/projects/:name_or_id/onboarding", ProjectOnboardingController, :onboarding_index)
-
-    get(
-      "/x/projects/:name_or_id/onboarding/*stage",
-      ProjectOnboardingController,
-      :onboarding_index
-    )
-
     get("/projects/:name_or_id/template", ProjectOnboardingController, :template)
 
     get("/projects/:name_or_id/workflow_builder", ProjectOnboardingController, :workflow_builder)
-
-    post(
-      "/x/projects/:name_or_id/workflow_builder",
-      ProjectOnboardingController,
-      :x_workflow_builder,
-      as: :x_workflow_builder
-    )
 
     post("/fork/:provider/:repository_name", ProjectForkController, :fork)
     get("/fork/:provider/:repository_name/auth", ProjectForkController, :after_auth)
@@ -530,6 +544,8 @@ defmodule FrontWeb.Router do
     get("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :show)
     put("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :put)
     delete("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :delete)
+
+    get("/projects/:name_or_id/report", ReportController, :project)
 
     get("/", DashboardController, :index)
     get("/workflows", DashboardController, :workflows)

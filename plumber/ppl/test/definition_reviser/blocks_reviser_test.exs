@@ -26,7 +26,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     assert {:ok, real_ppl_req} = PplRequestsQueries.get_by_id(ppl_id)
 
     agent = %{"machine" => %{"type" => "e1-standard-2", "os_image" => "ubuntu1804"}}
-    blocks = [%{"build" => %{}}, %{"build" => %{}}]
+    blocks = [%{"build" => %{}, "name" => "blk 0"}, %{"build" => %{}, "name" => "blk 1"}]
     ppl_def = %{"agent" => agent, "blocks" => blocks}
     args = %{"service" => "local", "repo_name" => "4_cmd_file", "branch_name" => "master",
             "commit_sha" => "sha_1", "working_dir" => ".semaphore", "file_name" => "semaphore.yml"}
@@ -38,6 +38,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
 
   @ppl_id_env_var_name "SEMAPHORE_PIPELINE_ID"
   @artefact_id_env_var_name "SEMAPHORE_PIPELINE_ARTEFACT_ID"
+  @block_name "SEMAPHORE_BLOCK_NAME"
   @pipeline_rerun "SEMAPHORE_PIPELINE_RERUN"
   @pipeline_promotion "SEMAPHORE_PIPELINE_PROMOTION"
   @pipeline_promoted_by "SEMAPHORE_PIPELINE_PROMOTED_BY"
@@ -76,24 +77,26 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     assert %{"blocks" => blocks} = revised_def
     assert is_list(blocks)
 
-    expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
-                         %{"name" => @workflow_number_env_var_name, "value" => "1"},
-                         %{"name" => @workflow_rerun, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_hook, "value" => "true"},
-                         %{"name" => @workflow_hook_source, "value" => "github"},
-                         %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_api, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
-                         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
-                         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
-                         %{"name" => @pipeline_rerun, "value" => "false"},
-                         %{"name" => @pipeline_promotion, "value" => "false"},
-                         %{"name" => @pipeline_promoted_by, "value" => ""},
-                         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
-                         %{"name" => @git_commit_author, "value" => "gh_username_2"},
-                         %{"name" => @git_committer, "value" => "gh_username_1"},
-                         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
     blocks |> Enum.map(fn block ->
+      expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
+        %{"name" => @workflow_number_env_var_name, "value" => "1"},
+        %{"name" => @workflow_rerun, "value" => "false"},
+        %{"name" => @workflow_triggered_by_hook, "value" => "true"},
+        %{"name" => @workflow_hook_source, "value" => "github"},
+        %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
+        %{"name" => @workflow_triggered_by_api, "value" => "false"},
+        %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
+        %{"name" => @artefact_id_env_var_name, "value" => "A1"},
+        %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @block_name, "value" => block["name"]},
+        %{"name" => @pipeline_rerun, "value" => "false"},
+        %{"name" => @pipeline_promotion, "value" => "false"},
+        %{"name" => @pipeline_promoted_by, "value" => ""},
+        %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
+        %{"name" => @git_commit_author, "value" => "gh_username_2"},
+        %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
+
       assert is_map(block)
       assert get_in(block, ["build", "ppl_env_variables"]) == expected_env_vars
     end)
@@ -107,26 +110,27 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     assert %{"blocks" => blocks} = revised_def
     assert is_list(blocks)
 
-    expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
-                         %{"name" => @workflow_number_env_var_name, "value" => "1"},
-                         %{"name" => @workflow_rerun, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_hook, "value" => "true"},
-                         %{"name" => @workflow_hook_source, "value" => "github"},
-                         %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_api, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
-                         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
-                         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
-                         %{"name" => @pipeline_rerun, "value" => "false"},
-                         %{"name" => @pipeline_promotion, "value" => "false"},
-                         %{"name" => @pipeline_promoted_by, "value" => ""},
-                         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
-                         %{"name" => @git_commit_author, "value" => "gh_username_2"},
-                         %{"name" => @git_committer, "value" => "gh_username_1"},
-                         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"},
-                         %{"name" => "TEST", "value" => "VALUE"}]
-
     blocks |> Enum.map(fn block ->
+      expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
+        %{"name" => @workflow_number_env_var_name, "value" => "1"},
+        %{"name" => @workflow_rerun, "value" => "false"},
+        %{"name" => @workflow_triggered_by_hook, "value" => "true"},
+        %{"name" => @workflow_hook_source, "value" => "github"},
+        %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
+        %{"name" => @workflow_triggered_by_api, "value" => "false"},
+        %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
+        %{"name" => @artefact_id_env_var_name, "value" => "A1"},
+        %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @block_name, "value" => block["name"]},
+        %{"name" => @pipeline_rerun, "value" => "false"},
+        %{"name" => @pipeline_promotion, "value" => "false"},
+        %{"name" => @pipeline_promoted_by, "value" => ""},
+        %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
+        %{"name" => @git_commit_author, "value" => "gh_username_2"},
+        %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"},
+        %{"name" => "TEST", "value" => "VALUE"}]
+
       assert is_map(block)
       assert get_in(block, ["build", "ppl_env_variables"]) == expected_env_vars
     end)
@@ -137,26 +141,27 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     assert {:ok, revised_def} = BlocksReviser.revise_blocks_definition(ctx.ppl_def, ppl_req)
     assert %{"blocks" => blocks} = revised_def
     assert is_list(blocks)
-
-    expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
-                         %{"name" => @workflow_number_env_var_name, "value" => "1"},
-                         %{"name" => @workflow_rerun, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_hook, "value" => "true"},
-                         %{"name" => @workflow_hook_source, "value" => "github"},
-                         %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_api, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
-                         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
-                         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
-                         %{"name" => @pipeline_rerun, "value" => "false"},
-                         %{"name" => @pipeline_promotion, "value" => "false"},
-                         %{"name" => @pipeline_promoted_by, "value" => ""},
-                         %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
-                         %{"name" => @git_commit_author, "value" => "gh_username_2"},
-                         %{"name" => @git_committer, "value" => "gh_username_1"},
-                         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "Previous id value"},
-                         %{"name" => "SEMAPHORE_PIPELINE_1_ARTEFACT_ID", "value" => "A1"}]
     blocks |> Enum.map(fn block ->
+      expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
+        %{"name" => @workflow_number_env_var_name, "value" => "1"},
+        %{"name" => @workflow_rerun, "value" => "false"},
+        %{"name" => @workflow_triggered_by_hook, "value" => "true"},
+        %{"name" => @workflow_hook_source, "value" => "github"},
+        %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
+        %{"name" => @workflow_triggered_by_api, "value" => "false"},
+        %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
+        %{"name" => @artefact_id_env_var_name, "value" => "A1"},
+        %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @block_name, "value" => block["name"]},
+        %{"name" => @pipeline_rerun, "value" => "false"},
+        %{"name" => @pipeline_promotion, "value" => "false"},
+        %{"name" => @pipeline_promoted_by, "value" => ""},
+        %{"name" => @workflow_triggered_by, "value" => "gh_username_1"},
+        %{"name" => @git_commit_author, "value" => "gh_username_2"},
+        %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "Previous id value"},
+        %{"name" => "SEMAPHORE_PIPELINE_1_ARTEFACT_ID", "value" => "A1"}]
+
       assert is_map(block)
       assert get_in(block, ["build", "ppl_env_variables"]) == expected_env_vars
     end)
@@ -199,25 +204,25 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
     assert %{"blocks" => blocks} = revised_def
     assert is_list(blocks)
 
-    expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
-                         %{"name" => @workflow_number_env_var_name, "value" => "1"},
-                         %{"name" => @workflow_rerun, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_hook, "value" => "true"},
-                         %{"name" => @workflow_hook_source, "value" => "github"},
-                         %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_api, "value" => "false"},
-                         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
-                         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
-                         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
-                         %{"name" => @pipeline_rerun, "value" => "false"},
-                         %{"name" => @pipeline_promotion, "value" => "false"},
-                         %{"name" => @pipeline_promoted_by, "value" => "github_username_1"},
-                         %{"name" => @workflow_triggered_by, "value" => "github_username_2"},
-                         %{"name" => @git_commit_author, "value" => "gh_username_2"},
-                         %{"name" => @git_committer, "value" => "gh_username_1"},
-                         %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
-
     blocks |> Enum.map(fn block ->
+      expected_env_vars = [%{"name" => @workflow_id_env_var_name, "value" => ctx.ppl_req.wf_id},
+        %{"name" => @workflow_number_env_var_name, "value" => "1"},
+        %{"name" => @workflow_rerun, "value" => "false"},
+        %{"name" => @workflow_triggered_by_hook, "value" => "true"},
+        %{"name" => @workflow_hook_source, "value" => "github"},
+        %{"name" => @workflow_triggered_by_schedule, "value" => "false"},
+        %{"name" => @workflow_triggered_by_api, "value" => "false"},
+        %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
+        %{"name" => @artefact_id_env_var_name, "value" => "A1"},
+        %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @block_name, "value" => block["name"]},
+        %{"name" => @pipeline_rerun, "value" => "false"},
+        %{"name" => @pipeline_promotion, "value" => "false"},
+        %{"name" => @pipeline_promoted_by, "value" => "github_username_1"},
+        %{"name" => @workflow_triggered_by, "value" => "github_username_2"},
+        %{"name" => @git_commit_author, "value" => "gh_username_2"},
+        %{"name" => @git_committer, "value" => "gh_username_1"},
+        %{"name" => "SEMAPHORE_PIPELINE_0_ARTEFACT_ID", "value" => "A1"}]
       assert is_map(block)
       assert get_in(block, ["build", "ppl_env_variables"]) == expected_env_vars
     end)
