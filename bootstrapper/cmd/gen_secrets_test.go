@@ -99,12 +99,14 @@ func TestGenerateOpenIDSecret(t *testing.T) {
 
 	// Verify there's exactly one key pair with correct format
 	foundPrivate := false
+	originalKeyName := ""
 
 	// Helper function to check keys in either StringData or Data
 	checkKeys := func(data map[string]string) {
 		for k, v := range data {
 			if strings.HasSuffix(k, ".pem") && strings.Contains(v, "-----BEGIN RSA PRIVATE KEY-----") {
 				foundPrivate = true
+				originalKeyName = k
 			}
 		}
 	}
@@ -122,6 +124,30 @@ func TestGenerateOpenIDSecret(t *testing.T) {
 	}
 
 	assert.True(t, foundPrivate, "No valid RSA private key found in secret")
+
+	// Now test that calling it again doesn't change the secret
+	err = generateOpenIDSecret(mockClient.KubernetesClient)
+	assert.NoError(t, err)
+
+	// Get the secret again
+	updatedSecret, err := mockClient.Clientset.CoreV1().Secrets("test").Get(context.Background(), "openid-secret", metav1.GetOptions{})
+	assert.NoError(t, err)
+
+	// Verify the original key is still there and no new key was added
+	found := false
+	keyCount := 0
+
+	// Check in StringData or Data
+	if len(updatedSecret.StringData) > 0 {
+		keyCount = len(updatedSecret.StringData)
+		_, found = updatedSecret.StringData[originalKeyName]
+	} else if len(updatedSecret.Data) > 0 {
+		keyCount = len(updatedSecret.Data)
+		_, found = updatedSecret.Data[originalKeyName]
+	}
+
+	assert.True(t, found, "Original key should still be present")
+	assert.Equal(t, 1, keyCount, "There should still be only one key")
 }
 
 func TestGenerateVaultSecret(t *testing.T) {
@@ -145,6 +171,8 @@ func TestGenerateVaultSecret(t *testing.T) {
 	foundPrivate := false
 	foundPublic := false
 	timestamp := ""
+	originalPrivateKey := ""
+	originalPublicKey := ""
 
 	// Helper function to check keys in either StringData or Data
 	checkKeys := func(data map[string]string) {
@@ -153,9 +181,11 @@ func TestGenerateVaultSecret(t *testing.T) {
 				foundPrivate = true
 				// Extract timestamp from the key name
 				timestamp = strings.TrimSuffix(k, ".prv.pem")
+				originalPrivateKey = k
 			}
 			if strings.HasSuffix(k, ".pub.pem") && strings.Contains(v, "-----BEGIN RSA PUBLIC KEY-----") {
 				foundPublic = true
+				originalPublicKey = k
 			}
 		}
 	}
@@ -178,6 +208,92 @@ func TestGenerateVaultSecret(t *testing.T) {
 	// Verify that both keys have the same timestamp
 	if foundPrivate && foundPublic {
 		assert.Contains(t, secret.StringData, fmt.Sprintf("%s.pub.pem", timestamp), "Public key name does not match private key timestamp")
+	}
+
+	// Test CreateSecretIfNotExists behavior by calling generateVaultSecret again
+	err = generateVaultSecret(mockClient.KubernetesClient)
+	assert.NoError(t, err)
+
+	// Get the secret again
+	updatedSecret, err := mockClient.Clientset.CoreV1().Secrets("test").Get(context.Background(), utils.AssertEnv("VAULT_SECRET_NAME"), metav1.GetOptions{})
+	assert.NoError(t, err)
+
+	// Verify the original keys are still there and no new keys were added
+	foundOrigPrivate := false
+	foundOrigPublic := false
+	keyCount := 0
+
+	// Check in StringData or Data
+	if len(updatedSecret.StringData) > 0 {
+		keyCount = len(updatedSecret.StringData)
+		_, foundOrigPrivate = updatedSecret.StringData[originalPrivateKey]
+		_, foundOrigPublic = updatedSecret.StringData[originalPublicKey]
+	} else if len(updatedSecret.Data) > 0 {
+		keyCount = len(updatedSecret.Data)
+		_, foundOrigPrivate = updatedSecret.Data[originalPrivateKey]
+		_, foundOrigPublic = updatedSecret.Data[originalPublicKey]
+	}
+
+	assert.True(t, foundOrigPrivate, "Original private key should still be present")
+	assert.True(t, foundOrigPublic, "Original public key should still be present")
+	assert.Equal(t, 2, keyCount, "There should still be exactly two keys")
+}
+
+func TestBasicSecretsGeneration(t *testing.T) {
+	// Set required env vars
+	cleanup := setTestEnv("")
+	defer cleanup()
+
+	mockClient := NewMockKubernetesClient()
+
+	// First generation of secrets
+	generateJWTSecret(mockClient.KubernetesClient)
+	generateAuthenticationSecret(mockClient.KubernetesClient)
+	generateEncryptionKey(mockClient.KubernetesClient)
+
+	// Verify the secrets were created
+	secretNames := []string{
+		utils.AssertEnv("JWT_SECRET_NAME"),
+		utils.AssertEnv("AUTHENTICATION_SECRET_NAME"),
+		utils.AssertEnv("ENCRYPTION_SECRET_NAME"),
+	}
+
+	for _, secretName := range secretNames {
+		secret, err := mockClient.Clientset.CoreV1().Secrets("test").Get(context.Background(), secretName, metav1.GetOptions{})
+		assert.NoError(t, err)
+		assert.NotNil(t, secret)
+
+		// Store original data for comparison
+		originalData := make(map[string]string)
+		if len(secret.StringData) > 0 {
+			for k, v := range secret.StringData {
+				originalData[k] = v
+			}
+		} else if len(secret.Data) > 0 {
+			for k, v := range secret.Data {
+				originalData[k] = string(v)
+			}
+		}
+
+		// Call generation functions again
+		generateJWTSecret(mockClient.KubernetesClient)
+		generateAuthenticationSecret(mockClient.KubernetesClient)
+		generateEncryptionKey(mockClient.KubernetesClient)
+
+		// Verify secrets haven't changed
+		updatedSecret, err := mockClient.Clientset.CoreV1().Secrets("test").Get(context.Background(), secretName, metav1.GetOptions{})
+		assert.NoError(t, err)
+
+		// Check that data is the same
+		if len(updatedSecret.StringData) > 0 {
+			for k, v := range updatedSecret.StringData {
+				assert.Equal(t, originalData[k], v, "Secret data should not have changed for %s", secretName)
+			}
+		} else if len(updatedSecret.Data) > 0 {
+			for k, v := range updatedSecret.Data {
+				assert.Equal(t, originalData[k], string(v), "Secret data should not have changed for %s", secretName)
+			}
+		}
 	}
 }
 
