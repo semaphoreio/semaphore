@@ -32,7 +32,7 @@ var initOrgCmd = &cobra.Command{
 		orgUsername := utils.AssertEnv("ORGANIZATION_USERNAME")
 		userName := utils.AssertEnv("ROOT_NAME")
 		userEmail := utils.AssertEnv("ROOT_EMAIL")
-		rootUserSecretName := utils.AssertEnv("ROOT_USER_SECRET_NAME")
+		authenticationSecretName := utils.AssertEnv("AUTHENTICATION_SECRET_NAME")
 
 		kubernetesClient := kubernetes.NewClient()
 		instanceConfigClient := clients.NewInstanceConfigClient()
@@ -52,7 +52,7 @@ var initOrgCmd = &cobra.Command{
 			return
 		}
 
-		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, rootUserSecretName)
+		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, authenticationSecretName)
 		orgId := organization.CreateSemaphoreOrganization(orgUsername, userId)
 
 		if os.Getenv("DEFAULT_AGENT_TYPE_ENABLED") == "true" {
