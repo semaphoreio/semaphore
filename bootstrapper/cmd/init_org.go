@@ -32,7 +32,7 @@ var initOrgCmd = &cobra.Command{
 		orgUsername := utils.AssertEnv("ORGANIZATION_USERNAME")
 		userName := utils.AssertEnv("ROOT_NAME")
 		userEmail := utils.AssertEnv("ROOT_EMAIL")
-		rootUserSecretName := utils.AssertEnv("ROOT_USER_SECRET_NAME")
+		authenticationSecretName := utils.AssertEnv("AUTHENTICATION_SECRET_NAME")
 
 		kubernetesClient := kubernetes.NewClient()
 		instanceConfigClient := clients.NewInstanceConfigClient()
@@ -44,7 +44,15 @@ var initOrgCmd = &cobra.Command{
 		//
 		waitForIngress(domain)
 
-		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, rootUserSecretName)
+		// First check if the organization already exists
+		exists, existingOrgId := organization.OrganizationExists(orgUsername)
+		if exists {
+			log.Infof("Organization %s already exists with ID %s. Skipping organization creation.", orgUsername, existingOrgId)
+			// Return early since organization already exists
+			return
+		}
+
+		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, authenticationSecretName)
 		orgId := organization.CreateSemaphoreOrganization(orgUsername, userId)
 
 		if os.Getenv("DEFAULT_AGENT_TYPE_ENABLED") == "true" {
