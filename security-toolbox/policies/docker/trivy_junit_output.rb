@@ -13,7 +13,7 @@ class Policy::TrivyJunitOutput < Policy
       "convert",
       "--format template",
       "--template '@#{@template_path}'",
-      "--output docker-scan-junit.xml",
+      "--output out/docker-scan-junit.xml",
       "results.json"
     ]
 
