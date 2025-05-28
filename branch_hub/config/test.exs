@@ -1,7 +1,7 @@
 use Mix.Config
 
 config :junit_formatter,
-automatic_create_dir?: true,
+  automatic_create_dir?: true,
   report_dir: ".",
   report_file: "test-reports.xml",
   print_report_file: true,
