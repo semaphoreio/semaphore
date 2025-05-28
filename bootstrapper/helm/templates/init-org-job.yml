@@ -88,8 +88,8 @@ spec:
               value: {{ .Chart.Version }}
             - name: KUBE_VERSION
               value: {{ .Capabilities.KubeVersion.Version }}
-            - name: ROOT_USER_SECRET_NAME
-              value: {{ .Values.global.rootUser.secretName }}
+            - name: AUTHENTICATION_SECRET_NAME
+              value: {{ include "secrets.authentication.name" . }}
 {{- if ne .Values.global.githubApp.secretName "" }}
             - name: CONFIGURE_GITHUB_APP
               value: "true"
