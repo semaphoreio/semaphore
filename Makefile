@@ -85,6 +85,7 @@ ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 #
 SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
 check.code:
+	mkdir out
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
@@ -105,6 +106,7 @@ check.js.code:
 	$(MAKE) check.code LANGUAGE=js
 
 check.deps:
+	mkdir out
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
@@ -125,6 +127,7 @@ check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
 check.docker:
+	mkdir out
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
