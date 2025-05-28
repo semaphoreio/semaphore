@@ -26,6 +26,8 @@ This page compares the features available across all [Semaphore editions](./abou
 | Initialization jobs | Yes | Yes |
 | Self-hosted agents | Yes | Yes |
 | GitHub support | Yes | Yes |
+| GitLab support | Yes | Yes |
+| Any Git Server support | Yes | Yes |
 | BitBucket support | Yes | Yes |
 | Promotions | Yes | No |
 | Parameterized promotions | Yes | No |
@@ -39,6 +41,7 @@ This page compares the features available across all [Semaphore editions](./abou
 | Feature | Semaphore Cloud | Semaphore CE |
 |--|--|--|
 | Test reports | Yes | Yes |
+| Markdown reports | Yes | Yes |
 | Activity monitor | Yes | Yes |
 | Custom Dashboards | Yes | No |
 | Flaky tests | Yes | No |
