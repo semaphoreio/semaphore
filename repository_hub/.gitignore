@@ -25,8 +25,7 @@ repository_hub-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
-results.xml
-junit.xml
+out/
 .elixir_ls
 .devcontainer
 .semaphore
