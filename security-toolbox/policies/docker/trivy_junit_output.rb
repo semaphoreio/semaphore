@@ -14,7 +14,7 @@ class Policy::TrivyJunitOutput < Policy
       "--format template",
       "--template '@#{@template_path}'",
       "--output out/docker-scan-junit.xml",
-      "results.json"
+      "out/results.json"
     ]
 
     @output = `#{command.join(" ")}`
