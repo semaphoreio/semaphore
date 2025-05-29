@@ -1,6 +1,5 @@
 repository_hub
 build
-junit-report.xml
 log/test.log
 .devcontainer
-results.xml
+out/

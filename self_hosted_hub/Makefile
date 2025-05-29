@@ -15,10 +15,10 @@ lint:
 	docker-compose run --rm --no-deps app revive -formatter friendly -config lint.toml ./...
 
 test: build
-	docker-compose run --rm app gotestsum --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 test.watch:
-	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 tidy:
 	docker-compose run --rm app go mod tidy
