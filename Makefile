@@ -89,10 +89,10 @@ ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY) && mkdir out && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
+	cd $(APP_DIRECTORY) && mkdir out && $(ROOT_MAKEFILE_PATH)/security-toolbox/code --language $(LANGUAGE) $(CHECK_CODE_OPTS) -d
 endif
 
 check.ex.code:
@@ -109,10 +109,10 @@ ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY) && mkdir out && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
+	cd $(APP_DIRECTORY) && mkdir out && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
 endif
 
 check.ex.deps:
@@ -125,12 +125,13 @@ check.js.deps:
 	$(MAKE) check.deps LANGUAGE=js
 
 check.docker:
+	mkdir -p out
 ifeq ($(CI),)
 	docker run -it -v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
-		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
+		-v /var/run/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
+		bash -c 'cd /app && $(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
 else
 	# ruby version is set in prologue
 	$(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
