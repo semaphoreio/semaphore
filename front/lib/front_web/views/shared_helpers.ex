@@ -449,6 +449,7 @@ defmodule FrontWeb.SharedHelpers do
 
   def provider_name("github"), do: "GitHub"
   def provider_name("bitbucket"), do: "Bitbucket"
+  def provider_name("gitlab"), do: "GitLab"
 
   @spec contact_support_card(Plug.Conn.t(), LayoutModel.t()) :: renderable()
   def contact_support_card(conn, layout_model) do
