@@ -1036,7 +1036,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "\U0001F9EA HooksProcessor QA"
+  - name: "HooksProcessor: QA"
     dependencies: ["\U0001F4CB HooksProcessor Provision Test Image"]
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2526,7 +2526,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "\U0001F9EA RepositoryHub QA"
+  - name: "RepositoryHub: QA"
     dependencies: ["\U0001F4CB RepositoryHub Provision Test Image"]
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
