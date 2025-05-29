@@ -13,6 +13,7 @@ else
 	export BRANCH?=$(shell git rev-parse --abbrev-ref HEAD | sed 's/[^a-z]//g' | cut -c 1-40)
 endif
 
+
 export REGISTRY_HOST?=local
 export IMAGE?=$(APP_NAME)/$(BRANCH)
 export MAIN_IMAGE?=$(APP_NAME)/main
