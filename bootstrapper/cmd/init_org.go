@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"net/http"
 	"os"
 	"time"
@@ -31,7 +32,7 @@ var initOrgCmd = &cobra.Command{
 		orgUsername := utils.AssertEnv("ORGANIZATION_USERNAME")
 		userName := utils.AssertEnv("ROOT_NAME")
 		userEmail := utils.AssertEnv("ROOT_EMAIL")
-		rootUserSecretName := utils.AssertEnv("ROOT_USER_SECRET_NAME")
+		authenticationSecretName := utils.AssertEnv("AUTHENTICATION_SECRET_NAME")
 
 		kubernetesClient := kubernetes.NewClient()
 		instanceConfigClient := clients.NewInstanceConfigClient()
@@ -43,7 +44,15 @@ var initOrgCmd = &cobra.Command{
 		//
 		waitForIngress(domain)
 
-		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, rootUserSecretName)
+		// First check if the organization already exists
+		exists, existingOrgId := organization.OrganizationExists(orgUsername)
+		if exists {
+			log.Infof("Organization %s already exists with ID %s. Skipping organization creation.", orgUsername, existingOrgId)
+			// Return early since organization already exists
+			return
+		}
+
+		userId := user.CreateSemaphoreUser(kubernetesClient, userName, userEmail, authenticationSecretName)
 		orgId := organization.CreateSemaphoreOrganization(orgUsername, userId)
 
 		if os.Getenv("DEFAULT_AGENT_TYPE_ENABLED") == "true" {
@@ -87,8 +96,20 @@ var initOrgCmd = &cobra.Command{
 func waitForIngress(domain string) {
 	url := "https://id." + domain + "/realms/semaphore/.well-known/openid-configuration"
 
+	insecure := os.Getenv("TLS_SKIP_VERIFY_INTERNAL") == "true"
+
+	tlsConfig := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	if insecure {
+		tlsConfig.InsecureSkipVerify = true // #nosec G402
+	}
+
 	client := &http.Client{
 		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
 	}
 
 	req, _ := http.NewRequest("GET", url, nil)

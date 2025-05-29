@@ -222,26 +222,27 @@ defmodule FrontWeb.NotificationsController do
       org_id = conn.assigns.organization_id
       user_id = conn.assigns.user_id
 
-      with {:ok, notification} <- Notification.find(id, user_id, org_id) do
-        organization = Organization.find(org_id)
+      case Notification.find(id, user_id, org_id) do
+        {:ok, notification} ->
+          organization = Organization.find(org_id)
 
-        render(
-          conn,
-          "form.html",
-          form_title: "Edit Notification",
-          js: "notification",
-          action: notifications_path(conn, :update, id),
-          method: :put,
-          notification: notification,
-          title: "Editing #{notification.metadata.name}・#{organization.name}",
-          cancel_path: notifications_path(conn, :index),
-          errors: %{},
-          organization: organization,
-          org_restricted: organization.restricted,
-          permissions: conn.assigns.permissions,
-          can_view_settings: true
-        )
-      else
+          render(
+            conn,
+            "form.html",
+            form_title: "Edit Notification",
+            js: "notification",
+            action: notifications_path(conn, :update, id),
+            method: :put,
+            notification: notification,
+            title: "Editing #{notification.metadata.name}・#{organization.name}",
+            cancel_path: notifications_path(conn, :index),
+            errors: %{},
+            organization: organization,
+            org_restricted: organization.restricted,
+            permissions: conn.assigns.permissions,
+            can_view_settings: true
+          )
+
         {:error, %{status: 5}} ->
           conn
           |> render_404
@@ -260,11 +261,12 @@ defmodule FrontWeb.NotificationsController do
       org_id = conn.assigns.organization_id
 
       if conn.assigns.permissions["organization.notifications.manage"] || false do
-        with {:ok, _} <- Notification.delete(id, user_id, org_id) do
-          conn
-          |> put_flash(:notice, "Notification deleted.")
-          |> redirect(to: notifications_path(conn, :index))
-        else
+        case Notification.delete(id, user_id, org_id) do
+          {:ok, _} ->
+            conn
+            |> put_flash(:notice, "Notification deleted.")
+            |> redirect(to: notifications_path(conn, :index))
+
           {:error, %{status: 5}} ->
             conn
             |> render_404

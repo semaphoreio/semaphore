@@ -183,3 +183,7 @@ if System.get_env("AMQP_URL") != nil do
       instance_config: [connection: :amqp]
     ]
 end
+
+if System.get_env("TLS_SKIP_VERIFY_INTERNAL") == "true" do
+  config :openid_connect, finch_transport_opts: [verify: :verify_none]
+end

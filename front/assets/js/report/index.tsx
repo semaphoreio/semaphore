@@ -18,6 +18,7 @@ export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
 enum ReportContext {
   Job = `job`,
   Workflow = `workflow`,
+  Project = `project`,
 }
 
 const App = (props: { reportUrl: string, context: ReportContext, }) => {
@@ -77,9 +78,18 @@ const MarkdownBody = (props: { markdown: string, }) => {
 };
 
 const ReportInstructions = (props: { context: ReportContext, }) => {
-  let command = `artifact push workflow -d .semaphore/REPORT.md REPORT.md`;
-  if (props.context === ReportContext.Job) {
-    command = `artifact push job -d .semaphore/REPORT.md REPORT.md`;
+  let command = ``;
+
+  switch (props.context) {
+    case ReportContext.Job:
+      command = `artifact push job -d .semaphore/REPORT.md REPORT.md`;
+      break;
+    case ReportContext.Workflow:
+      command = `artifact push workflow -d .semaphore/REPORT.md REPORT.md`;
+      break;
+    case ReportContext.Project:
+      command = `artifact push project -d .semaphore/REPORT.md REPORT.md`;
+      break;
   }
 
   return (
@@ -87,7 +97,7 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
       <div className="pv3-m mw7 center">
         <h2 className="f3 mb0">Your Markdown reports will appear here.</h2>
         <p className="f4 normal mb4">
-           These reports help share key details about your job or workflow, like build metrics or custom insights.
+           These reports help share key details about your {props.context}, like build metrics or custom insights.
         </p>
         <div className="flex-m">
           <div className="flex-shrink-0 dn db-m nl4 ph4">

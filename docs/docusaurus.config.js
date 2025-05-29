@@ -65,9 +65,13 @@ const config = {
               banner: "none",
             },
             "CE": {
-              label: 'Community Edition (1.2)',
+              label: 'Community Edition v1.2',
               path: 'CE',
               banner: "none"
+            },
+            "CE-1.1": {
+              label: 'Community Edition v1.1',
+              path: 'CE-1.1',
             }
           },
 

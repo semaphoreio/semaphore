@@ -100,13 +100,14 @@ defmodule FrontWeb.ProjectPFCController do
       log_data = log_data_closure(organization_id, project_id, user_id, :delete)
       audit_log(conn)
 
-      with :ok <- ProjectPFC.destroy(project_id, user_id) do
-        Watchman.increment(watchman_name(:delete, :success))
+      case ProjectPFC.destroy(project_id, user_id) do
+        :ok ->
+          Watchman.increment(watchman_name(:delete, :success))
 
-        conn
-        |> put_flash(:notice, "Success: pre-flight checks deleted")
-        |> redirect(to: project_pfc_path(conn, :show, project_name_or_id))
-      else
+          conn
+          |> put_flash(:notice, "Success: pre-flight checks deleted")
+          |> redirect(to: project_pfc_path(conn, :show, project_name_or_id))
+
         {:error, reason} ->
           Watchman.increment(watchman_name(:delete, :failure))
           Logger.error(log_data.(reason))
