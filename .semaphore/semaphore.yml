@@ -3,7 +3,7 @@ name: Semaphore
 agent:
   machine:
     type: e2-standard-2
-    os_image: ubuntu2004
+    os_image: ubuntu2204
 global_job_config:
   secrets:
     - name: semreg-semaphoredev-credentials
@@ -25,21 +25,15 @@ global_job_config:
       - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST || echo "Semaphore Registry login failed, but continuing the build process." && true
       - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       - sem-version ruby 3.3
+      - checkout
   epilogue:
     always:
       commands:
-        # Trivyfs security scan
-        - 'if [ -f docker-scan-junit.xml ];            then test-results --name "Docker scan"         --suite-prefix "[$SERVICE_NAME]"  publish docker-scan-junit.xml; fi'
-        - 'if [ -f junit.xml ];                        then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit.xml; fi'
-        - 'if [ -f results.xml ];                      then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish results.xml; fi'
-        - 'if [ -f out/results.xml ];                  then test-results --name "${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}"               publish out/results.xml; fi'
-        - 'if [ -f test-results.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish test-results.xml; fi'
-        - 'if [ -f junit-report.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit-report.xml; fi'
-        - 'if [ -f assets/results.xml ];               then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish assets/results.xml; fi'
-        - 'if [ -f out/lint-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/lint-js-junit-report.xml; fi'
-        - 'if [ -f out/compile-ts-junit-report.xml ];  then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/compile-ts-junit-report.xml; fi'
-        - 'if [ -f out/test-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-js-junit-report.xml; fi'
-        - 'if [ -f out/test-ex-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-ex-junit-report.xml; fi'
+        - 'if [ -f out/docker-scan-junit.xml ]; then test-results --name "Docker scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/docker-scan-junit.xml; fi'
+        - 'if [ -f out/dependency-scan.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
+        - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
+        - 'if [ -f out/test-reports.xml ]; then test-results --name "$SEMAPHORE_BLOCK_NAME" publish out/test-reports.xml; fi'
+
 after_pipeline:
   task:
     jobs:
@@ -115,7 +109,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Audit: \U0001F9EA QA"
+  - name: "Audit: QA"
     dependencies: ["Audit: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -188,7 +182,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "ArtifactHub: \U0001F9EA QA"
+  - name: "ArtifactHub: QA"
     dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -275,7 +269,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Auth: \U0001F9EA QA"
+  - name: "Auth: QA"
     dependencies: ["Auth: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -365,7 +359,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Badge: \U0001F9EA QA"
+  - name: "Badge: QA"
     dependencies: ["Badge: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -457,7 +451,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "BranchHub: \U0001F9EA QA"
+  - name: "BranchHub: QA"
     dependencies: ["BranchHub: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -559,7 +553,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Dashboardhub: \U0001F9EA QA"
+  - name: "Dashboardhub: QA"
     dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -618,7 +612,7 @@ blocks:
             - cd docs
             - make build
             - make push
-  - name: "Docs: \U0001F9EA QA"
+  - name: "Docs: QA"
     dependencies: ["Docs: \U0001F5BC️ Build test image"]
     run:
       when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -647,8 +641,8 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-4
-          os_image: ubuntu2004
+          type: e2-standard-4
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -665,7 +659,7 @@ blocks:
           commands:
             - make build
             - make push
-  - name: "Front: \U0001F9EA QA"
+  - name: "Front: QA"
     dependencies:
       - "Front: \U0001F5BC️ Provision Test Image"
     run:
@@ -743,8 +737,8 @@ blocks:
     task:
       agent:
         machine:
-          type: e1-standard-4
-          os_image: ubuntu2004
+          type: e2-standard-4
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -863,7 +857,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Guard: \U0001F9EA QA"
+  - name: "Guard: QA"
     dependencies: ["Guard: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -953,7 +947,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "HooksReceiver: \U0001F9EA QA"
+  - name: "HooksReceiver: QA"
     dependencies: ["HooksReceiver: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1219,7 +1213,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "GithubNotifier: \U0001F9EA QA"
+  - name: "GithubNotifier: QA"
     dependencies: ["GithubNotifier: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1670,7 +1664,7 @@ blocks:
         - name: "\U0001F6E1️ Check dependencies"
           commands:
             - make check.ex.deps
-  - name: "Blocks: \U0001F9EA QA"
+  - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     run:
       when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1916,7 +1910,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Pre-flight Checks: \U0001F9EA QA"
+  - name: "Pre-flight Checks: QA"
     dependencies: ["Pre-flight Checks: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2007,7 +2001,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "ProjectHub: \U0001F9EA QA"
+  - name: "ProjectHub: QA"
     dependencies: ["ProjectHub: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2096,7 +2090,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "ProjectHub REST API: \U0001F9EA QA"
+  - name: "ProjectHub REST API: QA"
     dependencies: ["ProjectHub REST API: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2167,7 +2161,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "public-api-gateway: \U0001F9EA QA"
+  - name: "public-api-gateway: QA"
     dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2235,7 +2229,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Repohub: \U0001F9EA QA"
+  - name: "Repohub: QA"
     dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2324,7 +2318,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "RBAC CE: \U0001F9EA QA"
+  - name: "RBAC CE: QA"
     dependencies: ["RBAC CE: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2415,7 +2409,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "RBAC EE: \U0001F9EA QA"
+  - name: "RBAC EE: QA"
     dependencies: ["RBAC EE: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2450,7 +2444,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2477,7 +2471,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2505,7 +2499,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2540,7 +2534,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-2
-          os_image: ubuntu2004
+          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2611,7 +2605,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Loghub2: \U0001F9EA QA"
+  - name: "Loghub2: QA"
     dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2680,7 +2674,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Encryptor: \U0001F9EA QA"
+  - name: "Encryptor: QA"
     dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2749,7 +2743,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Bootstrapper: \U0001F9EA QA"
+  - name: "Bootstrapper: QA"
     dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2818,7 +2812,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Self-Hosted-Hub: \U0001F9EA QA"
+  - name: "Self-Hosted-Hub: QA"
     dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2905,7 +2899,7 @@ blocks:
           commands:
             - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-files "deps/grpc/Dockerfile,deps/sys2app/Dockerfile"'
-  - name: "Secrethub: \U0001F9EA QA"
+  - name: "Secrethub: QA"
     dependencies: ["Secrethub: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2994,7 +2988,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Notifications: \U0001F9EA QA"
+  - name: "Notifications: QA"
     dependencies: ["Notifications: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3085,7 +3079,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "APIv1alpha: \U0001F9EA QA"
+  - name: "APIv1alpha: QA"
     dependencies: ["APIv1alpha: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3175,7 +3169,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "APIv2: \U0001F9EA QA"
+  - name: "APIv2: QA"
     dependencies: ["APIv2: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3331,7 +3325,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Github Hooks: \U0001F9EA QA"
+  - name: "Github Hooks: QA"
     dependencies: ["Github Hooks: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3448,7 +3442,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Velocity: \U0001F9EA QA"
+  - name: "Velocity: QA"
     dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
     run:
       when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3535,7 +3529,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Zebra: \U0001F9EA QA"
+  - name: "Zebra: QA"
     dependencies: ["Zebra: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3672,7 +3666,7 @@ blocks:
           commands:
             - make build
             - make check.docker
-  - name: "Scouter: \U0001F9EA QA"
+  - name: "Scouter: QA"
     dependencies: ["Scouter: \U0001F4CB Provision Test Image"]
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3830,4 +3824,3 @@ promotions:
             - ee
           default_value: ce
           description: "The edition of Semaphore to install - Community (ce) or Enterprise (ee)."
-
