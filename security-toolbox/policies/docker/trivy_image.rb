@@ -20,8 +20,10 @@ class Policy::TrivyImage < Policy
     command = [
       "trivy",
       "image",
-      "--exit-code 0",
+      "--exit-code 1",
       "--severity #{@severity}",
+      "--exit-on-eol 1",
+      "--ignore-unfixed",
       "--scanners vuln,secret,license,misconfig",
       "--format json",
       "--output out/results.json"
