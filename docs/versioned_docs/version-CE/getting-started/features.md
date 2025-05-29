@@ -26,15 +26,14 @@ This page compares the features available across all [Semaphore editions](./abou
 | Initialization jobs | Yes | Yes |
 | Self-hosted agents | Yes | Yes |
 | GitHub support | Yes | Yes |
-| GitLab support | Yes | Yes |
-| Any Git Server support | Yes | Yes |
+| GitLab support | No | Yes |
+| Any Git Server support | No | Yes |
 | BitBucket support | Yes | Yes |
 | Promotions | Yes | No |
 | Parameterized promotions | Yes | No |
 | Deployment targets | Yes | No |
 | Pre-flight checks | Yes | No |
 | sem-service & sem-version | Yes | No |
-
 
 ## Dashboards
 
@@ -48,7 +47,6 @@ This page compares the features available across all [Semaphore editions](./abou
 | Project insights | Yes | No |
 | Organization health | Yes | No |
 
-
 ## Security and compliance
 
 | Feature | Semaphore Cloud | Semaphore CE |
@@ -58,12 +56,11 @@ This page compares the features available across all [Semaphore editions](./abou
 | Policies for accessing secrets | Yes | No |
 | Audit logs | Yes | No |
 
-
-## User and permissions management 
+## User and permissions management
 
 | Feature | Semaphore Cloud | Semaphore CE |
 |--|--|--|
-| Multiple organizations | Yes | No | 
+| Multiple organizations | Yes | No |
 | Invite users to your organization | Yes | Yes |
 | Organization roles | Yes | Yes |
 | Project roles | Yes | Yes (*) |
@@ -72,7 +69,7 @@ This page compares the features available across all [Semaphore editions](./abou
 
 (*) Project roles exist but cannot be manually assigned to individual users. The role is assigned based on project membership and server roles.
 
-## Integrations 
+## Integrations
 
 | Feature | Semaphore Cloud | Semaphore CE |
 |--|--|--|
@@ -89,4 +86,3 @@ This page compares the features available across all [Semaphore editions](./abou
 
 - [Guided tour](./guided-tour)
 - [Migration guides](./migration/overview)
-
