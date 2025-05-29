@@ -37,7 +37,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
-junit-report.xml
+out/
 .devcontainer
 .vscode
 /build/server
