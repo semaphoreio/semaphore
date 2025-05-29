@@ -33,8 +33,6 @@ tags
 browser_logs.log
 /log
 .vscode
-test-results.xml
-results.xml
 .tool-versions
 .direnv
 .envrc
