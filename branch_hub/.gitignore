@@ -34,6 +34,5 @@ branch_hub-*.tar
 tags
 .elixir_ls/
 .vscode
-test-results.xml
+out/
 .tool-versions
-junit.xml
