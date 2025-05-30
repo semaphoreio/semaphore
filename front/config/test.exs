@@ -67,12 +67,12 @@ config :front, guard_grpc_timeout: 1_000
 config :front, permission_patrol_timeout: 1_000
 
 config :junit_formatter,
-  report_file: "test-ex-junit-report.xml",
-  report_dir: System.get_env("REPORT_PATH") || "./out",
   automatic_create_dir?: true,
+  report_dir: "./out",
+  report_file: "test-reports.xml",
   print_report_file: true,
-  prepend_project_name?: false,
-  include_filename?: true
+  include_filename?: true,
+  include_file_line?: true
 
 config :front, me_host: "me.", me_path: "/"
 config :front, :artifact_host, "http://localhost:9000"
