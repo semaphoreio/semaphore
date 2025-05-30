@@ -2219,10 +2219,6 @@ blocks:
   - name: "RepositoryHub Provision Test Image"
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2244,10 +2240,6 @@ blocks:
   - name: "RepositoryHub Provision Prod Image"
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2270,10 +2262,6 @@ blocks:
   - name: "RepositoryHub Deployment Preconditions"
     dependencies: ["RepositoryHub Provision Prod Image"]
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2303,10 +2291,6 @@ blocks:
   - name: "RepositoryHub: QA"
     dependencies: ["RepositoryHub Provision Test Image"]
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
