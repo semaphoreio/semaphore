@@ -2441,10 +2441,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2468,10 +2464,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2496,10 +2488,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2531,10 +2519,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
