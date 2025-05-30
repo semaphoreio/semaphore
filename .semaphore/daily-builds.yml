@@ -3365,6 +3365,10 @@ blocks:
   - name: "Feature Provider: QA"
     dependencies: []
     task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
       prologue:
         commands:
           - sem-version erlang $ERLANG_VERSION
