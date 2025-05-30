@@ -3,7 +3,7 @@ name: Semaphore
 agent:
   machine:
     type: e2-standard-2
-    os_image: ubuntu2204
+    os_image: ubuntu2004
 global_job_config:
   secrets:
     - name: semreg-semaphoredev-credentials
@@ -642,7 +642,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-4
-          os_image: ubuntu2204
+          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -738,7 +738,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-4
-          os_image: ubuntu2204
+          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -2441,10 +2441,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2468,10 +2464,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2496,10 +2488,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2531,10 +2519,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -3696,10 +3680,6 @@ blocks:
     run:
       when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       prologue:
         commands:
           - sem-version erlang $ERLANG_VERSION
