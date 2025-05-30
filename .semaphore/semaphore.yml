@@ -3,7 +3,7 @@ name: Semaphore
 agent:
   machine:
     type: e2-standard-2
-    os_image: ubuntu2204
+    os_image: ubuntu2004
 global_job_config:
   secrets:
     - name: semreg-semaphoredev-credentials
@@ -33,6 +33,10 @@ global_job_config:
         - 'if [ -f out/dependency-scan.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
         - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
         - 'if [ -f out/test-reports.xml ]; then test-results --name "$SEMAPHORE_BLOCK_NAME" publish out/test-reports.xml; fi'
+        - 'if [ -f out/docker-scan-trivy.json ]; then make check.generate-report; fi'
+        - 'if [ -f out/dependency-scan-trivy.json ]; then make check.generate-report; fi'
+        - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
+        - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
 
 after_pipeline:
   task:
@@ -40,6 +44,13 @@ after_pipeline:
       - name: Submit Reports
         commands:
           - test-results gen-pipeline-report
+      - name: Process Reports
+        commands:
+          - sem-version ruby 3.3
+          - checkout
+          - artifact pull workflow scans -d reports || echo "No scan reports found, skipping."
+          - make check.generate-global-report
+          - 'if [ -f out/global-security-summary.md ]; then artifact push workflow out/global-security-summary.md -d .semaphore/REPORT.md; fi'
 auto_cancel:
   running:
     when: "branch != 'main'"
@@ -642,7 +653,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-4
-          os_image: ubuntu2204
+          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -738,7 +749,7 @@ blocks:
       agent:
         machine:
           type: e2-standard-4
-          os_image: ubuntu2204
+          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       prologue:
@@ -2441,10 +2452,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2468,10 +2475,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2496,10 +2499,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2531,10 +2530,6 @@ blocks:
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2204
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -3696,10 +3691,6 @@ blocks:
     run:
       when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       prologue:
         commands:
           - sem-version erlang $ERLANG_VERSION

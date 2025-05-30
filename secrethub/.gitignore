@@ -20,5 +20,4 @@ erl_crash.dump
 *.ez
 
 .elixir_ls/
-out/
 .tool-versions
