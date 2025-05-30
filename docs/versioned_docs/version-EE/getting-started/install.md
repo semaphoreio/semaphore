@@ -28,6 +28,7 @@ A Semaphore CI/CD platform consists of two components:
 
 To install Semaphore, you need:
 
+- An Enterprise Edition [License](./license)
 - A DNS domain
 - The ability to create A, AAAA, or CNAME records for your domain
 - A Kubernetes cluster or a Ubuntu machine

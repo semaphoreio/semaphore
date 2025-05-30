@@ -12,7 +12,7 @@ import Steps from '@site/src/components/Steps';
 
 Welcome 👋 Thank you for trying out Semaphore. 
 
-This 20-minute tutorial will give you 80% of the time needed to use Semaphore effectively. No strings attached. No credit card is required. This is our promise.
+This 20-minute tutorial will give you 80% of the time needed to use Semaphore effectively.
 
 **What will you learn?**
 

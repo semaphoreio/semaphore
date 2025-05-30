@@ -12,7 +12,7 @@ Semaphore comes in two editions:
 
 - **[Semaphore Cloud](/getting-started/about-semaphore)**: is a cloud-based, fully-managed CI-as-a-Service platform. Meant for individuals and companies that don't wish to maintain a CI/CD system. Head to [semaphoreci.com](https://semaphore.io) to access Semaphore Cloud
 - **[Semaphore CE](/CE/getting-started/install)**: is the free and open-source Community Edition of Semaphore. Meant for anyone that wishes to host and manage their own CI/CD architecture.
-- **On-premise (Enterprise Edition)**: fully-featured Semaphore that can run behind a firewall using your infrastructure
+- [Semaphore EE](/EE/getting-started/install)): commercial, fully-featured Semaphore instance. Meant for companies who wishes to host and manage their own CI/CD architecture.
 
 See the [feature comparison](./features) to decide which edition of Semaphore is best for you.
 
@@ -30,7 +30,9 @@ Continuous Delivery and Continuous Deployment extend this process by providing a
 
 ## Where to go next?
 
-If you want to give Semaphore Cloud, head to the [Guided Tour](./guided-tour). If you prefer to self-host, see the [Community Edition installation guide](./install).
+If you want to test Semaphore before installation, give [Semaphore Cloud](/getting-started/about-semaphore) a try for free. It has all the features and it does not require a credit card to sign up.
+
+To learn how to install, see the [Enterprise Edition installation guide](./install). Then, we recommend reading the [Guided Tour](./guided-tour) to get your bearings.
 
 You can find the complete Semaphore handbook in the [Using Semaphore](../using-semaphore/jobs) section.
 
