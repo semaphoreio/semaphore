@@ -11,6 +11,7 @@
       "items": [
         "getting-started/about-semaphore",
         "getting-started/features",
+        "getting-started/license",
         {
           "type": "category",
           "label": "Single-machine Install",

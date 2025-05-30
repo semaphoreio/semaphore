@@ -15,7 +15,8 @@ We succeeded into having a program built and tested using Continuous Integration
 In this section you will learn about:
 
 - Protecting sensitive data with Secrets
-- Releasing your compiled application to GitHub
+- Creating multiple pipelines
+- Using automated promotions
 
 ## Prerequisites
 
@@ -34,7 +35,7 @@ In order to upload files from the Semaphore job we need to authenticate with you
 
 Now, the problem with such tokens is that they should remain secret. This rules out using environment variables in our jobs to store the token, as these are visible to anyone with read access to the repository.
 
-We can protect sensitive data such as tokens with *secrets*. Secrets provide a secure way to store key-value pairs and files within your Semaphore instance. So, even if our repository is public, no one outside can access these secrets.
+We can protect sensitive data such as tokens with *secrets*. Secrets provide a secure way to store key-value pairs and files within your organization. So, even if our repository is public, no one outside your organization can access these secrets.
 
 To create a secret, follow these steps:
 
@@ -84,10 +85,125 @@ After the workflow finishes you should see a new release on your GitHub reposito
 
 ![Released package](./img/release1.jpg)
 
+This works, however, there are quite a few problems with this approach:
+
+- Releases are randomly named instead of using sensible version numbers
+- Every update on every branch generates a release. This is too much, we usually only want to release on certain milestones
+- Continuous Integration and Continuous Delivery should be logically separated tasks. Here, they are all smashed together
+
+What we need is to split the pipeline in two: Continuous Integration and Continuous Delivery. For that, we need to learn about *promotions*.
+
+## What are promotions? {#promotion}
+
+By now, you know what a pipeline is. But you might not know that a project can have multiple pipelines. Logically, every pipeline has one goal or fulfills one task: test, release, deploy, and so forth. 
+
+In Semaphore, we use promotions to link pipelines. A promotion represents a pointer to one or more pipeline files in the project.
+
+Let's take the release block and put it on a separate pipeline.
+
+<Steps>
+
+1. Delete the "Release" block in the first pipeline
+2. Press **Add Promotion**. This creates and links a new pipeline. 
+3. Give descriptive names to the Promotion and the new pipeline
+4. Select the first block on the new pipeline
+5. Just like before, type the job commands
+
+    ```shell title="Release job"
+    checkout
+    artifact pull workflow hello-go
+    gh release create "$SEMAPHORE_GIT_TAG_NAME" hello-go --latest -t "$SEMAPHORE_GIT_TAG_NAME" -n "Continuous Delivery Release: $SEMAPHORE_GIT_TAG_NAME"
+    ```
+
+    We've changed the release command to use the Git tag for the release name. This allows us to tag releases using sensible version numbers.
+
+6. As before, open the **Secrets** section on the block and enable `github-release`
+
+    ![Release pipeline](./img/release2.jpg)
+
+7. Start the workflow
+
+</Steps>
+
+Now the execution of the workflow will stop on the Continuous Integration pipeline. Release won't happen unless we press the "Release" button.
+
+![Manual release](./img/pipeline-manual.jpg)
+
+But before we can release we should create a tag for our build. Run these commands in the repository on your machine:
+
+```shell title="Creating a tag"
+git pull origin setup-semaphore
+echo "This is release v1.0.0" > release-notes.txt
+git add release-notes.txt
+git commit -m "release v1.0.0"
+git tag -a v1.0.0 -m "Releasing version v1.0.0"
+git push origin v1.0.0
+```
+
+The push will initiate a new workflow related to the tag we just pushed. Check the progress of the CI pipeline and once done, press the **Release** button.
+
+![Releasing using CD pipeline](./img/release3.jpg)
+
+If you check your GitHub repository, you should now find a release correctly tagged as "v1.0.0"
+
+<details>
+<summary>Semaphore environment variables</summary>
+<div>
+
+Semaphore provides several environment variables you can use in your scripts. In the examples we have used:
+
+- `$SEMAPHORE_WORKFLOW_ID` a unique ID for every workflow
+- `$SEMAPHORE_GIT_TAG_NAME` contains the name for the pushed Git tag
+
+See [environment variables](../../reference/env-vars) for a list of all the variable available in the CI environment.
+
+</div>
+</details>
+
+## Automating releases {#autopromotion}
+
+Releasing packages by pressing a button is great. But you know what's even better? Doing it automatically. Especially if you have a very robust test suite that gives you confidence in the build.
+
+To automate the release we need to add a promotion condition.
+
+<Steps>
+
+1. Go back to the main project and open the workflow editor
+2. Semaphore may ask which branch to open: select `setup-semaphore`
+3. Select the "Release" promotion
+
+    ![Editing the promotion config](./img/promotion-button.jpg)
+
+4. Activate the checkbox **Enable automatic promotion**
+5. Now we need to specify conditions to automatically start the promotion
+
+    Let's use this condition: `result = 'passed' AND tag =~ '^v.*'`
+
+    This will start the promotion when all tests have passed and the commit includes any tag starting with "v" (the syntax supports regular expressions)
+
+6. Start the workflow
+
+</Steps>
+
+Let's make another release. Type these commands in the repository on your machine:
+
+```shell title="Creating a tag"
+git pull origin setup-semaphore
+echo "This is release v1.0.1" > release-notes.txt
+git add release-notes.txt
+git commit -m "release v1.0.1"
+git tag -a v1.0.1 -m "Releasing version v1.0.1"
+git push origin v1.0.1
+```
+
+This time the Release pipeline should automatically start as soon as all jobs in the CI pipeline have passed. We should also find a new release on the GitHub repository when everything is finished.
+
 ## What have we learned?
 
 - How to create and use Secrets
 - How to release packages to GitHub
+- How to use promotions to connect pipelines
+- How to automate triggering promotions
 
 ## What's next?
 
