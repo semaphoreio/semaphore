@@ -25,4 +25,4 @@ log
 *.json
 
 /test_output
-junit.xml
+out/

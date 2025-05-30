@@ -1,5 +1,5 @@
 --colour
 --order rand
 --format RspecJunitFormatter
---out out/results.xml
+--out out/test-reports.xml
 --format progress
