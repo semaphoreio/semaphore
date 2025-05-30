@@ -72,7 +72,12 @@ const config = {
             "CE-1.1": {
               label: 'Community Edition v1.1',
               path: 'CE-1.1',
-            }
+            },
+            "EE": {
+              label: 'Enterprise Edition v1.3',
+              path: 'EE',
+              banner: "none"
+            },
           },
 
         },
