@@ -12,7 +12,7 @@ class Policy::TrivyTableOutput < Policy
       "--format table",
       "--output table.txt",
       "--scanners vuln,secret,misconfig,license",
-      "out/results.json"
+      "out/docker-scan-trivy.json"
     ]
 
     @output = `#{command.join(" ")} && cat table.txt && rm table.txt`
