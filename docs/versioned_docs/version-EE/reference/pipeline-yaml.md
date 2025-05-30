@@ -1204,7 +1204,897 @@ Global job config is not applied to `after_pipeline` jobs. This includes secrets
 
 ## Promotions {#promotions}
 
-<FeatureNotAvailable/>
+The `promotions` property is used for *promoting* (manually or automatically triggering) one or more pipelines using one or more pipeline YAML files. A pipeline YAML file can have a single `promotions` block or no `promotions` block.
+
+The items of a `promotions` block are called *targets* and are implemented using pairs of `name` and `pipeline_file` properties. A `promotions` block can have multiple targets.
+
+You can promote a target from the UI at any point, even while the pipeline that owns that target is still running.
+
+### name {#name-in-promotions}
+
+The `name` property in a `promotions` block is a Unicode string and is compulsory. It defines the name of a target.
+
+### pipeline_file {#pipeline-file-in-promotions}
+
+The `pipeline_file` property of the `promotions` block is a path to another pipeline YAML file within the repository of the Semaphore project. This property is compulsory.
+
+If `pipeline_file` is a relative path, Semaphore will search for the file inside the directory of the current pipeline. If `pipeline_file` is an absolute path (starts with the `/` character), Semaphore will seek the file starting from the root directory of the repository.
+
+Each `pipeline_file` value must be a valid and syntactically correct pipeline YAML file as defined in this document. However, potential errors in a pipeline YAML file, given as a value to the `pipeline_file` property, will be revealed when the relevant target is promoted.
+
+The same will happen if the file given as a `pipeline_file` value does not exist – an error will be revealed at the time of promotion.
+
+```yaml title="Example"
+version: v1.0
+name: Using promotions
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: ls
+    task:
+      jobs:
+      - name: List contents
+        commands:
+          - ls -al
+          - echo $SEMAPHORE_PIPELINE_ID
+
+# highlight-start
+promotions:
+  - name: Pipeline 1
+  # highlight-next-line
+    pipeline_file: p1.yml
+  - name: Pipeline 2
+  # highlight-next-line
+    pipeline_file: p2.yml
+# highlight-end
+```
+
+The `promotions` block in the aforementioned `.semaphore/semaphore.yml` file will allow you to promote two other YAML files named `p1.yml` and `p2.yml`.
+
+The contents of the `.semaphore/p1.yml` are as follows:
+
+```yaml title="Example"
+version: v1.0
+name: This is Pipeline 1
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Environment variable
+    task:
+      jobs:
+      - name: SEMAPHORE_PIPELINE_ID
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+```
+
+Last, the contents of the `.semaphore/p2.yml` are as follows:
+
+```yaml title="Example"
+version: v1.0
+name: This is Pipeline 2
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: List VM Linux version
+    task:
+      jobs:
+      - name: uname
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+          - uname -a
+```
+
+### auto_promote {#auto-promote-in-promotions}
+
+The `auto_promote` property is optional and it allows you to specify a set of conditions under which a pipeline will be promoted automatically.
+
+It requires conditions to be defined in a `when` sub-property, following the [Conditions DSL](./conditions-dsl).
+
+If these conditions are fulfilled for a given pipeline's execution, the appropriate promotion will be triggered automatically.
+
+You can define conditions based on values for the following properties of the original pipeline:
+
+- `branch`: the name of the branch for which the pipeline is initiated (empty in the case of a tag or pull request)
+- `tag`: the name of the tag for which the pipeline is initiated (empty in the case of branch or pull requests)
+- `pull request`: the number of pull requests for which the pipeline is initiated (empty in the case of a branch or tag)
+- `change_in`: at least one file has changed in a given path (used for [monorepo workflows](../using-semaphore/monorepo). See [Conditions DSL](./conditions-dsl) for more details
+- `result`: the result of a pipeline's execution (see possible values below)
+- `result_reason`: the reason for a specific pipeline execution result (see possible values for each result type below)
+
+The valid values for `result` are:
+
+- `passed`: all the blocks in the pipeline ended successfully
+- `stopped`: the pipeline was stopped either by the user or by the system
+- `canceled`: the pipeline was canceled either by the user or by the system (the difference between `canceled` and `stopped` is if the result is `canceled` it means that the pipeline was terminated before any block or job started to execute)
+- `failed`: the pipeline failed either due to a pipeline YAML syntax error or because at least one of the blocks of the pipeline failed due to a command not being successfully executed.
+
+The valid values for `result_reason` are:
+
+- `test`: one or more user tests failed
+- `malformed`: the pipeline YAML file is not correct
+- `stuck`: the pipeline jammed for internal reasons and then aborted
+- `internal`: the pipeline was terminated for internal reasons
+- `user`: the pipeline was stopped on the user request
+- `strategy`: the pipeline was terminated due to an auto-cancel strategy
+- `timeout`: the pipeline exceeded the execution time limit
+
+Not all [`result`](#result-in-promotions) and [`result_reason`](#result-reason-promotions) combinations can coexist. For example, you cannot have `passed` as the value of `result` and `malformed` as the value of `result_reason`. On the other hand, you can have `failed` as the value of `result` and `malformed` as the value of `result_reason`.
+
+For example, with a `result` value of `failed`, the valid values of `result_reason` are `test`, `malformed`, and `stuck`. When the `result` value is `stopped` or `canceled`, the list of valid values for `result_reason` are:
+
+- `internal`
+- `user`
+- `strategy`
+- `timeout`
+
+The following pipeline YAML file presents two examples using `auto_promote` and depends on three other pipeline YAML files named `p1.yml`, `p2.yml`, and `p3.yml`:
+
+```yaml title="Example"
+version: v1.0
+name: Testing Auto Promoting
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+promotions:
+- name: Staging
+  pipeline_file: p1.yml
+  # highlight-start
+  auto_promote:
+    when: "result = 'passed' and (branch = 'master' or tag =~ '^v1\.')"
+  # highlight-end
+- name: Documentation
+  pipeline_file: p2.yml
+  # highlight-start
+  auto_promote:
+    when: "branch = 'master' and change_in('/docs/')"
+  # highlight-end
+- name: Production
+  pipeline_file: p3.yml
+
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: Job 1 - Block 1
+          commands:
+            - echo $SEMAPHORE_GIT_BRANCH
+
+  - name: Block 2
+    task:
+      jobs:
+        - name: Job 1 - Block 2
+          commands:
+            - echo Job 1 - Block 2
+            - echo $SEMAPHORE_GIT_BRANCH
+        - name: Job 2 - Block 2
+          commands:
+            - echo Job 2 - Block 2
+```
+
+According to the specified rules, only the `Staging` and `Documentation` promotions can be auto-promoted – when the conditions specified in the `when` sub-property of the `auto_promote` property are fulfilled. However, the `Production` promotion has no `auto_promote` property, so it can't be auto-promoted.
+
+Therefore, if the pipeline finishes with a `passed` result and was initiated from the `master` branch, then the `p1.yml` pipeline file will be auto-promoted.
+
+The same will happen if the pipeline is initiated from the tag with a name that matches the expression given in PCRE (*Perl Compatible Regular Expression*) syntax, which is, in this case, any string that starts with `v1.`.
+
+`Documentation` promotion will be auto-promoted when initiated from the `master` branch, while there is at least one changed file in the `docs` folder (relative to the root of the repository). Check the [change_in reference](./conditions-dsl#change-in) for additional usage details.
+
+The content of `p1.yml` is as follows:
+
+```yaml title="Example"
+version: v1.0
+name: Pipeline 1
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Environment variable
+    task:
+      jobs:
+      - name: SEMAPHORE_PIPELINE_ID
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+```
+
+The content of `p2.yml` is as follows:
+
+```yaml title="Example"
+version: v1.0
+name: Pipeline 2
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Update docs
+    task:
+      jobs:
+      - name: make docs
+        commands:
+          - make docs
+```
+
+Finally, the contents of `p3.yml` is as follows:
+
+```yaml title="Example"
+version: v1.0
+name: This is Pipeline 3
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: List VM Linux version
+    task:
+      jobs:
+      - name: uname
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+          - uname -a
+```
+
+All the displayed files are correct pipeline YAML files that could be used as `semaphore.yml` files.
+
+
+### result {#result-in-promotions}
+
+The value of the `result` property is a string that is used for matching the status of a pipeline.
+
+The list of valid values for `result`: `passed`, `stopped`, `canceled`, and `failed` is shown below.
+
+- `passed`: all the blocks in the pipeline ended successfully
+- `stopped`: the pipeline was stopped either by the user or by the system
+- `canceled`: the pipeline was canceled either by the user or by the system. (the difference between `canceled` and `stopped` is that a pipeline that is not running can be canceled but cannot be stopped)
+- `failed`: the pipeline failed either due to a pipeline YAML syntax error or because at least one of the blocks of the pipeline failed due to a command not being successfully executed.
+
+### branch {#branch-in-promotions}
+
+The `branch` property is a list of items. Its items are regular expressions that Semaphore tries to match against the name of the branch that is used with the pipeline that is being executed. If any of them is a match, then the return value of the `branch` is `true`.
+
+The `branch` property uses Perl Compatible Regular Expressions.
+
+In order for a `branch` value to match the `master` branch only and not match names such as `this-is-not-master` or `a-master-alternative`, you should use `^master$` as the value of the `branch` property. The same rule applies to matching words or strings.
+
+In order for a `branch` value to match branches that begin with `dev` you should use something like `^dev`.
+
+### result_reason {#result-reason-promotions}
+
+The value of the `result_reason` property is a string that defines the reason behind the value of the `result` property.
+
+The list of valid values for `result_reason` are: `test`, `malformed`, `stuck`, `deleted`, `internal`, and `user`.
+
+- `test`: one or more user tests failed
+- `malformed`: the pipeline YAML file is not correct
+- `stuck`: the pipeline jammed for internal reasons and then aborted
+- `deleted`: the pipeline was terminated because the branch was deleted while the pipeline was running
+- `internal`: the pipeline was terminated for internal reasons
+- `user`: the pipeline was stopped on the user's request
+
+Not all `result` and `result_reason` combinations can coexist. For example, you cannot have `passed` as the value of `result` and `malformed` as the value of `result_reason`. On the other hand, you can have `failed` as the value of `result` and `malformed` as the value of `result_reason`.
+
+For example, with a `result` value of `failed`, the valid values of `result_reason` are `test`, `malformed`, and `stuck`. When the `result` value is `stopped` or `canceled`, the list of valid values for `result_reason` are:
+
+- `deleted`
+- `internal`
+- `user`
+
+## Parameters {#parameters}
+
+Parameters can only be used in [parameterized promotions](../using-semaphore/promotions#parameters). When a pipeline is promoted with parameters enabled, you can use the special `${{parameters}}` and `%{{parameters}}` template syntax to define values and even change the pipeline YAML at runtime.
+
+There are two ways to use the template syntax:
+
+- **String expansion** (starts with `$`): parameters using the `${{parameters.VAR_NAME}}` syntax are expanded at runtime. For example, if you defined a parameter called `ENVIRONMENT`, you can insert its value in the pipeline config as `${{parameters.ENVIRONMENT}}` at runtime
+- **String evaluation** (start with `%`): strings using the `%{{parameters.VAR_NAME}}` syntax produce JSON-serialized output, allowing you to dynamically transform values and inject them as YAML into pipeline during runtime. This feature supports string manipulation using pipes and [Sprout functions](#parameters-functions)
+
+The examples below show all the ways these parameters can be used.
+
+### Using Sprout functions {#parameters-functions}
+
+Strings using the form `%{{parameters}}` (starting with the `%` sign) produce a JSON-serialized output and support string manipulation via pipes and functions. Internally, the templates are processed using the [Sprout library]
+
+Internally, Semaphore uses [Sprout](https://docs.atom.codes/sprout) as the templating engine and supports a subset of the [Sprout functions](https://docs.atom.codes/sprout/registries/list-of-all-registries).
+
+For example, given `VAR1='Hello World'` the string:
+
+```text
+"%{{parameters.VAR1 | nospace }}"
+```
+
+Removes the space, generating the following output:
+
+```text
+HelloWorld
+```
+
+Likewise, given `VAR2=us-central-1,us-east-1`
+
+```text
+"%{{parameters.VAR2 | splitList \",\"}}"
+```
+
+Generates the following list:
+
+```yaml
+- us-central-1
+- us-east-1
+```
+
+See [parameters job matrices](#parameter-matrix) for a complete working example using lists.
+
+<details>
+<summary>Supported Sprout functions</summary>
+<div>
+
+The following functions are supported. Refer to the [Sprout documentation](https://docs.atom.codes/sprout/registries/list-of-all-registries) to learn more about using these functions.
+
+- default  
+- empty  
+- coalesce  
+- all  
+- any  
+- compact  
+- ternary  
+- fromJson  
+- toJson  
+- toPrettyJson  
+- toRawJson  
+- deepCopy  
+- b64enc  
+- b64dec  
+- b32enc  
+- b32dec  
+- list  
+- dict  
+- get  
+- set  
+- unset  
+- chunk  
+- hasKey  
+- pluck  
+- keys  
+- pick  
+- omit  
+- values  
+- concat  
+- dig  
+- merge  
+- mergeOverwrite  
+- append  
+- prepend  
+- reverse  
+- first  
+- rest  
+- last  
+- initial  
+- uniq  
+- without  
+- has  
+- slice  
+- regexMatch  
+- regexFindAll  
+- regexFind  
+- regexReplaceAll  
+- regexReplaceAllLiteral  
+- regexSplit  
+- regexQuoteMeta  
+- ellipsis  
+- ellipsisBoth  
+- trunc  
+- trim  
+- upper  
+- lower  
+- title  
+- untitle  
+- substr  
+- repeat  
+- join  
+- sortAlpha  
+- trimAll  
+- trimSuffix  
+- trimPrefix  
+- nospace  
+- initials  
+- randAlphaNum  
+- randAlpha  
+- randAscii  
+- randNumeric  
+- swapcase  
+- shuffle  
+- snakecase  
+- camelcase  
+- kebabcase  
+- wrap  
+- wrapWith  
+- contains  
+- hasPrefix  
+- hasSuffix  
+- quote  
+- squote  
+- cat  
+- indent  
+- nindent  
+- replace  
+- plural  
+- sha1sum  
+- sha256sum  
+- adler32sum  
+- toString  
+- int64  
+- int  
+- float64  
+- seq  
+- toDecimal  
+- until  
+- untilStep  
+- split  
+- splitList  
+- splitn  
+- toStrings  
+- add1  
+- add  
+- sub  
+- div  
+- mod  
+- mul  
+- randInt  
+- add1f  
+- addf  
+- subf  
+- divf  
+- mulf  
+- max  
+- min  
+- maxf  
+- minf  
+- ceil  
+- floor  
+- round  
+
+</div>
+</details>
+
+
+### Pipeline name {#parameter-pipeline-name}
+
+The following example customizes the pipeline name given the parameters `DEPLOY_ENV` and `SERVER`. 
+
+```yaml title="deploy.yml"
+version: v1.0
+# highlight-next-line
+name: "Deploy to ${{parameters.DEPLOY_ENV}} on ${{parameters.SERVER}}"
+```
+
+### Job and block names {#parameter-job-name}
+
+The following example uses parameters to set the job and block names with parameters.
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deploy pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+# highlight-next-line
+  - name: Deploy image to ${{parameters.DEPLOY_ENV}}
+    task:
+      jobs:
+      # highlight-start
+        - name: Deploy to ${{parameters.DEPLOY_ENV}} on ${{parameters.SERVER}}
+          commands: ./deploy.sh $DEPLOY_ENV $SERVER
+      # highlight-end
+```
+
+### Agent {#parameter-agent}
+
+You can use parameters to dynamically define the [agent type](../using-semaphore/pipelines#agents).
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+
+agent:
+  machine:
+  # highlight-start
+    type: "${{parameters.MACHINE_TYPE}}"
+    os_image: "${{parameters.OS_IMAGE}}"
+  # highlight-end
+```
+
+### Commands in jobs {#parameter-commands}
+
+All parameters are exported as environment variables in the CI environment. You can access the value as environment variables in you shell environment.
+
+For example, if you have parameters named `ENVIRONMENT` and `RELEASE`, you can access them like this:
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+blocks:
+    task:
+      jobs:
+        - name: Using promotion as env. var
+          commands:
+            # highlight-start
+            # Use parameter values inside a job
+            - echo $ENVIRONMENT
+            - echo $RELEASE
+            # highlight-end
+```
+
+### Secrets {#parameter-secrets}
+
+You can dynamically import [secrets](../using-semaphore/secrets) using parameters in your pipeline YAML.
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+    task:
+      jobs:
+        - name: Deploy application
+          task:
+            secrets:
+      # highlight-start
+              - name: ${{parameters.DEPLOY_ENV}}_deploy_key
+              - name: ${{parameters.DEPLOY_ENV}}_aws_creds
+      # highlight-end
+            jobs:
+              - name: Deploy
+                commands: ./deploy.sh
+```
+
+
+### Global config {#parameter-global}
+
+You can use parameters in the [global config](#global-job-config) for the pipeline.
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+
+global_job_config:
+  secrets:
+  # highlight-next-line
+    - name: "${{parameters.DEPLOY_ENV}}_deploy_key"
+    - name: "github_key"
+```
+
+### Queue {#parameter-queue}
+
+The following example shows how to dynamically assign pipelines to [names queues](../using-semaphore/pipelines#named-queues) with parameters.
+
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+queue:
+# highlight-start
+  - name: "${{parameters.DEPLOY_ENV}}_deployment_queue"
+# highlight-end
+```
+
+### Job parallelism {#parameter-parallelism}
+
+You can dynamically calculate the [parallelism of the job](../using-semaphore/jobs#job-parallelism) using [Sprout functions](#parameters-functions).
+
+The following example configures job parallelism to the value of the `PARALLELISM` parameter multiplied by two:
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Run tests
+    task:
+      jobs:
+        - name: Run tests
+          commands:
+            - echo "Running tests"
+            # highlight-next-line
+          parallelism: "%{{parameters.PARALLELISM | mul 2}}"
+```
+
+### Job matrix {#parameter-matrix}
+
+You can define a [job matrix](../using-semaphore/jobs#matrix) with parameters. Given `AWS_REGIONS=us-central-1,us-east1`, the following example runs the `deploy.sh` script both regions by transforming the comma-separated regions in a YAML list.
+
+
+```yaml title="deploy.yml"
+version: v1.0
+name: Deployment pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Deploy application in all regions
+    task:
+      jobs:
+        - name: Deploy to ${{parameters.AZ}}
+          commands: ./deploy.sh $AZ
+          # highlight-start
+          matrix:
+            - env_var: AZ
+              values: "%{{parameters.AWS_REGIONS | splitList \",\"}}"
+          # highlight-end
+```
+
+### Complete example {#parameter-example}
+
+The following example shows all the places and ways parameters can be used in dynamically define the pipeline YAML on runtime.
+
+```yaml
+version: v1.0
+# highlight-start
+# Change the pipeline name
+name: "Deploy to ${{parameters.DEPLOY_ENV}} on ${{parameters.SERVER}}"
+# highlight-end
+
+agent:
+  machine:
+  # highlight-start
+    # set the agent type and os image
+    type: "${{parameters.MACHINE_TYPE}}"
+    os_image: "${{parameters.OS_IMAGE}}"
+  # highlight-end
+
+global_job_config:
+  secrets:
+  # highlight-start
+    # import the correct secret into all jobs
+    - name: "${{parameters.DEPLOY_ENV}}_deploy_key"
+  # highlight-end
+    - name: "github_key"
+
+queue:
+# highlight-start
+  # assign the pipeline to the first named queue that matches
+  - name: "${{parameters.DEPLOY_ENV}}_deployment_queue"
+  - name: "${{parameters.MISSING}}_queue"
+# highlight-end
+  - name: "default_queue"
+
+blocks:
+  - name: Run tests
+    task:
+      agent:
+        machine:
+        # highlight-start
+          # override the machine type for this job
+          type: "${{parameters.MACHINE_TYPE}}"
+        # highlight-end
+        containers: 
+        # highlight-start
+          # set the Docker environment container image and name
+          - name: "${{parameters.DEPLOY_ENV}}_test_container"
+            image: "${{parameters.DEPLOY_ENV}}_test_image"
+            secrets:
+              # import the secret to pull the image from a private registry
+              - name: ${{parameters.DEPLOY_ENV}}_api_key
+        # highlight-end
+      jobs:
+        - name: Run tests
+          commands:
+            - echo "Running tests"
+            # highlight-start
+          # set job parallelism to PARALLELISM * 2
+          parallelism: "%{{parameters.PARALLELISM | mul 2}}"
+            # highlight-end
+
+  - name: Build and push image
+    task:
+      secrets:
+      # highlight-start
+        # dynamically import the right secrets
+        - name: ${{parameters.DEPLOY_ENV}}_dockerhub
+        - name: ${{parameters.DEPLOY_ENV}}_ecr
+      # highlight-end
+
+  # highlight-start
+  # change the job name using the parameter DEPLOY_ENV
+  - name: Deploy image to ${{parameters.DEPLOY_ENV}}
+  # highlight-end
+    task:
+      secrets:
+# highlight-start
+        # dynamically import the right secrets
+        - name: ${{parameters.DEPLOY_ENV}}_deploy_key
+        - name: ${{parameters.DEPLOY_ENV}}_aws_creds
+# highlight-end
+      jobs:
+      # highlight-start
+        # change the job name using the parameters DEPLOY_ENV and SERVER
+        - name: Deploy to ${{parameters.DEPLOY_ENV}} on ${{parameters.SERVER}}
+          # run deployment script in the region
+          commands: ./deploy.sh $AWS_REGION
+          # create a job matrix from a comma-separated string
+          matrix:
+            - env_var: AWS_REGION
+              values: "%{{parameters.AWS_REGIONS | splitList \",\"}}"
+      # highlight-end
+
+# send notifications to Slack channels and ping the servers once all jobs have ended
+after_pipeline:
+  task:
+    secrets:
+      - name: ${{parameters.DEPLOY_ENV}}_slack_token
+    jobs:
+      - name: "Notify on Slack: %{{parameters.SLACK_CHANNELS | splitList \",\"}}"
+        commands:
+          - echo "Notifying Slack"
+        matrix:
+          - env_var: SLACK_CHANNEL
+            values: "%{{parameters.SLACK_CHANNELS | splitList \",\" }}"
+      - name: Ping ${{parameters.DEPLOY_ENV}} from %{{parameters.PARALLELISM}} jobs
+        commands:
+          - echo "Pinging environment"
+        parallelism: "%{{parameters.PARALLELISM | int64 }}"
+```
+
+## Deprecated properties {#deprecated}
+
+This section shows deprecated properties.
+
+### auto_promote_on {#auto-promote-on-in-deprecated}
+
+:::warning
+
+The `auto_promote_on` property has been deprecated in favor of the [`auto_promote`](#auto-promote-in-promotions) property.
+
+:::
+
+The `auto_promote_on` property is used for automatically promoting one or more branches of `promotions` blocks according to user-specified rules.
+
+The `auto_promote_on` property is a list of items that supports three properties: `result`, which is mandatory; `branch`, which is optional; and `result_reason`, which is also optional.
+
+For an `auto_promote_on` branch to execute, the return values of all the used properties of that branch must be `true`.
+
+
+<details>
+<summary>`auto_promote_on` example</summary>
+<div>
+
+The following pipeline YAML file shows an example use of `auto_promote_on` and depends on two other pipeline YAML files named `p1.yml` and `p2.yml`:
+
+```yaml title="Example"
+version: v1.0
+name: Testing Auto Promoting
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+promotions:
+- name: Staging
+  pipeline_file: p1.yml
+  # highlight-start
+  auto_promote_on:
+    - result: passed
+      branch:
+        - "master"
+        - ^refs/tags/v1.*
+    - result: failed
+      branch:
+        - "v2."
+      result_reason: malformed
+  # highlight-end
+
+- name: prod
+  pipeline_file: p2.yml
+
+blocks:
+  - name: Block 1
+    task:
+      jobs:
+        - name: Job 1 - Block 1
+          commands:
+            - echo $SEMAPHORE_GIT_BRANCH
+        - name: Job 2 - Block 1
+          commands:
+            - echo Job 2 - Block 1
+
+  - name: Block 2
+    task:
+      jobs:
+        - name: Job 1 - Block 2
+          commands:
+            - echo Job 1 - Block 2
+            - echo $SEMAPHORE_GIT_BRANCH
+        - name: Job 2 - Block 2
+          commands:
+            - echo Job 2 - Block 2
+```
+
+According to the specified rules, only the `Staging` promotion of the `promotions` list can be auto-promoted – this depends on the rules of the two items of the `auto_promote_on` list. However, the `prod` promotion of the `promotions` list has no `auto_promote_on` property so there is no way it can be auto-promoted.
+
+So, if the pipeline finishes with a `passed` result and the branch name contains the word `master`, then the `p1.yml` pipeline file will be auto-promoted. The same will happen if the pipeline finishes with a `failed` result. The `result_reason` is `malformed` and the branch name contains the `v2` sequence of characters followed by at least one more character because a `.` character in a Perl Compatible Regular Expression means one or more characters.
+
+The contents of `p1.yml` are as follows:
+
+```yaml title="Example"
+version: v1.0
+name: Pipeline 1
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: Environment variable
+    task:
+      jobs:
+      - name: SEMAPHORE_PIPELINE_ID
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+```
+
+The contents of `p2.yml` are as follows:
+
+```yaml title="Example"
+version: v1.0
+name: This is Pipeline 2
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu2004
+
+blocks:
+  - name: List VM Linux version
+    task:
+      jobs:
+      - name: uname
+        commands:
+          - echo $SEMAPHORE_PIPELINE_ID
+          - uname -a
+```
+
+Both `p1.yml` and `p2.yml` are correct pipeline YAML files that could be used as `semaphore.yml` files.
+
+</div>
+</details>
 
 ## Complete examples {#complete-examples}
 
