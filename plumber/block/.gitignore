@@ -28,6 +28,6 @@ erl_crash.dump
 /deploy.yml
 
 *.json
-junit.xml
+out/
 .tool-versions
 .elixir_ls

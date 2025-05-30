@@ -28,7 +28,6 @@ projecthub-*.tar
 .envrc
 .vscode
 shell.nix
-junit.xml
 .devcontainer
 log
 .vscode
