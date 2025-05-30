@@ -3696,6 +3696,10 @@ blocks:
     run:
       when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
+      agent:
+        machine:
+          type: e2-standard-2
+          os_image: ubuntu2004
       prologue:
         commands:
           - sem-version erlang $ERLANG_VERSION
