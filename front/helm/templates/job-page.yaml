@@ -62,11 +62,10 @@ spec:
       containers:
         - name: "job-page"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem | default true }}
             capabilities:
               drop:
                 - ALL

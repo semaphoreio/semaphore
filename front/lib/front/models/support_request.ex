@@ -38,11 +38,9 @@ defmodule Front.Models.SupportRequest do
     changeset = changeset(input)
 
     if changeset.valid? do
-      with {:ok, response} <- Support.submit_request(changeset.changes) do
-        {:ok, response}
-      else
-        {:error, "failed-to-submit"} ->
-          {:error, "failed-to-submit", changeset}
+      case Support.submit_request(changeset.changes) do
+        {:ok, response} -> {:ok, response}
+        {:error, "failed-to-submit"} -> {:error, "failed-to-submit", changeset}
       end
     else
       {:error, changeset}

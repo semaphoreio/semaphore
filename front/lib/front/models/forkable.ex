@@ -219,6 +219,7 @@ defmodule Front.Models.Forkable do
   def map_integration_types(:GITHUB_APP), do: "github"
   def map_integration_types(:GITHUB_OAUTH_TOKEN), do: "github"
   def map_integration_types(:BITBUCKET), do: "bitbucket"
+  def map_integration_types(:GITLAB), do: "gitlab"
 
   def map_integration_types(integration_type) do
     integration_type

@@ -88,7 +88,7 @@ A string with a user-supplied name for the job.
 - **Environment variable**: `SEMAPHORE_JOB_COUNT`
 - **Example**: 4
 
-Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism. 
+Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism.
 
 It can be used to configure a test partitioning strategy using a 3rd party test runner.
 
@@ -129,6 +129,13 @@ Describes why the current job was created. The possible values are:
 - `pipeline_job`: a regular job created by Semaphore as part of the workflow
 - `project_debug_job`: job created with [`sem debug project`](./semaphore-cli#sem-debug-project)
 - `debug_job`: job created with [`sem debug job`](./semaphore-cli#sem-debug)
+
+### Block name {#block-name}
+
+- **Environment variable**: `SEMAPHORE_BLOCK_NAME`
+- **Example**: `Security checks`
+
+A string with a user-supplied block name.
 
 ### Organization URL {#organization-url}
 
@@ -504,7 +511,7 @@ The time that the pipeline spent in the queue is expressed in seconds.
 - **Environment variable**: `SEMAPHORE_PIPELINE_RESULT`
 - **Example**: `failed`, `passed`, `canceled`, `stopped`
 
-Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped` 
+Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped`
 
 ### Pipeline result reason {#pipeline-result-reason}
 

@@ -11,9 +11,10 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
-func CreateSemaphoreOrganization(orgUsername, userId string) string {
+func OrganizationExists(orgUsername string) (bool, string) {
 	conn, err := grpc.NewClient(config.OrgEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect to org service: %v", err)
@@ -22,7 +23,62 @@ func CreateSemaphoreOrganization(orgUsername, userId string) string {
 	defer conn.Close()
 	orgClient := clients.NewOrgClient(conn)
 
+	var exists bool
 	var orgId string
+
+	err = retry.WithConstantWait("checking if organization exists", 5, 10*time.Second, func() error {
+		org, err := orgClient.Describe("", orgUsername)
+		if err != nil {
+			statusErr, ok := status.FromError(err)
+			if ok && statusErr.Code() == 5 { // Not found
+				// Organization doesn't exist, no need to retry
+				exists = false
+				orgId = ""
+				return nil
+			}
+
+			// For other errors, retry the operation
+			log.Warnf("Error checking if organization exists (will retry): %v", err)
+			return err
+		}
+
+		if org != nil {
+			log.Infof("Organization %s already exists with ID %s", orgUsername, org.GetOrgId())
+			exists = true
+			orgId = org.GetOrgId()
+		} else {
+			exists = false
+			orgId = ""
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		// After all retries failed, log and assume the organization doesn't exist
+		log.Warnf("Failed to check if organization exists after retries: %v", err)
+		return false, ""
+	}
+
+	return exists, orgId
+}
+
+func CreateSemaphoreOrganization(orgUsername, userId string) string {
+	// First check if the organization already exists
+	exists, orgId := OrganizationExists(orgUsername)
+	if exists {
+		log.Infof("Using existing organization with username %s and ID %s", orgUsername, orgId)
+		return orgId
+	}
+
+	conn, err := grpc.NewClient(config.OrgEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to org service: %v", err)
+	}
+
+	defer conn.Close()
+	orgClient := clients.NewOrgClient(conn)
+
 	err = retry.WithConstantWait("organization creation", 5, 10*time.Second, func() error {
 		org, err := orgClient.Create(userId, orgUsername, orgUsername)
 		if err != nil {

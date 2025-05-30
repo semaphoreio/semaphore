@@ -16,21 +16,22 @@ defmodule FrontWeb.OrganizationOktaController do
     Watchman.benchmark(watchman_name(:show, :duration), fn ->
       organization_id = conn.assigns.organization_id
 
-      with {:ok, params} <- fetch_params(organization_id) do
-        case OktaIntegration.find_for_org(organization_id) do
-          {:ok, integration} ->
-            Watchman.increment(watchman_name(:show, :success))
-            render_show(conn, integration, params)
+      case fetch_params(organization_id) do
+        {:ok, params} ->
+          case OktaIntegration.find_for_org(organization_id) do
+            {:ok, integration} ->
+              Watchman.increment(watchman_name(:show, :success))
+              render_show(conn, integration, params)
 
-          {:error, :not_found} ->
-            Watchman.increment(watchman_name(:show, :success))
-            render_show(conn, nil, params)
+            {:error, :not_found} ->
+              Watchman.increment(watchman_name(:show, :success))
+              render_show(conn, nil, params)
 
-          e ->
-            Watchman.increment(watchman_name(:show, :failure))
-            raise e
-        end
-      else
+            e ->
+              Watchman.increment(watchman_name(:show, :failure))
+              raise e
+          end
+
         {:error, reason} ->
           Watchman.increment(watchman_name(:show, :failure))
           {:error, reason}
@@ -57,11 +58,11 @@ defmodule FrontWeb.OrganizationOktaController do
             integration |> OktaIntegration.changeset()
         end
 
-      with {:ok, params} <- fetch_params(organization_id) do
-        Watchman.increment(watchman_name(:form, :success))
+      case fetch_params(organization_id) do
+        {:ok, params} ->
+          Watchman.increment(watchman_name(:form, :success))
+          render_form(conn, changeset, params)
 
-        render_form(conn, changeset, params)
-      else
         {:error, reason} ->
           Watchman.increment(watchman_name(:form, :failure))
           {:error, reason}
@@ -182,9 +183,10 @@ defmodule FrontWeb.OrganizationOktaController do
 
     organization_id = conn.assigns.organization_id
 
-    with {:ok, params} <- fetch_params(organization_id) do
-      render_discnonnect_notice(conn, integration_id, params)
-    else
+    case fetch_params(organization_id) do
+      {:ok, params} ->
+        render_discnonnect_notice(conn, integration_id, params)
+
       {:error, reason} ->
         Watchman.increment(watchman_name(:discnonnect_notice, :failure))
         {:error, reason}
