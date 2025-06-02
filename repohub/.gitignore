@@ -2,4 +2,3 @@ repository_hub
 build
 log/test.log
 .devcontainer
-out/
