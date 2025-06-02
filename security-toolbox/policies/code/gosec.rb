@@ -12,7 +12,7 @@ class Policy::Gosec < Policy
       "gosec",
       "-quiet",
       "-fmt=junit-xml",
-      "-out=results.xml",
+      "-out=gosec-junit.xml",
       "-stdout"
     ]
 

@@ -3,6 +3,8 @@
 
 require 'optparse'
 require_relative "policies/policy"
+require_relative "common/trivy_junit_output"
+
 Dir["#{__dir__}/policies/docker/*.rb"].each { |f| require_relative f }
 
 args = {}
@@ -40,6 +42,6 @@ end
 Policy.run_all(args, [
   Policy::TrivyConfig,
   Policy::TrivyImage,
-  Policy::TrivyJunitOutput,
-  Policy::TrivyTableOutput
+  Policy::TrivyEOL,
+  Common::TrivyJunitOutput
 ])
