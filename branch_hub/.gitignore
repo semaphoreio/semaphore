@@ -34,5 +34,4 @@ branch_hub-*.tar
 tags
 .elixir_ls/
 .vscode
-out/
 .tool-versions
