@@ -40,6 +40,6 @@ end
 Policy.run_all(args, [
   Policy::TrivyConfig,
   Policy::TrivyImage,
-  Policy::TrivyJunitOutput,
-  Policy::TrivyTableOutput
+  Policy::TrivyEOL,
+  Policy::TrivyJunitOutput
 ])
