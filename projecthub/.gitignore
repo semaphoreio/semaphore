@@ -33,4 +33,3 @@ log
 .vscode
 
 # Where build artifacts live.
-out
