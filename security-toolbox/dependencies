@@ -44,7 +44,8 @@ end
 case args[:language]
 when "go", "js"
   require_relative "#{__dir__}/policies/dependencies/trivy_fs"
-  Policy.run_all(args, [Policy::TrivyFs])
+  require_relative "#{__dir__}/policies/dependencies/trivy_junit_output"
+  Policy.run_all(args, [Policy::TrivyFs, Policy::TrivyJunitOutput])
 when "elixir"
   require_relative "#{__dir__}/policies/dependencies/mix_audit"
   require_relative "#{__dir__}/policies/dependencies/mix_licenses"
