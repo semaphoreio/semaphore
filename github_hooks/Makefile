@@ -81,7 +81,7 @@ ifeq ($(CI),)
 	docker-compose run --rm app bundle exec rubocop --format progress --format offenses
 else
 # On CI we're relying on database supplied by sem-service
-	docker run --rm $(VOLUME_BIND) $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) bundle exec rubocop --format progress --format offenses --format junit --out out/results.xml
+	docker run --rm $(VOLUME_BIND) $(CONTAINER_ENV_VARS) $(IMAGE):$(IMAGE_TAG) bundle exec rubocop --format progress --format offenses --format junit --out out/test-reports.xml
 endif
 
 check.ruby.code:
