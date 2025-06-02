@@ -26,7 +26,7 @@ class Policy::TrivyImage < Policy
       "--ignore-unfixed",
       "--scanners vuln,secret,license,misconfig",
       "--format json",
-      "--output out/results.json"
+      "--output out/docker-scan-trivy.json"
     ]
 
     if @ignore_policy != nil

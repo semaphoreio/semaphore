@@ -26,5 +26,3 @@ scouter-*.tar
 /tmp/
 
 .elixir_ls
-
-out/
