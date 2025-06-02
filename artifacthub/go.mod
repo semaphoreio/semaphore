@@ -6,7 +6,7 @@ toolchain go1.23.8
 
 require (
 	cloud.google.com/go/storage v1.36.0
-	github.com/aws/aws-sdk-go v1.44.316
+	github.com/aws/aws-sdk-go v1.44.100
 	github.com/blendle/zapdriver v1.3.1
 	github.com/bmatcuk/doublestar/v4 v4.6.0
 	github.com/golang-jwt/jwt/v5 v5.2.2
