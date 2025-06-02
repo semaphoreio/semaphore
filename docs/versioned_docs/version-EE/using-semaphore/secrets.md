@@ -23,10 +23,11 @@ Secrets implement two types of values:
 - **Variables**: key-value pairs available as environment variables in jobs
 - **Files**: arbitrary files injected into the job environment at a specified path
 
-Secrets can be created in two scopes:
+Secrets can be created in three scopes:
 
-- [Server](./organizations): server secrets are available to all projects in your Semaphore instance
+- [Server](./organizations): server secrets are available to all projects in your server
 - [Project](./projects): project secrets are available only to a single project
+- [Environment credentials](./promotions#credentials): environment credentials are available only to pipelines targeted by [deployment targets (environments)](./promotions#deployment-targets)
 
 <details>
 <summary>How are secret collisions managed?</summary>
@@ -34,6 +35,7 @@ Secrets can be created in two scopes:
 
 A collision happens when secrets with the same name are defined on multiple levels. Collisions are resolved by giving precedence to the narrowest scope. In other words:
 
+- Environment credentials always take precedence
 - Project secrets win over server secrets
 - Server secrets take the least precedence
 
@@ -42,13 +44,15 @@ A collision happens when secrets with the same name are defined on multiple leve
 
 ## How to create server secrets {#org-secrets}
 
-Server secrets are available to all the [projects](./projects) in the Semaphore instance. You can create secrets using either the UI or the command line.
+Server secrets are available to all the [projects](./projects) in the server. For more granular control, set up [secret access policies](#secret-access-policy) or use [environment credentials](./promotions#credentials).
+
+You can create secrets using either the UI or the command line.
 
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
 
-To create an server secret, go to the [organization settings](./organizations#general-settings) and:
+To create an server secret, go to the [server settings](./organizations#general-settings) and:
 
 
 <Steps>
@@ -56,7 +60,7 @@ To create an server secret, go to the [organization settings](./organizations#ge
 1. Select **Secrets**
 2. Press **New Secret**
 
-    ![Server secrets menu](./img/organization-secrets-menu.jpg)
+    ![server secrets menu](./img/organization-secrets-menu.jpg)
 
 3. Enter the name of the secret
 4. Add an optional description
@@ -64,7 +68,7 @@ To create an server secret, go to the [organization settings](./organizations#ge
 6. Add more variables as needed
 7. To add a file, specify the path and upload the file
 8. Add more files as needed
-9. Press **Save secret** 
+9. Press **Save secret** or proceed to [access policy](#secret-access-policy)
 
     ![Creating a new server secret](./img/save-secret.jpg)
 
@@ -77,24 +81,24 @@ To create a secret using the Semaphore command-line tool, use:
 
 ```shell title="Creating a secret"
 sem create secret <secret-name> \
-  -e <VAR_NAME>=<var_value> \
-  -f <local_file_path>:<agent_file_path>
+ -e <VAR_NAME>=<var_value> \
+    -f <local_file_path>:<agent_file_path>
 ```
 
 You can define multiple environment variables at once using:
 
 ```shell title="Defining multiple variables example"
 sem create secret awskey \
-  -e AWS_ACCESS_KEY_ID=your-value \
-  -e AWS_SECRET_KEYID=your-value
+ -e AWS_ACCESS_KEY_ID=your-value \
+    -e AWS_SECRET_KEYID=your-value
 ```
 
 In addition, you can upload multiple files as secrets using:
 
 ```shell title="Creating multiple secret files example"
 sem create secret sshkeys \
-  -f $HOME/.ssh/id_rsa:/home/semaphore/.ssh/id_rsa \
-  -f $HOME/.ssh/id_rsa.pub:/home/semaphore/.ssh/id_rsa.pub
+ -f $HOME/.ssh/id_rsa:/home/semaphore/.ssh/id_rsa \
+    -f $HOME/.ssh/id_rsa.pub:/home/semaphore/.ssh/id_rsa.pub
 ```
 
 To view all server secrets, use:
@@ -142,9 +146,26 @@ To create secrets with the Semaphore API, see the [API reference](../reference/a
 
 <!-- new api: [API reference page](../openapi-spec/secrets-list)-->
 
-## How to create project secrets {#create-project-secrets}
+### Access policy {#secret-access-policy}
 
-<Available plans={['Startup']}/>
+<VideoTutorial title="How to configure secret access policy" src="https://www.youtube.com/embed/gB1Oat4HwTo?si=_dvCKllE0bPgtDFe" />
+
+Access policies allow you to control how and who can use [server secrets](#org-secrets). 
+
+You can apply a policy at three levels:
+
+- **Projects**: the secret is available to all, none, or a list of specified projects
+- **Debug Sessions**: individuals connecting with a [debug session](./jobs#debug-jobs) can view the contents of the secrets. You can disable debug sessions for jobs using this secret
+- **Attaching to jobs**: similarly, [attaching to a running job](./jobs#attach-job) can expose secrets. Disabling this option prevents the secret from being viewed
+
+<details>
+<summary>Show me</summary>
+<div>
+![Managing access policies for secrets](./img/secrets-access-policy.jpg)
+</div>
+</details>
+
+## How to create project secrets {#create-project-secrets}
 
 Project secrets are only available to the [project](./projects) they are tied to.
 
@@ -253,6 +274,12 @@ Note that if a secret is defined with the same name at both the server and proje
 To create secrets with the Semaphore API, see the [Semaphore API](../reference/api).
 
 <!-- new api: [API reference page](../openapi-spec/project-secrets-list) -->
+
+## Deployment Targets credentials {#dt-credentials}
+
+Deployment target (environment) credentials are active only for specific pipelines attached to those environments.
+
+For more information, see [promotions and environments](./promotions#credentials).
 
 ## Private repositories and dependencies {#private-dependencies}
 

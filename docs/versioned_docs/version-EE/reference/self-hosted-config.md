@@ -9,8 +9,6 @@ import TabItem from '@theme/TabItem';
 import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 
-<Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
-
 This page describes all the settings available to configure [self-hosted agents](../using-semaphore/self-hosted).
 
 ## Overview

@@ -16,8 +16,6 @@ Use Okta to provision, manage your user, and provide Single Sign On (SSO) to you
 
 ## Overview
 
-<Available plans={['Scaleup']} />
-
 [Okta](https://okta.com) is an enterprise identity management platform. It provides a centralized place to manage your users and groups across different products. You can integrate Okta with Semaphore to manage your users from the Okta application.
 
 It's possible to integrate Semaphore with other SCIM/SAML-based identity providers such as JumpCloud. If that the case, please contact support@semaphoreci.com so we can help you configure the integration.

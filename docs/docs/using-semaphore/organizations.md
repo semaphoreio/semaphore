@@ -67,10 +67,6 @@ You must install and connect the [Semaphore command line](../reference/semaphore
 
 Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the organization and project level.
 
-Free plans are limited to 5 users per organization. Paid plans have no user limit.
-
-You can only invite people with GitHub or BitBucket accounts to your organization.
-
 To manage users in your organization, open the organization menu and select **People**. This tab shows users and groups in your organization along with their roles and groups.
 
 ![The people tab](./img/people-tab.jpg)

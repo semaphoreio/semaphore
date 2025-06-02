@@ -202,6 +202,24 @@ To add or remove a user from a project, follow these steps:
 
 - To remove the user from the project, press the **X** button next to the user.
 
+### How to view pre-defined roles {#project-roles}
+
+Semaphore provides pre-defined roles for projects. You can see what actions each role can perform by following these steps:
+
+<Steps>
+
+1. Open the server **Settings** menu
+2. Select **Roles**
+    ![Settings Role location](./img/settings-roles.jpg)
+3. Scroll down to **Project roles**
+4. Press the eye button next to the role you want to examine
+
+</Steps>
+
+The actions with enabled checkbox are allowed for that role.
+
+>>>>>>> 0c3dfbcf (docs: fix broken links, add features from Cloud to EE)
+>>>>>>>
 ### How to change the project's owner {#owner-change}
 
 Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./organizations#add-people).

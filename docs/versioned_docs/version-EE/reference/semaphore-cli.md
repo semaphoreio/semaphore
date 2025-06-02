@@ -12,11 +12,11 @@ import Steps from '@site/src/components/Steps';
 
 <VideoTutorial title="Overview of Semaphore CLI" src="https://www.youtube.com/embed/3bG6mZOh73o?si=vsMShj8HUz5RhqgZ" />
 
-You can interact with most aspects of your jobs, pipelines, projects, and server using only the command line. This page explains how to use the Semaphore CLI tool.
+You can interact with most aspects of your jobs, pipelines, projects, and organizations using only the command line. This page explains how to use the Semaphore CLI tool. This page uses the terms server, instance, and organization interchangeably.
 
 ## Overview
 
-The Semaphore CLI tool lets you create projects, debug jobs, set up notifications, and manage your Semaphore resources.
+The Semaphore CLI tool lets you create projects, debug jobs, define dashboards, set up notifications, and manage your Semaphore resources.
 
 ## Installation and set up {#install}
 
@@ -35,10 +35,9 @@ brew install semaphoreci/tap/sem
 Once installed, you need to authorize access to your Semaphore server. You can do this with:
 
 ```shell
-sem connect <semaphore-server-url> <API_TOKEN>
+sem connect semaphore.example.com <API_TOKEN>
 ```
-
-You can get an API token on your [account page](https://me.semaphore.example.com/account).
+You can get an API token on your [account page](https://me.semaphoreci.com/account).
 
 ## General syntax {#syntax}
 
@@ -50,7 +49,7 @@ sem <command> <resource-type> <resource-name> [flags]
 
 The supported commands are:
 
-- `apply`: update projects, secrets, notifications
+- `apply`: update projects, secrets, dashboards, notifications, and deployment targets
 - `attach`: attach to a running job
 - `config`: get and set configuration options
 - `connect`: connect to an server
@@ -69,12 +68,14 @@ The supported commands are:
 
 The supported resource types are:
 
+- `dashboard`
 - `job`
 - `notification`
 - `project`
 - `pipeline`
 - `workflow`
 - `secret`
+- `deployment-target`
 
 ### sem help {#help}
 
@@ -146,30 +147,30 @@ The Semaphore CLI supports the following flags:
 
 - `--help` or `-h`: prints the help screen for the given command
 - `--verbose` or `-v`: useful for debugging, prints vebose output. This flag shows the interactions between the tool and the [Semaphore API](./api)
-- `--file` or `-f`: specifies the path to a file. Can be used to specify YAML resource files in [sem create](#sem-create) and [sem apply](#sem-apply). It can also be used to upload secrets as files using [sem create secret](#sem-create)
+- `--file` or `-f`: specifies the path to a file. Can be used to specify YAML resource files in [sem create](#sem-create) and [sem apply](#sem-apply). It can also be used to upload secrets as files using [sem create secret](#sem-create) and [sem create dt](#sem-create-dt)
 - `--all`: used with [sem get job](#sem-get-job) to view running and recently-finished jobs
 
-## Working with Semaphore server {#orgs}
+## Working with servers {#orgs}
 
 This section explains how to connect and switch servers.
 
 ### sem connect {#sem-connect}
 
-Before using any other commands, you need to connect to your Semaphore servers.
+Before using any other commands, you need to connect to your Semaphore server.
 
 The syntax to connect is:
 
 ```shell title="Connecting to your server"
-sem connect <semaphore-server-url> <API_TOKEN>
+sem connect semaphore.example.com <API_TOKEN>
 ```
 
-For example:
+For example
 
 ```shell
-sem connect semaphore.example.com NeUFkim46BCdpqCAyWXN
+sem connect tomfern.semaphoreci.com NeUFkim46BCdpqCAyWXN
 ```
 
-You can get an API token on your [account page](https://me.example.com/account).
+You can get an API token on your [account page](https://me.semaphoreci.com/account).
 
 If you have multiple servers, you can repeat the command to connect to all of them. The authentication token is stored on your local machine.
 
@@ -183,18 +184,18 @@ $ sem context
 * semaphore-demos_semaphoreci_com
 ```
 
-The active servers is marked with an asterisk (*). Commands are always executed in the active server.
+The active server is marked with an asterisk (*). Commands are always executed in the active server.
 
-To switch the active servers:
+To switch the active server:
 
-```shell title="Changing the active servers"
-sem context <server-id>
+```shell title="Changing the active server"
+sem context <server_url>
 ```
 
 Note that you must supply the server name as shown in `sem context`. For example:
 
 ```shell
-sem context semaphore_example_com
+sem context tomfern_example_com
 ```
 
 ## Working with resources {#resources}
@@ -203,10 +204,12 @@ You can create, edit, and delete resources using the commands described in this 
 
 ### sem create {#sem-create}
 
-The `sem create` action creates new resources.
+The `sem create` action creates new resources. 
 
 For the following resource types you need to supply the `-f <resource.yaml>` or `--file <resource.yaml>` argument with a YAML file. The file spec is described in a dedicated reference page:
 
+- [Dashboards reference](./dashboard-yaml.md)
+- [Deployment targets reference](./deployment-target-yaml.md)
 - [Projects reference](./project-yaml.md)
 - [Jobs reference](./jobs-yaml.md)
 - [Secrets reference](./secret-yaml.md)
@@ -224,11 +227,14 @@ sem create -p <project-name> -f secret.yaml
 The following types resource types can be created without supplying a YAML spec file:
 
 - Secrets
+- Dashboards
 
-For example, to create an empty secret:
+For example, to create an empty secret or dashboard:
 
 ```shell
 sem create secret <secret-name>
+# or
+sem create dashboard <dashboard-name>
 ```
 
 You may also create a secret and initialize it with values or files with:
@@ -295,13 +301,19 @@ You can add the `-p <project-name>` argument to edit project-level secrets.
 The following examples show how to edit other types of resources
 
 ```shell
+# edit a dashboard
+sem edit dashboard my-activity
+
 # edit a project
 sem edit project my-project
+
+# edit a deployment target
+sem edit deployment-target my-target -p my-project
 ```
 
 ### sem get {#sem-get}
 
-The `sem get` command can retrieve all resources of a given type.
+The `sem get` command can retrieve all resources of a given type. 
 
 The syntax is:
 
@@ -617,7 +629,6 @@ The syntax is:
 ```shell
 sem port-forward <job-id> <local-port> <remote-port>
 ```
-
 Where the job id is the one shown with [`sem get job`](#sem-get-job).
 
 For example, if we have a MySQL database running on the default port in the agent, we can forward it to our local machine on port 8000 with:
@@ -656,6 +667,7 @@ You can provide the following options with `sem init`:
 
 On project creation, if a `.semaphore/semaphore.yml` file already exists in the root directory of a repository, `sem init` will keep that file
 and continue with its operation. If there is no `.semaphore/semaphore.yml` file, `sem init` will create one for you.
+
 
 :::warning
 
@@ -728,6 +740,7 @@ spec:
         slack:
           endpoint: https://hooks.slack.com/services/xxx/yyy/zzz
 ```
+
 
 The available values for `filter.results` are:
 
@@ -852,6 +865,7 @@ The `--follow` flag is particularly useful in the following two cases:
 
 This section describes in detail how to create, edit, and rebuild workflows using the Semaphore CLI.
 
+
 ### sem get workflows {#sem-get-workflows}
 
 The `sem get workflows` command returns the workflows for all your projects in your server.
@@ -914,6 +928,7 @@ The output of `sem rebuild workflow` command is a new workflow id and a new pipe
 
 This section describes in detail how to create, edit, and view [self-hosted agents](../using-semaphore/self-hosted) using the Semaphore CLI
 
+
 ### sem create agent_type {#sem-create-agent-type}
 
 The `sem create agent_type` command can be used to create a self-hosted agent type using the Semaphore CLI.
@@ -962,6 +977,7 @@ sem create -f agent_type.yml
 
 See [Agent Type YAML spec file](./agent-yaml.md) for more details.
 
+
 ### sem get agent_types {#sem-get-agent-types}
 
 The `sem get agent_types` command returns the list of self-hosted agent types for a Semaphore server.
@@ -1000,6 +1016,7 @@ For example:
 sem get agents s1-my-type
 ```
 
+
 ### sem get agent properties {#sem-get-agent-types-props}
 
 The `sem get agent` command can be used to view properties on specific self-hosted agents. You need to provide the unique agent name.
@@ -1009,6 +1026,146 @@ The syntax is:
 ```shell
 sem get agent_type <agent-name>
 ```
+
+
+## Working with deployment targets
+
+This section describes in properties how to create, edit, and view [deployment targets](../using-semaphore/promotions#deployment-targets) using the Semaphore CLI.
+
+### sem create dt {#sem-create-dt}
+
+The `sem create dt` command can be used to create a deployment target.
+
+The syntax is:
+
+```shell
+sem create dt <target-name> --project-name <project-name> [flags]
+# or
+sem create dt <target-name> --project-id <project-id> [flags]
+```
+
+Optional flags are:
+
+- `--desc <description>` (`-d`): a description for the target
+- `--url <URL>` (`-u`): the URL of the deployed application
+- `--bookmark <bookmark>` (`-b`): up to 3 bookmarks for the target
+- `--file <local-path>:<mount-path>` (`-f`): files to be imported as secrets in the deployment target pipeline
+- `--env <VAR=VALUE>`(`-e`): environment variables imported as secrets in the deployment target pipeline
+- `--subject-rule <TYPE>,<SUBJECT-ID>` (`-s`): subject rules assignment
+- `--object-rule <TYPE>,<MODE>,<PATTERN>` (`-o`): object rules assignment
+
+For subject rule assignment, the `<TYPE>` can be one of the following:
+
+- `ANY`
+- `ROLE`
+- `USER`
+
+The `<SUBJECT-ID>` is either the name of the role or the UUID of the user.
+
+For object rule assignment, the `<TYPE>` can be one of the following:
+
+- `BRANCH`
+- `PR`
+- `TAG`
+
+Mode can be one of the following:
+
+- `ALL`
+- `EXACT`
+- `REGEX`
+
+And the `<PATTERN>` represents the string to be used for name matching.
+
+For example with all the options:
+
+```shell
+sem create dt <target-name> \
+  -p <project-name> \
+  -d "A description for the target" \
+  -u "myurl321.zyx" \
+  -b "bookmark 1" \
+  -b "bookmark 2" \
+  -f /home/dev/app/server.conf:/etc/my.conf \
+  -e X=123 \
+  -s ROLE,admin \
+  -o branch,exact,main
+```
+
+See [environments (deployment targets)](../using-semaphore/promotions#deployment-targets) for more information.
+
+### sem get dt {#sem-get-dt}
+
+You can list all the deployment targets for a project with:
+
+```shell
+sem get dt --project-name <project-name>
+# or
+sem get dt --project-id <project-id>
+```
+
+To view the properties of a given deployment target:
+
+```shell
+sem get dt <deployment-target-id>
+```
+
+The output is a YAML file that describes the deployment target. See [Deployment Targets YAML reference](./deployment-target-yaml).
+
+### sem get dt history {#sem-get-dt-history}
+
+You can retrieve the deployment history for a specific deployment target with the `--history` or `-s` parameter.
+
+The syntax is:
+
+```shell
+sem get dt <deployment-target-id> --history
+sem get dt <target-id> --project-name <project-name> --history
+sem get dt <target-id> --project-id <project-id> --history
+```
+
+The output is a list of deployments with their IDs for the provided deployment targets.
+
+### sem edit dt {#sem-edit-dt}
+
+The `sem edit dt` command is used to edit an existing deployment target.
+
+The syntax is:
+
+```shell
+sem edit dt <target-name> --project-name <project-name>
+# or
+sem edit dt <target-name> --project-id <project-id>
+```
+
+This opens a text editor with the YAML spec. After closing the file, the new changes are updated.
+
+You can also edit the deployment target using its id with:
+
+```shell
+sem edit dt <target-id>
+```
+
+The `<target-id>` is obtained with [sem get dt](#sem-get-dt).
+
+In addition, you can supply the `--activate` (`-a`) or `--deactivate` (`-d`) option to activate or deactivate the deployment target.
+
+For example:
+
+```shell
+sem edit dt my-deployment-target --project-name my-project --deactivate
+```
+
+### sem delete dt {#sem-delete-dt}
+
+The `sem delete dt` to delete a deployment target.
+
+The syntax is:
+
+```shell
+sem delete dt <target-id>
+```
+
+The `<target-id>` is obtained with [sem get dt](#sem-get-dt).
 
 ## Troubleshooting resources {#troubleshoot}
 
@@ -1050,11 +1207,13 @@ The Semaphore CLI supports the following aliases for these resources:
 | Resource | Aliases |
 |--|--|
 | `project` | `projects`, `prj` |
+| `dashboard` | `dashboards`, `dash` |
 | `secret` | `secrets` |
 | `job` | `jobs` |
 | `notification` | `notifications`, `notifs`, `notif` |
 | `pipeline` | `pipelines`, `ppl` |
 | `workflow` | `workflows`, `wf` |
+| `deployment-target` | `deployment-targets`, `dt`, `dts`, `deployments`, `deployment` |
 
 As an example, the following three commands are equivalent:
 
@@ -1070,5 +1229,6 @@ sem get projects
 - [Pipeline YAML reference](./pipeline-yaml)
 - [Projects YAML reference](./project-yaml)
 - [Secret YAML reference](./secret-yaml)
+- [Deployment targets YAML reference](./deployment-target-yaml)
 - [Agents YAML reference](./agent-yaml)
 - [Notifications YAML reference](./notifications-yaml)

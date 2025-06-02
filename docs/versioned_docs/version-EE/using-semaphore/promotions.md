@@ -561,8 +561,6 @@ Credentials are optional. Go to the next step if you don't need them.
 
 ### Granular permissions {#granular-permissions}
 
-<Available plans={['Scaleup']} />
-
 In the "Who can deploy?" section, you can define the users and roles that can manually start the promotion. Granular permissions are optional. You can go to the next section if you don't need to restrict access to the promotion.
 
 By default, everyone can start the promotion linked to this environment. To restrict access:
