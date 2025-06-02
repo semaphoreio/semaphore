@@ -28,6 +28,5 @@ erl_crash.dump
 /deploy.yml
 
 *.json
-out/
 .tool-versions
 .elixir_ls
