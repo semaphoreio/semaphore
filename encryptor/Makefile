@@ -23,7 +23,7 @@ test.setup:
 	docker-compose run app go get ./...
 
 test:
-	docker-compose run --rm app gotestsum --format short-verbose --junitfile results.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 tidy:
 	docker-compose run --rm app go mod tidy
