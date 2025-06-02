@@ -25,33 +25,39 @@ global_job_config:
       - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST || echo "Semaphore Registry login failed, but continuing the build process." && true
       - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       - sem-version ruby 3.3
+      - checkout
   epilogue:
     always:
       commands:
-        # Trivyfs security scan
-        - 'if [ -f docker-scan-junit.xml ];            then test-results --name "Docker scan"         --suite-prefix "[$SERVICE_NAME]"  publish docker-scan-junit.xml; fi'
-        - 'if [ -f junit.xml ];                        then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit.xml; fi'
-        - 'if [ -f results.xml ];                      then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish results.xml; fi'
-        - 'if [ -f out/results.xml ];                  then test-results --name "${TEST_RESULTS_NAME:-$SEMAPHORE_JOB_NAME}"               publish out/results.xml; fi'
-        - 'if [ -f test-results.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish test-results.xml; fi'
-        - 'if [ -f junit-report.xml ];                 then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish junit-report.xml; fi'
-        - 'if [ -f assets/results.xml ];               then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish assets/results.xml; fi'
-        - 'if [ -f out/lint-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/lint-js-junit-report.xml; fi'
-        - 'if [ -f out/compile-ts-junit-report.xml ];  then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/compile-ts-junit-report.xml; fi'
-        - 'if [ -f out/test-js-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-js-junit-report.xml; fi'
-        - 'if [ -f out/test-ex-junit-report.xml ];     then test-results --name "$SEMAPHORE_JOB_NAME"                                     publish out/test-ex-junit-report.xml; fi'
+        - 'if [ -f out/docker-scan-junit.xml ]; then test-results --name "Docker scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/docker-scan-junit.xml; fi'
+        - 'if [ -f out/dependency-scan.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
+        - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
+        - 'if [ -f out/test-reports.xml ]; then test-results --name "$SEMAPHORE_BLOCK_NAME" publish out/test-reports.xml; fi'
+        - 'if [ -f out/docker-scan-trivy.json ]; then make check.generate-report; fi'
+        - 'if [ -f out/depdendency-scan-trivy.json ]; then make check.generate-report; fi'
+        - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
+        - 'if [ -f ee/velocity/out/security-export.json ]; then artifact push workflow ee/velocity/out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
+        - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
+
 after_pipeline:
   task:
     jobs:
       - name: Submit Reports
         commands:
           - test-results gen-pipeline-report
+      - name: Process Reports
+        commands:
+          - sem-version ruby 3.3
+          - checkout
+          - artifact pull workflow scans -d reports || echo "No scan reports found, skipping."
+          - make check.generate-global-report
+          - 'if [ -f out/global-security-summary.md ]; then artifact push workflow out/global-security-summary.md -d .semaphore/REPORT.md; fi'
 auto_cancel:
   running:
     when: "branch != 'main'"
 blocks:
   # Audit
-  - name: "Audit: \U0001F4CB Provision Test Image"
+  - name: "Audit: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -65,11 +71,11 @@ blocks:
         commands:
           - checkout && cd ee/audit
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Audit: \U0001F4CB Provision Prod Image"
+  - name: "Audit: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -83,13 +89,13 @@ blocks:
         commands:
           - checkout && cd ee/audit
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Audit: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Audit: \U0001F4CB Provision Prod Image"]
+  - name: "Audit: Deployment Preconditions"
+    dependencies: ["Audit: Provision Prod Image"]
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -105,18 +111,18 @@ blocks:
           - checkout && cd ee/audit
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Audit: \U0001F9EA QA"
-    dependencies: ["Audit: \U0001F4CB Provision Test Image"]
+  - name: "Audit: QA"
+    dependencies: ["Audit: Provision Test Image"]
     run:
       when: "change_in('/ee/audit', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -130,19 +136,19 @@ blocks:
           - checkout && cd ee/audit
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Audit Tests"
             - make test.ex
           parallelism: 2
   # Artifacthub
-  - name: "ArtifactHub: \U0001F4CB Provision Prod Image"
+  - name: "ArtifactHub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -156,13 +162,13 @@ blocks:
         commands:
           - checkout && cd artifacthub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "ArtifactHub: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
+  - name: "ArtifactHub: Deployment Preconditions"
+    dependencies: ["ArtifactHub: Provision Prod Image"]
     run:
       when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -178,18 +184,18 @@ blocks:
           - checkout && cd artifacthub
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "ArtifactHub: \U0001F9EA QA"
-    dependencies: ["ArtifactHub: \U0001F4CB Provision Prod Image"]
+  - name: "ArtifactHub: QA"
+    dependencies: ["ArtifactHub: Provision Prod Image"]
     run:
       when: "change_in('/artifacthub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -203,15 +209,15 @@ blocks:
           - checkout && cd artifacthub
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # Auth
-  - name: "Auth: \U0001F4CB Provision Test Image"
+  - name: "Auth: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -225,11 +231,11 @@ blocks:
         commands:
           - checkout && cd auth
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Auth: \U0001F4CB Provision Prod Image"
+  - name: "Auth: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -243,13 +249,13 @@ blocks:
         commands:
           - checkout && cd auth
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Auth: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Auth: \U0001F4CB Provision Prod Image"]
+  - name: "Auth: Deployment Preconditions"
+    dependencies: ["Auth: Provision Prod Image"]
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -265,18 +271,18 @@ blocks:
           - checkout && cd auth
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Auth: \U0001F9EA QA"
-    dependencies: ["Auth: \U0001F4CB Provision Test Image"]
+  - name: "Auth: QA"
+    dependencies: ["Auth: Provision Test Image"]
     run:
       when: "change_in('/auth', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -291,17 +297,17 @@ blocks:
           - cache restore auth-$(checksum mix.lock),auth-$SEMAPHORE_GIT_BRANCH,auth
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Badge
-  - name: "Badge: \U0001F4CB Provision Test Image"
+  - name: "Badge: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -315,11 +321,11 @@ blocks:
         commands:
           - checkout && cd badge
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Badge: \U0001F4CB Provision Prod Image"
+  - name: "Badge: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -333,13 +339,13 @@ blocks:
         commands:
           - checkout && cd badge
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Badge: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Badge: \U0001F4CB Provision Prod Image"]
+  - name: "Badge: Deployment Preconditions"
+    dependencies: ["Badge: Provision Prod Image"]
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -355,18 +361,18 @@ blocks:
           - checkout && cd badge
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Badge: \U0001F9EA QA"
-    dependencies: ["Badge: \U0001F4CB Provision Test Image"]
+  - name: "Badge: QA"
+    dependencies: ["Badge: Provision Test Image"]
     run:
       when: "change_in('/badge', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -380,19 +386,19 @@ blocks:
           - checkout && cd badge
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Badge Tests"
             - make test.ex
           parallelism: 2
   # Branch-hub
-  - name: "BranchHub: \U0001F4CB Provision Test Image"
+  - name: "BranchHub: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -406,11 +412,11 @@ blocks:
         commands:
           - checkout && cd branch_hub
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "BranchHub: \U0001F4CB Provision Prod Image"
+  - name: "BranchHub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -424,13 +430,13 @@ blocks:
         commands:
           - checkout && cd branch_hub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "BranchHub: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["BranchHub: \U0001F4CB Provision Prod Image"]
+  - name: "BranchHub: Deployment Preconditions"
+    dependencies: ["BranchHub: Provision Prod Image"]
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -447,18 +453,18 @@ blocks:
           - sem-version ruby 3.0
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "BranchHub: \U0001F9EA QA"
-    dependencies: ["BranchHub: \U0001F4CB Provision Test Image"]
+  - name: "BranchHub: QA"
+    dependencies: ["BranchHub: Provision Test Image"]
     run:
       when: "change_in('/branch_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -472,17 +478,17 @@ blocks:
           - checkout && cd branch_hub
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Dashboardhub
-  - name: "Dashboardhub: \U0001F4CB Provision Test Image"
+  - name: "Dashboardhub: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -500,11 +506,11 @@ blocks:
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Dashboardhub: \U0001F4CB Provision Prod Image"
+  - name: "Dashboardhub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -522,12 +528,12 @@ blocks:
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
-  - name: "Dashboardhub: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Dashboardhub: \U0001F4CB Provision Prod Image"]
+  - name: "Dashboardhub: Deployment Preconditions"
+    dependencies: ["Dashboardhub: Provision Prod Image"]
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -549,18 +555,18 @@ blocks:
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Dashboardhub: \U0001F9EA QA"
-    dependencies: ["Dashboardhub: \U0001F4CB Provision Test Image"]
+  - name: "Dashboardhub: QA"
+    dependencies: ["Dashboardhub: Provision Test Image"]
     run:
       when: "change_in('/dashboardhub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -578,17 +584,17 @@ blocks:
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Docs
-  - name: "Docs: \U0001F5BC️ Provision Prod Image"
+  - name: "Docs: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -603,7 +609,7 @@ blocks:
             - cd docs
             - make build
             - make push
-  - name: "Docs: \U0001F5BC️ Build test image"
+  - name: "Docs: Build test image"
     dependencies: []
     run:
       when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -618,8 +624,8 @@ blocks:
             - cd docs
             - make build
             - make push
-  - name: "Docs: \U0001F9EA QA"
-    dependencies: ["Docs: \U0001F5BC️ Build test image"]
+  - name: "Docs: QA"
+    dependencies: ["Docs: Build test image"]
     run:
       when: "change_in('/docs', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -640,14 +646,14 @@ blocks:
           commands:
             - make test
   # Front
-  - name: "Front: \U0001F5BC️ Provision Test Image"
+  - name: "Front: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       agent:
         machine:
-          type: e1-standard-4
+          type: e2-standard-4
           os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -665,9 +671,9 @@ blocks:
           commands:
             - make build
             - make push
-  - name: "Front: \U0001F9EA QA"
+  - name: "Front: QA"
     dependencies:
-      - "Front: \U0001F5BC️ Provision Test Image"
+      - "Front: Provision Test Image"
     run:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -694,9 +700,9 @@ blocks:
           commands:
             - make test.ex TEST_FILE='test/browser/**/*.exs test/browser/*.exs'
           parallelism: 5
-  - name: "Front: \U0001F6E1️ Deployment Preconditions"
+  - name: "Front: Deployment Preconditions"
     dependencies:
-      - "Front: \U0001F5BC️ Provision Test Image"
+      - "Front: Provision Test Image"
     run:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -736,14 +742,14 @@ blocks:
             - bash linters/deprecated_factories.sh
             - bash linters/fun_registry.sh
             - bash linters/todos_count.sh
-  - name: "Front: \U0001F5BC️ Provision Prod Image"
+  - name: "Front: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
       agent:
         machine:
-          type: e1-standard-4
+          type: e2-standard-4
           os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
@@ -761,9 +767,9 @@ blocks:
           commands:
             - make build
             - make push
-  - name: "Front: \U0001F6E1️ Security checks"
+  - name: "Front: Security checks"
     dependencies:
-      - "Front: \U0001F5BC️ Provision Prod Image"
+      - "Front: Provision Prod Image"
     run:
       when: "change_in('/front', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -799,7 +805,7 @@ blocks:
             - make build
             - make check.docker CHECK_DOCKER_OPTS='--ignore-policy security-ignore-policy.rego'
   # Guard
-  - name: "Guard: \U0001F4CB Provision Test Image"
+  - name: "Guard: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -813,11 +819,11 @@ blocks:
         commands:
           - checkout && cd guard
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Guard: \U0001F4CB Provision Prod Image"
+  - name: "Guard: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -831,13 +837,13 @@ blocks:
         commands:
           - checkout && cd guard
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Guard: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Guard: \U0001F4CB Provision Prod Image"]
+  - name: "Guard: Deployment Preconditions"
+    dependencies: ["Guard: Provision Prod Image"]
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -853,18 +859,18 @@ blocks:
           - checkout && cd guard
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Guard: \U0001F9EA QA"
-    dependencies: ["Guard: \U0001F4CB Provision Test Image"]
+  - name: "Guard: QA"
+    dependencies: ["Guard: Provision Test Image"]
     run:
       when: "change_in('/guard', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -878,19 +884,19 @@ blocks:
           - checkout && cd guard
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Guard Tests"
             - make test.ex
           parallelism: 2
   # HooksReceiver
-  - name: "HooksReceiver: \U0001F4CB Provision Test Image"
+  - name: "HooksReceiver: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -904,11 +910,11 @@ blocks:
         commands:
           - checkout && cd hooks_receiver
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "HooksReceiver: \U0001F4CB Provision Prod Image"
+  - name: "HooksReceiver: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -922,12 +928,12 @@ blocks:
         commands:
           - checkout && cd hooks_receiver
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
-  - name: "HooksReceiver: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["HooksReceiver: \U0001F4CB Provision Prod Image"]
+  - name: "HooksReceiver: Deployment Preconditions"
+    dependencies: ["HooksReceiver: Provision Prod Image"]
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -943,18 +949,18 @@ blocks:
           - checkout && cd hooks_receiver
           - make pull
       jobs:
-        - name: "\U0001F6E1️ HooksReceiver Check code"
+        - name: "HooksReceiver Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ HooksReceiver Check dependencies"
+        - name: "HooksReceiver Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ HooksReceiver Check docker"
+        - name: "HooksReceiver Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "HooksReceiver: \U0001F9EA QA"
-    dependencies: ["HooksReceiver: \U0001F4CB Provision Test Image"]
+  - name: "HooksReceiver: QA"
+    dependencies: ["HooksReceiver: Provision Test Image"]
     run:
       when: "change_in('/hooks_receiver', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -968,18 +974,18 @@ blocks:
           - checkout && cd hooks_receiver
           - make build
       jobs:
-        - name: "\U0001F9EA HooksReceiver Lint"
+        - name: "HooksReceiver Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA HooksReceiver Credo"
+        - name: "HooksReceiver Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA HooksReceiver Test"
+        - name: "HooksReceiver Test"
           commands:
             - export TEST_RESULTS_NAME="HooksReceiver Tests"
             - make test.ex
   # HooksProcessor
-  - name: "\U0001F4CB HooksProcessor Provision Test Image"
+  - name: "HooksProcessor Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -993,11 +999,11 @@ blocks:
         commands:
           - checkout && cd hooks_processor
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "\U0001F4CB HooksProcessor Provision Prod Image"
+  - name: "HooksProcessor Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1011,12 +1017,12 @@ blocks:
         commands:
           - checkout && cd hooks_processor
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
-  - name: "\U0001F6E1️ HooksProcessor Deployment Preconditions"
-    dependencies: ["\U0001F4CB HooksProcessor Provision Prod Image"]
+  - name: "HooksProcessor Deployment Preconditions"
+    dependencies: ["HooksProcessor Provision Prod Image"]
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1032,18 +1038,18 @@ blocks:
           - checkout && cd hooks_processor
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "\U0001F9EA HooksProcessor QA"
-    dependencies: ["\U0001F4CB HooksProcessor Provision Test Image"]
+  - name: "HooksProcessor: QA"
+    dependencies: ["HooksProcessor Provision Test Image"]
     run:
       when: "change_in('/hooks_processor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1057,19 +1063,19 @@ blocks:
           - checkout && cd hooks_processor
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="HooksProcessor Tests"
             - make test.ex
           parallelism: 2
   # Gofer
-  - name: "Gofer: \U0001F4CB Provision Prod Image"
+  - name: "Gofer: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1083,11 +1089,11 @@ blocks:
         commands:
           - checkout && cd ee/gofer
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
-  - name: "Gofer: \U0001F4CB Provision Test Image"
+  - name: "Gofer: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1101,12 +1107,12 @@ blocks:
         commands:
           - checkout && cd ee/gofer
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Gofer: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Gofer: \U0001F4CB Provision Prod Image"]
+  - name: "Gofer: Deployment Preconditions"
+    dependencies: ["Gofer: Provision Prod Image"]
     run:
       when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1116,18 +1122,18 @@ blocks:
           - sem-version ruby 2.7
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Scan dependencies"
+        - name: "Scan dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F433 Check docker security"
+        - name: "Check docker security"
           commands:
             - make build
             - make check.docker
-        - name: "\U0001F4D6 Static code analysis"
+        - name: "Static code analysis"
           commands:
             - make check.ex.code
   - name: "Gofer: Tests"
-    dependencies: ["Gofer: \U0001F4CB Provision Test Image"]
+    dependencies: ["Gofer: Provision Test Image"]
     run:
       when: "change_in('/ee/gofer', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1143,19 +1149,19 @@ blocks:
           - checkout && cd ee/gofer
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Gofer Tests"
             - make test.ex
           parallelism: 2
   # GithubNotifier
-  - name: "GithubNotifier: \U0001F4CB Provision Test Image"
+  - name: "GithubNotifier: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1169,11 +1175,11 @@ blocks:
         commands:
           - checkout && cd github_notifier
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "GithubNotifier: \U0001F4CB Provision Prod Image"
+  - name: "GithubNotifier: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1187,13 +1193,13 @@ blocks:
         commands:
           - checkout && cd github_notifier
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "GithubNotifier: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["GithubNotifier: \U0001F4CB Provision Prod Image"]
+  - name: "GithubNotifier: Deployment Preconditions"
+    dependencies: ["GithubNotifier: Provision Prod Image"]
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1209,18 +1215,18 @@ blocks:
           - checkout && cd github_notifier
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "GithubNotifier: \U0001F9EA QA"
-    dependencies: ["GithubNotifier: \U0001F4CB Provision Test Image"]
+  - name: "GithubNotifier: QA"
+    dependencies: ["GithubNotifier: Provision Test Image"]
     run:
       when: "change_in('/github_notifier', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1234,13 +1240,13 @@ blocks:
           - checkout && cd github_notifier
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="GithubNotifier Tests"
             - make test.ex
@@ -1259,11 +1265,11 @@ blocks:
         commands:
           - checkout && cd plumber/looper
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Looper: \U0001F6E1️ Deployment Preconditions"
+  - name: "Looper: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in('/plumber/looper', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1275,10 +1281,10 @@ blocks:
         commands:
           - checkout && cd plumber/looper
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
   - name: "Looper: QA"
@@ -1296,13 +1302,13 @@ blocks:
           - checkout && cd plumber/looper
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Looper Tests"
             - make test.ex
@@ -1321,11 +1327,11 @@ blocks:
         commands:
           - checkout && cd plumber/job_matrix
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "JobMatrix: \U0001F6E1️ Deployment Preconditions"
+  - name: "JobMatrix: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in('/plumber/job_matrix', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1337,10 +1343,10 @@ blocks:
         commands:
           - checkout && cd plumber/job_matrix
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
   - name: "JobMatrix: QA"
@@ -1358,13 +1364,13 @@ blocks:
           - checkout && cd plumber/job_matrix
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        #- name: "\U0001F9EA Credo"
+        #- name: "Credo"
         #  commands:
         #    - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="JobMatrix Tests"
             - make test.ex
@@ -1383,11 +1389,11 @@ blocks:
         commands:
           - checkout && cd plumber/definition_validator
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "DefinitionValidator: \U0001F6E1️ Deployment Preconditions"
+  - name: "DefinitionValidator: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in('/plumber/definition_validator', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1399,10 +1405,10 @@ blocks:
         commands:
           - checkout && cd plumber/definition_validator
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
   - name: "DefinitionValidator: QA"
@@ -1420,13 +1426,13 @@ blocks:
           - checkout && cd plumber/definition_validator
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        #- name: "\U0001F9EA Credo"
+        #- name: "Credo"
         #  commands:
         #    - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="DefinitionValidator Tests"
             - make test.ex
@@ -1444,7 +1450,7 @@ blocks:
         commands:
           - checkout && cd plumber/task_api_referent
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
@@ -1462,7 +1468,7 @@ blocks:
         commands:
           - checkout && cd plumber/task_api_referent
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
@@ -1478,13 +1484,13 @@ blocks:
         commands:
           - checkout && cd plumber/task_api_referent
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
@@ -1503,13 +1509,13 @@ blocks:
           - checkout && cd plumber/task_api_referent
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        #- name: "\U0001F9EA Credo"
+        #- name: "Credo"
         #  commands:
         #    - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="TaskApiMock Tests"
             - make test.ex
@@ -1527,11 +1533,11 @@ blocks:
         commands:
           - checkout && cd plumber/spec
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Spec: \U0001F6E1️ Deployment Preconditions"
+  - name: "Spec: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in('/plumber/spec', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1543,10 +1549,10 @@ blocks:
         commands:
           - checkout && cd plumber/spec
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
   - name: "Spec: QA"
@@ -1564,13 +1570,13 @@ blocks:
           - checkout && cd plumber/spec
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        #- name: "\U0001F9EA Credo"
+        #- name: "Credo"
         #  commands:
         #    - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Spec Tests"
             - make test.ex
@@ -1588,11 +1594,11 @@ blocks:
         commands:
           - checkout && cd plumber/gofer_client
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "GoferClient: \U0001F6E1️ Deployment Preconditions"
+  - name: "GoferClient: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in('/plumber/gofer_client', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1604,10 +1610,10 @@ blocks:
         commands:
           - checkout && cd plumber/gofer_client
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
   - name: "GoferClient: QA"
@@ -1625,13 +1631,13 @@ blocks:
           - checkout && cd plumber/gofer_client
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        #- name: "\U0001F9EA Credo"
+        #- name: "Credo"
         #  commands:
         #    - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="GoferClient Tests"
             - make test.ex
@@ -1651,11 +1657,11 @@ blocks:
         commands:
           - checkout && cd plumber/block
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Blocks: \U0001F6E1️ Deployment Preconditions"
+  - name: "Blocks: Deployment Preconditions"
     dependencies: []
     run:
       when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1664,13 +1670,13 @@ blocks:
         commands:
           - checkout && cd plumber/block
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-  - name: "Blocks: \U0001F9EA QA"
+  - name: "Blocks: QA"
     dependencies: ["Blocks: Provision Test Image"]
     run:
       when: "change_in(['/plumber/block', '/plumber/job_matrix', '/plumber/looper'], {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1685,13 +1691,13 @@ blocks:
           - checkout && cd plumber/block
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Plumber Tests"
             - make test.ex
@@ -1712,7 +1718,7 @@ blocks:
           - checkout && cd plumber/block
           - make build
       jobs:
-        - name: "\U0001F9EA Integration Test"
+        - name: "Integration Test"
           commands:
             - export TEST_RESULTS_NAME="Blocks Integration Tests"
             - make task_api.run
@@ -1732,7 +1738,7 @@ blocks:
         commands:
           - checkout && cd plumber/repo_proxy_ref
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
@@ -1752,7 +1758,7 @@ blocks:
         commands:
           - checkout && cd plumber/ppl
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
@@ -1770,11 +1776,11 @@ blocks:
         commands:
           - checkout && cd plumber/ppl
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make build
             - make push
-  - name: "Ppl: \U0001F6E1️ Deployment Preconditions"
+  - name: "Ppl: Deployment Preconditions"
     dependencies: ["Ppl: Provision Prod Image"]
     run:
       when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1788,13 +1794,13 @@ blocks:
         commands:
           - checkout && cd plumber/ppl
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
@@ -1813,13 +1819,13 @@ blocks:
           - checkout && cd plumber/ppl
           - make build
       jobs:
-        #- name: "\U0001F9EA Lint"
+        #- name: "Lint"
         #  commands:
         #    - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Plumber Tests"
             - make test.ex
@@ -1844,7 +1850,7 @@ blocks:
           - checkout && cd plumber/ppl
           - make build
       jobs:
-        - name: "\U0001F9EA Integration Test"
+        - name: "Integration Test"
           commands:
             - export TEST_RESULTS_NAME="Plumber Integration Tests"
             - make repo_proxy.run
@@ -1852,7 +1858,7 @@ blocks:
             - TEST_FLAGS="--only integration" make test.ex
           parallelism: 4
   # Pre-flight Checks
-  - name: "Pre-flight Checks: \U0001F4CB Provision Test Image"
+  - name: "Pre-flight Checks: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1866,11 +1872,11 @@ blocks:
         commands:
           - checkout && cd ee/pre_flight_checks
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Pre-flight Checks: \U0001F4CB Provision Prod Image"
+  - name: "Pre-flight Checks: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1884,13 +1890,13 @@ blocks:
         commands:
           - checkout && cd ee/pre_flight_checks
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Pre-flight Checks: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Pre-flight Checks: \U0001F4CB Provision Prod Image"]
+  - name: "Pre-flight Checks: Deployment Preconditions"
+    dependencies: ["Pre-flight Checks: Provision Prod Image"]
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1906,18 +1912,18 @@ blocks:
           - checkout && cd ee/pre_flight_checks
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Pre-flight Checks: \U0001F9EA QA"
-    dependencies: ["Pre-flight Checks: \U0001F4CB Provision Test Image"]
+  - name: "Pre-flight Checks: QA"
+    dependencies: ["Pre-flight Checks: Provision Test Image"]
     run:
       when: "change_in('/ee/pre_flight_checks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1931,19 +1937,19 @@ blocks:
           - checkout && cd ee/pre_flight_checks
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Pre-flight Checks Tests"
             - make test.ex
           parallelism: 2
   # Projecthub
-  - name: "ProjectHub: \U0001F4CB Provision Test Image"
+  - name: "ProjectHub: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1957,11 +1963,11 @@ blocks:
         commands:
           - checkout && cd projecthub
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "ProjectHub: \U0001F4CB Provision Prod Image"
+  - name: "ProjectHub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -1975,13 +1981,13 @@ blocks:
         commands:
           - checkout && cd projecthub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "ProjectHub: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["ProjectHub: \U0001F4CB Provision Prod Image"]
+  - name: "ProjectHub: Deployment Preconditions"
+    dependencies: ["ProjectHub: Provision Prod Image"]
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -1997,18 +2003,18 @@ blocks:
           - checkout && cd projecthub
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "ProjectHub: \U0001F9EA QA"
-    dependencies: ["ProjectHub: \U0001F4CB Provision Test Image"]
+  - name: "ProjectHub: QA"
+    dependencies: ["ProjectHub: Provision Test Image"]
     run:
       when: "change_in('/projecthub/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2022,17 +2028,17 @@ blocks:
           - checkout && cd projecthub
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Projecthub-rest-api
-  - name: "ProjectHub REST API: \U0001F4CB Provision Test Image"
+  - name: "ProjectHub REST API: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2046,11 +2052,11 @@ blocks:
         commands:
           - checkout && cd projecthub-rest-api
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "ProjectHub REST API: \U0001F4CB Provision Prod Image"
+  - name: "ProjectHub REST API: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2064,13 +2070,13 @@ blocks:
         commands:
           - checkout && cd projecthub-rest-api
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "ProjectHub REST API: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["ProjectHub REST API: \U0001F4CB Provision Prod Image"]
+  - name: "ProjectHub REST API: Deployment Preconditions"
+    dependencies: ["ProjectHub REST API: Provision Prod Image"]
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2086,18 +2092,18 @@ blocks:
           - checkout && cd projecthub-rest-api
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "ProjectHub REST API: \U0001F9EA QA"
-    dependencies: ["ProjectHub REST API: \U0001F4CB Provision Test Image"]
+  - name: "ProjectHub REST API: QA"
+    dependencies: ["ProjectHub REST API: Provision Test Image"]
     run:
       when: "change_in('/projecthub-rest-api/', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2111,17 +2117,17 @@ blocks:
           - checkout && cd projecthub-rest-api
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Public-api-gateway
-  - name: "public-api-gateway: \U0001F4CB Provision Prod Image"
+  - name: "public-api-gateway: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2135,13 +2141,13 @@ blocks:
         commands:
           - checkout && cd public-api-gateway
       jobs:
-        - name: "\U0001F5BC Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "public-api-gateway: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
+  - name: "public-api-gateway: Deployment Preconditions"
+    dependencies: ["public-api-gateway: Provision Prod Image"]
     run:
       when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2157,18 +2163,18 @@ blocks:
           - checkout && cd public-api-gateway
           - make pull
       jobs:
-        - name: "\U0001F6E1 Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
-        - name: "\U0001F6E1 Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1 Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "public-api-gateway: \U0001F9EA QA"
-    dependencies: ["public-api-gateway: \U0001F4CB Provision Prod Image"]
+  - name: "public-api-gateway: QA"
+    dependencies: ["public-api-gateway: Provision Prod Image"]
     run:
       when: "change_in('/public-api-gateway', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2182,14 +2188,14 @@ blocks:
           - checkout && cd public-api-gateway
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # Repohub
-  - name: "Repohub: \U0001F4CB Provision Prod Image"
+  - name: "Repohub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2203,13 +2209,13 @@ blocks:
         commands:
           - checkout && cd repohub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Repohub: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
+  - name: "Repohub: Deployment Preconditions"
+    dependencies: ["Repohub: Provision Prod Image"]
     run:
       when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2225,18 +2231,18 @@ blocks:
           - checkout && cd repohub
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Repohub: \U0001F9EA QA"
-    dependencies: ["Repohub: \U0001F4CB Provision Prod Image"]
+  - name: "Repohub: QA"
+    dependencies: ["Repohub: Provision Prod Image"]
     run:
       when: "change_in('/repohub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2252,15 +2258,15 @@ blocks:
           - checkout && cd repohub
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test.go
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # RBAC CE
-  - name: "RBAC CE: \U0001F4CB Provision Test Image"
+  - name: "RBAC CE: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2274,11 +2280,11 @@ blocks:
         commands:
           - checkout && cd rbac/ce
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "RBAC CE: \U0001F4CB Provision Prod Image"
+  - name: "RBAC CE: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2292,13 +2298,13 @@ blocks:
         commands:
           - checkout && cd rbac/ce
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "RBAC CE: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["RBAC CE: \U0001F4CB Provision Prod Image"]
+  - name: "RBAC CE: Deployment Preconditions"
+    dependencies: ["RBAC CE: Provision Prod Image"]
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2314,18 +2320,18 @@ blocks:
           - checkout && cd rbac/ce
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "RBAC CE: \U0001F9EA QA"
-    dependencies: ["RBAC CE: \U0001F4CB Provision Test Image"]
+  - name: "RBAC CE: QA"
+    dependencies: ["RBAC CE: Provision Test Image"]
     run:
       when: "change_in('/rbac/ce', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2339,19 +2345,19 @@ blocks:
           - checkout && cd rbac/ce
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="RBAC CE Tests"
             - make test.ex
           parallelism: 2
   # RBAC EE
-  - name: "RBAC EE: \U0001F4CB Provision Test Image"
+  - name: "RBAC EE: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2365,11 +2371,11 @@ blocks:
         commands:
           - checkout && cd ee/rbac
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "RBAC EE: \U0001F4CB Provision Prod Image"
+  - name: "RBAC EE: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2383,13 +2389,13 @@ blocks:
         commands:
           - checkout && cd ee/rbac
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "RBAC EE: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["RBAC EE: \U0001F4CB Provision Prod Image"]
+  - name: "RBAC EE: Deployment Preconditions"
+    dependencies: ["RBAC EE: Provision Prod Image"]
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2405,18 +2411,18 @@ blocks:
           - checkout && cd ee/rbac
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "RBAC EE: \U0001F9EA QA"
-    dependencies: ["RBAC EE: \U0001F4CB Provision Test Image"]
+  - name: "RBAC EE: QA"
+    dependencies: ["RBAC EE: Provision Test Image"]
     run:
       when: "change_in('/ee/rbac', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2430,27 +2436,23 @@ blocks:
           - checkout && cd ee/rbac
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="RBAC EE Tests"
             - make test.ex
           parallelism: 2
   # RepositoryHub
-  - name: "\U0001F4CB RepositoryHub Provision Test Image"
+  - name: "RepositoryHub Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2465,19 +2467,15 @@ blocks:
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "\U0001F4CB RepositoryHub Provision Prod Image"
+  - name: "RepositoryHub Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2492,20 +2490,16 @@ blocks:
           - echo $SEMAPHORE_REGISTRY_PASSWORD | docker login --username "$SEMAPHORE_REGISTRY_USERNAME" --password-stdin $SEMAPHORE_REGISTRY_HOST
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "\U0001F4CB RepositoryHub Deployment Preconditions"
-    dependencies: ["\U0001F4CB RepositoryHub Provision Prod Image"]
+  - name: "RepositoryHub Deployment Preconditions"
+    dependencies: ["RepositoryHub Provision Prod Image"]
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2522,25 +2516,21 @@ blocks:
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "\U0001F9EA RepositoryHub QA"
-    dependencies: ["\U0001F4CB RepositoryHub Provision Test Image"]
+  - name: "RepositoryHub: QA"
+    dependencies: ["RepositoryHub Provision Test Image"]
     run:
       when: "change_in('/repository_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
-      agent:
-        machine:
-          type: e2-standard-2
-          os_image: ubuntu2004
       secrets:
         - name: semreg-semaphoredev-credentials
       env_vars:
@@ -2555,17 +2545,17 @@ blocks:
           - export REGISTRY_HOST=$SEMAPHORE_REGISTRY_HOST
           - make pull
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Loghub2
-  - name: "Loghub2: \U0001F4CB Provision Prod Image"
+  - name: "Loghub2: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2579,13 +2569,13 @@ blocks:
         commands:
           - checkout && cd loghub2
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Loghub2: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
+  - name: "Loghub2: Deployment Preconditions"
+    dependencies: ["Loghub2: Provision Prod Image"]
     run:
       when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2601,18 +2591,18 @@ blocks:
           - checkout && cd loghub2
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Loghub2: \U0001F9EA QA"
-    dependencies: ["Loghub2: \U0001F4CB Provision Prod Image"]
+  - name: "Loghub2: QA"
+    dependencies: ["Loghub2: Provision Prod Image"]
     run:
       when: "change_in('/loghub2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2626,15 +2616,15 @@ blocks:
           - checkout && cd loghub2
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # Encryptor
-  - name: "Encryptor: \U0001F4CB Provision Prod Image"
+  - name: "Encryptor: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2648,13 +2638,13 @@ blocks:
         commands:
           - checkout && cd encryptor
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Encryptor: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
+  - name: "Encryptor: Deployment Preconditions"
+    dependencies: ["Encryptor: Provision Prod Image"]
     run:
       when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2670,18 +2660,18 @@ blocks:
           - checkout && cd encryptor
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Encryptor: \U0001F9EA QA"
-    dependencies: ["Encryptor: \U0001F4CB Provision Prod Image"]
+  - name: "Encryptor: QA"
+    dependencies: ["Encryptor: Provision Prod Image"]
     run:
       when: "change_in('/encryptor', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2695,15 +2685,15 @@ blocks:
           - checkout && cd encryptor
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # Bootstrapper
-  - name: "Bootstrapper: \U0001F4CB Provision Prod Image"
+  - name: "Bootstrapper: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2717,13 +2707,13 @@ blocks:
         commands:
           - checkout && cd bootstrapper
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Bootstrapper: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
+  - name: "Bootstrapper: Deployment Preconditions"
+    dependencies: ["Bootstrapper: Provision Prod Image"]
     run:
       when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2739,18 +2729,18 @@ blocks:
           - checkout && cd bootstrapper
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated"'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Bootstrapper: \U0001F9EA QA"
-    dependencies: ["Bootstrapper: \U0001F4CB Provision Prod Image"]
+  - name: "Bootstrapper: QA"
+    dependencies: ["Bootstrapper: Provision Prod Image"]
     run:
       when: "change_in('/bootstrapper', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2764,15 +2754,15 @@ blocks:
           - checkout && cd bootstrapper
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
 
   # Self Hosted Hub
-  - name: "Self-Hosted-Hub: \U0001F4CB Provision Prod Image"
+  - name: "Self-Hosted-Hub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2786,13 +2776,13 @@ blocks:
         commands:
           - checkout && cd self_hosted_hub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Self-Hosted-Hub: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
+  - name: "Self-Hosted-Hub: Deployment Preconditions"
+    dependencies: ["Self-Hosted-Hub: Provision Prod Image"]
     run:
       when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2808,18 +2798,18 @@ blocks:
           - checkout && cd self_hosted_hub
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Self-Hosted-Hub: \U0001F9EA QA"
-    dependencies: ["Self-Hosted-Hub: \U0001F4CB Provision Prod Image"]
+  - name: "Self-Hosted-Hub: QA"
+    dependencies: ["Self-Hosted-Hub: Provision Prod Image"]
     run:
       when: "change_in('/self_hosted_hub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2833,15 +2823,15 @@ blocks:
           - checkout && cd self_hosted_hub
           - make build
       jobs:
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
   # Secrethub
-  - name: "Secrethub: \U0001F4CB Provision Test Image"
+  - name: "Secrethub: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2855,11 +2845,11 @@ blocks:
         commands:
           - checkout && cd secrethub
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Secrethub: \U0001F4CB Provision Prod Image"
+  - name: "Secrethub: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2873,13 +2863,13 @@ blocks:
         commands:
           - checkout && cd secrethub
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Secrethub: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Secrethub: \U0001F4CB Provision Prod Image"]
+  - name: "Secrethub: Deployment Preconditions"
+    dependencies: ["Secrethub: Provision Prod Image"]
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2895,18 +2885,18 @@ blocks:
           - checkout && cd secrethub
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-files "deps/grpc/Dockerfile,deps/sys2app/Dockerfile"'
-  - name: "Secrethub: \U0001F9EA QA"
-    dependencies: ["Secrethub: \U0001F4CB Provision Test Image"]
+  - name: "Secrethub: QA"
+    dependencies: ["Secrethub: Provision Test Image"]
     run:
       when: "change_in('/secrethub', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2920,17 +2910,17 @@ blocks:
           - checkout && cd secrethub
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # Notifications
-  - name: "Notifications: \U0001F4CB Provision Test Image"
+  - name: "Notifications: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2944,11 +2934,11 @@ blocks:
         commands:
           - checkout && cd notifications
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Notifications: \U0001F4CB Provision Prod Image"
+  - name: "Notifications: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -2962,13 +2952,13 @@ blocks:
         commands:
           - checkout && cd notifications
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Notifications: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Notifications: \U0001F4CB Provision Prod Image"]
+  - name: "Notifications: Deployment Preconditions"
+    dependencies: ["Notifications: Provision Prod Image"]
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -2984,18 +2974,18 @@ blocks:
           - checkout && cd notifications
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Notifications: \U0001F9EA QA"
-    dependencies: ["Notifications: \U0001F4CB Provision Test Image"]
+  - name: "Notifications: QA"
+    dependencies: ["Notifications: Provision Test Image"]
     run:
       when: "change_in('/notifications', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3009,19 +2999,19 @@ blocks:
           - checkout && cd notifications
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Notifications Tests"
             - make test.ex
           parallelism: 2
   # Public-api-v1alpha (plumber-public)
-  - name: "APIv1alpha: \U0001F4CB Provision Test Image"
+  - name: "APIv1alpha: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3035,11 +3025,11 @@ blocks:
         commands:
           - checkout && cd public-api/v1alpha
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "APIv1alpha: \U0001F4CB Provision Prod Image"
+  - name: "APIv1alpha: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3053,13 +3043,13 @@ blocks:
         commands:
           - checkout && cd public-api/v1alpha
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "APIv1alpha: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["APIv1alpha: \U0001F4CB Provision Prod Image"]
+  - name: "APIv1alpha: Deployment Preconditions"
+    dependencies: ["APIv1alpha: Provision Prod Image"]
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3075,18 +3065,18 @@ blocks:
           - checkout && cd public-api/v1alpha
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "APIv1alpha: \U0001F9EA QA"
-    dependencies: ["APIv1alpha: \U0001F4CB Provision Test Image"]
+  - name: "APIv1alpha: QA"
+    dependencies: ["APIv1alpha: Provision Test Image"]
     run:
       when: "change_in('/public-api/v1alpha', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3100,17 +3090,17 @@ blocks:
           - checkout && cd public-api/v1alpha
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.ex
   # APIv2
-  - name: "APIv2: \U0001F4CB Provision Test Image"
+  - name: "APIv2: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3124,11 +3114,11 @@ blocks:
         commands:
           - checkout && cd public-api/v2
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "APIv2: \U0001F4CB Provision Prod Image"
+  - name: "APIv2: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3142,13 +3132,13 @@ blocks:
         commands:
           - checkout && cd public-api/v2
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "APIv2: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["APIv2: \U0001F4CB Provision Prod Image"]
+  - name: "APIv2: Deployment Preconditions"
+    dependencies: ["APIv2: Provision Prod Image"]
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3165,18 +3155,18 @@ blocks:
           - sem-version ruby 3.3
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "APIv2: \U0001F9EA QA"
-    dependencies: ["APIv2: \U0001F4CB Provision Test Image"]
+  - name: "APIv2: QA"
+    dependencies: ["APIv2: Provision Test Image"]
     run:
       when: "change_in('/public-api/v2', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3190,13 +3180,13 @@ blocks:
           - checkout && cd public-api/v2
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="APIv2 Tests"
             - make test.ex
@@ -3266,7 +3256,7 @@ blocks:
             - make lint-root
             - make unit.test
   # Github Hooks
-  - name: "Github Hooks: \U0001F4CB Provision Test Image"
+  - name: "Github Hooks: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3280,12 +3270,12 @@ blocks:
         commands:
           - checkout && cd github_hooks
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Github Hooks: \U0001F4CB Provision Prod Image"
+  - name: "Github Hooks: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3299,13 +3289,13 @@ blocks:
         commands:
           - checkout && cd github_hooks
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Github Hooks: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Github Hooks: \U0001F4CB Provision Prod Image"]
+  - name: "Github Hooks: Deployment Preconditions"
+    dependencies: ["Github Hooks: Provision Prod Image"]
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3321,18 +3311,18 @@ blocks:
           - checkout && cd github_hooks
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ruby.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ruby.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Github Hooks: \U0001F9EA QA"
-    dependencies: ["Github Hooks: \U0001F4CB Provision Test Image"]
+  - name: "Github Hooks: QA"
+    dependencies: ["Github Hooks: Provision Test Image"]
     run:
       when: "change_in('/github_hooks', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3346,15 +3336,15 @@ blocks:
           - checkout && cd github_hooks
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ruby
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Monolith Tests"
             - make test.ruby
   # Statsd
-  - name: "statsd: \U0001F4CB Provision Prod Image"
+  - name: "statsd: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3374,8 +3364,8 @@ blocks:
             - make pull
             - make build
             - make push
-  - name: "statsd: \U0001F6E1️ Security Checks"
-    dependencies: ["statsd: \U0001F4CB Provision Prod Image"]
+  - name: "statsd: Security Checks"
+    dependencies: ["statsd: Provision Prod Image"]
     run:
       when: "change_in('/statsd', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3390,19 +3380,19 @@ blocks:
           - sem-version ruby 2.7
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - export PATH=$PATH:/home/semaphore/.local/bin
             - make check.js.code
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.js.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker CHECK_DOCKER_OPTS='--skip-dirs node_modules'
   # Velocity
-  - name: "Velocity: \U0001F4CB Provision Prod Image"
+  - name: "Velocity: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3416,13 +3406,13 @@ blocks:
         commands:
           - checkout && cd ee/velocity
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Velocity: \U0001F6E1 Deployment Preconditions"
-    dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
+  - name: "Velocity: Deployment Preconditions"
+    dependencies: ["Velocity: Provision Prod Image"]
     run:
       when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3438,18 +3428,18 @@ blocks:
           - checkout && cd ee/velocity
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.go.code CHECK_CODE_OPTS='--config-options "-exclude-generated" --ignores G115'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.go.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Velocity: \U0001F9EA QA"
-    dependencies: ["Velocity: \U0001F4CB Provision Prod Image"]
+  - name: "Velocity: QA"
+    dependencies: ["Velocity: Provision Prod Image"]
     run:
       when: "change_in('/ee/velocity', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3463,15 +3453,15 @@ blocks:
           - checkout && cd ee/velocity
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make lint
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - make test.setup
             - make test
   # Zebra
-  - name: "Zebra: \U0001F4CB Provision Test Image"
+  - name: "Zebra: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3485,11 +3475,11 @@ blocks:
         commands:
           - checkout && cd zebra
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Zebra: \U0001F4CB Provision Prod Image"
+  - name: "Zebra: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3503,13 +3493,13 @@ blocks:
         commands:
           - checkout && cd zebra
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Zebra: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Zebra: \U0001F4CB Provision Prod Image"]
+  - name: "Zebra: Deployment Preconditions"
+    dependencies: ["Zebra: Provision Prod Image"]
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3525,18 +3515,18 @@ blocks:
           - checkout && cd zebra
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS,Config.CSP'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps CHECK_DEPS_OPTS='--ignore-packages phoenix,phoenix_html'
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Zebra: \U0001F9EA QA"
-    dependencies: ["Zebra: \U0001F4CB Provision Test Image"]
+  - name: "Zebra: QA"
+    dependencies: ["Zebra: Provision Test Image"]
     run:
       when: "change_in('/zebra', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3550,13 +3540,13 @@ blocks:
           - checkout && cd zebra
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Zebra Tests"
             - make test.ex
@@ -3608,7 +3598,7 @@ blocks:
         - name: Build
           commands:
             - make build
-  - name: "Scouter: \U0001F4CB Provision Test Image"
+  - name: "Scouter: Provision Test Image"
     dependencies: []
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3622,11 +3612,11 @@ blocks:
         commands:
           - checkout && cd scouter
       jobs:
-        - name: "\U0001F5BC️ Build test image"
+        - name: "Build test image"
           commands:
             - make build
             - make push
-  - name: "Scouter: \U0001F4CB Provision Prod Image"
+  - name: "Scouter: Provision Prod Image"
     dependencies: []
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3640,13 +3630,13 @@ blocks:
         commands:
           - checkout && cd scouter
       jobs:
-        - name: "\U0001F5BC️ Build prod image"
+        - name: "Build prod image"
           commands:
             - make pull
             - make build
             - make push
-  - name: "Scouter: \U0001F6E1️ Deployment Preconditions"
-    dependencies: ["Scouter: \U0001F4CB Provision Prod Image"]
+  - name: "Scouter: Deployment Preconditions"
+    dependencies: ["Scouter: Provision Prod Image"]
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3662,18 +3652,18 @@ blocks:
           - checkout && cd scouter
           - make pull
       jobs:
-        - name: "\U0001F6E1️ Check code"
+        - name: "Check code"
           commands:
             - make check.ex.code CHECK_CODE_OPTS='--ignores Config.HTTPS'
-        - name: "\U0001F6E1️ Check dependencies"
+        - name: "Check dependencies"
           commands:
             - make check.ex.deps
-        - name: "\U0001F6E1️ Check docker"
+        - name: "Check docker"
           commands:
             - make build
             - make check.docker
-  - name: "Scouter: \U0001F9EA QA"
-    dependencies: ["Scouter: \U0001F4CB Provision Test Image"]
+  - name: "Scouter: QA"
+    dependencies: ["Scouter: Provision Test Image"]
     run:
       when: "change_in('/scouter', {pipeline_file: 'ignore', default_branch: 'main'})"
     task:
@@ -3687,17 +3677,17 @@ blocks:
           - checkout && cd scouter
           - make build
       jobs:
-        - name: "\U0001F9EA Lint"
+        - name: "Lint"
           commands:
             - make format.ex
-        - name: "\U0001F9EA Credo"
+        - name: "Credo"
           commands:
             - make lint.ex
-        - name: "\U0001F9EA Test"
+        - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Scouter Tests"
             - make test.ex
-  - name: feature_provider - tests
+  - name: "Feature Provider: QA"
     dependencies: []
     run:
       when: "change_in('/feature_provider', {pipeline_file: 'ignore', default_branch: 'main'})"
@@ -3830,4 +3820,3 @@ promotions:
             - ee
           default_value: ce
           description: "The edition of Semaphore to install - Community (ce) or Enterprise (ee)."
-

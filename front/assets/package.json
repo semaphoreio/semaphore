@@ -3,8 +3,8 @@
   "license": "MIT",
   "scripts": {
     "lint": "eslint .",
-    "lint.junit": "eslint . --format junit -o ../out/lint-js-junit-report.xml",
-    "tsc.check": "tsc --noEmit | npx typescript-xunit-xml | tee ../out/compile-ts-junit-report.xml",
+    "lint.junit": "eslint . --format junit -o ../out/test-reports.xml",
+    "tsc.check": "tsc --noEmit | npx typescript-xunit-xml | tee ../out/test-reports.xml",
     "test": "mocha .",
     "watch": "mocha --reporter min --watch -watch-files **/*.ts .",
     "coverage": "nyc npm run test"
