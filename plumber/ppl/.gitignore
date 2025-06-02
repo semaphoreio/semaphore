@@ -29,4 +29,3 @@ log
 .tool-versions
 .elixir_ls
 .devcontainer
-out/
