@@ -6,10 +6,10 @@ class Policy::TrivyEOL < Policy
   end
 
   def test
-    if File.exist?("out/results.json")
+    if File.exist?("out/docker-scan-trivy.json")
       require 'json'
 
-      report = JSON.parse(File.read("out/results.json"))
+      report = JSON.parse(File.read("out/docker-scan-trivy.json"))
 
       eol_detected = report.dig("Metadata", "OS", "EOSL") == true
       os_name = report.dig("Metadata", "OS", "Name") || "unknown"
@@ -38,7 +38,7 @@ class Policy::TrivyEOL < Policy
         report["Results"] << eol_result
       end
 
-      File.write("out/results.json", JSON.pretty_generate(report))
+      File.write("out/docker-scan-trivy.json", JSON.pretty_generate(report))
 
       if eol_detected
         @output = "FAIL: #{os_family} #{os_name} is End of Life (EOL)"
@@ -48,7 +48,7 @@ class Policy::TrivyEOL < Policy
         return true
       end
     else
-      @output = "ERROR: Failed to find results.json"
+      @output = "ERROR: Failed to find docker-scan-trivy.json"
       return false
     end
   rescue => e
