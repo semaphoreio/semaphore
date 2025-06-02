@@ -39,4 +39,8 @@ class System
       raise "unknwown os version"
     end
   end
+
+  def self.prepare_directory(dir)
+    Dir.mkdir dir unless File.exist? dir
+  end
 end

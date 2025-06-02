@@ -19,7 +19,7 @@ export MAIN_IMAGE?=$(APP_NAME)/main
 
 APP_DIRECTORY=.
 ifeq ($(CI),)
-	APP_DIRECTORY?=/app
+	APP_DIRECTORY=/app
 endif
 
 #
@@ -86,7 +86,8 @@ ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
 check.code:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
@@ -106,7 +107,8 @@ check.js.code:
 
 check.deps:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
@@ -126,14 +128,37 @@ check.js.deps:
 
 check.docker:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY); $(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
 else
 	# ruby version is set in prologue
-	$(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+endif
+
+check.generate-report:
+ifeq ($(CI),)
+	docker run -it \
+		-v $$(pwd):/app \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		registry.semaphoreci.com/ruby:3 \
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/report out $(APP_NAME)'
+else
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/report out $(APP_NAME)
+endif
+
+check.generate-global-report:
+ifeq ($(CI),)
+	docker run -it \
+		-v $$(pwd):/app \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		registry.semaphoreci.com/ruby:3 \
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/global-report out out'
+else
+	cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/global-report out out
 endif
 
 #
