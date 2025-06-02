@@ -75,8 +75,9 @@ config :block, beholder_task_sleep_period_sec: 1
 config :block, beholder_task_threshold_sec: -2
 
 config :junit_formatter,
+  automatic_create_dir?: true,
   report_dir: "./out",
-  report_file: "results.xml",
+  report_file: "test-reports.xml",
   print_report_file: true,
   include_filename?: true,
   include_file_line?: true
