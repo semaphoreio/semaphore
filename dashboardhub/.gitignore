@@ -23,4 +23,3 @@ erl_crash.dump
 dashboardhub-*.tar
 
 .elixir_ls
-junit.xml

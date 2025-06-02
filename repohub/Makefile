@@ -13,10 +13,10 @@ lint: build
 	docker-compose run --rm app revive -formatter friendly -config lint.toml ./...
 
 test.go: build
-	docker-compose run --rm app gotestsum --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 test.watch: build
-	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 test.bench: build
 	docker-compose run --rm app go test -v ./pkg/publicapi -bench=. -benchmem -run Benchmark__PullJSONLogsFromRedis -memprofile memprofile.out
@@ -58,4 +58,3 @@ db.migrate:
 	# echo dump schema to db/structure.sql
 	docker-compose run --user $$(id -u):$$(id -g) -e PGPASSWORD=$(DB_PASSWORD) app bash -c "pg_dump --schema-only --no-privileges --no-owner -h db -p 5432 -U postgres -d $(DB_NAME)" > db/structure.sql
 	docker-compose run --user $$(id -u):$$(id -g) -e PGPASSWORD=$(DB_PASSWORD) app bash -c "pg_dump --data-only --table schema_migrations -h db -p 5432 -U postgres -d $(DB_NAME)" >> db/structure.sql
-
