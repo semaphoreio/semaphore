@@ -11,8 +11,6 @@ import VideoTutorial from '@site/src/components/VideoTutorial';
 
 This page describes how [OpenID Connect (OIDC)](../using-semaphore/openid) tokens are generated.
 
-<Available plans={['Scaleup']}/>
-
 ## Reference
 
 Semaphore generates a unique OIDC token for every job. The token is injected into the job environment as a variable named `SEMAPHORE_OIDC_TOKEN`.

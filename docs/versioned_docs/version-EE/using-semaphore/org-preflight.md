@@ -3,15 +3,13 @@ description: Run custom commands before pipelines start
 title: Preflight Checks
 ---
 
-# Preflight Checks for Organizations
+# Preflight Checks
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 import Steps from '@site/src/components/Steps';
-
-<Available plans={['Scaleup']}/>
 
 Pre-flight checks are user-defined commands executed before the pipeline begins as part of the [pipeline initialization job](./pipelines#init-job). This page explains how to use this feature and shows some examples.
 
@@ -23,7 +21,7 @@ Pre-flight checks cause Semaphore to run an [initialization job](./pipelines#ini
 
 ## Overview
 
-Pre-flight checks are user-defined commands that are executed for every pipeline in your organization before it begins its normal workflow. Pre-flight checks run during the pipeline initialization job. 
+Pre-flight checks are user-defined commands that are executed for every pipeline in your Semaphore instance before it begins its normal workflow. Pre-flight checks run during the pipeline initialization job. 
 
 Their purpose is to provide users with a way to manually define commands before the execution of a pipeline. For example:
 
@@ -45,7 +43,7 @@ To access the organization's pre-flight checks, follow these steps:
 
 <Steps>
 
-1. Open the [organization settings](./organizations#org-settings)
+1. Open the [server settings](./organizations#org-settings)
 2. Select **Initialization jobs**
 3. Scroll down to **Pre-flight checks**
 4. Type the commands you wish to run during initialization

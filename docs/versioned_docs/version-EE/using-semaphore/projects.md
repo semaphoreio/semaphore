@@ -12,7 +12,7 @@ import Steps from '@site/src/components/Steps';
 
 Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphoreci.com/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 
-This page explains how to set up projects and what settings are available. Before you can create a project you must connect Semaphore to [GitHub](./connect-github) or [BitBucket](./connect-bitbucket).
+This page explains how to set up projects and what settings are available.
 
 ## Create a project {#create-project}
 
@@ -20,12 +20,12 @@ This page explains how to set up projects and what settings are available. Befor
 
 To create a Semaphore project you need:
 
-- A [Semaphore installation](../getting-started/install)
-- A GitHub or Bitbucket account
-- A repository with at least one commit
-- Set up Semaphore to connect to your repositories:
+- A [Semaphore](https://semaphoreci.com) account with an [server](./organizations.md)
+- A GitHub, BitBucket, GitLab, or private Git server account. For more information, see the connection guides
   - [How to connect to GitHub](./connect-github)
   - [How to connect to Bitbucket](./connect-bitbucket)
+  - [How to connect to GitLab](./connect-bitbucket)
+- A repository with at least one commit
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
@@ -120,14 +120,21 @@ Semaphore shows the latest activity in the last few days when logging in.
 </TabItem>
 <TabItem value="cli" label="CLI">
 
-To get the list of the projects in your server, run [sem get](../reference/semaphore-cli) to list your projects:
+To get the list of the projects in your server:
 
-```shell
-$ sem get project
-NAME                                 REPOSITORY
-semaphore-demo-flutter               git@github.com:semaphoreci-demos/semaphore-demo-flutter.git
-hello-semaphore                      git@github.com:semaphoreci-demos/hello-semaphore.git
-```
+<Steps>
+
+1. If needed, [switch the context](./organizations#org-selection) to your server
+2. Run [sem get](../reference/semaphore-cli) to list your projects
+
+    ```shell
+    $ sem get project
+    NAME                                 REPOSITORY
+    semaphore-demo-flutter               git@github.com:semaphoreci-demos/semaphore-demo-flutter.git
+    hello-semaphore                      git@github.com:semaphoreci-demos/hello-semaphore.git
+    ```
+
+</Steps>
 
 </TabItem>
 </Tabs>
@@ -142,7 +149,7 @@ The following actions in the repository can trigger Semaphore to start the proje
 - Pushing Git tags
 - Creating pull requests from the same repository
 - Creating pull requests originating from a forked repository
-- Updating any of the project's pipelines using the [visual editor](./workflows#workflow-editor)
+- Updating any of the project's pipelines using the [visual editor](./jobs#workflow editor)
 - Pressing the Run button on the Semaphore website
 - Request a re-run using the [Semaphore API](../reference/api)
 - Scheduling workflows [using Tasks](./tasks)
@@ -166,8 +173,11 @@ Instead of pushing the HEAD commit to the pull request, Semaphore uses the MERGE
 Project members can view or manage the following project elements:
 
 - **Activity**: shows the latest [pipeline](./pipelines) runs
+- **Deployments**: access the [project's environment](./promotions#deployment-targets) (formerly deployment targets)
+- **Insights**: shows the [insights](./insights)
 - **Artifacts**: shows the [project-level artifacts](./artifacts#projects) and [retention policy](./artifacts#retention)
 - **Tasks**: shows the [tasks](./tasks)
+- **Flaky Tests**: shows the [flaky tests](./tests/flaky-tests) detected in the project
 - **People**: shows or changes the [project members](#people)
 - **Settings**: shows the [project-level settings](#settings)
 
@@ -181,38 +191,31 @@ Users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can acce
 
 ### About project permissions {#about}
 
-TODO: does this apply to CE?
-
 Users can be granted access and permissions on a project by different means:
 
 - **Repository-level access**: Semaphore automatically syncs user permissions from GitHub. See [project roles](./rbac#project) to learn how repository permissions are mapped to project permissions
 - **Direct access**: users can be [directly added to and removed from the project](#manual). Their permissions are managed with [project roles](./rbac#project)
-- **Role access**: users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their server
+- **Role access**: users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their servers
+- **Group access**: [groups](./rbac#org-groups) can grant their members access to projects, provided the group itself has been given access to those projects
 
 ### How to manually add/remove members to projects {#manual}
 
-To add or remove a user from a project, follow these steps:
+Scaleup plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
 
 <Steps>
 
-1. Ensure the user is [already part of the Semaphore server](./organizations#add-people)
-2. Open your project
-3. Select the **People** tab
-4. Press **Add People**
-5. Type the names of the users to add
-6. Press **Add selected**
+1. Press **Add People**
+2. Select the user from the list of options
+3. Select the role
+4. Press **Add Selected**
 
     ![Adding a member to the project](./img/add-user-2.jpg)
 
 </Steps>
 
-- To remove the user from the project, press the **X** button next to the user.
+See [project roles](./rbac#project) for more information on what actions can each role perform.
 
 ### How to change permissions {#people-roles}
-
-<Available plans={['Scaleup']}/>
-
-TODO: check if we can manually change members permissions in projects in Semaphore (or if it musst go through the Git repo)
 
 Open your project and go to the **People** tab
 
@@ -240,6 +243,23 @@ Semaphore provides pre-defined roles for projects. You can see what actions each
 </Steps>
 
 The actions with enabled checkbox are allowed for that role.
+
+### How to create custom roles {#custom-roles}
+
+Create custom roles to give your users the precise permissions they need. 
+
+<Steps>
+
+1. Open the server **Settings** menu
+2. Select **Roles**
+3. On the **Project Roles** section, press **New Role**
+4. Give a name a description to the new role
+5. Enable the permissions allowed to the role. You can use the search box to narrow down options
+6. Press **Save changes**
+
+    ![Creating a project custom role](./img/project-custom-roles1.jpg)
+
+</Steps>
 
 ### How to change the project's owner {#owner-change}
 
@@ -270,6 +290,34 @@ In the general project settings, you can:
 
 ![General settings](./img/project-general-settings-1.jpg)
 
+### How to delete a project {#delete-project}
+
+:::danger
+
+Deleting a project is irreversible. All the pipelines, jobs, and artifacts associated with the project will be lost.
+
+:::
+
+Go to the general settings of your project and follow these steps:
+
+<Steps>
+
+1. At the bottom of the page, press "Proceed with caution" under **Delete project**
+
+    ![Delete a project link](./img/delete-project-link.jpg)
+
+2. Select a **Reason for deleting** the project
+
+    ![Deletion page for project](./img/delete-project-wizard.jpg)
+
+3. Optionally, you may leave some feedback
+4. Enter the name of the project to confirm the deletion
+5. Press **Delete project**
+
+</Steps>
+
+You may also delete a project using the [Semaphore CLI](../reference/semaphore-cli#sem-delete).
+
 ### Workflow triggers {#settings-triggers}
 
 See [workflow triggers](./workflows#project-triggers) to learn how to customize what actions trigger a workflow.
@@ -286,11 +334,9 @@ In **Repository** settings page you can:
 
 ### Project secrets {#project-secrets}
 
-In **Secrets** page, you can create project-level [secrets](./secrets.md). These are only accessible for this project and not globally to all the server.
+In **Secrets** page, you can create project-level [secrets](./secrets.md). These are only accessible for this project and not globally to all the servers.
 
 To learn how to create project secrets, see the [secrets documentation page](./secrets#create-project-secrets).
-
-<!-- new api: [API reference page](../openapi-spec/project-secrets-list) -->
 
 ### Badges {#badges}
 
@@ -312,13 +358,13 @@ To get a badge embed code:
 Badge URLs follow the following format for the "master" branch:
 
 ```text
-https://<semaphore-server-url>/badges/<PROJECT-NAME>.svg
+https://semaphore.example.com/badges/<PROJECT-NAME>.svg
 ```
 
 On other branches the format is:
 
 ```text
-https://<semaphore-server-url>/badges/<PROJECT-NAME>/branches/<BRANCH-NAME>.svg
+https://semaphore.example.com/badges/<PROJECT-NAME>/branches/<BRANCH-NAME>.svg
 ```
 
 The visual style of the badge can also be customized. There are two styles:
@@ -331,7 +377,7 @@ The visual style of the badge can also be customized. There are two styles:
 The Semaphore style is the default. To use shields style, add `?style=shields` to the URL. For example:
 
 ```text
-https://semaphore.<your-domain>/badges/<PROJECT-NAME>.svg?style=shields
+https://semaphore.example.com/badges/<PROJECT-NAME>.svg?style=shields
 ```
 
 ### Artifacts {#artifacts}
@@ -340,9 +386,60 @@ The **Artifacts** settings page lets you configure the [artifact](./artifacts) r
 
 To learn more, see the [artifacts retention page](./artifacts#retention)
 
+## Pre-flight checks {#preflight}
+
+Pre-flight checks are user-defined commands executed before the pipeline begins as part of the pipeline [initialization job](./pipelines#init-job). These checks allow you to define the type of agent running the initialization job and to manually run commands before a pipeline starts.
+
+:::note
+
+If you want to run commands for all pipelines in your server, see [server pre-flight checks](./org-preflight).
+
+:::
+
+### How to set up preflight checks {#preflight-add}
+
+To create, edit, or delete project pre-flight checks, follow these steps:
+
+<Steps>
+
+1. Open the project on Semaphore
+2. Go to the **Settings** tab
+3. Select **Pre-flight checks**
+4. Type the pre-flight commands
+5. Optionally, type the name of [secrets](./secrets) to be injected during the initialization job
+6. Press **Save changes**
+
+    ![Setting up pre-flight checks for project](./img/project-preflight.jpg)
+
+</Steps>
+
+See the [server pre-flight page](./org-preflight#env-vars) to learn about the available environment variables and see examples of pre-flight checks.
+
 ### How to change init agent {#init-agent}
 
-To change the agent that runs the initialization job, see [set initialization agent for job](./organizations#init-agent).
+You can change the agent in which the initialization and pre-flight commands run.
+
+To change the initialization for the project, follow these steps:
+
+
+<Steps>
+
+1. Go to the [Pre-flight settings page](#preflight-add)
+2. Check the box **Override default agent configuration**
+3. Select an **Environment type**
+4. Select a **Machine type**
+5. Select an **OS image**
+6. Press **Save changes**
+
+    ![Changing the initialization agent for the project](./img/override-project-init-agent.jpg)
+
+</Steps>
+
+:::note
+
+This setting overrides the [server-wide initialization agent](./organizations#init-agent).
+
+:::
 
 
 ## How to configure status checks {#status-checks}
@@ -432,7 +529,7 @@ If your repositories aren't showing in Semaphore or changes are not triggering n
 
 <Steps>
 
-1. Navigate to your Semaphore account menu
+1. Navigate to your [Semaphore account](https://me.semaphoreci.com/account)
 2. Read the status next to GitHub
     ![Connection status green](./img/account-gh-bb-access.jpg)
 3. If the status is disconnected, click on **Grant public access** or **Grant private access**
@@ -491,8 +588,6 @@ To fix the broken webhook, click on **Regenerate**. This should generate a new w
 
 ### Reconnecting moved or renamed projects
 
-TODO: when reconnecting a renamed project on Semaphore CE, how do we do it? On Cloud the user must contact support
-
 There are several actions that can break the connection between GitHub and Semaphore. For example:
 
 - moving the repository to a different location
@@ -500,15 +595,9 @@ There are several actions that can break the connection between GitHub and Semap
 - renaming the GitHub user account
 - renaming the GitHub organization
 
-When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphoreci.com) providing the following details:
-
-- Previous repository name and URL
-- New repository name and URL
-
-The Semaphore support team will relink the project to the new repository.
-
 ## See also
 
-- [How to manage Semaphore servers](./organizations.md)
+- [Organization pre-flight checks](./org-preflight)
+- [How to manage organizations](./organizations.md)
 - [How to configure test reports](./tests/test-reports)
 

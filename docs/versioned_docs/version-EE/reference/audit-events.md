@@ -9,8 +9,6 @@ import TabItem from '@theme/TabItem';
 import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 
-<Available plans={['Scaleup']}/>
-
 Each audit log entry shows applicable information about an event, such as:
 
 - Action that was performed

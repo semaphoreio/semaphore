@@ -88,7 +88,7 @@ A string with a user-supplied name for the job.
 - **Environment variable**: `SEMAPHORE_JOB_COUNT`
 - **Example**: 4
 
-Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism. 
+Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism.
 
 It can be used to configure a test partitioning strategy using a 3rd party test runner.
 
@@ -130,7 +130,14 @@ Describes why the current job was created. The possible values are:
 - `project_debug_job`: job created with [`sem debug project`](./semaphore-cli#sem-debug-project)
 - `debug_job`: job created with [`sem debug job`](./semaphore-cli#sem-debug)
 
-### Organization URL {#organization-url}
+### Block name {#block-name}
+
+- **Environment variable**: `SEMAPHORE_BLOCK_NAME`
+- **Example**: `Security checks`
+
+A string with a user-supplied block name.
+
+### Server URL {#organization-url}
 
 - **Environment variable**: `SEMAPHORE_ORGANIZATION_URL`
 - **Example**: `https://semaphore.example.com`
@@ -143,6 +150,24 @@ The URL for the server that owns the project running the current job.
 - **Example**: `ea3e6bba-d19a-45d7-86a0-e78a2301b616`
 
 The unique identifier for the current workflow. All jobs that belong to the same pipeline share the same ID.
+
+### Pipeline is promotion {#pipeline-promotion}
+
+- **Environment variable**: `SEMAPHORE_PIPELINE_PROMOTION`
+- **Example**: `true`
+
+Holds `true` when the pipeline was started due to a [promotion](../using-semaphore/promotions). It is always `false` for the initial pipeline that starts the workflow.
+
+### Pipeline promoted by {#pipeline-promoted-by}
+
+- **Environment variable**: `SEMAPHORE_PIPELINE_PROMOTED_BY`
+- **Example**: `torvalds`
+
+Determines the individual that promoted the pipeline. There are three possible cases:
+
+- **Initial pipelines**: the variable contains an empty string
+- **Manual promotions**: the GitHub or BitBucket username that manually promoted the pipeline
+- [Auto-promotions](../using-semaphore/promotions#automatic-promotions): the value is `auto-promotion`
 
 ### Pipeline is rerun {#pipeline-rerun}
 
@@ -193,7 +218,7 @@ Holds `true` if the workflow is a rerun of a previously-ran workflow.
 - **Environment variable**: `SEMAPHORE_WORKFLOW_TRIGGERED_BY`
 - **Example**: `torvalds`
 
-Determines the GitHub or BitBucket username for the individual who promoted the pipeline.
+Determines the GitHub or BitBucket username for the individual who ran the workflow.
 
 ### Workflow is triggered by API {#workflow-triggered-by-api}
 
@@ -486,7 +511,7 @@ The time that the pipeline spent in the queue is expressed in seconds.
 - **Environment variable**: `SEMAPHORE_PIPELINE_RESULT`
 - **Example**: `failed`, `passed`, `canceled`, `stopped`
 
-Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped` 
+Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped`
 
 ### Pipeline result reason {#pipeline-result-reason}
 
@@ -565,7 +590,7 @@ The URL to access the Semaphore Docker Registry.
 
 ## Initialization job variables {#init}
 
-This section describes the special variables available during the [initialization jobs](../using-semaphore/pipelines#init-job) in addition to the regular job environment variables explained above.
+This section describes the special variables available during the [initialization jobs](../using-semaphore/pipelines#init-job) and [pre-flight checks](../using-semaphore/org-preflight) in addition to the regular job environment variables explained above.
 
 ### Input file {#input-file}
 

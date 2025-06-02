@@ -179,16 +179,6 @@ Semaphore periodically syncs users from GitHub. You can add and remove people fr
 
 Users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their servers — even if they don't have access to the related repository.
 
-### About project permissions {#about}
-
-TODO: does this apply to CE?
-
-Users can be granted access and permissions on a project by different means:
-
-- **Repository-level access**: Semaphore automatically syncs user permissions from GitHub. See [project roles](./rbac#project) to learn how repository permissions are mapped to project permissions
-- **Direct access**: users can be [directly added to and removed from the project](#manual). Their permissions are managed with [project roles](./rbac#project)
-- **Role access**: users with [Admin](./rbac#org-admin) or [Owner](./rbac#org-owner) roles can access every project in their server
-
 ### How to manually add/remove members to projects {#manual}
 
 To add or remove a user from a project, follow these steps:
@@ -207,23 +197,6 @@ To add or remove a user from a project, follow these steps:
 </Steps>
 
 - To remove the user from the project, press the **X** button next to the user.
-
-### How to change permissions {#people-roles}
-
-<Available plans={['Scaleup']}/>
-
-TODO: check if we can manually change members permissions in projects in Semaphore (or if it musst go through the Git repo)
-
-Open your project and go to the **People** tab
-
-<Steps>
-
-1. Press the **Change role** next to the project member
-2. Select the new role
-
-    ![Changing a members role](./img/change-role.jpg)
-
-</Steps>
 
 ### How to view pre-defined roles {#project-roles}
 
@@ -490,8 +463,6 @@ To verify the status of a webhook:
 To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and GitHub.
 
 ### Reconnecting moved or renamed projects
-
-TODO: when reconnecting a renamed project on Semaphore CE, how do we do it? On Cloud the user must contact support
 
 There are several actions that can break the connection between GitHub and Semaphore. For example:
 

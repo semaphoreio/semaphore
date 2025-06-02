@@ -27,15 +27,15 @@ A Semaphore instance has:
 
 ## Managing users {#people}
 
-Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the instance level.
+Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the server and project level.
 
-To manage users in your Semaphore instance, open the server menu and select **People**. This tab shows users and groups in your instance along with their roles and groups.
+To manage users in your server, open the server menu and select **People**. This tab shows users and groups in your server along with their roles and groups.
 
 ![The people tab](./img/people-tab.jpg)
 
 ### How to create users {#add-people}
 
-To create new accounts, go to the poeple option in the server menu and follow these steps:
+To create new accounts, go to the people option in the server menu and follow these steps:
 
 <Steps>
 
@@ -57,9 +57,32 @@ To create new accounts, go to the poeple option in the server menu and follow th
 
 </Steps>
 
+### How to remove users {#remove-users}
+
+Users can only be removed from the server when they don't own any projects. You must [transfer the ownership](./projects#owner-change) of all the user's projects before they can be removed from the server.
+
+To remove a user, go to the people option in the server menu and follow these steps:
+
+<Steps>
+
+1. Transfer any [project ownership](./projects#owner-change) the user may have to another individual. The user must not own any projects
+2. Press the **X** button next to the username of the user you want to remove
+
+  ![Removing a user from the organization](./img/remove-user.jpg)
+
+</Steps>
+   
+Upon removal, access to all projects in the server are revoked.
+
+:::note
+
+Only an Admins, Owner, or dedicated [custom roles](./rbac#custom-roles) can remove users from the server.
+
+:::
+
 ### How to change a user role {#role-change}
 
-To change user roles, go to the poeple option in the server menu and follow these steps:
+To change user roles, go to the people option in the server menu and follow these steps:
 
 <Steps>
 
@@ -96,32 +119,53 @@ To reset a user password, go to the poeple option in the server menu and follow 
 
 </Steps>
 
-### How to remove users {#remove-users}
+### How to create groups {#add-groups}
 
-Users can only be removed from the instance when they don't own any projects. You must [transfer the ownership](./projects#owner-change) of all the user's projects before they can be removed from Semaphore.
+User groups streamline user management by allowing bulk actions. After creating a group, you can:
 
-To remove a user, go to the people option in the server menu and follow these steps:
+- Add members to the group
+- Assign a role to the group
+
+All members of the group automatically inherit the permissions associated with the assigned role.
+
+As an example, let's say you want to give the Audit team access to the [Audit logs](#audit-log) in your server. To achieve that you can:
+
+1. Create a [custom role](#custom) with view permissions on the Billing page
+2. Create an "Auditors" group
+3. Assign the new custom role to the group
+4. Add everyone in the Auditor team to the group
+5. As the team changes, you can add or delete persons from the group
+
+To create a group, open the server menu and select **People**. 
 
 <Steps>
 
-1. Transfer any [project ownership](./projects#owner-change) the user may have to another individual. The user must not own any projects
-2. Press the **X** button next to the username of the user you want to remove
+1. Press on **Create group**
+2. Type in the group name and description
+3. Type the names of the persons to add to the group
+4. Press **Save changes** to create the group
 
-  ![Removing a user from the organization](./img/remove-user.jpg)
+  ![Add group](./img/add-group.jpg)
 
 </Steps>
 
-Upon removal, access to all projects in Semaphore are revoked.
+The new group has the [member](./rbac#org-member) role by default. You can change it by pressing the **Modify Role** button and selecting a different role.
 
-:::note
+You can also define [custom server roles](#custom) if none of the pre-defined roles suit your needs.
 
-Only an Admins and Owners can remove users from the Semaphore instance.
+### How to add members groups {#change-groups}
 
-:::
+To add or remove users in a group, press the **Modify group** button next to it.
 
-### How to view permissions for roles {#org-roles}
+- Press the **X** button to remove the user from the group
+- Type the name of the persons you want to add to the group
+- Press **Save changes** to finish editing the group
 
-Semaphore provides pre-defined roles. These permissions cannot be changed. You can see what actions each role can perform by following these steps:
+![Add group](./img/add-group.jpg)
+
+### How to view pre-defined roles {#org-roles}
+
+Semaphore provides pre-defined roles for the server. You can see what actions each role can perform by following these steps:
 
 <Steps>
 
@@ -134,13 +178,55 @@ Semaphore provides pre-defined roles. These permissions cannot be changed. You c
 
 The actions with enabled checkbox are allowed for that role.
 
-![Organization admin allowed actions](./img/org-admin-roles.jpg)
+![Server admin allowed actions](./img/org-admin-roles.jpg)
+
+### How to create custom roles {#custom}
+
+Create custom roles to give your users the precise permissions they need. 
+
+<Steps>
+
+1. Open the serve **Settings** menu
+2. Select **Roles**
+3. On the **Organization Roles** section, press **New Role**
+4. Give a name a description to the new role
+5. Enable the permissions allowed to the role. You can use the search box to narrow down options
+6. Press **Save changes**
+
+  ![Creating a new server role](./img/org-role-create-custom.jpg)
+
+</Steps>
+
+Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the instance level.
+
+To manage users in your Semaphore instance, open the server menu and select **People**. This tab shows users and groups in your instance along with their roles and groups.
+
+![The people tab](./img/people-tab.jpg)
+
+
+
+### How to view permissions for roles {#org-roles}
+
+Semaphore provides pre-defined roles. These permissions cannot be changed (but new roles can be added, see. You can see what actions each role can perform by following these steps:
+
+<Steps>
+
+1. Open the server **Settings** menu
+2. Select **Roles**
+    ![Settings Role location](./img/settings-roles.jpg)
+3. In the **Organization Roles** section, press the eye button next to the role you want to examine
+
+</Steps>
+
+The actions with enabled checkbox are allowed for that role.
+
+![Server admin allowed actions](./img/org-admin-roles.jpg)
 
 ## Instance settings {#org-settings}
 
 To access your settings, open the server menu and click on **Settings**.
 
-![Organization settings location](./img/org-settings-location.jpg)
+![Server settings location](./img/org-settings-location.jpg)
 
 ### General settings {#general-settings}
 
@@ -183,6 +269,61 @@ To change the initialization job agent for all your [projects](./projects) in yo
 :::info
 
 If you experience errors during initialization, see the [initialization job logs](./pipelines#init-logs) to help troubleshoot the issue.
+
+:::
+
+### Okta integration {#okta-integration}
+
+Integration with Okta allows you to automate user management within your Semaphore server, as well as to use Okta apps for Single Sign On.
+
+For more information, see the [Okta integration page](./okta.md)
+
+## Audit logs {#audit-log}
+
+To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your server, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
+
+You can find audit logs in your server settings under **Audit Logs**.
+
+![Audit logs location](./img/audit-log-location.jpg)
+
+The audit logs shows all the [audited events](../reference/audit-events) in reverse chronological order. Latest events are shown first.
+
+![Audit log example](./img/audit-logs-example.jpg)
+
+### How to export audit logs {#audit-export}
+
+Audit logs can be exported in two ways:
+
+- CSV file
+- Streaming to an S3-compatible bucket
+
+To export the logs as CSV, press the **Export as CSV** button.
+
+![Exporting as CSV](./img/audit-export-csv.jpg)
+
+To configure streaming to an S3-compatible bucket, press the **Configure Streaming** button and:
+
+<Steps>
+
+1. Select between AWS and Google Cloud
+2. Type the region (AWS only)
+3. Type the bucket name
+4. Type the access token
+
+    - **AWS**: provide the Access Key ID and Access Key Secret for the IAM account
+    - **Google Cloud**: provide the [HMAC Key](https://cloud.google.com/storage/docs/authentication/managing-hmackeys#command-line) for a service account
+
+    The service account credentials provided must have write and read access to the bucket
+
+5. Press **Looks Good**
+
+  ![Configuring Audit log streaming](./img/audit-log-streaming.jpg)
+
+</Steps>
+
+:::info
+
+Audit logs are streamed to the bucket once per day.
 
 :::
 

@@ -11,7 +11,7 @@ import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 import Steps from '@site/src/components/Steps';
 
-A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available.
+A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available. In this page, the terms organization, server, and instance are used interchangeably.
 
 ## Overview {#overview}
 
@@ -93,6 +93,12 @@ You can reorder blocks by changing their dependencies using the visual editor.
  <div>If we removed dependencies between blocks, then all of them would run in parallel.</div>
 </details>
 
+:::info
+
+If a block fails, the subsequent blocks that depend on it will not execute.
+
+:::
+
 ## Pipeline initialization {#init}
 
 Before Semaphore can start running the jobs in the pipeline, the pipeline YAML file needs to be retrieved from the repository. As a first step, Semaphore request the file via the GitHub or BitBucket API and inspects its contents.
@@ -106,6 +112,9 @@ Dynamic pipelines contain at least one of these elements:
 
 - [Change detection (monorepos)](./monorepo)
 - [Job matrices](./jobs#matrix)
+- [Parameterized promotions](./promotions#parameters)
+- [Organization pre-flight checks](./org-preflight)
+- [Project pre-flight checks](./projects#preflight)
 
 Dynamic pipelines are evaluated in the initialization job.
 
@@ -115,7 +124,9 @@ The initialization job only takes place for dynamic pipelines. It runs in a dedi
 
 1. Clones the repository using Git
 2. Parses and evaluates conditions in the input YAML file using Semaphore Pipeline Compiler (spc)
-3. Saves the job output log
+3. Executes [organization pre-flight checks](./org-preflight), if any
+4. Executes [project pre-flight checks](./projects#preflight), if any
+5. Saves the job output log
 
 :::info
 
@@ -125,7 +136,10 @@ The Semaphore Pipeline Compiler (spc) is an open-source component. You can find 
 
 ### How to change the agent for init jobs {#init-agent}
 
-To change the agent that runs the initialization, see [init agent](./organizations#init-agent).
+You can change the agent that runs the initialization job in two ways:
+
+- **For the organization**: affects all projects in the organization. See [organization init agent](./organizations#init-agent) to learn how to change this setting
+- **For the project**: changes the agent running initialization for a single project. See [project pre-flight checks](./projects#preflight) to learn how to change this setting
 
 ### How to access init logs {#init-logs}
 
@@ -137,13 +151,23 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 ![Example init job log](./img/init-log-example.jpg)
 
+## Connecting pipelines with promotions {#connecting-pipelines}
+
+Your project can have multiple pipelines to perform different tasks such as build, release, or test. [Promotions](./promotions) connect pipelines. Multiple pipelines can be chained to create branching workflows to automate almost any task.
+
+The [workflow](./workflows) always starts with the default pipeline (located at `.semaphore/semaphore.yml`) and flows from left to right following promotions.
+
+![A workflow with 3 pipelines](./img/workflows1.jpg)
+
+For more information, see the [Promotions page](./promotions).
+
 ## Pipeline settings {#settings}
 
 Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML. 
 
 ### Agents {#agents}
 
-An agent is the machine and operating system where a job run. Semaphore keeps a pool of warm agents to ensure there's always one ready to work. You must add your own machines by [installing self-hosted agents](./self-hosted).
+An agent is the machine and operating system where a job run. Semaphore ships with a built in Kubernetes-based self-hosted agent. You can add your own machines by [installing self-hosted agents](./self-hosted).
 
 To select the agent running your jobs in a pipeline:
 
@@ -154,7 +178,7 @@ To select the agent running your jobs in a pipeline:
 
 1. Select the pipeline
 2. Select the **Environment Type**
-3. Select the **Operating System** (if available)
+3. Select the **Operating System**
 4. Select the [machine type](../reference/machine-types)
 
 </Steps>
@@ -200,6 +224,7 @@ blocks:
 
 </TabItem>
 </Tabs>
+
 
 ### Docker containers {#docker-environments}
 
@@ -807,6 +832,7 @@ To pull images from any arbitrary Docker registry, follow these steps:
 
 </Steps>
 
+
 ## Pipeline queues {#pipeline-queues}
 
 Queues allow you to control the order in which pipelines run. Semaphore pipelines can run sequentially or in parallel. For example, you can run CI pipelines in parallel on the main branch, while limiting deployment pipelines to run one at at time to prevent conflicts or race conditions.
@@ -815,7 +841,7 @@ Queues allow you to control the order in which pipelines run. Semaphore pipeline
 
 Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially. 
 
-In other words, every time you re-run a workflow, create a pull request, push a tag, the pipeline is added to the end of the same-commit queue.
+In other words, every time you re-run a workflow, create a pull request, push a tag, or start a [promotion](./pipelines#connecting-pipelines), the pipeline is added to the end of the same-commit queue.
 
 ![Default queue behavior](./img/default-queues.jpg)
 
@@ -832,7 +858,7 @@ In the example above we have two queues. The "main" queue runs CI pipelines for 
 Queues can be configured on two scopes:
 
 - **Project** (the default): pipelines belonging to the same [project](./projects)
-- **Server**: pipelines belonging to all projects withing an [Semaphore instance](./organizations)
+- **Server**: pipelines belonging to all projects withing an [server](./organizations)
 
 ### How to assign named queues {#assign-queue}
 
@@ -1055,13 +1081,18 @@ See [job time limit](./jobs#job-duration) to change the maximum duration for a s
 
 You can workaround the queue limit by assigning pipelines to [named queues](#named-queues).
 
+If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+
 ### Max blocks per pipeline {#max-blocks}
 
 There is a hard limit of a 100 blocks per pipeline.
 
+This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+
 ## See also
 
 - [How to create jobs](./jobs#job-create)
+- [How to connect pipelines with promotions](./promotions)
 - [Run pipelines on a schedule with Tasks](./tasks)
 - [Pipeline YAML reference](../reference/pipeline-yaml)
 - [Semaphore environment variable reference](../reference/env-vars#semaphore-variables)
