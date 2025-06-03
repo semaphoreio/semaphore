@@ -526,39 +526,68 @@ module GlobalReport
       f.puts "## 📋 Service Details"
       f.puts
 
-      @service_reports.each do |service_name, report|
-        vulns = report[:vulnerabilities]
-        summary = report[:summary]
+      # Group by service name to show all scan types together
+      services_by_name = @service_reports.group_by { |_, report| report[:service_name] }
 
-        if vulns.empty?
+      services_by_name.each do |service_name, reports|
+        # Combine all vulnerabilities from all scan types for this service
+        all_vulns = reports.flat_map { |_, r| r[:vulnerabilities] }
+
+        if all_vulns.empty?
           f.puts "### ✅ #{service_name}"
-          f.puts "No vulnerabilities detected."
+          f.puts "No vulnerabilities detected across all scan types."
           f.puts
           next
         end
 
-        severity_counts = summary["severity_counts"] || {}
+        # Calculate combined stats
+        combined_severity_counts = Hash.new(0)
+        reports.each do |_, report|
+          severity_counts = report[:summary]["severity_counts"] || {}
+          severity_counts.each { |severity, count| combined_severity_counts[severity] += count }
+        end
+
         risk_level = @global_stats[:service_risk_levels][service_name]
+        most_recent_scan = reports.map { |_, r| r[:last_modified] }.max
 
         f.puts "### #{risk_level_emoji(risk_level)} #{job_link(service_name)}"
-        f.puts "**Total Vulnerabilities:** #{vulns.length}  "
+        f.puts "**Total Vulnerabilities:** #{all_vulns.length}  "
         f.puts "**Risk Level:** #{risk_level}  "
-        f.puts "**Last Scan:** #{report[:last_modified].strftime("%Y-%m-%d %H:%M")}"
+        f.puts "**Last Scan:** #{most_recent_scan.strftime('%Y-%m-%d %H:%M')}"
 
-        # CVE count for this service
-        service_cves = vulns.map { |v| v["cve"] }.compact.uniq
+        # Show scan types breakdown
+        f.puts "**Scan Types:**"
+        reports.each do |_, report|
+          scan_type = report[:scan_type]
+          scan_vulns = report[:vulnerabilities]
+          scan_severity_counts = report[:summary]["severity_counts"] || {}
+
+          f.puts "- **#{scan_type.capitalize}**: #{scan_vulns.length} vulnerabilities"
+          if scan_vulns.any?
+            critical = scan_severity_counts["CRITICAL"] || 0
+            high = scan_severity_counts["HIGH"] || 0
+            medium = scan_severity_counts["MEDIUM"] || 0
+            low = scan_severity_counts["LOW"] || 0
+            f.puts "  - 🔴 #{critical} Critical, 🟠 #{high} High, 🟡 #{medium} Medium, 🔵 #{low} Low"
+          end
+        end
+
+        # CVE count for this service (across all scan types)
+        service_cves = all_vulns.map { |v| v["cve"] }.compact.uniq
         f.puts "**Unique CVEs:** #{service_cves.length}"
         f.puts
 
-        # Top issues for this service
-        top_issues = vulns.select { |v| ["CRITICAL", "HIGH"].include?(v["severity"]) }
-                          .first(3)
+        # Top issues for this service (across all scan types)
+        top_issues = all_vulns.select { |v| ["CRITICAL", "HIGH"].include?(v["severity"]) }
+                              .sort_by { |v| [-extract_cvss_score(v), severity_weight(v["severity"])] }
+                              .first(5)
 
         if top_issues.any?
           f.puts "**Top Issues:**"
           top_issues.each do |issue|
             emoji = severity_emoji(issue["severity"])
-            f.puts "- #{emoji} `#{issue["cve"]}` in `#{issue["location"]}`"
+            scan_type_badge = "[#{issue["scan_type"]}]"
+            f.puts "- #{emoji} `#{issue["cve"]}` in `#{issue["location"]}` #{scan_type_badge}"
           end
         end
         f.puts
