@@ -6,7 +6,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-instance-config"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051
@@ -25,7 +29,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-id-http-api"
+    {{- end }}
   ports:
     - name: http
       port: 80
@@ -40,7 +48,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-api"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051
@@ -56,7 +68,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-authentication-api"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051
@@ -71,7 +87,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-user-api"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051
@@ -86,7 +106,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-organization-api"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051
@@ -101,7 +125,11 @@ metadata:
 spec:
   type: NodePort
   selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
     app: "{{ .Chart.Name }}-user-api"
+    {{- end }}
   ports:
     - name: grpc
       port: 50051

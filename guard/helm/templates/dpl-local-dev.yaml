@@ -1,14 +1,14 @@
-{{- if not .Values.global.development.minimalDeployment }}
+{{- if .Values.global.development.minimalDeployment }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ .Chart.Name }}-organization-api"
+  name: "{{ .Chart.Name }}"
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: "{{ .Chart.Name }}-organization-api"
-  replicas: {{ .Values.organizationApi.replicas }}
+      app: "{{ .Chart.Name }}"
+  replicas: {{ .Values.api.replicas }}
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -16,9 +16,10 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
-      name: "{{ .Chart.Name }}-organization-api"
+      name: "{{ .Chart.Name }}"
       labels:
-        app: "{{ .Chart.Name }}-organization-api"
+        app: "{{ .Chart.Name }}"
+        product: semaphoreci
     spec:
 {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -53,11 +54,15 @@ spec:
 {{ include "initContainers.all" . | indent 8 }}
       priorityClassName: medium-priority
       containers:
-        - name: "{{ .Chart.Name }}-organization-api"
+        - name: "{{ .Chart.Name }}"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          command: ["bash", "-c"]
+          args: ["bin/guard eval \"Guard.Release.create_and_migrate()\" && bin/guard start"]
           ports:
           - name: grpc
             containerPort: 50051
+          - name: id
+            containerPort: 4003
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -65,11 +70,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/app/features.yml"
-              readOnly: true
-              subPath: features.yml
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
@@ -77,6 +77,11 @@ spec:
                 name: {{ .Values.global.authentication.configMapName }}
             - secretRef:
                 name: {{ include "secrets.authentication.name" . }}
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
           env:
             {{- include "env.db.elixir" . | indent 12 }}
             - name: FEATURE_YAML_PATH
@@ -84,39 +89,69 @@ spec:
             - name: GRPC_API
               value: "true"
             - name: START_GPRC_GUARD_API
-              value: "false"
+              value: "true"
             - name: START_GRPC_AUTH_API
-              value: "false"
-            - name: START_GRPC_ORGANIZATION_API
               value: "true"
             - name: START_GPRC_HEALTH_CHECK
               value: "true"
             - name: RABBIT_CONSUMER
-              value: "false"
+              value: "true"
             - name: START_FEATURE_PROVIDER
               value: "true"
-
+            - name: ID_API
+              value: "true"
+            - name: INCLUDE_INSTANCE_CONFIG
+              value: "true"
+            - name: START_INSTANCE_CONFIG
+              value: "true"
+            - name: INSTANCE_CONFIG_API
+              value: "true"
+            - name: START_GRPC_INSTANCE_CONFIG_API
+              value: "true"
+            - name: START_GRPC_ORGANIZATION_API
+              value: "true"
+            - name: START_GRPC_USER_API
+              value: "true"
+            - name: MIGRATIONS_PATH
+              value: "/app/instance_config_repo/migrations"
+            - name: OIDC_DISCOVERY_URL
+              value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
+            - name: OIDC_MANAGE_URL
+              value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+{{- if .Values.global.development.skipTlsVerifyInternal }}
+            - name: TLS_SKIP_VERIFY_INTERNAL
+              value: "true"
+{{- end }}
+            - name: BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
             - name: POSTGRES_DB_SSL
               value: {{ .Values.global.database.ssl | quote }}
             - name: POSTGRES_DB_NAME
               value: guard
             - name: POSTGRES_DB_POOL_SIZE
-              value: {{ .Values.organizationApi.dbPoolSize | quote }}
+              value: {{ .Values.api.dbPoolSize | quote }}
+            - name: POSTGRES_GIT_INTEGRATION_DB_NAME
+              value: integration_configurations
             - name: AMQP_URL
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
             - name: LOG_LEVEL
-              value: {{ .Values.organizationApi.logging.level | quote }}
+              value: {{ .Values.api.logging.level | quote }}
+            - name: ENCRYPTOR_URL
+              value: "localhost:50052"
 {{- if .Values.global.statsd.enabled }}
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
 
-{{- if .Values.organizationApi.resources }}
+{{- if .Values.api.resources }}
           resources:
-{{ toYaml .Values.organizationApi.resources | indent 12 }}
+{{ toYaml .Values.api.resources | indent 12 }}
 {{- end }}
 
           startupProbe:
@@ -137,6 +172,53 @@ spec:
             periodSeconds: 10
             timeoutSeconds: 3
             failureThreshold: 3
+
+        - name: {{ .Chart.Name }}-auth-api-encryptor
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.sidecarEncryptor.image }}:{{ .Values.global.sidecarEncryptor.imageTag }}"
+          ports:
+            - name: grpc-port
+              containerPort: 50052
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          env:
+            - name: START_API
+              value: "yes"
+            - name: GRPC_API_PORT
+              value: "50052"
+            - name: ENCRYPTOR_AES_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.encryption.name" . }}
+                  key: key
+          startupProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            grpc:
+              port: 50052
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+{{- if .Values.sidecarEncryptor.resources }}
+          resources:
+{{ toYaml .Values.sidecarEncryptor.resources | indent 12 }}
+{{- end }}
+
+
 {{- if .Values.global.statsd.enabled }}
         - name: {{ .Chart.Name }}-statsd
           image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
@@ -145,10 +227,6 @@ spec:
               value: "60000"
             - name: GRAPHITE_HOST
               value: {{ .Values.global.statsd.graphiteHost }}
-{{- if .Values.statsd.resources }}
-          resources:
-{{ toYaml .Values.statsd.resources | indent 13 }}
-{{- end }}
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -156,5 +234,9 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
 {{- end }}
 {{- end }}
