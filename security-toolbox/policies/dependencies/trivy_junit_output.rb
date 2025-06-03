@@ -1,28 +1,21 @@
-class Policy::TrivyFs < Policy
+# rubocop:disable all
+
+class Policy::TrivyJunitOutput < Policy
   def initialize(args)
     super(args)
-    @severity = args[:severity] || "HIGH,CRITICAL"
+
     @template_path = File.join(File.dirname(__FILE__), "trivyfs/junit.tpl")
-    @ignore_policy = args[:ignore_policy] || nil
   end
 
   def test
     command = [
       "trivy",
-      "fs",
-      "--exit-code 1",
-      "--severity #{@severity}",
-      "--ignore-unfixed",
-      "--format json",
-      "--scanners vuln,license",
-      "-o out/dependency-scan-trivy.json"
+      "convert",
+      "--format template",
+      "--template '@#{@template_path}'",
+      "--output out/dependency-scan-junit.xml",
+      "out/dependency-scan-trivy.json"
     ]
-
-    if @ignore_policy != nil
-      command << "--ignore-policy #{@ignore_policy}"
-    end
-
-    command << "."
 
     @output = `#{command.join(" ")}`
     $?.success?
