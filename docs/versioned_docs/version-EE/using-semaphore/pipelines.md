@@ -34,8 +34,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: Build
     task:
@@ -101,7 +104,7 @@ If a block fails, the subsequent blocks that depend on it will not execute.
 
 ## Pipeline initialization {#init}
 
-Before Semaphore can start running the jobs in the pipeline, the pipeline YAML file needs to be retrieved from the repository. As a first step, Semaphore request the file via the GitHub or BitBucket API and inspects its contents.
+Before Semaphore can start running the jobs in the pipeline, the pipeline YAML file needs to be retrieved from the repository. As a first step, Semaphore requests the file to the Git provider and inspects its contents.
 
 There are two types of pipelines:
 
@@ -138,7 +141,7 @@ The Semaphore Pipeline Compiler (spc) is an open-source component. You can find 
 
 You can change the agent that runs the initialization job in two ways:
 
-- **For the organization**: affects all projects in the organization. See [organization init agent](./organizations#init-agent) to learn how to change this setting
+- **For the server**: affects all projects in the server. See [server init agent](./organizations#init-agent) to learn how to change this setting
 - **For the project**: changes the agent running initialization for a single project. See [project pre-flight checks](./projects#preflight) to learn how to change this setting
 
 ### How to access init logs {#init-logs}
@@ -177,13 +180,11 @@ To select the agent running your jobs in a pipeline:
 <Steps>
 
 1. Select the pipeline
-2. Select the **Environment Type**
-3. Select the **Operating System**
-4. Select the [machine type](../reference/machine-types)
+2. Select the "Docker Containers" in **Environment Type**
+3. Select the default **Machine type**
+4. Type the name of the Docker image to use in the jobs
 
 </Steps>
-
-The available hardware changes depending on the type of environment you selected.
 
 ![Agent Selection](./img/agent-settings.jpg)
 
@@ -194,8 +195,9 @@ The available hardware changes depending on the type of environment you selected
 <Steps>
 
 1. Add the `agent` and `machine` keys
-2. Add the hardware `type`. The value must be one of the supported [machine types](../reference/machine-types)
-3. Add the `os_image`. The value must be one of the supported operating systems
+2. Add the hardware `type`. The default is `s1-kubernetes`, which is the [self-hosted agent](./self-hosted) built-in in the Sempahore server
+3. Leave `os_image` empty
+4. Add the `containers` key, this contains a list with keys `name` and `image`. The first container must have `name = main` and the image is the Docker image where the jobs run 
 
 </Steps>
 
@@ -205,17 +207,16 @@ name: Initial Pipeline
 # highlight-start
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-end
 blocks:
   - name: 'Block #1'
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
       jobs:
         - name: 'Job #1'
           commands:
@@ -253,7 +254,7 @@ To run the job inside a Docker container:
 
 1. Select the pipeline
 2. In **Environment Types** select **Docker Container(s)**
-3. Select the [machine type](../reference/machine-types)
+3. Select the [self-hosted agent](./self-hosted), default is `s1-kubernetes`
 4. Type the **Image** name for this container
 5. Optionally, add environment variables
 6. Optionally, add more containers
@@ -280,9 +281,6 @@ To run the job inside a Docker container:
 version: v1.0
 name: Initial Pipeline
 agent:
-  machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
   # highlight-start
   containers:
     - name: main
@@ -331,8 +329,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 global_job_config:
   prologue:
@@ -378,8 +379,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 global_job_config:
   epilogue:
@@ -430,8 +434,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 execution_time_limit:
   hours: 2
@@ -484,8 +491,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 fail_fast:
   stop:
@@ -542,8 +552,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 auto_cancel:
   running:
@@ -587,8 +600,11 @@ version: v1.0
 name: Deploy
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: 'Block #1'
     task:
@@ -640,16 +656,15 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: 'Block #1'
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
       jobs:
         - name: 'Job #1'
           commands:
@@ -693,7 +708,7 @@ To pull images from a private Docker Hub registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -723,7 +738,7 @@ To pull images from a private AWS Elastic Container Registry (ECR), follow these
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -760,7 +775,7 @@ To pull images from a private Google Container Registry (GCR), follow these step
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -790,7 +805,7 @@ To pull images from a private Quay.io registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -820,7 +835,7 @@ To pull images from any arbitrary Docker registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -881,8 +896,11 @@ version: v1.0
 name: Production deployment
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   name: Deployment queue
@@ -903,8 +921,11 @@ version: v1.0
 name: Project A deployment
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   name: Shared deployment queue
@@ -939,8 +960,11 @@ version: v1.0
 name: Tests
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   processing: parallel
@@ -968,8 +992,11 @@ version: v1.0
 name: Example project
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   - when: "branch = 'master'"
@@ -1047,13 +1074,16 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 
 </Steps>
 
-```shell title="Changing max duration for a single job"
+```yaml title="Changing max duration for a single job"
 version: v1.0
 name: Pipeline using execution_time_limit
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 execution_time_limit:
   hours: 3

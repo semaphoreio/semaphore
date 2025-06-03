@@ -124,7 +124,7 @@ To get the list of the projects in your server:
 
 <Steps>
 
-1. If needed, [switch the context](./organizations#org-selection) to your server
+1. If needed, [switch the context](../reference/semaphore-cli#sem-context) to your server
 2. Run [sem get](../reference/semaphore-cli) to list your projects
 
     ```shell
