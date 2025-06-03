@@ -28,11 +28,6 @@ module IndividualReport
 
       find_and_process_reports
 
-      if @vulnerabilities.empty?
-        puts "✅ No vulnerabilities found!"
-        return
-      end
-
       puts "📊 Found #{@vulnerabilities.length} vulnerabilities"
       generate_enhanced_summary
       generate_json_export
