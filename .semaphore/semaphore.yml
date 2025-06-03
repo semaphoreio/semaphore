@@ -30,7 +30,7 @@ global_job_config:
     always:
       commands:
         - 'if [ -f out/docker-scan-junit.xml ]; then test-results --name "Docker scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/docker-scan-junit.xml; fi'
-        - 'if [ -f out/dependency-scan-junit.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan.xml; fi'
+        - 'if [ -f out/dependency-scan-junit.xml ]; then test-results --name "Dependency scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/dependency-scan-junit.xml; fi'
         - 'if [ -f out/gosec-junit.xml ]; then test-results --name "Security scan" --suite-prefix "[$SEMAPHORE_BLOCK_NAME]" publish out/gosec-junit.xml; fi'
         - 'if [ -f out/test-reports.xml ]; then test-results --name "$SEMAPHORE_BLOCK_NAME" publish out/test-reports.xml; fi'
         - 'if [ -f out/docker-scan-trivy.json ]; then make check.generate-report; fi'
