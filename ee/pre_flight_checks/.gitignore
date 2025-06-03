@@ -23,7 +23,6 @@ erl_crash.dump
 /home_dir
 log
 *.json
-test-results.xml
 .docker-compose.up
 
 /rel/artifacts
