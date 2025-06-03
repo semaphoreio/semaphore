@@ -160,6 +160,7 @@ class GlobalSecurityAggregator
       write_top_vulnerabilities(f)
       write_complete_cve_list(f)
       write_detailed_cve_information(f)
+      generate_github_issues_section(f)
       write_remediation_priorities(f)
       write_service_details(f)
     end
@@ -725,6 +726,125 @@ class GlobalSecurityAggregator
 
     f.puts "---"
     f.puts
+  end
+
+  def generate_github_issues_section(f)
+    return if @all_vulnerabilities.empty?
+
+    f.puts "## 🎫 GitHub Issue Links"
+    f.puts
+    f.puts "**Click the links below to create GitHub issues (one per CVE/service pair):**"
+    f.puts
+
+    # Create individual entries for each CVE/service combination
+    issue_links = []
+
+    @all_vulnerabilities.each do |vuln|
+      cve = vuln['cve']
+      service = vuln['service']
+
+      next unless cve && !cve.empty? && service && !service.empty?
+
+      # Create unique identifier for this CVE/service pair
+      pair_id = "#{cve}_#{service}"
+
+      # Skip if we've already processed this exact pair
+      next if issue_links.any? { |link| link[:pair_id] == pair_id }
+
+      # Create the GitHub issue link for this specific CVE/service pair
+      title = "Vulnerability Report - #{cve} #{service}"
+      github_url = "https://github.com/renderedtext/tasks/issues/new?template=processing-vulnerability-report.md&title=#{URI.encode_www_form_component(title)}"
+
+      severity_emoji = severity_emoji(vuln['severity'])
+
+      issue_links << {
+        pair_id: pair_id,
+        cve: cve,
+        service: service,
+        severity: vuln['severity'],
+        severity_weight: severity_weight(vuln['severity']),
+        emoji: severity_emoji,
+        url: github_url
+      }
+    end
+
+    # Sort by severity, then by CVE, then by service
+    issue_links.sort_by! { |link| [link[:severity_weight], link[:cve], link[:service]] }
+
+    # Generate the links
+    issue_links.each do |link|
+      f.puts "- #{link[:emoji]} [#{link[:cve]} - #{link[:service]}](#{link[:url]}) (#{link[:severity]})"
+    end
+    f.puts
+  end
+
+  def generate_single_github_issue_template(f, cve_data)
+    cve = cve_data[:cve]
+    services = cve_data[:services].join(', ')
+    severity = map_severity_to_github_format(cve_data[:severity])
+
+    # Create the expandable section
+    f.puts "<details>"
+    f.puts "<summary><strong>#{cve}</strong> - #{services} (#{cve_data[:severity]})</summary>"
+    f.puts
+    f.puts "### Issue Title"
+    f.puts "```"
+    f.puts "Vulnerability Report - #{cve} #{services}"
+    f.puts "```"
+    f.puts
+    f.puts "### Issue Description"
+    f.puts "```markdown"
+    f.puts generate_github_issue_body(cve_data)
+    f.puts "```"
+    f.puts
+    f.puts "### Labels"
+    f.puts "```"
+    f.puts "engineering, sdlc, security, vulnerability-report"
+    f.puts "```"
+    f.puts
+    f.puts "</details>"
+    f.puts
+  end
+
+  def generate_github_issue_body(cve_data)
+    template = <<~TEMPLATE
+      ## Vulnerability Details
+      - **Identifier**: #{cve_data[:cve]}
+      - **Service Affected**: #{cve_data[:services].join(', ')}
+      - **Detected On**: #{cve_data[:detected_date]}
+      - **CI Job URL**: [TODO - Add job URL]
+      - **Severity**: #{map_severity_to_github_format(cve_data[:severity])}
+
+      ## Description
+      #{cve_data[:title]}
+
+      ## SOC2 - Compliance Checklist (Engineering)
+      *SOC 2 Compliance Checklist to be completed by Engineers while the task is addressed*
+      - [x] ~Security Requirements~
+      - [ ] Link to the PR
+        - TODO
+      - [ ] Link to the Production PR in Launchpad
+        - TODO
+      - [x] ~Feature was enabled (when we enable a feature via Feature Flag)~
+      - [ ] Post-implementation functional and security testing report (test plan should be prepared during Design and Architecture phases)
+    TEMPLATE
+
+    template.strip
+  end
+
+  def map_severity_to_github_format(severity)
+    case severity&.upcase
+    when 'CRITICAL'
+      'Critical'
+    when 'HIGH'
+      'Critical'
+    when 'MEDIUM'
+      'Moderate'
+    when 'LOW'
+      'Low'
+    else
+      'Moderate'
+    end
   end
 end
 
