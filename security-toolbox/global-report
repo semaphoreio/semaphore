@@ -5,6 +5,7 @@
 require 'json'
 require 'fileutils'
 require 'time'
+require 'uri'
 
 class GlobalSecurityAggregator
   def initialize(reports_dir = 'security-reports', output_dir = 'global-security')
@@ -48,6 +49,7 @@ class GlobalSecurityAggregator
     report_files.each do |file|
       puts "📊 Loading report from file: #{file}"
       begin
+        job_id = File.basename(file, '.json')
         content = File.read(file)
         data = JSON.parse(content)
         service_name = extract_service_name(data)
@@ -55,6 +57,7 @@ class GlobalSecurityAggregator
 
 
         @service_reports[service_name] = {
+          job_id: job_id,
           file_path: file,
           data: data,
           last_modified: File.mtime(file),
@@ -116,9 +119,13 @@ class GlobalSecurityAggregator
     @service_reports.each do |service_name, report|
       vulns = report[:vulnerabilities]
       summary = report[:summary]
+      job_id = report[:job_id]
 
-      # Add service name to each vulnerability
-      vulns.each { |v| v['service'] = service_name }
+      vulns.each do |v|
+        v['service'] = service_name
+        v['job_id'] = job_id
+      end
+
       @all_vulnerabilities.concat(vulns)
 
       # Aggregate severity counts
@@ -160,6 +167,7 @@ class GlobalSecurityAggregator
       write_top_vulnerabilities(f)
       write_complete_cve_list(f)
       write_detailed_cve_information(f)
+      generate_github_issues_section(f)
       write_remediation_priorities(f)
       write_service_details(f)
     end
@@ -237,7 +245,7 @@ class GlobalSecurityAggregator
       last_scan = report[:last_modified].strftime('%Y-%m-%d')
       risk_emoji = risk_level_emoji(risk_level)
 
-      f.puts "| `#{service_name}` | #{risk_emoji} #{risk_level} | #{total} | #{critical} | #{high} | #{medium} | #{low} | #{last_scan} |"
+      f.puts "| #{job_link(service_name)} | #{risk_emoji} #{risk_level} | #{total} | #{critical} | #{high} | #{medium} | #{low} | #{last_scan} |"
     end
     f.puts
   end
@@ -309,6 +317,8 @@ class GlobalSecurityAggregator
 
       top_vulns.each do |vuln|
         service = vuln['service'] || 'unknown'
+        service_display = vuln['job_id'] ? "[#{service}](https://semaphore.semaphoreci.com/jobs/#{vuln['job_id']})" : service
+
         cve = vuln['cve'] || 'N/A'
         severity = vuln['severity'] || 'UNKNOWN'
         cvss = extract_cvss_score(vuln)
@@ -317,7 +327,7 @@ class GlobalSecurityAggregator
         description = (vuln['title'] || vuln['description'] || '').slice(0, 50) + '...'
 
         emoji = severity_emoji(severity)
-        f.puts "| `#{service}` | `#{cve}` | #{emoji} #{severity} | #{cvss_display} | `#{package}` | #{description} |"
+        f.puts "| #{service_display} | `#{cve}` | #{emoji} #{severity} | #{cvss_display} | `#{package}` | #{description} |"
       end
       f.puts
     end
@@ -500,7 +510,7 @@ class GlobalSecurityAggregator
       severity_counts = summary['severity_counts'] || {}
       risk_level = @global_stats[:service_risk_levels][service_name]
 
-      f.puts "### #{risk_level_emoji(risk_level)} #{service_name}"
+      f.puts "### #{risk_level_emoji(risk_level)} #{job_link(service_name)}"
       f.puts "**Total Vulnerabilities:** #{vulns.length}  "
       f.puts "**Risk Level:** #{risk_level}  "
       f.puts "**Last Scan:** #{report[:last_modified].strftime('%Y-%m-%d %H:%M')}"
@@ -664,6 +674,15 @@ class GlobalSecurityAggregator
     severity = cve_data['severity'] || 'UNKNOWN'
     emoji = severity_emoji(severity)
 
+    services_with_links = cve_data['all_services'].map do |service|
+      vuln_with_job = @all_vulnerabilities.find { |v| v['service'] == service }
+      if vuln_with_job && vuln_with_job['job_id']
+        "[#{service}](https://semaphore.semaphoreci.com/jobs/#{vuln_with_job['job_id']})"
+      else
+        service
+      end
+    end
+
     f.puts "### #{index}. #{emoji} #{cve}"
     f.puts
 
@@ -685,7 +704,8 @@ class GlobalSecurityAggregator
       end
     end
 
-    f.puts "| **Affected Services** | #{cve_data['all_services'].join(', ')} |"
+    f.puts "| **Detections** | #{cve_data['all_services'].join(', ')} |"
+    f.puts "| **Affected Services** | #{services_with_links.join(', ')} |"
     f.puts "| **Affected Packages** | #{cve_data['all_packages'].join(', ')} |"
     f.puts "| **Targets** | #{cve_data['all_targets'].join(', ')} |" if cve_data['all_targets'].any?
     f.puts "| **Fixed Version** | `#{cve_data['fixed_version']}` |" if cve_data['fixed_version']
@@ -725,6 +745,144 @@ class GlobalSecurityAggregator
 
     f.puts "---"
     f.puts
+  end
+
+  def generate_github_issues_section(f)
+    return if @all_vulnerabilities.empty?
+
+    f.puts "## 🎫 GitHub Issue Links"
+    f.puts
+    f.puts "**Click the links below to create GitHub issues (one per CVE/service pair):**"
+    f.puts
+
+    # Create individual entries for each CVE/service combination
+    issue_links = []
+
+    @all_vulnerabilities.each do |vuln|
+      cve = vuln['cve']
+      service = vuln['service']
+
+      next unless cve && !cve.empty? && service && !service.empty?
+
+      # Create unique identifier for this CVE/service pair
+      pair_id = "#{cve}_#{service}"
+
+      # Skip if we've already processed this exact pair
+      next if issue_links.any? { |link| link[:pair_id] == pair_id }
+
+      # Create the GitHub issue link with pre-filled data
+      title = "Vulnerability Report - #{cve} #{service}"
+      body = generate_prefilled_issue_body(vuln)
+
+      github_url = build_github_issue_url(title, body)
+
+      severity_emoji = severity_emoji(vuln['severity'])
+
+      issue_links << {
+        pair_id: pair_id,
+        cve: cve,
+        service: service,
+        severity: vuln['severity'],
+        severity_weight: severity_weight(vuln['severity']),
+        emoji: severity_emoji,
+        url: github_url
+      }
+    end
+
+    # Sort by severity, then by CVE, then by service
+    issue_links.sort_by! { |link| [link[:severity_weight], link[:cve], link[:service]] }
+
+    # Generate the links
+    issue_links.each do |link|
+      f.puts "- #{link[:emoji]} [#{link[:cve]} - #{link[:service]}](#{link[:url]}) (#{link[:severity]})"
+    end
+    f.puts
+  end
+
+  def build_github_issue_url(title, body)
+    base_url = "https://github.com/renderedtext/tasks/issues/new"
+    template = "processing-vulnerability-report.md"
+
+    # Try different encoding approach
+    encoded_title = URI.encode_uri_component(title)
+    # Don't encode the body, let GitHub handle it
+    encoded_body = URI.encode_uri_component(body)
+
+    "#{base_url}?template=#{template}&title=#{encoded_title}&body=#{encoded_body}"
+  end
+
+  def generate_prefilled_issue_body(vuln)
+    severity = map_severity_to_github_format(vuln['severity'])
+    detected_date = Date.today.strftime('%Y-%m-%d')
+
+    job_url = vuln['job_id'] ? "https://semaphore.semaphoreci.com/jobs/#{vuln['job_id']}" : "[TODO - Add security scan job URL]"
+
+
+    # Build the pre-filled body
+    body = <<~BODY
+      ## Vulnerability Details
+      - **Identifier**: #{vuln['cve']}
+      - **Service Affected**: #{vuln['service']}
+      - **Detected On**: #{detected_date}
+      - **CI Job URL**: #{job_url}
+      - **Severity**: #{severity}
+
+      ## Description
+      #{vuln['title'] || vuln['description'] || 'Please add vulnerability description'}
+
+      **Package:** #{vuln['location']}
+      **Installed Version:** #{vuln['installed_version']}
+      **Fixed Version:** #{vuln['fixed_version'] || 'Not available'}
+      **CVSS Score:** #{extract_cvss_display(vuln)}
+
+      ## SOC2 - Compliance Checklist (Engineering)
+      *SOC 2 Compliance Checklist to be completed by Engineers while the task is addressed*
+      - [x] ~Security Requirements~
+      - [ ] Link to the PR
+        - TODO
+      - [ ] Link to the Production PR in Launchpad
+        - TODO
+      - [x] ~Feature was enabled (when we enable a feature via Feature Flag)~
+      - [ ] Post-implementation functional and security testing report (test plan should be prepared during Design and Architecture phases)
+    BODY
+
+    body.strip
+  end
+
+  def extract_cvss_display(vuln)
+    return 'N/A' unless vuln['cvss']
+
+    cvss = vuln['cvss']
+    if cvss['v3_score']
+      "#{cvss['v3_score']}/10.0 (v3)"
+    elsif cvss['v2_score']
+      "#{cvss['v2_score']}/10.0 (v2)"
+    else
+      'N/A'
+    end
+  end
+
+  def map_severity_to_github_format(severity)
+    case severity&.upcase
+    when 'CRITICAL'
+      'Critical'
+    when 'HIGH'
+      'Critical'
+    when 'MEDIUM'
+      'Moderate'
+    when 'LOW'
+      'Low'
+    else
+      'Moderate'
+    end
+  end
+
+  def job_link(service_name)
+    report = @service_reports[service_name]
+    return service_name unless report && report[:job_id]
+
+    job_url = "https://semaphore.semaphoreci.com/jobs/#{report[:job_id]}"
+    "[#{service_name}](#{job_url})"
   end
 end
 
