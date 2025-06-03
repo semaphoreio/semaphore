@@ -4,7 +4,6 @@
 db/*.sqlite3
 log/*.log*
 tmp
-out/
 tmp/**/*
 config/*_database.yml
 config/*_config.yml
@@ -18,7 +17,6 @@ addon-manifest.json
 tags
 .byebug_history
 .devcontainer
-junit.xml
 .irb_history
 .vscode-server/
 
