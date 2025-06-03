@@ -160,6 +160,7 @@ class GlobalSecurityAggregator
       write_top_vulnerabilities(f)
       write_complete_cve_list(f)
       write_detailed_cve_information(f)
+      generate_github_issues_section(f)
       write_remediation_priorities(f)
       write_service_details(f)
     end
@@ -725,6 +726,123 @@ class GlobalSecurityAggregator
 
     f.puts "---"
     f.puts
+  end
+  def generate_github_issues_section(f)
+    return if @all_vulnerabilities.empty?
+
+    f.puts "## 🎫 GitHub Issue Templates"
+    f.puts
+    f.puts "**Click to expand individual vulnerability issue templates:**"
+    f.puts
+
+    # Group vulnerabilities by CVE to avoid duplicates
+    cve_details = {}
+    @all_vulnerabilities.each do |vuln|
+      cve = vuln['cve']
+      next unless cve && !cve.empty?
+
+      if !cve_details[cve]
+        cve_details[cve] = {
+          cve: cve,
+          severity: vuln['severity'],
+          services: [],
+          detected_date: Date.today.strftime('%Y-%m-%d'),
+          title: vuln['title'] || vuln['description'] || 'Security vulnerability detected'
+        }
+      end
+
+      cve_details[cve][:services] << vuln['service'] if vuln['service']
+
+      # Use highest severity if multiple found
+      current_severity_weight = severity_weight(cve_details[cve][:severity])
+      new_severity_weight = severity_weight(vuln['severity'])
+      if new_severity_weight < current_severity_weight
+        cve_details[cve][:severity] = vuln['severity']
+      end
+    end
+
+    # Clean up duplicates
+    cve_details.each do |cve, details|
+      details[:services] = details[:services].uniq.sort
+    end
+
+    # Sort by severity
+    sorted_cves = cve_details.values.sort_by do |details|
+      [severity_weight(details[:severity]), details[:cve]]
+    end
+
+    sorted_cves.each do |cve_data|
+      generate_single_github_issue_template(f, cve_data)
+    end
+  end
+
+  def generate_single_github_issue_template(f, cve_data)
+    cve = cve_data[:cve]
+    services = cve_data[:services].join(', ')
+    severity = map_severity_to_github_format(cve_data[:severity])
+
+    # Create the expandable section
+    f.puts "<details>"
+    f.puts "<summary><strong>#{cve}</strong> - #{services} (#{cve_data[:severity]})</summary>"
+    f.puts
+    f.puts "### Issue Title"
+    f.puts "```"
+    f.puts "Vulnerability Report - #{cve} #{services}"
+    f.puts "```"
+    f.puts
+    f.puts "### Issue Description"
+    f.puts "```markdown"
+    f.puts generate_github_issue_body(cve_data)
+    f.puts "```"
+    f.puts
+    f.puts "### Labels"
+    f.puts "```"
+    f.puts "engineering, sdlc, security, vulnerability-report"
+    f.puts "```"
+    f.puts
+    f.puts "</details>"
+    f.puts
+  end
+
+  def generate_github_issue_body(cve_data)
+    template = <<~TEMPLATE
+      ## Vulnerability Details
+      - **Identifier**: #{cve_data[:cve]}
+      - **Service Affected**: #{cve_data[:services].join(', ')}
+      - **Detected On**: #{cve_data[:detected_date]}
+      - **CI Job URL**: [TODO - Add job URL]
+      - **Severity**: #{map_severity_to_github_format(cve_data[:severity])}
+
+      ## Description
+      #{cve_data[:title]}
+
+      ## SOC2 - Compliance Checklist (Engineering)
+      *SOC 2 Compliance Checklist to be completed by Engineers while the task is addressed*
+      - [x] ~Security Requirements~
+      - [ ] Link to the PR
+        - TODO
+      - [ ] Link to the Production PR in Launchpad
+        - TODO
+      - [x] ~Feature was enabled (when we enable a feature via Feature Flag)~
+      - [ ] Post-implementation functional and security testing report (test plan should be prepared during Design and Architecture phases)
+    TEMPLATE
+
+    template.strip
+  end
+
+  def map_severity_to_github_format(severity)
+    case severity&.upcase
+    when 'CRITICAL'
+      'Critical'
+    when 'HIGH'
+      'Critical'
+    when 'MEDIUM'
+      'Moderate'
+    when 'LOW'
+      'Low'
+    else
+      'Moderate'
+    end
   end
 end
 
