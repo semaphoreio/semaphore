@@ -40,4 +40,18 @@ class Base
     score = cvss["v3_score"] || cvss["v2_score"] || 0
     score.to_f
   end
+
+  def extract_scan_type_from_name(raw_name)
+    if raw_name.match(/^\[([^\]]+)\]/)
+      return $1.downcase
+    end
+    "security"
+  end
+
+  def extract_clean_service_name(raw_name)
+    if raw_name.match(/^\[([^\]]+)\]\s*(.+)/)
+      return $2.strip
+    end
+    raw_name
+  end
 end
