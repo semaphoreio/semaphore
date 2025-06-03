@@ -145,9 +145,9 @@ ifeq ($(CI),)
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/report out $(APP_NAME)'
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/report --service-name $(APP_NAME)'
 else
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/report out $(APP_NAME)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/report --service-name $(APP_NAME)
 endif
 
 check.generate-global-report:
@@ -156,9 +156,9 @@ ifeq ($(CI),)
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/global-report reports out'
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/global-report -i reports -o out'
 else
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/global-report reports out
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/global-report -i reports -o out
 endif
 
 #

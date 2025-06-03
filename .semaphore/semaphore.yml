@@ -49,6 +49,7 @@ after_pipeline:
           - sem-version ruby 3.3
           - checkout
           - artifact pull workflow scans -d reports || echo "No scan reports found, skipping."
+          - mkdir -p out
           - make check.generate-global-report
           - 'if [ -f out/global-security-summary.md ]; then artifact push workflow out/global-security-summary.md -d .semaphore/REPORT.md; fi'
 auto_cancel:
