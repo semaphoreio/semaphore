@@ -40,7 +40,6 @@ module GlobalReport
     def load_service_reports
       return unless Dir.exist?(@reports_dir)
 
-      # Look for service-specific JSON reports
       pattern = File.join(@reports_dir, "**", "*.json")
       report_files = Dir.glob(pattern)
 
@@ -50,10 +49,20 @@ module GlobalReport
           job_id = File.basename(file, ".json")
           content = File.read(file)
           data = JSON.parse(content)
-          service_name = extract_service_name(data)
-          puts "   loading #{service_name} report"
 
-          @service_reports[service_name] = {
+          # Extract both scan type and clean service name
+          raw_service_name = data.dig("scan_summary", "service_name") || "no-service-name"
+          scan_type = extract_scan_type_from_name(raw_service_name)
+          service_name = extract_clean_service_name(raw_service_name)
+
+          puts "   loading #{service_name} report (#{scan_type})"
+
+          # Use service_name + scan_type as key to avoid conflicts
+          report_key = "#{service_name}_#{scan_type}"
+
+          @service_reports[report_key] = {
+            service_name: service_name,
+            scan_type: scan_type,
             job_id: job_id,
             file_path: file,
             data: data,
@@ -68,23 +77,25 @@ module GlobalReport
         end
       end
 
-      puts "📈 Loaded #{@service_reports.length} service reports"
+      puts "📈 Loaded #{@service_reports.length} scan reports"
       puts
     end
 
-    def looks_like_security_report?(file)
-      # Check if file contains security vulnerability data
-      return false unless File.file?(file)
+    def detect_scan_type(file_path, data)
+      service_name = extract_service_name(data)
 
-      content = File.read(file, 1000) # Read first 1KB
-      content.include?("vulnerabilities") || content.include?("CVE") || content.include?("security")
-    rescue
-      false
+      # Extract scan type from service name pattern like "[docker] front" or "[dependencies] front"
+      if service_name.match(/^\[([^\]]+)\]/)
+        return $1.downcase
+      end
+
+      # Fallback to generic if no pattern found
+      "security"
     end
 
     def extract_service_name(data)
-      return data["scan_summary"]["service_name"] if data.dig("scan_summary", "service_name")
-      return "no-service-name"
+      raw_name = data.dig("scan_summary", "service_name") || "no-service-name"
+      extract_clean_service_name(raw_name)
     end
 
     def extract_vulnerabilities(data)
@@ -112,37 +123,51 @@ module GlobalReport
       global_severity_counts = Hash.new(0)
       service_risk_levels = {}
 
-      @service_reports.each do |service_name, report|
-        vulns = report[:vulnerabilities]
-        summary = report[:summary]
-        job_id = report[:job_id]
+      # Group reports by actual service name for risk calculation
+      services_by_name = @service_reports.group_by { |_, report| report[:service_name] }
 
-        vulns.each do |v|
-          v["service"] = service_name
-          v["job_id"] = job_id
+      services_by_name.each do |service_name, service_reports|
+        service_vulns = []
+        service_severity_counts = Hash.new(0)
+
+        service_reports.each do |report_key, report|
+          vulns = report[:vulnerabilities]
+          summary = report[:summary]
+          job_id = report[:job_id]
+          scan_type = report[:scan_type]
+
+          vulns.each do |v|
+            v["service"] = service_name
+            v["job_id"] = job_id
+            v["scan_type"] = scan_type  # NEW: Add scan type to each vulnerability
+          end
+
+          service_vulns.concat(vulns)
+          @all_vulnerabilities.concat(vulns)
+
+          # Aggregate severity counts across all scan types for this service
+          severity_counts = summary["severity_counts"] || {}
+          severity_counts.each { |severity, count|
+            global_severity_counts[severity] += count
+            service_severity_counts[severity] += count
+          }
         end
 
-        @all_vulnerabilities.concat(vulns)
+        # Calculate risk level based on combined vulnerabilities for the service
+        critical_high = (service_severity_counts["CRITICAL"] || 0) + (service_severity_counts["HIGH"] || 0)
+        service_risk_levels[service_name] = calculate_risk_level(critical_high, service_vulns.length)
 
-        # Aggregate severity counts
-        severity_counts = summary["severity_counts"] || {}
-        severity_counts.each { |severity, count| global_severity_counts[severity] += count }
-
-        # Calculate risk level for each service
-        critical_high = (severity_counts["CRITICAL"] || 0) + (severity_counts["HIGH"] || 0)
-        service_risk_levels[service_name] = calculate_risk_level(critical_high, vulns.length)
-
-        total_vulns += vulns.length
+        total_vulns += service_vulns.length
       end
 
       @global_stats = {
-        total_services: @service_reports.length,
+        total_services: services_by_name.length,  # Count unique service names
         total_vulnerabilities: total_vulns,
         severity_counts: global_severity_counts,
         service_risk_levels: service_risk_levels,
         scan_date: Time.now.iso8601,
-        services_with_issues: @service_reports.count { |_, r| r[:vulnerabilities].any? },
-        clean_services: @service_reports.count { |_, r| r[:vulnerabilities].empty? },
+        services_with_issues: services_by_name.count { |_, reports| reports.any? { |_, r| r[:vulnerabilities].any? } },
+        clean_services: services_by_name.count { |_, reports| reports.all? { |_, r| r[:vulnerabilities].empty? } },
       }
     end
 
@@ -217,31 +242,40 @@ module GlobalReport
     def write_service_breakdown(f)
       f.puts "## 🏢 Service Risk Matrix"
       f.puts
-      f.puts "| Service | Risk Level | Total Vulns | Critical | High | Medium | Low | Last Scan |"
-      f.puts "|---------|------------|-------------|----------|------|--------|-----|-----------|"
+      f.puts "| Service | Scan Types | Risk Level | Total Vulns | Critical | High | Medium | Low | Last Scan |"
+      f.puts "|---------|------------|------------|-------------|----------|------|--------|-----|-----------|"
 
-      # Sort services by risk level and vulnerability count
-      sorted_services = @service_reports.sort_by do |name, report|
-        risk_weight = risk_level_weight(@global_stats[:service_risk_levels][name])
-        vuln_count = report[:vulnerabilities].length
-        [risk_weight, -vuln_count]
+      # Group by service name and show scan types
+      services_by_name = @service_reports.group_by { |_, report| report[:service_name] }
+
+      sorted_services = services_by_name.sort_by do |service_name, reports|
+        risk_weight = risk_level_weight(@global_stats[:service_risk_levels][service_name])
+        total_vulns = reports.sum { |_, r| r[:vulnerabilities].length }
+        [risk_weight, -total_vulns]
       end
 
-      sorted_services.each do |service_name, report|
-        summary = report[:summary]
-        severity_counts = summary["severity_counts"] || {}
+      sorted_services.each do |service_name, reports|
+        # Combine data from all scan types for this service
+        all_vulns = reports.flat_map { |_, r| r[:vulnerabilities] }
+        scan_types = reports.map { |_, r| r[:scan_type] }.sort.join(", ")
+
+        combined_severity_counts = Hash.new(0)
+        reports.each do |_, report|
+          severity_counts = report[:summary]["severity_counts"] || {}
+          severity_counts.each { |severity, count| combined_severity_counts[severity] += count }
+        end
+
         risk_level = @global_stats[:service_risk_levels][service_name]
+        total = all_vulns.length
+        critical = combined_severity_counts["CRITICAL"] || 0
+        high = combined_severity_counts["HIGH"] || 0
+        medium = combined_severity_counts["MEDIUM"] || 0
+        low = combined_severity_counts["LOW"] || 0
 
-        total = report[:vulnerabilities].length
-        critical = severity_counts["CRITICAL"] || 0
-        high = severity_counts["HIGH"] || 0
-        medium = severity_counts["MEDIUM"] || 0
-        low = severity_counts["LOW"] || 0
-
-        last_scan = report[:last_modified].strftime("%Y-%m-%d")
+        last_scan = reports.map { |_, r| r[:last_modified] }.max.strftime("%Y-%m-%d")
         risk_emoji = risk_level_emoji(risk_level)
 
-        f.puts "| #{job_link(service_name)} | #{risk_emoji} #{risk_level} | #{total} | #{critical} | #{high} | #{medium} | #{low} | #{last_scan} |"
+        f.puts "| #{job_link(service_name)} | #{scan_types} | #{risk_emoji} #{risk_level} | #{total} | #{critical} | #{high} | #{medium} | #{low} | #{last_scan} |"
       end
       f.puts
     end
@@ -299,7 +333,6 @@ module GlobalReport
       f.puts "## 🎯 Top Priority Vulnerabilities"
       f.puts
 
-      # Sort by CVSS score first, then severity
       top_vulns = @all_vulnerabilities.select { |v| ["CRITICAL", "HIGH"].include?(v["severity"]) }
         .sort_by do |v|
         cvss_score = extract_cvss_score(v)
@@ -308,12 +341,13 @@ module GlobalReport
         .first(10)
 
       if top_vulns.any?
-        f.puts "| Service | CVE | Severity | CVSS | Package | Description |"
-        f.puts "|---------|-----|----------|------|---------|-------------|"
+        f.puts "| Service | Scan Type | CVE | Severity | CVSS | Package | Description |"
+        f.puts "|---------|-----------|-----|----------|------|---------|-------------|"
 
         top_vulns.each do |vuln|
           service = vuln["service"] || "unknown"
           service_display = vuln["job_id"] ? "[#{service}](https://semaphore.semaphoreci.com/jobs/#{vuln["job_id"]})" : service
+          scan_type = vuln["scan_type"] || "unknown"
 
           cve = vuln["cve"] || "N/A"
           severity = vuln["severity"] || "UNKNOWN"
@@ -323,7 +357,7 @@ module GlobalReport
           description = (vuln["title"] || vuln["description"] || "").slice(0, 50) + "..."
 
           emoji = severity_emoji(severity)
-          f.puts "| #{service_display} | `#{cve}` | #{emoji} #{severity} | #{cvss_display} | `#{package}` | #{description} |"
+          f.puts "| #{service_display} | #{scan_type} | `#{cve}` | #{emoji} #{severity} | #{cvss_display} | `#{package}` | #{description} |"
         end
         f.puts
       end
@@ -847,10 +881,11 @@ module GlobalReport
     end
 
     def job_link(service_name)
-      report = @service_reports[service_name]
-      return service_name unless report && report[:job_id]
+      # Find any report for this service to get a job_id
+      service_report = @service_reports.values.find { |report| report[:service_name] == service_name }
+      return service_name unless service_report && service_report[:job_id]
 
-      job_url = "https://semaphore.semaphoreci.com/jobs/#{report[:job_id]}"
+      job_url = "https://semaphore.semaphoreci.com/jobs/#{service_report[:job_id]}"
       "[#{service_name}](#{job_url})"
     end
   end
