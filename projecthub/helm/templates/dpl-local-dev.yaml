@@ -1,4 +1,4 @@
-{{- if not .Values.global.development.minimalDeployment }}
+{{- if .Values.global.development.minimalDeployment }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,7 +6,7 @@ metadata:
 spec:
   type: NodePort
   selector:
-    app: "{{ .Chart.Name }}-standalone-grpc"
+    app: "{{ .Chart.Name }}"
   ports:
     - name: grpc
       port: 50051
@@ -16,12 +16,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Chart.Name }}-standalone-grpc
+  name: {{ .Chart.Name }}
 spec:
   selector:
     matchLabels:
-      app: "{{ .Chart.Name }}-standalone-grpc"
-  replicas: {{ .Values.api.replicas }}
+      app: {{ .Chart.Name }}
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -29,9 +29,9 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
-      name: {{ .Chart.Name }}-standalone-grpc
+      name: {{ .Chart.Name }}
       labels:
-        app: {{ .Chart.Name }}-standalone-grpc
+        app: {{ .Chart.Name }}
         product: semaphoreci
     spec:
 {{- if .Values.imagePullSecrets }}
@@ -52,7 +52,7 @@ spec:
       initContainers:
 {{ include "initContainers.all" . | indent 8 }}
       containers:
-        - name: {{ .Chart.Name }}-grpc
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           securityContext:
             privileged: false
@@ -83,6 +83,10 @@ spec:
             - name: MIX_ENV
               value: prod
             - name: START_INTERNAL_API
+              value: "true"
+            - name: START_PROJECT_INIT_WORKER
+              value: "true"
+            - name: START_PROJECT_CLEANER
               value: "true"
             - name: POSTGRES_DB_SSL
               value: {{ .Values.global.database.ssl | quote }}
