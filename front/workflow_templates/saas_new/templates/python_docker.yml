@@ -51,8 +51,8 @@ blocks:
             - 'export PATH="$HOME/.local/bin:$PATH"'
             - mkdir -p .pip_cache
             - cache restore
-            - 'pip install --user flake8 || echo "flake8 not installed, skipping lint."'
-            - flake8 . || echo "flake8 found issues."
+            - 'pip install --user flake8'
+            - flake8 .
 
   - name: "🛡️Security Checks"
     dependencies:
@@ -65,8 +65,8 @@ blocks:
             - 'export PATH="$HOME/.local/bin:$PATH"'
             - mkdir -p .pip_cache
             - cache restore
-            - 'pip install --user bandit || echo "bandit not installed, skipping security scan."'
-            - bandit -r . -ll || echo "Bandit found security issues."
+            - 'pip install --user bandit'
+            - bandit -r . -ll
 
   - name: "🧪 Unit Tests"
     dependencies:
@@ -79,11 +79,11 @@ blocks:
             - 'export PATH="$HOME/.local/bin:$PATH"'
             - mkdir -p .pip_cache
             - cache restore
-            - 'pytest --maxfail=1 --disable-warnings -q --junitxml=junit_unit.xml tests || echo "No unit tests found, skipping."'
+            - 'pytest --maxfail=1 --disable-warnings -q --junitxml=junit_unit.xml tests'
       epilogue:
         always:
           commands:
-            - test-results publish junit_unit.xml || echo "No unit test results to publish."  # Publish test results → https://docs.semaphoreci.com/essentials/test-reports/
+            - test-results publish junit_unit.xml  # Publish test results → https://docs.semaphoreci.com/essentials/test-reports/
 
   - name: "🔗 Integration Tests"
     dependencies:
@@ -96,11 +96,11 @@ blocks:
             - 'export PATH="$HOME/.local/bin:$PATH"'
             - mkdir -p .pip_cache
             - cache restore
-            - 'pytest --maxfail=1 --disable-warnings -q --junitxml=junit_integration.xml tests/integration || echo "No integration tests found, skipping."'
+            - 'pytest --maxfail=1 --disable-warnings -q --junitxml=junit_integration.xml tests/integration'
       epilogue:
         always:
           commands:
-            - test-results publish junit_integration.xml || echo "No integration test results to publish."  # Publish test results → https://docs.semaphoreci.com/essentials/test-reports/
+            - test-results publish junit_integration.xml  # Publish test results → https://docs.semaphoreci.com/essentials/test-reports/
 
   - name: "🐳 Docker Build"
     dependencies:
