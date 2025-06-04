@@ -19,7 +19,7 @@ defmodule Guard.Release do
   end
 
   def create_db_for(_app) do
-    for repo <- get_repos() do
+    for repo <- get_repos(System.get_env("LOCAL_DEV_ENV")) do
       :ok = ensure_repo_created(repo)
     end
   end
@@ -44,7 +44,7 @@ defmodule Guard.Release do
   def migrate do
     IO.puts("Starting to run migrations...")
 
-    for repo <- get_repos() do
+    for repo <- get_repos(System.get_env("LOCAL_DEV_ENV")) do
       {:ok, _, _} =
         Ecto.Migrator.with_repo(
           repo,
@@ -59,7 +59,11 @@ defmodule Guard.Release do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
-  defp get_repos do
+  defp get_repos("true" = _local_dev_env) do
+    [Guard.InstanceConfigRepo, Guard.Repo]
+  end
+
+  defp get_repos(_) do
     if System.get_env("START_INSTANCE_CONFIG") == "true" do
       [Guard.InstanceConfigRepo]
     else

@@ -84,6 +84,8 @@ spec:
               subPath: features.yml
           env:
             {{- include "env.db.elixir" . | indent 12 }}
+            - name: LOCAL_DEV_ENV
+              value: "true"
             - name: FEATURE_YAML_PATH
               value: "/app/features.yml"
             - name: GRPC_API
