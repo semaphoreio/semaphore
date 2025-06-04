@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	license "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/license"
+	protoLicense "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/license"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -12,7 +12,7 @@ import (
 )
 
 type Server struct {
-	license.UnimplementedLicenseServiceServer
+	protoLicense.UnimplementedLicenseServiceServer
 	licenseClient *Client
 	licenseFile   string
 }
@@ -25,43 +25,44 @@ func NewServer(licenseServerURL, licenseFile string) *Server {
 }
 
 func RegisterServer(s *grpc.Server, server *Server) {
-	license.RegisterLicenseServiceServer(s, server)
+	protoLicense.RegisterLicenseServiceServer(s, server)
 }
 
-func (s *Server) VerifyLicense(ctx context.Context, req *license.VerifyLicenseRequest) (*license.VerifyLicenseResponse, error) {
+func (s *Server) VerifyLicense(ctx context.Context, req *protoLicense.VerifyLicenseRequest) (*protoLicense.VerifyLicenseResponse, error) {
 	// Read license from file
 	licenseBytes, err := os.ReadFile(s.licenseFile)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to read license file: %v", err)
+		return nil, status.Errorf(codes.FailedPrecondition, "failed to read license file: %v", err)
 	}
-	licenseJWT := string(licenseBytes)
+	license := string(licenseBytes)
 
-	if licenseJWT == "" {
-		return nil, status.Error(codes.NotFound, "license not found")
+	if license == "" {
+		return nil, status.Error(codes.FailedPrecondition, "license not found")
 	}
 
 	// Create verification request
 	verificationReq := LicenseVerificationRequest{
-		LicenseJWT:  licenseJWT,
-		Hostname:    "test-hostname",
-		IPAddress:   "127.0.0.1",
-		Environment: "dev",
-		Version:     "EE v1.2.0",
+		License:         license,
+		AppVersion:      "EE v1.2.0",
+		InstallationID:  "test-installation-id",
+		KubeVersion:     "v1.24.0",
+		OrgMembersCount: 10,
+		ProjectsCount:   5,
 	}
 
 	// Call license server
-	resp, err := s.callLicenseServer(verificationReq)
+	verificationResp, err := s.callLicenseServer(verificationReq)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to verify license: %v", err)
+		return nil, status.Errorf(codes.Unavailable, "failed to verify license: %v", err)
 	}
-
-	return &license.VerifyLicenseResponse{
-		Valid:           resp.Valid,
-		ExpiresAt:       timestamppb.New(resp.ExpiresAt),
-		MaxUsers:        int32(resp.MaxUsers),
-		EnabledFeatures: resp.EnabledFeatures,
-		Message:         resp.Message,
-	}, nil
+	resp := &protoLicense.VerifyLicenseResponse{
+		Valid:           verificationResp.Valid,
+		ExpiresAt:       timestamppb.New(verificationResp.ExpiresAt),
+		MaxUsers:        int32(verificationResp.MaxUsers),
+		EnabledFeatures: verificationResp.EnabledFeatures,
+		Message:         verificationResp.Message,
+	}
+	return resp, nil
 }
 
 func (s *Server) callLicenseServer(req LicenseVerificationRequest) (*LicenseVerificationResponse, error) {

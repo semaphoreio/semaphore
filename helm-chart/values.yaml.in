@@ -166,6 +166,7 @@ global:
     secretName: ""
 
   license: ""
+  licenseServerUrl: "http://license-server"
 
 toolbox:
   version: "v1.25.0"
