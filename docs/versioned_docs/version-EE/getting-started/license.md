@@ -17,18 +17,20 @@ This page explains how to obtain a Semaphore Enterprise Edition (EE) license and
 
 ## Overview {#overview}
 
-Every Semaphore EE instance must have a valid and current license in order to run. The license is applied during installation.
+Every Semaphore EE instance must have a valid and current license in order to run. The license is applied during installation and renewed yearly.
+
+## Free Enterprise Edition {#free}
 
 You might not need to pay for the license. If the following conditions apply, you can get a license free and skip the [payment section](#payment):
 
-- You have at most 50 Semapahore users (or 50 employees?)
+- You expect to have fewer than 50 users for the Semaphore instance
 - Your company must have less than 5,000,000 US Dollars ARR (Annual Recurring Revenue)
 
 If you do not fulfill these requirements, you must [contact support for payment details] once you install your Semaphore instance.
 
 ## Obtain a license {#obtain}
 
-In order to obtain a license, follow these steps:
+In order to obtain or renew a license, follow these steps:
 
 <Steps>
 
@@ -42,13 +44,11 @@ In order to obtain a license, follow these steps:
 
 </Steps>
 
-The default duration of the license is one year.
-
 ## Payment {#payment}
 
 :::note
 
-You might not need to pay for the license if you fulfill the free license criteria. See the details in the [overview](#overview).
+You might not need to pay for the license if you fulfill the free license criteria. See [free Enterprise Edition eligibility criteria](#free) for more details.
 
 :::
 
