@@ -39,7 +39,7 @@ spec:
           - name: BOOTSTRAPPER_GRPC_PORT
             value: "{{ .Values.licenseChecker.grpc.port }}"
           - name: BOOTSTRAPPER_LICENSE_SERVER_URL
-            value: "{{ .Values.licenseChecker.licenseServerUrl }}"
+            value: {{ .Values.global.licenseServerUrl }}
           - name: BOOTSTRAPPER_LICENSE_FILE
             value: "/app/app.license"
           - name: BOOTSTRAPPER_ENABLE_GRPC

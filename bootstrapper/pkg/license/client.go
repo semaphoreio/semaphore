@@ -21,7 +21,7 @@ func NewClient(serverURL string, httpClient *http.Client) *Client {
 	}
 	return &Client{
 		httpClient: httpClient,
-		serverURL: serverURL,
+		serverURL:  serverURL,
 	}
 }
 
