@@ -1,4 +1,5 @@
-apiVersion: apps/v1
+{{- if not .Values.global.development.minimalDeployment }}
+apiVersion: apps/v{{- if .Values.global.development.minimalDeployment }}1
 kind: Deployment
 metadata:
   name: {{ .Chart.Name }}-archivator
@@ -93,4 +94,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}
