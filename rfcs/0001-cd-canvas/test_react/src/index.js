@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
 import './css/_app-defaults.css';
 import './css/_app-fonts.css';
 import './css/_app-buttons.css';
@@ -23,6 +22,7 @@ import './css/_custom-datepicker.css';
 import './css/_custom-help.css';
 import './css/app-semaphore.css';
 import './css/c3.min.css';
+import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
