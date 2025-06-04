@@ -6,11 +6,12 @@ import (
 
 // LicenseVerificationRequest represents a request to verify a license and send telemetry
 type LicenseVerificationRequest struct {
-	LicenseJWT  string `json:"licenseJwt"`
-	Hostname    string `json:"hostname"`
-	IPAddress   string `json:"ipAddress"`
-	Environment string `json:"environment"`
-	Version     string `json:"version"`
+	License         string `json:"license"`
+	AppVersion      string `json:"appVersion"`
+	InstallationID  string `json:"installationId"`
+	KubeVersion     string `json:"kubeVersion"`
+	OrgMembersCount int    `json:"orgMembersCount"`
+	ProjectsCount   int    `json:"projectsCount"`
 }
 
 // LicenseVerificationResponse represents the response from a license verification
