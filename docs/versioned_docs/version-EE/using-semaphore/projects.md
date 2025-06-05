@@ -130,9 +130,7 @@ To get the list of the projects in your Semaphore server:
 
 <Steps>
 
-1. If needed, [switch the context](./organizations#org-selection) to your server
-2. Run [sem get](../reference/semaphore-cli) to list your projects
-
+To get the list of the projects in your server, run [sem get](../reference/semaphore-cli) to list your projects:
     ```shell
     $ sem get project
     NAME                                 REPOSITORY
