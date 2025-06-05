@@ -1,5 +1,5 @@
 {{- if not .Values.global.development.minimalDeployment }}
-apiVersion: apps/v{{- if .Values.global.development.minimalDeployment }}1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Chart.Name }}-archivator
