@@ -1,5 +1,5 @@
 ---
-description: Frequently Asked Questions
+description: Frequently Asked Questions (EE)
 ---
 
 # FAQ
@@ -14,14 +14,20 @@ This page contains Frequently Asked Questions.
 
 ## Architecture
 
-### What's the difference between Semaphore Community Edition (CE) and Semaphore Cloud?
+### What's the difference between Semaphore Enterprise Edition (EE) and Semaphore Cloud?
 
 - **Semaphore Cloud**: is a cloud-based, fully-managed CI-as-a-Service platform. Meant for individuals and companies that don't wish to maintain a CI/CD system. Head to semaphoreci.com to access Semaphore Cloud
-- **Semaphore CE**: is the free and open-source Community Edition of Semaphore. Meant for anyone that wishes to host and manage their own CI/CD architecture.
+- **Semaphore EE**: is a fully featured self-hostable version of Semaphore. Running Semaphore Entreprise Edition requires a [license](./license).
 
-### Where can I run Semaphore CE?
+### Where can I run Semaphore EE?
 
-You can run Semaphore CE on any Linux machine or Kubernetes cluster. We provide detailed [installation instructions](./install.md) for popular cloud vendors and generic systems.
+You can run Semaphore EE on any Linux machine or Kubernetes cluster. We provide detailed [installation instructions](./install.md) for popular cloud vendors and generic systems.
+
+### Help! My Semaphore installation is too slow
+
+First, check that your hardware meets the minimum requisites. See the [installation page](./install) to view what are the minimum hardware requisites.
+
+If your machines meet the minimum requisites and your Semaphore Enterprise Edition runs slowly or has timeout problems, ensure you have activated all hardware-virtualization features in your VM. Failure to activate the proper virtualization mode can result in a slow or unresponding service.
 
 ### Help! Docker fails with "toomanyrequests"
 
@@ -48,7 +54,7 @@ Yes. To use a private Docker registry with a self-signed SSL certificate you mus
 
 This will allow a connection to a private remote registry using the provided certificate.
 
-## Git, GitHub and BitBucket
+## Git, GitHub, BitBucket, and GitLab
 
 ### Can I build a project with git submodules?
 
