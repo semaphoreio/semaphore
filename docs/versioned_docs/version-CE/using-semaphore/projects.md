@@ -218,8 +218,6 @@ Semaphore provides pre-defined roles for projects. You can see what actions each
 
 The actions with enabled checkbox are allowed for that role.
 
->>>>>>> 0c3dfbcf (docs: fix broken links, add features from Cloud to EE)
->>>>>>>
 ### How to change the project's owner {#owner-change}
 
 Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the server](./organizations#add-people).
