@@ -1,14 +1,12 @@
-{{- if not .Values.global.development.minimalDeployment }}
-{{- $baseName := regexReplaceAll "_" .Chart.Name "-" }}
-
+{{- if .Values.global.development.minimalDeployment }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ $baseName }}-internal-api
+  name: "{{ .Chart.Name }}-grpc"
 spec:
   type: NodePort
   selector:
-    app: {{ $baseName }}-internal-api
+    app: "{{ .Chart.Name }}"
   ports:
     - name: grpc
       port: 50051
@@ -18,12 +16,12 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ $baseName }}-internal-api
+  name: {{ .Chart.Name }}
 spec:
   selector:
     matchLabels:
-      app: {{ $baseName }}-internal-api
-  replicas: {{ .Values.internalApi.replicas }}
+      app: {{ .Chart.Name }}
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -31,9 +29,9 @@ spec:
       maxUnavailable: 0
   template:
     metadata:
-      name: {{ $baseName }}-internal-api
+      name: {{ .Chart.Name }}
       labels:
-        app: {{ $baseName }}-internal-api
+        app: {{ .Chart.Name }}
         product: semaphoreci
     spec:
 {{- if .Values.imagePullSecrets }}
@@ -52,57 +50,10 @@ spec:
             - key: features.yml
               path: features.yml
       initContainers:
-{{ include "initContainers.waitForPostgres" . | indent 8 }}
+{{ include "initContainers.all" . | indent 8 }}
       containers:
-        - name: {{ $baseName }}-internal-api
+        - name: {{ .Chart.Name }}
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          ports:
-            - name: grpc-port
-              containerPort: 50051
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/home/front/app/features.yml"
-              readOnly: true
-              subPath: features.yml
-          env:
-            {{- include "env.db.go" . | indent 12 }}
-            - name: FEATURE_YAML_PATH
-              value: "/home/front/app/features.yml"
-            - name: START_INTERNAL_API
-              value: "yes"
-            - name: DB_NAME
-              value: self-hosted-hub
-            - name: POSTGRES_DB_SSL
-              value: {{ .Values.global.database.ssl | quote }}
-            - name: DB_POOL_SIZE
-              value: {{ .Values.internalApi.dbPoolSize | quote }}
-            - name: APPLICATION_NAME
-              value: "self-hosted-internal-api"
-            - name: ON_PREM
-              value: "true"
-
-{{- if .Values.global.statsd.enabled }}
-            - name: METRICS_NAMESPACE
-              value: {{ .Values.global.statsd.metricsNamespace }}
-{{- end }}
-          startupProbe:
-            grpc:
-              port: 50051
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 30
-          livenessProbe:
-            grpc:
-              port: 50051
-            periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 5
-          readinessProbe:
-            grpc:
-              port: 50051
-            periodSeconds: 10
-            timeoutSeconds: 2
-            failureThreshold: 5
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -110,10 +61,80 @@ spec:
             capabilities:
               drop:
                 - ALL
-{{- if .Values.internalApi.resources }}
-          resources:
-{{ toYaml .Values.internalApi.resources | indent 13 }}
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
+            - name: SKIP_SCHEDULERS
+              value: "true"
+            - name: SKIP_CACHE
+              value: "true"
+            - name: MIX_ENV
+              value: prod
+            - name: START_INTERNAL_API
+              value: "true"
+            - name: START_PROJECT_INIT_WORKER
+              value: "true"
+            - name: START_PROJECT_CLEANER
+              value: "true"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.api.dbPoolSize | quote }}
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: HOOKS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: HOOKS_HOST
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
+            - name: ON_PREM
+              value: "true"
+
+{{- if .Values.api.resources }}
+          resources:
+{{ toYaml .Values.api.resources | indent 13 }}
+{{- end }}
+
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          readinessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+
 {{- if .Values.global.statsd.enabled }}
         - name: {{ .Chart.Name }}-statsd
           image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
@@ -122,13 +143,6 @@ spec:
               value: "60000"
             - name: GRAPHITE_HOST
               value: {{ .Values.global.statsd.graphiteHost }}
-          resources:
-            limits:
-              cpu: "20m"
-              memory: "50Mi"
-            requests:
-              cpu: "5m"
-              memory: "25Mi"
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
