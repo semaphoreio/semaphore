@@ -24,31 +24,34 @@ function HomepageHeader() {
 
         <p className={`hero__subtitle ${colorMode}`}>{siteConfig.tagline}</p>
 
-        {/* Container for all buttons + legends */}
         <div className={styles.buttonsWrapper}>
-          {/* 1) Install Semaphore */}
           <div className={styles.buttonContainer}>
             <Link
               className="button button--primary button--lg"
               to="/CE/getting-started/install"
             >
-              Install Semaphore
+              Community Edition
             </Link>
-            <p className={styles.legend}>Open-source Community Edition</p>
           </div>
 
-          {/* 2) Guided Tour */}
           <div className={styles.buttonContainer}>
             <Link
               className="button button--secondary button--lg"
+              to="/EE/getting-started/install"
+            >
+              Enterprise Edition
+            </Link>
+          </div>
+
+          <div className={styles.buttonContainer}>
+            <Link
+              className="button button--outline button--secondary button--lg"
               to="/getting-started/guided-tour"
             >
               Guided Tour
             </Link>
-            <p className={styles.legend}>Try Cloud Edition free</p>
           </div>
 
-          {/* 3) GitHub Star Button */}
           <div className={styles.buttonContainer}>
             <iframe
               className={styles.indexCtasGitHubButton}
