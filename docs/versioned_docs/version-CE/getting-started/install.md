@@ -1,5 +1,5 @@
 ---
-description: Semaphore installation overview
+description: Semaphore installation overview for Semaphore CE
 ---
 
 # Install Prerequisites

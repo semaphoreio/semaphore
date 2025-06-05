@@ -1056,7 +1056,7 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 
 </Steps>
 
-```shell title="Changing max duration for a single job"
+```yaml title="Changing max duration for a single job"
 version: v1.0
 name: Pipeline using execution_time_limit
 agent:
