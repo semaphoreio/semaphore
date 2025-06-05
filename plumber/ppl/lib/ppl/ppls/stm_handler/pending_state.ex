@@ -1,6 +1,6 @@
 defmodule Ppl.Ppls.STMHandler.PendingState do
   @moduledoc """
-  Handles running of pieplines
+  Handles running of pipelines
   """
 
   alias Ppl.PplTraces.Model.PplTracesQueries
