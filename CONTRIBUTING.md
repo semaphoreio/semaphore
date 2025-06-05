@@ -2,97 +2,128 @@
 
 Thank you for your interest in contributing to Semaphore! This document provides guidelines and information for contributors.
 
-## Table of Contents
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Repository Structure](#repository-structure)
-- [Development Process](#development-process)
-- [Submitting Changes](#submitting-changes)
-- [Community](#community)
+## Quick Start
 
-## Code of Conduct
+**Ready to contribute?**
 
-By participating in this project, you are expected to uphold our [Code of Conduct](CODE_OF_CONDUCT.md).
+1. **Fork the repository** on GitHub
+2. **Clone your fork**: `git clone https://github.com/YOUR_USERNAME/semaphore.git`
+3. **Create a feature branch**: `git checkout -b feature/your-feature-name`
+4. **Open in VS Code**: Most services have dev container support for easy setup
+5. **Make your changes** and ensure all tests pass
+6. **Create a Pull Request** from your fork
 
-## Getting Started
+> [!IMPORTANT]
+> 🚦 **All CI checks must pass before review.**
 
-### Repository Structure
+## Repository Structure
 
-Our repository contains both open-source and enterprise code:
-- Open-source code: All code outside the `ee/` directory (Apache 2.0 license)
-- Enterprise code: All code within the `ee/` directory (proprietary license)
+Our monorepo contains multiple services:
 
-Please ensure you're working in the appropriate directory based on the feature you're developing.
+- **Community Edition**: All code outside `ee/` directory (Apache 2.0 license)
+- **Enterprise Edition**: Code within `ee/` directory (commercial license)
 
-## Development Process
+### Technology Stack
 
-### 1. Finding Issues to Work On
-- Check our issue tracker for open issues
-- Look for issues tagged with `good-first-issue` or `help-wanted`
-- Feel free to ask questions in the issue comments
+- **Elixir**: Core services (auth, guard, projecthub, secrethub, etc.)
+- **Go**: Infrastructure services (bootstrapper, encryptor, repohub, etc.)
+- **TS/React**: Frontend (front/)
+- **Ruby**: Github hook processing (github_hooks)
 
-### 2. Making Changes
+## Development Workflow
 
-1. Fork the repository
-2. Create a new branch from `main`:
-   ```
-   git checkout -b feature/your-feature-name
-   ```
-3. Make your changes
-4. Write or update tests as needed
-5. Ensure all tests pass locally
+### 1. Fork & Setup
 
-### 3. Code Style
+```bash
+# Fork repository on GitHub, then:
+git clone https://github.com/YOUR_USERNAME/semaphore.git
+cd semaphore
+git remote add upstream https://github.com/semaphoreio/semaphore.git
+```
 
-Our codebase follows these principles:
-- Keep code simple and readable
-- Add comments for complex logic
-- Follow existing patterns in the codebase
-- Document public APIs
+### 2. Create Feature Branch
 
-## Submitting Changes
+```bash
+git checkout -b feature/descriptive-name
+# or: fix/bug-description, docs/update-readme, etc.
+```
 
-### Pull Request Process
+### 3. Development & Testing
 
-1. Update relevant documentation
-2. Add an entry to CHANGELOG.md if applicable
-3. Ensure your PR includes only related changes
-4. Fill out the PR template completely
-5. Request review from maintainers
+**Most services include VS Code dev container support for instant setup:**
 
-### PR Requirements
-- Clear, descriptive title
-- Reference related issues
-- Test coverage for new features
-- Updated documentation
-- Clean commit history
+```bash
+# Open any service with dev container support
+code auth/  # VS Code will prompt to "Reopen in Container"
+```
 
-### Review Process
+**For services without dev containers, use Docker directly:**
 
-1. Maintainers will review your code
-2. Address any requested changes
-3. Once approved, maintainers will merge your PR
+```bash
+cd service_name
+make build
+make test.ex     # For Elixir services
+make test        # For Go services
+```
 
-## Community
+### 4. Ensure CI Will Pass
 
-### Getting Help
+**Before pushing, run these checks locally:**
 
-- GitHub Discussions: Technical questions and feature discussions
-- Issue Tracker: Bug reports and feature requests
-- [Community Chat]: Quick questions and community discussions
+```bash
+# Elixir services
+make format.ex   # Format code
+make lint.ex     # Run linter
+make test.ex     # Run tests
 
-### Communication Tips
+# Go services
+make lint
+make test
 
-- Be clear and concise
-- Provide context for your questions
-- Be patient with responses
-- Help others when you can
+# All services
+make check.docker  # Security scan
+```
 
-## Recognition
+### 5. Create Pull Request
 
-Contributors are recognized in:
-- Release notes
-- Contributors list
-- Project documentation
+- **Push your branch** to your fork
+- **Create PR** from your fork to `semaphoreio/semaphore:main`
+- **Fill out the PR template** completely
+- **Wait for review** - maintainers will be automatically assigned
 
-Thank you for contributing to Semaphore!
+## Code Guidelines
+
+### Commit Messages
+
+Use [conventional commits](https://www.conventionalcommits.org/):
+
+```text
+feat(auth): add OAuth2 token refresh mechanism
+
+- Implement automatic token refresh logic
+- Add retry mechanism for expired tokens
+- Update auth middleware to handle refresh
+```
+
+### Testing Requirements
+
+- **New features**: Include unit tests
+- **Bug fixes**: Include regression tests
+- **API changes**: Update integration tests
+- **Frontend changes**: Consider browser test coverage
+
+## Getting Help
+
+- **[GitHub Discussions](https://github.com/semaphoreio/semaphore/discussions)**: Questions and discussions
+- **[Discord](https://discord.gg/FBuUrV24NH)**: Real-time chat
+- **[Good First Issues](https://github.com/semaphoreio/semaphore/labels/good%20first%20issue)**: Beginner-friendly tasks
+
+## Additional Resources
+
+- **[Development Setup](DEVELOPMENT.md)**: Detailed environment setup
+- **[Roadmap](ROADMAP.md)**: Project direction and priorities
+- **[Code of Conduct](CODE_OF_CONDUCT.md)**: Community guidelines
+
+---
+
+**Ready to contribute?** Pick a [good first issue](https://github.com/semaphoreio/semaphore/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or say hello on [Discord](https://discord.gg/FBuUrV24NH)! 👋
