@@ -1466,6 +1466,16 @@ li.projects-menu-item-special:hover {
     background-color: #c7edff;
     color: #202B30;
 }
+
+.job-log-container--dark .job-log-line-expand {
+    background-color: #242f32;
+}
+
+.job-log-container--dark .job-log-line-expand:hover {
+  background-color: #0d1517;
+  color: #B5BCC0;
+}
+
 .job-log-loading {
     position: relative;
     overflow: hidden;

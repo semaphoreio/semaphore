@@ -117,17 +117,7 @@ export class JobLogs {
   }
 
   setupFoldExpandButtons() {
-    document.querySelectorAll('.job-log-line.command').forEach((element) => {
-      const fold = element.closest(".job-log-fold");
-      const expandButton = fold?.querySelector(".job-log-line-expand");
-        
-      if (element.offsetHeight >= 250) {
-        expandButton.style.top = element.offsetHeight.toString() + "px"
-        expandButton?.classList.remove("dn");
-      } else {
-        expandButton?.classList.add("dn");
-      }
-    });
+    this.configureExpandsButton()
 
     this.on("click", ".job-log-line-expand", (e) => {
       const fold = e.target.closest(".job-log-fold");
@@ -156,8 +146,40 @@ export class JobLogs {
     expandButton.style.top = jobCommand.offsetHeight.toString() + "px"
   }
 
+  configureExpandsButton() {
+    if (State.get("sticky")) {
+      this.enableExpandsButton()
+    } else {
+      this.disableExpandsButton()
+    }
+  }
+
+  enableExpandsButton() {
+    document.querySelectorAll('.job-log-line.command').forEach((element) => {
+      const fold = element.closest(".job-log-fold");
+      const expandButton = fold?.querySelector(".job-log-line-expand");
+        
+      if (element.offsetHeight >= 250) {
+        expandButton.style.top = element.offsetHeight.toString() + "px"
+        expandButton?.classList.remove("dn");
+      } else {
+        expandButton?.classList.add("dn");
+      }
+    });
+  }
+
+  disableExpandsButton() {
+    document.querySelectorAll('.job-log-line.command').forEach((element) => {
+      const fold = element.closest(".job-log-fold");
+      const expandButton = fold?.querySelector(".job-log-line-expand");
+        
+      expandButton?.classList.add("dn");
+    });
+  }
+
   update() {
     _.forIn(this.components, (component) => component.update())
+    this.configureExpandsButton()
   }
 
   on(event, selector, callback) {
