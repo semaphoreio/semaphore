@@ -72,7 +72,12 @@ const config = {
             "CE-1.1": {
               label: 'Community Edition v1.1',
               path: 'CE-1.1',
-            }
+            },
+            "EE": {
+              label: 'Enterprise Edition v1.3',
+              path: 'EE',
+              banner: "none"
+            },
           },
 
         },
@@ -188,7 +193,7 @@ const config = {
       // This is an optional announcement bar. It goes on the top of the page
       announcementBar: {
         id: `announcementBar-1`,
-        content: `Semaphore CE <strong>v1.2.0 is out</strong> — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
+        content: `Semaphore <strong>Enterprise Edition</strong> v1.3.0 is available! — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
         backgroundColor: '#49a26e',
         textColor: '#f5f6f7'
       },
