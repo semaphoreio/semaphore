@@ -112,7 +112,6 @@ defmodule Router.ListTest do
     params = %{wf_id: wf_id}
     {:ok, response} = get_list_ppls(params)
     %{body: body, status_code: status_code, headers: headers} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
 
     body =
       case decode? do
@@ -127,7 +126,6 @@ defmodule Router.ListTest do
     params = %{project_id: project_id, branch_name: branch_name}
     {:ok, response} = get_list_ppls(params)
     %{body: body, status_code: status_code, headers: headers} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
     {status_code, headers, Poison.decode!(body)}
   end
 

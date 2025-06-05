@@ -13,10 +13,10 @@ defmodule Ppl.PplSubInits.Model.PplSubInitsQueries do
   @doc """
   Inserts new PplSubInit record into DB with given parameters
   """
-  def insert(ppl_req, init_type, task_workflow? \\ false) do
+  def insert(ppl_req, init_type, start_in_conceived? \\ false) do
     params =
       %{ppl_id: ppl_req.id, init_type: init_type}
-      |> Map.put(:state, if(task_workflow?, do: "conceived", else: "created"))
+      |> Map.put(:state, if(start_in_conceived?, do: "conceived", else: "created"))
       |> Map.put(:in_scheduling, "false")
     try do
       %PplSubInits{} |> PplSubInits.changeset(params) |> Repo.insert()

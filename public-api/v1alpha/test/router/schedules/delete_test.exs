@@ -45,7 +45,7 @@ defmodule PipelinesAPI.Schedules.Delete.Test do
   def delete_schedule(identifier, expected_status_code, decode \\ true) do
     {:ok, response} = delete(identifier)
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
+    if(status_code != expected_status_code, do: IO.puts("Response body: #{inspect(body)}"))
     assert status_code == expected_status_code
 
     if decode do

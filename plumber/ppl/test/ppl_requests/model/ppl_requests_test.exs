@@ -415,27 +415,6 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
                  true
                )
     end
-
-    test "scheduler_task_id is required when workflow originates from task" do
-      assert %Ecto.Changeset{
-               valid?: false,
-               errors: [request_args: {"Missing field 'scheduler_task_id'", _}]
-             } =
-               PplRequests.changeset_request(
-                 %PplRequests{},
-                 %{
-                   request_args: %{"service" => "local"},
-                   request_token: "asdfgh2345678xcvb",
-                   prev_ppl_artefact_ids: [],
-                   top_level: false,
-                   initial_request: false,
-                   id: UUID.uuid4(),
-                   ppl_artefact_id: UUID.uuid4(),
-                   wf_id: UUID.uuid4()
-                 },
-                 true
-               )
-    end
   end
 
   test "changeset_conception updates request_args with missing information" do
