@@ -1,5 +1,5 @@
 ---
-description: Semaphore installation overview
+description: Semaphore installation overview for Sempahore EE
 ---
 
 # Install Prerequisites
@@ -13,7 +13,12 @@ import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
 import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
 
-This page shows an overview of the prerequisites and different methods to install **Semaphore Community Edition** on your systems. If you have any questions or issues during installation, you can get help in the [official Semaphore Discord server](https://discord.gg/FBuUrV24NH).
+This page shows an overview of the prerequisites and different methods to install **Semaphore Enterprise Edition** on your systems.
+
+
+If you have any questions or issues during installation contact us:
+- Users with a [paid license](./license) can contact support at `<support@semaphoreci.com>`
+- Users without a support plan you can get help in the [official Semaphore Discord server](https://discord.gg/FBuUrV24NH).
 
 ## Overview
 
@@ -28,7 +33,7 @@ A Semaphore CI/CD platform consists of two components:
 
 To install Semaphore, you need:
 
-- An Enterprise Edition [License](./license)
+- An Enterprise Edition [License](./license), which might be free of cost if [you qualify as a small company or team](./license#free)
 - A DNS domain
 - The ability to create A, AAAA, or CNAME records for your domain
 - A Kubernetes cluster or a Ubuntu machine

@@ -26,7 +26,9 @@ You might not need to pay for the license. If the following conditions apply, yo
 - You expect to have fewer than 50 users for the Semaphore instance
 - Your company must have less than 5,000,000 US Dollars ARR (Annual Recurring Revenue)
 
-If you do not fulfill these requirements, you must [contact support for payment details] once you install your Semaphore instance.
+A free licensed Enterprise Edition server includes **the features of a paid installation**. There are no limitations or features missing. The only difference is that a free license **does not include** advanced support or any SLAs. Support is provided on a best effort basis via the [Discord server](https://discord.gg/FBuUrV24NH).
+
+If you do not fulfill these requirements, or if you want advanced support and SLAs, you must [contact support for payment details] once you install your Semaphore instance.
 
 ## Obtain a license {#obtain}
 

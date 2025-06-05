@@ -1,5 +1,5 @@
 ---
-description: Connect Git repositories to Semaphore
+description: Connect Git repositories to Semaphore (CE)
 ---
 
 # Projects
