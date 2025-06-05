@@ -353,4 +353,53 @@ defmodule FrontWeb.LayoutView do
     |> DateTime.to_date()
     |> Date.to_iso8601()
   end
+
+  defp protobuf_timestamp_to_datetime(%Google.Protobuf.Timestamp{seconds: s, nanos: _n})
+       when is_integer(s) do
+    DateTime.from_unix!(s)
+  rescue
+    _ -> nil
+  end
+
+  defp protobuf_timestamp_to_datetime(_), do: nil
+
+  def license_soon_expiry?(%{valid: true, expires_at: expires_at}) when not is_nil(expires_at) do
+    dt = protobuf_timestamp_to_datetime(expires_at)
+
+    dt && DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) < 10 and
+      DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) >= 0
+  end
+
+  def license_soon_expiry?(_), do: false
+
+  @doc """
+  Returns the license expiry date as a formatted string, or nil.
+  """
+  def license_expiry_date(%{expires_at: nil}), do: nil
+
+  def license_expiry_date(%{expires_at: expires_at}) when is_binary(expires_at) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, dt, _} -> format_utc(dt)
+      _ -> expires_at
+    end
+  end
+
+  def license_expiry_date(%{expires_at: %DateTime{} = expires_at}), do: format_utc(expires_at)
+
+  def license_expiry_date(%{expires_at: %Google.Protobuf.Timestamp{} = expires_at}) do
+    case protobuf_timestamp_to_datetime(expires_at) do
+      nil -> nil
+      dt -> format_utc(dt)
+    end
+  end
+
+  def license_expiry_date(_), do: nil
+
+  defp format_utc(%DateTime{} = dt) do
+    dt = DateTime.shift_zone!(dt, "Etc/UTC")
+    "#{dt.year}-#{pad(dt.month)}-#{pad(dt.day)} #{pad(dt.hour)}:#{pad(dt.minute)} UTC"
+  end
+
+  defp pad(n) when is_integer(n) and n < 10, do: "0" <> Integer.to_string(n)
+  defp pad(n), do: Integer.to_string(n)
 end
