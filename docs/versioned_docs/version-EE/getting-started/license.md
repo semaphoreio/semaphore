@@ -34,17 +34,13 @@ If you do not fulfill these requirements, or if you want advanced support and SL
 
 In order to obtain or renew a license, follow these steps:
 
-<Steps>
-
-1. Go to the [Semaphore License Hub](https://license-server.test.sonprem.com/)
+1. Go to the [Semaphore License Hub](https://licensing.sxmoon.com/)
 2. Fill in the required fields
 3. Read and accept the [Terms of Service](https://github.com/semaphoreio/semaphore/blob/main/ee/LICENSE)
 4. Fill in the verification code sent to the provided email
 5. Find the link to download the license in your email
 6. Download the license file
 7. Continue the [Semaphore installation](./install)
-
-</Steps>
 
 ## Payment {#payment}
 

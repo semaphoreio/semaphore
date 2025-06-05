@@ -281,14 +281,15 @@ echo "GOOGLE_STATIC_IP_NAME=${GOOGLE_STATIC_IP_NAME}"
 ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
 ```
 
-Run the following to install Semaphore:
+Finally, install Semaphore with Helm. This step assumes that you have copied your [license file](./license) into the machine. If you don't provide a license during installation, you can follow the [upgrade procedure] to install the license later and remove the missing license message.
 
 ```shell title="Install Semaphore"
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
   --version v1.3.0 \
-  --set global.edition=ee \
   --timeout 20m \
+  --set global.edition=ee \
+  --set global.license=$(cat path/to/license-file.txt) \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.staticIpName="${GOOGLE_STATIC_IP_NAME}" \
@@ -379,9 +380,9 @@ Once your have Semaphore up and running, check out the following pages to finish
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
-## How to Upgrade Semaphore {#upgrade}
+## Upgrade Semaphore and renew license/certs {#upgrade}
 
-To upgrade Semaphore, follow these steps:
+Follow these steps if you need to upgrade Semaphore, install a new [license](./license), or renew the TLS certificates.
 
 <Steps>
 
@@ -400,6 +401,7 @@ To upgrade Semaphore, follow these steps:
     echo "GOOGLE_CERTIFICATE_NAME=${GOOGLE_CERTIFICATE_NAME}"
     echo "GOOGLE_STATIC_IP_NAME=${GOOGLE_STATIC_IP_NAME}"
     ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
+    ls license*.txt
     ```
 4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
 
@@ -412,9 +414,10 @@ To upgrade Semaphore, follow these steps:
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --set global.edition=ee \
       --version v1.3.0 \
       --timeout 20m \
+      --set global.edition=ee \
+      --set global.license=$(cat path/to/license-file.txt) \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \
       --set ingress.enabled=true \

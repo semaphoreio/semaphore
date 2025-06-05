@@ -42,6 +42,12 @@ To install Semaphore, you need:
   - Ubuntu machine: 20 to 30 minutes
   - Kubernetes cluster: up to 1 hour
 
+:::note
+
+Ensure that your VMs are running with hardware-supported virtualization mode enabled. Without virtualization feature enabled Semaphore might run slowly or not at all even if when the minimum hardware requirements are met.
+
+:::
+
 ## Choose your platform {#install-method}
 
 You can install Semaphore on a single Linux/Ubuntu machine or in a Kubernetes cluster.

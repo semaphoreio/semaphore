@@ -149,14 +149,15 @@ echo "DOMAIN=${DOMAIN}"
 echo "CERT_NAME=${CERT_NAME}"
 ```
 
-Install Semaphore with Helm:
+Finally, install Semaphore with Helm. This step assumes that you have copied your [license file](./license) into the machine. If you don't provide a license during installation, you can follow the [upgrade procedure] to install the license later and remove the missing license message.
 
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --set global.edition=ee \
   --version v1.3.0 \
   --timeout 20m \
+  --set global.edition=ee \
+  --set global.license=$(cat path/to/license-file.txt) \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
   --set ingress.className=alb \
@@ -219,9 +220,9 @@ Once your have Semaphore up and running, check out the following pages to finish
 - [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
-## How to Upgrade Semaphore {#upgrade}
+## Upgrade Semaphore and renew license/certs {#upgrade}
 
-To upgrade Semaphore, follow these steps:
+Follow these steps if you need to upgrade Semaphore, install a new [license](./license), or renew the TLS certificates.
 
 <Steps>
 
@@ -238,16 +239,18 @@ To upgrade Semaphore, follow these steps:
     source aws-config
     echo "DOMAIN=${DOMAIN}"
     echo "CERT_NAME=${CERT_NAME}"
+    ls license*.txt
     ```
 
-4. Run the following command to upgrade to `v1.3.0`
+4. Run the following command to upgrade to `v1.3.0`. This step assumes that you have obtained your [license file](./license)
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --set global.edition=ee \
       --version v1.3.0 \
       --timeout 20m \
+      --set global.edition=ee \
+      --set global.license=$(cat path/to/license-file.txt) \
       --set global.domain.name="${DOMAIN}" \
       --set ingress.ssl.certName="${CERT_NAME}" \
       --set ingress.className=alb \
