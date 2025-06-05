@@ -23,7 +23,7 @@ defmodule Ppl.Ppls.Model.Ppls do
   From 'stopping' state pipeline transitions to 'done'(stopped) when all of it's
   blocks are terminated.
 
-  Theese transtions are represented with 'pipeline' objects.
+  Theese transitions are represented with 'pipeline' objects.
   """
 
   use Ecto.Schema
