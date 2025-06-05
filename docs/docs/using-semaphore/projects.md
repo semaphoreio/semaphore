@@ -1,5 +1,5 @@
 ---
-description: Connect Git repos to Semaphore
+description: Connect Git repos to Semaphore (Cloud)
 ---
 
 # Projects
@@ -21,21 +21,21 @@ This page explains how to set up projects and what settings are available.
 To create a Semaphore project you need:
 
 - A [Semaphore](https://semaphoreci.com) account with an [organization](./organizations.md)
+- A repository with at least one commit
 - A GitHub or Bitbucket account. For more information, see the connection guides
   - [How to connect to GitHub](./connect-github)
   - [How to connect to Bitbucket](./connect-bitbucket)
-- A repository with at least one commit
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
 
-Go to Semaphore, press **+Create New** 1 and then press **Choose repository**
+Go to Semaphore, press **+Create New** and then press **Choose repository**
 
 ![Creating a new project](./img/create-project-1.jpg)
 
 <Steps>
 
-1. Select the GitHub or Bitbucket tab. You may need to press the **Connect account** button if this is the first time
+1. Select the GitHub or BitBucket tab. You may need to press the **Connect account** button if this is the first time
 2. Select the repository from the list and press on **Choose**
 
     <details>

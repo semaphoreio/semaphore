@@ -25,6 +25,11 @@ There is a known issue that blocks Docker on macOS. If you have trouble running 
 
 :::
 
+## Prerequisites {#prerequisites}
+
+- A DNS domain
+- A Google Cloud account
+
 ## Step 1 - Install dependencies {#dependencies}
 
 Install the following tools before starting the installation:
