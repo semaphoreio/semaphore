@@ -178,7 +178,7 @@ kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext 
 
 ```shell
 =============================================================================================
-Congratulations, Semaphore has been installed succesfully!
+Congratulations, Semaphore has been installed successfully!
 
 To start using the app, go to https://id.<your-domain>/login
 
