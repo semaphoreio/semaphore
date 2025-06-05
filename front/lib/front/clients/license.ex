@@ -17,7 +17,7 @@ defmodule Front.Clients.License do
   """
   @spec verify_license() ::
           {:ok, VerifyLicenseResponse.t()} | {:error, any()}
-  def verify_license() do
+  def verify_license do
     request = %VerifyLicenseRequest{}
 
     case connect() do

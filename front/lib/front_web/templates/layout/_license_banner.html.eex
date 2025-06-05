@@ -1,12 +1,20 @@
 <!-- Only show banner if license is invalid in EE version -->
-<%= if Front.ee?() and not @license_status.valid do %>
-  <div class="bg-red-600 text-white px-4 py-3" role="alert">
-    <div class="container mx-auto flex items-center justify-between">
-      <div class="flex items-center">
-        <span class="material-symbols-outlined mr-2">warning</span>
-        <p><%= @license_status.message %></p>
-        <p>Your license expires on <%= @license_status.expires_at %>.</p>
-      </div>
+<%= if Front.ee?() do %>
+  <%= if not @license_status.valid do %>
+    <div id="license-expired-banner" style="position: fixed; top: 0; left: 0; width: 100%; background-color: #d32f2f; color: white; text-align: center; padding: 10px 0; font-weight: bold; z-index: 10000;">
+      Your EE license is not valid
     </div>
-  </div>
+    <style>
+      #global-page-header { margin-top: 44px; }
+    </style>
+  <% else %>
+    <%= if FrontWeb.LayoutView.license_soon_expiry?(@license_status) do %>
+      <div id="license-expiring-banner" style="position: fixed; top: 0; left: 0; width: 100%; background-color: #ffd600; color: #333; text-align: center; padding: 10px 0; font-weight: bold; z-index: 10000;">
+        Your EE license will expire soon (<%= FrontWeb.LayoutView.license_expiry_date(@license_status) %>)
+      </div>
+      <style>
+        #global-page-header { margin-top: 44px; }
+      </style>
+    <% end %>
+  <% end %>
 <% end %>
