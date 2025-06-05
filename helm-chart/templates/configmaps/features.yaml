@@ -22,6 +22,8 @@ data:
       enabled: false
     bitbucket:
       enabled: true
+    workflow_filtering:
+      enabled: true
     gitlab:
       enabled: true
     git:
@@ -123,6 +125,8 @@ data:
     audit_logs:
       enabled: true
     audit_streaming:
+      enabled: true
+    workflow_filtering:
       enabled: true
     badges:
       enabled: true
