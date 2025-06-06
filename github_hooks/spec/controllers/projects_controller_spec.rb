@@ -29,13 +29,12 @@ RSpec.describe ProjectsController, :type => :controller do
         # Stub check_license! to simulate valid license (do nothing)
         allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(true)
         # Stub out the rest of the logic to avoid unrelated errors
-        allow(Semaphore::RepoHost::Hooks::Request).to receive(:new).and_return(double(delivery_id: "123"))
-        allow(Semaphore::RepoHost::Hooks::Request).to receive(:normalize_params).and_return({ payload: "{}" })
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
         allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
-          unsupported_webhook?: true,
-          github_app_webhook?: false,
-          github_app_installation_webhook?: false
-        ))
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
         allow_any_instance_of(Logman).to receive(:add)
         allow_any_instance_of(Logman).to receive(:info)
         allow_any_instance_of(Logman).to receive(:error)
@@ -53,13 +52,12 @@ RSpec.describe ProjectsController, :type => :controller do
         # Simulate check_license! halting with forbidden
         allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(false)
         # Stub out the rest of the logic to avoid unrelated errors
-        allow(Semaphore::RepoHost::Hooks::Request).to receive(:new).and_return(double(delivery_id: "123"))
-        allow(Semaphore::RepoHost::Hooks::Request).to receive(:normalize_params).and_return({ payload: "{}" })
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
         allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
-          unsupported_webhook?: true,
-          github_app_webhook?: false,
-          github_app_installation_webhook?: false
-        ))
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
         allow_any_instance_of(Logman).to receive(:add)
         allow_any_instance_of(Logman).to receive(:info)
         allow_any_instance_of(Logman).to receive(:error)
