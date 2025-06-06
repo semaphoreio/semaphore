@@ -1,11 +1,12 @@
 {
-  "title": "Elixir - Phoenix",
-  "description": "Run tests and build Docker images for your Phoenix app with PostgreSQL and Redis support. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>PostgreSQL</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Redis</span></div>",
-  "short_description": "Containerized CI/CD pipeline for Phoenix web applications",
+  "title": "Elixir - Phoenix (Docker)",
+  "description": "Run tests, security, and quality checks for your containerised Phoenix app with Docker services and PostgreSQL. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-indigo white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>ExUnit</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Sobelow</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Credo</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Postgres</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Coveralls</span><span class='f6 normal mr1 ph1 br2 bg-light-gray white'>Docker</span></div><div class='mt2 ba br2 b--blue bg-washed-blue pa2'><strong>ℹ️ Coveralls integration:</strong> This pipeline uploads test‑coverage data to Coveralls. Add a <a href='https://docs.semaphoreci.com/using-semaphore/secrets' target='_blank'>project secret</a> named <code>coveralls</code> containing your <code>COVERALLS_REPO_TOKEN</code> so the upload step succeeds.</div>",
+  "short_description": "Containerised CI pipeline for Phoenix web applications",
   "group": "ci",
   "language": "Elixir",
   "environment": "docker",
-  "use_case": "Web Application",
+  "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "docker", "security_checks"],
   "icon": "lang-elixir.svg",
   "template_path": "templates/phoenix_docker.yml",
   "workflow_tip": "other"
