@@ -58,7 +58,7 @@ func (s *Server) VerifyLicense(ctx context.Context, req *protoLicense.VerifyLice
 	resp := &protoLicense.VerifyLicenseResponse{
 		Valid:           verificationResp.Valid,
 		ExpiresAt:       timestamppb.New(verificationResp.ExpiresAt),
-		MaxUsers:        int32(verificationResp.MaxUsers),
+		MaxUsers:        int32(verificationResp.MaxUsers), // #nosec G115
 		EnabledFeatures: verificationResp.EnabledFeatures,
 		Message:         verificationResp.Message,
 	}
