@@ -2,6 +2,7 @@ class ProjectsController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def repo_host_post_commit_hook
+    return head :forbidden if App.ee? && !check_license!
     Watchman.benchmark("repo_host_post_commit_hooks.controller.duration") do
       new_request = Semaphore::RepoHost::Hooks::Request.new(repo_host_request)
 
@@ -160,5 +161,24 @@ class ProjectsController < ApplicationController
 
   def repo_host_request_params
     params
+  end
+
+  private
+
+  def check_license!
+    require 'grpc'
+    require 'protobuffer/generated/license_pb'
+    require 'protobuffer/generated/license_services_pb'
+
+    license_checker_host = App.license_checker_url
+    stub = InternalApi::License::LicenseService::Stub.new(license_checker_host, :this_channel_is_insecure)
+    begin
+      request = InternalApi::License::VerifyLicenseRequest.new
+      response = stub.verify_license(request)
+      response.valid
+    rescue => e
+      Rails.logger.error("License check error: #{e.message}")
+      false
+    end
   end
 end
