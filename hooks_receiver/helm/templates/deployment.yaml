@@ -47,6 +47,8 @@ spec:
                 configMapKeyRef:
                   name: {{ .Values.global.domain.configMapName }}
                   key: BASE_DOMAIN
+            - name: SEMAPHORE_EDITION
+              value: {{ .Values.global.edition }}
             - name: RABBITMQ_URL
               valueFrom:
                 secretKeyRef:
