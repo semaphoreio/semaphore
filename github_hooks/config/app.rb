@@ -17,6 +17,7 @@ class App < Configurable # :nodoc:
   config.hooks_api_url           = SemaphoreConfig.internal_api_url_hooks
   config.instance_config_url     = SemaphoreConfig.internal_api_url_instance_config
   config.encryptor_url           = SemaphoreConfig.encryptor_url
+  config.license_checker_url     = SemaphoreConfig.license_checker_url || "license-checker:50051"
   config.enforce_whitelist       = SemaphoreConfig.enforce_whitelist == "true"
   config.trusted_proxies         = SemaphoreConfig.load_balancer_ip.to_s.split(",").map(&:strip).select(&:present?).compact
   config.trused_hosts = [
@@ -25,4 +26,9 @@ class App < Configurable # :nodoc:
   ]
   config.always_filter_skip_ci = (SemaphoreConfig.always_filter_skip_ci || "false") == "true"
   config.collaborators_api_rate_limit = (SemaphoreConfig.collaborators_api_rate_limit || 4000).to_i
+  config.semaphore_edition = (SemaphoreConfig.edition || "").downcase
+
+  def self.ee?
+    config.semaphore_edition == "ee"
+  end
 end
