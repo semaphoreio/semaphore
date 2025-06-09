@@ -3,6 +3,8 @@ global:
   edition: "ce"
 
   development:
+    minimalDeployment: false
+
     #
     # When true, mounts a writable root filesystem in containers
     # to support local development tools.
