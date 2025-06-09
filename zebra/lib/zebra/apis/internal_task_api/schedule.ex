@@ -141,14 +141,14 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
     if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
       max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
 
-      deafult_limit =
+      default_limit =
         if max_limit * 60 < @default_job_execution_time_limit do
           max_limit * 60
         else
           @default_job_execution_time_limit
         end
 
-      {max_limit, deafult_limit}
+      {max_limit, default_limit}
     else
       {@max_job_execution_time_limit, @default_job_execution_time_limit}
     end
