@@ -72,7 +72,8 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
         repository_id: req.repository_id,
         machine_type: job_req.agent.machine.type,
         machine_os_image: job_req.agent.machine.os_image,
-        execution_time_limit: valid_time_limit(job_req.execution_time_limit),
+        execution_time_limit:
+          configure_execution_time_limit(req.org_id, job_req.execution_time_limit),
         priority: valid_priority(job_req.priority),
         spec:
           Spec.new(
@@ -126,11 +127,32 @@ defmodule Zebra.Apis.InternalTaskApi.Schedule do
   defp valid_priority(_), do: @default_job_priority
 
   # value of execution_time_limit is received in minutes and it is stored in seconds
-  defp valid_time_limit(value)
-       when value > 0 and value <= @max_job_execution_time_limit,
-       do: value * 60
+  def configure_execution_time_limit(org_id, req_value) do
+    {max_job_time_limit, deafult_job_time_limit} = find_max_and_default_job_time_limits(org_id)
 
-  defp valid_time_limit(_), do: @default_job_execution_time_limit
+    if req_value > 0 and req_value <= max_job_time_limit do
+      req_value * 60
+    else
+      deafult_job_time_limit
+    end
+  end
+
+  defp find_max_and_default_job_time_limits(org_id) do
+    if FeatureProvider.feature_enabled?(:max_job_execution_time_limit, param: org_id) do
+      max_limit = FeatureProvider.feature_quota(:max_job_execution_time_limit, param: org_id)
+
+      default_limit =
+        if max_limit * 60 < @default_job_execution_time_limit do
+          max_limit * 60
+        else
+          @default_job_execution_time_limit
+        end
+
+      {max_limit, default_limit}
+    else
+      {@max_job_execution_time_limit, @default_job_execution_time_limit}
+    end
+  end
 
   def encode_fail_fast_strategy(strategy) do
     alias InternalApi.Task.ScheduleRequest.FailFast, as: FF

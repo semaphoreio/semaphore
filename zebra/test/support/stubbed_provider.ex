@@ -2,13 +2,26 @@ defmodule Support.StubbedProvider do
   use FeatureProvider.Provider
 
   @impl FeatureProvider.Provider
-  def provide_features(_org_id \\ nil, _opts \\ []) do
+  def provide_features(org_id \\ nil, _opts \\ []) do
     {:ok,
      [
        feature("max_paralellism_in_org", [:enabled, {:quantity, 500}]),
        feature("cache_cli_parallel_archive_method", [:hidden]),
-       feature("some_custom_feature", [:hidden])
+       feature("some_custom_feature", [:hidden]),
+       max_job_time_limit_feature(org_id)
      ]}
+  end
+
+  defp max_job_time_limit_feature("enabled_30") do
+    feature("max_job_execution_time_limit", [:enabled, {:quantity, 30}])
+  end
+
+  defp max_job_time_limit_feature("enabled_48h") do
+    feature("max_job_execution_time_limit", [:enabled, {:quantity, 48 * 60}])
+  end
+
+  defp max_job_time_limit_feature(_org_id) do
+    feature("max_job_execution_time_limit", [:hidden])
   end
 
   @impl FeatureProvider.Provider
