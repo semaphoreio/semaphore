@@ -342,6 +342,8 @@ To configure streaming to an S3-compatible bucket, press the **Configure Streami
 
 Audit logs are streamed to the bucket once per day.
 
+Large audit logs may cause errors when exporting to CSV. In this case, consider setting up an S3-compatible bucket instead of using CSV as the export medium.
+
 :::
 
 ## Organization queues {#queue}
