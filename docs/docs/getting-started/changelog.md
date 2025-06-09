@@ -8,9 +8,42 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of Jun 9 2025
+
+**(Improved) macos-xcode16 (apple silicon) image update**
+
+**(New)** New packages:
+
+- Xcode 16.4 (default)
+- iOS simulator 18.5
+
+**(Updated)** Updated packages:
+
+- Ruby 3.4.3 -> 3.4.4
+- Flutter 3.29.3 -> 3.32.1
+- Homebrew 4.5.0 -> 4.5.3
+- Fastlane 2.227.1 -> 2.227.2
+- Postgres 14.17 -> 14.18
+
+**(Removed)** Removed packages:
+
+- Xcode 16.2
+- iOS simulator 18.2
+
+To learn more about this image, check our [macOS Xcode 16](https://docs.semaphoreci.com/reference/os-apple#mac-16)
+
+**(Improved) Ubuntu 20.04, 22.04, 24.04 image update**
+
+**(New)** Packages:
+
+- Erlang 28.0
+- Elixir 1.18.4
+- PHP 8.3.20, 8.3.21, 8.3.22
+- Ruby 3.3.8, 3.4.3, 3.4.4
+
 ### Week of April 14 2025
 
-**(Improved)  macos-xcode16 (apple silicon) image update**
+**(Improved) macos-xcode16 (apple silicon) image update**
 
 **(New)** Packages:
 
@@ -18,7 +51,7 @@ This page is updated on a weekly basis.
 
 ### Week of April 7 2025
 
-**(Improved)  macos-xcode16 (apple silicon) image update**
+**(Improved) macos-xcode16 (apple silicon) image update**
 
 **(New)** Packages:
 
