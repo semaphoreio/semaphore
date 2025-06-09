@@ -80,7 +80,8 @@ To invite a user to your organization, press the **Add people** button:
 <Steps>
 
 1. Select one of the available tabs
-    - Type the user's handle, e.g. `TomFern`, or select the user from the list.
+
+    - Type the user's handle, e.g. `TomFern`, or select the user from the list. Usernames are case-sensitive and all characters are considered. Ensure the handle is entered accurately to avoid errors.
     - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
 
     ![Invite users](./img/invite-users.jpg)
