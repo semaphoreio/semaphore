@@ -11,7 +11,14 @@ This guide helps you set up a development environment for Semaphore.
 
 ## Quick Start with Dev Containers
 
-Many Semaphore services include VS Code [dev container](https://code.visualstudio.com/docs/devcontainers/containers) configuration for instant setup:
+Some resources to read before starting:
+
+- [CLI](https://github.com/devcontainers/cli)
+- [VSCode](https://code.visualstudio.com/docs/devcontainers/containers)
+- [nvim](https://github.com/esensar/nvim-dev-container)
+- [GitHub Codespaces](https://docs.github.com/en/codespaces/setting-up-your-project-for-codespaces/adding-a-dev-container-configuration/introduction-to-dev-containers)
+
+Many Semaphore services include dev container configuration for instant setup:
 
 ```bash
 # Clone the repository
