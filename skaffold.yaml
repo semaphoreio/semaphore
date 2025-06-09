@@ -112,6 +112,7 @@ deploy:
           - helm-chart/values.yaml
         setValues:
           global.development.writableRootFilesystem: true
+          global.development.minimalDeployment: true
           global.development.skipTlsVerifyInternal: true # false if cert is not self signed
           global.domain.name: ""
           global.domain.ip: "" # minikube ip
