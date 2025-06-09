@@ -153,7 +153,7 @@ Install Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.2.0 \
+  --version v1.3.0 \
   --timeout 20m \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
@@ -171,7 +171,7 @@ To start using the app, go to https://id.semaphore.example.com/login
 
 You can fetch credentials for the login by running this command:
 
-echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 =============================================================================================
 ```
@@ -179,7 +179,7 @@ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email
 Execute the shown command to retrieve the login credentials.
 
 ```shell title="remote shell - get login credentials"
-$ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+$ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 Email: root@example.com
 Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
