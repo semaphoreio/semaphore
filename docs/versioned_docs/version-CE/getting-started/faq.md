@@ -23,6 +23,12 @@ This page contains Frequently Asked Questions.
 
 You can run Semaphore CE on any Linux machine or Kubernetes cluster. We provide detailed [installation instructions](./install.md) for popular cloud vendors and generic systems.
 
+### Help! My Semaphore installation is too slow
+
+First, check that your hardware meets the minimum requisites. See the [installation page](./install) to view what are the minimum hardware requisites.
+
+If your machines meet the minimum requisites and your Semaphore Enterprise Edition runs slowly or has timeout problems, ensure you have activated all hardware-virtualization features in your VM. Failure to activate the proper virtualization mode can result in a slow or unresponding service.
+
 ### Help! Docker fails with "toomanyrequests"
 
 This is commonly due to a rate-limit of third-party providers such as Docker Hub. These services limit how many unauthenticated pulls you can do in an hour, often based on IP. The machine or cluster running the jobs might have already tripped the IP rate limit.
@@ -48,7 +54,7 @@ Yes. To use a private Docker registry with a self-signed SSL certificate you mus
 
 This will allow a connection to a private remote registry using the provided certificate.
 
-## Git, GitHub and BitBucket
+## Git, GitHub, GitLab, and BitBucket
 
 ### Can I build a project with git submodules?
 

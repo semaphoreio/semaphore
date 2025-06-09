@@ -130,7 +130,7 @@ Describes why the current job was created. The possible values are:
 - `project_debug_job`: job created with [`sem debug project`](./semaphore-cli#sem-debug-project)
 - `debug_job`: job created with [`sem debug job`](./semaphore-cli#sem-debug)
 
-### Organization URL {#organization-url}
+### Server URL {#organization-url}
 
 - **Environment variable**: `SEMAPHORE_ORGANIZATION_URL`
 - **Example**: `https://semaphore.example.com`
