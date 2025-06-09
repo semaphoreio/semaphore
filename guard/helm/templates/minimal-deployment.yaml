@@ -84,7 +84,7 @@ spec:
               subPath: features.yml
           env:
             {{- include "env.db.elixir" . | indent 12 }}
-            - name: LOCAL_DEV_ENV
+            - name: MINIMAL_DEPLOYMENT
               value: "true"
             - name: FEATURE_YAML_PATH
               value: "/app/features.yml"

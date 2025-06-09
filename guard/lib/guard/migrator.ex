@@ -19,7 +19,7 @@ defmodule Guard.Release do
   end
 
   def create_db_for(_app) do
-    for repo <- get_repos(System.get_env("LOCAL_DEV_ENV")) do
+    for repo <- get_repos(System.get_env("MINIMAL_DEPLOYMENT")) do
       :ok = ensure_repo_created(repo)
     end
   end
@@ -44,7 +44,7 @@ defmodule Guard.Release do
   def migrate do
     IO.puts("Starting to run migrations...")
 
-    for repo <- get_repos(System.get_env("LOCAL_DEV_ENV")) do
+    for repo <- get_repos(System.get_env("MINIMAL_DEPLOYMENT")) do
       {:ok, _, _} =
         Ecto.Migrator.with_repo(
           repo,
