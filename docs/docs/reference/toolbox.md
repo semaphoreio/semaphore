@@ -307,7 +307,7 @@ retry --times 5 --sleep 10 bundle install
 
 ## sem-context {#sem-context}
 
-This tool can be used to share key-value data between Semaphore jobs. It enables communication between jobs and pipelines within the same workflow.
+This tool enables sharing key-value data between Semaphore jobs and workflows. It carries values from parent jobs, and updates made within a workflow are inherited by promoted jobs. However, please note that values are not shared across different promotions.
 
 :::note
 
