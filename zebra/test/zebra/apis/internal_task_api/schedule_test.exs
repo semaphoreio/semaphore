@@ -3,6 +3,9 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
 
   alias Zebra.Apis.InternalTaskApi.Schedule
 
+  # in seconds
+  @default_job_execution_time_limit 24 * 60 * 60
+
   describe ".schedule" do
     test "it creates task with jobs" do
       token = Ecto.UUID.generate()
@@ -138,6 +141,62 @@ defmodule Zebra.Apis.InternalTaskApi.ScheduleTest do
       assert Schedule.encode_fail_fast_strategy(stop) == "stop"
       assert Schedule.encode_fail_fast_strategy(cancel) == "cancel"
       assert Schedule.encode_fail_fast_strategy(none) == nil
+    end
+  end
+
+  describe ".configure_execution_time_limit" do
+    test "when feature is disabled and limit from request is valid => returns limit from request in seconds" do
+      org_id = UUID.uuid4()
+
+      assert 180 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
+    end
+
+    test "when feature is disabled and limit from request is invalid => returns default limit in seconds" do
+      org_id = UUID.uuid4()
+
+      # if requested limit <= 0 -> configure it to deafult one
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, -5)
+
+      # if requested limit >= max time limit -> configure it to deafult one
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 48 * 60)
+    end
+
+    test "when feature is enabled and limit from request is valid => returns limit from request in seconds" do
+      org_id = "enabled_30"
+
+      # requested limit is less then feature limit of 30 minutes
+      assert 15 * 60 == Schedule.configure_execution_time_limit(org_id, 15)
+    end
+
+    test "when feature is enabled, limit from request is invalid, and feature limit >= deafult limit  => returns deafult limit" do
+      org_id = "enabled_48h"
+
+      # if requested limit <= 0 and feature limit >= max limit -> configure it to deafult one
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 0)
+
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, -5)
+
+      # if requested limit > feature limit and feature limit >= max limit -> configure it to deafult one
+      assert @default_job_execution_time_limit ==
+               Schedule.configure_execution_time_limit(org_id, 72 * 60)
+    end
+
+    test "when feature is enabled, limit from request is invalid, and feature limit < deafult limit  => returns feature limit" do
+      org_id = "enabled_30"
+
+      # if requested limit <= 0 and feature limit < max limit -> configure it to feature limit
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 0)
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, -5)
+
+      # if requested limit > feature limit and feature limit < max limit -> configure it to feature limit
+      assert 30 * 60 == Schedule.configure_execution_time_limit(org_id, 180)
     end
   end
 
