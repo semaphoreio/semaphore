@@ -50,6 +50,29 @@ Customer should never publish, distribute or post login information for his or h
 
 **License**. Subject to all terms and conditions set out by these Terms of Service, Semaphore grants Customer (without the right to sublicense) a nonexclusive, nontransferable right and a license to (a) access and use the Services, but solely for Customer's internal business purposes, and to (b) use the Services (in executable format) and Documentation, solely in connection with and for the purposes of the Customer's authorized access and use of the Services.
 
+Software is made available under two distinct licensing models, depending on the edition and intended use:
+
+**5.1 Community Edition (Open Source License)**
+The Community Edition of the Software is licensed under the Apache License, Version 2.0. This edition is intended for general use, including development, testing, and deployment, without requiring a paid subscription.
+
+**5.2 Enterprise Edition (Commercial License)**
+The Enterprise Edition of the Software is provided under a separate commercial license agreement [(the “Enterprise License”)](https://github.com/semaphoreio/semaphore/blob/main/ee/LICENSE.). Use of the Enterprise Edition is subject to the terms set forth in the Enterprise License Agreement, which governs permitted use, restrictions, support, updates, and other rights. A valid subscription or license is required to access and use the Enterprise Edition.
+
+**5.3 Free Plan Eligibility**
+Semaphore may offer access to the Enterprise Edition under a “Free Plan” to qualifying organizations. Eligibility is limited to organizations with fewer than 50 users and less than $5 million USD in annual recurring revenue (ARR). Use of the Free Plan is conditional on compliance with these criteria. By using the Free Plan, you certify that your organization meets these conditions. If your organization exceeds these thresholds, you agree to promptly notify Semaphore and obtain a commercial license. Continued use of the Enterprise Edition after exceeding eligibility requirements without notification may result in license termination or retroactive fees.
+
+**5.4 Restrictions**
+Unless explicitly authorized under the applicable license, you may not:
+ - Use the Enterprise Edition without a valid license or subscription;
+ - Use the Community Edition in violation of the Apache 2.0 license;
+ - Circumvent access controls or usage limits applicable to your plan or edition.
+
+
+Use of the Enterprise Edition is governed exclusively by the applicable Enterprise License Agreement. Unless expressly permitted under that license or under applicable law, the Customer shall not, directly or indirectly:
+(a) use the Services or any Software or other information gained from the Site, or gained through the access or use of the Services, to create any software, platform or documentation that is similar to any of the Software, Platform or Documentation or for any other purpose other than for the access to and use of the Site and the Services, (b) attempt to access any Platform component or to disassemble, decompile, reverse engineer or otherwise discover any source code or underlying organization, structures, ideas or algorithms of the Platform or (except and only to the extent these restrictions are expressly prohibited by applicable statutory law) the Software, (c) encumber, sublicense, distribute, transfer, rent, lease, lend or use the Software in any time-share or service bureau arrangement, (d) copy, adapt, combine, create derivative works of, translate, localize, port or otherwise modify any Software or Documentation, (e) use the Software, or allow the transfer, transmission, export or re-export of all or any part of the Software or any product thereof, in violation of any export control laws or regulations of the United States or any other relevant jurisdiction or (f) permit any third party to do any of the foregoing.
+
+Violation of these restrictions may result in immediate suspension or termination of access to the Services and may subject the Customer to legal liability under applicable laws and licensing terms.
+
 For the avoidance of doubt, Semaphore grants this license for access and use of the Services to the Customer solely for use by the agreed number of Users, i.e. the number of Users for which the fees for the Service(s) are paid in line with these Terms of Service. Each User under the license shall have a unique user account, as managed and maintained by the Customer. Customer shall be responsible for safeguarding the security of each user account under the license. Multiple Users may not use the same user account. Customer may reassign a user account from one User to a new User. When Customer reassigns a User account from one User to another, Customer shall block the former User's user account.
 
 Customer may make a reasonable number of copies of the Software and Documentation only for inactive backup purposes. Customer's access and use of the Services and Software shall comply with all other conditions set forth herein, at the Site (to the extent they are applicable to the Services obtained by the Customer) or in Customer's order for the Services (such as, for example, any requirements regarding data formats, number of users, size limits, time limits or prohibited uses), as well as the mandatory provisions of the applicable laws. 
@@ -129,7 +152,7 @@ If it is determined that your organization misrepresented its eligibility or fai
 
 * We **disclaim all responsibility** for data loss, service disruption, or other consequences arising from enforcement.
 
-## 10. Customer Support or Acceptable Use & Prohibited Conduct
+## 10. Acceptable Use & Prohibited Conduct
 
 The Service is provided to Customer only for its internal business purposes. Any unauthorized use of the Service is expressly prohibited (including without limitation, accessing any Service for which the Customer is not authorized, or any use not expressly permitted in the Terms of Service, such as, for example, reselling the Services). Customer is solely responsible for all acts or omissions that occur under its account or username, including the provision of Customer Data to Semaphore.
 
@@ -159,7 +182,6 @@ In addition, Customer agrees that it will not transmit, distribute, post, store,
 
 **Semaphore**. Except for the limited rights and licenses expressly granted hereunder, no other license is granted, no other use is permitted and Semaphore (and its licensors) shall own retain all rights, title and interests (including all patent rights, copyright rights, trade secret rights, trademark rights and other intellectual property and proprietary rights) in and to the Site, Services, Platform, Software, Documentation and Analytics.
 
-**Restrictions**. Customer shall not, directly or indirectly (a) use the Services or any Software or other information gained from the Site, or gained through the access or use of the Services, to create any software, platform or documentation that is similar to any of the Software, Platform or Documentation or for any other purpose other than for the access to and use of the Site and the Services, (b) attempt to access any Platform component or to disassemble, decompile, reverse engineer or otherwise discover any source code or underlying organization, structures, ideas or algorithms of the Platform or (except and only to the extent these restrictions are expressly prohibited by applicable statutory law) the Software, (c) encumber, sublicense, distribute, transfer, rent, lease, lend or use the Software in any time-share or service bureau arrangement, (d) copy, adapt, combine, create derivative works of, translate, localize, port or otherwise modify any Software or Documentation. However, if you have a valid subscription or license, you are allowed to modify the Software and publish modifications and patches. Additionally, you may copy and modify the Software for development and testing purposes without a subscription or license, provided such use is permitted under the applicable license terms. All such modifications and/or derivative works shall remain the sole property of Semaphore Technologies doo and/or its licensors (as applicable), and may not be used, displayed, distributed, or otherwise exploited without a valid subscription or license;, (e) use the Software, or allow the transfer, transmission, export or re-export of all or any part of the Software or any product thereof, in violation of any export control laws or regulations of the United States or any other relevant jurisdiction or (f) permit any third party to do any of the foregoing. 
 
 **General Learning**. Customer agrees that Semaphore is free to use and disclose the Analytics and to reuse all general knowledge, experience, know-how, works and technologies (including ideas, concepts, processes and techniques) acquired during provision of the provided Services (including without limitation, that which it could have acquired performing the same or similar services for another customer).
 
