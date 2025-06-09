@@ -31,7 +31,7 @@ defmodule Support.Browser do
   end
 
   @doc """
-  Disables the onuload handler
+  Disables the onunload handler
   """
   def disable_onbeforeunload_dialog(session) do
     session |> execute_script("window.onbeforeunload = null;")
