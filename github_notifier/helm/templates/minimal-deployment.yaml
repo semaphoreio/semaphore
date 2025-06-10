@@ -1,34 +1,41 @@
-{{- if not .Values.global.development.minimalDeployment }}
+{{- if .Values.global.development.minimalDeployment }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ .Chart.Name }}-consumer"
+  name: "{{ .Chart.Name }}"
   namespace: {{ .Release.Namespace }}
 spec:
   selector:
     matchLabels:
-      app: "{{ .Chart.Name }}-consumer"
-  replicas: {{ .Values.consumer.replicas }}
+      app: "{{ .Chart.Name }}"
+  replicas: {{ .Values.api.replicas }}
   template:
     metadata:
-      name: "{{ .Chart.Name }}-consumer"
+      name: "{{ .Chart.Name }}"
       labels:
-        app: "{{ .Chart.Name }}-consumer"
+        app: "{{ .Chart.Name }}"
         product: semaphoreci
     spec:
       automountServiceAccountToken: false
-      volumes:
-        - name: features-volume
-          configMap:
-            defaultMode: 0644
-            name: features
-            items:
-            - key: features.yml
-              path: features.yml
       initContainers:
 {{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
       containers:
-        - name: "{{ .Chart.Name }}-consumer"
+        - name: "{{ .Chart.Name }}"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           securityContext:
             privileged: false
@@ -37,13 +44,6 @@ spec:
             capabilities:
               drop:
                 - ALL
-          volumeMounts:
-            - name: features-volume
-              mountPath: "/app/features.yml"
-              readOnly: true
-              subPath: features.yml
-          ports:
-            - containerPort: 4000
           envFrom:
             - configMapRef:
                 name: {{ .Values.global.internalApi.configMapName }}
@@ -51,9 +51,7 @@ spec:
             - name: START_CONSUMERS
               value: "true"
             - name: START_API
-              value: "false"
-            - name: LOG_LEVEL
-              value: {{ .Values.consumer.logs.level | quote }}
+              value: "true"
             - name: BASE_DOMAIN
               valueFrom:
                 configMapKeyRef:
@@ -69,9 +67,9 @@ spec:
                   name: {{ .Values.global.rabbitmq.secretName }}
                   key: amqp-url
 
-{{- if .Values.consumer.resources }}
+{{- if .Values.api.resources }}
           resources:
-{{ toYaml .Values.consumer.resources | indent 12 }}
+{{ toYaml .Values.api.resources | indent 12 }}
 {{- end }}
 
 {{- if .Values.global.statsd.enabled }}
