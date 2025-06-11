@@ -5,6 +5,8 @@ defmodule PipelinesAPI.Logs.Get do
 
   use Plug.Builder
 
+  import PipelinesAPI.Util.APIResponse
+
   require Logger
   alias PipelinesAPI.Pipelines.Common, as: RespCommon
   alias PipelinesAPI.Util.{Metrics}
