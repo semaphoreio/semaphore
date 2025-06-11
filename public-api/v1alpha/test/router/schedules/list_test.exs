@@ -69,8 +69,6 @@ defmodule PipelinesAPI.Schedules.List.Test do
   def list_schedules(parms, expected_status_code, decode \\ true) do
     {:ok, response} = list(parms)
     %{:body => body, :status_code => status_code, headers: headers} = response
-    IO.puts("Response body: #{inspect(body)}")
-    IO.puts("Headers: #{inspect(headers)}")
     assert status_code == expected_status_code
 
     if decode do

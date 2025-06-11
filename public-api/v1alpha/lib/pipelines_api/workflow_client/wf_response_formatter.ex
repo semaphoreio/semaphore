@@ -21,7 +21,7 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
          {:code, :OK} <- {:code, Map.get(status, :code)},
          {:ok, wf_id} <- Map.fetch(schedule_response, :wf_id),
          {:ok, ppl_id} <- Map.fetch(schedule_response, :ppl_id) do
-      {:ok, %{wf_id: wf_id, ppl_id: ppl_id}}
+      {:ok, %{workflow_id: wf_id, pipeline_id: ppl_id}}
     else
       {:code, _} -> when_status_code_not_ok(schedule_response)
       _ -> log_invalid_response(schedule_response, "schedule")
@@ -34,6 +34,7 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
     schedule_response
     |> Proto.to_map!()
     |> Map.get(:status)
+    |> Map.get(:message)
     |> ToTuple.user_error()
   end
 
@@ -43,6 +44,30 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
 
     ToTuple.internal_error("Internal error")
   end
+
+  # Reschedule
+
+  def process_reschedule_response({:ok, reschedule_response}) do
+    with true <- is_map(reschedule_response),
+         response_map <- Proto.to_map!(reschedule_response),
+         {:ok, status} <- Map.fetch(response_map, :status),
+         {:code, :OK} <- {:code, Map.get(status, :code)},
+         {:ok, wf_id} <- Map.fetch(reschedule_response, :wf_id),
+         {:ok, ppl_id} <- Map.fetch(reschedule_response, :ppl_id) do
+      {:ok, %{wf_id: wf_id, ppl_id: ppl_id}}
+    else
+      {:code, _} ->
+        reschedule_response
+        |> Proto.to_map!()
+        |> Map.get(:status)
+        |> ToTuple.user_error()
+
+      _ ->
+        log_invalid_response(reschedule_response, "reschedule")
+    end
+  end
+
+  def process_reschedule_response(error), do: error
 
   # Terminate
 
@@ -115,7 +140,7 @@ defmodule PipelinesAPI.WorkflowClient.WFResponseFormatter do
     value |> Atom.to_string() |> String.downcase()
   end
 
-  def enum_to_string(name, value) when is_integer(value) do
+  def enum_to_string(_name, value) when is_integer(value) do
     value |> TriggeredBy.key() |> Atom.to_string() |> String.downcase()
   end
 end
