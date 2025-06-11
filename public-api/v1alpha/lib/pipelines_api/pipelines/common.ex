@@ -30,7 +30,7 @@ defmodule PipelinesAPI.Pipelines.Common do
   #  json encoded content is safe to use send_resp.
   # sobelow_skip ["XSS.SendResp"]
   defp respond_(conn, code, content, _encode? = true) do
-    json(conn, content |> Poison.encode!())
+    json(conn, content)
   end
 
   # The Sobelow.XSS.SendResp is focused on Phoenix apps so it does not recognise Plug.HTML.html_escape/1

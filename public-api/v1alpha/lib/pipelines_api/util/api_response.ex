@@ -10,7 +10,8 @@ defmodule PipelinesAPI.Util.APIResponse do
   """
   @spec json(Plug.Conn.t(), term) :: Plug.Conn.t()
   def json(conn, data) do
-    send_resp(conn, conn.status || 200, "application/json", data)
+    content = Poison.encode!(data)
+    send_resp(conn, conn.status || 200, "application/json", content)
   end
 
   @doc """
