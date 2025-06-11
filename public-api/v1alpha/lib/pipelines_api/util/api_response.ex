@@ -1,6 +1,4 @@
 defmodule PipelinesAPI.Util.APIResponse do
-  import Plug.Conn
-
   @doc """
   Sends JSON response.
 
@@ -11,7 +9,7 @@ defmodule PipelinesAPI.Util.APIResponse do
   @spec json(Plug.Conn.t(), term) :: Plug.Conn.t()
   def json(conn, data) do
     content = Poison.encode!(data)
-    send_resp(conn, conn.status || 200, "application/json", content)
+    Plug.Conn.send_resp(conn, conn.status || 200, "application/json", content)
   end
 
   @doc """
@@ -26,6 +24,6 @@ defmodule PipelinesAPI.Util.APIResponse do
   """
   @spec text(Plug.Conn.t(), String.Chars.t()) :: Plug.Conn.t()
   def text(conn, data) do
-    send_resp(conn, conn.status || 200, "text/plain", to_string(data))
+    Plug.Conn.send_resp(conn, conn.status || 200, "text/plain", to_string(data))
   end
 end

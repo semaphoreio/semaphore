@@ -36,7 +36,9 @@ defmodule PipelinesAPI.Pipelines.Common do
   # The Sobelow.XSS.SendResp is focused on Phoenix apps so it does not recognise Plug.HTML.html_escape/1
   # sobelow_skip ["XSS.SendResp"]
   defp respond_(conn, code, content, _encode? = false) do
-    text(conn, code, Plug.HTML.html_escape(content))
+    conn
+    |> put_status(code)
+    |> text(Plug.HTML.html_escape(content))
   end
 
   def respond_paginated({:error, e}, conn), do: respond({:error, e}, conn)
