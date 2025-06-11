@@ -49,7 +49,8 @@ defmodule PipelinesAPI.Logs.Get do
       {:ok, token} ->
         conn
         |> put_resp_header("location", build_loghub2_url(conn, job_id, token))
-        |> send_resp(conn.status || 302, "")
+        |> put_status(conn.status || 302)
+        |> text("")
 
       e ->
         RespCommon.respond(e, conn)
@@ -73,7 +74,7 @@ defmodule PipelinesAPI.Logs.Get do
   end
 
   defp prepare_response(events) do
-    Enum.join(['{ "events": [', Enum.join(events, ","), "] }"], "")
+    Enum.join([~c'{ "events": [', Enum.join(events, ","), "] }"], "")
   end
 
   defp build_loghub2_url(conn, job_id, token) do
