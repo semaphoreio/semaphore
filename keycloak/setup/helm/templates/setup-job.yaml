@@ -32,6 +32,10 @@ spec:
             valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: SESSION_IDLE_TIMEOUT } }
           - name: TF_VAR_semaphore_realm_session_max_lifespan
             valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: SESSION_MAX_TIMESPAN } }
+          - name: TF_VAR_semaphore_realm_access_token_lifespan
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: ACCESS_TOKEN_LIFESPAN } }
+          - name: TF_VAR_realm_offline_session_idle_timeout
+            valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OFFLINE_SESSION_IDLE_TIMEOUT } }
           - name: TF_VAR_semaphore_user_management_client_id
             valueFrom: { configMapKeyRef: { name: {{ .Values.global.authentication.configMapName }}, key: OIDC_MANAGE_CLIENT_ID } }
           - name: TF_VAR_semaphore_user_management_client_name
