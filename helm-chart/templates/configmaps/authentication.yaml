@@ -15,5 +15,5 @@ data:
   OIDC_MANAGE_CLIENT_ID: semaphore-user-management
   SESSION_COOKIE_NAME: _semaphoreci_2_0_sxmoon_session
   ENABLE_TEMPORARY_PASSWORDS: "true"
-  SESSION_IDLE_TIMEOUT: "15m"
-  SESSION_MAX_TIMESPAN: "30m"
+  SESSION_IDLE_TIMEOUT: "5m"
+  SESSION_MAX_TIMESPAN: "30d"
