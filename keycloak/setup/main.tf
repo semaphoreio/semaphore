@@ -32,8 +32,8 @@ resource "keycloak_realm" "semaphore_realm" {
 
   login_theme = var.semaphore_realm_login_theme
 
-  access_token_lifespan        = "60m"
-  offline_session_idle_timeout = "60m"
+  access_token_lifespan        = var.semaphore_realm_access_token_lifespan
+  offline_session_idle_timeout = var.semaphore_realm_offline_session_idle_timeout
 
   sso_session_idle_timeout = var.semaphore_realm_session_idle_timeout
   sso_session_max_lifespan = var.semaphore_realm_session_max_lifespan
