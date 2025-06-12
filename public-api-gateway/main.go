@@ -19,6 +19,7 @@ import (
 	artifacts "github.com/semaphoreio/semaphore/public-api-gateway/api/artifacts.v1"
 	dashboards "github.com/semaphoreio/semaphore/public-api-gateway/api/dashboards.v1alpha"
 	jobs "github.com/semaphoreio/semaphore/public-api-gateway/api/jobs.v1alpha"
+	middleware "github.com/semaphoreio/semaphore/public-api-gateway/api/middleware"
 	notifications "github.com/semaphoreio/semaphore/public-api-gateway/api/notifications.v1alpha"
 	projectSecrets "github.com/semaphoreio/semaphore/public-api-gateway/api/project_secrets.v1"
 	secrets "github.com/semaphoreio/semaphore/public-api-gateway/api/secrets.v1beta"
@@ -63,7 +64,9 @@ func run() error {
 
 	var err error
 
-	mux := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(headerMatcher),
+	mux := runtime.NewServeMux(
+		runtime.WithMiddlewares(middleware.AuditMiddleware()),
+		runtime.WithIncomingHeaderMatcher(headerMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: &runtime.JSONPb{
 				MarshalOptions: protojson.MarshalOptions{
