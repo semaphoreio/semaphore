@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -42,8 +43,10 @@ func auditMiddleware(next runtime.HandlerFunc) runtime.HandlerFunc {
 			// If audit client is nil, respond with error
 			if err != nil {
 				glog.Warningf("Failed to initialize audit client. API calls will not be audited.")
-				w.WriteHeader(http.StatusServiceUnavailable)
-				w.Write([]byte("Failed to audit operation"))
+
+				respondWithJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+					"error": "Failed to audit operation",
+				})
 				return
 			}
 		}
@@ -103,16 +106,16 @@ func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEv
 	var description string
 	resourceID := ""
 
-	// Extract job ID from path if present
-	pathParts := strings.Split(r.URL.Path, "/")
-	if len(pathParts) > 4 && pathParts[3] == "jobs" && pathParts[4] != "" && pathParts[4] != "project_debug" {
-		resourceID = pathParts[4]
-	}
-
 	switch r.Method {
 	case http.MethodPost:
 		if strings.Contains(r.URL.Path, "/stop") {
 			operation = auditProto.Event_Stopped
+			ok := false
+			resourceID, ok = pathParams["job_id"]
+			if !ok {
+				err = fmt.Errorf("job_id not found in path params")
+				return
+			}
 			description = "Stopped the job"
 		}
 	default:
@@ -191,4 +194,20 @@ func detectEventMedium(r *http.Request) auditProto.Event_Medium {
 		return auditProto.Event_CLI
 	}
 	return auditProto.Event_API
+}
+
+// respondWithJSON writes a JSON response with the given status code and payload
+func respondWithJSON(w http.ResponseWriter, statusCode int, payload interface{}) {
+	response, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
+
+	_, err = w.Write(response)
+	if err != nil {
+		glog.Errorf("Failed to write response: %v", err)
+	}
 }
