@@ -2,7 +2,7 @@
 # Source: repository.proto for package 'InternalApi.Repository'
 
 require 'grpc'
-require_relative 'repository_pb'
+require 'repository_pb'
 
 module InternalApi
   module Repository
@@ -96,21 +96,46 @@ module InternalApi
         # Fetches a repository's deploy key from a git platform
         #
         rpc :CheckDeployKey, ::InternalApi::Repository::CheckDeployKeyRequest, ::InternalApi::Repository::CheckDeployKeyResponse
+        #
         # Regenerates a deploy key for a repository.
+        #
         rpc :RegenerateDeployKey, ::InternalApi::Repository::RegenerateDeployKeyRequest, ::InternalApi::Repository::RegenerateDeployKeyResponse
+        #
         # Checks a git webhook for a repository.
         # If the webhook is not found or is invalid, it will return an error.
+        #
         rpc :CheckWebhook, ::InternalApi::Repository::CheckWebhookRequest, ::InternalApi::Repository::CheckWebhookResponse
+        #
         # Regenerate a git webhook for a repository
+        #
         rpc :RegenerateWebhook, ::InternalApi::Repository::RegenerateWebhookRequest, ::InternalApi::Repository::RegenerateWebhookResponse
+        #
         # Forks and creates a repository based on the source repository.
+        #
         rpc :Fork, ::InternalApi::Repository::ForkRequest, ::InternalApi::Repository::ForkResponse
+        #
         # Fetches information about remote repository.
+        #
         rpc :DescribeRemoteRepository, ::InternalApi::Repository::DescribeRemoteRepositoryRequest, ::InternalApi::Repository::DescribeRemoteRepositoryResponse
+        #
         # Fetches information about revision.
+        #
         rpc :DescribeRevision, ::InternalApi::Repository::DescribeRevisionRequest, ::InternalApi::Repository::DescribeRevisionResponse
+        #
         # Verifies if incoming webhook is correctly signed.
+        #
         rpc :VerifyWebhookSignature, ::InternalApi::Repository::VerifyWebhookSignatureRequest, ::InternalApi::Repository::VerifyWebhookSignatureResponse
+        #
+        # Clears external data (e.g., webhook, deploy key) associated with the repository,
+        # without deleting internal database data.
+        # Operation is synchronous.
+        # Returns GRPC error in case the external data can't be cleared.
+        #
+        rpc :ClearExternalData, ::InternalApi::Repository::ClearExternalDataRequest, ::InternalApi::Repository::ClearExternalDataResponse
+        # Regenerates a webhook secret for a repository.
+        # Works only for git agnostic repositories.
+        # Operation is synchronous.
+        rpc :RegenerateWebhookSecret, ::InternalApi::Repository::RegenerateWebhookSecretRequest, ::InternalApi::Repository::RegenerateWebhookSecretResponse
       end
 
       Stub = Service.rpc_stub_class

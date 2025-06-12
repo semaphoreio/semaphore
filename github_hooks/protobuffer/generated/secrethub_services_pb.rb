@@ -2,7 +2,7 @@
 # Source: secrethub.proto for package 'InternalApi.Secrethub'
 
 require 'grpc'
-require_relative 'secrethub_pb'
+require 'secrethub_pb'
 
 module InternalApi
   module Secrethub
@@ -34,6 +34,12 @@ module InternalApi
         # When using the secret and reading its contents use Checkout and CheckoutMany instead of Describe
         rpc :Checkout, ::InternalApi::Secrethub::CheckoutRequest, ::InternalApi::Secrethub::CheckoutResponse
         rpc :CheckoutMany, ::InternalApi::Secrethub::CheckoutManyRequest, ::InternalApi::Secrethub::CheckoutManyResponse
+        # GetJWTConfig retrieves the JWT configuration for an organization or project.
+        # If project_id is empty, returns organization level configuration.
+        rpc :GetJWTConfig, ::InternalApi::Secrethub::GetJWTConfigRequest, ::InternalApi::Secrethub::GetJWTConfigResponse
+        # UpdateJWTConfig updates the JWT configuration for an organization or project.
+        # If project_id is empty, updates organization level configuration.
+        rpc :UpdateJWTConfig, ::InternalApi::Secrethub::UpdateJWTConfigRequest, ::InternalApi::Secrethub::UpdateJWTConfigResponse
       end
 
       Stub = Service.rpc_stub_class
