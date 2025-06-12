@@ -146,7 +146,7 @@ func (d *appDataCollector) GetOrgMembersCount() int {
 
 	defer conn.Close()
 
-	users, err := clients.NewUserClient(conn).SearchUsers("*", maxUsers)
+	users, err := clients.NewUserClient(conn).SearchUsers(`%%`, maxUsers)
 	if err != nil {
 		log.Errorf("Failed to get users: %v", err)
 		return 0
