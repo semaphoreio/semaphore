@@ -338,6 +338,22 @@ defmodule InternalApi.RepoProxy.CreateBlankResponse.Repo do
   field(:repository_id, 5, type: :string)
 end
 
+defmodule InternalApi.RepoProxy.HookUpdated do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          hook_id: String.t(),
+          project_id: String.t(),
+          timestamp: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:hook_id, :project_id, :timestamp]
+
+  field(:hook_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.RepoProxy.RepoProxyService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RepoProxy.RepoProxyService"

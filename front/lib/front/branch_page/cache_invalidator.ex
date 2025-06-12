@@ -19,7 +19,8 @@ defmodule Front.BranchPage.CacheInvalidator do
       {"pipeline_state_exchange", "running", :pipeline_event},
       {"pipeline_state_exchange", "stopping", :pipeline_event},
       {"pipeline_state_exchange", "done", :pipeline_event},
-      {"velocity_pipeline_summary_exchange", "done", :pipeline_summary_event}
+      {"velocity_pipeline_summary_exchange", "done", :pipeline_summary_event},
+      {"hook_exchange", "updated", :hook_event}
     ]
 
   @metric_name "branch_page.cache_invalidator.process"
@@ -61,6 +62,24 @@ defmodule Front.BranchPage.CacheInvalidator do
       )
   end
 
+  def hook_event(message) do
+    Watchman.benchmark({@metric_name, ["hook_event"]}, fn ->
+      event = InternalApi.RepoProxy.HookUpdated.decode(message)
+
+      measure_queue_time(event, "hook_event")
+      invalidate_with_hook(event.hook_id, event.project_id)
+
+      Logger.info(
+        "#{@log_prefix} [HOOK EVENT] [hook_id=#{event.hook_id} project_id=#{event.project_id}] Processing finished"
+      )
+    end)
+  rescue
+    e in Protobuf.DecodeError ->
+      Logger.error(
+        "#{@log_prefix} [HOOK EVENT] Processing failed message: #{inspect(message)} error: #{inspect(e)}"
+      )
+  end
+
   def measure_queue_time(event, tag) do
     fetched_for_processing_at = :os.system_time(:millisecond)
     emitted_at = event.timestamp.seconds * 1000 + div(event.timestamp.nanos, 1_000_000)
@@ -82,6 +101,19 @@ defmodule Front.BranchPage.CacheInvalidator do
 
     {:ok, _} =
       struct!(BranchPage.Model.LoadParams, branch_id: pipeline.branch_id)
+      |> BranchPage.Model.invalidate()
+  end
+
+  defp invalidate_with_hook(hook_id, project_id) do
+    Models.RepoProxy.invalidate(hook_id)
+
+    {:ok, hook} = Models.RepoProxy.find(hook_id)
+    branch_name = if hook.type == "pr", do: hook.pr_branch_name, else: hook.branch_name
+    workflow = Models.Workflow.find_latest(project_id: project_id, branch_name: branch_name)
+    Models.Workflow.invalidate(workflow.id)
+
+    {:ok, _} =
+      struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
       |> BranchPage.Model.invalidate()
   end
 end
