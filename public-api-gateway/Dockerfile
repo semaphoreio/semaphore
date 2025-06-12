@@ -38,6 +38,8 @@ COPY test test
 COPY scripts scripts
 COPY lint.toml lint.toml
 
+RUN rm -rf build && CGO_ENABLED=0 go build -o build/server main.go
+
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
 FROM ${RUNNER_IMAGE} AS runner
