@@ -47,8 +47,8 @@ func (c *OrgClient) Describe(orgID, orgUsername string) (*organization.Organizat
 	defer cancel()
 
 	req := &organization.DescribeRequest{
-		OrgId:        orgID,
-		OrgUsername:  orgUsername,
+		OrgId:         orgID,
+		OrgUsername:   orgUsername,
 		IncludeQuotas: false,
 	}
 
@@ -72,4 +72,46 @@ func (c *OrgClient) Describe(orgID, orgUsername string) (*organization.Organizat
 
 	log.Debugf("Found organization: username=%s, orgId=%s", org.GetOrgUsername(), org.GetOrgId())
 	return org, nil
+}
+
+// ListOrganizations returns a list of all organizations.
+// If pageSize is 0, a default page size will be used.
+// If pageToken is empty, it will fetch the first page.
+func (c *OrgClient) ListOrganizations(pageSize int32, pageToken string) ([]*organization.Organization, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	req := &organization.ListRequest{
+		PageSize:  pageSize,
+		PageToken: pageToken,
+	}
+
+	resp, err := c.client.List(ctx, req)
+	if err != nil {
+		log.Errorf("Failed to list organizations: %v", err)
+		return nil, "", err
+	}
+
+	log.Debugf("Retrieved %d organizations", len(resp.GetOrganizations()))
+	return resp.GetOrganizations(), resp.GetNextPageToken(), nil
+}
+
+func (c *OrgClient) ListAllOrganizations() ([]*organization.Organization, error) {
+	organizations := []*organization.Organization{}
+	pageSize := int32(100)
+	pageToken := ""
+	for {
+		orgs, nextToken, err := c.ListOrganizations(pageSize, pageToken)
+		if err != nil {
+			return nil, err
+		}
+
+		organizations = append(organizations, orgs...)
+		if nextToken == "" {
+			break
+		}
+		pageToken = nextToken
+	}
+
+	return organizations, nil
 }
