@@ -105,15 +105,34 @@ defmodule Front.BranchPage.CacheInvalidator do
   end
 
   defp invalidate_with_hook(hook_id, project_id) do
+    #
+    # Invalidate the cache for the hook we are receiving.
+    #
     Models.RepoProxy.invalidate(hook_id)
-
     hook = Models.RepoProxy.find(hook_id)
-    branch_name = if hook.type == "pr", do: hook.pr_branch_name, else: hook.branch_name
-    workflow = Models.Workflow.find_latest(project_id: project_id, branch_name: branch_name)
-    Models.Workflow.invalidate(workflow.id)
 
-    {:ok, _} =
-      struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
-      |> BranchPage.Model.invalidate()
+    #
+    # We only need to invalidate the workflow/branch cache for PR hooks,
+    # in order to potentially show the conflict warning information on the branch page.
+    #
+    if hook.type == "pr" do
+
+      #
+      # Find the latest workflow for this hook's branch,
+      # and invalidate the cache for it, since it's from that workflow
+      # that we determine the conflict status of the PR branch.
+      #
+      workflow = Models.Workflow.find_latest(
+        project_id: project_id,
+        branch_name: "pull-request-#{hook.pr_number}"
+      )
+
+      Models.RepoProxy.invalidate(workflow.hook_id)
+      Models.Workflow.invalidate(workflow.id)
+
+      {:ok, _} =
+        struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
+        |> BranchPage.Model.invalidate()
+    end
   end
 end
