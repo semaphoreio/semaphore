@@ -28,7 +28,7 @@ variable "semaphore_realm_session_idle_timeout" {
 variable "semaphore_realm_session_max_lifespan" {
   description = "Semaphore realm session max lifespan"
   type        = string
-  default     = "30d"
+  default     = "720h"
 }
 
 variable "semaphore_realm_access_token_lifespan" {
@@ -40,7 +40,7 @@ variable "semaphore_realm_access_token_lifespan" {
 variable "semaphore_realm_offline_session_idle_timeout" {
   description = "Semaphore realm offline session idle timeout"
   type        = string
-  default     = "30d"
+  default     = "720h"
 }
 
 variable "semaphore_realm_update_password_action" {
