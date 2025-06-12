@@ -34,11 +34,12 @@ COPY protos protos
 COPY go.mod go.mod
 COPY go.sum go.sum
 COPY main.go main.go
+
+RUN rm -rf build && CGO_ENABLED=0 go build -o build/server main.go
+
 COPY test test
 COPY scripts scripts
 COPY lint.toml lint.toml
-
-RUN rm -rf build && CGO_ENABLED=0 go build -o build/server main.go
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 

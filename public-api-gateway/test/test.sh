@@ -10,7 +10,7 @@ nohup go run test/jobs_v1alpha_server.go test/secrets_v1beta_server.go > /tmp/se
 # Start the GRPC gateway
 SECRETS_V1BETA_PUBLIC_GRPC_API_ENDPOINT=localhost:50051
 AMQP_URL=amqp://guest:guest@rabbitmq:5672
-JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT=localhost:50051 
+JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT=localhost:50051
 nohup /app/build/server >/tmp/gateway_output 2>&1 &
 
 # sleep a bit, make sure that every server is running
@@ -60,10 +60,8 @@ fi
 
 # Test 2: Job Stop Request (should trigger audit)
 
-job_stop='{ "metadata": { "name" : "job-x" }, "data" : { "env_vars" : [ ] } }'
-
 # send request to gateway
-curl -X POST --data "$job_stop" -s -H "Authorization: Token yyy" -H "x-some-other-jobs-header: x-some-other-jobs-header-aaaa" "http://localhost:8080/api/v1alpha/jobs/job-x/stop" > /tmp/server_response.txt
+curl -X POST -s -H "Authorization: Token yyy" -H "x-some-other-jobs-header: x-some-other-jobs-header-aaaa" "http://localhost:8080/api/v1alpha/jobs/job-x/stop" > /tmp/server_response.txt
 
 server_output=$(cat /tmp/server_output.txt)
 server_response=$(cat /tmp/server_response.txt)
