@@ -107,7 +107,7 @@ defmodule Front.BranchPage.CacheInvalidator do
   defp invalidate_with_hook(hook_id, project_id) do
     Models.RepoProxy.invalidate(hook_id)
 
-    {:ok, hook} = Models.RepoProxy.find(hook_id)
+    hook = Models.RepoProxy.find(hook_id)
     branch_name = if hook.type == "pr", do: hook.pr_branch_name, else: hook.branch_name
     workflow = Models.Workflow.find_latest(project_id: project_id, branch_name: branch_name)
     Models.Workflow.invalidate(workflow.id)
