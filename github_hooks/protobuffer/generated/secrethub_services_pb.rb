@@ -2,7 +2,7 @@
 # Source: secrethub.proto for package 'InternalApi.Secrethub'
 
 require 'grpc'
-require 'secrethub_pb'
+require_relative 'secrethub_pb'
 
 module InternalApi
   module Secrethub

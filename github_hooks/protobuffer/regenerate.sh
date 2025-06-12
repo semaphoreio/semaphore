@@ -23,6 +23,7 @@ protos=(encryptor projecthub plumber.pipeline plumber.admin google/protobuf/time
 for i in ${protos[@]}; do
   echo "Generating $i"
   echo "bundle exec grpc_tools_ruby_protoc -I $TMP_REPO_DIR -I $TMP_REPO_DIR/include --ruby_out=protobuffer/generated --grpc_out=protobuffer/generated $i.proto" | sh
+  sed -E -i '' "s/require .*\/(.*_pb)'/require_relative '\1'/g" ${i}_pb.rb
 done
 
 rm -rf $TMP_REPO_DIR

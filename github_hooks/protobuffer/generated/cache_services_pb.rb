@@ -2,7 +2,7 @@
 # Source: cache.proto for package 'InternalApi.Cache'
 
 require 'grpc'
-require 'cache_pb'
+require_relative 'cache_pb'
 
 module InternalApi
   module Cache

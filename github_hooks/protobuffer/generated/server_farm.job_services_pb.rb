@@ -2,7 +2,7 @@
 # Source: server_farm.job.proto for package 'InternalApi.ServerFarm.Job'
 
 require 'grpc'
-require 'server_farm.job_pb'
+require_relative 'server_farm.job_pb'
 
 module InternalApi
   module ServerFarm

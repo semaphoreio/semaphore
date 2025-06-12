@@ -2,7 +2,7 @@
 # Source: rbac.proto for package 'InternalApi.RBAC'
 
 require 'grpc'
-require 'rbac_pb'
+require_relative 'rbac_pb'
 
 module InternalApi
   module RBAC

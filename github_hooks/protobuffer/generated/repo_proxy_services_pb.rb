@@ -2,7 +2,7 @@
 # Source: repo_proxy.proto for package 'InternalApi.RepoProxy'
 
 require 'grpc'
-require 'repo_proxy_pb'
+require_relative 'repo_proxy_pb'
 
 module InternalApi
   module RepoProxy

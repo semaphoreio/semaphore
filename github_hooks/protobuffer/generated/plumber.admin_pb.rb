@@ -4,7 +4,7 @@
 
 require 'google/protobuf'
 
-require 'plumber.pipeline_pb'
+require_relative 'plumber.pipeline_pb'
 
 
 descriptor_data = "\n\x13plumber.admin.proto\x12\x13InternalApi.Plumber\x1a\x16plumber.pipeline.proto\" \n\x0eGetYamlRequest\x12\x0e\n\x06ppl_id\x18\x01 \x01(\t\"]\n\x0fGetYamlResponse\x12<\n\x0fresponse_status\x18\x01 \x01(\x0b\x32#.InternalApi.Plumber.ResponseStatus\x12\x0c\n\x04yaml\x18\x02 \x01(\t\"\xc9\x01\n\x13TerminateAllRequest\x12\x17\n\x0frequester_token\x18\x01 \x01(\t\x12\x12\n\nproject_id\x18\x02 \x01(\t\x12\x13\n\x0b\x62ranch_name\x18\x03 \x01(\t\x12?\n\x06reason\x18\x04 \x01(\x0e\x32/.InternalApi.Plumber.TerminateAllRequest.Reason\"/\n\x06Reason\x12\x10\n\x0c\x41\x44MIN_ACTION\x10\x00\x12\x13\n\x0f\x42RANCH_DELETION\x10\x01\"T\n\x14TerminateAllResponse\x12<\n\x0fresponse_status\x18\x01 \x01(\x0b\x32#.InternalApi.Plumber.ResponseStatus2\xc2\x01\n\x05\x41\x64min\x12\x63\n\x0cTerminateAll\x12(.InternalApi.Plumber.TerminateAllRequest\x1a).InternalApi.Plumber.TerminateAllResponse\x12T\n\x07GetYaml\x12#.InternalApi.Plumber.GetYamlRequest\x1a$.InternalApi.Plumber.GetYamlResponseb\x06proto3"

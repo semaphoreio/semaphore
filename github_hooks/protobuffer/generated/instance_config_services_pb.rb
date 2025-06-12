@@ -2,7 +2,7 @@
 # Source: instance_config.proto for package 'InternalApi.InstanceConfig'
 
 require 'grpc'
-require 'instance_config_pb'
+require_relative 'instance_config_pb'
 
 module InternalApi
   module InstanceConfig

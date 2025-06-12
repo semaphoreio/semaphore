@@ -2,7 +2,7 @@
 # Source: encryptor.proto for package 'InternalApi.Encryptor'
 
 require 'grpc'
-require 'encryptor_pb'
+require_relative 'encryptor_pb'
 
 module InternalApi
   module Encryptor

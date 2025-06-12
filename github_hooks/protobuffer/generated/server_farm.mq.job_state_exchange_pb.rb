@@ -4,7 +4,7 @@
 
 require 'google/protobuf'
 
-require 'google/protobuf/timestamp_pb'
+require_relative 'google/protobuf/timestamp_pb'
 
 
 descriptor_data = "\n\'server_farm.mq.job_state_exchange.proto\x12*InternalApi.ServerFarm.MQ.JobStateExchange\x1a\x1fgoogle/protobuf/timestamp.proto\"q\n\nJobStarted\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08\x61gent_id\x18\x03 \x01(\t\x12\x12\n\nagent_name\x18\x04 \x01(\t\"a\n\x0bJobFinished\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12-\n\ttimestamp\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x13\n\x0bself_hosted\x18\x03 \x01(\x08\x62\x06proto3"
