@@ -35,6 +35,9 @@ spec:
         ports:
         - name: grpc
           containerPort: {{ .Values.licenseChecker.grpc.port }}
+        envFrom:
+          - configMapRef:
+              name: {{ .Values.global.internalApi.configMapName }}
         env:
           - name: BOOTSTRAPPER_GRPC_PORT
             value: "{{ .Values.licenseChecker.grpc.port }}"
@@ -46,6 +49,10 @@ spec:
             value: "true"
           - name: CE_VERSION
             value: {{ .Chart.Version }}
+          - name: KUBERNETES_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
         volumeMounts:
         - name: license
           mountPath: /app/app.license
