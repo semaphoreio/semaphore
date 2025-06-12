@@ -9,3 +9,18 @@ resources:
   requests:
     cpu: '0.01'
     memory: 25Mi
+
+licenseChecker:
+  enabled: true
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  licenseServerUrl: "http://license-server"
+  licenseFile: "/app/config/app.license"
+  grpc:
+    port: 50051
