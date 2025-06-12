@@ -1,7 +1,7 @@
 module Semaphore::Events
   class HookUpdated
 
-    def self.emit(branch, workflow)
+    def self.emit(workflow)
       event = InternalApi::RepoProxy::HookUpdated.new(
         :hook_id => workflow.id,
         :project_id => workflow.project_id,
