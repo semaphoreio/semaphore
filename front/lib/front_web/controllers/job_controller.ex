@@ -322,6 +322,7 @@ defmodule FrontWeb.JobController do
     |> Audit.metadata(project_id: conn.assigns.project.id)
     |> Audit.metadata(project_name: conn.assigns.project.name)
     |> Audit.metadata(pipeline_id: conn.assigns.job.ppl_id)
+    |> Audit.metadata(job_id: conn.assigns.job.id)
     |> Audit.log()
   end
 
