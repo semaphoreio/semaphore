@@ -54,7 +54,6 @@ defmodule HooksReceiver.LicenseClient do
   """
   @spec connect() :: {:ok, GRPC.Channel.t()} | {:error, any()}
   def connect do
-    # The service is expected to run on port 50051
     GRPC.Stub.connect(url())
   end
 

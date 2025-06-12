@@ -28,7 +28,6 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the license verification gRPC server",
 	PreRun: func(cmd *cobra.Command, args []string) {
-		// Check environment variables
 		if envPort := os.Getenv("BOOTSTRAPPER_GRPC_PORT"); envPort != "" {
 			if port, err := strconv.Atoi(envPort); err == nil {
 				grpcPort = port

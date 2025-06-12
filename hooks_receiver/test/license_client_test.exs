@@ -4,7 +4,6 @@ defmodule HooksReceiver.LicenseClientTest do
   alias HooksReceiver.LicenseClient
 
   setup do
-    # Point the LicenseClient to use the mock server on localhost:50051
     Application.put_env(:hooks_receiver, :license_checker_grpc, "localhost:50051")
     :ok
   end

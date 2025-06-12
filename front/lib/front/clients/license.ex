@@ -42,7 +42,6 @@ defmodule Front.Clients.License do
   """
   @spec connect() :: {:ok, GRPC.Channel.t()} | {:error, any()}
   def connect do
-    # The service is expected to run on port 50051
     GRPC.Stub.connect("license-checker:50051")
   end
 end
