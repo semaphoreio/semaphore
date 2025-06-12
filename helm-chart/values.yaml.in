@@ -166,7 +166,7 @@ global:
     secretName: ""
 
   license: ""
-  licenseServerUrl: "http://license-server"
+  licenseServerUrl: "https://licensing.semaphore.io"
 
 toolbox:
   version: "v1.25.0"
