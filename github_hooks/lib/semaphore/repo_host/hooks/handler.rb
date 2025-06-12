@@ -188,7 +188,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
           return
         when :non_mergeable
-          update_pull_request_mergeable(workflow, meta[:mergeable])
+          update_pull_request_mergeable(logger, workflow, meta[:mergeable])
 
           logger.info("pr-non-mergeable")
           workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
@@ -213,7 +213,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     branch = find_or_create_branch(workflow, logger)
     if workflow.payload.pull_request?
-      update_pull_request_mergeable(workflow, meta[:mergeable])
+      update_pull_request_mergeable(logger, workflow, meta[:mergeable])
     end
 
     launch_pipeline(branch, workflow, logger)
@@ -310,10 +310,12 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
     client.list_user_permissions(req).permissions.include?("project.view")
   end
 
-  def self.update_pull_request_mergeable(workflow, mergeable)
+  def self.update_pull_request_mergeable(logger, workflow, mergeable)
     if (branch = find_branch(workflow))
+      previous_value = branch.pull_request_mergeable
       branch.update(:pull_request_mergeable => mergeable)
-      if branch.pull_request_mergeable != mergeable
+      logger.info("Updated mergeable state: #{mergeable} - previous=#{previous_value}")
+      if previous_value != mergeable
         Semaphore::Events::HookUpdated.emit(workflow)
       end
     end
