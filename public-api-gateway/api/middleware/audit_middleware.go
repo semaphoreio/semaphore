@@ -104,6 +104,7 @@ func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEv
 
 	var operation auditProto.Event_Operation
 	var description string
+	metadataMap := map[string]string{}
 	resourceID := ""
 
 	switch r.Method {
@@ -116,6 +117,7 @@ func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEv
 				err = fmt.Errorf("job_id not found in path params")
 				return
 			}
+			metadataMap["job_id"] = resourceID
 			description = "Stopped the job"
 		}
 	default:
@@ -123,9 +125,15 @@ func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEv
 		return
 	}
 
+	metadata, err := json.Marshal(metadataMap)
+	if err != nil {
+		err = fmt.Errorf("error marshaling metadata: %v", err)
+		return
+	}
 	auditEvent.Operation = operation
 	auditEvent.Description = description
 	auditEvent.ResourceId = resourceID
+	auditEvent.Metadata = string(metadata)
 
 	return
 }
@@ -146,14 +154,15 @@ func createDefaultAuditEvent(r *http.Request, resource auditProto.Event_Resource
 		Timestamp:    timestamppb.Now(),
 		Medium:       medium,
 		IpAddress:    ipAddress,
+		Metadata:     "{}",
 	}
 }
 
 // initAuditClient initializes the audit client for API call auditing
 func initAuditClient() (*clients.AuditClient, error) {
-	amqpURL := os.Getenv("AMQP_URL")
+	amqpURL := os.Getenv("RABBITMQ_URL")
 	if amqpURL == "" {
-		return nil, fmt.Errorf("AMQP_URL environment variable not set")
+		return nil, fmt.Errorf("RABBITMQ_URL environment variable not set")
 	}
 
 	auditClient, err := clients.NewAuditClient(clients.AuditClientConfig{
