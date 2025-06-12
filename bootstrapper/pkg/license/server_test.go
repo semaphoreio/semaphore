@@ -28,6 +28,7 @@ func bufDialer(context.Context, string) (net.Conn, error) {
 	return lis.Dial()
 }
 
+// Mock implementations
 type mockTransport struct {
 	responseFunc func(*http.Request) (*http.Response, error)
 }
@@ -36,11 +37,40 @@ func (m *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return m.responseFunc(req)
 }
 
+type mockDataCollector struct{}
+
+func (m *mockDataCollector) GetKubeVersion() string {
+	return "v1.31.0"
+}
+
+func (m *mockDataCollector) GetInstallationID() string {
+	return "test-installation-id"
+}
+
+func (m *mockDataCollector) GetOrgMembersCount() int {
+	return 5
+}
+
+func (m *mockDataCollector) GetProjectsCount() int {
+	return 10
+}
+
+func (m *mockDataCollector) GetAppVersion() string {
+	return "v1.3.0"
+}
+
 func createMockServer(t *testing.T, mockClient *http.Client, licenseFile string) (license.LicenseServiceClient, func()) {
 	mockServerURL := "http://mock-license-server"
 	lis = bufconn.Listen(bufSize)
 	s := grpc.NewServer()
-	licenseServer := NewServer(mockServerURL, licenseFile)
+
+	// Create mock clients with test implementations
+	licenseServer := NewServer(
+		mockServerURL,
+		licenseFile,
+	)
+	licenseServer.dataCollector = &mockDataCollector{}
+
 	if mockClient != nil {
 		licenseServer.licenseClient = NewClient(mockServerURL, mockClient)
 	}
