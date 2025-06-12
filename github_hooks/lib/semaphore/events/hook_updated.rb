@@ -16,7 +16,7 @@ module Semaphore::Events
         :url => App.amqp_url
       }
 
-      Logman.info "Publishing hook updated event for hook #{hook.id}, project #{workflow.project_id}"
+      Logman.info "Publishing hook updated event for hook #{workflow.id}, project #{workflow.project_id}"
 
       Tackle.publish(message, options)
     end
