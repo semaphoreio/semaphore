@@ -23,6 +23,52 @@ RSpec.describe ProjectsController, :type => :controller do
       allow(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
     end
 
+    context "when App.ee? is true and license is valid" do
+      before do
+        allow(App).to receive(:ee?).and_return(true)
+        # Stub check_license! to simulate valid license (do nothing)
+        allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(true)
+        # Stub out the rest of the logic to avoid unrelated errors
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
+        allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
+        allow_any_instance_of(Logman).to receive(:add)
+        allow_any_instance_of(Logman).to receive(:info)
+        allow_any_instance_of(Logman).to receive(:error)
+      end
+
+      it "processes the hook and returns 200 OK" do
+        post :repo_host_post_commit_hook, params: { payload: "{}" }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when App.ee? is true and license is invalid" do
+      before do
+        allow(App).to receive(:ee?).and_return(true)
+        # Simulate check_license! halting with forbidden
+        allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(false)
+        # Stub out the rest of the logic to avoid unrelated errors
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
+        allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
+        allow_any_instance_of(Logman).to receive(:add)
+        allow_any_instance_of(Logman).to receive(:info)
+        allow_any_instance_of(Logman).to receive(:error)
+      end
+
+      it "refuses processing and returns 403 Forbidden" do
+        post :repo_host_post_commit_hook, params: { payload: "{}" }
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
     context "when GitHub hook" do
       let(:workflow) { double(Workflow, :id => 111, :update_attribute => nil) }
       let(:payload) { RepoHost::Github::Responses::Payload.post_receive_hook_pull_request }
