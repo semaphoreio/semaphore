@@ -44,6 +44,8 @@ spec:
             value: "/app/app.license"
           - name: BOOTSTRAPPER_ENABLE_GRPC
             value: "true"
+          - name: CE_VERSION
+            value: {{ .Chart.Version }}
         volumeMounts:
         - name: license
           mountPath: /app/app.license

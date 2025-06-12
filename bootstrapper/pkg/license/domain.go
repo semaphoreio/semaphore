@@ -22,3 +22,11 @@ type LicenseVerificationResponse struct {
 	EnabledFeatures []string  `json:"enabledFeatures"`
 	Message         string    `json:"message,omitempty"`
 }
+
+type dataCollector interface {
+	GetKubeVersion() string
+	GetInstallationID() string
+	GetOrgMembersCount() int
+	GetProjectsCount() int
+	GetAppVersion() string
+}
