@@ -12,11 +12,11 @@ module Semaphore::Events
 
       options = {
         :exchange => "hook_exchange",
-        :routing_key => "pull_request_unmergeable",
+        :routing_key => "pr_unmergeable",
         :url => App.amqp_url
       }
 
-      Logman.info "Publishing pull request unmergeable for project #{workflow.project_id}, branch #{branch.name}"
+      Logman.info "Publishing pr_unmergeable event for project #{workflow.project_id}, branch #{branch.name}"
 
       Tackle.publish(message, options)
     end
