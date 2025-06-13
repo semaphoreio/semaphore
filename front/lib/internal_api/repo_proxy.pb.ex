@@ -338,19 +338,19 @@ defmodule InternalApi.RepoProxy.CreateBlankResponse.Repo do
   field(:repository_id, 5, type: :string)
 end
 
-defmodule InternalApi.RepoProxy.HookUpdated do
+defmodule InternalApi.RepoProxy.PullRequestUnmergeable do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          hook_id: String.t(),
           project_id: String.t(),
+          branch_name: String.t(),
           timestamp: Google.Protobuf.Timestamp.t()
         }
-  defstruct [:hook_id, :project_id, :timestamp]
+  defstruct [:project_id, :branch_name, :timestamp]
 
-  field(:hook_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
+  field(:project_id, 1, type: :string)
+  field(:branch_name, 2, type: :string)
   field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 

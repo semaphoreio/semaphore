@@ -20,7 +20,7 @@ defmodule Front.BranchPage.CacheInvalidator do
       {"pipeline_state_exchange", "stopping", :pipeline_event},
       {"pipeline_state_exchange", "done", :pipeline_event},
       {"velocity_pipeline_summary_exchange", "done", :pipeline_summary_event},
-      {"hook_exchange", "updated", :hook_event}
+      {"hook_exchange", "pr_unmergeable", :pr_unmergeable_event}
     ]
 
   @metric_name "branch_page.cache_invalidator.process"
@@ -62,21 +62,21 @@ defmodule Front.BranchPage.CacheInvalidator do
       )
   end
 
-  def hook_event(message) do
-    Watchman.benchmark({@metric_name, ["hook_event"]}, fn ->
-      event = InternalApi.RepoProxy.HookUpdated.decode(message)
+  def pr_unmergeable_event(message) do
+    Watchman.benchmark({@metric_name, ["pr_unmergeable_event"]}, fn ->
+      event = InternalApi.RepoProxy.PullRequestUnmergeable.decode(message)
 
-      measure_queue_time(event, "hook_event")
-      invalidate_with_hook(event.hook_id, event.project_id)
+      measure_queue_time(event, "pr_unmergeable_event")
+      invalidate_with_pr_branch(event.project_id, event.branch_name)
 
       Logger.info(
-        "#{@log_prefix} [HOOK EVENT] [hook_id=#{event.hook_id} project_id=#{event.project_id}] Processing finished"
+        "#{@log_prefix} [PR UNMERGEABLE EVENT] [project_id=#{event.project_id} branch=#{event.branch_name}] Processing finished"
       )
     end)
   rescue
     e in Protobuf.DecodeError ->
       Logger.error(
-        "#{@log_prefix} [HOOK EVENT] Processing failed message: #{inspect(message)} error: #{inspect(e)}"
+        "#{@log_prefix} [PR UNMERGEABLE EVENT] Processing failed message: #{inspect(message)} error: #{inspect(e)}"
       )
   end
 
@@ -104,35 +104,23 @@ defmodule Front.BranchPage.CacheInvalidator do
       |> BranchPage.Model.invalidate()
   end
 
-  defp invalidate_with_hook(hook_id, project_id) do
+  defp invalidate_with_pr_branch(project_id, branch_name) do
     #
-    # Invalidate the cache for the hook we are receiving.
+    # Find the latest workflow for the branch,
+    # and invalidate the cache for it, since it's from that workflow
+    # that we determine the conflict status of the branch.
     #
-    Models.RepoProxy.invalidate(hook_id)
-    hook = Models.RepoProxy.find(hook_id)
-
-    #
-    # We only need to invalidate the workflow/branch cache for PR hooks,
-    # in order to potentially show the conflict warning information on the branch page.
-    #
-    if hook.type == "pr" do
-
-      #
-      # Find the latest workflow for this hook's branch,
-      # and invalidate the cache for it, since it's from that workflow
-      # that we determine the conflict status of the PR branch.
-      #
-      workflow = Models.Workflow.find_latest(
+    workflow =
+      Models.Workflow.find_latest(
         project_id: project_id,
-        branch_name: "pull-request-#{hook.pr_number}"
+        branch_name: branch_name
       )
 
-      Models.RepoProxy.invalidate(workflow.hook_id)
-      Models.Workflow.invalidate(workflow.id)
+    Models.RepoProxy.invalidate(workflow.hook_id)
+    Models.Workflow.invalidate(workflow.id)
 
-      {:ok, _} =
-        struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
-        |> BranchPage.Model.invalidate()
-    end
+    {:ok, _} =
+      struct!(BranchPage.Model.LoadParams, branch_id: workflow.branch_id)
+      |> BranchPage.Model.invalidate()
   end
 end
