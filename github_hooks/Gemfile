@@ -14,7 +14,8 @@ gem "faraday", "~> 1.3.0"
 gem "faraday_middleware" # used for json
 gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-803086765
 gem 'net-imap', '~> 0.5.7'
-gem "grpc", "~> 1.57.0"
+gem "grpc", "~> 1.62.1"
+gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.21.0"
 gem "httpclient"
 gem "json"

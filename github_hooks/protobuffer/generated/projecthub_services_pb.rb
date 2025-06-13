@@ -22,6 +22,7 @@ module InternalApi
         rpc :Create, ::InternalApi::Projecthub::CreateRequest, ::InternalApi::Projecthub::CreateResponse
         rpc :Update, ::InternalApi::Projecthub::UpdateRequest, ::InternalApi::Projecthub::UpdateResponse
         rpc :Destroy, ::InternalApi::Projecthub::DestroyRequest, ::InternalApi::Projecthub::DestroyResponse
+        rpc :Restore, ::InternalApi::Projecthub::RestoreRequest, ::InternalApi::Projecthub::RestoreResponse
         #
         # Operation is called to list Semaphore users on the project.
         # Operation is synchronous.
@@ -48,6 +49,12 @@ module InternalApi
         #
         rpc :RegenerateWebhook, ::InternalApi::Projecthub::RegenerateWebhookRequest, ::InternalApi::Projecthub::RegenerateWebhookResponse
         #
+        # Operation is called to regenerate a webhook secret token.
+        # Operation is synchronous.
+        # Operation is only available for git agnostic projects.
+        #
+        rpc :RegenerateWebhookSecret, ::InternalApi::Projecthub::RegenerateWebhookSecretRequest, ::InternalApi::Projecthub::RegenerateWebhookSecretResponse
+        #
         # Operation is called to change a project owner within the same organization.
         # Operation is synchronous.
         #
@@ -62,6 +69,11 @@ module InternalApi
         # Operation is synchronous.
         #
         rpc :GithubAppSwitch, ::InternalApi::Projecthub::GithubAppSwitchRequest, ::InternalApi::Projecthub::GithubAppSwitchResponse
+        #
+        # Operation is called to transition project from onboarding to ready state.
+        # Operation is synchronous.
+        #
+        rpc :FinishOnboarding, ::InternalApi::Projecthub::FinishOnboardingRequest, ::InternalApi::Projecthub::FinishOnboardingResponse
       end
 
       Stub = Service.rpc_stub_class
