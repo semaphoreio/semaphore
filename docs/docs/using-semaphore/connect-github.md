@@ -178,6 +178,34 @@ This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from t
 1. **The file doesn't exist on your repository**: double check to make sure that the Semaphore YAML file actually exists
 2. **Repository is disconnected from Semaphore**: follow the steps [previously described](#reconnect)
 
+### This pull request is still a work in progress {#stuck-pr}
+
+Renaming the pipeline in Semaphore can cause GitHub pull requests to be stuck, as GitHub expects the old name to report back the status.
+
+For instance, renaming the `semaphore.yml` pipeline file from:
+
+```yaml
+version: v1.0
+name: Rails 7
+```
+
+To something like:
+
+```yaml
+version: v1.0
+name: Rails 8
+```
+
+Can cause any pending pull requests on GitHub to wait forever.
+
+To solve the issue, follow these steps:
+
+1. Go to your GitHub repository.
+2. Navigate to **Settings** > **Branches**,
+3. Under **Branch Protection Rules**, find the rule for your default or protected branch and press **Edit**
+4. In the **Require status checks to pass before merging** section, remove the outdated check, e.g. `ci/semaphoreci/push: old-name`) and add the new one if needed, e.g. `ci/semaphoreci/push: new-name`
+5. Save the changes.
+
 ## Connect with GitHub SAML
 
 Semaphore supports repositories hosted on GitHub with SAML single sign-on (SSO). This GitHub feature is available in the GitHub Enterprise Cloud offering.

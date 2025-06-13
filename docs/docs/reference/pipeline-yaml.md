@@ -1201,7 +1201,7 @@ Global job config is not applied to `after_pipeline` jobs. This includes secrets
 
 :::
 
-## promotions {#promotions}
+## Promotions {#promotions}
 
 The `promotions` property is used for *promoting* (manually or automatically triggering) one or more pipelines using one or more pipeline YAML files. A pipeline YAML file can have a single `promotions` block or no `promotions` block.
 

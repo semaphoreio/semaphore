@@ -13,10 +13,9 @@ class Policy::TrivyFs < Policy
       "--exit-code 1",
       "--severity #{@severity}",
       "--ignore-unfixed",
-      "--format template",
+      "--format json",
       "--scanners vuln,license",
-      "--template '@#{@template_path}'",
-      "-o results.xml"
+      "-o out/dependency-scan-trivy.json"
     ]
 
     if @ignore_policy != nil

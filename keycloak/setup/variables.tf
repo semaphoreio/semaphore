@@ -19,6 +19,30 @@ variable "semaphore_realm" {
   type        = string
 }
 
+variable "semaphore_realm_session_idle_timeout" {
+  description = "Semaphore realm session idle timeout"
+  type        = string
+  default     = "72h"
+}
+
+variable "semaphore_realm_session_max_lifespan" {
+  description = "Semaphore realm session max lifespan"
+  type        = string
+  default     = "720h"
+}
+
+variable "semaphore_realm_access_token_lifespan" {
+  description = "Semaphore realm access token lifespan"
+  type        = string
+  default     = "1h"
+}
+
+variable "semaphore_realm_offline_session_idle_timeout" {
+  description = "Semaphore realm offline session idle timeout"
+  type        = string
+  default     = "720h"
+}
+
 variable "semaphore_realm_update_password_action" {
   description = "If enabled, newly created accounts will be required to update their password on first login"
   type        = bool

@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+require_relative 'lib/global_report/aggregator'
+require 'optparse'
+
+args = {}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: #{File.basename(__FILE__)} [options]"
+  parser.separator ""
+  parser.separator "Global Security Report Aggregator - Combines individual service reports"
+  parser.separator ""
+
+  parser.on("-i", "--input-dir DIR", "Directory containing service reports (default: security-reports)") do |dir|
+    args[:reports_dir] = dir
+  end
+
+  parser.on("-o", "--output-dir DIR", "Output directory for global reports (default: global-security)") do |dir|
+    args[:output_dir] = dir
+  end
+  parser.on("-h", "--help", "Show this help message") do
+    puts parser
+    exit
+  end
+
+  parser.separator ""
+  parser.separator "Examples:"
+  parser.separator "  #{File.basename(__FILE__)} -i reports -o dashboard"
+end.parse!
+
+reports_dir = args[:reports_dir] || 'security-reports'
+output_dir = args[:output_dir] || 'global-security'
+
+puts "🌍 Global Security Report Aggregator"
+puts "📁 Reports directory: #{reports_dir}"
+puts "📤 Output directory: #{output_dir}"
+puts
+
+unless Dir.exist?(reports_dir)
+  puts "❌ Reports directory '#{reports_dir}' does not exist!"
+  puts "Usage: ruby #{File.basename(__FILE__)} [options]"
+  exit 1
+end
+
+aggregator = GlobalReport::Aggregator.new(reports_dir, output_dir)
+aggregator.aggregate
