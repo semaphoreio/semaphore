@@ -1,18 +1,15 @@
-<div class="mv3 pa3 bg-lightest-orange ba b--black-15">
+<div class="mv3 pa3 ph4 bg-lightest-orange ba b--black-15">
   <div class="flex-m items-center justify-between">
     <div class="mb3 mb0-m pr3-m">
       <div class="flex-m items-center">
-        <div class="flex-shrink-0 mb2 mb0-m pr3">
-          <img src="<%= assets_path() %>/images/icn-warning.svg">
-        </div>
         <div class="flex-auto">
           <p class="b mb0">This Pull Request has conflicts that must be resolved</p>
-          <p class="mb0">Please go to repository and resolve the conflicts before starting a new workflow</p>
+          <p class="mb0">Please go to the repository and resolve the conflicts before starting a new workflow.</p>
         </div>
       </div>
     </div>
     <div class="flex-shrink-0">
-      <a href="<%= human_accessible_repository_url(@project, @branch) %>#partial-pull-merging" class="btn btn-warning">Resolve conflicts ↗</a>
+      <a href="<%= human_accessible_repository_url(@project, @branch) %>" class="btn btn-link">Resolve conflicts ↗</a>
     </div>
   </div>
 </div>
