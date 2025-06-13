@@ -1,11 +1,12 @@
 {
-  "title": "Python",
-  "description": "Run quality checks and parallel tests for your Python app using Poetry for dependency management and pytest for testing. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Python</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Poetry</span><span class='f6 normal mr1 ph1 br2 bg-green white'>pytest</span></div>",
-  "short_description": "Run your Python suite",
+  "title": "Python CI/CD Pipeline",
+  "description": "Set up your Python CI/CD pipeline with dependency caching, linting via flake8, security scanning with Bandit, parallelized unit and integration tests using pytest, and automated Docker image builds. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Python</span><span class='f6 normal mr1 ph1 br2 bg-green white'>pytest</span><span class='f6 normal mr1 ph1 br2 bg-red white'>flake8</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Bandit</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Docker</span></div>",
+  "short_description": "Run a comprehensive Python CI/CD",
   "group": "ci",
   "language": "Python",
   "environment": "linux",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-python.svg",
   "template_path": "templates/python_saas.yml",
   "workflow_tip": "other"
