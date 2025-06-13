@@ -8,7 +8,7 @@ import "github-markdown-css/github-markdown-light.css";
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
 
-Mermaid.initialize({ startOnLoad: true });
+Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `strict` });
 const md = MarkdownIt().use(markdownItTextualUml as PluginSimple);
 
 export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
@@ -69,6 +69,14 @@ const App = (props: { reportUrl: string, context: ReportContext, }) => {
 };
 
 const MarkdownBody = (props: { markdown: string, }) => {
+  useEffect(() => {
+    if (props.markdown) {
+      setTimeout(() => {
+        void Mermaid.run();
+      }, 100);
+    }
+  }, [props.markdown]);
+
   return (
     <div
       className="markdown-body"
