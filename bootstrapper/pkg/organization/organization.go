@@ -6,6 +6,7 @@ import (
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/clients"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/config"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/kubernetes"
+	"github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/organization"
 	sh "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/self_hosted"
 	"github.com/semaphoreio/semaphore/bootstrapper/pkg/retry"
 	log "github.com/sirupsen/logrus"
@@ -133,4 +134,16 @@ func CreateAgentType(kubernetesClient *kubernetes.KubernetesClient, orgId, userI
 	if err != nil {
 		log.Fatalf("Failed to upsert agent type secret: %v", err)
 	}
+}
+
+func GetOrganizations() (organizations []*organization.Organization, err error) {
+	conn, err := grpc.NewClient(config.OrgEndpoint(), grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		log.Fatalf("Failed to connect to org service: %v", err)
+	}
+
+	defer conn.Close()
+	orgClient := clients.NewOrgClient(conn)
+
+	return orgClient.ListAllOrganizations()
 }
