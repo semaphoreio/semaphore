@@ -90,13 +90,13 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
 
   switch (props.context) {
     case ReportContext.Job:
-      command = `artifact push job -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push job -f -d .semaphore/REPORT.md REPORT.md`;
       break;
     case ReportContext.Workflow:
-      command = `artifact push workflow -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push workflow -f -d .semaphore/REPORT.md REPORT.md`;
       break;
     case ReportContext.Project:
-      command = `artifact push project -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push project -f -d .semaphore/REPORT.md REPORT.md`;
       break;
   }
 
