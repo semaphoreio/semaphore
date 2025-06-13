@@ -24,14 +24,26 @@
               <div>OS: <%= event.agent.os %>, Version:  <%= event.agent.version %>, Architecture: <%= event.agent.architecture %></div>
             <% else %>
               <div class="b"><%= event.username %> &mdash; <%= event.resource%>.<%= event.operation %></div>
-              <%= if event.has_project do %>
-                <div>Project: <%= link event.project.name, to: project_path(@conn, :show, event.project.name) %></div>
-              <% end %>
-              <%= if event.has_workflow do %>
-                <div>Branch: <%= link event.workflow.branch_name, to: branch_path(@conn, :show, event.workflow.branch_id) %></div>
-                <div>Workflow: <%= link event.workflow.hook.commit_message, to: workflow_path(@conn, :show, event.workflow.id) %></div>
+              <%= if event.resource == :Job do %>
+                <%= if event.has_job do %>
+                  <div>Job: <%= link event.job.name, to: job_path(@conn, :show, event.job.id) %></div>
+                <% end %>
                 <%= if event.has_pipeline do %>
-                  <div>Pipeline: <%= link event.pipeline.name, to: workflow_path(@conn, :show, event.workflow.id, pipeline_id: event.pipeline.id)  %></div>
+                  <div>Pipeline: <%= link event.pipeline.name, to: pipeline_path(@conn, :show, event.pipeline.workflow_id, event.pipeline.id) %></div>
+                <% end %>
+                <%= if event.has_project do %>
+                  <div>Project: <%= link event.project.name, to: project_path(@conn, :show, event.project.name) %></div>
+                <% end %>
+              <% else %>
+                <%= if event.has_project do %>
+                  <div>Project: <%= link event.project.name, to: project_path(@conn, :show, event.project.name) %></div>
+                <% end %>
+                <%= if event.has_workflow do %>
+                  <div>Branch: <%= link event.workflow.branch_name, to: branch_path(@conn, :show, event.workflow.branch_id) %></div>
+                  <div>Workflow: <%= link event.workflow.hook.commit_message, to: workflow_path(@conn, :show, event.workflow.id) %></div>
+                  <%= if event.has_pipeline do %>
+                    <div>Pipeline: <%= link event.pipeline.name, to: workflow_path(@conn, :show, event.workflow.id, pipeline_id: event.pipeline.id)  %></div>
+                  <% end %>
                 <% end %>
               <% end %>
             <% end %>
