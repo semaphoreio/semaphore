@@ -12,7 +12,11 @@ func ForAgent(agent *models.Agent) *log.Entry {
 
 	return log.WithFields(
 		log.Fields{
+			"organization_id": agent.OrganizationID,
+			"agent_type":      agent.AgentTypeName,
 			"agent_id":        agent.ID,
+			"agent_name":      agent.Name,
+			"agent_version":   agent.Version,
 		},
 	)
 }
