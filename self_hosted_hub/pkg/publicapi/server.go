@@ -529,7 +529,7 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.ForAgent(agent).Infof("Sync request: %v", request)
+	logging.ForAgent(agent).Debugf("Sync request: %v", request)
 
 	response, err := agentsync.Process(r.Context(), s.quotaClient, s.agentCounter, s.publisher, agent, request)
 	if err != nil {
@@ -539,7 +539,7 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.ForAgent(agent).Infof("Sync response: %v", response)
+	logging.ForAgent(agent).Debugf("Sync response: %v", response)
 	err = respondWithJSON(w, http.StatusOK, response)
 	if err != nil {
 		respondWith500(w)

@@ -153,7 +153,18 @@ func configureFeatureProvider() (feature.Provider, error) {
 }
 
 func main() {
-	log.SetFormatter(&log.TextFormatter{TimestampFormat: time.StampMilli})
+	log.SetFormatter(&log.JSONFormatter{TimestampFormat: time.StampMilli})
+	log.SetOutput(os.Stdout)
+
+	log.SetLevel(log.InfoLevel)
+	if os.Getenv("LOG_LEVEL") != "" {
+		level, err := log.ParseLevel(os.Getenv("LOG_LEVEL"))
+		if err != nil {
+			log.Fatalf("Invalid log level: %v", err)
+		}
+		log.SetLevel(level)
+	}
+
 	configureWatchman(fmt.Sprintf("%s.%s", metricService, os.Getenv("METRICS_NAMESPACE")))
 
 	if os.Getenv("START_INTERNAL_API") == "yes" {
