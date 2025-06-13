@@ -823,9 +823,9 @@ defmodule Guard.GrpcServers.UserServer do
   defp observe_and_log(name, f) do
     Watchman.benchmark(name, fn ->
       try do
-        Logger.info("Service #{name} - Started")
+        Logger.debug("Service #{name} - Started")
         result = f.()
-        Logger.info("Service #{name} - Finished")
+        Logger.debug("Service #{name} - Finished")
 
         Watchman.increment({name, ["OK"]})
         result
