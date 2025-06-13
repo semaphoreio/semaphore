@@ -5,10 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -592,7 +590,7 @@ func (s *Server) Serve(host string, port int) error {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 		Handler: http.TimeoutHandler(
-			errorOnlyLoggingHandler(os.Stdout, s.Router),
+			loggingMiddleware(s.Router, log.StandardLogger()),
 			s.timeoutHandlerTimeout,
 			"request timed out",
 		),
@@ -645,35 +643,4 @@ func (s *Server) assignAgentName(ctx context.Context, agentType *models.AgentTyp
 		rolePatterns,
 		nameFromAgent,
 	)
-}
-
-// errorOnlyLoggingHandler creates a custom logging handler that only logs requests with error status codes
-func errorOnlyLoggingHandler(out io.Writer, h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Create a response writer wrapper to capture the status code
-		wrapper := &responseWriterWrapper{
-			ResponseWriter: w,
-			statusCode:     http.StatusOK, // default to 200
-		}
-
-		start := time.Now()
-		h.ServeHTTP(wrapper, r)
-
-		// Only log if the status code indicates an error (4xx or 5xx)
-		if wrapper.statusCode >= 400 {
-			duration := time.Since(start)
-			log.Errorf("%s %s %d %v", r.Method, r.URL.Path, wrapper.statusCode, duration)
-		}
-	})
-}
-
-// responseWriterWrapper wraps http.ResponseWriter to capture the status code
-type responseWriterWrapper struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (w *responseWriterWrapper) WriteHeader(statusCode int) {
-	w.statusCode = statusCode
-	w.ResponseWriter.WriteHeader(statusCode)
 }
