@@ -19,15 +19,21 @@ defmodule HooksReceiver.Router do
   plug(:dispatch)
 
   post "/bitbucket" do
-    conn |> handle_payload(:bitbucket)
+    conn
+    |> HooksReceiver.Plugs.LicenseVerifier.call([])
+    |> handle_payload(:bitbucket)
   end
 
   post "/gitlab" do
-    conn |> handle_payload(:gitlab)
+    conn
+    |> HooksReceiver.Plugs.LicenseVerifier.call([])
+    |> handle_payload(:gitlab)
   end
 
   post "/git" do
-    conn |> handle_payload(:git)
+    conn
+    |> HooksReceiver.Plugs.LicenseVerifier.call([])
+    |> handle_payload(:git)
   end
 
   get "/health_check/ping" do

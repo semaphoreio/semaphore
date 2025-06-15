@@ -2,6 +2,9 @@
 <html lang="en">
   <%= render "_head.html", conn: @conn %>
   <body class="bg-lightest-brown">
+    <%= if Front.ee?() do %>
+      <%= render "_license_banner.html", license_status: @conn.assigns.license_status %>
+    <% end %>
     <%= if @conn.assigns[:signup] do %>
       <%= render FrontWeb.SharedView, "_gtag.html", conn: @conn %>
     <% end %>

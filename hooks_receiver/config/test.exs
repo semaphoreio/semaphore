@@ -2,7 +2,8 @@ import Config
 
 config :hooks_receiver,
   repository_api_grpc: "localhost:50051",
-  organization_api_grpc: "localhost:50051"
+  organization_api_grpc: "localhost:50051",
+  license_checker_grpc: "localhost:50051"
 
 config :junit_formatter,
   automatic_create_dir?: true,
