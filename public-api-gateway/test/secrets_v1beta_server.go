@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 
+	pbjobs "github.com/semaphoreio/semaphore/public-api-gateway/api/jobs.v1alpha"
 	pb "github.com/semaphoreio/semaphore/public-api-gateway/api/secrets.v1beta"
 )
 
@@ -69,6 +70,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	pb.RegisterSecretsApiServer(grpcServer, &server{})
+	pbjobs.RegisterJobsApiServer(grpcServer, &jobsServer{})
 	err = grpcServer.Serve(lis)
 	if err != nil {
 		log.Fatalf("failed to serve: %v", err)
