@@ -200,6 +200,9 @@ func (c *Superjerry) prepareReport(projectID string, jobID string) ([]parser.Tes
 	decoder := sonic.ConfigDefault.NewDecoder(reportReader)
 	err = decoder.Decode(&results)
 	if err != nil {
+		if errors.Is(err, compression.ErrSizeLimitReached) {
+			return nil, compression.ErrSizeLimitReached
+		}
 		return nil, err
 	}
 
