@@ -27,6 +27,7 @@ defmodule HooksReceiver.MixProject do
       {:grpc, "~> 0.9.0"},
       {:protobuf, "~> 0.13.0"},
       {:grpc_mock, github: "renderedtext/grpc-mock", branch: "grpc08", only: [:dev, :test]},
+      {:cachex, "~> 3.6"},
       {:httpoison, "~> 2.0", only: :test},
       {:credo, "~> 1.5", only: [:dev, :test], runtime: false},
       {:mock, "~> 0.3.0", only: :test},
