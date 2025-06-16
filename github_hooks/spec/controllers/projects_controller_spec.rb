@@ -27,7 +27,7 @@ RSpec.describe ProjectsController, :type => :controller do
       before do
         allow(App).to receive(:ee?).and_return(true)
         # Stub check_license! to simulate valid license (do nothing)
-        allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(true)
+        allow(LicenseVerifier).to receive(:verify).and_return(true)
         allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
         allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
                                                                                                   unsupported_webhook?: true,
@@ -49,7 +49,7 @@ RSpec.describe ProjectsController, :type => :controller do
       before do
         allow(App).to receive(:ee?).and_return(true)
         # Simulate check_license! to simulate invalid license
-        allow_any_instance_of(ProjectsController).to receive(:check_license!).and_return(false)
+        allow(LicenseVerifier).to receive(:verify).and_return(false)
         allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
         allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
                                                                                                   unsupported_webhook?: true,
