@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 
@@ -529,7 +528,7 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.ForAgent(agent).Infof("Sync request: %v", request)
+	logging.ForAgent(agent).Debugf("Sync request: %v", request)
 
 	response, err := agentsync.Process(r.Context(), s.quotaClient, s.agentCounter, s.publisher, agent, request)
 	if err != nil {
@@ -539,7 +538,7 @@ func (s *Server) Sync(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logging.ForAgent(agent).Infof("Sync response: %v", response)
+	logging.ForAgent(agent).Debugf("Sync response: %v", response)
 	err = respondWithJSON(w, http.StatusOK, response)
 	if err != nil {
 		respondWith500(w)
@@ -591,7 +590,7 @@ func (s *Server) Serve(host string, port int) error {
 		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 		Handler: http.TimeoutHandler(
-			handlers.LoggingHandler(os.Stdout, s.Router),
+			loggingMiddleware(s.Router, log.StandardLogger()),
 			s.timeoutHandlerTimeout,
 			"request timed out",
 		),
