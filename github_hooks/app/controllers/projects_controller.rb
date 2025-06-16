@@ -78,11 +78,6 @@ class ProjectsController < ApplicationController
           next
         end
 
-        if webhook_filter.draft_pull_request?
-          logger.info("Draft Pull Request")
-          next
-        end
-
         if webhook_filter.member_webhook?
           Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
           logger.info("Member Webhook")
