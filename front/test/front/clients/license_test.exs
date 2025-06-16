@@ -156,44 +156,5 @@ defmodule Front.Clients.LicenseTest do
       assert match?({:ok, %VerifyLicenseResponse{valid: true}}, result2)
       GrpcMock.verify!(LicenseMock)
     end
-
-    test "metrics are tracked correctly" do
-      test_pid = self()
-      metrics = :ets.new(:metrics, [:set, :public])
-
-      # Mock Watchman to capture metrics
-      :meck.new(Watchman, [:passthrough])
-
-      :meck.expect(Watchman, :increment, fn metric ->
-        :ets.insert(metrics, {metric, true})
-        send(test_pid, {:metric, metric})
-        :ok
-      end)
-
-      # Mock benchmark to always succeed
-      :meck.expect(Watchman, :benchmark, fn _name, fun -> fun.() end)
-
-      # First call - should be a cache miss
-      GrpcMock.stub(LicenseMock, :verify_license, @valid_response)
-
-      License.verify_license()
-
-      # Give some time for async operations
-      Process.sleep(100)
-
-      assert :ets.lookup(metrics, "license.verify_license.cache_miss") != []
-      assert :ets.lookup(metrics, "license.verify_license.success") != []
-
-      # Second call - should be a cache hit
-      License.verify_license()
-
-      # Give some time for async operations
-      Process.sleep(100)
-
-      assert :ets.lookup(metrics, "license.verify_license.cache_hit") != []
-
-      :ets.delete(metrics)
-      :meck.unload(Watchman)
-    end
   end
 end

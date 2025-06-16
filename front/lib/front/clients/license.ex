@@ -38,46 +38,22 @@ defmodule Front.Clients.License do
     if reload_cache?, do: Front.Cache.unset(key)
 
     call = fn ->
-      Watchman.benchmark("license.verify_license.duration", fn ->
-        case connect() do
-          {:ok, channel} ->
-            try do
-              case Stub.verify_license(channel, request, []) do
-                {:ok, response} = result when use_cache? ->
-                  Watchman.increment("license.verify_license.success")
-                  set_cache(key, response, ttl)
-                  result
+      case connect() do
+        {:ok, channel} ->
+          do_verify_license(channel, request, use_cache?, ttl, key)
 
-                {:ok, _response} = result ->
-                  Watchman.increment("license.verify_license.success")
-                  result
-
-                {:error, _} = error ->
-                  Watchman.increment("license.verify_license.failure")
-                  error
-              end
-            catch
-              kind, reason ->
-                Watchman.increment("license.verify_license.failure")
-                {:error, {kind, reason}}
-            end
-
-          {:error, reason} ->
-            Watchman.increment("license.verify_license.failure")
-            {:error, reason}
-        end
-      end)
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
 
     if use_cache? do
       Front.Cache.get(key)
       |> case do
         {:ok, result} ->
-          Watchman.increment("license.verify_license.cache_hit")
           {:ok, Front.Cache.decode(result)}
 
         {:not_cached, _} ->
-          Watchman.increment("license.verify_license.cache_miss")
           call.()
       end
     else
@@ -105,6 +81,26 @@ defmodule Front.Clients.License do
       |> Base.encode64()
 
     "license/#{@version}/#{operation}/#{id}"
+  end
+
+  defp do_verify_license(channel, request, use_cache?, ttl, key) do
+    case Stub.verify_license(channel, request, []) do
+      {:ok, response} = result when use_cache? ->
+        set_cache(key, response, ttl)
+        result
+
+      {:ok, _response} = result ->
+        result
+
+      {:error, _} = error ->
+        error
+    end
+  rescue
+    error ->
+      {:error, {:rescue, error}}
+  catch
+    kind, reason ->
+      {:error, {kind, reason}}
   end
 
   defp set_cache(key, response, ttl) do
