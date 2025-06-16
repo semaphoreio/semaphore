@@ -3,7 +3,13 @@ defmodule Front.Clients.LicenseTest do
   alias Front.Clients.License
   alias InternalApi.License.VerifyLicenseResponse
 
-  @valid_response %VerifyLicenseResponse{valid: true, message: "ok", expires_at: nil, max_users: 50, enabled_features: []}
+  @valid_response %VerifyLicenseResponse{
+    valid: true,
+    message: "ok",
+    expires_at: nil,
+    max_users: 50,
+    enabled_features: []
+  }
 
   setup do
     # Clear cache before each test
@@ -157,6 +163,7 @@ defmodule Front.Clients.LicenseTest do
 
       # Mock Watchman to capture metrics
       :meck.new(Watchman, [:passthrough])
+
       :meck.expect(Watchman, :increment, fn metric ->
         :ets.insert(metrics, {metric, true})
         send(test_pid, {:metric, metric})

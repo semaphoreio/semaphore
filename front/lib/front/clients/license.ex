@@ -31,7 +31,8 @@ defmodule Front.Clients.License do
     request = %VerifyLicenseRequest{}
     use_cache? = Keyword.get(opts, :use_cache?, true)
     reload_cache? = Keyword.get(opts, :reload_cache?, false)
-    ttl = :timer.minutes(5) # 5 minute cache TTL
+    # 5 minute cache TTL
+    ttl = :timer.minutes(5)
     key = cache_key(:verify_license, request)
 
     if reload_cache?, do: Front.Cache.unset(key)
