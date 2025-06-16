@@ -91,5 +91,5 @@ defmodule HooksReceiver.LicenseClient do
   defp url, do: Application.get_env(:hooks_receiver, :license_checker_grpc)
 
   defp encode(data), do: :erlang.term_to_binary(data)
-  defp decode(data), do: :erlang.binary_to_term(data)
+  defp decode(data), do: Plug.Crypto.non_executable_binary_to_term(data, [:safe])
 end
