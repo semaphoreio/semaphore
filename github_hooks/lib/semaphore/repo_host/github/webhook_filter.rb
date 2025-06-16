@@ -45,6 +45,10 @@ module Semaphore::RepoHost::Github
       payload_data.dig("installation", "id")
     end
 
+    def draft_pull_request?
+      pull_request? && payload_data["pull_request"]["draft"]
+    end
+
     private
 
     def supported_webhook?
