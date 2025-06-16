@@ -74,6 +74,10 @@
             <%= label f, :build_prs, "Pull requests", class: "ml2" %>
           </div>
           <div class="flex items-center">
+            <%= checkbox f, :build_draft_prs, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= label f, :build_draft_prs, "Draft pull requests", class: "ml2" %>
+          </div>
+          <div class="flex items-center">
             <%= checkbox f, :build_forked_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "forkedPRSwitch"] %>
             <%= label f, :build_forked_prs, "Forked pull requests", class: "ml2" %>
           </div>
