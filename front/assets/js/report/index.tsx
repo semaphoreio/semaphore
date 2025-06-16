@@ -8,7 +8,7 @@ import "github-markdown-css/github-markdown-light.css";
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
 
-Mermaid.initialize({ startOnLoad: true });
+Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `strict` });
 const md = MarkdownIt().use(markdownItTextualUml as PluginSimple);
 
 export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
@@ -69,6 +69,14 @@ const App = (props: { reportUrl: string, context: ReportContext, }) => {
 };
 
 const MarkdownBody = (props: { markdown: string, }) => {
+  useEffect(() => {
+    if (props.markdown) {
+      setTimeout(() => {
+        void Mermaid.run();
+      }, 100);
+    }
+  }, [props.markdown]);
+
   return (
     <div
       className="markdown-body"
@@ -82,13 +90,13 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
 
   switch (props.context) {
     case ReportContext.Job:
-      command = `artifact push job -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push job -f -d .semaphore/REPORT.md REPORT.md`;
       break;
     case ReportContext.Workflow:
-      command = `artifact push workflow -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push workflow -f -d .semaphore/REPORT.md REPORT.md`;
       break;
     case ReportContext.Project:
-      command = `artifact push project -d .semaphore/REPORT.md REPORT.md`;
+      command = `artifact push project -f -d .semaphore/REPORT.md REPORT.md`;
       break;
   }
 
