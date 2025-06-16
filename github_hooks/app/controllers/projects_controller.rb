@@ -2,6 +2,8 @@ class ProjectsController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def repo_host_post_commit_hook
+    return head :forbidden if App.ee? && !LicenseVerifier.verify
+
     Watchman.benchmark("repo_host_post_commit_hooks.controller.duration") do
       new_request = Semaphore::RepoHost::Hooks::Request.new(repo_host_request)
 
