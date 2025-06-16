@@ -1,4 +1,7 @@
 GrpcMock.defmock(RepositoryMock, for: InternalApi.Repository.RepositoryService.Service)
+GrpcMock.defmock(LicenseMock, for: InternalApi.License.LicenseService.Service)
+
+GRPC.Server.start([RepositoryMock, LicenseMock], 50_051)
 
 formatters = [ExUnit.CLIFormatter]
 
