@@ -113,7 +113,8 @@ if config_env() == :prod do
     task_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_TASK"),
     velocity_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_VELOCITY"),
     workflow_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),
-    jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB")
+    jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB"),
+    license_grpc_endpoint: System.get_env("INTERNAL_API_URL_LICENSE", "license-checker:50051")
 
   config :front,
     gofer_grpc_endpoint: System.get_env("INTERNAL_API_URL_GOFER"),
