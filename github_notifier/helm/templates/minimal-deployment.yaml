@@ -1,0 +1,95 @@
+{{- if .Values.global.development.minimalDeployment }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Chart.Name }}"
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}"
+  replicas: {{ .Values.api.replicas }}
+  template:
+    metadata:
+      name: "{{ .Chart.Name }}"
+      labels:
+        app: "{{ .Chart.Name }}"
+        product: semaphoreci
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
+      containers:
+        - name: "{{ .Chart.Name }}"
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            - name: START_CONSUMERS
+              value: "true"
+            - name: START_API
+              value: "true"
+            - name: BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+
+{{- if .Values.api.resources }}
+          resources:
+{{ toYaml .Values.api.resources | indent 12 }}
+{{- end }}
+
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}
+{{- end }}

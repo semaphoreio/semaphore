@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -166,5 +167,6 @@ spec:
 {{- if .Values.statsd.resources }}
           resources:
 {{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
 {{- end }}
 {{- end }}

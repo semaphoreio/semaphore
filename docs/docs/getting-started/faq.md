@@ -419,6 +419,10 @@ If you cannot authenticate, you can use other third-party Docker registries such
 
 :::
 
+### Pull request on GitHub is stuck
+
+If you have a pull request stuck when using GitHub, check if you have renamed the pipeline recently. If you did, see how to [fix stuck PRs on GitHub](../using-semaphore/connect-github#stuck-pr)
+
 
 ## Project
 
