@@ -312,7 +312,11 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
   def self.update_pull_request_mergeable(workflow, mergeable)
     if (branch = find_branch(workflow))
+      mergeable_before = branch.pull_request_mergeable
       branch.update(:pull_request_mergeable => mergeable)
+      if !mergeable && mergeable_before
+        Semaphore::Events::PullRequestUnmergeable.emit(workflow, branch)
+      end
     end
   end
 
