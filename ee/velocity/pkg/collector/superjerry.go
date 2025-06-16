@@ -4,6 +4,7 @@ package collector
 import (
 	"bufio"
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"reflect"
@@ -197,8 +198,17 @@ func (c *Superjerry) prepareReport(projectID string, jobID string) ([]parser.Tes
 		return nil, err
 	}
 
-	decoder := sonic.ConfigDefault.NewDecoder(reportReader)
-	err = decoder.Decode(&results)
+	// Create a buffer to read all data first, so we can detect size limit errors
+	data, err := io.ReadAll(reportReader)
+	if err != nil {
+		if errors.Is(err, compression.ErrSizeLimitReached) {
+			log.Printf("Report exceeds 50MB limit for job: %s", jobID)
+			return nil, compression.ErrSizeLimitReached
+		}
+		return nil, err
+	}
+
+	err = sonic.Unmarshal(data, &results)
 	if err != nil {
 		return nil, err
 	}
