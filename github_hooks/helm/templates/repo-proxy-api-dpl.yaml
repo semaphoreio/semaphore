@@ -54,6 +54,9 @@ spec:
             - name: RAILS_ENV
               value: production
 
+            - name: SEMAPHORE_EDITION
+              value: {{ .Values.global.edition }}
+
             - name: SECRET_KEY_BASE
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: SESSION_SECRET_KEY_BASE } }
 
