@@ -3,7 +3,7 @@ defmodule Projecthub.Repo.Migrations.AddBuildDraftPrForProjects do
 
   def change do
 		alter table("projects") do
-			add :build_draft_pr, :boolean, default: false, null: false
+			add :build_draft_pr, :boolean, default: true, null: false
 		end
   end
 end
