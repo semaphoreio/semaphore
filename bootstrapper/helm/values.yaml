@@ -15,11 +15,11 @@ licenseChecker:
   replicaCount: 1
   resources:
     limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
       cpu: 100m
-      memory: 128Mi
+      memory: 100Mi
+    requests:
+      cpu: 50m
+      memory: 30Mi
   licenseServerUrl: "http://license-server"
   licenseFile: "/app/config/app.license"
   grpc:
