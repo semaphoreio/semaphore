@@ -76,7 +76,7 @@ func (c *KubernetesClient) CreateSecretWithLabelsIfNotExists(secretName string, 
 }
 
 // createSecret is an internal helper function that creates a new secret with the given name, data, and labels.
-// It handles the common logic for creating a Kubernetes secret used by both UpsertSecretWithLabels and 
+// It handles the common logic for creating a Kubernetes secret used by both UpsertSecretWithLabels and
 // CreateSecretWithLabelsIfNotExists.
 func (c *KubernetesClient) createSecret(secretName string, data map[string]string, labels map[string]string) error {
 	log.Infof("Secret %s does not exist in namespace %s - creating a new one", secretName, c.Namespace)
@@ -142,4 +142,16 @@ func (c *KubernetesClient) UpsertSecretWithLabels(secretName string, data map[st
 
 	log.Infof("Secret %s updated", secretName)
 	return nil
+}
+
+// GetKubeVersion returns the Kubernetes server version as a string.
+// If there's an error getting the version, it returns an empty string and logs the error.
+func (c *KubernetesClient) GetKubeVersion() string {
+	serverVersion, err := c.Clientset.Discovery().ServerVersion()
+	if err != nil {
+		log.Errorf("Failed to get Kubernetes server version: %v", err)
+		return ""
+	}
+
+	return serverVersion.String()
 }
