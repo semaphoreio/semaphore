@@ -153,11 +153,11 @@ GEM
       raabro (~> 1.4)
     globalid (1.2.1)
       activesupport (>= 6.1)
-    google-protobuf (3.25.5)
-    googleapis-common-protos-types (1.8.0)
-      google-protobuf (~> 3.18)
-    grpc (1.57.0)
-      google-protobuf (~> 3.23)
+    google-protobuf (3.25.8)
+    googleapis-common-protos-types (1.18.0)
+      google-protobuf (>= 3.18, < 5.a)
+    grpc (1.62.3)
+      google-protobuf (~> 3.25)
       googleapis-common-protos-types (~> 1.0)
     grpc-tools (1.68.1)
     hashdiff (1.1.2)
@@ -457,7 +457,8 @@ DEPENDENCIES
   factory_bot_rails (< 5)
   faraday (~> 1.3.0)
   faraday_middleware
-  grpc (~> 1.57.0)
+  googleapis-common-protos-types (~> 1.18.0)
+  grpc (~> 1.62.1)
   grpc-tools
   httparty (~> 0.21.0)
   httpclient
