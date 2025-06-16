@@ -7,6 +7,8 @@ defmodule HooksReceiver.Plugs.LicenseVerifierTest do
   @opts LicenseVerifier.init([])
 
   setup do
+    Cachex.clear(:license_cache)
+
     on_exit(fn ->
       Application.delete_env(:hooks_receiver, :edition)
     end)
@@ -69,5 +71,77 @@ defmodule HooksReceiver.Plugs.LicenseVerifierTest do
     assert conn.status == 403
     assert conn.resp_body == "License is not valid."
     GrpcMock.verify!(LicenseMock)
+  end
+
+  describe "caching" do
+    test "uses cached valid license for subsequent requests" do
+      Application.put_env(:hooks_receiver, :edition, "ee")
+
+      # First request should hit the service and cache the result
+      LicenseMock
+      |> GrpcMock.expect(:verify_license, fn _channel, _request ->
+        %InternalApi.License.VerifyLicenseResponse{valid: true, message: "valid"}
+      end)
+
+      conn = conn(:post, "/bitbucket")
+      conn = LicenseVerifier.call(conn, @opts)
+      assert conn.status == nil
+      GrpcMock.verify!(LicenseMock)
+
+      # Reset GrpcMock expectations
+      GrpcMock.stub(LicenseMock, self(), InternalApi.License.LicenseService.Service)
+
+      # Second request should use cache and not hit the service
+      # We set up a mock that would return invalid if called, to verify cache is used
+      LicenseMock
+      |> GrpcMock.expect(:verify_license, fn _channel, _request ->
+        raise GRPC.RPCError,
+          status: :unavailable,
+          message: ""
+      end)
+
+      conn2 = conn(:post, "/bitbucket")
+      conn2 = LicenseVerifier.call(conn2, @opts)
+      # Request continues through the plug chain
+      assert conn2.status == nil
+
+      # Verify that the second mock was never called (cache was used)
+      assert_raise GrpcMock.VerificationError, fn ->
+        GrpcMock.verify!(LicenseMock)
+      end
+    end
+
+    test "does not cache invalid license responses" do
+      Application.put_env(:hooks_receiver, :edition, "ee")
+
+      # First request returns invalid license
+      LicenseMock
+      |> GrpcMock.expect(:verify_license, fn _channel, _request ->
+        raise GRPC.RPCError,
+          status: :unavailable,
+          message: ""
+      end)
+
+      conn = conn(:post, "/bitbucket")
+      conn = LicenseVerifier.call(conn, @opts)
+      assert conn.status == 403
+      assert conn.resp_body == "License is not valid."
+      GrpcMock.verify!(LicenseMock)
+
+      # Reset GrpcMock expectations
+      GrpcMock.stub(LicenseMock, self(), InternalApi.License.LicenseService.Service)
+
+      # Second request should hit service again since invalid response wasn't cached
+      LicenseMock
+      |> GrpcMock.expect(:verify_license, fn _channel, _request ->
+        %InternalApi.License.VerifyLicenseResponse{valid: true, message: "valid"}
+      end)
+
+      conn2 = conn(:post, "/bitbucket")
+      conn2 = LicenseVerifier.call(conn2, @opts)
+      # Request continues through the plug chain
+      assert conn2.status == nil
+      GrpcMock.verify!(LicenseMock)
+    end
   end
 end

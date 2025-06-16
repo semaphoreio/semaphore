@@ -100,48 +100,5 @@ defmodule HooksReceiver.LicenseClientTest do
 
       GrpcMock.verify!(LicenseMock)
     end
-
-    test "reloads cache when reload_cache? is true" do
-      # First call to populate cache
-      LicenseMock
-      |> GrpcMock.expect(:verify_license, fn _channel, _stream ->
-        @valid_response
-      end)
-
-      LicenseClient.verify_license()
-
-      # Second call with reload_cache?: true should hit the service again
-      LicenseMock
-      |> GrpcMock.expect(:verify_license, fn _channel, _stream ->
-        %{@valid_response | message: "reloaded"}
-      end)
-
-      result = LicenseClient.verify_license(reload_cache?: true)
-      assert {:ok, %VerifyLicenseResponse{message: "reloaded"}} = result
-      GrpcMock.verify!(LicenseMock)
-    end
-
-    test "invalidate_cache clears the cache" do
-      # First call to populate cache
-      LicenseMock
-      |> GrpcMock.expect(:verify_license, fn _channel, _stream ->
-        @valid_response
-      end)
-
-      LicenseClient.verify_license()
-
-      # Invalidate cache
-      LicenseClient.invalidate_cache()
-
-      # Next call should hit the service again
-      LicenseMock
-      |> GrpcMock.expect(:verify_license, fn _channel, _stream ->
-        %{@valid_response | message: "after invalidate"}
-      end)
-
-      result = LicenseClient.verify_license()
-      assert {:ok, %VerifyLicenseResponse{message: "after invalidate"}} = result
-      GrpcMock.verify!(LicenseMock)
-    end
   end
 end

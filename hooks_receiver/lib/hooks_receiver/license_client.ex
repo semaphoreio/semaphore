@@ -8,7 +8,9 @@ defmodule HooksReceiver.LicenseClient do
   require Logger
 
   @cache_name :license_cache
-  @cache_ttl :timer.minutes(5) # 5 minute cache TTL
+  # 5 minute cache TTL
+  @cache_ttl :timer.minutes(5)
+  @cache_key "v1/license_verification"
 
   @doc """
   Verifies a license using the license-checker service.
@@ -16,7 +18,6 @@ defmodule HooksReceiver.LicenseClient do
   ## Parameters
     * opts - Optional keyword list of options
       * :use_cache? - Whether to use cache (default: true)
-      * :reload_cache? - Whether to force reload cache (default: false)
 
   ## Returns
     * {:ok, response} - Where response is a VerifyLicenseResponse struct
@@ -26,52 +27,27 @@ defmodule HooksReceiver.LicenseClient do
   def verify_license(opts \\ []) do
     request = %VerifyLicenseRequest{}
     use_cache? = Keyword.get(opts, :use_cache?, true)
-    reload_cache? = Keyword.get(opts, :reload_cache?, false)
-    cache_key = "license_verification"
-
-    if reload_cache?, do: Cachex.del(@cache_name, cache_key)
 
     if use_cache? do
-      case Cachex.get(@cache_name, cache_key) do
+      case Cachex.get(@cache_name, @cache_key) do
         {:ok, nil} ->
-          do_verify_license(request, cache_key)
+          do_verify_license(request)
 
         {:ok, result} ->
-          {:ok, result}
+          {:ok, decode(result)}
 
         _ ->
-          do_verify_license(request, cache_key)
+          do_verify_license(request)
       end
     else
       do_verify_license(request)
     end
   end
 
-  defp do_verify_license(request, cache_key \\ nil) do
+  defp do_verify_license(request) do
     case connect() do
       {:ok, channel} ->
-        try do
-          case Stub.verify_license(channel, request, []) do
-            {:ok, response} = result ->
-              if cache_key do
-                # Store successful responses in cache
-                Cachex.put(@cache_name, cache_key, response, ttl: @cache_ttl)
-              end
-              result
-
-            {:error, error} ->
-              Logger.error("LicenseClient.verify_license: #{inspect(error)}")
-              {:error, :unavailable}
-
-            error ->
-              Logger.error("LicenseClient.verify_license: unknown error: #{inspect(error)}")
-              {:error, :unavailable}
-          end
-        catch
-          kind, reason ->
-            Logger.error("LicenseClient.verify_license: kind: #{kind}, reason: #{reason}")
-            {:error, :unavailable}
-        end
+        do_verify_license(channel, request)
 
       {:error, reason} ->
         Logger.error("LicenseClient.verify_license: reason: #{reason}")
@@ -79,11 +55,29 @@ defmodule HooksReceiver.LicenseClient do
     end
   end
 
-  @doc """
-  Invalidates the license verification cache.
-  """
-  def invalidate_cache do
-    Cachex.del(@cache_name, "license_verification")
+  defp do_verify_license(channel, request) do
+    case Stub.verify_license(channel, request, []) do
+      {:ok, response} = result ->
+        encoded = encode(response)
+        Cachex.put(@cache_name, @cache_key, encoded, ttl: @cache_ttl)
+        result
+
+      {:error, error} ->
+        Logger.error("LicenseClient.verify_license: #{inspect(error)}")
+        {:error, :unavailable}
+
+      error ->
+        Logger.error("LicenseClient.verify_license: unknown error: #{inspect(error)}")
+        {:error, :unavailable}
+    end
+  rescue
+    error ->
+      Logger.error("LicenseClient.verify_license: rescue error: #{inspect(error)}")
+      {:error, :unavailable}
+  catch
+    kind, reason ->
+      Logger.error("LicenseClient.verify_license: kind: #{kind}, reason: #{reason}")
+      {:error, :unavailable}
   end
 
   @doc """
@@ -95,4 +89,7 @@ defmodule HooksReceiver.LicenseClient do
   end
 
   defp url, do: Application.get_env(:hooks_receiver, :license_checker_grpc)
+
+  defp encode(data), do: :erlang.term_to_binary(data)
+  defp decode(data), do: :erlang.binary_to_term(data)
 end
