@@ -26,6 +26,11 @@ module InternalApi
         #
         rpc :DescribeByRepositoryProvider, ::InternalApi::User::DescribeByRepositoryProviderRequest, ::InternalApi::User::User
         #
+        # Operation is called to find and describe an existing user based on email address
+        # Operation is synchronous.
+        #
+        rpc :DescribeByEmail, ::InternalApi::User::DescribeByEmailRequest, ::InternalApi::User::User
+        #
         # Operation is called to search for users
         # Operation is synchronous.
         #
@@ -66,11 +71,6 @@ module InternalApi
         #
         rpc :DeleteFavorite, ::InternalApi::User::Favorite, ::InternalApi::User::Favorite
         #
-        # Operation is called to describe an refere data for a user.
-        # Operation is synchronous.
-        #
-        rpc :Referer, ::InternalApi::User::RefererRequest, ::InternalApi::User::RefererResponse
-        #
         # Operation is called to check the status of an github token.
         # Operation is synchronous.
         #
@@ -96,6 +96,11 @@ module InternalApi
         # Operation is synchronous.
         #
         rpc :RefreshRepositoryProvider, ::InternalApi::User::RefreshRepositoryProviderRequest, ::InternalApi::User::RefreshRepositoryProviderResponse
+        #
+        # Operation is called create a new user, passing username and name.
+        # Operation is synchronous.
+        #
+        rpc :Create, ::InternalApi::User::CreateRequest, ::InternalApi::User::User
       end
 
       Stub = Service.rpc_stub_class
