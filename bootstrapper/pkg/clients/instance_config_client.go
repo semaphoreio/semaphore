@@ -76,7 +76,7 @@ func (c *InstanceConfigClient) getConfigField(field string) string {
 			}
 		}
 	}
-
+	log.Errorf("Failed to get configuration field: %v", field)
 	return ""
 }
 
