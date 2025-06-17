@@ -943,7 +943,8 @@ defmodule Projecthub.Api.GrpcServer do
       build_tag: Enum.member?(run_on, :TAGS),
       build_branch: Enum.member?(run_on, :BRANCHES),
       build_pr: Enum.member?(run_on, :PULL_REQUESTS),
-      build_forked_pr: Enum.member?(run_on, :FORKED_PULL_REQUESTS)
+      build_forked_pr: Enum.member?(run_on, :FORKED_PULL_REQUESTS),
+      build_draft_pr: Enum.member?(run_on, :DRAFT_PULL_REQUESTS)
     }
   end
 
@@ -1225,7 +1226,8 @@ defmodule Projecthub.Api.GrpcServer do
       {:TAGS, project.build_tag},
       {:BRANCHES, project.build_branch},
       {:PULL_REQUESTS, project.build_pr},
-      {:FORKED_PULL_REQUESTS, project.build_forked_pr}
+      {:FORKED_PULL_REQUESTS, project.build_forked_pr},
+      {:DRAFT_PULL_REQUESTS, project.build_draft_pr}
     ]
     |> Enum.filter(fn e -> elem(e, 1) end)
     |> Enum.map(fn e -> elem(e, 0) end)
