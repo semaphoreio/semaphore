@@ -36,7 +36,7 @@ defmodule Projecthub.Models.Project do
     field(:build_branch, :boolean, default: true)
     field(:build_pr, :boolean, default: false)
     field(:build_forked_pr, :boolean, default: false)
-    field(:build_draft_pr, :boolean, default: false)
+    field(:build_draft_pr, :boolean, default: true)
 
     field(:allowed_secrets, :string, default: "")
     field(:allowed_contributors, :string, default: "")
