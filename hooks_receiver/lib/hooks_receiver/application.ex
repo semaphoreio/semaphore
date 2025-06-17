@@ -18,7 +18,9 @@ defmodule HooksReceiver.Application do
         scheme: :http,
         plug: HooksReceiver.Router,
         options: [port: 4000]
-      )
+      ),
+      # Add Cachex supervisor for license cache
+      {Cachex, name: :license_cache}
     ]
 
     # Disables too verbose logging from amqp supervisors
