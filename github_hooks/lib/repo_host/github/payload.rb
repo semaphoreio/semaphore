@@ -139,7 +139,7 @@ module RepoHost::Github
     end
 
     def is_draft_pull_request? # rubocop:disable Naming/PredicateName
-      is_pull_request? && @data["pull_request"]["draft"] == true
+      is_pull_request? && (@data.dig("pull_request", "draft") == true)
     end
 
     alias_method :pull_request?, :is_pull_request?
