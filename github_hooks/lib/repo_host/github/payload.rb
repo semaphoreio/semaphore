@@ -138,7 +138,7 @@ module RepoHost::Github
       @data["pull_request"].present?
     end
 
-    def is_draft_pull_request?
+    def is_draft_pull_request? # rubocop:disable Naming/PredicateName
       is_pull_request? && @data["pull_request"]["draft"] == true
     end
 
