@@ -214,7 +214,9 @@ defmodule FrontWeb.DashboardControllerTest do
       ] do
         conn = get(conn, "/")
         assert html_response(conn, 200) =~ "license-expired-banner"
-        assert html_response(conn, 200) =~ "You are running a Semaphore Enterprise Edition server without a valid license"
+
+        assert html_response(conn, 200) =~
+                 "You are running a Semaphore Enterprise Edition server without a valid license"
       end
     end
 
@@ -238,7 +240,9 @@ defmodule FrontWeb.DashboardControllerTest do
       ] do
         conn = get(conn, "/")
         assert html_response(conn, 200) =~ "license-expiring-banner"
-        assert html_response(conn, 200) =~ "Your Semaphore Enterprise Edition license will expire on"
+
+        assert html_response(conn, 200) =~
+                 "Your Semaphore Enterprise Edition license will expire on"
       end
     end
 

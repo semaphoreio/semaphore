@@ -26,7 +26,9 @@ defmodule FrontWeb.LayoutViewTest do
         render_banner(%{license_status: %{valid: false, expires_at: nil}, conn: %Plug.Conn{}})
 
       assert html =~ "license-expired-banner"
-      assert html =~ "You are running a Semaphore Enterprise Edition server without a valid license"
+
+      assert html =~
+               "You are running a Semaphore Enterprise Edition server without a valid license"
     end
   end
 
