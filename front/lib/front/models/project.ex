@@ -238,7 +238,7 @@ defmodule Front.Models.Project do
             Project.Spec.Repository.new(
               integration_type: map_integration_type(integration_type),
               url: repo_url,
-              run_on: [RunType.value(:TAGS), RunType.value(:BRANCHES)],
+              run_on: [RunType.value(:TAGS), RunType.value(:BRANCHES), RunType.value(:DRAFT_PULL_REQUESTS)],
               run_present: {:run, true}
             )
         )
