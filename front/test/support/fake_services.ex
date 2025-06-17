@@ -80,6 +80,8 @@ defmodule Support.FakeServices do
     GrpcMock.defmock(FeatureMock, for: InternalApi.Feature.FeatureService.Service)
     GrpcMock.defmock(UsageMock, for: InternalApi.Usage.UsageService.Service)
 
+    GrpcMock.defmock(LicenseMock, for: InternalApi.License.LicenseService.Service)
+
     excluded_stubs =
       System.get_env("EXCLUDE_STUBS", "")
       |> String.split(",")
@@ -121,7 +123,8 @@ defmodule Support.FakeServices do
         UsageMock,
         InstanceConfigMock,
         SuperjerryMock,
-        ScouterMock
+        ScouterMock,
+        LicenseMock
       ]
       |> Enum.reject(&Enum.member?(excluded_stubs, &1))
 
