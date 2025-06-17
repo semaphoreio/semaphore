@@ -51,14 +51,11 @@ var serveCmd = &cobra.Command{
 			log.Println("gRPC server is disabled")
 			return nil
 		}
-		// Create gRPC server
 		grpcServer := grpc.NewServer()
 
-		// Create and register license server
 		licenseServer := license.NewServer(licenseServerURL, licenseFile)
 		license.RegisterServer(grpcServer, licenseServer)
 
-		// Start listening
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%d", grpcPort))
 		if err != nil {
 			return fmt.Errorf("failed to listen: %v", err)

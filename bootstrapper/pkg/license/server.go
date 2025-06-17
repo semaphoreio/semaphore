@@ -56,7 +56,6 @@ func (s *Server) VerifyLicense(ctx context.Context, req *protoLicense.VerifyLice
 		return s.lastValidResponse, nil
 	}
 
-	// Read license from file
 	licenseBytes, err := os.ReadFile(s.licenseFile)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "failed to read license file: %v", err)
@@ -67,17 +66,14 @@ func (s *Server) VerifyLicense(ctx context.Context, req *protoLicense.VerifyLice
 		return nil, status.Error(codes.FailedPrecondition, "license not found")
 	}
 
-	// Create verification request
 	verificationReq := s.createLicenseVerificationRequest(license)
 	verificationResp, err := s.callLicenseServer(*verificationReq)
 	if err != nil {
 		return nil, status.Errorf(codes.Unavailable, "failed to verify license: %v", err)
 	}
 
-	// Create response
 	response := s.createLicenseVerificationResponse(verificationResp)
 
-	// Cache the response if it's valid
 	if response.Valid {
 		s.lastValidResponse = response
 		s.lastValidResponseTime = time.Now()
