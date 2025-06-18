@@ -175,7 +175,8 @@ defmodule Support.Factories do
       result: InternalApi.ServerFarm.Job.Job.Result.value(:PASSED),
       failure_reason: "",
       build_server: "127.0.0.1",
-      self_hosted: false
+      self_hosted: false,
+      stopped_by: Support.Stubs.User.default_user_id()
     )
   end
 

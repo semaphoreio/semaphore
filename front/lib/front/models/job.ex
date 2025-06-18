@@ -31,7 +31,8 @@ defmodule Front.Models.Job do
     :summary,
     :machine_type,
     :agent_name,
-    :is_debug_job
+    :is_debug_job,
+    :stopped_by
   ]
 
   def find(id, tracing_headers \\ nil) do
@@ -154,7 +155,8 @@ defmodule Front.Models.Job do
       self_hosted: raw.self_hosted,
       machine_type: raw.machine_type,
       agent_name: raw.agent_name,
-      is_debug_job: raw.is_debug_job
+      is_debug_job: raw.is_debug_job,
+      stopped_by: raw.stopped_by
     }
     |> preload_summary()
   end

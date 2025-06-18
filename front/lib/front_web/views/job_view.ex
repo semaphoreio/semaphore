@@ -68,4 +68,17 @@ defmodule FrontWeb.JobView do
   defp job_state_color("passed"), do: "bg-green"
   defp job_state_color("failed"), do: "bg-red"
   defp job_state_color("stopped"), do: "bg-gray"
+
+  def stopped_by_message(assigns) do
+    job = assigns.job
+    stopped_by_user = assigns.stopped_by_user
+
+    cond do
+      job.state != "stopped" -> ""
+      is_nil(job.stopped_by) -> "Job was stopped"
+      String.starts_with?(job.stopped_by, "system:") -> "Job was stopped by the system"
+      is_nil(stopped_by_user) -> "Job was stopped by user #{job.stopped_by}"
+      true -> "Job was stopped by #{stopped_by_user.name}"
+    end
+  end
 end

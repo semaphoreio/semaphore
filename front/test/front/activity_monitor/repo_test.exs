@@ -401,7 +401,8 @@ defmodule Front.ActivityMonitor.Repo.Test do
       state: :RUNNING,
       result: :PASSED,
       failure_reason: "",
-      build_server: "127.0.0.1"
+      build_server: "127.0.0.1",
+      stopped_by: ""
     }
   end
 end

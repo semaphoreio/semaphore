@@ -271,7 +271,8 @@ defmodule FrontWeb.Plugs.Development.ActivityMonitor do
       result: InternalApi.ServerFarm.Job.Job.Result.value(:PASSED),
       failure_reason: "",
       build_server: "127.0.0.1",
-      machine_type: "e1-standard-2"
+      machine_type: "e1-standard-2",
+      stopped_by: Support.Stubs.User.default_user_id()
     ]
 
     InternalApi.ServerFarm.Job.Job.new(Keyword.merge(defaults, params))

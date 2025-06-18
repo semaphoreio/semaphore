@@ -26,7 +26,8 @@ defmodule JobPage.Models.JobTest do
               state: InternalApi.ServerFarm.Job.Job.State.value(:FINISHED),
               result: InternalApi.ServerFarm.Job.Job.Result.value(:PASSED),
               build_server: "127.0.0.1",
-              self_hosted: false
+              self_hosted: false,
+              stopped_by: ""
             )
         )
 
