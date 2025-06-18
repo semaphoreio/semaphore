@@ -1993,6 +1993,9 @@ blocks:
         - name: "Test"
           commands:
             - make test
+        - name: "E2E Test"
+          commands:
+            - make test.e2e
         - name: "Lint"
           commands:
             - make lint
