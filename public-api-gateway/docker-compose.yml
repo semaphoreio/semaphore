@@ -30,6 +30,8 @@ services:
       AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
     links:
       - rabbitmq:rabbitmq
+    depends_on:
+      - rabbitmq
     tty: true
 
   rabbitmq:
