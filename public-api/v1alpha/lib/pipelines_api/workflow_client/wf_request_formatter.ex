@@ -17,7 +17,7 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
       repo: %{
         branch_name: params |> Map.get("reference", "") |> branch_name(),
         commit_sha: params |> Map.get("commit_sha", "")
-        },
+      },
       request_token: UUID.uuid4(),
       project_id: params["project_id"],
       requester_id: Map.get(params, "requester_id", ""),
