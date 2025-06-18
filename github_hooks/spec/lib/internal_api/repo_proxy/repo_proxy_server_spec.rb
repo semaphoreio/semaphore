@@ -231,22 +231,22 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     let(:workflow) { FactoryBot.create(:workflow_with_branch, project: project) }
     let(:branch) { workflow.branch }
 
-    let(:req) do
-      instance_double(
-        InternalApi::RepoProxy::CreateBlankRequest,
-        project_id: project.id,
-        requester_id: user.id,
-        ppl_id: "pipeline-id",
-        wf_id: "workflow-id",
-        git: instance_double(
-          InternalApi::RepoProxy::CreateBlankRequest::Git, 
-          reference: "refs/heads/main", 
-          commit_sha: "abc123"
-        )
+    let(:git) do
+      InternalApi::RepoProxy::CreateBlankRequest::Git.new(
+        reference: "refs/heads/main",
+        commit_sha: "abc123"
       )
     end
 
-    let(:logger) { instance_double(Logger, error: nil) }
+    let(:req) do
+      InternalApi::RepoProxy::CreateBlankRequest.new(
+        project_id: project.id,
+        requester_id: user.id,
+        pipeline_id: "pipeline-id",
+        wf_id: "workflow-id",
+        git: git
+      )
+    end
 
     let(:payload_hash) do
       {
@@ -257,7 +257,6 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     end
 
     before do
-      # Stub the factory to return the test payload
       payload = instance_double(InternalApi::RepoProxy::PrPayload, call: payload_hash)
       allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
         .with(req.git.reference, req.git.commit_sha)
@@ -275,7 +274,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     it "creates a blank hook and returns the expected response" do
       allow(workflow).to receive(:payload).and_return(payload_hash)
       expect(workflow).to receive(:update).with(state: Workflow::STATE_LAUNCHING)
-      result = described_class.create_blank(req, logger)
+      result = server.create_blank(req, call)
 
       expect(result).to be_a(InternalApi::RepoProxy::CreateBlankResponse)
       expect(result.hook_id).to eq(workflow.id)
@@ -303,7 +302,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_PR_NON_MERGEABLE)
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::Aborted, /PR not mergeable/)
       end
     end
@@ -318,7 +317,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_LAUNCHING_FAILED)
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::InvalidArgument, /Invalid ref/)
       end
     end
@@ -333,7 +332,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_NOT_FOUND_REPO)
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::NotFound, /Reference not found/)
       end
     end
@@ -348,7 +347,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         expect(logger).to receive(:error).with("Unknown error", error: "Boom")
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::Internal, /Unknown error/)
       end
     end
@@ -358,7 +357,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         User.destroy_all
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::NotFound, /Requester not found/)
       end
     end
@@ -368,7 +367,7 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
         Project.destroy_all
 
         expect do
-          described_class.create_blank(req, logger)
+          server.create_blank(req, call)
         end.to raise_error(GRPC::NotFound, /Project not found/)
       end
     end
