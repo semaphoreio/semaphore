@@ -3,6 +3,8 @@ global:
   edition: "ce"
 
   development:
+    minimalDeployment: false
+
     #
     # When true, mounts a writable root filesystem in containers
     # to support local development tools.
@@ -162,6 +164,9 @@ global:
 
   vault:
     secretName: ""
+
+  license: ""
+  licenseServerUrl: "https://licensing.semaphore.io"
 
 toolbox:
   version: "v1.25.0"

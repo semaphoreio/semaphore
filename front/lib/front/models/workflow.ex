@@ -431,7 +431,8 @@ defmodule Front.Models.Workflow do
 
   def preload_pipelines(workflows) when is_list(workflows) do
     Front.Utils.parallel_map(workflows, fn workflow ->
-      pipelines = Front.Models.Pipeline.list(wf_id: workflow.id)
+      options = [pagination: :auto]
+      pipelines = Front.Models.Pipeline.list([wf_id: workflow.id], options)
 
       %{workflow | pipelines: pipelines}
     end)

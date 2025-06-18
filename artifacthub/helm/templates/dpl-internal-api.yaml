@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -111,4 +112,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

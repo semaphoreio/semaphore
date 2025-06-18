@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+
+require_relative 'lib/individual_report/processor'
+require 'optparse'
+
+args = {}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: #{File.basename(__FILE__)} [options]"
+  parser.separator ""
+  parser.separator "Enhanced Security Report Processor - Processes Trivy security scan files"
+  parser.separator ""
+
+  parser.on("-i", "--input-dir DIR", "Input directory containing security reports (default: out)") do |dir|
+    args[:input_dir] = dir
+  end
+
+  parser.on("-s", "--service-name NAME", "Service name for the report (default: auto-detect or empty)") do |name|
+    args[:service_name] = name
+  end
+
+  parser.on("-o", "--output-dir DIR", "Output directory for generated reports (default: out)") do |dir|
+    args[:output_dir] = dir
+  end
+
+  parser.on("-h", "--help", "Show this help message") do
+    puts parser
+    exit
+  end
+
+  parser.separator ""
+  parser.separator "Examples:"
+  parser.separator "  #{File.basename(__FILE__)} -i scans -s my-service -o reports"
+  parser.separator "  #{File.basename(__FILE__)} --input-dir ./security-scans --service-name web-api"
+end.parse!
+
+# Set defaults
+input_dir = args[:input_dir] || 'out'
+service_name = args[:service_name] || ''
+output_dir = args[:output_dir] || 'out'
+
+puts "💎 Enhanced Security Report Processor"
+puts "📁 Input directory: #{input_dir}"
+puts "📤 Output directory: #{output_dir}"
+puts "🏷️  Service name: #{service_name.empty? ? '(auto-detect or not specified)' : service_name}"
+puts
+
+unless Dir.exist?(input_dir)
+  puts "❌ Directory '#{input_dir}' does not exist!"
+  puts "Usage: ruby #{File.basename(__FILE__)} [options]"
+  exit 1
+end
+
+processor = IndividualReport::Processor.new(input_dir, output_dir, service_name)
+processor.process
