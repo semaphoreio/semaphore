@@ -65,6 +65,7 @@ defmodule Front.Audit.EventsDecorator.Preloader do
   defp remove_nils(arr), do: Enum.filter(arr, fn e -> e != nil end)
 
   defp find_jobs_by_ids([]), do: []
+
   defp find_jobs_by_ids([id | ids]) do
     Front.Models.Job.find(id)
     |> case do
