@@ -32,7 +32,7 @@ global_job_config:
     commands:
       - checkout                           # Clone repo → https://docs.semaphoreci.com/reference/toolbox#checkout
       - sem-version elixir 1.16            # Select Elixir version → https://docs.semaphoreci.com/reference/toolbox#sem-version
-      - sem-version erlang 25.3            # Select Erlang/OTP version → https://docs.semaphoreci.com/using-semaphore/languages/elixir-erlang
+      - sem-version erlang 26.2            # Select Erlang/OTP version → https://docs.semaphoreci.com/using-semaphore/languages/elixir-erlang
       - mix local.hex   --force
       - mix local.rebar --force
       - cache restore                      # Reuse deps/ or _build cache
