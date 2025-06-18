@@ -97,13 +97,10 @@ module InternalApi
         )
 
       rescue ::InternalApi::RepoProxy::PrPayload::PrNotMergeableError => e
-        workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
         raise GRPC::Aborted, e.message
       rescue ::InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError => e
-        workflow.update(:state => Workflow::STATE_LAUNCHING_FAILED)
         raise GRPC::InvalidArgument, e.message
       rescue ::RepoHost::RemoteException::NotFound
-        workflow.update(:state => Workflow::STATE_NOT_FOUND_REPO)
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
       rescue ::RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
