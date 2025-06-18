@@ -93,7 +93,7 @@ Semaphore follows a governance model that balances commercial stewardship with c
 ### Decision Visibility
 
 - Technical decisions documented in issues/PRs
-- Architecture decisions documented in [RFCs](../rfcs/README.md)
+- Architecture decisions documented in [RFCs](rfcs/README.md)
 - Roadmap publicly available
 
 ## Code of Conduct
