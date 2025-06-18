@@ -256,7 +256,7 @@ defmodule Zebra.Monitor do
       case Zebra.Workers.Scheduler.Org.load(j.organization_id) do
         {:ok, org} ->
           if org.suspended do
-            Zebra.Workers.JobStopper.request_stop_async(j)
+            Zebra.Workers.JobStopper.request_stop_async(j, "system:org_suspended")
           end
 
         _ ->

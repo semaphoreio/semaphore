@@ -9,24 +9,24 @@ defmodule Zebra.Workers.JobStopper do
   #
   # Enqueing stop requests.
   #
-  def request_stop_async(job) do
+  def request_stop_async(job, stopped_by \\ nil) do
     case Zebra.Models.JobStopRequest.find_by_job_id(job.id) do
       {:ok, req} ->
         {:ok, req}
 
       _ ->
-        Zebra.Models.JobStopRequest.create(job.build_id, job.id)
+        Zebra.Models.JobStopRequest.create(job.build_id, job.id, stopped_by)
     end
   end
 
-  def request_stop_for_all_jobs_in_task_async(task) do
+  def request_stop_for_all_jobs_in_task_async(task, stopped_by \\ nil) do
     task_job_tuples =
       Repo.preload(task, [:jobs]).jobs
       |> Enum.map(fn j ->
         {task.id, j.id}
       end)
 
-    {:ok, _} = Zebra.Models.JobStopRequest.bulk_create(task_job_tuples)
+    {:ok, _} = Zebra.Models.JobStopRequest.bulk_create(task_job_tuples, stopped_by)
 
     :ok
   end
@@ -64,7 +64,7 @@ defmodule Zebra.Workers.JobStopper do
             )
 
         true ->
-          {:ok, _} = Job.stop(job)
+          {:ok, _} = Job.stop(job, req.stopped_by)
 
           {:ok, _} =
             JobStopRequest.complete(

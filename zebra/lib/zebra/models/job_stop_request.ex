@@ -35,6 +35,7 @@ defmodule Zebra.Models.JobStopRequest do
     field(:state, :string)
     field(:result, :string)
     field(:result_reason, :string)
+    field(:stopped_by, :string)
 
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
@@ -58,8 +59,8 @@ defmodule Zebra.Models.JobStopRequest do
     end
   end
 
-  def create(task_id, job_id) do
-    record = build_record(task_id, job_id)
+  def create(task_id, job_id, stopped_by \\ nil) do
+    record = build_record(task_id, job_id, stopped_by)
 
     changeset(%__MODULE__{}, record) |> Zebra.LegacyRepo.insert()
   end
@@ -75,10 +76,10 @@ defmodule Zebra.Models.JobStopRequest do
   """
   def bulk_create([]), do: {:ok, 0}
 
-  def bulk_create(task_job_id_tuples) do
+  def bulk_create(task_job_id_tuples, stopped_by \\ nil) do
     records =
       Enum.map(task_job_id_tuples, fn {task_id, job_id} ->
-        build_record(task_id, job_id)
+        build_record(task_id, job_id, stopped_by)
       end)
 
     {inserted_count, nil} =
@@ -91,7 +92,7 @@ defmodule Zebra.Models.JobStopRequest do
     {:ok, inserted_count}
   end
 
-  defp build_record(task_id, job_id) do
+  defp build_record(task_id, job_id, stopped_by) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     params = %{
@@ -99,7 +100,8 @@ defmodule Zebra.Models.JobStopRequest do
       created_at: now,
       updated_at: now,
       job_id: job_id,
-      build_id: task_id
+      build_id: task_id,
+      stopped_by: stopped_by
     }
 
     params
@@ -136,6 +138,7 @@ defmodule Zebra.Models.JobStopRequest do
       :state,
       :result,
       :result_reason,
+      :stopped_by,
       :created_at,
       :updated_at,
       :done_at

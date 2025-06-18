@@ -223,7 +223,7 @@ defmodule Zebra.Apis.PublicJobApi do
 
       case fetch_user_job(job_id, org_id, user_id) do
         {:ok, job} ->
-          {:ok, _} = Zebra.Workers.JobStopper.request_stop_async(job)
+          {:ok, _} = Zebra.Workers.JobStopper.request_stop_async(job, user_id)
 
           Semaphore.Jobs.V1alpha.Empty.new()
 

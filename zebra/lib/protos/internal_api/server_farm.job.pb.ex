@@ -40,7 +40,8 @@ defmodule InternalApi.ServerFarm.Job.Job do
           organization_id: String.t(),
           build_req_id: String.t(),
           agent_name: String.t(),
-          agent_id: String.t()
+          agent_id: String.t(),
+          stopped_by: String.t()
         }
   defstruct [
     :id,
@@ -68,7 +69,8 @@ defmodule InternalApi.ServerFarm.Job.Job do
     :organization_id,
     :build_req_id,
     :agent_name,
-    :agent_id
+    :agent_id,
+    :stopped_by
   ]
 
   field(:id, 1, type: :string)
@@ -97,6 +99,7 @@ defmodule InternalApi.ServerFarm.Job.Job do
   field(:build_req_id, 24, type: :string)
   field(:agent_name, 25, type: :string)
   field(:agent_id, 27, type: :string)
+  field(:stopped_by, 28, type: :string)
 end
 
 defmodule InternalApi.ServerFarm.Job.Job.Timeline do

@@ -833,6 +833,37 @@ defmodule Zebra.Api.InternalJobApiTest do
       assert stop_request.job_id == job.id
     end
 
+    test "when stopping a job => populates stopped_by with requester_id" do
+      alias Zebra.Models.{Job, JobStopRequest}
+
+      alias InternalApi.ServerFarm.Job.StopRequest, as: Request
+      alias InternalApi.ServerFarm.Job.StopResponse, as: Response
+      alias InternalApi.ServerFarm.Job.JobService.Stub, as: Stub
+
+      {:ok, job} = Support.Factories.Job.create(:started, %{})
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      requester_id = "internal_user_123"
+      request = Request.new(job_id: job.id, requester_id: requester_id)
+
+      assert {:ok, %Response{status: %{code: 0}}} = channel |> Stub.stop(request)
+
+      # Verify JobStopRequest has stopped_by field populated
+      assert {:ok, stop_request} = JobStopRequest.find_by_job_id(job.id)
+      assert stop_request.stopped_by == requester_id
+
+      Zebra.Workers.JobStopper.init() |> Zebra.Workers.DbWorker.tick()
+
+      # Wait for job stopper to process the request
+      :timer.sleep(300)
+
+      # Verify Job has stopped_by field populated and failure_reason is "user"
+      updated_job = Job.reload(job)
+      assert updated_job.stopped_by == requester_id
+      assert updated_job.failure_reason == "user"
+    end
+
     test "idempotent requests" do
       alias Zebra.Models.JobStopRequest
 

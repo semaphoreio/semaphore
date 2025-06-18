@@ -31,7 +31,7 @@ defmodule Zebra.Workers.JobTerminator do
 
         Logger.info("Terminating #{inspect(ids)}")
 
-        Zebra.Models.JobStopRequest.bulk_create(ids)
+        Zebra.Models.JobStopRequest.bulk_create(ids, "system:execution_time_limit_exceeded")
       end)
     end)
   end

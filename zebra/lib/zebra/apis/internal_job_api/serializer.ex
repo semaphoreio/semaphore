@@ -53,7 +53,8 @@ defmodule Zebra.Apis.InternalJobApi.Serializer do
       self_hosted: Zebra.Models.Job.self_hosted?(job.machine_type),
       build_req_id: try_or(job.task, :build_request_id),
       agent_name: try_or(job, :agent_name),
-      agent_id: try_or(job, :agent_id)
+      agent_id: try_or(job, :agent_id),
+      stopped_by: try_or(job, :stopped_by)
     ]
     |> Zebra.Apis.Utils.remove_nils_from_keywordlist()
     |> Job.new()

@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key stopped_by)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -72,6 +72,7 @@ defmodule Zebra.Models.Job do
     field(:private_ssh_key, :string)
     field(:execution_time_limit, :integer, default: 24 * 60 * 60)
     field(:priority, :integer)
+    field(:stopped_by, :string)
 
     field(:created_at, :utc_datetime)
     field(:updated_at, :utc_datetime)
@@ -447,21 +448,31 @@ defmodule Zebra.Models.Job do
     end
   end
 
-  def stop(job) do
+  def stop(job, stopped_by \\ nil) do
     if valid_transition?(job.aasm_state, state_finished()) do
-      Logger.info("Stopping job '#{job.id}'")
+      Logger.info("Stopping job '#{job.id}' by #{stopped_by || "system"}")
 
       if hosted?(job.machine_type), do: stop_hosted_job(job)
       if self_hosted?(job.machine_type), do: stop_self_hosted_job(job)
 
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
+      # Set failure reason to 'user' if stopped_by is present and not a system identifier
+      failure_reason =
+        if stopped_by && !String.starts_with?(stopped_by, "system:") do
+          "user"
+        else
+          nil
+        end
+
       params = %{
         aasm_state: state_finished(),
         finished_at: now,
         result: result_stopped(),
         request: JobRequest.sanitize(job.request),
-        machine_type: job.machine_type || ""
+        machine_type: job.machine_type || "",
+        stopped_by: stopped_by,
+        failure_reason: failure_reason
       }
 
       case update(job, params) do

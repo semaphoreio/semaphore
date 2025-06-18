@@ -256,7 +256,7 @@ defmodule Zebra.Apis.InternalJobApi do
 
       case fetch_user_job(job_id) do
         {:ok, job} ->
-          {:ok, _} = Zebra.Workers.JobStopper.request_stop_async(job)
+          {:ok, _} = Zebra.Workers.JobStopper.request_stop_async(job, user_id)
 
           %{status: %{code: :OK, message: "Job will be stopped."}}
           |> Util.Proto.deep_new!(StopResponse)

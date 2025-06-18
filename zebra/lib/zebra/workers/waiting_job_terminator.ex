@@ -29,7 +29,7 @@ defmodule Zebra.Workers.WaitingJobTerminator do
 
         Logger.info("Terminating #{inspect(ids)}")
 
-        Zebra.Models.JobStopRequest.bulk_create(ids)
+        Zebra.Models.JobStopRequest.bulk_create(ids, "system:waiting_time_exceeded")
       end)
     end)
   end
