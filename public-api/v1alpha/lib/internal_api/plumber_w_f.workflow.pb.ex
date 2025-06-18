@@ -17,7 +17,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
           triggered_by: integer,
           scheduler_task_id: String.t(),
           env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()],
-          start_in_conceived_state: boolean
+          start_in_conceived_state: boolean,
+          git_reference: String.t()
         }
   defstruct [
     :service,
@@ -34,7 +35,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     :triggered_by,
     :scheduler_task_id,
     :env_vars,
-    :start_in_conceived_state
+    :start_in_conceived_state,
+    :git_reference
   ]
 
   field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
@@ -52,6 +54,7 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
   field(:scheduler_task_id, 16, type: :string)
   field(:env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar)
   field(:start_in_conceived_state, 18, type: :bool)
+  field(:git_reference, 19, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
