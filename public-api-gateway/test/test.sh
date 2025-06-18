@@ -9,7 +9,7 @@ nohup go run test/jobs_v1alpha_server.go test/secrets_v1beta_server.go > /tmp/se
 
 # Start the GRPC gateway
 SECRETS_V1BETA_PUBLIC_GRPC_API_ENDPOINT=localhost:50051
-RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+AMQP_URL=amqp://guest:guest@rabbitmq:5672
 JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT=localhost:50051
 nohup /app/build/server >/tmp/gateway_output 2>&1 &
 

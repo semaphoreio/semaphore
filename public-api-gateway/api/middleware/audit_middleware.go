@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/golang/glog"
@@ -16,13 +17,23 @@ import (
 	auditProto "github.com/semaphoreio/semaphore/public-api-gateway/protos/audit"
 )
 
-var auditPaths = []string{
-	"/api/v1alpha/jobs",
-}
+type auditor func(r *http.Request, pathParams map[string]string) (auditProto.Event, error)
+
+var (
+	// errNotAuditable is returned when a request is not auditable
+	errNotAuditable = fmt.Errorf("path is not auditable")
+
+	// auditPaths maps regular expressions to auditors
+	// regular expressions are used to match request URL path
+	auditPaths = map[*regexp.Regexp]auditor{
+		regexp.MustCompile("/api/v1alpha/jobs/[0-9a-fA-F-]+/stop"): createStopJobAuditEvent,
+	}
+)
 
 var auditClient *clients.AuditClient
 
-// AuditMiddleware creates a new audit middleware function that implements runtime.Middleware
+// AuditMiddleware creates a new audit middleware function that implements runtime.Middleware.
+// This middleware will audit some requests to the API.
 func AuditMiddleware() runtime.Middleware {
 	// Return the middleware function that wraps the handler
 	return func(next runtime.HandlerFunc) runtime.HandlerFunc {
@@ -40,7 +51,6 @@ func auditMiddleware(next runtime.HandlerFunc) runtime.HandlerFunc {
 		var err error
 		if auditClient == nil {
 			auditClient, err = initAuditClient()
-			// If audit client is nil, respond with error
 			if err != nil {
 				glog.Warningf("Failed to initialize audit client. API calls will not be audited.")
 
@@ -67,12 +77,14 @@ func auditMiddleware(next runtime.HandlerFunc) runtime.HandlerFunc {
 
 		// Extract audit information
 		auditEvent, err := createAuditEvent(r, pathParams)
+		if err == errNotAuditable {
+			return
+		}
 		if err != nil {
 			glog.Errorf("Failed to create audit event: %v", err)
 			return
 		}
 
-		// Audit the call
 		err = auditClient.SendAuditEvent(r.Context(), &auditEvent)
 		if err != nil {
 			glog.Errorf("Failed to send audit event: %v", err)
@@ -82,8 +94,8 @@ func auditMiddleware(next runtime.HandlerFunc) runtime.HandlerFunc {
 
 // shouldAudit determines if this handler should process the request
 func shouldAudit(r *http.Request) bool {
-	for _, path := range auditPaths {
-		if strings.Contains(r.URL.Path, path) {
+	for rePath := range auditPaths {
+		if rePath.MatchString(r.URL.Path) {
 			return true
 		}
 	}
@@ -92,37 +104,25 @@ func shouldAudit(r *http.Request) bool {
 
 // createAuditEvent creates an AuditEvent from a request
 func createAuditEvent(r *http.Request, pathParams map[string]string) (auditProto.Event, error) {
-	if strings.HasPrefix(r.URL.Path, "/api/v1alpha/jobs") {
-		return createJobAuditEvent(r, pathParams)
+	for rePath, auditor := range auditPaths {
+		if rePath.MatchString(r.URL.Path) {
+			return auditor(r, pathParams)
+		}
 	}
-	return auditProto.Event{}, fmt.Errorf("path is not auditable: %s", r.URL.Path)
+	return auditProto.Event{}, errNotAuditable
 }
 
-func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEvent auditProto.Event, err error) {
-	// Default values
-	auditEvent = createDefaultAuditEvent(r, auditProto.Event_Job, "")
+func createStopJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEvent auditProto.Event, err error) {
+	if r.Method != http.MethodPost {
+		return auditProto.Event{}, errNotAuditable
+	}
+	resourceID, ok := pathParams["job_id"]
+	if !ok {
+		return auditProto.Event{}, errNotAuditable
+	}
 
-	var operation auditProto.Event_Operation
-	var description string
-	metadataMap := map[string]string{}
-	resourceID := ""
-
-	switch r.Method {
-	case http.MethodPost:
-		if strings.Contains(r.URL.Path, "/stop") {
-			operation = auditProto.Event_Stopped
-			ok := false
-			resourceID, ok = pathParams["job_id"]
-			if !ok {
-				err = fmt.Errorf("job_id not found in path params")
-				return
-			}
-			metadataMap["job_id"] = resourceID
-			description = "Stopped the job"
-		}
-	default:
-		err = fmt.Errorf("job operation not auditable")
-		return
+	metadataMap := map[string]string{
+		"job_id": resourceID,
 	}
 
 	metadata, err := json.Marshal(metadataMap)
@@ -130,8 +130,9 @@ func createJobAuditEvent(r *http.Request, pathParams map[string]string) (auditEv
 		err = fmt.Errorf("error marshaling metadata: %v", err)
 		return
 	}
-	auditEvent.Operation = operation
-	auditEvent.Description = description
+	auditEvent = createDefaultAuditEvent(r, auditProto.Event_Job, "")
+	auditEvent.Operation = auditProto.Event_Stopped
+	auditEvent.Description = "Stopped the job"
 	auditEvent.ResourceId = resourceID
 	auditEvent.Metadata = string(metadata)
 
@@ -160,14 +161,12 @@ func createDefaultAuditEvent(r *http.Request, resource auditProto.Event_Resource
 
 // initAuditClient initializes the audit client for API call auditing
 func initAuditClient() (*clients.AuditClient, error) {
-	amqpURL := os.Getenv("RABBITMQ_URL")
+	amqpURL := os.Getenv("AMQP_URL")
 	if amqpURL == "" {
-		return nil, fmt.Errorf("RABBITMQ_URL environment variable not set")
+		return nil, fmt.Errorf("AMQP_URL environment variable not set")
 	}
 
-	auditClient, err := clients.NewAuditClient(clients.AuditClientConfig{
-		AMQPURL: amqpURL,
-	})
+	auditClient, err := clients.NewAuditClient(amqpURL)
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to create audit client: %w", err)
@@ -179,7 +178,7 @@ func initAuditClient() (*clients.AuditClient, error) {
 // detectRemoteAddress extracts the client IP address from an HTTP request,
 // taking into account various proxy headers
 func detectRemoteAddress(r *http.Request) string {
-	// Check for X-Forwarded-For header (common for proxies)
+	// Check for X-Forwarded-For header
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		// X-Forwarded-For can contain multiple IPs, the second from the end is the original client
 		ips := strings.Split(xff, ",")
@@ -189,7 +188,7 @@ func detectRemoteAddress(r *http.Request) string {
 		}
 	}
 
-	// Check for X-Real-IP header (used by some proxies)
+	// Check for X-Real-IP header
 	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
 		return xrip
 	}
