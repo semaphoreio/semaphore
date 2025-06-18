@@ -46,6 +46,7 @@ global_job_config:
 # -------------------------------------------------------------------
 blocks:
   - name: "📦 Install & Build"
+    dependencies: []
     task:
       jobs:
         - name: "⚙️ Compile"
@@ -139,10 +140,10 @@ blocks:
     run:
       when: "branch = 'main'"
     task:
+      secrets:
+        - name: dockerhub              # Registry creds    
       jobs:
         - name: "🐳 Build & Push"
-          secrets:
-            - name: dockerhub              # Registry creds
           commands:
             - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
             - docker build -t myapp:${SEMAPHORE_GIT_SHA} .
