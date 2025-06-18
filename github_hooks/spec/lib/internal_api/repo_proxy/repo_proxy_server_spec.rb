@@ -220,7 +220,8 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
   describe "#create_blank" do
     let(:user) { FactoryBot.create(:user, :github_connection) }
     let(:repository) do
-      FactoryBot.create(:repository,
+      FactoryBot.create(
+        :repository,
         name: "sandbox",
         owner: "renderedtext",
         integration_type: "github_app"
@@ -231,12 +232,17 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     let(:branch) { workflow.branch }
 
     let(:req) do
-      instance_double("CreateBlankRequest",
+      instance_double(
+        InternalApi::RepoProxy::CreateBlankRequest,
         project_id: project.id,
         requester_id: user.id,
         ppl_id: "pipeline-id",
         wf_id: "workflow-id",
-        git: instance_double("Git", reference: "refs/heads/main", commit_sha: "abc123")
+        git: instance_double(
+          InternalApi::RepoProxy::CreateBlankRequest::Git, 
+          reference: "refs/heads/main", 
+          commit_sha: "abc123"
+        )
       )
     end
 
@@ -252,10 +258,10 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
 
     before do
       # Stub the factory to return the test payload
-      payload_builder = instance_double("PayloadBuilder", call: payload_hash)
+      payload = instance_double(InternalApi::RepoProxy::PrPayload, call: payload_hash)
       allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
         .with(req.git.reference, req.git.commit_sha)
-        .and_return(payload_builder)
+        .and_return(payload)
 
       allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
         .and_return(workflow)
@@ -296,9 +302,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "updates state and raises GRPC::Aborted" do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_PR_NON_MERGEABLE)
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::Aborted, /PR not mergeable/)
+        end.to raise_error(GRPC::Aborted, /PR not mergeable/)
       end
     end
 
@@ -311,9 +317,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "updates state and raises GRPC::InvalidArgument" do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_LAUNCHING_FAILED)
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::InvalidArgument, /Invalid ref/)
+        end.to raise_error(GRPC::InvalidArgument, /Invalid ref/)
       end
     end
 
@@ -326,9 +332,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "updates state and raises GRPC::NotFound" do
         expect(workflow).to receive(:update).with(state: Workflow::STATE_NOT_FOUND_REPO)
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::NotFound, /Reference not found/)
+        end.to raise_error(GRPC::NotFound, /Reference not found/)
       end
     end
 
@@ -341,9 +347,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "logs and raises GRPC::Internal" do
         expect(logger).to receive(:error).with("Unknown error", error: "Boom")
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::Internal, /Unknown error/)
+        end.to raise_error(GRPC::Internal, /Unknown error/)
       end
     end
 
@@ -351,9 +357,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "raises GRPC::NotFound for missing user" do
         User.destroy_all
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::NotFound, /Requester not found/)
+        end.to raise_error(GRPC::NotFound, /Requester not found/)
       end
     end
 
@@ -361,9 +367,9 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
       it "raises GRPC::NotFound for missing project" do
         Project.destroy_all
 
-        expect {
+        expect do
           described_class.create_blank(req, logger)
-        }.to raise_error(GRPC::NotFound, /Project not found/)
+        end.to raise_error(GRPC::NotFound, /Project not found/)
       end
     end
   end

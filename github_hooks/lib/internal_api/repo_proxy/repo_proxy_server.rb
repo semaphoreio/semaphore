@@ -85,7 +85,7 @@ module InternalApi
         InternalApi::RepoProxy::CreateBlankResponse.new(
           :hook_id => workflow.id,
           :workflow_id => req.wf_id,
-          :pipeline_id => req.ppl_id
+          :pipeline_id => req.ppl_id,
           :branch_id => branch.id,
           :repo => InternalApi::RepoProxy::CreateBlankResponse::Repo.new(
             :owner => branch.project.repository.owner,
