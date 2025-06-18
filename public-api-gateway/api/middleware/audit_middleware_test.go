@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	auditProto "github.com/semaphoreio/semaphore/public-api-gateway/protos/audit"
@@ -86,15 +87,15 @@ func TestAuditMiddleware(t *testing.T) {
 		}
 
 		handlerWithMiddleware := middleware(testHandler)
-
-		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/job-123/stop", nil)
+		jobID := uuid.NewString()
+		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/"+jobID+"/stop", nil)
 		req.Header.Set("x-semaphore-user-id", "user-123")
 		req.Header.Set("x-semaphore-org-id", "org-123")
 
 		rr := httptest.NewRecorder()
 
 		pathParams := map[string]string{
-			"job_id": "job-123",
+			"job_id": jobID,
 		}
 		handlerWithMiddleware(rr, req, pathParams)
 
@@ -114,8 +115,8 @@ func TestAuditMiddleware(t *testing.T) {
 		if event.Operation != auditProto.Event_Stopped {
 			t.Errorf("Expected operation to be Stopped, got %v", event.Operation)
 		}
-		if event.ResourceId != "job-123" {
-			t.Errorf("Expected resource ID to be job-123, got %s", event.ResourceId)
+		if event.ResourceId != jobID {
+			t.Errorf("Expected resource ID to be %s, got %s", jobID, event.ResourceId)
 		}
 	})
 
@@ -156,12 +157,13 @@ func TestAuditMiddleware(t *testing.T) {
 
 		handlerWithError := middleware(errorHandler)
 
-		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/job-123/stop", nil)
+		jobID := uuid.NewString()
+		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/"+jobID+"/stop", nil)
 
 		rr := httptest.NewRecorder()
 
 		pathParams := map[string]string{
-			"job_id": "job-123",
+			"job_id": jobID,
 		}
 		handlerWithError(rr, req, pathParams)
 
@@ -184,14 +186,15 @@ func TestAuditMiddleware(t *testing.T) {
 
 		handlerWithMiddleware := middleware(testHandler)
 
-		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/job-123/stop", nil)
+		jobID := uuid.NewString()
+		req := httptest.NewRequest("POST", "/api/v1alpha/jobs/"+jobID+"/stop", nil)
 		req.Header.Set("x-semaphore-user-id", "user-123")
 		req.Header.Set("x-semaphore-org-id", "org-123")
 
 		rr := httptest.NewRecorder()
 
 		pathParams := map[string]string{
-			"job_id": "job-123",
+			"job_id": jobID,
 		}
 		handlerWithMiddleware(rr, req, pathParams)
 

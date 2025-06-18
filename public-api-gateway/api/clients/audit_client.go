@@ -19,11 +19,6 @@ type AuditClient struct {
 	amqpURL         string
 }
 
-// AuditClientConfig holds configuration for the audit client
-type AuditClientConfig struct {
-	AMQPURL string
-}
-
 // AuditEventOptions contains options for creating an audit event
 type AuditEventOptions struct {
 	// UserID of the user performing the action
@@ -40,9 +35,9 @@ type AuditEventOptions struct {
 	ResourceID string
 	// ResourceName of the affected resource
 	ResourceName string
-	// Medium through which the action was performed
+	// Medium through which the action was performed (e.g. API, CLI)
 	Medium auditProto.Event_Medium
-	// Additional metadata as key-value pairs
+	// Additional metadata
 	Metadata map[string]string
 	// IP address of the client
 	IPAddress string
@@ -51,16 +46,16 @@ type AuditEventOptions struct {
 }
 
 // NewAuditClient creates a new audit client
-func NewAuditClient(config AuditClientConfig) (*AuditClient, error) {
+func NewAuditClient(amqpURL string) (*AuditClient, error) {
 	client := &AuditClient{
-		amqpURL: config.AMQPURL,
+		amqpURL: amqpURL,
 	}
 
-	if config.AMQPURL == "" {
+	if amqpURL == "" {
 		return nil, fmt.Errorf("AMQP URL is required")
 	}
 
-	tacklePublisher, err := tackle.NewPublisher(config.AMQPURL, tackle.PublisherOptions{
+	tacklePublisher, err := tackle.NewPublisher(amqpURL, tackle.PublisherOptions{
 		ConnectionName:    clientConnectionName(),
 		ConnectionTimeout: 5 * time.Second,
 	})
@@ -88,19 +83,12 @@ func (c *AuditClient) SendAuditEvent(ctx context.Context, event *auditProto.Even
 	})
 
 	if err != nil {
+		glog.Errorf("Error publishing audit event: %v", err)
 		return fmt.Errorf("error publishing audit event: %w", err)
 	}
 
 	glog.Infof("Audit event published via AMQP: resource=%s, operation=%s, resource_id=%s, operation_id=%s", event.Resource.String(), event.Operation.String(), event.ResourceId, event.OperationId)
 
-	return nil
-}
-
-// Close closes the AMQP connection
-func (c *AuditClient) Close() error {
-	if c.tacklePublisher != nil {
-		c.tacklePublisher.Close()
-	}
 	return nil
 }
 

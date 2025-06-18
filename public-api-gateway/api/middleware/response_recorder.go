@@ -12,7 +12,6 @@ type ResponseRecorder struct {
 	Body   *strings.Builder
 }
 
-// NewResponseRecorder creates a new response recorder
 func NewResponseRecorder(w http.ResponseWriter) *ResponseRecorder {
 	return &ResponseRecorder{
 		ResponseWriter: w,
