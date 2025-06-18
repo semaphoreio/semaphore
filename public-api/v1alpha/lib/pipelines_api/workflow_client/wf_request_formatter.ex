@@ -14,16 +14,16 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
   def form_schedule_request(params) when is_map(params) do
     %{
       service: service_type(params["repository"].integration_type),
-      repo: %{branch_name: params |> Map.get("reference", "") |> branch_name()},
+      repo: %{
+        branch_name: params |> Map.get("reference", "") |> branch_name(),
+        commit_sha: params |> Map.get("commit_sha", "")
+        },
       request_token: UUID.uuid4(),
       project_id: params["project_id"],
       requester_id: Map.get(params, "requester_id", ""),
       definition_file: Map.get(params, "definition_file", ".semaphore/semaphore.yml"),
       organization_id: Map.get(params, "organization_id", ""),
-      git: %{
-        reference: params |> Map.get("reference", "") |> ref(),
-        commit_sha: params |> Map.get("commit_sha", "")
-      },
+      git_reference: params |> Map.get("reference", "") |> ref(),
       start_in_conceived_state: true,
       triggered_by: :API,
       env_vars: parameter_values_to_env_vars(params["parameters"])
