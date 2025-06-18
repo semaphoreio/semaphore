@@ -61,7 +61,8 @@ fi
 # Test 2: Job Stop Request (should trigger audit)
 
 # send request to gateway
-curl -X POST -s -H "Authorization: Token yyy" -H "x-some-other-jobs-header: x-some-other-jobs-header-aaaa" "http://localhost:8080/api/v1alpha/jobs/job-x/stop" > /tmp/server_response.txt
+job_id=$(cat /proc/sys/kernel/random/uuid)
+curl -X POST -s -H "Authorization: Token yyy" -H "x-some-other-jobs-header: x-some-other-jobs-header-aaaa" "http://localhost:8080/api/v1alpha/jobs/$job_id/stop" > /tmp/server_response.txt
 
 server_output=$(cat /tmp/server_output.txt)
 server_response=$(cat /tmp/server_response.txt)
