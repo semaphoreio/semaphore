@@ -108,7 +108,6 @@ defmodule Router.DescribeTest do
     assert %{"pipeline" => _ppl, "blocks" => blocks} = body
 
     blocks
-    |> IO.inspect(label: "block")
     |> Enum.map(fn block -> assert is_list(block["jobs"]) end)
   end
 
