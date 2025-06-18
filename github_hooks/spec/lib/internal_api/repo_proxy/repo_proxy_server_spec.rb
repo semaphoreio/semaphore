@@ -231,18 +231,20 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     let(:workflow) { FactoryBot.create(:workflow_with_branch, project: project) }
     let(:branch) { workflow.branch }
 
+    let(:git) do
+      InternalApi::RepoProxy::CreateBlankRequest::Git.new(
+        reference: "refs/heads/main",
+        commit_sha: "abc123"
+      )
+    end
+    
     let(:req) do
-      instance_double(
-        InternalApi::RepoProxy::CreateBlankRequest,
+      InternalApi::RepoProxy::CreateBlankRequest.new(
         project_id: project.id,
         requester_id: user.id,
         ppl_id: "pipeline-id",
         wf_id: "workflow-id",
-        git: instance_double(
-          InternalApi::RepoProxy::CreateBlankRequest::Git, 
-          reference: "refs/heads/main", 
-          commit_sha: "abc123"
-        )
+        git: git
       )
     end
 
