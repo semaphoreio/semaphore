@@ -78,42 +78,35 @@ module InternalApi
           )
         end
 
-        workflow.update(:ppl_id => req.ppl_id)
+        workflow.update(:ppl_id => req.pipeline_id)
         workflow.update(:wf_id => req.wf_id)
         workflow.update(:state => Workflow::STATE_LAUNCHING)
 
         InternalApi::RepoProxy::CreateBlankResponse.new(
           :hook_id => workflow.id,
-          :workflow_id => req.wf_id,
-          :pipeline_id => req.ppl_id,
+          :wf_id => req.wf_id,
+          :pipeline_id => req.pipeline_id,
           :branch_id => branch.id,
           :repo => InternalApi::RepoProxy::CreateBlankResponse::Repo.new(
             :owner => branch.project.repository.owner,
             :repo_name => branch.project.repository.name,
             :branch_name => branch.name,
             :commit_sha => workflow.commit_sha,
-            :repository_id => workflow.repository_id
+            :repository_id => branch.project.repository.id
           )
         )
 
       rescue ::InternalApi::RepoProxy::PrPayload::PrNotMergeableError => e
-        workflow.update(:state => Workflow::STATE_PR_NON_MERGEABLE)
         raise GRPC::Aborted, e.message
       rescue ::InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError => e
-        workflow.update(:state => Workflow::STATE_LAUNCHING_FAILED)
         raise GRPC::InvalidArgument, e.message
       rescue ::RepoHost::RemoteException::NotFound
-        workflow.update(:state => Workflow::STATE_NOT_FOUND_REPO)
         raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
       rescue ::RepoHost::RemoteException::Unknown => e
         logger.error("Unknown error", error: e.message)
         raise GRPC::Internal, "Unknown error"
       rescue ::ActiveRecord::RecordNotFound => e
-        if e.model == User
-          raise GRPC::NotFound, "Requester not found #{req.requester_id}"
-        else
-          raise GRPC::NotFound, "Project not found #{req.project_id}"
-        end
+        raise GRPC::NotFound, e.message
       end
 
       define_rpc :create do |req, logger|
