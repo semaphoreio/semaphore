@@ -121,28 +121,49 @@ defmodule Support.Stubs.Workflow do
     end
 
     def schedule(req, _) do
-      if req.request_token != "" do
-        user_id = UUID.uuid4()
+      case req.project_id do
+        "invalid_arg" ->
+          InternalApi.PlumberWF.ScheduleResponse.new(
+            status:
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:INVALID_ARGUMENT),
+                message: "Invalid argument"
+              )
+          )
 
-        hook = %{
-          id: req.hook_id,
-          project_id: req.project_id,
-          branch_id: req.branch_id
-        }
+        "project_deleted" ->
+          InternalApi.PlumberWF.ScheduleResponse.new(
+            status:
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:FAILED_PRECONDITION),
+                message: "Failed precondition"
+              )
+          )
 
-        new_workflow = Support.Stubs.Workflow.create(hook, user_id)
-        new_pipeline = Support.Stubs.Pipeline.create(new_workflow)
+        "resource_exhausted" ->
+          InternalApi.PlumberWF.ScheduleResponse.new(
+            status:
+              InternalApi.Status.new(
+                code: Google.Rpc.Code.value(:RESOURCE_EXHAUSTED),
+                message: "Resource exhausted"
+              )
+          )
 
-        InternalApi.PlumberWF.ScheduleResponse.new(
-          wf_id: new_workflow.id,
-          ppl_id: new_pipeline.id,
-          status: ok()
-        )
-      else
-        InternalApi.PlumberWF.ScheduleResponse.new(
-          status:
-            InternalApi.Status.new(code: Google.Rpc.Code.value(:INVALID_ARGUMENT), message: "")
-        )
+        "internal_error" ->
+          raise GRPC.RPCError, status: GRPC.Status.internal(), message: "Internal error"
+
+        _ ->
+          user_id = UUID.uuid4()
+          branch = Support.Stubs.Branch.create(%{id: req.project_id})
+          hook = Support.Stubs.Hook.create(branch)
+          new_workflow = Support.Stubs.Workflow.create(hook, user_id)
+          new_pipeline = Support.Stubs.Pipeline.create(new_workflow)
+
+          InternalApi.PlumberWF.ScheduleResponse.new(
+            wf_id: new_workflow.id,
+            ppl_id: new_pipeline.id,
+            status: ok()
+          )
       end
     end
 
