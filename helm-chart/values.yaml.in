@@ -165,6 +165,9 @@ global:
   vault:
     secretName: ""
 
+  license: ""
+  licenseServerUrl: "https://licensing.semaphore.io"
+
 toolbox:
   version: "v1.25.0"
 

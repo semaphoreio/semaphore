@@ -49,7 +49,8 @@ config :front,
   usage_grpc_endpoint: "127.0.0.1:50052",
   velocity_grpc_endpoint: "127.0.0.1:50052",
   workflow_api_grpc_endpoint: "127.0.0.1:50052",
-  jwt_grpc_endpoint: "127.0.0.1:50052"
+  jwt_grpc_endpoint: "127.0.0.1:50052",
+  license_grpc_endpoint: "127.0.0.1:50052"
 
 config :front,
   domain: "semaphoretest.test",

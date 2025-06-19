@@ -5,8 +5,6 @@ defmodule HooksReceiver.RepositoryClientTest do
   alias InternalApi.Repository.DescribeResponse
 
   test ".describe formats response" do
-    GRPC.Server.start(RepositoryMock, 50_051)
-
     RepositoryMock
     |> GrpcMock.expect(:describe, fn req, _ ->
       %DescribeResponse{repository: %{id: req.repository_id}}
