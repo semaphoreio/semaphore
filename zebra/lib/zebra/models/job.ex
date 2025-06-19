@@ -458,12 +458,7 @@ defmodule Zebra.Models.Job do
       now = DateTime.utc_now() |> DateTime.truncate(:second)
 
       # Set failure reason to 'user' if stopped_by is present and not a system identifier
-      failure_reason =
-        if stopped_by && !String.starts_with?(stopped_by, "system:") do
-          "user"
-        else
-          nil
-        end
+      failure_reason = determine_failure_reason(stopped_by)
 
       params = %{
         aasm_state: state_finished(),
@@ -600,6 +595,14 @@ defmodule Zebra.Models.Job do
 
       _ ->
         :pipeline_job
+    end
+  end
+
+  def determine_failure_reason(stopped_by) do
+    if stopped_by && !String.starts_with?(stopped_by, "system:") do
+      "user"
+    else
+      nil
     end
   end
 end
