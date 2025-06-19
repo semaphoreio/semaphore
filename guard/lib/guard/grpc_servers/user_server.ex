@@ -109,33 +109,37 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.create_favorite", %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind}, fn ->
-      kind =
-        User.Favorite.Kind.key(kind)
-        |> to_string()
+    observe_and_log(
+      "grpc.user.create_favorite",
+      %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind},
+      fn ->
+        kind =
+          User.Favorite.Kind.key(kind)
+          |> to_string()
 
-      validate_uuid!(user_id)
-      validate_uuid!(organization_id)
-      validate_uuid!(favorite_id)
+        validate_uuid!(user_id)
+        validate_uuid!(organization_id)
+        validate_uuid!(favorite_id)
 
-      case FrontRepo.Favorite.find_or_create(%{
-             user_id: user_id,
-             organization_id: organization_id,
-             favorite_id: favorite_id,
-             kind: kind
-           }) do
-        {:ok, favorite, :created} ->
-          favorite_pb = map_favorite(favorite)
-          Guard.Events.FavoriteCreated.publish(favorite_pb, @user_exchange)
-          favorite_pb
+        case FrontRepo.Favorite.find_or_create(%{
+               user_id: user_id,
+               organization_id: organization_id,
+               favorite_id: favorite_id,
+               kind: kind
+             }) do
+          {:ok, favorite, :created} ->
+            favorite_pb = map_favorite(favorite)
+            Guard.Events.FavoriteCreated.publish(favorite_pb, @user_exchange)
+            favorite_pb
 
-        {:ok, favorite, :found} ->
-          map_favorite(favorite)
+          {:ok, favorite, :found} ->
+            map_favorite(favorite)
 
-        {:error, _changeset} ->
-          grpc_error!(:invalid_argument, "Invalid favorite.")
+          {:error, _changeset} ->
+            grpc_error!(:invalid_argument, "Invalid favorite.")
+        end
       end
-    end)
+    )
   end
 
   @spec delete_favorite(User.Favorite.t(), GRPC.Server.Stream.t()) :: User.Favorite.t()
@@ -148,37 +152,41 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.delete_favorite", %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind}, fn ->
-      kind =
-        User.Favorite.Kind.key(kind)
-        |> to_string()
+    observe_and_log(
+      "grpc.user.delete_favorite",
+      %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind},
+      fn ->
+        kind =
+          User.Favorite.Kind.key(kind)
+          |> to_string()
 
-      validate_uuid!(user_id)
-      validate_uuid!(organization_id)
-      validate_uuid!(favorite_id)
+        validate_uuid!(user_id)
+        validate_uuid!(organization_id)
+        validate_uuid!(favorite_id)
 
-      favorite =
-        FrontRepo.Favorite.find_by(%{
-          user_id: user_id,
-          organization_id: organization_id,
-          favorite_id: favorite_id,
-          kind: kind
-        })
+        favorite =
+          FrontRepo.Favorite.find_by(%{
+            user_id: user_id,
+            organization_id: organization_id,
+            favorite_id: favorite_id,
+            kind: kind
+          })
 
-      if is_nil(favorite) do
-        grpc_error!(:not_found, "Favorite not found.")
+        if is_nil(favorite) do
+          grpc_error!(:not_found, "Favorite not found.")
+        end
+
+        case FrontRepo.Favorite.delete_favorite(favorite) do
+          {:ok, favorite} ->
+            favorite_pb = map_favorite(favorite)
+            Guard.Events.FavoriteDeleted.publish(favorite_pb, @user_exchange)
+            favorite_pb
+
+          {:error, _changeset} ->
+            grpc_error!(:invalid_argument, "Invalid favorite.")
+        end
       end
-
-      case FrontRepo.Favorite.delete_favorite(favorite) do
-        {:ok, favorite} ->
-          favorite_pb = map_favorite(favorite)
-          Guard.Events.FavoriteDeleted.publish(favorite_pb, @user_exchange)
-          favorite_pb
-
-        {:error, _changeset} ->
-          grpc_error!(:invalid_argument, "Invalid favorite.")
-      end
-    end)
+    )
   end
 
   @spec list_favorites(User.ListFavoritesRequest.t(), GRPC.Server.Stream.t()) ::
@@ -187,15 +195,19 @@ defmodule Guard.GrpcServers.UserServer do
         %User.ListFavoritesRequest{user_id: user_id, organization_id: organization_id},
         _stream
       ) do
-    observe_and_log("grpc.user.list_favorites", %{user_id: user_id, organization_id: organization_id}, fn ->
-      validate_uuid!(user_id)
-      if organization_id != "", do: validate_uuid!(organization_id)
+    observe_and_log(
+      "grpc.user.list_favorites",
+      %{user_id: user_id, organization_id: organization_id},
+      fn ->
+        validate_uuid!(user_id)
+        if organization_id != "", do: validate_uuid!(organization_id)
 
-      favorites =
-        FrontRepo.Favorite.list_favorite_by_user_id(user_id, organization_id: organization_id)
+        favorites =
+          FrontRepo.Favorite.list_favorite_by_user_id(user_id, organization_id: organization_id)
 
-      User.ListFavoritesResponse.new(favorites: Enum.map(favorites, &map_favorite/1))
-    end)
+        User.ListFavoritesResponse.new(favorites: Enum.map(favorites, &map_favorite/1))
+      end
+    )
   end
 
   @spec block_account(User.BlockAccountRequest.t(), GRPC.Server.Stream.t()) ::
@@ -232,29 +244,33 @@ defmodule Guard.GrpcServers.UserServer do
         %User.RefreshRepositoryProviderRequest{user_id: user_id, type: type},
         _stream
       ) do
-    observe_and_log("grpc.user.refresh_repository_provider", %{user_id: user_id, type: type}, fn ->
-      validate_uuid!(user_id)
+    observe_and_log(
+      "grpc.user.refresh_repository_provider",
+      %{user_id: user_id, type: type},
+      fn ->
+        validate_uuid!(user_id)
 
-      user =
-        case Front.find(user_id) do
-          {:error, :not_found} -> grpc_error!(:not_found, "User #{user_id} not found.")
-          {:ok, user} -> user
+        user =
+          case Front.find(user_id) do
+            {:error, :not_found} -> grpc_error!(:not_found, "User #{user_id} not found.")
+            {:ok, user} -> user
+          end
+
+        provider =
+          User.RepositoryProvider.Type.key(type)
+          |> to_string()
+          |> String.downcase()
+
+        case FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user.id, provider) do
+          {:error, :not_found} ->
+            Logger.error("User #{user_id} not found")
+            grpc_error!(:not_found, "User not found.")
+
+          {:ok, account} ->
+            handle_update_repo_status(user, account)
         end
-
-      provider =
-        User.RepositoryProvider.Type.key(type)
-        |> to_string()
-        |> String.downcase()
-
-      case FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user.id, provider) do
-        {:error, :not_found} ->
-          Logger.error("User #{user_id} not found")
-          grpc_error!(:not_found, "User not found.")
-
-        {:ok, account} ->
-          handle_update_repo_status(user, account)
       end
-    end)
+    )
   end
 
   @spec update(User.UpdateRequest.t(), GRPC.Server.Stream.t()) :: User.UpdateResponse.t()
@@ -326,23 +342,33 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.create", %{email: email, name: name, password: password, repository_providers: providers, skip_password_change: skip_password_change}, fn ->
-      case Guard.User.Actions.create(%{
-             email: email,
-             name: name,
-             password: password,
-             repository_providers: providers,
-             skip_password_change: skip_password_change
-           }) do
-        {:ok, user} ->
-          Front.fetch_user_with_repo_account_details(user.id)
-          |> map_user()
+    observe_and_log(
+      "grpc.user.create",
+      %{
+        email: email,
+        name: name,
+        password: password,
+        repository_providers: providers,
+        skip_password_change: skip_password_change
+      },
+      fn ->
+        case Guard.User.Actions.create(%{
+               email: email,
+               name: name,
+               password: password,
+               repository_providers: providers,
+               skip_password_change: skip_password_change
+             }) do
+          {:ok, user} ->
+            Front.fetch_user_with_repo_account_details(user.id)
+            |> map_user()
 
-        {:error, errors} ->
-          Logger.error("Failed to create user: #{inspect(errors)}")
-          grpc_error!(:invalid_argument, "Failed to create user")
+          {:error, errors} ->
+            Logger.error("Failed to create user: #{inspect(errors)}")
+            grpc_error!(:invalid_argument, "Failed to create user")
+        end
       end
-    end)
+    )
   end
 
   # ---------------------
@@ -693,35 +719,39 @@ defmodule Guard.GrpcServers.UserServer do
         %User.GetRepositoryTokenRequest{user_id: user_id, integration_type: integration_type},
         _stream
       ) do
-    observe_and_log("grpc.user.get_repository_token", %{user_id: user_id, integration_type: integration_type}, fn ->
-      parsed_integration_type = RepositoryIntegrator.IntegrationType.key(integration_type)
-      check_integration!(parsed_integration_type)
+    observe_and_log(
+      "grpc.user.get_repository_token",
+      %{user_id: user_id, integration_type: integration_type},
+      fn ->
+        parsed_integration_type = RepositoryIntegrator.IntegrationType.key(integration_type)
+        check_integration!(parsed_integration_type)
 
-      user =
-        case Front.find(user_id) do
-          {:error, :not_found} -> grpc_error!(:not_found, "User not found.")
-          {:ok, user} -> user
-        end
+        user =
+          case Front.find(user_id) do
+            {:error, :not_found} -> grpc_error!(:not_found, "User not found.")
+            {:ok, user} -> user
+          end
 
-      provider = get_provider(parsed_integration_type)
+        provider = get_provider(parsed_integration_type)
 
-      repo_host_account =
-        case FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user.id, provider) do
-          {:error, :not_found} ->
-            Logger.error(
-              "Integration for User: '#{user.id}' and '#{parsed_integration_type}' not found."
-            )
+        repo_host_account =
+          case FrontRepo.RepoHostAccount.get_for_user_by_repo_host(user.id, provider) do
+            {:error, :not_found} ->
+              Logger.error(
+                "Integration for User: '#{user.id}' and '#{parsed_integration_type}' not found."
+              )
 
-            grpc_error!(:not_found, "Integration '#{parsed_integration_type}' not found.")
+              grpc_error!(:not_found, "Integration '#{parsed_integration_type}' not found.")
 
-          {:ok, account} ->
-            account
-        end
+            {:ok, account} ->
+              account
+          end
 
-      {token, expires_at} = get_token(repo_host_account, user_id: user_id)
+        {token, expires_at} = get_token(repo_host_account, user_id: user_id)
 
-      User.GetRepositoryTokenResponse.new(token: token, expires_at: grpc_timestamp(expires_at))
-    end)
+        User.GetRepositoryTokenResponse.new(token: token, expires_at: grpc_timestamp(expires_at))
+      end
+    )
   end
 
   @spec regenerate_token(User.RegenerateTokenRequest.t(), GRPC.Stream.t()) ::
@@ -831,7 +861,10 @@ defmodule Guard.GrpcServers.UserServer do
         result
       rescue
         e ->
-          Logger.error("Service #{name} - request: #{inspect(request)} - Exited with an error: #{inspect(e)}")
+          Logger.error(
+            "Service #{name} - request: #{inspect(request)} - Exited with an error: #{inspect(e)}"
+          )
+
           Watchman.increment({name, ["ERROR"]})
           reraise e, __STACKTRACE__
       end
