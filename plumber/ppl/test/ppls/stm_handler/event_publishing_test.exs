@@ -3,7 +3,6 @@ defmodule Ppl.Ppls.STMHandler.EventPublishing.Test do
 
   alias Test.Helpers
   alias Ppl.Actions
-  alias Test.GitHub.Credentials
   alias Ppl.Ppls.Model.PplsQueries
   alias InternalApi.Plumber.{ScheduleRequest, PipelineService}
   alias Ppl.Ppls.STMHandler.EventPublishing.Test.{

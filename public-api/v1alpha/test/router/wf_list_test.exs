@@ -73,8 +73,6 @@ defmodule Router.WfListTest do
   def list_wfs(params, decode? \\ true) do
     {:ok, response} = get_list_wfs(params)
     %{:body => body, :status_code => status_code, headers: headers} = response
-    IO.puts("Response body: #{inspect(body)}")
-    IO.puts("Headers: #{inspect(headers)}")
 
     body =
       case decode? do
