@@ -16,7 +16,7 @@ defmodule Guard.GrpcServers.UserServer do
 
   @spec describe(User.DescribeRequest.t(), GRPC.Server.Stream.t()) :: User.DescribeResponse.t()
   def describe(%User.DescribeRequest{user_id: user_id}, _stream) do
-    observe_and_log("grpc.user.describe", fn ->
+    observe_and_log("grpc.user.describe", %{user_id: user_id}, fn ->
       result = Front.fetch_user_with_repo_account_details(user_id)
 
       case result do
@@ -34,7 +34,7 @@ defmodule Guard.GrpcServers.UserServer do
           GRPC.Server.Stream.t()
         ) :: User.User.t()
   def describe_by_email(%User.DescribeByEmailRequest{email: email}, _stream) do
-    observe_and_log("grpc.user.describe_by_email", fn ->
+    observe_and_log("grpc.user.describe_by_email", %{email: email}, fn ->
       case Front.fetch_user_by_email(email) do
         nil -> grpc_error!(:not_found, "User not found.")
         user -> map_user(user)
@@ -55,7 +55,7 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.describe_by_repository_provider", fn ->
+    observe_and_log("grpc.user.describe_by_repository_provider", %{uid: uid, type: type}, fn ->
       result =
         Front.fetch_user_with_repository_provider(%{
           type: User.RepositoryProvider.Type.key(type),
@@ -72,7 +72,7 @@ defmodule Guard.GrpcServers.UserServer do
   @spec search_users(User.SearchUsersRequest.t(), GRPC.Server.Stream.t()) ::
           User.SearchUsersResponse
   def search_users(%User.SearchUsersRequest{query: query, limit: limit}, _stream) do
-    observe_and_log("grpc.user.search_users", fn ->
+    observe_and_log("grpc.user.search_users", %{query: query, limit: limit}, fn ->
       query = String.trim(query)
       limit = abs(limit)
 
@@ -91,7 +91,7 @@ defmodule Guard.GrpcServers.UserServer do
   @spec describe_many(User.DescribeManyRequest.t(), GRPC.Server.Stream.t()) ::
           User.DescribeManyResponse.t()
   def describe_many(%User.DescribeManyRequest{user_ids: user_ids}, _stream) do
-    observe_and_log("grpc.user.describe_many", fn ->
+    observe_and_log("grpc.user.describe_many", %{user_ids: user_ids}, fn ->
       user_ids
       |> Enum.filter(&valid_uuid?/1)
       |> handle_describe_many_response()
@@ -109,7 +109,7 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.create_favorite", fn ->
+    observe_and_log("grpc.user.create_favorite", %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind}, fn ->
       kind =
         User.Favorite.Kind.key(kind)
         |> to_string()
@@ -148,7 +148,7 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.delete_favorite", fn ->
+    observe_and_log("grpc.user.delete_favorite", %{user_id: user_id, organization_id: organization_id, favorite_id: favorite_id, kind: kind}, fn ->
       kind =
         User.Favorite.Kind.key(kind)
         |> to_string()
@@ -187,7 +187,7 @@ defmodule Guard.GrpcServers.UserServer do
         %User.ListFavoritesRequest{user_id: user_id, organization_id: organization_id},
         _stream
       ) do
-    observe_and_log("grpc.user.list_favorites", fn ->
+    observe_and_log("grpc.user.list_favorites", %{user_id: user_id, organization_id: organization_id}, fn ->
       validate_uuid!(user_id)
       if organization_id != "", do: validate_uuid!(organization_id)
 
@@ -201,7 +201,7 @@ defmodule Guard.GrpcServers.UserServer do
   @spec block_account(User.BlockAccountRequest.t(), GRPC.Server.Stream.t()) ::
           User.User.t()
   def block_account(%User.BlockAccountRequest{user_id: user_id}, _stream) do
-    observe_and_log("grpc.user.block_account", fn ->
+    observe_and_log("grpc.user.block_account", %{user_id: user_id}, fn ->
       result = FrontRepo.User.active_user_by_id(user_id)
 
       case result do
@@ -214,7 +214,7 @@ defmodule Guard.GrpcServers.UserServer do
   @spec unblock_account(User.UnblockAccountRequest.t(), GRPC.Server.Stream.t()) ::
           User.User.t()
   def unblock_account(%User.UnblockAccountRequest{user_id: user_id}, _stream) do
-    observe_and_log("grpc.user.unblock_account", fn ->
+    observe_and_log("grpc.user.unblock_account", %{user_id: user_id}, fn ->
       result = FrontRepo.User.blocked_user_by_id(user_id)
 
       case result do
@@ -232,7 +232,7 @@ defmodule Guard.GrpcServers.UserServer do
         %User.RefreshRepositoryProviderRequest{user_id: user_id, type: type},
         _stream
       ) do
-    observe_and_log("grpc.user.refresh_repository_provider", fn ->
+    observe_and_log("grpc.user.refresh_repository_provider", %{user_id: user_id, type: type}, fn ->
       validate_uuid!(user_id)
 
       user =
@@ -259,7 +259,7 @@ defmodule Guard.GrpcServers.UserServer do
 
   @spec update(User.UpdateRequest.t(), GRPC.Server.Stream.t()) :: User.UpdateResponse.t()
   def update(%User.UpdateRequest{user: user}, _stream) do
-    observe_and_log("grpc.user.update", fn ->
+    observe_and_log("grpc.user.update", %{user_id: user.id}, fn ->
       if is_nil(user) do
         grpc_error!(:invalid_argument, "Invalid user.")
       end
@@ -297,7 +297,7 @@ defmodule Guard.GrpcServers.UserServer do
           GRPC.Server.Stream.t()
         ) :: User.User.t()
   def delete_with_owned_orgs(%User.DeleteWithOwnedOrgsRequest{user_id: user_id}, _stream) do
-    observe_and_log("grpc.user.delete_with_owned_orgs", fn ->
+    observe_and_log("grpc.user.delete_with_owned_orgs", %{user_id: user_id}, fn ->
       validate_uuid!(user_id)
 
       case Front.find(user_id) do
@@ -326,7 +326,7 @@ defmodule Guard.GrpcServers.UserServer do
         },
         _stream
       ) do
-    observe_and_log("grpc.user.create", fn ->
+    observe_and_log("grpc.user.create", %{email: email, name: name, password: password, repository_providers: providers, skip_password_change: skip_password_change}, fn ->
       case Guard.User.Actions.create(%{
              email: email,
              name: name,
@@ -820,9 +820,11 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp grpc_timestamp(_), do: nil
 
-  defp observe_and_log(name, f) do
+  defp observe_and_log(name, context, f) do
     Watchman.benchmark(name, fn ->
       try do
+        Logger.metadata(context)
+
         Logger.debug("Service #{name} - Started")
         result = f.()
         Logger.debug("Service #{name} - Finished")
