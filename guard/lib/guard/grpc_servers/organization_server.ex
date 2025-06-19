@@ -485,6 +485,12 @@ defmodule Guard.GrpcServers.OrganizationServer do
             ip_allow_list: Enum.join(proto_org.ip_allow_list, ",")
           }
 
+          attrs = if proto_org.allowed_id_providers != nil && length(proto_org.allowed_id_providers) > 0 do
+            Map.put(attrs, :allowed_id_providers, Enum.join(proto_org.allowed_id_providers, ","))
+          else
+            attrs
+          end
+
           case Guard.Store.Organization.update(organization, attrs) do
             {:ok, updated_org} ->
               %Organization.UpdateResponse{
