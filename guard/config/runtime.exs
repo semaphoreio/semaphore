@@ -2,8 +2,6 @@ import Config
 
 config :guard, :migrations_path, System.get_env("MIGRATIONS_PATH") || "/app/repo/migrations"
 
-config :logger, level: (System.get_env("LOG_LEVEL") || "debug") |> String.to_atom()
-
 {metric_channel, metrics_format} =
   System.get_env("ON_PREM")
   |> case do
