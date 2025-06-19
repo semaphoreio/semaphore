@@ -850,7 +850,7 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp grpc_timestamp(_), do: nil
 
-  defp observe_and_log(name, request \\ nil, f) do
+  defp observe_and_log(name, request, f) do
     Watchman.benchmark(name, fn ->
       try do
         Logger.debug(fn -> "Service #{name} - request: #{inspect(request)} - Started" end)
