@@ -74,9 +74,9 @@ defmodule FrontWeb.JobView do
     stopped_by_user = assigns.stopped_by_user
 
     cond do
-      is_nil(job.stopped_by) -> ""
+      is_nil(job.stopped_by) or job.stopped_by == "" -> ""
       String.starts_with?(job.stopped_by, "system:") -> "Job was stopped by the system"
-      is_nil(stopped_by_user) -> "Job was stopped by user #{job.stopped_by}"
+      is_nil(stopped_by_user) -> "Job was stopped by user ##{job.stopped_by}"
       true -> "Job was stopped by #{stopped_by_user.name}"
     end
   end
