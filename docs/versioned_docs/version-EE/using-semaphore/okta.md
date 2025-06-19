@@ -235,6 +235,12 @@ Semaphore asks new users logging in via SSO to [connect their GitHub](./connect-
 
 ![Connect Git](./img/connect-git.jpg)
 
+:::info
+
+Once enforced, Okta is the **only login method allowed** for all users in the server. Dual authentication methods like Okta + GitHub/BitBucket/GitLab are not supported.
+
+:::
+
 ## Troubleshooting duplicated users {#troubleshooting}
 
 Semaphore tries to match new users provisioned via SCIM to existing Semaphore users by email address. If the email address associated with the SCIM request matches the email address of existing Semaphore users, the two accounts will be connected, and no new account will be provisioned. Email associated with Semaphore is the primary email from GitHub or BitBucket.
