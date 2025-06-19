@@ -11,6 +11,7 @@ class Policy::TrivyImage < Policy
     @image = args[:image]
     @severity = args[:severity] || "HIGH,CRITICAL"
     @ignore_policy = args[:ignore_policy] || nil
+    @scanners = args[:scanners] || "vuln,secret,license,misconfig"
 
     @skip_files = args[:skip_files].to_s.split(",") || []
     @skip_dirs = args[:skip_dirs].to_s.split(",") || []
@@ -24,7 +25,7 @@ class Policy::TrivyImage < Policy
       "--severity #{@severity}",
       "--exit-on-eol 1",
       "--ignore-unfixed",
-      "--scanners vuln,secret,license,misconfig",
+      "--scanners #{@scanners}",
       "--format json",
       "--output out/docker-scan-trivy.json"
     ]

@@ -24,6 +24,10 @@ OptionParser.new do |parser|
     args[:severity] = severity
   end
 
+  parser.on("-c", "--scanners SCANNERS", "Comma-separated list of scanners to use (vuln,secret,license,misconfig)") do |scanners|
+    args[:scanners] = scanners
+  end
+
   parser.on("-p", "--ignore-policy IGNORE_POLICY_PATH", "Ignore policy to use when scanning docker image") do |ignore_policy|
     args[:ignore_policy] = ignore_policy
   end
