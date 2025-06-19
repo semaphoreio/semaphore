@@ -259,7 +259,7 @@ defmodule Guard.GrpcServers.UserServer do
 
   @spec update(User.UpdateRequest.t(), GRPC.Server.Stream.t()) :: User.UpdateResponse.t()
   def update(%User.UpdateRequest{user: user}, _stream) do
-    observe_and_log("grpc.user.update", %{user_id: user.id}, fn ->
+    observe_and_log("grpc.user.update", %{user: user}, fn ->
       if is_nil(user) do
         grpc_error!(:invalid_argument, "Invalid user.")
       end
@@ -693,7 +693,7 @@ defmodule Guard.GrpcServers.UserServer do
         %User.GetRepositoryTokenRequest{user_id: user_id, integration_type: integration_type},
         _stream
       ) do
-    observe_and_log("grpc.user.get_repository_token", fn ->
+    observe_and_log("grpc.user.get_repository_token", %{user_id: user_id, integration_type: integration_type}, fn ->
       parsed_integration_type = RepositoryIntegrator.IntegrationType.key(integration_type)
       check_integration!(parsed_integration_type)
 
@@ -727,7 +727,7 @@ defmodule Guard.GrpcServers.UserServer do
   @spec regenerate_token(User.RegenerateTokenRequest.t(), GRPC.Stream.t()) ::
           User.RegenerateTokenResponse.t()
   def regenerate_token(%User.RegenerateTokenRequest{user_id: user_id}, _stream) do
-    observe_and_log("grpc.user.regenerate_token", fn ->
+    observe_and_log("grpc.user.regenerate_token", %{user_id: user_id}, fn ->
       validate_uuid!(user_id)
 
       user =
@@ -820,20 +820,18 @@ defmodule Guard.GrpcServers.UserServer do
 
   defp grpc_timestamp(_), do: nil
 
-  defp observe_and_log(name, context, f) do
+  defp observe_and_log(name, request \\ nil, f) do
     Watchman.benchmark(name, fn ->
       try do
-        Logger.metadata(context)
-
-        Logger.debug("Service #{name} - Started")
+        Logger.debug(fn -> "Service #{name} - request: #{inspect(request)} - Started" end)
         result = f.()
-        Logger.debug("Service #{name} - Finished")
+        Logger.debug(fn -> "Service #{name} - request: #{inspect(request)} - Finished" end)
 
         Watchman.increment({name, ["OK"]})
         result
       rescue
         e ->
-          Logger.error("Service #{name} - Exited with an error: #{inspect(e)}")
+          Logger.error("Service #{name} - request: #{inspect(request)} - Exited with an error: #{inspect(e)}")
           Watchman.increment({name, ["ERROR"]})
           reraise e, __STACKTRACE__
       end
