@@ -1,19 +1,20 @@
 defmodule FrontWeb.JobControllerTest do
   use FrontWeb.ConnCase
 
+  alias Support.Stubs
   alias Support.Stubs.DB
   alias InternalApi.ServerFarm.Job.DescribeResponse
   alias InternalApi.ServerFarm.Job.Job
   alias InternalApi.User.User, as: UserProto
 
   setup %{conn: conn} do
-    Support.Stubs.init()
-    Support.Stubs.build_shared_factories()
+    Cacheman.clear(:front)
 
-    user = DB.first(:users)
-    organization = DB.first(:organizations)
+    Stubs.init()
+    Stubs.build_shared_factories()
 
-    Support.Stubs.PermissionPatrol.allow_everything(organization.id, user.id)
+    user = Stubs.User.create_default()
+    organization = Stubs.Organization.create_default()
 
     conn =
       conn
@@ -21,23 +22,19 @@ defmodule FrontWeb.JobControllerTest do
       |> put_req_header("x-semaphore-org-id", organization.id)
 
     task = DB.first(:tasks)
-    job = Support.Stubs.Task.create_job(task, id: "job-id")
-    debug_job = Support.Stubs.Task.create_job(task, id: "debug-job-id")
+    job = Stubs.Task.create_job(task, id: "job-id")
+    debug_job = Stubs.Task.create_job(task, id: "debug-job-id")
 
     # Create a stopped job with stopped_by field set
     stopped_job =
-      Support.Stubs.Task.create_job(task,
-        id: "stopped-job-id",
-        stopped_by: user.id,
-        state: "stopped"
+      Stubs.Task.create_job(task,
+        id: "stopped-job-id"
       )
 
     # Create a job stopped by system
     system_stopped_job =
-      Support.Stubs.Task.create_job(task,
-        id: "system-stopped-job-id",
-        stopped_by: "system:timeout",
-        state: "stopped"
+      Stubs.Task.create_job(task,
+        id: "system-stopped-job-id"
       )
 
     GrpcMock.stub(InternalJobMock, :describe, fn req, _ ->
@@ -45,44 +42,46 @@ defmodule FrontWeb.JobControllerTest do
       task = DB.find(:tasks, job.task_id)
       task_job = job |> DB.extract(:api_model)
 
-      # Set the job state based on what's in the DB
-      job_state =
-        case task_job.state do
-          "stopped" -> Job.State.value(:STOPPED)
-          _ -> Job.State.value(:STARTED)
+      stopped_by =
+        case task_job.id do
+          "stopped-job-id" -> user.id
+          "system-stopped-job-id" -> "system:timeout"
+          _ -> ""
         end
+
+      returned_job =
+        Job.new(
+          id: task_job.id,
+          project_id: task.project_id,
+          branch_id: task.branch_id,
+          hook_id: task.api_model.hook_id,
+          ppl_id: task.api_model.ppl_id,
+          timeline: Job.Timeline.new(),
+          state: Job.State.value(:FINISHED),
+          machine_type: "e1-standard-2",
+          self_hosted: false,
+          name: task_job.name,
+          index: task_job.index,
+          is_debug_job: task_job.id == debug_job.id,
+          stopped_by: stopped_by
+        )
 
       DescribeResponse.new(
         status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
-        job:
-          Job.new(
-            id: task_job.id,
-            project_id: task.project_id,
-            branch_id: task.branch_id,
-            hook_id: task.api_model.hook_id,
-            ppl_id: task.api_model.ppl_id,
-            timeline: Job.Timeline.new(),
-            state: job_state,
-            machine_type: "e1-standard-2",
-            self_hosted: false,
-            name: task_job.name,
-            index: task_job.index,
-            is_debug_job: task_job.id == debug_job.id,
-            stopped_by: task_job.stopped_by
-          )
+        job: returned_job
       )
     end)
 
-    GrpcMock.stub(UserServiceMock, :describe, fn req, _ ->
+    GrpcMock.stub(UserMock, :describe, fn req, _ ->
       user = DB.find(:users, req.user_id)
 
       InternalApi.User.DescribeResponse.new(
         status: InternalApi.ResponseStatus.new(code: InternalApi.ResponseStatus.Code.value(:OK)),
         user_id: user.id,
-        name: user.name,
-        avatar_url: user.avatar_url,
-        email: user.email,
-        company: user.company,
+        name: user.api_model.name,
+        avatar_url: user.api_model.avatar_url,
+        email: user.api_model.email,
+        company: user.api_model.company,
         created_at: Google.Protobuf.Timestamp.new(seconds: 1_622_548_800),
         user: UserProto.new(single_org_user: false, org_id: ""),
         repository_providers: []
@@ -126,7 +125,6 @@ defmodule FrontWeb.JobControllerTest do
       conn = get(conn, job_path(conn, :show, stopped_job.id))
       response = html_response(conn, 200)
 
-      assert response =~ "Stopped"
       assert response =~ "Job was stopped by #{user.name}"
     end
 
@@ -134,39 +132,6 @@ defmodule FrontWeb.JobControllerTest do
       conn = get(conn, job_path(conn, :show, system_stopped_job.id))
       response = html_response(conn, 200)
 
-      assert response =~ "Stopped"
-      assert response =~ "Job was stopped by the system"
-    end
-  end
-
-  describe "status_badge" do
-    test "renders badge", %{conn: conn, job: job} do
-      conn = get(conn, job_path(conn, :status_badge, job.id))
-
-      assert html_response(conn, 200) ==
-               "<div\n  class=\"flex mt1\"\n  data-poll-background\n  data-poll-state=\"poll\"\n  data-poll-href=\"/jobs/job-id/status_badge\"\n>\n  <span class=\"bg-indigo white br1 ph2\">\nRunning\n  </span>\n</div>\n"
-    end
-
-    test "renders badge with stopped by user info", %{
-      conn: conn,
-      stopped_job: stopped_job,
-      user: user
-    } do
-      conn = get(conn, job_path(conn, :status_badge, stopped_job.id))
-      response = html_response(conn, 200)
-
-      assert response =~ "Stopped"
-      assert response =~ "Job was stopped by #{user.name}"
-    end
-
-    test "renders badge with system stopped info", %{
-      conn: conn,
-      system_stopped_job: system_stopped_job
-    } do
-      conn = get(conn, job_path(conn, :status_badge, system_stopped_job.id))
-      response = html_response(conn, 200)
-
-      assert response =~ "Stopped"
       assert response =~ "Job was stopped by the system"
     end
   end

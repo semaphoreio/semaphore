@@ -76,10 +76,9 @@ defmodule FrontWeb.JobController do
     fetch_organization = Async.run(fn -> Models.Organization.find(org_id) end)
     fetch_user = Async.run(fn -> find_user(user_id, org_id) end)
 
-    # Fetch the user who stopped the job if applicable
     fetch_stopped_by_user =
-      if conn.assigns.job.state == "stopped" && conn.assigns.job.stopped_by do
-        Async.run(fn -> find_user(conn.assigns.job.stopped_by, org_id) end)
+      if conn.assigns.job.stopped_by do
+        Async.run(fn -> find_user(conn.assigns.job.stopped_by) end)
       else
         Async.run(fn -> nil end)
       end
@@ -205,23 +204,13 @@ defmodule FrontWeb.JobController do
 
   def status_badge(conn, _params) do
     pollman_state = extract_state(conn.assigns.job.state)
-    org_id = conn.assigns.organization_id
-    job = conn.assigns.job
-
-    # Fetch the user who stopped the job if applicable
-    stopped_by_user =
-      if job.state == "stopped" && job.stopped_by do
-        find_user(job.stopped_by, org_id)
-      else
-        nil
-      end
 
     badge_pollman = %{
       state: pollman_state,
-      href: "/jobs/#{job.id}/status_badge"
+      href: "/jobs/#{conn.assigns.job.id}/status_badge"
     }
 
-    data = [badge_pollman: badge_pollman, stopped_by_user: stopped_by_user]
+    data = [badge_pollman: badge_pollman]
 
     conn
     |> put_view(FrontWeb.JobView)
@@ -385,6 +374,12 @@ defmodule FrontWeb.JobController do
 
   defp find_pipeline(ppl_id) do
     Models.Pipeline.find(ppl_id, detailed: true)
+  end
+
+  defp find_user(""), do: nil
+
+  defp find_user(user_id) do
+    Models.User.find(user_id)
   end
 
   defp find_user("", _), do: nil

@@ -98,8 +98,8 @@ defmodule InternalApi.ServerFarm.Job.Job do
   field(:organization_id, 23, type: :string)
   field(:build_req_id, 24, type: :string)
   field(:agent_name, 25, type: :string)
-  field(:agent_id, 26, type: :string)
-  field(:stopped_by, 27, type: :string)
+  field(:agent_id, 27, type: :string)
+  field(:stopped_by, 28, type: :string)
 end
 
 defmodule InternalApi.ServerFarm.Job.Job.Timeline do
