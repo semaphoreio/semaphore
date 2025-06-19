@@ -13,34 +13,6 @@ defmodule PipelinesAPI.PipelinesClient.GrpcClient do
 
   defp timeout(), do: Application.get_env(:pipelines_api, :grpc_timeout)
 
-  # Schedule
-
-  def schedule({:ok, schedule_request}) do
-    result =
-      Wormhole.capture(__MODULE__, :schedule_, [schedule_request],
-        timeout: timeout(),
-        stacktrace: true,
-        skip_log: true
-      )
-
-    case result do
-      {:ok, result} -> result
-      {:error, reason} -> Log.internal_error(reason, "schedule")
-    end
-  end
-
-  def schedule(error), do: error
-
-  def schedule_(schedule_request) do
-    {:ok, channel} = GRPC.Stub.connect(url())
-
-    Metrics.benchmark("PipelinesAPI.ppl_client.grpc_client", ["schedule"], fn ->
-      channel
-      |> PipelineService.Stub.schedule(schedule_request, opts())
-      |> Resp.ok?("schedule")
-    end)
-  end
-
   # Describe
 
   def describe({:ok, describe_request}) do
