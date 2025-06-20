@@ -34,8 +34,28 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         saml_certificate: cert
       }
 
-      with_mock Rbac.Store.UserPermissions, [:passthrough],
-        read_user_permissions: fn _ -> "organization.okta.manage" end do
+      org_without_okta = %{
+        org_id: request.org_id,
+        allowed_id_providers: ["github"]
+      }
+
+      org_with_okta = %{
+        org_id: request.org_id,
+        allowed_id_providers: ["github", "okta"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn _ -> {:ok, org_without_okta} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:ok, org_with_okta}
+           end
+         ]}
+      ]) do
         assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
         assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
 
@@ -64,6 +84,10 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
         {:ok, fingerprint} = Rbac.Okta.Saml.Certificate.fingerprint(cert)
         assert integration.saml_certificate_fingerprint == Base.encode64(fingerprint)
+
+        # Verify that organization API was called to update allowed_id_providers
+        assert_called(Rbac.Api.Organization.find_by_id(request.org_id))
+        assert_called(Rbac.Api.Organization.update(:_))
       end
     end
 
@@ -112,8 +136,23 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         saml_certificate: cert
       }
 
-      with_mock Rbac.Store.UserPermissions, [:passthrough],
-        read_user_permissions: fn _ -> "organization.okta.manage" end do
+      org_without_okta = %{
+        org_id: org_id,
+        allowed_id_providers: ["github"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn ^org_id -> {:ok, org_without_okta} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:ok, org}
+           end
+         ]}
+      ]) do
         assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
         assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
         :timer.sleep(2_000)
@@ -122,6 +161,66 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         assert update_res.integration.created_at == res.integration.created_at
         assert update_res.integration.updated_at != res.integration.updated_at
         assert update_res.integration.idempotency_token != res.integration.idempotency_token
+
+        assert_called(Rbac.Api.Organization.find_by_id(org_id))
+        assert_called_exactly(Rbac.Api.Organization.update(:_), 2)
+      end
+    end
+
+    test "Integration is created even if updating allowed_id_providers fails" do
+      import ExUnit.CaptureLog
+
+      {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
+
+      org_id = Ecto.UUID.generate()
+
+      request = %InternalApi.Okta.SetUpRequest{
+        org_id: org_id,
+        creator_id: Ecto.UUID.generate(),
+        idempotency_token: Ecto.UUID.generate(),
+        saml_issuer: "https://otkta.something/very/secure",
+        jit_provisioning_enabled: false,
+        saml_certificate: cert
+      }
+
+      org_without_okta = %{
+        org_id: org_id,
+        allowed_id_providers: ["github"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn ^org_id -> {:ok, org_without_okta} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:error, nil}
+           end
+         ]}
+      ]) do
+        assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+        log =
+          capture_log(fn ->
+            assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
+
+            # Assert that the integration was created even though the org update failed
+            assert %InternalApi.Okta.SetUpResponse{} = res
+            assert res.integration.org_id == request.org_id
+            assert res.integration.creator_id == request.creator_id
+
+            # Verify that the integration was persisted
+            assert {:ok, integration} = Rbac.Okta.Integration.find(res.integration.id)
+            assert integration.org_id == org_id
+          end)
+
+        # Verify API calls and logging
+        assert_called(Rbac.Api.Organization.find_by_id(org_id))
+        assert_called(Rbac.Api.Organization.update(:_))
+
+        assert log =~ "Failed to update id_providers for org"
       end
     end
 
