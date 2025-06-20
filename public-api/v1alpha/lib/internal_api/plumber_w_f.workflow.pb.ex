@@ -5,7 +5,6 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
   @type t :: %__MODULE__{
           service: integer,
           repo: InternalApi.PlumberWF.ScheduleRequest.Repo.t(),
-          auth: InternalApi.PlumberWF.ScheduleRequest.Auth.t(),
           project_id: String.t(),
           branch_id: String.t(),
           hook_id: String.t(),
@@ -15,12 +14,13 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
           requester_id: String.t(),
           organization_id: String.t(),
           label: String.t(),
-          triggered_by: integer
+          triggered_by: integer,
+          scheduler_task_id: String.t(),
+          env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()]
         }
   defstruct [
     :service,
     :repo,
-    :auth,
     :project_id,
     :branch_id,
     :hook_id,
@@ -30,12 +30,13 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     :requester_id,
     :organization_id,
     :label,
-    :triggered_by
+    :triggered_by,
+    :scheduler_task_id,
+    :env_vars
   ]
 
   field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
   field(:repo, 3, type: InternalApi.PlumberWF.ScheduleRequest.Repo)
-  field(:auth, 4, type: InternalApi.PlumberWF.ScheduleRequest.Auth)
   field(:project_id, 6, type: :string)
   field(:branch_id, 7, type: :string)
   field(:hook_id, 8, type: :string)
@@ -46,6 +47,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
   field(:organization_id, 13, type: :string)
   field(:label, 14, type: :string)
   field(:triggered_by, 15, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:scheduler_task_id, 16, type: :string)
+  field(:env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
@@ -56,30 +59,30 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.Repo do
           owner: String.t(),
           repo_name: String.t(),
           branch_name: String.t(),
-          commit_sha: String.t()
+          commit_sha: String.t(),
+          repository_id: String.t()
         }
-  defstruct [:owner, :repo_name, :branch_name, :commit_sha]
+  defstruct [:owner, :repo_name, :branch_name, :commit_sha, :repository_id]
 
   field(:owner, 1, type: :string)
   field(:repo_name, 2, type: :string)
   field(:branch_name, 4, type: :string)
   field(:commit_sha, 5, type: :string)
+  field(:repository_id, 6, type: :string)
 end
 
-defmodule InternalApi.PlumberWF.ScheduleRequest.Auth do
+defmodule InternalApi.PlumberWF.ScheduleRequest.EnvVar do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          client_id: String.t(),
-          client_secret: String.t(),
-          access_token: String.t()
+          name: String.t(),
+          value: String.t()
         }
-  defstruct [:client_id, :client_secret, :access_token]
+  defstruct [:name, :value]
 
-  field(:client_id, 1, type: :string)
-  field(:client_secret, 2, type: :string)
-  field(:access_token, 3, type: :string)
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
@@ -89,6 +92,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   field(:GIT_HUB, 0)
   field(:LOCAL, 1)
   field(:SNAPSHOT, 2)
+  field(:BITBUCKET, 3)
+  field(:GITLAB, 4)
+  field(:GIT, 5)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do
@@ -570,6 +576,32 @@ defmodule InternalApi.PlumberWF.DescribeResponse do
   field(:workflow, 2, type: InternalApi.PlumberWF.WorkflowDetails)
 end
 
+defmodule InternalApi.PlumberWF.DescribeManyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          wf_ids: [String.t()]
+        }
+  defstruct [:wf_ids]
+
+  field(:wf_ids, 1, repeated: true, type: :string)
+end
+
+defmodule InternalApi.PlumberWF.DescribeManyResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: InternalApi.Status.t(),
+          workflows: [InternalApi.PlumberWF.WorkflowDetails.t()]
+        }
+  defstruct [:status, :workflows]
+
+  field(:status, 1, type: InternalApi.Status)
+  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
+end
+
 defmodule InternalApi.PlumberWF.TerminateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -766,6 +798,13 @@ defmodule InternalApi.PlumberWF.WorkflowService.Service do
   )
 
   rpc(:Describe, InternalApi.PlumberWF.DescribeRequest, InternalApi.PlumberWF.DescribeResponse)
+
+  rpc(
+    :DescribeMany,
+    InternalApi.PlumberWF.DescribeManyRequest,
+    InternalApi.PlumberWF.DescribeManyResponse
+  )
+
   rpc(:Terminate, InternalApi.PlumberWF.TerminateRequest, InternalApi.PlumberWF.TerminateResponse)
 
   rpc(
