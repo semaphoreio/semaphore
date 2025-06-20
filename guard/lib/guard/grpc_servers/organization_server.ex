@@ -486,13 +486,14 @@ defmodule Guard.GrpcServers.OrganizationServer do
           }
 
           attrs =
-            if proto_org.allowed_id_providers != nil && length(proto_org.allowed_id_providers) > 0 do
+            case proto_org.allowed_id_providers do
+              [_head | _tail] ->
               Map.put(
                 attrs,
                 :allowed_id_providers,
                 Enum.join(proto_org.allowed_id_providers, ",")
               )
-            else
+            _ ->
               attrs
             end
 
