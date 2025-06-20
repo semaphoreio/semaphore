@@ -175,12 +175,14 @@ defmodule InternalApi.Artifacthub.ListPathRequest do
 
   @type t :: %__MODULE__{
           artifact_id: String.t(),
-          path: String.t()
+          path: String.t(),
+          unwrap_directories: boolean
         }
-  defstruct [:artifact_id, :path]
+  defstruct [:artifact_id, :path, :unwrap_directories]
 
   field(:artifact_id, 1, type: :string)
   field(:path, 2, type: :string)
+  field(:unwrap_directories, 3, type: :bool)
 end
 
 defmodule InternalApi.Artifacthub.ListPathResponse do
@@ -410,6 +412,38 @@ defmodule InternalApi.Artifacthub.Artifact do
   field(:artifact_token, 4, type: :string)
 end
 
+defmodule InternalApi.Artifacthub.GenerateTokenRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          artifact_id: String.t(),
+          job_id: String.t(),
+          workflow_id: String.t(),
+          project_id: String.t(),
+          duration: non_neg_integer
+        }
+  defstruct [:artifact_id, :job_id, :workflow_id, :project_id, :duration]
+
+  field(:artifact_id, 1, type: :string)
+  field(:job_id, 2, type: :string)
+  field(:workflow_id, 3, type: :string)
+  field(:project_id, 4, type: :string)
+  field(:duration, 5, type: :uint32)
+end
+
+defmodule InternalApi.Artifacthub.GenerateTokenResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          token: String.t()
+        }
+  defstruct [:token]
+
+  field(:token, 1, type: :string)
+end
+
 defmodule InternalApi.Artifacthub.ArtifactService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Artifacthub.ArtifactService"
@@ -446,6 +480,12 @@ defmodule InternalApi.Artifacthub.ArtifactService.Service do
     :UpdateRetentionPolicy,
     InternalApi.Artifacthub.UpdateRetentionPolicyRequest,
     InternalApi.Artifacthub.UpdateRetentionPolicyResponse
+  )
+
+  rpc(
+    :GenerateToken,
+    InternalApi.Artifacthub.GenerateTokenRequest,
+    InternalApi.Artifacthub.GenerateTokenResponse
   )
 
   rpc(:Cleanup, InternalApi.Artifacthub.CleanupRequest, InternalApi.Artifacthub.CleanupResponse)
