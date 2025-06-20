@@ -57,15 +57,24 @@ defmodule InternalApi.Gofer.Target do
           pipeline_path: String.t(),
           auto_trigger_on: [InternalApi.Gofer.AutoTriggerCond.t()],
           parameter_env_vars: [InternalApi.Gofer.ParamEnvVar.t()],
-          auto_promote_when: String.t()
+          auto_promote_when: String.t(),
+          deployment_target: String.t()
         }
-  defstruct [:name, :pipeline_path, :auto_trigger_on, :parameter_env_vars, :auto_promote_when]
+  defstruct [
+    :name,
+    :pipeline_path,
+    :auto_trigger_on,
+    :parameter_env_vars,
+    :auto_promote_when,
+    :deployment_target
+  ]
 
   field(:name, 1, type: :string)
   field(:pipeline_path, 2, type: :string)
   field(:auto_trigger_on, 5, repeated: true, type: InternalApi.Gofer.AutoTriggerCond)
   field(:parameter_env_vars, 6, repeated: true, type: InternalApi.Gofer.ParamEnvVar)
   field(:auto_promote_when, 7, type: :string)
+  field(:deployment_target, 8, type: :string)
 end
 
 defmodule InternalApi.Gofer.ParamEnvVar do
@@ -128,12 +137,14 @@ defmodule InternalApi.Gofer.DescribeRequest do
 
   @type t :: %__MODULE__{
           switch_id: String.t(),
-          events_per_target: integer
+          events_per_target: integer,
+          requester_id: String.t()
         }
-  defstruct [:switch_id, :events_per_target]
+  defstruct [:switch_id, :events_per_target, :requester_id]
 
   field(:switch_id, 1, type: :string)
   field(:events_per_target, 2, type: :int32)
+  field(:requester_id, 3, type: :string)
 end
 
 defmodule InternalApi.Gofer.DescribeResponse do
@@ -177,15 +188,69 @@ defmodule InternalApi.Gofer.TargetDescription do
           pipeline_path: String.t(),
           trigger_events: [InternalApi.Gofer.TriggerEvent.t()],
           auto_trigger_on: [InternalApi.Gofer.AutoTriggerCond.t()],
-          parameter_env_vars: [InternalApi.Gofer.ParamEnvVar.t()]
+          parameter_env_vars: [InternalApi.Gofer.ParamEnvVar.t()],
+          dt_description: InternalApi.Gofer.DeploymentTargetDescription.t()
         }
-  defstruct [:name, :pipeline_path, :trigger_events, :auto_trigger_on, :parameter_env_vars]
+  defstruct [
+    :name,
+    :pipeline_path,
+    :trigger_events,
+    :auto_trigger_on,
+    :parameter_env_vars,
+    :dt_description
+  ]
 
   field(:name, 1, type: :string)
   field(:pipeline_path, 2, type: :string)
   field(:trigger_events, 4, repeated: true, type: InternalApi.Gofer.TriggerEvent)
   field(:auto_trigger_on, 6, repeated: true, type: InternalApi.Gofer.AutoTriggerCond)
   field(:parameter_env_vars, 7, repeated: true, type: InternalApi.Gofer.ParamEnvVar)
+  field(:dt_description, 8, type: InternalApi.Gofer.DeploymentTargetDescription)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargetDescription do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          target_id: String.t(),
+          target_name: String.t(),
+          access: InternalApi.Gofer.DeploymentTargetDescription.Access.t()
+        }
+  defstruct [:target_id, :target_name, :access]
+
+  field(:target_id, 1, type: :string)
+  field(:target_name, 2, type: :string)
+  field(:access, 3, type: InternalApi.Gofer.DeploymentTargetDescription.Access)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargetDescription.Access do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          allowed: boolean,
+          reason: integer,
+          message: String.t()
+        }
+  defstruct [:allowed, :reason, :message]
+
+  field(:allowed, 1, type: :bool)
+  field(:reason, 2, type: InternalApi.Gofer.DeploymentTargetDescription.Access.Reason, enum: true)
+  field(:message, 3, type: :string)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargetDescription.Access.Reason do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:INTERNAL_ERROR, 0)
+  field(:NO_REASON, 1)
+  field(:SYNCING_TARGET, 2)
+  field(:CORRUPTED_TARGET, 3)
+  field(:BANNED_SUBJECT, 4)
+  field(:BANNED_OBJECT, 5)
+  field(:CORDONED_TARGET, 6)
 end
 
 defmodule InternalApi.Gofer.TriggerEvent do
@@ -246,12 +311,14 @@ defmodule InternalApi.Gofer.DescribeManyRequest do
 
   @type t :: %__MODULE__{
           switch_ids: [String.t()],
-          events_per_target: integer
+          events_per_target: integer,
+          requester_id: String.t()
         }
-  defstruct [:switch_ids, :events_per_target]
+  defstruct [:switch_ids, :events_per_target, :requester_id]
 
   field(:switch_ids, 1, repeated: true, type: :string)
   field(:events_per_target, 2, type: :int32)
+  field(:requester_id, 3, type: :string)
 end
 
 defmodule InternalApi.Gofer.DescribeManyResponse do

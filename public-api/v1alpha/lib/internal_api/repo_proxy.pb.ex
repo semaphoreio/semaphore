@@ -38,6 +38,7 @@ defmodule InternalApi.RepoProxy.Hook do
           repo_host_username: String.t(),
           repo_host_email: String.t(),
           repo_host_avatar_url: String.t(),
+          repo_host_uid: String.t(),
           user_id: String.t(),
           semaphore_email: String.t(),
           repo_slug: String.t(),
@@ -62,6 +63,7 @@ defmodule InternalApi.RepoProxy.Hook do
     :repo_host_username,
     :repo_host_email,
     :repo_host_avatar_url,
+    :repo_host_uid,
     :user_id,
     :semaphore_email,
     :repo_slug,
@@ -86,6 +88,7 @@ defmodule InternalApi.RepoProxy.Hook do
   field(:repo_host_username, 7, type: :string)
   field(:repo_host_email, 8, type: :string)
   field(:repo_host_avatar_url, 10, type: :string)
+  field(:repo_host_uid, 25, type: :string)
   field(:user_id, 9, type: :string)
   field(:semaphore_email, 6, type: :string)
   field(:repo_slug, 17, type: :string)
@@ -246,6 +249,111 @@ defmodule InternalApi.RepoProxy.CreateResponse do
   field(:pipeline_id, 3, type: :string)
 end
 
+defmodule InternalApi.RepoProxy.CreateBlankRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          request_token: String.t(),
+          project_id: String.t(),
+          requester_id: String.t(),
+          definition_file: String.t(),
+          pipeline_id: String.t(),
+          wf_id: String.t(),
+          triggered_by: integer,
+          git: InternalApi.RepoProxy.CreateBlankRequest.Git.t()
+        }
+  defstruct [
+    :request_token,
+    :project_id,
+    :requester_id,
+    :definition_file,
+    :pipeline_id,
+    :wf_id,
+    :triggered_by,
+    :git
+  ]
+
+  field(:request_token, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
+  field(:definition_file, 4, type: :string)
+  field(:pipeline_id, 5, type: :string)
+  field(:wf_id, 6, type: :string)
+  field(:triggered_by, 7, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:git, 8, type: InternalApi.RepoProxy.CreateBlankRequest.Git)
+end
+
+defmodule InternalApi.RepoProxy.CreateBlankRequest.Git do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          reference: String.t(),
+          commit_sha: String.t()
+        }
+  defstruct [:reference, :commit_sha]
+
+  field(:reference, 1, type: :string)
+  field(:commit_sha, 2, type: :string)
+end
+
+defmodule InternalApi.RepoProxy.CreateBlankResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          hook_id: String.t(),
+          wf_id: String.t(),
+          pipeline_id: String.t(),
+          branch_id: String.t(),
+          repo: InternalApi.RepoProxy.CreateBlankResponse.Repo.t()
+        }
+  defstruct [:hook_id, :wf_id, :pipeline_id, :branch_id, :repo]
+
+  field(:hook_id, 1, type: :string)
+  field(:wf_id, 2, type: :string)
+  field(:pipeline_id, 3, type: :string)
+  field(:branch_id, 4, type: :string)
+  field(:repo, 5, type: InternalApi.RepoProxy.CreateBlankResponse.Repo)
+end
+
+defmodule InternalApi.RepoProxy.CreateBlankResponse.Repo do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          owner: String.t(),
+          repo_name: String.t(),
+          branch_name: String.t(),
+          commit_sha: String.t(),
+          repository_id: String.t()
+        }
+  defstruct [:owner, :repo_name, :branch_name, :commit_sha, :repository_id]
+
+  field(:owner, 1, type: :string)
+  field(:repo_name, 2, type: :string)
+  field(:branch_name, 3, type: :string)
+  field(:commit_sha, 4, type: :string)
+  field(:repository_id, 5, type: :string)
+end
+
+defmodule InternalApi.RepoProxy.PullRequestUnmergeable do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          project_id: String.t(),
+          branch_name: String.t(),
+          timestamp: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:project_id, :branch_name, :timestamp]
+
+  field(:project_id, 1, type: :string)
+  field(:branch_name, 2, type: :string)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.RepoProxy.RepoProxyService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RepoProxy.RepoProxyService"
@@ -271,6 +379,12 @@ defmodule InternalApi.RepoProxy.RepoProxyService.Service do
   )
 
   rpc(:Create, InternalApi.RepoProxy.CreateRequest, InternalApi.RepoProxy.CreateResponse)
+
+  rpc(
+    :CreateBlank,
+    InternalApi.RepoProxy.CreateBlankRequest,
+    InternalApi.RepoProxy.CreateBlankResponse
+  )
 end
 
 defmodule InternalApi.RepoProxy.RepoProxyService.Stub do

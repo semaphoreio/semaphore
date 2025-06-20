@@ -47,7 +47,8 @@ defmodule InternalApi.SelfHosted.Agent do
           arch: String.t(),
           disabled_at: Google.Protobuf.Timestamp.t(),
           disabled: boolean,
-          type_name: String.t()
+          type_name: String.t(),
+          organization_id: String.t()
         }
   defstruct [
     :name,
@@ -62,7 +63,8 @@ defmodule InternalApi.SelfHosted.Agent do
     :arch,
     :disabled_at,
     :disabled,
-    :type_name
+    :type_name,
+    :organization_id
   ]
 
   field(:name, 1, type: :string)
@@ -78,6 +80,7 @@ defmodule InternalApi.SelfHosted.Agent do
   field(:disabled_at, 11, type: Google.Protobuf.Timestamp)
   field(:disabled, 12, type: :bool)
   field(:type_name, 13, type: :string)
+  field(:organization_id, 14, type: :string)
 end
 
 defmodule InternalApi.SelfHosted.Agent.State do
@@ -275,6 +278,36 @@ defmodule InternalApi.SelfHosted.ListResponse do
   field(:total_count, 2, type: :int32)
   field(:total_pages, 3, type: :int32)
   field(:page, 4, type: :int32)
+end
+
+defmodule InternalApi.SelfHosted.ListKeysetRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          cursor: String.t(),
+          page_size: integer
+        }
+  defstruct [:organization_id, :cursor, :page_size]
+
+  field(:organization_id, 1, type: :string)
+  field(:cursor, 2, type: :string)
+  field(:page_size, 3, type: :int32)
+end
+
+defmodule InternalApi.SelfHosted.ListKeysetResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          agent_types: [InternalApi.SelfHosted.AgentType.t()],
+          next_page_cursor: String.t()
+        }
+  defstruct [:agent_types, :next_page_cursor]
+
+  field(:agent_types, 1, repeated: true, type: InternalApi.SelfHosted.AgentType)
+  field(:next_page_cursor, 2, type: :string)
 end
 
 defmodule InternalApi.SelfHosted.ListAgentsRequest do
@@ -505,6 +538,12 @@ defmodule InternalApi.SelfHosted.SelfHostedAgents.Service do
   )
 
   rpc(:List, InternalApi.SelfHosted.ListRequest, InternalApi.SelfHosted.ListResponse)
+
+  rpc(
+    :ListKeyset,
+    InternalApi.SelfHosted.ListKeysetRequest,
+    InternalApi.SelfHosted.ListKeysetResponse
+  )
 
   rpc(
     :ListAgents,
