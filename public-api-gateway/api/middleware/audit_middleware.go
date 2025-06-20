@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"regexp"
 	"strings"
 
@@ -30,35 +29,21 @@ var (
 	}
 )
 
-var auditClient *clients.AuditClient
-
 // AuditMiddleware creates a new audit middleware function that implements runtime.Middleware.
 // This middleware will audit some requests to the API.
-func AuditMiddleware() runtime.Middleware {
+func AuditMiddleware(auditClient *clients.AuditClient) runtime.Middleware {
 	// Return the middleware function that wraps the handler
 	return func(next runtime.HandlerFunc) runtime.HandlerFunc {
-		return auditMiddleware(next)
+		return auditMiddleware(next, auditClient)
 	}
 }
 
-func auditMiddleware(next runtime.HandlerFunc) runtime.HandlerFunc {
+func auditMiddleware(next runtime.HandlerFunc, auditClient *clients.AuditClient) runtime.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		// Check if this path should be audited
 		if !shouldAudit(r) {
 			next(w, r, pathParams)
 			return
-		}
-		var err error
-		if auditClient == nil {
-			auditClient, err = initAuditClient()
-			if err != nil {
-				glog.Warningf("Failed to initialize audit client. API calls will not be audited.")
-
-				respondWithJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
-					"error": "Failed to audit operation",
-				})
-				return
-			}
 		}
 
 		// Create a response recorder to capture the response
@@ -157,22 +142,6 @@ func createDefaultAuditEvent(r *http.Request, resource auditProto.Event_Resource
 		IpAddress:    ipAddress,
 		Metadata:     "{}",
 	}
-}
-
-// initAuditClient initializes the audit client for API call auditing
-func initAuditClient() (*clients.AuditClient, error) {
-	amqpURL := os.Getenv("AMQP_URL")
-	if amqpURL == "" {
-		return nil, fmt.Errorf("AMQP_URL environment variable not set")
-	}
-
-	auditClient, err := clients.NewAuditClient(amqpURL)
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to create audit client: %w", err)
-	}
-
-	return auditClient, nil
 }
 
 // detectRemoteAddress extracts the client IP address from an HTTP request,
