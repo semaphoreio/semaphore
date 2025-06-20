@@ -8,7 +8,8 @@ defmodule Support.Factories.Organization do
       open_source: false,
       description: "Test Organization Description",
       website: "https://example.com",
-      avatar_url: "https://example.com/avatar.png"
+      avatar_url: "https://example.com/avatar.png",
+      allowed_id_providers: "api_token,oidc"
     ]
 
     attrs = Keyword.merge(defaults, options) |> Enum.into(%{})

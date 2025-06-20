@@ -3,7 +3,7 @@ version: '3.6'
 services:
   app:
     container_name: guard
-    image: ${IMAGE:-guard}:${TAG:-latest}
+    image: ${IMAGE:-guard}:${TAG:-test}
     build:
       context: ..
       cache_from:
