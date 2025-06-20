@@ -217,6 +217,170 @@ RSpec.describe InternalApi::RepoProxy::RepoProxyServer do
     end
   end
 
+  describe "#create_blank" do
+    let(:user) { FactoryBot.create(:user, :github_connection) }
+    let(:repository) do
+      FactoryBot.create(
+        :repository,
+        name: "sandbox",
+        owner: "renderedtext",
+        integration_type: "github_app"
+      )
+    end
+    let(:project) { FactoryBot.create(:project, repository: repository) }
+    let(:workflow) { FactoryBot.create(:workflow_with_branch, project: project) }
+    let(:branch) { workflow.branch }
+
+    let(:git) do
+      InternalApi::RepoProxy::CreateBlankRequest::Git.new(
+        reference: "refs/heads/main",
+        commit_sha: "abc123"
+      )
+    end
+
+    let(:req) do
+      InternalApi::RepoProxy::CreateBlankRequest.new(
+        project_id: project.id,
+        requester_id: user.id,
+        pipeline_id: "pipeline-id",
+        wf_id: "workflow-id",
+        git: git
+      )
+    end
+
+    let(:payload_hash) do
+      {
+        "commit_author" => "dev@example.com",
+        "merge_commit_sha" => "abc123",
+        "semaphore_ref" => "refs/merge"
+      }
+    end
+
+    before do
+      payload = instance_double(InternalApi::RepoProxy::PrPayload, call: payload_hash)
+      allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+        .with(req.git.reference, req.git.commit_sha)
+        .and_return(payload)
+
+      allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
+        .and_return(workflow)
+
+      allow(Branch).to receive(:find_or_create_for_workflow).with(workflow).and_return(branch)
+      allow(branch).to receive(:unarchive)
+      allow(branch).to receive(:update)
+      allow(workflow).to receive(:update)
+    end
+
+    it "creates a blank hook and returns the expected response" do
+      allow(payload_hash).to receive(:pull_request?).and_return(false)
+      allow(workflow).to receive(:payload).and_return(payload_hash)
+      expect(workflow).to receive(:update).with(state: Workflow::STATE_LAUNCHING)
+      result = server.create_blank(req, call)
+
+      expect(result).to be_a(InternalApi::RepoProxy::CreateBlankResponse)
+      expect(result.hook_id).to eq(workflow.id)
+      expect(result.wf_id).to eq(req.wf_id)
+      expect(result.pipeline_id).to eq(req.pipeline_id)
+      expect(result.branch_id).to eq(branch.id)
+
+      repo = result.repo
+      expect(repo.owner).to eq(repository.owner)
+      expect(repo.repo_name).to eq(repository.name)
+      expect(repo.branch_name).to eq(branch.name)
+      expect(repo.commit_sha).to eq(workflow.commit_sha)
+      expect(repo.repository_id).to eq(repository.id)
+    end
+
+    context "when pull request is not mergeable" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create).and_raise(
+          InternalApi::RepoProxy::PrPayload::PrNotMergeableError.new("PR not mergeable")
+        )
+      end
+
+      it "raises GRPC::Aborted" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::Aborted, /PR not mergeable/)
+      end
+    end
+
+    context "when reference is invalid" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+          .and_raise(InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError.new("Invalid ref"))
+      end
+
+      it "raises GRPC::InvalidArgument" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::InvalidArgument, /Invalid ref/)
+      end
+    end
+
+    context "when reference is not found on GitHub" do
+      before do
+        allow(InternalApi::RepoProxy::PayloadFactory).to receive(:create)
+          .and_raise(RepoHost::RemoteException::NotFound)
+      end
+
+      it "raises GRPC::NotFound" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::NotFound, /Reference not found/)
+      end
+    end
+
+    context "when unknown error occurs" do
+      before do
+        allow(Semaphore::RepoHost::Hooks::Recorder).to receive(:record_hook)
+          .and_raise(RepoHost::RemoteException::Unknown.new("Boom"))
+      end
+
+      it "raises GRPC::Internal" do
+        expect do
+          server.create_blank(req, call)
+        end.to raise_error(GRPC::Internal, /Unknown error/)
+      end
+    end
+
+    context "when the user is not found" do
+      before do
+        @invalid_req = InternalApi::RepoProxy::CreateBlankRequest.new(
+          project_id: project.id,
+          requester_id: "invalid-user-id",
+          pipeline_id: "pipeline-id",
+          wf_id: "workflow-id",
+          git: git
+        )
+      end
+
+      it "raises GRPC::NotFound for missing user" do
+        expect do
+          server.create_blank(@invalid_req, call)
+        end.to raise_error(GRPC::NotFound, /Couldn't find User/)
+      end
+    end
+
+    context "when the project is not found" do
+      before do
+        @invalid_req = InternalApi::RepoProxy::CreateBlankRequest.new(
+          project_id: "invalid-project-id",
+          requester_id: user.id,
+          pipeline_id: "pipeline-id",
+          wf_id: "workflow-id",
+          git: git
+        )
+      end
+
+      it "raises GRPC::NotFound for missing project" do
+        expect do
+          server.create_blank(@invalid_req, call)
+        end.to raise_error(GRPC::NotFound, /Couldn't find Project/)
+      end
+    end
+  end
+
   describe "#create" do
     before "when unknown remote error is raised" do
       allow(InternalApi::RepoProxy::PayloadFactory).to receive(

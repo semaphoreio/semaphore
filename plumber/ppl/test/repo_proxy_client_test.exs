@@ -85,12 +85,14 @@ defmodule Ppl.RepoProxyClient.Test do
       wf_id: UUID.uuid4(),
       request_token: UUID.uuid4(),
       request_args: %{
+        "service" => "git_hub",
         "project_id" => UUID.uuid4(),
         "requester_id" => UUID.uuid4(),
         "file_name" => "semaphore.yml",
         "triggered_by" => "schedule",
         "branch_name" => "master",
-        "commit_sha" => ""
+        "commit_sha" => "",
+        "git_reference" => "refs/heads/master"
       }
     }
   end

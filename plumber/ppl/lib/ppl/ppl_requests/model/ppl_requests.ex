@@ -241,11 +241,11 @@ defmodule Ppl.PplRequests.Model.PplRequests do
       iex> PplRequests.changeset_request(%PplRequests{}, params) |> Map.get(:valid?)
       true
   """
-  def changeset_request(ppl_req, params \\ %{}, task_workflow? \\ false) do
+  def changeset_request(ppl_req, params \\ %{}, start_in_conceived? \\ false) do
     ppl_req
     |> cast(params, @required_fields_request)
     |> validate_required(@required_fields_request)
-    |> validate_non_scheduler_task_fields(task_workflow?)
+    |> validate_hook_related_fields(!start_in_conceived?)
     |> validate_change(:request_args, &request_args_field_validator__branch_name/2)
     # this unique_constraint references unique_index in migration
     |> unique_constraint(:unique_request_token_for_ppl_requests,
@@ -253,14 +253,9 @@ defmodule Ppl.PplRequests.Model.PplRequests do
     )
   end
 
-  defp validate_non_scheduler_task_fields(changeset, true) do
-    changeset
-    |> validate_change(:request_args, fn _, value ->
-      value |> Map.get("scheduler_task_id") |> field_required("scheduler_task_id")
-    end)
-  end
+  defp validate_hook_related_fields(changeset, false), do: changeset
 
-  defp validate_non_scheduler_task_fields(changeset, false) do
+  defp validate_hook_related_fields(changeset, true) do
     changeset
     |> validate_change(:request_args, &request_args_field_validator__hook_id/2)
     |> validate_change(:request_args, &request_args_field_validator__branch_id/2)

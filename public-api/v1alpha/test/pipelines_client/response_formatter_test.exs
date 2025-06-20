@@ -4,7 +4,6 @@ defmodule PipelinesAPI.PipelinesClient.ResponseFormatter.Test do
   alias PipelinesAPI.PipelinesClient.ResponseFormatter
 
   alias InternalApi.Plumber.{
-    ScheduleResponse,
     DescribeResponse,
     TerminateResponse,
     VersionResponse,
@@ -18,44 +17,6 @@ defmodule PipelinesAPI.PipelinesClient.ResponseFormatter.Test do
   alias InternalApi.Plumber.ResponseStatus.ResponseCode
   alias PipelinesAPI.Util.ToTuple
   alias InternalApi.Plumber.Pipeline.State
-
-  # Schedule
-
-  test "process_schedule_response() returns {:ok, ppl_id} when given valid params" do
-    response = schedule_response(:OK, "") |> ToTuple.ok()
-
-    assert {:ok, ppl_id} = ResponseFormatter.process_schedule_response(response)
-    assert {:ok, _} = UUID.info(ppl_id)
-  end
-
-  test "process_schedule_response() returns error and server message when server returns BAD_PARAM code" do
-    response = schedule_response(:BAD_PARAM, "Error message from server") |> ToTuple.ok()
-
-    assert {:error, {:user, message}} = ResponseFormatter.process_schedule_response(response)
-    assert message == "Error message from server"
-  end
-
-  test "process_schedule_response() returns internal error when it receives {:ok, invalid_data}" do
-    response = {:ok, "123"}
-
-    assert {:error, {:internal, message}} = ResponseFormatter.process_schedule_response(response)
-    assert message == "Internal error"
-  end
-
-  test "process_schedule_response() returns what it gets if it's not an :ok tuple" do
-    response = {:error, {:user, "Error message"}}
-
-    assert {:error, {:user, message}} = ResponseFormatter.process_schedule_response(response)
-    assert message == "Error message"
-  end
-
-  defp schedule_response(code, message) do
-    %{
-      ppl_id: UUID.uuid4(),
-      response_status: response_status(code, message)
-    }
-    |> ScheduleResponse.new()
-  end
 
   # Describe
 

@@ -100,6 +100,7 @@ Parameters:
 - `reference` (**required**) - git reference for the desired branch, tag, or pull request--e.g. *refs/heads/master*, *refs/tags/v1.0*, or *refs/pull/123*.
 - `commit_sha` (*optional*) - Commit sha of the desired commit.
 - `pipeline_file` (*optional*) - The path within the repository to the YAML file that contains the pipeline definition. The default value is *.semaphore/semaphore.yml*.
+- `parameters`: (key-values) specify parameter values that will be available in all jobs of the initial pipeline and can be used in the same way as the parameters from the [parameterized promotions](../using-semaphore/promotions#parameters). 
 
 Response:
 
@@ -108,17 +109,25 @@ HTTP status: 200
 
 {
   "workflow_id": "32a689e0-9082-4c5b-a648-bb3dc645452d",
-  "pipeline_id": "2abeb1a9-eb4a-4834-84b8-cb7806aec063",
-  "hook_id": "ff7d57ef-92c5-4fcd-9c0c-6ae9e24bfcec"
+  "pipeline_id": "2abeb1a9-eb4a-4834-84b8-cb7806aec063"
 }
 ```
 
 Example:
 
 ```shell
-curl -i -H "Authorization: Token {api_token}" \
-     -d "project_id={project_id}&reference={reference}" \
-     -X POST  "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows"
+curl -X POST --location "https://<organization-url>.semaphoreci.com/api/v1alpha/plumber-workflows" \
+    -H "Authorization: Token {api_token}" \
+    -H "Content-Type: application/json" \
+    -d $'{
+    "project_id": "my_project_id",
+    "reference": "refs/heads/master",
+    "pipeline_file": "/.semaphore/deploy.yml",
+    "parameters": {
+        "PARAM_NAME": "PARAM_VALUE",
+        "PARAM_NAME_2": "PARAM_VALUE_2"
+    }
+}'
 ```
 
 ### Describe a workflow
