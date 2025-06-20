@@ -488,13 +488,14 @@ defmodule Guard.GrpcServers.OrganizationServer do
           attrs =
             case proto_org.allowed_id_providers do
               [_head | _tail] ->
-              Map.put(
-                attrs,
-                :allowed_id_providers,
-                Enum.join(proto_org.allowed_id_providers, ",")
-              )
-            _ ->
-              attrs
+                Map.put(
+                  attrs,
+                  :allowed_id_providers,
+                  Enum.join(proto_org.allowed_id_providers, ",")
+                )
+
+              _ ->
+                attrs
             end
 
           case Guard.Store.Organization.update(organization, attrs) do
