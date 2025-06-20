@@ -24,6 +24,10 @@ config :hooks_processor, HooksProcessor.EctoRepo,
 
 config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
 
+if config_env() == :prod do
+  config :logger, :default_handler, formatter: LoggerJSON.Formatters.Basic.new()
+end
+
 # We need valid dsn or nil
 sentry_dsn = System.get_env("SENTRY_DSN", "") |> String.trim() |> (&if(&1 != "", do: &1, else: nil)).()
 
