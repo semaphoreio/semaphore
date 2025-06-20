@@ -32,9 +32,29 @@ defmodule Rbac.Okta.Integration do
              jit_provisioning_enabled: jit_provisioning_enabled,
              idempotency_token: idempotency_token
            ) do
+      add_okta_to_allowed_id_providers(org_id)
       {:ok, integration}
     else
       e -> e
+    end
+  end
+
+  defp add_okta_to_allowed_id_providers(org_id) do
+    require Logger
+
+    with {:ok, org} <- Rbac.Api.Organization.find_by_id(org_id),
+         updated_providers <- Enum.uniq((org.allowed_id_providers || []) ++ ["okta"]),
+         updated_org <- Map.put(org, :allowed_id_providers, updated_providers),
+         {:ok, updated} <- Rbac.Api.Organization.update(updated_org) do
+      {:ok, updated}
+    else
+      {:error, :not_found} ->
+        Logger.error("Failed to update id_providers: Org #{org_id} not found")
+        {:error, :organization_not_found}
+
+      {:error, reason} ->
+        Logger.error("Failed to update id_providers for org #{org_id}: #{inspect(reason)}")
+        {:error, :update_failed}
     end
   end
 
