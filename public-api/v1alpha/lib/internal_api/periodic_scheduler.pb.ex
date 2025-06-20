@@ -239,7 +239,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
           inserted_at: Google.Protobuf.Timestamp.t(),
           recurring: boolean,
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
-          description: String.t()
+          description: String.t(),
+          organization_id: String.t()
         }
   defstruct [
     :id,
@@ -257,7 +258,8 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :inserted_at,
     :recurring,
     :parameters,
-    :description
+    :description,
+    :organization_id
   ]
 
   field(:id, 1, type: :string)
@@ -276,6 +278,7 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:recurring, 14, type: :bool)
   field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
   field(:description, 16, type: :string)
+  field(:organization_id, 17, type: :string)
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do

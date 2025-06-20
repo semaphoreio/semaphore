@@ -3,11 +3,13 @@ defmodule InternalApi.Gofer.DeploymentTargets.ListRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          project_id: String.t()
+          project_id: String.t(),
+          requester_id: String.t()
         }
-  defstruct [:project_id]
+  defstruct [:project_id, :requester_id]
 
   field(:project_id, 1, type: :string)
+  field(:requester_id, 2, type: :string)
 end
 
 defmodule InternalApi.Gofer.DeploymentTargets.ListResponse do
@@ -50,6 +52,62 @@ defmodule InternalApi.Gofer.DeploymentTargets.DescribeResponse do
   field(:target, 1, type: InternalApi.Gofer.DeploymentTargets.DeploymentTarget)
 end
 
+defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          target_id: String.t(),
+          triggerer: String.t(),
+          git_ref_type: integer,
+          git_ref_label: String.t()
+        }
+  defstruct [:target_id, :triggerer, :git_ref_type, :git_ref_label]
+
+  field(:target_id, 1, type: :string)
+  field(:triggerer, 2, type: :string)
+
+  field(:git_ref_type, 3,
+    type: InternalApi.Gofer.DeploymentTargets.VerifyRequest.GitRefType,
+    enum: true
+  )
+
+  field(:git_ref_label, 4, type: :string)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest.GitRefType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+  field(:PR, 2)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargets.VerifyResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: integer
+        }
+  defstruct [:status]
+
+  field(:status, 1, type: InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status, enum: true)
+end
+
+defmodule InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:SYNCING_TARGET, 0)
+  field(:ACCESS_GRANTED, 1)
+  field(:BANNED_SUBJECT, 2)
+  field(:BANNED_OBJECT, 3)
+  field(:CORDONED_TARGET, 4)
+  field(:CORRUPTED_TARGET, 5)
+end
+
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -58,9 +116,10 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
           target_id: String.t(),
           cursor_type: integer,
           cursor_value: non_neg_integer,
-          filters: InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters.t()
+          filters: InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters.t(),
+          requester_id: String.t()
         }
-  defstruct [:target_id, :cursor_type, :cursor_value, :filters]
+  defstruct [:target_id, :cursor_type, :cursor_value, :filters, :requester_id]
 
   field(:target_id, 1, type: :string)
 
@@ -71,6 +130,7 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
 
   field(:cursor_value, 3, type: :uint64)
   field(:filters, 4, type: InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters)
+  field(:requester_id, 5, type: :string)
 end
 
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters do
@@ -332,7 +392,8 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
           state_message: String.t(),
           switch_id: String.t(),
           target_name: String.t(),
-          env_vars: [InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar.t()]
+          env_vars: [InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar.t()],
+          can_requester_rerun: boolean
         }
   defstruct [
     :id,
@@ -345,7 +406,8 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
     :state_message,
     :switch_id,
     :target_name,
-    :env_vars
+    :env_vars,
+    :can_requester_rerun
   ]
 
   field(:id, 1, type: :string)
@@ -360,6 +422,8 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
   field(:target_name, 10, type: :string)
 
   field(:env_vars, 11, repeated: true, type: InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar)
+
+  field(:can_requester_rerun, 12, type: :bool)
 end
 
 defmodule InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar do
@@ -476,6 +540,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTargets.Service do
     :Describe,
     InternalApi.Gofer.DeploymentTargets.DescribeRequest,
     InternalApi.Gofer.DeploymentTargets.DescribeResponse
+  )
+
+  rpc(
+    :Verify,
+    InternalApi.Gofer.DeploymentTargets.VerifyRequest,
+    InternalApi.Gofer.DeploymentTargets.VerifyResponse
   )
 
   rpc(

@@ -39,7 +39,8 @@ defmodule InternalApi.ServerFarm.Job.Job do
           self_hosted: boolean,
           organization_id: String.t(),
           build_req_id: String.t(),
-          agent_name: String.t()
+          agent_name: String.t(),
+          agent_id: String.t()
         }
   defstruct [
     :id,
@@ -66,7 +67,8 @@ defmodule InternalApi.ServerFarm.Job.Job do
     :self_hosted,
     :organization_id,
     :build_req_id,
-    :agent_name
+    :agent_name,
+    :agent_id
   ]
 
   field(:id, 1, type: :string)
@@ -94,6 +96,7 @@ defmodule InternalApi.ServerFarm.Job.Job do
   field(:organization_id, 23, type: :string)
   field(:build_req_id, 24, type: :string)
   field(:agent_name, 25, type: :string)
+  field(:agent_id, 27, type: :string)
 end
 
 defmodule InternalApi.ServerFarm.Job.Job.Timeline do
@@ -173,7 +176,11 @@ defmodule InternalApi.ServerFarm.Job.ListRequest do
           finished_at_gte: Google.Protobuf.Timestamp.t(),
           organization_id: String.t(),
           only_debug_jobs: boolean,
-          ppl_ids: [String.t()]
+          ppl_ids: [String.t()],
+          created_at_gte: Google.Protobuf.Timestamp.t(),
+          created_at_lte: Google.Protobuf.Timestamp.t(),
+          project_ids: [String.t()],
+          machine_types: [String.t()]
         }
   defstruct [
     :page_size,
@@ -184,7 +191,11 @@ defmodule InternalApi.ServerFarm.Job.ListRequest do
     :finished_at_gte,
     :organization_id,
     :only_debug_jobs,
-    :ppl_ids
+    :ppl_ids,
+    :created_at_gte,
+    :created_at_lte,
+    :project_ids,
+    :machine_types
   ]
 
   field(:page_size, 1, type: :int32)
@@ -196,6 +207,10 @@ defmodule InternalApi.ServerFarm.Job.ListRequest do
   field(:organization_id, 7, type: :string)
   field(:only_debug_jobs, 8, type: :bool)
   field(:ppl_ids, 9, repeated: true, type: :string)
+  field(:created_at_gte, 10, type: Google.Protobuf.Timestamp)
+  field(:created_at_lte, 11, type: Google.Protobuf.Timestamp)
+  field(:project_ids, 13, repeated: true, type: :string)
+  field(:machine_types, 14, repeated: true, type: :string)
 end
 
 defmodule InternalApi.ServerFarm.Job.ListRequest.Order do
@@ -527,6 +542,202 @@ defmodule InternalApi.ServerFarm.Job.CanAttachResponse do
   field(:message, 2, type: :string)
 end
 
+defmodule InternalApi.ServerFarm.Job.CreateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          requester_id: String.t(),
+          organization_id: String.t(),
+          project_id: String.t(),
+          branch_name: String.t(),
+          commit_sha: String.t(),
+          job_spec: InternalApi.ServerFarm.Job.JobSpec.t(),
+          restricted_job: boolean
+        }
+  defstruct [
+    :requester_id,
+    :organization_id,
+    :project_id,
+    :branch_name,
+    :commit_sha,
+    :job_spec,
+    :restricted_job
+  ]
+
+  field(:requester_id, 1, type: :string)
+  field(:organization_id, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:commit_sha, 5, type: :string)
+  field(:job_spec, 6, type: InternalApi.ServerFarm.Job.JobSpec)
+  field(:restricted_job, 7, type: :bool)
+end
+
+defmodule InternalApi.ServerFarm.Job.CreateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: InternalApi.ResponseStatus.t(),
+          job: InternalApi.ServerFarm.Job.Job.t()
+        }
+  defstruct [:status, :job]
+
+  field(:status, 1, type: InternalApi.ResponseStatus)
+  field(:job, 2, type: InternalApi.ServerFarm.Job.Job)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          job_name: String.t(),
+          agent: InternalApi.ServerFarm.Job.JobSpec.Agent.t(),
+          secrets: [InternalApi.ServerFarm.Job.JobSpec.Secret.t()],
+          env_vars: [InternalApi.ServerFarm.Job.JobSpec.EnvVar.t()],
+          files: [InternalApi.ServerFarm.Job.JobSpec.File.t()],
+          commands: [String.t()],
+          epilogue_always_commands: [String.t()],
+          epilogue_on_pass_commands: [String.t()],
+          epilogue_on_fail_commands: [String.t()],
+          priority: integer,
+          execution_time_limit: integer
+        }
+  defstruct [
+    :job_name,
+    :agent,
+    :secrets,
+    :env_vars,
+    :files,
+    :commands,
+    :epilogue_always_commands,
+    :epilogue_on_pass_commands,
+    :epilogue_on_fail_commands,
+    :priority,
+    :execution_time_limit
+  ]
+
+  field(:job_name, 1, type: :string)
+  field(:agent, 2, type: InternalApi.ServerFarm.Job.JobSpec.Agent)
+  field(:secrets, 3, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
+  field(:env_vars, 4, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.EnvVar)
+  field(:files, 5, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.File)
+  field(:commands, 6, repeated: true, type: :string)
+  field(:epilogue_always_commands, 7, repeated: true, type: :string)
+  field(:epilogue_on_pass_commands, 8, repeated: true, type: :string)
+  field(:epilogue_on_fail_commands, 9, repeated: true, type: :string)
+  field(:priority, 10, type: :int32)
+  field(:execution_time_limit, 11, type: :int32)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          machine: InternalApi.ServerFarm.Job.JobSpec.Agent.Machine.t(),
+          containers: [InternalApi.ServerFarm.Job.JobSpec.Agent.Container.t()],
+          image_pull_secrets: [InternalApi.ServerFarm.Job.JobSpec.Agent.ImagePullSecret.t()]
+        }
+  defstruct [:machine, :containers, :image_pull_secrets]
+
+  field(:machine, 1, type: InternalApi.ServerFarm.Job.JobSpec.Agent.Machine)
+  field(:containers, 2, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Agent.Container)
+
+  field(:image_pull_secrets, 3,
+    repeated: true,
+    type: InternalApi.ServerFarm.Job.JobSpec.Agent.ImagePullSecret
+  )
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.Machine do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: String.t(),
+          os_image: String.t()
+        }
+  defstruct [:type, :os_image]
+
+  field(:type, 1, type: :string)
+  field(:os_image, 2, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.Container do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          image: String.t(),
+          command: String.t(),
+          env_vars: [InternalApi.ServerFarm.Job.JobSpec.EnvVar.t()],
+          secrets: [InternalApi.ServerFarm.Job.JobSpec.Secret.t()]
+        }
+  defstruct [:name, :image, :command, :env_vars, :secrets]
+
+  field(:name, 1, type: :string)
+  field(:image, 2, type: :string)
+  field(:command, 3, type: :string)
+  field(:env_vars, 4, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.EnvVar)
+  field(:secrets, 5, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.ImagePullSecret do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t()
+        }
+  defstruct [:name]
+
+  field(:name, 1, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.Secret do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t()
+        }
+  defstruct [:name]
+
+  field(:name, 1, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.EnvVar do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          value: String.t()
+        }
+  defstruct [:name, :value]
+
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.File do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          path: String.t(),
+          content: String.t()
+        }
+  defstruct [:path, :content]
+
+  field(:path, 1, type: :string)
+  field(:content, 2, type: :string)
+end
+
 defmodule InternalApi.ServerFarm.Job.DebugSessionType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -585,6 +796,12 @@ defmodule InternalApi.ServerFarm.Job.JobService.Service do
     :CanAttach,
     InternalApi.ServerFarm.Job.CanAttachRequest,
     InternalApi.ServerFarm.Job.CanAttachResponse
+  )
+
+  rpc(
+    :Create,
+    InternalApi.ServerFarm.Job.CreateRequest,
+    InternalApi.ServerFarm.Job.CreateResponse
   )
 end
 
