@@ -136,15 +136,18 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
   defp graceful_exit(result, state) do
     case result do
       :ok ->
-        Watchman.increment("hooks.processing.bitbucket", ["success"])
+        Watchman.increment({"hooks.processing.bitbucket", ["success"]})
+
         "Processing finished successfully."
         |> LT.debug("Hook #{state.id} - bitbucket worker process exits: ")
 
       error ->
-        Watchman.increment("hooks.processing.bitbucket", ["error"])
+        Watchman.increment({"hooks.processing.bitbucket", ["error"]})
+
         error
         |> LT.error("Hook #{state.id} - bitbucket worker process exits: ")
     end
+
     {:stop, :normal, state}
   end
 
