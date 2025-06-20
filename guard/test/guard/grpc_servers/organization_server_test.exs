@@ -1534,7 +1534,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       grpc_channel: channel,
       organization: organization
     } do
-      assert organization.allowed_id_providers == "api_roken,oidc"
+      assert organization.allowed_id_providers == "api_token,oidc"
 
       req =
         Organization.UpdateRequest.new(
@@ -1559,7 +1559,7 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       grpc_channel: channel,
       organization: organization
     } do
-      assert organization.allowed_id_providers == "api_roken,oidc"
+      assert organization.allowed_id_providers == "api_token,oidc"
 
       # Update with empty allowed_id_providers
       request =
@@ -1574,9 +1574,9 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
 
       {:ok, response} = channel |> Organization.OrganizationService.Stub.update(request)
 
-      assert response.organization.allowed_id_providers == ["api_roken", "oidc"]
+      assert response.organization.allowed_id_providers == ["api_token", "oidc"]
       updated_org = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, organization.id)
-      assert updated_org.allowed_id_providers == "api_roken,oidc"
+      assert updated_org.allowed_id_providers == "api_token,oidc"
     end
 
     test "returns error with invalid params", %{
