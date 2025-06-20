@@ -10,7 +10,8 @@ config :projecthub, http_port: 4000
 config :projecthub,
   projecthub_grpc_endpoint: "0.0.0.0:50051",
   organization_grpc_endpoint: "0.0.0.0:50051",
-  rbac_grpc_endpoint: "0.0.0.0:50051"
+  rbac_grpc_endpoint: "0.0.0.0:50051",
+  projects_page_size: 500
 
 config :projecthub, :enviroment, config_env()
 

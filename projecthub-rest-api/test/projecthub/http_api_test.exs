@@ -292,6 +292,7 @@ defmodule Projecthub.HttpApi.Test do
       p1 = create("project1", p1_id)
       p2 = create("project2", p2_id)
       p3 = create("project3", p3_id)
+      page_size = Application.get_env(:projecthub, :projects_page_size)
 
       FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
         InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [p1_id, p2_id, p3_id])
@@ -299,9 +300,7 @@ defmodule Projecthub.HttpApi.Test do
 
       FunRegistry.set!(FakeServices.ProjectService, :list, fn req, _ ->
         alias InternalApi.Projecthub, as: PH
-        # Simulate pagination
         page = req.pagination.page
-        page_size = req.pagination.page_size
         all_projects = [p1, p2, p3]
         projects = Enum.slice(all_projects, (page - 1) * page_size, page_size)
 
@@ -327,30 +326,50 @@ defmodule Projecthub.HttpApi.Test do
     test "returns correct pagination headers for /projects" do
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=2",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1",
           @headers
         )
 
       assert response.status_code == 200
       assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "1" end)
-      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page-size" and v == "2" end)
-      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-total-count" and v == "3" end)
       assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "true" end)
       projects = Poison.decode!(response.body)
       assert length(projects) == 2
+
+      {:ok, response2} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=2",
+          @headers
+        )
+
+      assert response2.status_code == 200
+      assert response2.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "2" end)
+      assert response2.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects2 = Poison.decode!(response2.body)
+      assert length(projects2) == 1
+
+      {:ok, response3} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=3",
+          @headers
+        )
+
+      assert response3.status_code == 200
+      assert response3.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "3" end)
+      assert response3.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects3 = Poison.decode!(response3.body)
+      assert Enum.empty?(projects3)
     end
 
     test "returns correct pagination headers for /projects when there are no more projects" do
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=2&page_size=2",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=2",
           @headers
         )
 
       assert response.status_code == 200
       assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "2" end)
-      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page-size" and v == "2" end)
-      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-total-count" and v == "3" end)
       assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
       projects = Poison.decode!(response.body)
       assert length(projects) == 1
@@ -371,7 +390,7 @@ defmodule Projecthub.HttpApi.Test do
 
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=10&page_size=2",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=10",
           @headers
         )
 
@@ -401,7 +420,7 @@ defmodule Projecthub.HttpApi.Test do
 
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=foo&page_size=bar",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=foo",
           @headers
         )
 
@@ -411,7 +430,7 @@ defmodule Projecthub.HttpApi.Test do
     test "returns 400 on negative page" do
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=-1&page_size=2",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=-1",
           @headers
         )
 
@@ -419,21 +438,10 @@ defmodule Projecthub.HttpApi.Test do
       assert Poison.decode!(response.body)["message"] =~ "page must be at least 1"
     end
 
-    test "returns 400 on zero page_size" do
-      {:ok, response} =
-        HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=0",
-          @headers
-        )
-
-      assert response.status_code == 400
-      assert Poison.decode!(response.body)["message"] =~ "page_size must be at least 1"
-    end
-
     test "returns 400 on too large page" do
       {:ok, response} =
         HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=9999&page_size=2",
+          "http://localhost:#{@port}/api/#{@version}/projects?page=9999",
           @headers
         )
 
@@ -442,28 +450,6 @@ defmodule Projecthub.HttpApi.Test do
       if response.status_code == 400 do
         assert Poison.decode!(response.body)["message"] =~ "page must be at most"
       end
-    end
-
-    test "returns 400 on too large page_size" do
-      {:ok, response} =
-        HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=9999",
-          @headers
-        )
-
-      assert response.status_code == 400
-      assert Poison.decode!(response.body)["message"] =~ "page_size must be at most"
-    end
-
-    test "returns 400 on non-numeric page_size" do
-      {:ok, response} =
-        HTTPoison.get(
-          "http://localhost:#{@port}/api/#{@version}/projects?page=1&page_size=abc",
-          @headers
-        )
-
-      assert response.status_code == 400
-      assert Poison.decode!(response.body)["message"] =~ "page_size must be a number"
     end
   end
 
@@ -1828,7 +1814,7 @@ defmodule Projecthub.HttpApi.Test do
 
   def create(name, id) do
     alias InternalApi.Projecthub.Project
-    alias InternalApi.Projecthub.Project.Spec.{Repository, Visibility, PermissionType}
+    alias InternalApi.Projecthub.Project.Spec.{PermissionType, Repository, Visibility}
 
     Project.new(
       metadata: Project.Metadata.new(name: name, id: id),
