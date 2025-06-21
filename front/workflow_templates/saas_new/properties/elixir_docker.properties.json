@@ -1,11 +1,12 @@
 {
-  "title": "Elixir",
-  "description": "Run quality checks and tests for your Elixir app in Docker with security scanning and type checking. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Dialyzer</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Credo</span></div>",
-  "short_description": "Run your Elixir suite",
+  "title": "Elixir CI/CD (Docker)",
+  "description": "Comprehensive Docker-based pipeline for non-Phoenix Elixir projects: dependency caching, code formatting, static analysis (Credo), security scanning (Sobelow & deps.audit), type checking with Dialyzer, parallelised tests on PostgreSQL, and an optional Docker image build + push on <code>main</code>. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Credo</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Dialyzer</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Sobelow</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Deps-Audit</span><span class='f6 normal mr1 ph1 br2 bg-light-blue white'>Postgres</span></div>",
+  "short_description": "Docker-native CI/CD for Elixir apps",
   "group": "ci",
   "language": "Elixir",
   "environment": "docker",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-elixir.svg",
   "template_path": "templates/elixir_docker.yml",
   "workflow_tip": "other"
