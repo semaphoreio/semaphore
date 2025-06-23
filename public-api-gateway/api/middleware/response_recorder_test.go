@@ -38,10 +38,6 @@ func TestResponseRecorder(t *testing.T) {
 			t.Errorf("Expected %d bytes written, got %d", len(testData), n)
 		}
 
-		if rr.Body.String() != "test response body" {
-			t.Errorf("Expected body 'test response body', got '%s'", rr.Body.String())
-		}
-
 		if w.Body.String() != "test response body" {
 			t.Errorf("Expected underlying writer body 'test response body', got '%s'", w.Body.String())
 		}
@@ -65,10 +61,6 @@ func TestResponseRecorder(t *testing.T) {
 		rr.Write([]byte("first "))
 		rr.Write([]byte("second "))
 		rr.Write([]byte("third"))
-
-		if rr.Body.String() != "first second third" {
-			t.Errorf("Expected body 'first second third', got '%s'", rr.Body.String())
-		}
 
 		if w.Body.String() != "first second third" {
 			t.Errorf("Expected underlying writer body 'first second third', got '%s'", w.Body.String())

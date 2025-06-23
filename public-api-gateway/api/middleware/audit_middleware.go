@@ -151,9 +151,11 @@ func detectRemoteAddress(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
 		// X-Forwarded-For can contain multiple IPs, the second from the end is the original client
 		ips := strings.Split(xff, ",")
-		ip := strings.TrimSpace(ips[len(ips)-2])
-		if ip != "" {
-			return ip
+		if len(ips) >= 2 {
+			ip := strings.TrimSpace(ips[len(ips)-2])
+			if ip != "" {
+				return ip
+			}
 		}
 	}
 
