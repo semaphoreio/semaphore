@@ -67,12 +67,21 @@ func auditMiddleware(next runtime.HandlerFunc, auditClient *clients.AuditClient)
 		}
 		if err != nil {
 			glog.Errorf("Failed to create audit event: %v", err)
+			errResponse := fmt.Errorf("failed to create audit event: %v", err)
+			respondWithJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"error": errResponse.Error(),
+			})
 			return
 		}
 
 		err = auditClient.SendAuditEvent(r.Context(), &auditEvent)
 		if err != nil {
 			glog.Errorf("Failed to send audit event: %v", err)
+			errResponse := fmt.Errorf("failed to send audit event: %v", err)
+			respondWithJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"error": errResponse.Error(),
+			})
+			return
 		}
 	}
 }
@@ -107,7 +116,8 @@ func createStopJobAuditEvent(r *http.Request, pathParams map[string]string) (aud
 	}
 
 	metadataMap := map[string]string{
-		"job_id": resourceID,
+		"job_id":       resourceID,
+		"requester_id": r.Header.Get("x-semaphore-user-id"),
 	}
 
 	metadata, err := json.Marshal(metadataMap)
