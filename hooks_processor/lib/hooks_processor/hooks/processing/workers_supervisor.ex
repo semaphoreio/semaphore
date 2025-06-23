@@ -44,12 +44,12 @@ defmodule HooksProcessor.Hooks.Processing.WorkersSupervisor do
   end
 
   defp process_response(resp = {:ok, pid}, id, provider) do
-    LT.info(pid, "Hook #{id} - #{provider} worker started")
+    LT.debug(pid, "Hook #{id} - #{provider} worker started")
     resp
   end
 
   defp process_response({:error, {:already_started, pid}}, id, provider) do
-    LT.info(pid, "Hook #{id} - #{provider} worker already started")
+    LT.debug(pid, "Hook #{id} - #{provider} worker already started")
     {:ok, pid}
   end
 
