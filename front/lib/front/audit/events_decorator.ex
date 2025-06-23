@@ -33,6 +33,10 @@ defmodule Front.Audit.EventsDecorator do
       field(:pipeline, Front.Models.Pipeline.t(), enforce: false)
       field(:has_pipeline, String.t(), enforce: false, default: false)
 
+      field(:job_id, String.t(), enforce: false)
+      field(:job, Front.Models.Job.t(), enforce: false)
+      field(:has_job, String.t(), enforce: false, default: false)
+
       field(:agent, Map.t(), enforce: false)
     end
   end
@@ -77,6 +81,10 @@ defmodule Front.Audit.EventsDecorator do
       # initialy setting it to false, later the preloader can change it
       has_workflow: false,
       pipeline_id: Map.get(metadata, "pipeline_id", nil),
+
+      # initialy setting it to false, later the preloader can change it
+      has_job: false,
+      job_id: Map.get(metadata, "job_id", nil),
 
       # inject agent data if the event is related to a self-hosted agent
       agent: decorate_agent(event, metadata)

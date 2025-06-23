@@ -34,6 +34,9 @@
                   <div>Pipeline: <%= link event.pipeline.name, to: workflow_path(@conn, :show, event.workflow.id, pipeline_id: event.pipeline.id)  %></div>
                 <% end %>
               <% end %>
+              <%= if event.has_job do %>
+                <div>Job: <%= link event.job.name, to: job_path(@conn, :show, event.job.id) %></div>
+              <% end %>
             <% end %>
             <div><%= event.description %></div>
             </div>

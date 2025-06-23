@@ -11,9 +11,12 @@ services:
       ssh:
         - default
       cache_from:
-        - ${MAIN_IMAGE:-public-api-gateway}:${IMAGE_TAG:-latest}
+        - ${IMAGE:-public-api-gateway}:${IMAGE_TAG:-latest}
     ports:
       - "8080:8080"
+    volumes:
+      - .:/app
+      - go-pkg-cache:/go
 
     environment:
       SSH_AUTH_SOCK: /ssh-agent
@@ -24,5 +27,21 @@ services:
       JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT: ${JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT:-jobs:8080}
       NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT: ${NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT:-notifications:8080}
       ARTIFACTS_V1_PUBLIC_GRPC_API_ENDPOINT: ${ARTIFACTS_V1_PUBLIC_GRPC_API_ENDPOINT:-artifacts:8080}
-
+      AMQP_URL: ${AMQP_URL:-amqp://guest:guest@rabbitmq:5672}
+    links:
+      - rabbitmq:rabbitmq
+    depends_on:
+      - rabbitmq
     tty: true
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+volumes:
+  go-pkg-cache:

@@ -29,8 +29,11 @@ api.checkout:
 bin.build:
 	docker compose run --remove-orphans --rm $(VOLUME_BIND) app sh -c "rm -rf build && CGO_ENABLED=0 go build -o build/server main.go"
 
-test: bin.build
+test.e2e: bin.build
 	docker compose run --remove-orphans --rm $(VOLUME_BIND) app bash ./test/test.sh
+
+test:
+	docker compose run --remove-orphans --rm $(VOLUME_BIND) app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 lint:
 	docker compose run --remove-orphans --rm $(VOLUME_BIND) app revive -formatter friendly -config lint.toml ./...

@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"net/textproto"
 	"os"
@@ -17,8 +18,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	artifacts "github.com/semaphoreio/semaphore/public-api-gateway/api/artifacts.v1"
+	"github.com/semaphoreio/semaphore/public-api-gateway/api/clients"
 	dashboards "github.com/semaphoreio/semaphore/public-api-gateway/api/dashboards.v1alpha"
 	jobs "github.com/semaphoreio/semaphore/public-api-gateway/api/jobs.v1alpha"
+	middleware "github.com/semaphoreio/semaphore/public-api-gateway/api/middleware"
 	notifications "github.com/semaphoreio/semaphore/public-api-gateway/api/notifications.v1alpha"
 	projectSecrets "github.com/semaphoreio/semaphore/public-api-gateway/api/project_secrets.v1"
 	secrets "github.com/semaphoreio/semaphore/public-api-gateway/api/secrets.v1beta"
@@ -63,7 +66,14 @@ func run() error {
 
 	var err error
 
-	mux := runtime.NewServeMux(runtime.WithIncomingHeaderMatcher(headerMatcher),
+	auditClient, err := clients.NewAuditClient(os.Getenv("AMQP_URL"))
+	if err != nil {
+		return fmt.Errorf("failed to initialize audit client: %v", err)
+	}
+
+	mux := runtime.NewServeMux(
+		runtime.WithMiddlewares(middleware.AuditMiddleware(auditClient)),
+		runtime.WithIncomingHeaderMatcher(headerMatcher),
 		runtime.WithMarshalerOption(runtime.MIMEWildcard, &runtime.HTTPBodyMarshaler{
 			Marshaler: &runtime.JSONPb{
 				MarshalOptions: protojson.MarshalOptions{

@@ -2,7 +2,7 @@ defmodule FrontWeb.JobController do
   require Logger
   use FrontWeb, :controller
 
-  alias Front.Async
+  alias Front.{Async, Audit}
   alias Front.MemoryCookie
   alias Front.Models
   alias FrontWeb.Plugs.{FetchPermissions, Header, PageAccess, PublicPageAccess, PutProjectAssigns}
@@ -216,6 +216,8 @@ defmodule FrontWeb.JobController do
 
       case Front.Models.Job.stop(job_id, user_id) do
         {:ok, _} ->
+          audit_log(conn, :Stopped, user_id, job_id)
+
           conn
           |> put_flash(:notice, "Job will be stopped shortly.")
           |> redirect(to: job_path(conn, :show, job_id))
@@ -310,6 +312,21 @@ defmodule FrontWeb.JobController do
       |> send_resp(200, JobPage.Events.raw_events(job.id, starting_event, take))
     end)
   end
+
+  def audit_log(conn, action, user_id, job_id) do
+    conn
+    |> Audit.new(:Job, action)
+    |> Audit.add(description: audit_desc(action))
+    |> Audit.add(resource_id: job_id)
+    |> Audit.metadata(requester_id: user_id)
+    |> Audit.metadata(project_id: conn.assigns.project.id)
+    |> Audit.metadata(project_name: conn.assigns.project.name)
+    |> Audit.metadata(pipeline_id: conn.assigns.job.ppl_id)
+    |> Audit.metadata(job_id: conn.assigns.job.id)
+    |> Audit.log()
+  end
+
+  defp audit_desc(:Stopped), do: "Stopped the job"
 
   # Private
 
