@@ -2,6 +2,8 @@ import Config
 
 config :hooks_processor, environment: config_env()
 
+config :logger, :console, format: "$time $metadata[$level] $message\n"
+
 config :hooks_processor,
   ecto_repos: [HooksProcessor.EctoRepo]
 

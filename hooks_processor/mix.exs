@@ -38,6 +38,7 @@ defmodule HooksProcessor.MixProject do
       {:ecto_sql, "~> 3.0"},
       {:postgrex, ">= 0.0.0"},
       {:uuid, "~> 1.1"},
+      {:logger_json, "~> 7.0"},
       {:junit_formatter, "~> 3.1", only: [:test]},
       # head because support for JSON is not yet released
       {:sentry, github: "getsentry/sentry-elixir", ref: "f375551f32f35674f9baab470d0e571466b07055"},
