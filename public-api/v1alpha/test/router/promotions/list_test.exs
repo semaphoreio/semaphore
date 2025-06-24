@@ -72,8 +72,6 @@ defmodule Router.Promotions.ListTest do
     params = %{pipeline_id: ppl_id, name: target_name}
     {:ok, response} = get_promotions_request(params, headers())
     %{body: body, status_code: status_code, headers: headers} = response
-    IO.puts("Response body: #{inspect(body)}")
-    IO.puts("Headers: #{inspect(headers)}")
 
     if decode do
       {status_code, headers, Poison.decode!(body)}
