@@ -701,4 +701,59 @@ defmodule HooksProcessor.Hooks.Processing.GitlabWorkerTest do
 
     GrpcMock.verify!(ProjectHubServiceMock)
   end
+
+  test "unsupported hook type => hook is recorded as failed" do
+    params = %{
+      received_at: DateTime.utc_now(),
+      webhook: GitlabHooks.merge_request_open(),
+      repository_id: UUID.uuid4(),
+      project_id: UUID.uuid4(),
+      organization_id: UUID.uuid4(),
+      provider: "gitlab"
+    }
+
+    assert {:ok, webhook} = HooksQueries.insert(params)
+
+    # setup mocks
+
+    ProjectHubServiceMock
+    |> GrpcMock.expect(:describe, fn req, _ ->
+      assert req.id == webhook.project_id
+
+      %Projecthub.DescribeResponse{
+        project: %{
+          metadata: %{
+            id: req.id,
+            org_id: UUID.uuid4()
+          },
+          spec: %{
+            repository: %{
+              pipeline_file: ".semaphore/semaphore.yml",
+              run_on: [:BRANCHES, :TAGS],
+              whitelist: %{tags: ["/release-.*/"]}
+            }
+          }
+        },
+        metadata: %{status: %{code: :OK}}
+      }
+    end)
+
+    # wait for worker to finish and check results
+
+    assert {:ok, pid} = WorkersSupervisor.start_worker_for_webhook(webhook.id)
+
+    Test.Helpers.wait_for_worker_to_finish(pid, 15_000)
+
+    assert {:ok, webhook} = HooksQueries.get_by_id(webhook.id)
+    assert webhook.state == "failed"
+    assert webhook.result == "BAD REQUEST"
+    assert webhook.wf_id == nil
+    assert webhook.ppl_id == nil
+    assert webhook.branch_id == nil
+    assert webhook.commit_sha == nil
+    assert webhook.commit_author == nil
+    assert webhook.git_ref == nil
+
+    GrpcMock.verify!(ProjectHubServiceMock)
+  end
 end
