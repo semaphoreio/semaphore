@@ -93,11 +93,14 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
+  defp process_webhook(hook_type, webhook, _project, requester_id) do
+    params = %{provider: "bitbucket", requester_id: requester_id}
+    HooksQueries.update_webhook(webhook, params, "failed", "BAD REQUEST")
+
     # Increment unsupported hook type metric
     Watchman.increment({"hooks.processing.bitbucket", ["unsupported_hook"]})
 
-    "Unsuported type of the hook: '#{hook_type}'"
+    {:error, "Unsuported type of the hook: '#{hook_type}'"}
   end
 
   defp perform_actions(webhook, parsed_data, hook_type, action_type)
