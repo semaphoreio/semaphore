@@ -1,11 +1,328 @@
+defmodule InternalApi.Plumber.QueueType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :IMPLICIT | :USER_GENERATED
+
+  field(:IMPLICIT, 0)
+
+  field(:USER_GENERATED, 1)
+end
+
+defmodule InternalApi.Plumber.GitRefType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :BRANCH | :TAG | :PR
+
+  field(:BRANCH, 0)
+
+  field(:TAG, 1)
+
+  field(:PR, 2)
+end
+
+defmodule InternalApi.Plumber.TriggeredBy do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :WORKFLOW | :PROMOTION | :AUTO_PROMOTION | :PARTIAL_RE_RUN
+
+  field(:WORKFLOW, 0)
+
+  field(:PROMOTION, 1)
+
+  field(:AUTO_PROMOTION, 2)
+
+  field(:PARTIAL_RE_RUN, 3)
+end
+
+defmodule InternalApi.Plumber.ScheduleRequest.ServiceType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :GIT_HUB | :LOCAL | :SNAPSHOT
+
+  field(:GIT_HUB, 0)
+
+  field(:LOCAL, 1)
+
+  field(:SNAPSHOT, 2)
+end
+
+defmodule InternalApi.Plumber.Block.State do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :WAITING | :RUNNING | :STOPPING | :DONE | :INITIALIZING
+
+  field(:WAITING, 0)
+
+  field(:RUNNING, 1)
+
+  field(:STOPPING, 2)
+
+  field(:DONE, 3)
+
+  field(:INITIALIZING, 4)
+end
+
+defmodule InternalApi.Plumber.Block.Result do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :PASSED | :STOPPED | :CANCELED | :FAILED
+
+  field(:PASSED, 0)
+
+  field(:STOPPED, 1)
+
+  field(:CANCELED, 2)
+
+  field(:FAILED, 3)
+end
+
+defmodule InternalApi.Plumber.Block.ResultReason do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  @type t ::
+          integer
+          | :TEST
+          | :MALFORMED
+          | :STUCK
+          | :USER
+          | :INTERNAL
+          | :STRATEGY
+          | :FAST_FAILING
+          | :DELETED
+          | :TIMEOUT
+          | :SKIPPED
+
+  field(:TEST, 0)
+
+  field(:MALFORMED, 1)
+
+  field(:STUCK, 2)
+
+  field(:USER, 3)
+
+  field(:INTERNAL, 4)
+
+  field(:STRATEGY, 5)
+
+  field(:FAST_FAILING, 6)
+
+  field(:DELETED, 7)
+
+  field(:TIMEOUT, 8)
+
+  field(:SKIPPED, 9)
+end
+
+defmodule InternalApi.Plumber.ListKeysetRequest.Order do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :BY_CREATION_TIME_DESC
+
+  field(:BY_CREATION_TIME_DESC, 0)
+end
+
+defmodule InternalApi.Plumber.ListKeysetRequest.Direction do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :NEXT | :PREVIOUS
+
+  field(:NEXT, 0)
+
+  field(:PREVIOUS, 1)
+end
+
+defmodule InternalApi.Plumber.Pipeline.State do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :INITIALIZING | :PENDING | :QUEUING | :RUNNING | :STOPPING | :DONE
+
+  field(:INITIALIZING, 0)
+
+  field(:PENDING, 1)
+
+  field(:QUEUING, 2)
+
+  field(:RUNNING, 3)
+
+  field(:STOPPING, 4)
+
+  field(:DONE, 5)
+end
+
+defmodule InternalApi.Plumber.Pipeline.Result do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :PASSED | :STOPPED | :CANCELED | :FAILED
+
+  field(:PASSED, 0)
+
+  field(:STOPPED, 1)
+
+  field(:CANCELED, 2)
+
+  field(:FAILED, 3)
+end
+
+defmodule InternalApi.Plumber.Pipeline.ResultReason do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  @type t ::
+          integer
+          | :TEST
+          | :MALFORMED
+          | :STUCK
+          | :USER
+          | :INTERNAL
+          | :STRATEGY
+          | :FAST_FAILING
+          | :DELETED
+          | :TIMEOUT
+
+  field(:TEST, 0)
+
+  field(:MALFORMED, 1)
+
+  field(:STUCK, 2)
+
+  field(:USER, 3)
+
+  field(:INTERNAL, 4)
+
+  field(:STRATEGY, 5)
+
+  field(:FAST_FAILING, 6)
+
+  field(:DELETED, 7)
+
+  field(:TIMEOUT, 8)
+end
+
+defmodule InternalApi.Plumber.ListActivityRequest.Order do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :BY_CREATION_TIME_DESC
+
+  field(:BY_CREATION_TIME_DESC, 0)
+end
+
+defmodule InternalApi.Plumber.ListActivityRequest.Direction do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :NEXT | :PREVIOUS
+
+  field(:NEXT, 0)
+
+  field(:PREVIOUS, 1)
+end
+
+defmodule InternalApi.Plumber.RunNowRequest.Type do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :PIPELINE | :BLOCK | :JOB
+
+  field(:PIPELINE, 0)
+
+  field(:BLOCK, 1)
+
+  field(:JOB, 2)
+end
+
+defmodule InternalApi.Plumber.ResponseStatus.ResponseCode do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :OK | :BAD_PARAM | :LIMIT_EXCEEDED | :REFUSED
+
+  field(:OK, 0)
+
+  field(:BAD_PARAM, 1)
+
+  field(:LIMIT_EXCEEDED, 2)
+
+  field(:REFUSED, 3)
+end
+
+defmodule InternalApi.Plumber.AfterPipeline.State do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :WAITING | :PENDING | :RUNNING | :DONE
+
+  field(:WAITING, 0)
+
+  field(:PENDING, 1)
+
+  field(:RUNNING, 2)
+
+  field(:DONE, 3)
+end
+
+defmodule InternalApi.Plumber.AfterPipeline.Result do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :PASSED | :STOPPED | :FAILED
+
+  field(:PASSED, 0)
+
+  field(:STOPPED, 1)
+
+  field(:FAILED, 2)
+end
+
+defmodule InternalApi.Plumber.AfterPipeline.ResultReason do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :TEST | :STUCK
+
+  field(:TEST, 0)
+
+  field(:STUCK, 1)
+end
+
+defmodule InternalApi.Plumber.ScheduleRequest.Repo do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          owner: String.t(),
+          repo_name: String.t(),
+          branch_name: String.t(),
+          commit_sha: String.t()
+        }
+
+  defstruct [:owner, :repo_name, :branch_name, :commit_sha]
+
+  field(:owner, 1, type: :string)
+  field(:repo_name, 2, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:commit_sha, 5, type: :string)
+end
+
+defmodule InternalApi.Plumber.ScheduleRequest.Auth do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          client_id: String.t(),
+          client_secret: String.t(),
+          access_token: String.t()
+        }
+
+  defstruct [:client_id, :client_secret, :access_token]
+
+  field(:client_id, 1, type: :string)
+  field(:client_secret, 2, type: :string)
+  field(:access_token, 3, type: :string)
+end
+
 defmodule InternalApi.Plumber.ScheduleRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          service: integer,
-          repo: InternalApi.Plumber.ScheduleRequest.Repo.t(),
-          auth: InternalApi.Plumber.ScheduleRequest.Auth.t(),
+          service: InternalApi.Plumber.ScheduleRequest.ServiceType.t(),
+          repo: InternalApi.Plumber.ScheduleRequest.Repo.t() | nil,
+          auth: InternalApi.Plumber.ScheduleRequest.Auth.t() | nil,
           project_id: String.t(),
           branch_id: String.t(),
           hook_id: String.t(),
@@ -13,6 +330,7 @@ defmodule InternalApi.Plumber.ScheduleRequest do
           snapshot_id: String.t(),
           definition_file: String.t()
         }
+
   defstruct [
     :service,
     :repo,
@@ -36,57 +354,15 @@ defmodule InternalApi.Plumber.ScheduleRequest do
   field(:definition_file, 11, type: :string)
 end
 
-defmodule InternalApi.Plumber.ScheduleRequest.Repo do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          owner: String.t(),
-          repo_name: String.t(),
-          branch_name: String.t(),
-          commit_sha: String.t()
-        }
-  defstruct [:owner, :repo_name, :branch_name, :commit_sha]
-
-  field(:owner, 1, type: :string)
-  field(:repo_name, 2, type: :string)
-  field(:branch_name, 4, type: :string)
-  field(:commit_sha, 5, type: :string)
-end
-
-defmodule InternalApi.Plumber.ScheduleRequest.Auth do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          client_id: String.t(),
-          client_secret: String.t(),
-          access_token: String.t()
-        }
-  defstruct [:client_id, :client_secret, :access_token]
-
-  field(:client_id, 1, type: :string)
-  field(:client_secret, 2, type: :string)
-  field(:access_token, 3, type: :string)
-end
-
-defmodule InternalApi.Plumber.ScheduleRequest.ServiceType do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:GIT_HUB, 0)
-  field(:LOCAL, 1)
-  field(:SNAPSHOT, 2)
-end
-
 defmodule InternalApi.Plumber.ScheduleResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           ppl_id: String.t()
         }
+
   defstruct [:response_status, :ppl_id]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -101,6 +377,7 @@ defmodule InternalApi.Plumber.DescribeRequest do
           ppl_id: String.t(),
           detailed: boolean
         }
+
   defstruct [:ppl_id, :detailed]
 
   field(:ppl_id, 1, type: :string)
@@ -112,15 +389,37 @@ defmodule InternalApi.Plumber.DescribeResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
-          pipeline: InternalApi.Plumber.Pipeline.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
+          pipeline: InternalApi.Plumber.Pipeline.t() | nil,
           blocks: [InternalApi.Plumber.Block.t()]
         }
+
   defstruct [:response_status, :pipeline, :blocks]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
   field(:pipeline, 3, type: InternalApi.Plumber.Pipeline)
   field(:blocks, 4, repeated: true, type: InternalApi.Plumber.Block)
+end
+
+defmodule InternalApi.Plumber.Block.Job do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          index: non_neg_integer,
+          job_id: String.t(),
+          status: String.t(),
+          result: String.t()
+        }
+
+  defstruct [:name, :index, :job_id, :status, :result]
+
+  field(:name, 1, type: :string)
+  field(:index, 2, type: :uint32)
+  field(:job_id, 3, type: :string)
+  field(:status, 4, type: :string)
+  field(:result, 5, type: :string)
 end
 
 defmodule InternalApi.Plumber.Block do
@@ -131,12 +430,13 @@ defmodule InternalApi.Plumber.Block do
           block_id: String.t(),
           name: String.t(),
           build_req_id: String.t(),
-          state: integer,
-          result: integer,
-          result_reason: integer,
+          state: InternalApi.Plumber.Block.State.t(),
+          result: InternalApi.Plumber.Block.Result.t(),
+          result_reason: InternalApi.Plumber.Block.ResultReason.t(),
           error_description: String.t(),
           jobs: [InternalApi.Plumber.Block.Job.t()]
         }
+
   defstruct [
     :block_id,
     :name,
@@ -158,63 +458,6 @@ defmodule InternalApi.Plumber.Block do
   field(:jobs, 8, repeated: true, type: InternalApi.Plumber.Block.Job)
 end
 
-defmodule InternalApi.Plumber.Block.Job do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          name: String.t(),
-          index: non_neg_integer,
-          job_id: String.t(),
-          status: String.t(),
-          result: String.t()
-        }
-  defstruct [:name, :index, :job_id, :status, :result]
-
-  field(:name, 1, type: :string)
-  field(:index, 2, type: :uint32)
-  field(:job_id, 3, type: :string)
-  field(:status, 4, type: :string)
-  field(:result, 5, type: :string)
-end
-
-defmodule InternalApi.Plumber.Block.State do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:WAITING, 0)
-  field(:RUNNING, 1)
-  field(:STOPPING, 2)
-  field(:DONE, 3)
-  field(:INITIALIZING, 4)
-end
-
-defmodule InternalApi.Plumber.Block.Result do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:PASSED, 0)
-  field(:STOPPED, 1)
-  field(:CANCELED, 2)
-  field(:FAILED, 3)
-end
-
-defmodule InternalApi.Plumber.Block.ResultReason do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:TEST, 0)
-  field(:MALFORMED, 1)
-  field(:STUCK, 2)
-  field(:USER, 3)
-  field(:INTERNAL, 4)
-  field(:STRATEGY, 5)
-  field(:FAST_FAILING, 6)
-  field(:DELETED, 7)
-  field(:TIMEOUT, 8)
-  field(:SKIPPED, 9)
-end
-
 defmodule InternalApi.Plumber.DescribeManyRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -222,6 +465,7 @@ defmodule InternalApi.Plumber.DescribeManyRequest do
   @type t :: %__MODULE__{
           ppl_ids: [String.t()]
         }
+
   defstruct [:ppl_ids]
 
   field(:ppl_ids, 1, repeated: true, type: :string)
@@ -232,9 +476,10 @@ defmodule InternalApi.Plumber.DescribeManyResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           pipelines: [InternalApi.Plumber.Pipeline.t()]
         }
+
   defstruct [:response_status, :pipelines]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -248,23 +493,10 @@ defmodule InternalApi.Plumber.DescribeTopologyRequest do
   @type t :: %__MODULE__{
           ppl_id: String.t()
         }
+
   defstruct [:ppl_id]
 
   field(:ppl_id, 1, type: :string)
-end
-
-defmodule InternalApi.Plumber.DescribeTopologyResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          status: InternalApi.Plumber.ResponseStatus.t(),
-          blocks: [InternalApi.Plumber.DescribeTopologyResponse.Block.t()]
-        }
-  defstruct [:status, :blocks]
-
-  field(:status, 1, type: InternalApi.Plumber.ResponseStatus)
-  field(:blocks, 2, repeated: true, type: InternalApi.Plumber.DescribeTopologyResponse.Block)
 end
 
 defmodule InternalApi.Plumber.DescribeTopologyResponse.Block do
@@ -276,11 +508,42 @@ defmodule InternalApi.Plumber.DescribeTopologyResponse.Block do
           jobs: [String.t()],
           dependencies: [String.t()]
         }
+
   defstruct [:name, :jobs, :dependencies]
 
   field(:name, 1, type: :string)
   field(:jobs, 2, repeated: true, type: :string)
   field(:dependencies, 3, repeated: true, type: :string)
+end
+
+defmodule InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          jobs: [String.t()]
+        }
+
+  defstruct [:jobs]
+
+  field(:jobs, 1, repeated: true, type: :string)
+end
+
+defmodule InternalApi.Plumber.DescribeTopologyResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          status: InternalApi.Plumber.ResponseStatus.t() | nil,
+          blocks: [InternalApi.Plumber.DescribeTopologyResponse.Block.t()],
+          after_pipeline: InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline.t() | nil
+        }
+
+  defstruct [:status, :blocks, :after_pipeline]
+
+  field(:status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:blocks, 2, repeated: true, type: InternalApi.Plumber.DescribeTopologyResponse.Block)
+  field(:after_pipeline, 3, type: InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline)
 end
 
 defmodule InternalApi.Plumber.TerminateRequest do
@@ -291,6 +554,7 @@ defmodule InternalApi.Plumber.TerminateRequest do
           ppl_id: String.t(),
           requester_id: String.t()
         }
+
   defstruct [:ppl_id, :requester_id]
 
   field(:ppl_id, 1, type: :string)
@@ -302,8 +566,9 @@ defmodule InternalApi.Plumber.TerminateResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t()
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil
         }
+
   defstruct [:response_status]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -318,8 +583,9 @@ defmodule InternalApi.Plumber.ListQueuesRequest do
           page_size: integer,
           project_id: String.t(),
           organization_id: String.t(),
-          queue_types: [integer]
+          queue_types: [[InternalApi.Plumber.QueueType.t()]]
         }
+
   defstruct [:page, :page_size, :project_id, :organization_id, :queue_types]
 
   field(:page, 1, type: :int32)
@@ -334,13 +600,14 @@ defmodule InternalApi.Plumber.ListQueuesResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           queues: [InternalApi.Plumber.Queue.t()],
           page_number: integer,
           page_size: integer,
           total_entries: integer,
           total_pages: integer
         }
+
   defstruct [:response_status, :queues, :page_number, :page_size, :total_entries, :total_pages]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -360,8 +627,9 @@ defmodule InternalApi.Plumber.ListGroupedRequest do
           page_size: integer,
           project_id: String.t(),
           organization_id: String.t(),
-          queue_type: [integer]
+          queue_type: [[InternalApi.Plumber.QueueType.t()]]
         }
+
   defstruct [:page, :page_size, :project_id, :organization_id, :queue_type]
 
   field(:page, 1, type: :int32)
@@ -376,13 +644,14 @@ defmodule InternalApi.Plumber.ListGroupedResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           pipelines: [InternalApi.Plumber.Pipeline.t()],
           page_number: integer,
           page_size: integer,
           total_entries: integer,
           total_pages: integer
         }
+
   defstruct [:response_status, :pipelines, :page_number, :page_size, :total_entries, :total_pages]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -400,19 +669,22 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
   @type t :: %__MODULE__{
           page_size: integer,
           page_token: String.t(),
-          order: integer,
-          direction: integer,
+          order: InternalApi.Plumber.ListKeysetRequest.Order.t(),
+          direction: InternalApi.Plumber.ListKeysetRequest.Direction.t(),
           project_id: String.t(),
           yml_file_path: String.t(),
           wf_id: String.t(),
-          created_before: Google.Protobuf.Timestamp.t(),
-          created_after: Google.Protobuf.Timestamp.t(),
-          done_before: Google.Protobuf.Timestamp.t(),
-          done_after: Google.Protobuf.Timestamp.t(),
+          created_before: Google.Protobuf.Timestamp.t() | nil,
+          created_after: Google.Protobuf.Timestamp.t() | nil,
+          done_before: Google.Protobuf.Timestamp.t() | nil,
+          done_after: Google.Protobuf.Timestamp.t() | nil,
           label: String.t(),
-          git_ref_types: [integer],
-          queue_id: String.t()
+          git_ref_types: [[InternalApi.Plumber.GitRefType.t()]],
+          queue_id: String.t(),
+          pr_head_branch: String.t(),
+          pr_target_branch: String.t()
         }
+
   defstruct [
     :page_size,
     :page_token,
@@ -427,7 +699,9 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
     :done_after,
     :label,
     :git_ref_types,
-    :queue_id
+    :queue_id,
+    :pr_head_branch,
+    :pr_target_branch
   ]
 
   field(:page_size, 1, type: :int32)
@@ -444,21 +718,8 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
   field(:label, 12, type: :string)
   field(:git_ref_types, 13, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
   field(:queue_id, 14, type: :string)
-end
-
-defmodule InternalApi.Plumber.ListKeysetRequest.Order do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:BY_CREATION_TIME_DESC, 0)
-end
-
-defmodule InternalApi.Plumber.ListKeysetRequest.Direction do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:NEXT, 0)
-  field(:PREVIOUS, 1)
+  field(:pr_head_branch, 15, type: :string)
+  field(:pr_target_branch, 16, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListKeysetResponse do
@@ -470,6 +731,7 @@ defmodule InternalApi.Plumber.ListKeysetResponse do
           next_page_token: String.t(),
           previous_page_token: String.t()
         }
+
   defstruct [:pipelines, :next_page_token, :previous_page_token]
 
   field(:pipelines, 1, repeated: true, type: InternalApi.Plumber.Pipeline)
@@ -488,14 +750,17 @@ defmodule InternalApi.Plumber.ListRequest do
           page_size: integer,
           yml_file_path: String.t(),
           wf_id: String.t(),
-          created_before: Google.Protobuf.Timestamp.t(),
-          created_after: Google.Protobuf.Timestamp.t(),
-          done_before: Google.Protobuf.Timestamp.t(),
-          done_after: Google.Protobuf.Timestamp.t(),
+          created_before: Google.Protobuf.Timestamp.t() | nil,
+          created_after: Google.Protobuf.Timestamp.t() | nil,
+          done_before: Google.Protobuf.Timestamp.t() | nil,
+          done_after: Google.Protobuf.Timestamp.t() | nil,
           label: String.t(),
-          git_ref_types: [integer],
-          queue_id: String.t()
+          git_ref_types: [[InternalApi.Plumber.GitRefType.t()]],
+          queue_id: String.t(),
+          pr_head_branch: String.t(),
+          pr_target_branch: String.t()
         }
+
   defstruct [
     :project_id,
     :branch_name,
@@ -509,7 +774,9 @@ defmodule InternalApi.Plumber.ListRequest do
     :done_after,
     :label,
     :git_ref_types,
-    :queue_id
+    :queue_id,
+    :pr_head_branch,
+    :pr_target_branch
   ]
 
   field(:project_id, 1, type: :string)
@@ -525,6 +792,8 @@ defmodule InternalApi.Plumber.ListRequest do
   field(:label, 11, type: :string)
   field(:git_ref_types, 12, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
   field(:queue_id, 13, type: :string)
+  field(:pr_head_branch, 14, type: :string)
+  field(:pr_target_branch, 15, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListResponse do
@@ -532,13 +801,14 @@ defmodule InternalApi.Plumber.ListResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           pipelines: [InternalApi.Plumber.Pipeline.t()],
           page_number: integer,
           page_size: integer,
           total_entries: integer,
           total_pages: integer
         }
+
   defstruct [:response_status, :pipelines, :page_number, :page_size, :total_entries, :total_pages]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -559,8 +829,9 @@ defmodule InternalApi.Plumber.Queue do
           scope: String.t(),
           project_id: String.t(),
           organization_id: String.t(),
-          type: integer
+          type: InternalApi.Plumber.QueueType.t()
         }
+
   defstruct [:queue_id, :name, :scope, :project_id, :organization_id, :type]
 
   field(:queue_id, 1, type: :string)
@@ -581,15 +852,15 @@ defmodule InternalApi.Plumber.Pipeline do
           project_id: String.t(),
           branch_name: String.t(),
           commit_sha: String.t(),
-          created_at: Google.Protobuf.Timestamp.t(),
-          pending_at: Google.Protobuf.Timestamp.t(),
-          queuing_at: Google.Protobuf.Timestamp.t(),
-          running_at: Google.Protobuf.Timestamp.t(),
-          stopping_at: Google.Protobuf.Timestamp.t(),
-          done_at: Google.Protobuf.Timestamp.t(),
-          state: integer,
-          result: integer,
-          result_reason: integer,
+          created_at: Google.Protobuf.Timestamp.t() | nil,
+          pending_at: Google.Protobuf.Timestamp.t() | nil,
+          queuing_at: Google.Protobuf.Timestamp.t() | nil,
+          running_at: Google.Protobuf.Timestamp.t() | nil,
+          stopping_at: Google.Protobuf.Timestamp.t() | nil,
+          done_at: Google.Protobuf.Timestamp.t() | nil,
+          state: InternalApi.Plumber.Pipeline.State.t(),
+          result: InternalApi.Plumber.Pipeline.Result.t(),
+          result_reason: InternalApi.Plumber.Pipeline.ResultReason.t(),
           terminate_request: String.t(),
           hook_id: String.t(),
           branch_id: String.t(),
@@ -600,13 +871,20 @@ defmodule InternalApi.Plumber.Pipeline do
           terminated_by: String.t(),
           wf_id: String.t(),
           snapshot_id: String.t(),
-          queue: InternalApi.Plumber.Queue.t(),
+          queue: InternalApi.Plumber.Queue.t() | nil,
           promotion_of: String.t(),
           partial_rerun_of: String.t(),
           commit_message: String.t(),
           partially_rerun_by: String.t(),
-          compile_task_id: String.t()
+          compile_task_id: String.t(),
+          with_after_task: boolean,
+          after_task_id: String.t(),
+          repository_id: String.t(),
+          env_vars: [InternalApi.Plumber.EnvVariable.t()],
+          triggerer: InternalApi.Plumber.Triggerer.t() | nil,
+          organization_id: String.t()
         }
+
   defstruct [
     :ppl_id,
     :name,
@@ -637,7 +915,13 @@ defmodule InternalApi.Plumber.Pipeline do
     :partial_rerun_of,
     :commit_message,
     :partially_rerun_by,
-    :compile_task_id
+    :compile_task_id,
+    :with_after_task,
+    :after_task_id,
+    :repository_id,
+    :env_vars,
+    :triggerer,
+    :organization_id
   ]
 
   field(:ppl_id, 1, type: :string)
@@ -670,43 +954,54 @@ defmodule InternalApi.Plumber.Pipeline do
   field(:commit_message, 28, type: :string)
   field(:partially_rerun_by, 29, type: :string)
   field(:compile_task_id, 30, type: :string)
+  field(:with_after_task, 31, type: :bool)
+  field(:after_task_id, 32, type: :string)
+  field(:repository_id, 33, type: :string)
+  field(:env_vars, 34, repeated: true, type: InternalApi.Plumber.EnvVariable)
+  field(:triggerer, 35, type: InternalApi.Plumber.Triggerer)
+  field(:organization_id, 36, type: :string)
 end
 
-defmodule InternalApi.Plumber.Pipeline.State do
+defmodule InternalApi.Plumber.Triggerer do
   @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
+  use Protobuf, syntax: :proto3
 
-  field(:INITIALIZING, 0)
-  field(:PENDING, 1)
-  field(:QUEUING, 2)
-  field(:RUNNING, 3)
-  field(:STOPPING, 4)
-  field(:DONE, 5)
-end
+  @type t :: %__MODULE__{
+          wf_triggered_by: InternalApi.PlumberWF.TriggeredBy.t(),
+          wf_triggerer_id: String.t(),
+          wf_triggerer_user_id: String.t(),
+          wf_triggerer_provider_login: String.t(),
+          wf_triggerer_provider_uid: String.t(),
+          wf_triggerer_provider_avatar: String.t(),
+          ppl_triggered_by: InternalApi.Plumber.TriggeredBy.t(),
+          ppl_triggerer_id: String.t(),
+          ppl_triggerer_user_id: String.t(),
+          workflow_rerun_of: String.t()
+        }
 
-defmodule InternalApi.Plumber.Pipeline.Result do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
+  defstruct [
+    :wf_triggered_by,
+    :wf_triggerer_id,
+    :wf_triggerer_user_id,
+    :wf_triggerer_provider_login,
+    :wf_triggerer_provider_uid,
+    :wf_triggerer_provider_avatar,
+    :ppl_triggered_by,
+    :ppl_triggerer_id,
+    :ppl_triggerer_user_id,
+    :workflow_rerun_of
+  ]
 
-  field(:PASSED, 0)
-  field(:STOPPED, 1)
-  field(:CANCELED, 2)
-  field(:FAILED, 3)
-end
-
-defmodule InternalApi.Plumber.Pipeline.ResultReason do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:TEST, 0)
-  field(:MALFORMED, 1)
-  field(:STUCK, 2)
-  field(:USER, 3)
-  field(:INTERNAL, 4)
-  field(:STRATEGY, 5)
-  field(:FAST_FAILING, 6)
-  field(:DELETED, 7)
-  field(:TIMEOUT, 8)
+  field(:wf_triggered_by, 1, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:wf_triggerer_id, 2, type: :string)
+  field(:wf_triggerer_user_id, 3, type: :string)
+  field(:wf_triggerer_provider_login, 4, type: :string)
+  field(:wf_triggerer_provider_uid, 5, type: :string)
+  field(:wf_triggerer_provider_avatar, 6, type: :string)
+  field(:ppl_triggered_by, 7, type: InternalApi.Plumber.TriggeredBy, enum: true)
+  field(:ppl_triggerer_id, 8, type: :string)
+  field(:ppl_triggerer_user_id, 9, type: :string)
+  field(:workflow_rerun_of, 10, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListActivityRequest do
@@ -716,10 +1011,11 @@ defmodule InternalApi.Plumber.ListActivityRequest do
   @type t :: %__MODULE__{
           page_size: integer,
           page_token: String.t(),
-          order: integer,
+          order: InternalApi.Plumber.ListActivityRequest.Order.t(),
           organization_id: String.t(),
-          direction: integer
+          direction: InternalApi.Plumber.ListActivityRequest.Direction.t()
         }
+
   defstruct [:page_size, :page_token, :order, :organization_id, :direction]
 
   field(:page_size, 1, type: :int32)
@@ -727,21 +1023,6 @@ defmodule InternalApi.Plumber.ListActivityRequest do
   field(:order, 3, type: InternalApi.Plumber.ListActivityRequest.Order, enum: true)
   field(:organization_id, 4, type: :string)
   field(:direction, 5, type: InternalApi.Plumber.ListActivityRequest.Direction, enum: true)
-end
-
-defmodule InternalApi.Plumber.ListActivityRequest.Order do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:BY_CREATION_TIME_DESC, 0)
-end
-
-defmodule InternalApi.Plumber.ListActivityRequest.Direction do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:NEXT, 0)
-  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.Plumber.ListActivityResponse do
@@ -753,11 +1034,87 @@ defmodule InternalApi.Plumber.ListActivityResponse do
           previous_page_token: String.t(),
           pipelines: [InternalApi.Plumber.ActivePipeline.t()]
         }
+
   defstruct [:next_page_token, :previous_page_token, :pipelines]
 
   field(:next_page_token, 1, type: :string)
   field(:previous_page_token, 2, type: :string)
   field(:pipelines, 3, repeated: true, type: InternalApi.Plumber.ActivePipeline)
+end
+
+defmodule InternalApi.Plumber.ListRequestersRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          page_token: String.t(),
+          page_size: integer,
+          requested_at_gt: Google.Protobuf.Timestamp.t() | nil,
+          requested_at_lte: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [:organization_id, :page_token, :page_size, :requested_at_gt, :requested_at_lte]
+
+  field(:organization_id, 1, type: :string)
+  field(:page_token, 2, type: :string)
+  field(:page_size, 3, type: :int32)
+  field(:requested_at_gt, 4, type: Google.Protobuf.Timestamp)
+  field(:requested_at_lte, 5, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.Plumber.ListRequestersResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          requesters: [InternalApi.Plumber.Requester.t()],
+          next_page_token: String.t()
+        }
+
+  defstruct [:requesters, :next_page_token]
+
+  field(:requesters, 1, repeated: true, type: InternalApi.Plumber.Requester)
+  field(:next_page_token, 2, type: :string)
+end
+
+defmodule InternalApi.Plumber.Requester do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          organization_id: String.t(),
+          project_id: String.t(),
+          ppl_id: String.t(),
+          user_id: String.t(),
+          provider_login: String.t(),
+          provider_uid: String.t(),
+          provider: InternalApi.User.RepositoryProvider.Type.t(),
+          triggerer: InternalApi.PlumberWF.TriggeredBy.t(),
+          requested_at: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [
+    :organization_id,
+    :project_id,
+    :ppl_id,
+    :user_id,
+    :provider_login,
+    :provider_uid,
+    :provider,
+    :triggerer,
+    :requested_at
+  ]
+
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:ppl_id, 3, type: :string)
+  field(:user_id, 4, type: :string)
+  field(:provider_login, 5, type: :string)
+  field(:provider_uid, 6, type: :string)
+  field(:provider, 7, type: InternalApi.User.RepositoryProvider.Type, enum: true)
+  field(:triggerer, 8, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:requested_at, 9, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.ActivePipeline do
@@ -775,7 +1132,7 @@ defmodule InternalApi.Plumber.ActivePipeline do
           switch_id: String.t(),
           definition_file: String.t(),
           priority: non_neg_integer,
-          wf_triggered_by: integer,
+          wf_triggered_by: InternalApi.PlumberWF.TriggeredBy.t(),
           requester_id: String.t(),
           partial_rerun_of: String.t(),
           promotion_of: String.t(),
@@ -784,18 +1141,20 @@ defmodule InternalApi.Plumber.ActivePipeline do
           git_ref: String.t(),
           commit_sha: String.t(),
           branch_id: String.t(),
-          created_at: Google.Protobuf.Timestamp.t(),
-          pending_at: Google.Protobuf.Timestamp.t(),
-          queuing_at: Google.Protobuf.Timestamp.t(),
-          running_at: Google.Protobuf.Timestamp.t(),
-          queue: InternalApi.Plumber.Queue.t(),
+          created_at: Google.Protobuf.Timestamp.t() | nil,
+          pending_at: Google.Protobuf.Timestamp.t() | nil,
+          queuing_at: Google.Protobuf.Timestamp.t() | nil,
+          running_at: Google.Protobuf.Timestamp.t() | nil,
+          queue: InternalApi.Plumber.Queue.t() | nil,
           blocks: [InternalApi.Plumber.BlockDetails.t()],
-          state: integer,
-          git_ref_type: integer,
+          state: InternalApi.Plumber.Pipeline.State.t(),
+          git_ref_type: InternalApi.Plumber.GitRefType.t(),
           commit_message: String.t(),
           commiter_username: String.t(),
-          commiter_avatar_url: String.t()
+          commiter_avatar_url: String.t(),
+          triggerer: InternalApi.Plumber.Triggerer.t() | nil
         }
+
   defstruct [
     :organization_id,
     :project_id,
@@ -826,7 +1185,8 @@ defmodule InternalApi.Plumber.ActivePipeline do
     :git_ref_type,
     :commit_message,
     :commiter_username,
-    :commiter_avatar_url
+    :commiter_avatar_url,
+    :triggerer
   ]
 
   field(:organization_id, 1, type: :string)
@@ -859,6 +1219,24 @@ defmodule InternalApi.Plumber.ActivePipeline do
   field(:commit_message, 28, type: :string)
   field(:commiter_username, 29, type: :string)
   field(:commiter_avatar_url, 30, type: :string)
+  field(:triggerer, 31, type: InternalApi.Plumber.Triggerer)
+end
+
+defmodule InternalApi.Plumber.BlockDetails.JobDetails do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          index: non_neg_integer,
+          status: String.t()
+        }
+
+  defstruct [:name, :index, :status]
+
+  field(:name, 1, type: :string)
+  field(:index, 2, type: :uint32)
+  field(:status, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.BlockDetails do
@@ -870,12 +1248,13 @@ defmodule InternalApi.Plumber.BlockDetails do
           name: String.t(),
           priority: non_neg_integer,
           dependencies: [String.t()],
-          state: integer,
-          result: integer,
-          result_reason: integer,
+          state: InternalApi.Plumber.Block.State.t(),
+          result: InternalApi.Plumber.Block.Result.t(),
+          result_reason: InternalApi.Plumber.Block.ResultReason.t(),
           error_description: String.t(),
           jobs: [InternalApi.Plumber.BlockDetails.JobDetails.t()]
         }
+
   defstruct [
     :block_id,
     :name,
@@ -899,33 +1278,18 @@ defmodule InternalApi.Plumber.BlockDetails do
   field(:jobs, 9, repeated: true, type: InternalApi.Plumber.BlockDetails.JobDetails)
 end
 
-defmodule InternalApi.Plumber.BlockDetails.JobDetails do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          name: String.t(),
-          index: non_neg_integer,
-          status: String.t()
-        }
-  defstruct [:name, :index, :status]
-
-  field(:name, 1, type: :string)
-  field(:index, 2, type: :uint32)
-  field(:status, 3, type: :string)
-end
-
 defmodule InternalApi.Plumber.RunNowRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
           requester_id: String.t(),
-          type: integer,
+          type: InternalApi.Plumber.RunNowRequest.Type.t(),
           ppl_id: String.t(),
           block_id: String.t(),
           job_id: String.t()
         }
+
   defstruct [:requester_id, :type, :ppl_id, :block_id, :job_id]
 
   field(:requester_id, 1, type: :string)
@@ -935,18 +1299,10 @@ defmodule InternalApi.Plumber.RunNowRequest do
   field(:job_id, 5, type: :string)
 end
 
-defmodule InternalApi.Plumber.RunNowRequest.Type do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:PIPELINE, 0)
-  field(:BLOCK, 1)
-  field(:JOB, 2)
-end
-
 defmodule InternalApi.Plumber.RunNowResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
 
   defstruct []
 end
@@ -958,6 +1314,7 @@ defmodule InternalApi.Plumber.GetProjectIdRequest do
   @type t :: %__MODULE__{
           ppl_id: String.t()
         }
+
   defstruct [:ppl_id]
 
   field(:ppl_id, 1, type: :string)
@@ -968,9 +1325,10 @@ defmodule InternalApi.Plumber.GetProjectIdResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           project_id: String.t()
         }
+
   defstruct [:response_status, :project_id]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -985,6 +1343,7 @@ defmodule InternalApi.Plumber.ValidateYamlRequest do
           yaml_definition: String.t(),
           ppl_id: String.t()
         }
+
   defstruct [:yaml_definition, :ppl_id]
 
   field(:yaml_definition, 1, type: :string)
@@ -996,9 +1355,10 @@ defmodule InternalApi.Plumber.ValidateYamlResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           ppl_id: String.t()
         }
+
   defstruct [:response_status, :ppl_id]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -1016,8 +1376,11 @@ defmodule InternalApi.Plumber.ScheduleExtensionRequest do
           env_variables: [InternalApi.Plumber.EnvVariable.t()],
           prev_ppl_artefact_ids: [String.t()],
           promoted_by: String.t(),
-          auto_promoted: boolean
+          auto_promoted: boolean,
+          secret_names: [String.t()],
+          deployment_target_id: String.t()
         }
+
   defstruct [
     :file_path,
     :ppl_id,
@@ -1025,7 +1388,9 @@ defmodule InternalApi.Plumber.ScheduleExtensionRequest do
     :env_variables,
     :prev_ppl_artefact_ids,
     :promoted_by,
-    :auto_promoted
+    :auto_promoted,
+    :secret_names,
+    :deployment_target_id
   ]
 
   field(:file_path, 1, type: :string)
@@ -1035,6 +1400,8 @@ defmodule InternalApi.Plumber.ScheduleExtensionRequest do
   field(:prev_ppl_artefact_ids, 6, repeated: true, type: :string)
   field(:promoted_by, 7, type: :string)
   field(:auto_promoted, 8, type: :bool)
+  field(:secret_names, 9, repeated: true, type: :string)
+  field(:deployment_target_id, 10, type: :string)
 end
 
 defmodule InternalApi.Plumber.EnvVariable do
@@ -1045,6 +1412,7 @@ defmodule InternalApi.Plumber.EnvVariable do
           name: String.t(),
           value: String.t()
         }
+
   defstruct [:name, :value]
 
   field(:name, 1, type: :string)
@@ -1056,9 +1424,10 @@ defmodule InternalApi.Plumber.ScheduleExtensionResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           ppl_id: String.t()
         }
+
   defstruct [:response_status, :ppl_id]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -1073,6 +1442,7 @@ defmodule InternalApi.Plumber.DeleteRequest do
           project_id: String.t(),
           requester: String.t()
         }
+
   defstruct [:project_id, :requester]
 
   field(:project_id, 1, type: :string)
@@ -1084,8 +1454,9 @@ defmodule InternalApi.Plumber.DeleteResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          status: InternalApi.Plumber.ResponseStatus.t()
+          status: InternalApi.Plumber.ResponseStatus.t() | nil
         }
+
   defstruct [:status]
 
   field(:status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -1100,6 +1471,7 @@ defmodule InternalApi.Plumber.PartialRebuildRequest do
           request_token: String.t(),
           user_id: String.t()
         }
+
   defstruct [:ppl_id, :request_token, :user_id]
 
   field(:ppl_id, 1, type: :string)
@@ -1112,9 +1484,10 @@ defmodule InternalApi.Plumber.PartialRebuildResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          response_status: InternalApi.Plumber.ResponseStatus.t(),
+          response_status: InternalApi.Plumber.ResponseStatus.t() | nil,
           ppl_id: String.t()
         }
+
   defstruct [:response_status, :ppl_id]
 
   field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
@@ -1124,6 +1497,7 @@ end
 defmodule InternalApi.Plumber.VersionRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
 
   defstruct []
 end
@@ -1135,6 +1509,7 @@ defmodule InternalApi.Plumber.VersionResponse do
   @type t :: %__MODULE__{
           version: String.t()
         }
+
   defstruct [:version]
 
   field(:version, 1, type: :string)
@@ -1145,23 +1520,14 @@ defmodule InternalApi.Plumber.ResponseStatus do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          code: integer,
+          code: InternalApi.Plumber.ResponseStatus.ResponseCode.t(),
           message: String.t()
         }
+
   defstruct [:code, :message]
 
   field(:code, 1, type: InternalApi.Plumber.ResponseStatus.ResponseCode, enum: true)
   field(:message, 2, type: :string)
-end
-
-defmodule InternalApi.Plumber.ResponseStatus.ResponseCode do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:OK, 0)
-  field(:BAD_PARAM, 1)
-  field(:LIMIT_EXCEEDED, 2)
-  field(:REFUSED, 3)
 end
 
 defmodule InternalApi.Plumber.PipelineEvent do
@@ -1170,9 +1536,10 @@ defmodule InternalApi.Plumber.PipelineEvent do
 
   @type t :: %__MODULE__{
           pipeline_id: String.t(),
-          state: integer,
-          timestamp: Google.Protobuf.Timestamp.t()
+          state: InternalApi.Plumber.Pipeline.State.t(),
+          timestamp: Google.Protobuf.Timestamp.t() | nil
         }
+
   defstruct [:pipeline_id, :state, :timestamp]
 
   field(:pipeline_id, 1, type: :string)
@@ -1187,9 +1554,10 @@ defmodule InternalApi.Plumber.PipelineBlockEvent do
   @type t :: %__MODULE__{
           pipeline_id: String.t(),
           block_id: String.t(),
-          state: integer,
-          timestamp: Google.Protobuf.Timestamp.t()
+          state: InternalApi.Plumber.Block.State.t(),
+          timestamp: Google.Protobuf.Timestamp.t() | nil
         }
+
   defstruct [:pipeline_id, :block_id, :state, :timestamp]
 
   field(:pipeline_id, 1, type: :string)
@@ -1198,21 +1566,42 @@ defmodule InternalApi.Plumber.PipelineBlockEvent do
   field(:timestamp, 4, type: Google.Protobuf.Timestamp)
 end
 
-defmodule InternalApi.Plumber.QueueType do
+defmodule InternalApi.Plumber.AfterPipeline do
   @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
+  use Protobuf, syntax: :proto3
 
-  field(:IMPLICIT, 0)
-  field(:USER_GENERATED, 1)
+  @type t :: %__MODULE__{
+          pipeline_id: String.t(),
+          state: InternalApi.Plumber.AfterPipeline.State.t(),
+          result: InternalApi.Plumber.AfterPipeline.Result.t(),
+          result_reason: InternalApi.Plumber.AfterPipeline.ResultReason.t(),
+          created_at: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [:pipeline_id, :state, :result, :result_reason, :created_at]
+
+  field(:pipeline_id, 1, type: :string)
+  field(:state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true)
+  field(:result, 3, type: InternalApi.Plumber.AfterPipeline.Result, enum: true)
+  field(:result_reason, 4, type: InternalApi.Plumber.AfterPipeline.ResultReason, enum: true)
+  field(:created_at, 5, type: Google.Protobuf.Timestamp)
 end
 
-defmodule InternalApi.Plumber.GitRefType do
+defmodule InternalApi.Plumber.AfterPipelineEvent do
   @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
+  use Protobuf, syntax: :proto3
 
-  field(:BRANCH, 0)
-  field(:TAG, 1)
-  field(:PR, 2)
+  @type t :: %__MODULE__{
+          pipeline_id: String.t(),
+          state: InternalApi.Plumber.AfterPipeline.State.t(),
+          timestamp: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [:pipeline_id, :state, :timestamp]
+
+  field(:pipeline_id, 1, type: :string)
+  field(:state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.PipelineService.Service do
@@ -1220,6 +1609,7 @@ defmodule InternalApi.Plumber.PipelineService.Service do
   use GRPC.Service, name: "InternalApi.Plumber.PipelineService"
 
   rpc(:Schedule, InternalApi.Plumber.ScheduleRequest, InternalApi.Plumber.ScheduleResponse)
+
   rpc(:Describe, InternalApi.Plumber.DescribeRequest, InternalApi.Plumber.DescribeResponse)
 
   rpc(
@@ -1235,7 +1625,9 @@ defmodule InternalApi.Plumber.PipelineService.Service do
   )
 
   rpc(:Terminate, InternalApi.Plumber.TerminateRequest, InternalApi.Plumber.TerminateResponse)
+
   rpc(:ListKeyset, InternalApi.Plumber.ListKeysetRequest, InternalApi.Plumber.ListKeysetResponse)
+
   rpc(:List, InternalApi.Plumber.ListRequest, InternalApi.Plumber.ListResponse)
 
   rpc(
@@ -1250,6 +1642,12 @@ defmodule InternalApi.Plumber.PipelineService.Service do
     :ListActivity,
     InternalApi.Plumber.ListActivityRequest,
     InternalApi.Plumber.ListActivityResponse
+  )
+
+  rpc(
+    :ListRequesters,
+    InternalApi.Plumber.ListRequestersRequest,
+    InternalApi.Plumber.ListRequestersResponse
   )
 
   rpc(:RunNow, InternalApi.Plumber.RunNowRequest, InternalApi.Plumber.RunNowResponse)
