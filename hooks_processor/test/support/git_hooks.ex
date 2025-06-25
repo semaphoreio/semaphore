@@ -49,4 +49,18 @@ defmodule Support.GitHooks do
       }
     }
   end
+
+  def unsupported_hook_type do
+    %{
+      "reference" => "refs/puls/123",
+      "commit" => %{
+        "sha" => "023becf74ae8a5d93911db4bad7967f94343b44b",
+        "message" => "Initial commit"
+      },
+      "author" => %{
+        "name" => "Radek",
+        "email" => "radek@example.com"
+      }
+    }
+  end
 end

@@ -95,8 +95,11 @@ defmodule HooksProcessor.Hooks.Processing.GitlabWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
-    "Unsuported type of the hook: '#{hook_type}'"
+  defp process_webhook(hook_type, webhook, _project, requester_id) do
+    params = %{provider: "gitlab", requester_id: requester_id}
+    HooksQueries.update_webhook(webhook, params, "failed", "BAD REQUEST")
+
+    {:error, "Unsuported type of the hook: '#{hook_type}'"}
   end
 
   defp should_build?(repository, hook_data, hook_type) do
