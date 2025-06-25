@@ -6,7 +6,6 @@ defmodule InternalApi.Gofer.GitRefType do
   field :TAG, 1
   field :PR, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargetDescription.Access.Reason do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -19,7 +18,6 @@ defmodule InternalApi.Gofer.DeploymentTargetDescription.Access.Reason do
   field :BANNED_OBJECT, 5
   field :CORDONED_TARGET, 6
 end
-
 defmodule InternalApi.Gofer.TriggerEvent.ProcessingResult do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -27,7 +25,6 @@ defmodule InternalApi.Gofer.TriggerEvent.ProcessingResult do
   field :PASSED, 0
   field :FAILED, 1
 end
-
 defmodule InternalApi.Gofer.ResponseStatus.ResponseCode do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -41,7 +38,6 @@ defmodule InternalApi.Gofer.ResponseStatus.ResponseCode do
   field :RESULT_REASON_CHANGED, 6
   field :MALFORMED, 7
 end
-
 defmodule InternalApi.Gofer.CreateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -60,7 +56,6 @@ defmodule InternalApi.Gofer.CreateRequest do
   field :pr_base, 13, type: :string, json_name: "prBase"
   field :pr_sha, 14, type: :string, json_name: "prSha"
 end
-
 defmodule InternalApi.Gofer.Target do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -81,7 +76,6 @@ defmodule InternalApi.Gofer.Target do
   field :auto_promote_when, 7, type: :string, json_name: "autoPromoteWhen"
   field :deployment_target, 8, type: :string, json_name: "deploymentTarget"
 end
-
 defmodule InternalApi.Gofer.ParamEnvVar do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -92,7 +86,6 @@ defmodule InternalApi.Gofer.ParamEnvVar do
   field :default_value, 4, type: :string, json_name: "defaultValue"
   field :description, 5, type: :string
 end
-
 defmodule InternalApi.Gofer.AutoTriggerCond do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -103,7 +96,6 @@ defmodule InternalApi.Gofer.AutoTriggerCond do
   field :labels, 4, repeated: true, type: :string
   field :label_patterns, 5, repeated: true, type: :string, json_name: "labelPatterns"
 end
-
 defmodule InternalApi.Gofer.CreateResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -111,7 +103,6 @@ defmodule InternalApi.Gofer.CreateResponse do
   field :response_status, 1, type: InternalApi.Gofer.ResponseStatus, json_name: "responseStatus"
   field :switch_id, 2, type: :string, json_name: "switchId"
 end
-
 defmodule InternalApi.Gofer.DescribeRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -120,7 +111,6 @@ defmodule InternalApi.Gofer.DescribeRequest do
   field :events_per_target, 2, type: :int32, json_name: "eventsPerTarget"
   field :requester_id, 3, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DescribeResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -133,7 +123,6 @@ defmodule InternalApi.Gofer.DescribeResponse do
   field :targets, 6, repeated: true, type: InternalApi.Gofer.TargetDescription
   field :pipeline_result_reason, 7, type: :string, json_name: "pipelineResultReason"
 end
-
 defmodule InternalApi.Gofer.TargetDescription do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -160,7 +149,6 @@ defmodule InternalApi.Gofer.TargetDescription do
     type: InternalApi.Gofer.DeploymentTargetDescription,
     json_name: "dtDescription"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargetDescription.Access do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -169,7 +157,6 @@ defmodule InternalApi.Gofer.DeploymentTargetDescription.Access do
   field :reason, 2, type: InternalApi.Gofer.DeploymentTargetDescription.Access.Reason, enum: true
   field :message, 3, type: :string
 end
-
 defmodule InternalApi.Gofer.DeploymentTargetDescription do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -178,7 +165,6 @@ defmodule InternalApi.Gofer.DeploymentTargetDescription do
   field :target_name, 2, type: :string, json_name: "targetName"
   field :access, 3, type: InternalApi.Gofer.DeploymentTargetDescription.Access
 end
-
 defmodule InternalApi.Gofer.TriggerEvent do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -204,7 +190,6 @@ defmodule InternalApi.Gofer.TriggerEvent do
     type: InternalApi.Gofer.EnvVariable,
     json_name: "envVariables"
 end
-
 defmodule InternalApi.Gofer.DescribeManyRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -213,7 +198,6 @@ defmodule InternalApi.Gofer.DescribeManyRequest do
   field :events_per_target, 2, type: :int32, json_name: "eventsPerTarget"
   field :requester_id, 3, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DescribeManyResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -221,7 +205,6 @@ defmodule InternalApi.Gofer.DescribeManyResponse do
   field :response_status, 1, type: InternalApi.Gofer.ResponseStatus, json_name: "responseStatus"
   field :switches, 2, repeated: true, type: InternalApi.Gofer.SwitchDetails
 end
-
 defmodule InternalApi.Gofer.SwitchDetails do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -233,7 +216,6 @@ defmodule InternalApi.Gofer.SwitchDetails do
   field :pipeline_result_reason, 5, type: :string, json_name: "pipelineResultReason"
   field :targets, 6, repeated: true, type: InternalApi.Gofer.TargetDescription
 end
-
 defmodule InternalApi.Gofer.ListTriggerEventsRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -243,7 +225,6 @@ defmodule InternalApi.Gofer.ListTriggerEventsRequest do
   field :page, 3, type: :int32
   field :page_size, 4, type: :int32, json_name: "pageSize"
 end
-
 defmodule InternalApi.Gofer.ListTriggerEventsResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -260,7 +241,6 @@ defmodule InternalApi.Gofer.ListTriggerEventsResponse do
   field :total_entries, 5, type: :int32, json_name: "totalEntries"
   field :total_pages, 6, type: :int32, json_name: "totalPages"
 end
-
 defmodule InternalApi.Gofer.PipelineDoneRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -269,14 +249,12 @@ defmodule InternalApi.Gofer.PipelineDoneRequest do
   field :result, 2, type: :string
   field :result_reason, 3, type: :string, json_name: "resultReason"
 end
-
 defmodule InternalApi.Gofer.PipelineDoneResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :response_status, 1, type: InternalApi.Gofer.ResponseStatus, json_name: "responseStatus"
 end
-
 defmodule InternalApi.Gofer.TriggerRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -292,7 +270,6 @@ defmodule InternalApi.Gofer.TriggerRequest do
     type: InternalApi.Gofer.EnvVariable,
     json_name: "envVariables"
 end
-
 defmodule InternalApi.Gofer.EnvVariable do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -300,26 +277,22 @@ defmodule InternalApi.Gofer.EnvVariable do
   field :name, 1, type: :string
   field :value, 2, type: :string
 end
-
 defmodule InternalApi.Gofer.TriggerResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :response_status, 1, type: InternalApi.Gofer.ResponseStatus, json_name: "responseStatus"
 end
-
 defmodule InternalApi.Gofer.VersionRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 end
-
 defmodule InternalApi.Gofer.VersionResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :version, 1, type: :string
 end
-
 defmodule InternalApi.Gofer.ResponseStatus do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -327,7 +300,6 @@ defmodule InternalApi.Gofer.ResponseStatus do
   field :code, 1, type: InternalApi.Gofer.ResponseStatus.ResponseCode, enum: true
   field :message, 2, type: :string
 end
-
 defmodule InternalApi.Gofer.Switch.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Gofer.Switch", protoc_gen_elixir_version: "0.10.0"

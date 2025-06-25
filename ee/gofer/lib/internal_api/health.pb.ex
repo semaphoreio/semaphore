@@ -7,21 +7,18 @@ defmodule Grpc.Health.V1.HealthCheckResponse.ServingStatus do
   field :NOT_SERVING, 2
   field :SERVICE_UNKNOWN, 3
 end
-
 defmodule Grpc.Health.V1.HealthCheckRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :service, 1, type: :string
 end
-
 defmodule Grpc.Health.V1.HealthCheckResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :status, 1, type: Grpc.Health.V1.HealthCheckResponse.ServingStatus, enum: true
 end
-
 defmodule Grpc.Health.V1.Health.Service do
   @moduledoc false
   use GRPC.Service, name: "grpc.health.v1.Health", protoc_gen_elixir_version: "0.10.0"
