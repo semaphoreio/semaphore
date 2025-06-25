@@ -9,13 +9,13 @@ defmodule InternalApi.Velocity.Metric do
           | :METRIC_FREQUENCY
           | :METRIC_RELIABILITY
 
-  field(:METRIC_UNSPECIFIED, 0)
+  field :METRIC_UNSPECIFIED, 0
 
-  field(:METRIC_PERFORMANCE, 1)
+  field :METRIC_PERFORMANCE, 1
 
-  field(:METRIC_FREQUENCY, 2)
+  field :METRIC_FREQUENCY, 2
 
-  field(:METRIC_RELIABILITY, 3)
+  field :METRIC_RELIABILITY, 3
 end
 
 defmodule InternalApi.Velocity.MetricAggregation do
@@ -23,9 +23,9 @@ defmodule InternalApi.Velocity.MetricAggregation do
   use Protobuf, enum: true, syntax: :proto3
   @type t :: integer | :RANGE | :DAILY
 
-  field(:RANGE, 0)
+  field :RANGE, 0
 
-  field(:DAILY, 1)
+  field :DAILY, 1
 end
 
 defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersRequest do
@@ -39,8 +39,8 @@ defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersRequest do
 
   defstruct [:project_id, :organization_id]
 
-  field(:project_id, 1, type: :string)
-  field(:organization_id, 2, type: :string)
+  field :project_id, 1, type: :string
+  field :organization_id, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersResponse do
@@ -53,7 +53,7 @@ defmodule InternalApi.Velocity.InitializeFlakyTestsFiltersResponse do
 
   defstruct [:filters]
 
-  field(:filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter)
+  field :filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter
 end
 
 defmodule InternalApi.Velocity.ListFlakyTestsFiltersRequest do
@@ -67,8 +67,8 @@ defmodule InternalApi.Velocity.ListFlakyTestsFiltersRequest do
 
   defstruct [:project_id, :organization_id]
 
-  field(:project_id, 1, type: :string)
-  field(:organization_id, 2, type: :string)
+  field :project_id, 1, type: :string
+  field :organization_id, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.ListFlakyTestsFiltersResponse do
@@ -81,7 +81,7 @@ defmodule InternalApi.Velocity.ListFlakyTestsFiltersResponse do
 
   defstruct [:filters]
 
-  field(:filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter)
+  field :filters, 1, repeated: true, type: InternalApi.Velocity.FlakyTestsFilter
 end
 
 defmodule InternalApi.Velocity.CreateFlakyTestsFilterRequest do
@@ -97,10 +97,10 @@ defmodule InternalApi.Velocity.CreateFlakyTestsFilterRequest do
 
   defstruct [:project_id, :organization_id, :name, :value]
 
-  field(:project_id, 1, type: :string)
-  field(:organization_id, 2, type: :string)
-  field(:name, 3, type: :string)
-  field(:value, 4, type: :string)
+  field :project_id, 1, type: :string
+  field :organization_id, 2, type: :string
+  field :name, 3, type: :string
+  field :value, 4, type: :string
 end
 
 defmodule InternalApi.Velocity.CreateFlakyTestsFilterResponse do
@@ -113,7 +113,7 @@ defmodule InternalApi.Velocity.CreateFlakyTestsFilterResponse do
 
   defstruct [:filter]
 
-  field(:filter, 1, type: InternalApi.Velocity.FlakyTestsFilter)
+  field :filter, 1, type: InternalApi.Velocity.FlakyTestsFilter
 end
 
 defmodule InternalApi.Velocity.FlakyTestsFilter do
@@ -132,13 +132,13 @@ defmodule InternalApi.Velocity.FlakyTestsFilter do
 
   defstruct [:id, :project_id, :organization_id, :inserted_at, :updated_at, :name, :value]
 
-  field(:id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:organization_id, 3, type: :string)
-  field(:inserted_at, 4, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 5, type: Google.Protobuf.Timestamp)
-  field(:name, 6, type: :string)
-  field(:value, 7, type: :string)
+  field :id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :organization_id, 3, type: :string
+  field :inserted_at, 4, type: Google.Protobuf.Timestamp
+  field :updated_at, 5, type: Google.Protobuf.Timestamp
+  field :name, 6, type: :string
+  field :value, 7, type: :string
 end
 
 defmodule InternalApi.Velocity.RemoveFlakyTestsFilterRequest do
@@ -151,7 +151,7 @@ defmodule InternalApi.Velocity.RemoveFlakyTestsFilterRequest do
 
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.RemoveFlakyTestsFilterResponse do
@@ -174,9 +174,9 @@ defmodule InternalApi.Velocity.UpdateFlakyTestsFilterRequest do
 
   defstruct [:id, :name, :value]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:value, 3, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :value, 3, type: :string
 end
 
 defmodule InternalApi.Velocity.UpdateFlakyTestsFilterResponse do
@@ -189,7 +189,7 @@ defmodule InternalApi.Velocity.UpdateFlakyTestsFilterResponse do
 
   defstruct [:filter]
 
-  field(:filter, 1, type: InternalApi.Velocity.FlakyTestsFilter)
+  field :filter, 1, type: InternalApi.Velocity.FlakyTestsFilter
 end
 
 defmodule InternalApi.Velocity.OrganizationHealthRequest do
@@ -205,10 +205,10 @@ defmodule InternalApi.Velocity.OrganizationHealthRequest do
 
   defstruct [:project_ids, :org_id, :from_date, :to_date]
 
-  field(:project_ids, 1, repeated: true, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:from_date, 3, type: Google.Protobuf.Timestamp)
-  field(:to_date, 4, type: Google.Protobuf.Timestamp)
+  field :project_ids, 1, repeated: true, type: :string
+  field :org_id, 2, type: :string
+  field :from_date, 3, type: Google.Protobuf.Timestamp
+  field :to_date, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.OrganizationHealthResponse do
@@ -221,7 +221,7 @@ defmodule InternalApi.Velocity.OrganizationHealthResponse do
 
   defstruct [:health_metrics]
 
-  field(:health_metrics, 1, repeated: true, type: InternalApi.Velocity.ProjectHealthMetrics)
+  field :health_metrics, 1, repeated: true, type: InternalApi.Velocity.ProjectHealthMetrics
 end
 
 defmodule InternalApi.Velocity.ProjectHealthMetrics do
@@ -250,14 +250,14 @@ defmodule InternalApi.Velocity.ProjectHealthMetrics do
     :deployments
   ]
 
-  field(:project_id, 1, type: :string)
-  field(:project_name, 2, type: :string)
-  field(:mean_time_to_recovery_seconds, 3, type: :int32)
-  field(:last_successful_run_at, 4, type: Google.Protobuf.Timestamp)
-  field(:default_branch, 5, type: InternalApi.Velocity.Stats)
-  field(:all_branches, 6, type: InternalApi.Velocity.Stats)
-  field(:parallelism, 7, type: :int32)
-  field(:deployments, 8, type: :int32)
+  field :project_id, 1, type: :string
+  field :project_name, 2, type: :string
+  field :mean_time_to_recovery_seconds, 3, type: :int32
+  field :last_successful_run_at, 4, type: Google.Protobuf.Timestamp
+  field :default_branch, 5, type: InternalApi.Velocity.Stats
+  field :all_branches, 6, type: InternalApi.Velocity.Stats
+  field :parallelism, 7, type: :int32
+  field :deployments, 8, type: :int32
 end
 
 defmodule InternalApi.Velocity.Stats do
@@ -284,13 +284,13 @@ defmodule InternalApi.Velocity.Stats do
     :queue_time_seconds_successful
   ]
 
-  field(:all_count, 1, type: :int32)
-  field(:passed_count, 2, type: :int32)
-  field(:failed_count, 3, type: :int32)
-  field(:avg_seconds, 4, type: :int32)
-  field(:avg_seconds_successful, 5, type: :int32)
-  field(:queue_time_seconds, 6, type: :int32)
-  field(:queue_time_seconds_successful, 7, type: :int32)
+  field :all_count, 1, type: :int32
+  field :passed_count, 2, type: :int32
+  field :failed_count, 3, type: :int32
+  field :avg_seconds, 4, type: :int32
+  field :avg_seconds_successful, 5, type: :int32
+  field :queue_time_seconds, 6, type: :int32
+  field :queue_time_seconds_successful, 7, type: :int32
 end
 
 defmodule InternalApi.Velocity.DescribeDashboardItemRequest do
@@ -303,7 +303,7 @@ defmodule InternalApi.Velocity.DescribeDashboardItemRequest do
 
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.DescribeDashboardItemResponse do
@@ -316,7 +316,7 @@ defmodule InternalApi.Velocity.DescribeDashboardItemResponse do
 
   defstruct [:item]
 
-  field(:item, 1, type: InternalApi.Velocity.DashboardItem)
+  field :item, 1, type: InternalApi.Velocity.DashboardItem
 end
 
 defmodule InternalApi.Velocity.DeleteDashboardItemRequest do
@@ -329,7 +329,7 @@ defmodule InternalApi.Velocity.DeleteDashboardItemRequest do
 
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.DeleteDashboardItemResponse do
@@ -350,7 +350,7 @@ defmodule InternalApi.Velocity.DeleteMetricsDashboardRequest do
 
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.DeleteMetricsDashboardResponse do
@@ -371,7 +371,7 @@ defmodule InternalApi.Velocity.ListMetricsDashboardsRequest do
 
   defstruct [:project_id]
 
-  field(:project_id, 1, type: :string)
+  field :project_id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.ListMetricsDashboardsResponse do
@@ -384,7 +384,7 @@ defmodule InternalApi.Velocity.ListMetricsDashboardsResponse do
 
   defstruct [:dashboards]
 
-  field(:dashboards, 1, repeated: true, type: InternalApi.Velocity.MetricsDashboard)
+  field :dashboards, 1, repeated: true, type: InternalApi.Velocity.MetricsDashboard
 end
 
 defmodule InternalApi.Velocity.DescribeMetricsDashboardRequest do
@@ -397,7 +397,7 @@ defmodule InternalApi.Velocity.DescribeMetricsDashboardRequest do
 
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.DescribeMetricsDashboardResponse do
@@ -410,7 +410,7 @@ defmodule InternalApi.Velocity.DescribeMetricsDashboardResponse do
 
   defstruct [:dashboard]
 
-  field(:dashboard, 1, type: InternalApi.Velocity.MetricsDashboard)
+  field :dashboard, 1, type: InternalApi.Velocity.MetricsDashboard
 end
 
 defmodule InternalApi.Velocity.MetricsDashboard do
@@ -429,13 +429,13 @@ defmodule InternalApi.Velocity.MetricsDashboard do
 
   defstruct [:id, :name, :project_id, :organization_id, :inserted_at, :updated_at, :items]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:project_id, 3, type: :string)
-  field(:organization_id, 4, type: :string)
-  field(:inserted_at, 5, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 6, type: Google.Protobuf.Timestamp)
-  field(:items, 7, repeated: true, type: InternalApi.Velocity.DashboardItem)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :project_id, 3, type: :string
+  field :organization_id, 4, type: :string
+  field :inserted_at, 5, type: Google.Protobuf.Timestamp
+  field :updated_at, 6, type: Google.Protobuf.Timestamp
+  field :items, 7, repeated: true, type: InternalApi.Velocity.DashboardItem
 end
 
 defmodule InternalApi.Velocity.DashboardItem do
@@ -466,15 +466,15 @@ defmodule InternalApi.Velocity.DashboardItem do
     :notes
   ]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:metrics_dashboard_id, 3, type: :string)
-  field(:branch_name, 4, type: :string)
-  field(:pipeline_file_name, 5, type: :string)
-  field(:inserted_at, 6, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 7, type: Google.Protobuf.Timestamp)
-  field(:settings, 8, type: InternalApi.Velocity.DashboardItemSettings)
-  field(:notes, 9, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :metrics_dashboard_id, 3, type: :string
+  field :branch_name, 4, type: :string
+  field :pipeline_file_name, 5, type: :string
+  field :inserted_at, 6, type: Google.Protobuf.Timestamp
+  field :updated_at, 7, type: Google.Protobuf.Timestamp
+  field :settings, 8, type: InternalApi.Velocity.DashboardItemSettings
+  field :notes, 9, type: :string
 end
 
 defmodule InternalApi.Velocity.DashboardItemSettings do
@@ -488,8 +488,8 @@ defmodule InternalApi.Velocity.DashboardItemSettings do
 
   defstruct [:metric, :goal]
 
-  field(:metric, 1, type: InternalApi.Velocity.Metric, enum: true)
-  field(:goal, 2, type: :string)
+  field :metric, 1, type: InternalApi.Velocity.Metric, enum: true
+  field :goal, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.CreateMetricsDashboardRequest do
@@ -504,9 +504,9 @@ defmodule InternalApi.Velocity.CreateMetricsDashboardRequest do
 
   defstruct [:name, :project_id, :organization_id]
 
-  field(:name, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:organization_id, 3, type: :string)
+  field :name, 1, type: :string
+  field :project_id, 2, type: :string
+  field :organization_id, 3, type: :string
 end
 
 defmodule InternalApi.Velocity.CreateMetricsDashboardResponse do
@@ -519,7 +519,7 @@ defmodule InternalApi.Velocity.CreateMetricsDashboardResponse do
 
   defstruct [:dashboard]
 
-  field(:dashboard, 1, type: InternalApi.Velocity.MetricsDashboard)
+  field :dashboard, 1, type: InternalApi.Velocity.MetricsDashboard
 end
 
 defmodule InternalApi.Velocity.UpdateMetricsDashboardRequest do
@@ -533,8 +533,8 @@ defmodule InternalApi.Velocity.UpdateMetricsDashboardRequest do
 
   defstruct [:id, :name]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.UpdateMetricsDashboardResponse do
@@ -560,12 +560,12 @@ defmodule InternalApi.Velocity.CreateDashboardItemRequest do
 
   defstruct [:name, :metrics_dashboard_id, :branch_name, :pipeline_file_name, :settings, :notes]
 
-  field(:name, 1, type: :string)
-  field(:metrics_dashboard_id, 2, type: :string)
-  field(:branch_name, 3, type: :string)
-  field(:pipeline_file_name, 4, type: :string)
-  field(:settings, 5, type: InternalApi.Velocity.DashboardItemSettings)
-  field(:notes, 6, type: :string)
+  field :name, 1, type: :string
+  field :metrics_dashboard_id, 2, type: :string
+  field :branch_name, 3, type: :string
+  field :pipeline_file_name, 4, type: :string
+  field :settings, 5, type: InternalApi.Velocity.DashboardItemSettings
+  field :notes, 6, type: :string
 end
 
 defmodule InternalApi.Velocity.CreateDashboardItemResponse do
@@ -578,7 +578,7 @@ defmodule InternalApi.Velocity.CreateDashboardItemResponse do
 
   defstruct [:item]
 
-  field(:item, 1, type: InternalApi.Velocity.DashboardItem)
+  field :item, 1, type: InternalApi.Velocity.DashboardItem
 end
 
 defmodule InternalApi.Velocity.UpdateDashboardItemRequest do
@@ -592,8 +592,8 @@ defmodule InternalApi.Velocity.UpdateDashboardItemRequest do
 
   defstruct [:id, :name]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.UpdateDashboardItemResponse do
@@ -615,8 +615,8 @@ defmodule InternalApi.Velocity.ChangeDashboardItemNotesRequest do
 
   defstruct [:id, :notes]
 
-  field(:id, 1, type: :string)
-  field(:notes, 2, type: :string)
+  field :id, 1, type: :string
+  field :notes, 2, type: :string
 end
 
 defmodule InternalApi.Velocity.ChangeDashboardItemNotesResponse do
@@ -642,12 +642,12 @@ defmodule InternalApi.Velocity.ListPipelinePerformanceMetricsRequest do
 
   defstruct [:project_id, :pipeline_file_name, :branch_name, :aggregate, :from_date, :to_date]
 
-  field(:project_id, 1, type: :string)
-  field(:pipeline_file_name, 2, type: :string)
-  field(:branch_name, 3, type: :string)
-  field(:aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true)
-  field(:from_date, 5, type: Google.Protobuf.Timestamp)
-  field(:to_date, 6, type: Google.Protobuf.Timestamp)
+  field :project_id, 1, type: :string
+  field :pipeline_file_name, 2, type: :string
+  field :branch_name, 3, type: :string
+  field :aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true
+  field :from_date, 5, type: Google.Protobuf.Timestamp
+  field :to_date, 6, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.ListPipelinePerformanceMetricsResponse do
@@ -662,9 +662,9 @@ defmodule InternalApi.Velocity.ListPipelinePerformanceMetricsResponse do
 
   defstruct [:all_metrics, :passed_metrics, :failed_metrics]
 
-  field(:all_metrics, 1, repeated: true, type: InternalApi.Velocity.PerformanceMetric)
-  field(:passed_metrics, 2, repeated: true, type: InternalApi.Velocity.PerformanceMetric)
-  field(:failed_metrics, 3, repeated: true, type: InternalApi.Velocity.PerformanceMetric)
+  field :all_metrics, 1, repeated: true, type: InternalApi.Velocity.PerformanceMetric
+  field :passed_metrics, 2, repeated: true, type: InternalApi.Velocity.PerformanceMetric
+  field :failed_metrics, 3, repeated: true, type: InternalApi.Velocity.PerformanceMetric
 end
 
 defmodule InternalApi.Velocity.PerformanceMetric do
@@ -695,15 +695,15 @@ defmodule InternalApi.Velocity.PerformanceMetric do
     :p95_seconds
   ]
 
-  field(:from_date, 1, type: Google.Protobuf.Timestamp)
-  field(:to_date, 2, type: Google.Protobuf.Timestamp)
-  field(:count, 3, type: :int32)
-  field(:mean_seconds, 4, type: :int32)
-  field(:median_seconds, 5, type: :int32)
-  field(:min_seconds, 6, type: :int32)
-  field(:max_seconds, 7, type: :int32)
-  field(:std_dev_seconds, 8, type: :int32)
-  field(:p95_seconds, 9, type: :int32)
+  field :from_date, 1, type: Google.Protobuf.Timestamp
+  field :to_date, 2, type: Google.Protobuf.Timestamp
+  field :count, 3, type: :int32
+  field :mean_seconds, 4, type: :int32
+  field :median_seconds, 5, type: :int32
+  field :min_seconds, 6, type: :int32
+  field :max_seconds, 7, type: :int32
+  field :std_dev_seconds, 8, type: :int32
+  field :p95_seconds, 9, type: :int32
 end
 
 defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsRequest do
@@ -721,12 +721,12 @@ defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsRequest do
 
   defstruct [:project_id, :pipeline_file_name, :branch_name, :aggregate, :from_date, :to_date]
 
-  field(:project_id, 1, type: :string)
-  field(:pipeline_file_name, 2, type: :string)
-  field(:branch_name, 3, type: :string)
-  field(:aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true)
-  field(:from_date, 5, type: Google.Protobuf.Timestamp)
-  field(:to_date, 6, type: Google.Protobuf.Timestamp)
+  field :project_id, 1, type: :string
+  field :pipeline_file_name, 2, type: :string
+  field :branch_name, 3, type: :string
+  field :aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true
+  field :from_date, 5, type: Google.Protobuf.Timestamp
+  field :to_date, 6, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsResponse do
@@ -739,7 +739,7 @@ defmodule InternalApi.Velocity.ListPipelineReliabilityMetricsResponse do
 
   defstruct [:metrics]
 
-  field(:metrics, 1, repeated: true, type: InternalApi.Velocity.ReliabilityMetric)
+  field :metrics, 1, repeated: true, type: InternalApi.Velocity.ReliabilityMetric
 end
 
 defmodule InternalApi.Velocity.ReliabilityMetric do
@@ -756,11 +756,11 @@ defmodule InternalApi.Velocity.ReliabilityMetric do
 
   defstruct [:from_date, :to_date, :all_count, :passed_count, :failed_count]
 
-  field(:from_date, 1, type: Google.Protobuf.Timestamp)
-  field(:to_date, 2, type: Google.Protobuf.Timestamp)
-  field(:all_count, 3, type: :int32)
-  field(:passed_count, 4, type: :int32)
-  field(:failed_count, 5, type: :int32)
+  field :from_date, 1, type: Google.Protobuf.Timestamp
+  field :to_date, 2, type: Google.Protobuf.Timestamp
+  field :all_count, 3, type: :int32
+  field :passed_count, 4, type: :int32
+  field :failed_count, 5, type: :int32
 end
 
 defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsRequest do
@@ -778,12 +778,12 @@ defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsRequest do
 
   defstruct [:project_id, :pipeline_file_name, :branch_name, :aggregate, :from_date, :to_date]
 
-  field(:project_id, 1, type: :string)
-  field(:pipeline_file_name, 2, type: :string)
-  field(:branch_name, 3, type: :string)
-  field(:aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true)
-  field(:from_date, 5, type: Google.Protobuf.Timestamp)
-  field(:to_date, 6, type: Google.Protobuf.Timestamp)
+  field :project_id, 1, type: :string
+  field :pipeline_file_name, 2, type: :string
+  field :branch_name, 3, type: :string
+  field :aggregate, 4, type: InternalApi.Velocity.MetricAggregation, enum: true
+  field :from_date, 5, type: Google.Protobuf.Timestamp
+  field :to_date, 6, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsResponse do
@@ -796,7 +796,7 @@ defmodule InternalApi.Velocity.ListPipelineFrequencyMetricsResponse do
 
   defstruct [:metrics]
 
-  field(:metrics, 1, repeated: true, type: InternalApi.Velocity.FrequencyMetric)
+  field :metrics, 1, repeated: true, type: InternalApi.Velocity.FrequencyMetric
 end
 
 defmodule InternalApi.Velocity.FrequencyMetric do
@@ -811,9 +811,9 @@ defmodule InternalApi.Velocity.FrequencyMetric do
 
   defstruct [:from_date, :to_date, :all_count]
 
-  field(:from_date, 1, type: Google.Protobuf.Timestamp)
-  field(:to_date, 2, type: Google.Protobuf.Timestamp)
-  field(:all_count, 3, type: :int32)
+  field :from_date, 1, type: Google.Protobuf.Timestamp
+  field :to_date, 2, type: Google.Protobuf.Timestamp
+  field :all_count, 3, type: :int32
 end
 
 defmodule InternalApi.Velocity.DescribeProjectPerformanceRequest do
@@ -830,11 +830,11 @@ defmodule InternalApi.Velocity.DescribeProjectPerformanceRequest do
 
   defstruct [:project_id, :pipeline_file_name, :branch_name, :from_date, :to_date]
 
-  field(:project_id, 1, type: :string)
-  field(:pipeline_file_name, 2, type: :string)
-  field(:branch_name, 3, type: :string)
-  field(:from_date, 4, type: Google.Protobuf.Timestamp)
-  field(:to_date, 5, type: Google.Protobuf.Timestamp)
+  field :project_id, 1, type: :string
+  field :pipeline_file_name, 2, type: :string
+  field :branch_name, 3, type: :string
+  field :from_date, 4, type: Google.Protobuf.Timestamp
+  field :to_date, 5, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.DescribeProjectPerformanceResponse do
@@ -850,10 +850,10 @@ defmodule InternalApi.Velocity.DescribeProjectPerformanceResponse do
 
   defstruct [:mean_time_to_recovery_seconds, :last_successful_run_at, :from_date, :to_date]
 
-  field(:mean_time_to_recovery_seconds, 1, type: :int32)
-  field(:last_successful_run_at, 2, type: Google.Protobuf.Timestamp)
-  field(:from_date, 3, type: Google.Protobuf.Timestamp)
-  field(:to_date, 4, type: Google.Protobuf.Timestamp)
+  field :mean_time_to_recovery_seconds, 1, type: :int32
+  field :last_successful_run_at, 2, type: Google.Protobuf.Timestamp
+  field :from_date, 3, type: Google.Protobuf.Timestamp
+  field :to_date, 4, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.DescribeProjectSettingsRequest do
@@ -866,7 +866,7 @@ defmodule InternalApi.Velocity.DescribeProjectSettingsRequest do
 
   defstruct [:project_id]
 
-  field(:project_id, 1, type: :string)
+  field :project_id, 1, type: :string
 end
 
 defmodule InternalApi.Velocity.DescribeProjectSettingsResponse do
@@ -879,7 +879,7 @@ defmodule InternalApi.Velocity.DescribeProjectSettingsResponse do
 
   defstruct [:settings]
 
-  field(:settings, 1, type: InternalApi.Velocity.Settings)
+  field :settings, 1, type: InternalApi.Velocity.Settings
 end
 
 defmodule InternalApi.Velocity.UpdateProjectSettingsRequest do
@@ -893,8 +893,8 @@ defmodule InternalApi.Velocity.UpdateProjectSettingsRequest do
 
   defstruct [:project_id, :settings]
 
-  field(:project_id, 1, type: :string)
-  field(:settings, 2, type: InternalApi.Velocity.Settings)
+  field :project_id, 1, type: :string
+  field :settings, 2, type: InternalApi.Velocity.Settings
 end
 
 defmodule InternalApi.Velocity.UpdateProjectSettingsResponse do
@@ -907,7 +907,7 @@ defmodule InternalApi.Velocity.UpdateProjectSettingsResponse do
 
   defstruct [:settings]
 
-  field(:settings, 1, type: InternalApi.Velocity.Settings)
+  field :settings, 1, type: InternalApi.Velocity.Settings
 end
 
 defmodule InternalApi.Velocity.Settings do
@@ -923,10 +923,10 @@ defmodule InternalApi.Velocity.Settings do
 
   defstruct [:cd_branch_name, :cd_pipeline_file_name, :ci_branch_name, :ci_pipeline_file_name]
 
-  field(:cd_branch_name, 1, type: :string)
-  field(:cd_pipeline_file_name, 2, type: :string)
-  field(:ci_branch_name, 3, type: :string)
-  field(:ci_pipeline_file_name, 4, type: :string)
+  field :cd_branch_name, 1, type: :string
+  field :cd_pipeline_file_name, 2, type: :string
+  field :ci_branch_name, 3, type: :string
+  field :ci_pipeline_file_name, 4, type: :string
 end
 
 defmodule InternalApi.Velocity.ListPipelineSummariesRequest do
@@ -939,7 +939,7 @@ defmodule InternalApi.Velocity.ListPipelineSummariesRequest do
 
   defstruct [:pipeline_ids]
 
-  field(:pipeline_ids, 1, repeated: true, type: :string)
+  field :pipeline_ids, 1, repeated: true, type: :string
 end
 
 defmodule InternalApi.Velocity.ListPipelineSummariesResponse do
@@ -952,7 +952,7 @@ defmodule InternalApi.Velocity.ListPipelineSummariesResponse do
 
   defstruct [:pipeline_summaries]
 
-  field(:pipeline_summaries, 1, repeated: true, type: InternalApi.Velocity.PipelineSummary)
+  field :pipeline_summaries, 1, repeated: true, type: InternalApi.Velocity.PipelineSummary
 end
 
 defmodule InternalApi.Velocity.ListJobSummariesRequest do
@@ -965,7 +965,7 @@ defmodule InternalApi.Velocity.ListJobSummariesRequest do
 
   defstruct [:job_ids]
 
-  field(:job_ids, 1, repeated: true, type: :string)
+  field :job_ids, 1, repeated: true, type: :string
 end
 
 defmodule InternalApi.Velocity.ListJobSummariesResponse do
@@ -978,7 +978,7 @@ defmodule InternalApi.Velocity.ListJobSummariesResponse do
 
   defstruct [:job_summaries]
 
-  field(:job_summaries, 1, repeated: true, type: InternalApi.Velocity.JobSummary)
+  field :job_summaries, 1, repeated: true, type: InternalApi.Velocity.JobSummary
 end
 
 defmodule InternalApi.Velocity.PipelineSummary do
@@ -992,8 +992,8 @@ defmodule InternalApi.Velocity.PipelineSummary do
 
   defstruct [:pipeline_id, :summary]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:summary, 3, type: InternalApi.Velocity.Summary)
+  field :pipeline_id, 1, type: :string
+  field :summary, 3, type: InternalApi.Velocity.Summary
 end
 
 defmodule InternalApi.Velocity.JobSummary do
@@ -1008,9 +1008,9 @@ defmodule InternalApi.Velocity.JobSummary do
 
   defstruct [:job_id, :pipeline_id, :summary]
 
-  field(:job_id, 1, type: :string)
-  field(:pipeline_id, 2, type: :string)
-  field(:summary, 4, type: InternalApi.Velocity.Summary)
+  field :job_id, 1, type: :string
+  field :pipeline_id, 2, type: :string
+  field :summary, 4, type: InternalApi.Velocity.Summary
 end
 
 defmodule InternalApi.Velocity.Summary do
@@ -1029,13 +1029,13 @@ defmodule InternalApi.Velocity.Summary do
 
   defstruct [:total, :passed, :skipped, :error, :failed, :disabled, :duration]
 
-  field(:total, 1, type: :int32)
-  field(:passed, 2, type: :int32)
-  field(:skipped, 3, type: :int32)
-  field(:error, 4, type: :int32)
-  field(:failed, 5, type: :int32)
-  field(:disabled, 6, type: :int32)
-  field(:duration, 7, type: :int64)
+  field :total, 1, type: :int32
+  field :passed, 2, type: :int32
+  field :skipped, 3, type: :int32
+  field :error, 4, type: :int32
+  field :failed, 5, type: :int32
+  field :disabled, 6, type: :int32
+  field :duration, 7, type: :int64
 end
 
 defmodule InternalApi.Velocity.PipelineSummaryAvailableEvent do
@@ -1049,8 +1049,8 @@ defmodule InternalApi.Velocity.PipelineSummaryAvailableEvent do
 
   defstruct [:pipeline_id, :timestamp]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :pipeline_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.JobSummaryAvailableEvent do
@@ -1064,8 +1064,8 @@ defmodule InternalApi.Velocity.JobSummaryAvailableEvent do
 
   defstruct [:job_id, :timestamp]
 
-  field(:job_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :job_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Velocity.CollectPipelineMetricsEvent do
@@ -1092,13 +1092,13 @@ defmodule InternalApi.Velocity.CollectPipelineMetricsEvent do
     :project_name
   ]
 
-  field(:project_id, 1, type: :string)
-  field(:organization_id, 2, type: :string)
-  field(:pipeline_file_name, 3, type: :string)
-  field(:branch_name, 4, type: :string)
-  field(:metric_day, 5, type: Google.Protobuf.Timestamp)
-  field(:timestamp, 6, type: Google.Protobuf.Timestamp)
-  field(:project_name, 7, type: :string)
+  field :project_id, 1, type: :string
+  field :organization_id, 2, type: :string
+  field :pipeline_file_name, 3, type: :string
+  field :branch_name, 4, type: :string
+  field :metric_day, 5, type: Google.Protobuf.Timestamp
+  field :timestamp, 6, type: Google.Protobuf.Timestamp
+  field :project_name, 7, type: :string
 end
 
 defmodule InternalApi.Velocity.CollectSuperjerryJobReportEvent do
@@ -1114,159 +1114,111 @@ defmodule InternalApi.Velocity.CollectSuperjerryJobReportEvent do
 
   defstruct [:organization_id, :project_id, :pipeline_id, :job_id]
 
-  field(:organization_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:pipeline_id, 3, type: :string)
-  field(:job_id, 4, type: :string)
+  field :organization_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :pipeline_id, 3, type: :string
+  field :job_id, 4, type: :string
 end
 
 defmodule InternalApi.Velocity.PipelineMetricsService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Velocity.PipelineMetricsService"
 
-  rpc(
-    :ListPipelineSummaries,
-    InternalApi.Velocity.ListPipelineSummariesRequest,
-    InternalApi.Velocity.ListPipelineSummariesResponse
-  )
+  rpc :ListPipelineSummaries,
+      InternalApi.Velocity.ListPipelineSummariesRequest,
+      InternalApi.Velocity.ListPipelineSummariesResponse
 
-  rpc(
-    :ListJobSummaries,
-    InternalApi.Velocity.ListJobSummariesRequest,
-    InternalApi.Velocity.ListJobSummariesResponse
-  )
+  rpc :ListJobSummaries,
+      InternalApi.Velocity.ListJobSummariesRequest,
+      InternalApi.Velocity.ListJobSummariesResponse
 
-  rpc(
-    :ListPipelinePerformanceMetrics,
-    InternalApi.Velocity.ListPipelinePerformanceMetricsRequest,
-    InternalApi.Velocity.ListPipelinePerformanceMetricsResponse
-  )
+  rpc :ListPipelinePerformanceMetrics,
+      InternalApi.Velocity.ListPipelinePerformanceMetricsRequest,
+      InternalApi.Velocity.ListPipelinePerformanceMetricsResponse
 
-  rpc(
-    :ListPipelineReliabilityMetrics,
-    InternalApi.Velocity.ListPipelineReliabilityMetricsRequest,
-    InternalApi.Velocity.ListPipelineReliabilityMetricsResponse
-  )
+  rpc :ListPipelineReliabilityMetrics,
+      InternalApi.Velocity.ListPipelineReliabilityMetricsRequest,
+      InternalApi.Velocity.ListPipelineReliabilityMetricsResponse
 
-  rpc(
-    :ListPipelineFrequencyMetrics,
-    InternalApi.Velocity.ListPipelineFrequencyMetricsRequest,
-    InternalApi.Velocity.ListPipelineFrequencyMetricsResponse
-  )
+  rpc :ListPipelineFrequencyMetrics,
+      InternalApi.Velocity.ListPipelineFrequencyMetricsRequest,
+      InternalApi.Velocity.ListPipelineFrequencyMetricsResponse
 
-  rpc(
-    :DescribeProjectPerformance,
-    InternalApi.Velocity.DescribeProjectPerformanceRequest,
-    InternalApi.Velocity.DescribeProjectPerformanceResponse
-  )
+  rpc :DescribeProjectPerformance,
+      InternalApi.Velocity.DescribeProjectPerformanceRequest,
+      InternalApi.Velocity.DescribeProjectPerformanceResponse
 
-  rpc(
-    :DescribeProjectSettings,
-    InternalApi.Velocity.DescribeProjectSettingsRequest,
-    InternalApi.Velocity.DescribeProjectSettingsResponse
-  )
+  rpc :DescribeProjectSettings,
+      InternalApi.Velocity.DescribeProjectSettingsRequest,
+      InternalApi.Velocity.DescribeProjectSettingsResponse
 
-  rpc(
-    :UpdateProjectSettings,
-    InternalApi.Velocity.UpdateProjectSettingsRequest,
-    InternalApi.Velocity.UpdateProjectSettingsResponse
-  )
+  rpc :UpdateProjectSettings,
+      InternalApi.Velocity.UpdateProjectSettingsRequest,
+      InternalApi.Velocity.UpdateProjectSettingsResponse
 
-  rpc(
-    :DescribeMetricsDashboard,
-    InternalApi.Velocity.DescribeMetricsDashboardRequest,
-    InternalApi.Velocity.DescribeMetricsDashboardResponse
-  )
+  rpc :DescribeMetricsDashboard,
+      InternalApi.Velocity.DescribeMetricsDashboardRequest,
+      InternalApi.Velocity.DescribeMetricsDashboardResponse
 
-  rpc(
-    :ListMetricsDashboards,
-    InternalApi.Velocity.ListMetricsDashboardsRequest,
-    InternalApi.Velocity.ListMetricsDashboardsResponse
-  )
+  rpc :ListMetricsDashboards,
+      InternalApi.Velocity.ListMetricsDashboardsRequest,
+      InternalApi.Velocity.ListMetricsDashboardsResponse
 
-  rpc(
-    :CreateMetricsDashboard,
-    InternalApi.Velocity.CreateMetricsDashboardRequest,
-    InternalApi.Velocity.CreateMetricsDashboardResponse
-  )
+  rpc :CreateMetricsDashboard,
+      InternalApi.Velocity.CreateMetricsDashboardRequest,
+      InternalApi.Velocity.CreateMetricsDashboardResponse
 
-  rpc(
-    :UpdateMetricsDashboard,
-    InternalApi.Velocity.UpdateMetricsDashboardRequest,
-    InternalApi.Velocity.UpdateMetricsDashboardResponse
-  )
+  rpc :UpdateMetricsDashboard,
+      InternalApi.Velocity.UpdateMetricsDashboardRequest,
+      InternalApi.Velocity.UpdateMetricsDashboardResponse
 
-  rpc(
-    :DeleteMetricsDashboard,
-    InternalApi.Velocity.DeleteMetricsDashboardRequest,
-    InternalApi.Velocity.DeleteMetricsDashboardResponse
-  )
+  rpc :DeleteMetricsDashboard,
+      InternalApi.Velocity.DeleteMetricsDashboardRequest,
+      InternalApi.Velocity.DeleteMetricsDashboardResponse
 
-  rpc(
-    :CreateDashboardItem,
-    InternalApi.Velocity.CreateDashboardItemRequest,
-    InternalApi.Velocity.CreateDashboardItemResponse
-  )
+  rpc :CreateDashboardItem,
+      InternalApi.Velocity.CreateDashboardItemRequest,
+      InternalApi.Velocity.CreateDashboardItemResponse
 
-  rpc(
-    :UpdateDashboardItem,
-    InternalApi.Velocity.UpdateDashboardItemRequest,
-    InternalApi.Velocity.UpdateDashboardItemResponse
-  )
+  rpc :UpdateDashboardItem,
+      InternalApi.Velocity.UpdateDashboardItemRequest,
+      InternalApi.Velocity.UpdateDashboardItemResponse
 
-  rpc(
-    :DeleteDashboardItem,
-    InternalApi.Velocity.DeleteDashboardItemRequest,
-    InternalApi.Velocity.DeleteDashboardItemResponse
-  )
+  rpc :DeleteDashboardItem,
+      InternalApi.Velocity.DeleteDashboardItemRequest,
+      InternalApi.Velocity.DeleteDashboardItemResponse
 
-  rpc(
-    :DescribeDashboardItem,
-    InternalApi.Velocity.DescribeDashboardItemRequest,
-    InternalApi.Velocity.DescribeDashboardItemResponse
-  )
+  rpc :DescribeDashboardItem,
+      InternalApi.Velocity.DescribeDashboardItemRequest,
+      InternalApi.Velocity.DescribeDashboardItemResponse
 
-  rpc(
-    :ChangeDashboardItemNotes,
-    InternalApi.Velocity.ChangeDashboardItemNotesRequest,
-    InternalApi.Velocity.ChangeDashboardItemNotesResponse
-  )
+  rpc :ChangeDashboardItemNotes,
+      InternalApi.Velocity.ChangeDashboardItemNotesRequest,
+      InternalApi.Velocity.ChangeDashboardItemNotesResponse
 
-  rpc(
-    :FetchOrganizationHealth,
-    InternalApi.Velocity.OrganizationHealthRequest,
-    InternalApi.Velocity.OrganizationHealthResponse
-  )
+  rpc :FetchOrganizationHealth,
+      InternalApi.Velocity.OrganizationHealthRequest,
+      InternalApi.Velocity.OrganizationHealthResponse
 
-  rpc(
-    :ListFlakyTestsFilters,
-    InternalApi.Velocity.ListFlakyTestsFiltersRequest,
-    InternalApi.Velocity.ListFlakyTestsFiltersResponse
-  )
+  rpc :ListFlakyTestsFilters,
+      InternalApi.Velocity.ListFlakyTestsFiltersRequest,
+      InternalApi.Velocity.ListFlakyTestsFiltersResponse
 
-  rpc(
-    :CreateFlakyTestsFilter,
-    InternalApi.Velocity.CreateFlakyTestsFilterRequest,
-    InternalApi.Velocity.CreateFlakyTestsFilterResponse
-  )
+  rpc :CreateFlakyTestsFilter,
+      InternalApi.Velocity.CreateFlakyTestsFilterRequest,
+      InternalApi.Velocity.CreateFlakyTestsFilterResponse
 
-  rpc(
-    :RemoveFlakyTestsFilter,
-    InternalApi.Velocity.RemoveFlakyTestsFilterRequest,
-    InternalApi.Velocity.RemoveFlakyTestsFilterResponse
-  )
+  rpc :RemoveFlakyTestsFilter,
+      InternalApi.Velocity.RemoveFlakyTestsFilterRequest,
+      InternalApi.Velocity.RemoveFlakyTestsFilterResponse
 
-  rpc(
-    :UpdateFlakyTestsFilter,
-    InternalApi.Velocity.UpdateFlakyTestsFilterRequest,
-    InternalApi.Velocity.UpdateFlakyTestsFilterResponse
-  )
+  rpc :UpdateFlakyTestsFilter,
+      InternalApi.Velocity.UpdateFlakyTestsFilterRequest,
+      InternalApi.Velocity.UpdateFlakyTestsFilterResponse
 
-  rpc(
-    :InitializeFlakyTestsFilters,
-    InternalApi.Velocity.InitializeFlakyTestsFiltersRequest,
-    InternalApi.Velocity.InitializeFlakyTestsFiltersResponse
-  )
+  rpc :InitializeFlakyTestsFilters,
+      InternalApi.Velocity.InitializeFlakyTestsFiltersRequest,
+      InternalApi.Velocity.InitializeFlakyTestsFiltersResponse
 end
 
 defmodule InternalApi.Velocity.PipelineMetricsService.Stub do
