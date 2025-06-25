@@ -10,9 +10,9 @@ defmodule InternalApi.GithubNotifier.BlockStartedRequest do
 
   defstruct [:pipeline_id, :block_id, :timestamp]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:block_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+  field :pipeline_id, 1, type: :string
+  field :block_id, 2, type: :string
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.GithubNotifier.BlockStartedResponse do
@@ -25,7 +25,7 @@ defmodule InternalApi.GithubNotifier.BlockStartedResponse do
 
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.ResponseStatus)
+  field :status, 1, type: InternalApi.ResponseStatus
 end
 
 defmodule InternalApi.GithubNotifier.BlockFinishedRequest do
@@ -40,9 +40,9 @@ defmodule InternalApi.GithubNotifier.BlockFinishedRequest do
 
   defstruct [:pipeline_id, :block_id, :timestamp]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:block_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+  field :pipeline_id, 1, type: :string
+  field :block_id, 2, type: :string
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.GithubNotifier.BlockFinishedResponse do
@@ -55,7 +55,7 @@ defmodule InternalApi.GithubNotifier.BlockFinishedResponse do
 
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.ResponseStatus)
+  field :status, 1, type: InternalApi.ResponseStatus
 end
 
 defmodule InternalApi.GithubNotifier.PipelineStartedRequest do
@@ -69,8 +69,8 @@ defmodule InternalApi.GithubNotifier.PipelineStartedRequest do
 
   defstruct [:pipeline_id, :timestamp]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :pipeline_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.GithubNotifier.PipelineStartedResponse do
@@ -83,7 +83,7 @@ defmodule InternalApi.GithubNotifier.PipelineStartedResponse do
 
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.ResponseStatus)
+  field :status, 1, type: InternalApi.ResponseStatus
 end
 
 defmodule InternalApi.GithubNotifier.PipelineFinishedRequest do
@@ -97,8 +97,8 @@ defmodule InternalApi.GithubNotifier.PipelineFinishedRequest do
 
   defstruct [:pipeline_id, :timestamp]
 
-  field(:pipeline_id, 1, type: :string)
-  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+  field :pipeline_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.GithubNotifier.PipelineFinishedResponse do
@@ -111,36 +111,28 @@ defmodule InternalApi.GithubNotifier.PipelineFinishedResponse do
 
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.ResponseStatus)
+  field :status, 1, type: InternalApi.ResponseStatus
 end
 
 defmodule InternalApi.GithubNotifier.GithubNotifier.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.GithubNotifier.GithubNotifier"
 
-  rpc(
-    :BlockStarted,
-    InternalApi.GithubNotifier.BlockStartedRequest,
-    InternalApi.GithubNotifier.BlockStartedResponse
-  )
+  rpc :BlockStarted,
+      InternalApi.GithubNotifier.BlockStartedRequest,
+      InternalApi.GithubNotifier.BlockStartedResponse
 
-  rpc(
-    :BlockFinished,
-    InternalApi.GithubNotifier.BlockFinishedRequest,
-    InternalApi.GithubNotifier.BlockFinishedResponse
-  )
+  rpc :BlockFinished,
+      InternalApi.GithubNotifier.BlockFinishedRequest,
+      InternalApi.GithubNotifier.BlockFinishedResponse
 
-  rpc(
-    :PipelineStarted,
-    InternalApi.GithubNotifier.PipelineStartedRequest,
-    InternalApi.GithubNotifier.PipelineStartedResponse
-  )
+  rpc :PipelineStarted,
+      InternalApi.GithubNotifier.PipelineStartedRequest,
+      InternalApi.GithubNotifier.PipelineStartedResponse
 
-  rpc(
-    :PipelineFinished,
-    InternalApi.GithubNotifier.PipelineFinishedRequest,
-    InternalApi.GithubNotifier.PipelineFinishedResponse
-  )
+  rpc :PipelineFinished,
+      InternalApi.GithubNotifier.PipelineFinishedRequest,
+      InternalApi.GithubNotifier.PipelineFinishedResponse
 end
 
 defmodule InternalApi.GithubNotifier.GithubNotifier.Stub do

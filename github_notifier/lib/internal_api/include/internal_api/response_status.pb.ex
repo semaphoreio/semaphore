@@ -3,9 +3,9 @@ defmodule InternalApi.ResponseStatus.Code do
   use Protobuf, enum: true, syntax: :proto3
   @type t :: integer | :OK | :BAD_PARAM
 
-  field(:OK, 0)
+  field :OK, 0
 
-  field(:BAD_PARAM, 1)
+  field :BAD_PARAM, 1
 end
 
 defmodule InternalApi.ResponseStatus do
@@ -19,6 +19,6 @@ defmodule InternalApi.ResponseStatus do
 
   defstruct [:code, :message]
 
-  field(:code, 1, type: InternalApi.ResponseStatus.Code, enum: true)
-  field(:message, 2, type: :string)
+  field :code, 1, type: InternalApi.ResponseStatus.Code, enum: true
+  field :message, 2, type: :string
 end

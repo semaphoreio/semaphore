@@ -11,11 +11,11 @@ defmodule InternalApi.Secrethub.RequestMeta do
         }
   defstruct [:api_version, :kind, :req_id, :org_id, :user_id]
 
-  field(:api_version, 1, type: :string)
-  field(:kind, 2, type: :string)
-  field(:req_id, 3, type: :string)
-  field(:org_id, 4, type: :string)
-  field(:user_id, 5, type: :string)
+  field :api_version, 1, type: :string
+  field :kind, 2, type: :string
+  field :req_id, 3, type: :string
+  field :org_id, 4, type: :string
+  field :user_id, 5, type: :string
 end
 
 defmodule InternalApi.Secrethub.ResponseMeta do
@@ -32,12 +32,12 @@ defmodule InternalApi.Secrethub.ResponseMeta do
         }
   defstruct [:api_version, :kind, :req_id, :org_id, :user_id, :status]
 
-  field(:api_version, 1, type: :string)
-  field(:kind, 2, type: :string)
-  field(:req_id, 3, type: :string)
-  field(:org_id, 4, type: :string)
-  field(:user_id, 5, type: :string)
-  field(:status, 6, type: InternalApi.Secrethub.ResponseMeta.Status)
+  field :api_version, 1, type: :string
+  field :kind, 2, type: :string
+  field :req_id, 3, type: :string
+  field :org_id, 4, type: :string
+  field :user_id, 5, type: :string
+  field :status, 6, type: InternalApi.Secrethub.ResponseMeta.Status
 end
 
 defmodule InternalApi.Secrethub.ResponseMeta.Status do
@@ -50,17 +50,17 @@ defmodule InternalApi.Secrethub.ResponseMeta.Status do
         }
   defstruct [:code, :message]
 
-  field(:code, 1, type: InternalApi.Secrethub.ResponseMeta.Code, enum: true)
-  field(:message, 2, type: :string)
+  field :code, 1, type: InternalApi.Secrethub.ResponseMeta.Code, enum: true
+  field :message, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.ResponseMeta.Code do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:OK, 0)
-  field(:NOT_FOUND, 2)
-  field(:FAILED_PRECONDITION, 3)
+  field :OK, 0
+  field :NOT_FOUND, 2
+  field :FAILED_PRECONDITION, 3
 end
 
 defmodule InternalApi.Secrethub.PaginationRequest do
@@ -73,8 +73,8 @@ defmodule InternalApi.Secrethub.PaginationRequest do
         }
   defstruct [:page, :page_size]
 
-  field(:page, 1, type: :int32)
-  field(:page_size, 2, type: :int32)
+  field :page, 1, type: :int32
+  field :page_size, 2, type: :int32
 end
 
 defmodule InternalApi.Secrethub.PaginationResponse do
@@ -89,10 +89,10 @@ defmodule InternalApi.Secrethub.PaginationResponse do
         }
   defstruct [:page_number, :page_size, :total_entries, :total_pages]
 
-  field(:page_number, 1, type: :int32)
-  field(:page_size, 2, type: :int32)
-  field(:total_entries, 3, type: :int32)
-  field(:total_pages, 4, type: :int32)
+  field :page_number, 1, type: :int32
+  field :page_size, 2, type: :int32
+  field :total_entries, 3, type: :int32
+  field :total_pages, 4, type: :int32
 end
 
 defmodule InternalApi.Secrethub.Secret do
@@ -108,11 +108,11 @@ defmodule InternalApi.Secrethub.Secret do
         }
   defstruct [:metadata, :data, :org_config, :project_config, :dt_config]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.Secret.Metadata)
-  field(:data, 2, type: InternalApi.Secrethub.Secret.Data)
-  field(:org_config, 3, type: InternalApi.Secrethub.Secret.OrgConfig)
-  field(:project_config, 4, type: InternalApi.Secrethub.Secret.ProjectConfig)
-  field(:dt_config, 5, type: InternalApi.Secrethub.Secret.DTConfig)
+  field :metadata, 1, type: InternalApi.Secrethub.Secret.Metadata
+  field :data, 2, type: InternalApi.Secrethub.Secret.Data
+  field :org_config, 3, type: InternalApi.Secrethub.Secret.OrgConfig
+  field :project_config, 4, type: InternalApi.Secrethub.Secret.ProjectConfig
+  field :dt_config, 5, type: InternalApi.Secrethub.Secret.DTConfig
 end
 
 defmodule InternalApi.Secrethub.Secret.Metadata do
@@ -146,17 +146,17 @@ defmodule InternalApi.Secrethub.Secret.Metadata do
     :description
   ]
 
-  field(:name, 1, type: :string)
-  field(:id, 2, type: :string)
-  field(:org_id, 3, type: :string)
-  field(:level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
-  field(:created_by, 5, type: :string)
-  field(:updated_by, 6, type: :string)
-  field(:last_checkout, 7, type: InternalApi.Secrethub.CheckoutMetadata)
-  field(:created_at, 8, type: Google.Protobuf.Timestamp)
-  field(:updated_at, 9, type: Google.Protobuf.Timestamp)
-  field(:checkout_at, 10, type: Google.Protobuf.Timestamp)
-  field(:description, 11, type: :string)
+  field :name, 1, type: :string
+  field :id, 2, type: :string
+  field :org_id, 3, type: :string
+  field :level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
+  field :created_by, 5, type: :string
+  field :updated_by, 6, type: :string
+  field :last_checkout, 7, type: InternalApi.Secrethub.CheckoutMetadata
+  field :created_at, 8, type: Google.Protobuf.Timestamp
+  field :updated_at, 9, type: Google.Protobuf.Timestamp
+  field :checkout_at, 10, type: Google.Protobuf.Timestamp
+  field :description, 11, type: :string
 end
 
 defmodule InternalApi.Secrethub.Secret.EnvVar do
@@ -169,8 +169,8 @@ defmodule InternalApi.Secrethub.Secret.EnvVar do
         }
   defstruct [:name, :value]
 
-  field(:name, 1, type: :string)
-  field(:value, 2, type: :string)
+  field :name, 1, type: :string
+  field :value, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.Secret.File do
@@ -183,8 +183,8 @@ defmodule InternalApi.Secrethub.Secret.File do
         }
   defstruct [:path, :content]
 
-  field(:path, 1, type: :string)
-  field(:content, 2, type: :string)
+  field :path, 1, type: :string
+  field :content, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.Secret.Data do
@@ -197,8 +197,8 @@ defmodule InternalApi.Secrethub.Secret.Data do
         }
   defstruct [:env_vars, :files]
 
-  field(:env_vars, 1, repeated: true, type: InternalApi.Secrethub.Secret.EnvVar)
-  field(:files, 2, repeated: true, type: InternalApi.Secrethub.Secret.File)
+  field :env_vars, 1, repeated: true, type: InternalApi.Secrethub.Secret.EnvVar
+  field :files, 2, repeated: true, type: InternalApi.Secrethub.Secret.File
 end
 
 defmodule InternalApi.Secrethub.Secret.OrgConfig do
@@ -213,43 +213,41 @@ defmodule InternalApi.Secrethub.Secret.OrgConfig do
         }
   defstruct [:projects_access, :project_ids, :debug_access, :attach_access]
 
-  field(:projects_access, 1,
+  field :projects_access, 1,
     type: InternalApi.Secrethub.Secret.OrgConfig.ProjectsAccess,
     enum: true
-  )
 
-  field(:project_ids, 2, repeated: true, type: :string)
-  field(:debug_access, 3, type: InternalApi.Secrethub.Secret.OrgConfig.JobDebugAccess, enum: true)
+  field :project_ids, 2, repeated: true, type: :string
+  field :debug_access, 3, type: InternalApi.Secrethub.Secret.OrgConfig.JobDebugAccess, enum: true
 
-  field(:attach_access, 4,
+  field :attach_access, 4,
     type: InternalApi.Secrethub.Secret.OrgConfig.JobAttachAccess,
     enum: true
-  )
 end
 
 defmodule InternalApi.Secrethub.Secret.OrgConfig.ProjectsAccess do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:ALL, 0)
-  field(:ALLOWED, 1)
-  field(:NONE, 2)
+  field :ALL, 0
+  field :ALLOWED, 1
+  field :NONE, 2
 end
 
 defmodule InternalApi.Secrethub.Secret.OrgConfig.JobAttachAccess do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:JOB_ATTACH_YES, 0)
-  field(:JOB_ATTACH_NO, 2)
+  field :JOB_ATTACH_YES, 0
+  field :JOB_ATTACH_NO, 2
 end
 
 defmodule InternalApi.Secrethub.Secret.OrgConfig.JobDebugAccess do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:JOB_DEBUG_YES, 0)
-  field(:JOB_DEBUG_NO, 2)
+  field :JOB_DEBUG_YES, 0
+  field :JOB_DEBUG_NO, 2
 end
 
 defmodule InternalApi.Secrethub.Secret.ProjectConfig do
@@ -261,7 +259,7 @@ defmodule InternalApi.Secrethub.Secret.ProjectConfig do
         }
   defstruct [:project_id]
 
-  field(:project_id, 1, type: :string)
+  field :project_id, 1, type: :string
 end
 
 defmodule InternalApi.Secrethub.Secret.DTConfig do
@@ -273,16 +271,16 @@ defmodule InternalApi.Secrethub.Secret.DTConfig do
         }
   defstruct [:deployment_target_id]
 
-  field(:deployment_target_id, 1, type: :string)
+  field :deployment_target_id, 1, type: :string
 end
 
 defmodule InternalApi.Secrethub.Secret.SecretLevel do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:ORGANIZATION, 0)
-  field(:PROJECT, 1)
-  field(:DEPLOYMENT_TARGET, 2)
+  field :ORGANIZATION, 0
+  field :PROJECT, 1
+  field :DEPLOYMENT_TARGET, 2
 end
 
 defmodule InternalApi.Secrethub.EncryptedData do
@@ -297,10 +295,10 @@ defmodule InternalApi.Secrethub.EncryptedData do
         }
   defstruct [:key_id, :aes256_key, :init_vector, :payload]
 
-  field(:key_id, 1, type: :string)
-  field(:aes256_key, 2, type: :string)
-  field(:init_vector, 3, type: :string)
-  field(:payload, 4, type: :string)
+  field :key_id, 1, type: :string
+  field :aes256_key, 2, type: :string
+  field :init_vector, 3, type: :string
+  field :payload, 4, type: :string
 end
 
 defmodule InternalApi.Secrethub.ListRequest do
@@ -315,10 +313,10 @@ defmodule InternalApi.Secrethub.ListRequest do
         }
   defstruct [:metadata, :pagination, :project_id, :secret_level]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:pagination, 2, type: InternalApi.Secrethub.PaginationRequest)
-  field(:project_id, 3, type: :string)
-  field(:secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :pagination, 2, type: InternalApi.Secrethub.PaginationRequest
+  field :project_id, 3, type: :string
+  field :secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
 end
 
 defmodule InternalApi.Secrethub.ListResponse do
@@ -332,9 +330,9 @@ defmodule InternalApi.Secrethub.ListResponse do
         }
   defstruct [:metadata, :pagination, :secrets]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:pagination, 2, type: InternalApi.Secrethub.PaginationResponse)
-  field(:secrets, 3, repeated: true, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :pagination, 2, type: InternalApi.Secrethub.PaginationResponse
+  field :secrets, 3, repeated: true, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.ListKeysetRequest do
@@ -362,22 +360,22 @@ defmodule InternalApi.Secrethub.ListKeysetRequest do
     :ignore_contents
   ]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:page_size, 2, type: :int32)
-  field(:page_token, 3, type: :string)
-  field(:order, 4, type: InternalApi.Secrethub.ListKeysetRequest.Order, enum: true)
-  field(:secret_level, 5, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
-  field(:project_id, 6, type: :string)
-  field(:deployment_target_id, 7, type: :string)
-  field(:ignore_contents, 8, type: :bool)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :page_size, 2, type: :int32
+  field :page_token, 3, type: :string
+  field :order, 4, type: InternalApi.Secrethub.ListKeysetRequest.Order, enum: true
+  field :secret_level, 5, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
+  field :project_id, 6, type: :string
+  field :deployment_target_id, 7, type: :string
+  field :ignore_contents, 8, type: :bool
 end
 
 defmodule InternalApi.Secrethub.ListKeysetRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:BY_NAME_ASC, 0)
-  field(:BY_CREATE_TIME_ASC, 1)
+  field :BY_NAME_ASC, 0
+  field :BY_CREATE_TIME_ASC, 1
 end
 
 defmodule InternalApi.Secrethub.ListKeysetResponse do
@@ -391,9 +389,9 @@ defmodule InternalApi.Secrethub.ListKeysetResponse do
         }
   defstruct [:metadata, :secrets, :next_page_token]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret)
-  field(:next_page_token, 3, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret
+  field :next_page_token, 3, type: :string
 end
 
 defmodule InternalApi.Secrethub.DescribeRequest do
@@ -410,12 +408,12 @@ defmodule InternalApi.Secrethub.DescribeRequest do
         }
   defstruct [:metadata, :id, :name, :secret_level, :project_id, :deployment_target_id]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:id, 2, type: :string)
-  field(:name, 3, type: :string)
-  field(:secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
-  field(:project_id, 5, type: :string)
-  field(:deployment_target_id, 6, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :id, 2, type: :string
+  field :name, 3, type: :string
+  field :secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
+  field :project_id, 5, type: :string
+  field :deployment_target_id, 6, type: :string
 end
 
 defmodule InternalApi.Secrethub.DescribeResponse do
@@ -428,8 +426,8 @@ defmodule InternalApi.Secrethub.DescribeResponse do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.CheckoutMetadata do
@@ -446,12 +444,12 @@ defmodule InternalApi.Secrethub.CheckoutMetadata do
         }
   defstruct [:job_id, :pipeline_id, :workflow_id, :hook_id, :project_id, :user_id]
 
-  field(:job_id, 1, type: :string)
-  field(:pipeline_id, 2, type: :string)
-  field(:workflow_id, 3, type: :string)
-  field(:hook_id, 4, type: :string)
-  field(:project_id, 5, type: :string)
-  field(:user_id, 6, type: :string)
+  field :job_id, 1, type: :string
+  field :pipeline_id, 2, type: :string
+  field :workflow_id, 3, type: :string
+  field :hook_id, 4, type: :string
+  field :project_id, 5, type: :string
+  field :user_id, 6, type: :string
 end
 
 defmodule InternalApi.Secrethub.CheckoutRequest do
@@ -467,11 +465,11 @@ defmodule InternalApi.Secrethub.CheckoutRequest do
         }
   defstruct [:metadata, :checkout_metadata, :name, :project_id, :deployment_target_id]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:checkout_metadata, 2, type: InternalApi.Secrethub.CheckoutMetadata)
-  field(:name, 3, type: :string)
-  field(:project_id, 4, type: :string)
-  field(:deployment_target_id, 5, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :checkout_metadata, 2, type: InternalApi.Secrethub.CheckoutMetadata
+  field :name, 3, type: :string
+  field :project_id, 4, type: :string
+  field :deployment_target_id, 5, type: :string
 end
 
 defmodule InternalApi.Secrethub.CheckoutResponse do
@@ -484,8 +482,8 @@ defmodule InternalApi.Secrethub.CheckoutResponse do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.CheckoutManyRequest do
@@ -501,11 +499,11 @@ defmodule InternalApi.Secrethub.CheckoutManyRequest do
         }
   defstruct [:metadata, :checkout_metadata, :names, :project_id, :deployment_target_id]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:checkout_metadata, 2, type: InternalApi.Secrethub.CheckoutMetadata)
-  field(:names, 3, repeated: true, type: :string)
-  field(:project_id, 4, type: :string)
-  field(:deployment_target_id, 5, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :checkout_metadata, 2, type: InternalApi.Secrethub.CheckoutMetadata
+  field :names, 3, repeated: true, type: :string
+  field :project_id, 4, type: :string
+  field :deployment_target_id, 5, type: :string
 end
 
 defmodule InternalApi.Secrethub.CheckoutManyResponse do
@@ -518,8 +516,8 @@ defmodule InternalApi.Secrethub.CheckoutManyResponse do
         }
   defstruct [:metadata, :secrets]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.DescribeManyRequest do
@@ -536,12 +534,12 @@ defmodule InternalApi.Secrethub.DescribeManyRequest do
         }
   defstruct [:metadata, :ids, :names, :project_id, :deployment_target_id, :secret_level]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:ids, 2, repeated: true, type: :string)
-  field(:names, 3, repeated: true, type: :string)
-  field(:project_id, 4, type: :string)
-  field(:deployment_target_id, 5, type: :string)
-  field(:secret_level, 6, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :ids, 2, repeated: true, type: :string
+  field :names, 3, repeated: true, type: :string
+  field :project_id, 4, type: :string
+  field :deployment_target_id, 5, type: :string
+  field :secret_level, 6, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
 end
 
 defmodule InternalApi.Secrethub.DescribeManyResponse do
@@ -554,8 +552,8 @@ defmodule InternalApi.Secrethub.DescribeManyResponse do
         }
   defstruct [:metadata, :secrets]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secrets, 2, repeated: true, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.CreateRequest do
@@ -568,8 +566,8 @@ defmodule InternalApi.Secrethub.CreateRequest do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.CreateResponse do
@@ -582,8 +580,8 @@ defmodule InternalApi.Secrethub.CreateResponse do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.UpdateRequest do
@@ -596,8 +594,8 @@ defmodule InternalApi.Secrethub.UpdateRequest do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.UpdateResponse do
@@ -610,8 +608,8 @@ defmodule InternalApi.Secrethub.UpdateResponse do
         }
   defstruct [:metadata, :secret]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
 end
 
 defmodule InternalApi.Secrethub.DestroyRequest do
@@ -628,12 +626,12 @@ defmodule InternalApi.Secrethub.DestroyRequest do
         }
   defstruct [:metadata, :id, :name, :secret_level, :project_id, :deployment_target_id]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:id, 2, type: :string)
-  field(:name, 3, type: :string)
-  field(:secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
-  field(:project_id, 5, type: :string)
-  field(:deployment_target_id, 6, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :id, 2, type: :string
+  field :name, 3, type: :string
+  field :secret_level, 4, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true
+  field :project_id, 5, type: :string
+  field :deployment_target_id, 6, type: :string
 end
 
 defmodule InternalApi.Secrethub.DestroyResponse do
@@ -646,8 +644,8 @@ defmodule InternalApi.Secrethub.DestroyResponse do
         }
   defstruct [:metadata, :id]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:id, 2, type: :string)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :id, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
@@ -699,26 +697,26 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
     :project_name
   ]
 
-  field(:org_id, 1, type: :string)
-  field(:expires_in, 2, type: :int64)
-  field(:subject, 3, type: :string)
-  field(:project_id, 4, type: :string)
-  field(:workflow_id, 5, type: :string)
-  field(:pipeline_id, 6, type: :string)
-  field(:job_id, 7, type: :string)
-  field(:repository_name, 8, type: :string)
-  field(:user_id, 9, type: :string)
-  field(:git_tag, 10, type: :string)
-  field(:git_ref, 11, type: :string)
-  field(:git_ref_type, 12, type: :string)
-  field(:git_branch_name, 13, type: :string)
-  field(:git_pull_request_number, 14, type: :string)
-  field(:org_username, 15, type: :string)
-  field(:job_type, 16, type: :string)
-  field(:git_pull_request_branch, 17, type: :string)
-  field(:repo_slug, 18, type: :string)
-  field(:triggerer, 19, type: :string)
-  field(:project_name, 20, type: :string)
+  field :org_id, 1, type: :string
+  field :expires_in, 2, type: :int64
+  field :subject, 3, type: :string
+  field :project_id, 4, type: :string
+  field :workflow_id, 5, type: :string
+  field :pipeline_id, 6, type: :string
+  field :job_id, 7, type: :string
+  field :repository_name, 8, type: :string
+  field :user_id, 9, type: :string
+  field :git_tag, 10, type: :string
+  field :git_ref, 11, type: :string
+  field :git_ref_type, 12, type: :string
+  field :git_branch_name, 13, type: :string
+  field :git_pull_request_number, 14, type: :string
+  field :org_username, 15, type: :string
+  field :job_type, 16, type: :string
+  field :git_pull_request_branch, 17, type: :string
+  field :repo_slug, 18, type: :string
+  field :triggerer, 19, type: :string
+  field :project_name, 20, type: :string
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
@@ -730,7 +728,7 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
         }
   defstruct [:token]
 
-  field(:token, 1, type: :string)
+  field :token, 1, type: :string
 end
 
 defmodule InternalApi.Secrethub.GetKeyRequest do
@@ -750,8 +748,8 @@ defmodule InternalApi.Secrethub.GetKeyResponse do
         }
   defstruct [:id, :key]
 
-  field(:id, 1, type: :string)
-  field(:key, 2, type: :string)
+  field :id, 1, type: :string
+  field :key, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.CreateEncryptedRequest do
@@ -765,9 +763,9 @@ defmodule InternalApi.Secrethub.CreateEncryptedRequest do
         }
   defstruct [:metadata, :secret, :encrypted_data]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
-  field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
+  field :encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData
 end
 
 defmodule InternalApi.Secrethub.CreateEncryptedResponse do
@@ -781,9 +779,9 @@ defmodule InternalApi.Secrethub.CreateEncryptedResponse do
         }
   defstruct [:metadata, :secret, :encrypted_data]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
-  field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
+  field :encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData
 end
 
 defmodule InternalApi.Secrethub.UpdateEncryptedRequest do
@@ -797,9 +795,9 @@ defmodule InternalApi.Secrethub.UpdateEncryptedRequest do
         }
   defstruct [:metadata, :secret, :encrypted_data]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
-  field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
+  field :metadata, 1, type: InternalApi.Secrethub.RequestMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
+  field :encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData
 end
 
 defmodule InternalApi.Secrethub.UpdateEncryptedResponse do
@@ -813,9 +811,9 @@ defmodule InternalApi.Secrethub.UpdateEncryptedResponse do
         }
   defstruct [:metadata, :secret, :encrypted_data]
 
-  field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
-  field(:secret, 2, type: InternalApi.Secrethub.Secret)
-  field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
+  field :metadata, 1, type: InternalApi.Secrethub.ResponseMeta
+  field :secret, 2, type: InternalApi.Secrethub.Secret
+  field :encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData
 end
 
 defmodule InternalApi.Secrethub.GetJWTConfigRequest do
@@ -828,8 +826,8 @@ defmodule InternalApi.Secrethub.GetJWTConfigRequest do
         }
   defstruct [:org_id, :project_id]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.GetJWTConfigResponse do
@@ -844,10 +842,10 @@ defmodule InternalApi.Secrethub.GetJWTConfigResponse do
         }
   defstruct [:org_id, :project_id, :claims, :is_active]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
-  field(:is_active, 4, type: :bool)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig
+  field :is_active, 4, type: :bool
 end
 
 defmodule InternalApi.Secrethub.UpdateJWTConfigRequest do
@@ -862,10 +860,10 @@ defmodule InternalApi.Secrethub.UpdateJWTConfigRequest do
         }
   defstruct [:org_id, :project_id, :claims, :is_active]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
-  field(:is_active, 4, type: :bool)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig
+  field :is_active, 4, type: :bool
 end
 
 defmodule InternalApi.Secrethub.UpdateJWTConfigResponse do
@@ -878,8 +876,8 @@ defmodule InternalApi.Secrethub.UpdateJWTConfigResponse do
         }
   defstruct [:org_id, :project_id]
 
-  field(:org_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
+  field :org_id, 1, type: :string
+  field :project_id, 2, type: :string
 end
 
 defmodule InternalApi.Secrethub.ClaimConfig do
@@ -896,76 +894,60 @@ defmodule InternalApi.Secrethub.ClaimConfig do
         }
   defstruct [:name, :description, :is_active, :is_mandatory, :is_aws_tag, :is_system_claim]
 
-  field(:name, 1, type: :string)
-  field(:description, 2, type: :string)
-  field(:is_active, 3, type: :bool)
-  field(:is_mandatory, 4, type: :bool)
-  field(:is_aws_tag, 5, type: :bool)
-  field(:is_system_claim, 6, type: :bool)
+  field :name, 1, type: :string
+  field :description, 2, type: :string
+  field :is_active, 3, type: :bool
+  field :is_mandatory, 4, type: :bool
+  field :is_aws_tag, 5, type: :bool
+  field :is_system_claim, 6, type: :bool
 end
 
 defmodule InternalApi.Secrethub.SecretService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Secrethub.SecretService"
 
-  rpc(:List, InternalApi.Secrethub.ListRequest, InternalApi.Secrethub.ListResponse)
+  rpc :List, InternalApi.Secrethub.ListRequest, InternalApi.Secrethub.ListResponse
 
-  rpc(
-    :ListKeyset,
-    InternalApi.Secrethub.ListKeysetRequest,
-    InternalApi.Secrethub.ListKeysetResponse
-  )
+  rpc :ListKeyset,
+      InternalApi.Secrethub.ListKeysetRequest,
+      InternalApi.Secrethub.ListKeysetResponse
 
-  rpc(:Describe, InternalApi.Secrethub.DescribeRequest, InternalApi.Secrethub.DescribeResponse)
+  rpc :Describe, InternalApi.Secrethub.DescribeRequest, InternalApi.Secrethub.DescribeResponse
 
-  rpc(
-    :DescribeMany,
-    InternalApi.Secrethub.DescribeManyRequest,
-    InternalApi.Secrethub.DescribeManyResponse
-  )
+  rpc :DescribeMany,
+      InternalApi.Secrethub.DescribeManyRequest,
+      InternalApi.Secrethub.DescribeManyResponse
 
-  rpc(:Create, InternalApi.Secrethub.CreateRequest, InternalApi.Secrethub.CreateResponse)
-  rpc(:Update, InternalApi.Secrethub.UpdateRequest, InternalApi.Secrethub.UpdateResponse)
-  rpc(:Destroy, InternalApi.Secrethub.DestroyRequest, InternalApi.Secrethub.DestroyResponse)
+  rpc :Create, InternalApi.Secrethub.CreateRequest, InternalApi.Secrethub.CreateResponse
+  rpc :Update, InternalApi.Secrethub.UpdateRequest, InternalApi.Secrethub.UpdateResponse
+  rpc :Destroy, InternalApi.Secrethub.DestroyRequest, InternalApi.Secrethub.DestroyResponse
 
-  rpc(
-    :GenerateOpenIDConnectToken,
-    InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest,
-    InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse
-  )
+  rpc :GenerateOpenIDConnectToken,
+      InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest,
+      InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse
 
-  rpc(
-    :CreateEncrypted,
-    InternalApi.Secrethub.CreateEncryptedRequest,
-    InternalApi.Secrethub.CreateEncryptedResponse
-  )
+  rpc :CreateEncrypted,
+      InternalApi.Secrethub.CreateEncryptedRequest,
+      InternalApi.Secrethub.CreateEncryptedResponse
 
-  rpc(
-    :UpdateEncrypted,
-    InternalApi.Secrethub.UpdateEncryptedRequest,
-    InternalApi.Secrethub.UpdateEncryptedResponse
-  )
+  rpc :UpdateEncrypted,
+      InternalApi.Secrethub.UpdateEncryptedRequest,
+      InternalApi.Secrethub.UpdateEncryptedResponse
 
-  rpc(:GetKey, InternalApi.Secrethub.GetKeyRequest, InternalApi.Secrethub.GetKeyResponse)
-  rpc(:Checkout, InternalApi.Secrethub.CheckoutRequest, InternalApi.Secrethub.CheckoutResponse)
+  rpc :GetKey, InternalApi.Secrethub.GetKeyRequest, InternalApi.Secrethub.GetKeyResponse
+  rpc :Checkout, InternalApi.Secrethub.CheckoutRequest, InternalApi.Secrethub.CheckoutResponse
 
-  rpc(
-    :CheckoutMany,
-    InternalApi.Secrethub.CheckoutManyRequest,
-    InternalApi.Secrethub.CheckoutManyResponse
-  )
+  rpc :CheckoutMany,
+      InternalApi.Secrethub.CheckoutManyRequest,
+      InternalApi.Secrethub.CheckoutManyResponse
 
-  rpc(
-    :GetJWTConfig,
-    InternalApi.Secrethub.GetJWTConfigRequest,
-    InternalApi.Secrethub.GetJWTConfigResponse
-  )
+  rpc :GetJWTConfig,
+      InternalApi.Secrethub.GetJWTConfigRequest,
+      InternalApi.Secrethub.GetJWTConfigResponse
 
-  rpc(
-    :UpdateJWTConfig,
-    InternalApi.Secrethub.UpdateJWTConfigRequest,
-    InternalApi.Secrethub.UpdateJWTConfigResponse
-  )
+  rpc :UpdateJWTConfig,
+      InternalApi.Secrethub.UpdateJWTConfigRequest,
+      InternalApi.Secrethub.UpdateJWTConfigResponse
 end
 
 defmodule InternalApi.Secrethub.SecretService.Stub do

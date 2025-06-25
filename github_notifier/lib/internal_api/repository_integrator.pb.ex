@@ -3,15 +3,15 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   use Protobuf, enum: true, syntax: :proto3
   @type t :: integer | :GITHUB_OAUTH_TOKEN | :GITHUB_APP | :BITBUCKET | :GITLAB | :GIT
 
-  field(:GITHUB_OAUTH_TOKEN, 0)
+  field :GITHUB_OAUTH_TOKEN, 0
 
-  field(:GITHUB_APP, 1)
+  field :GITHUB_APP, 1
 
-  field(:BITBUCKET, 2)
+  field :BITBUCKET, 2
 
-  field(:GITLAB, 3)
+  field :GITLAB, 3
 
-  field(:GIT, 4)
+  field :GIT, 4
 end
 
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
@@ -19,11 +19,11 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   use Protobuf, enum: true, syntax: :proto3
   @type t :: integer | :FULL_CONNECTION | :ONLY_PUBLIC | :NO_CONNECTION
 
-  field(:FULL_CONNECTION, 0)
+  field :FULL_CONNECTION, 0
 
-  field(:ONLY_PUBLIC, 1)
+  field :ONLY_PUBLIC, 1
 
-  field(:NO_CONNECTION, 2)
+  field :NO_CONNECTION, 2
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
@@ -39,10 +39,10 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
 
   defstruct [:user_id, :repository_slug, :integration_type, :project_id]
 
-  field(:user_id, 1, type: :string)
-  field(:repository_slug, 2, type: :string)
-  field(:integration_type, 3, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
-  field(:project_id, 4, type: :string)
+  field :user_id, 1, type: :string
+  field :repository_slug, 2, type: :string
+  field :integration_type, 3, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true
+  field :project_id, 4, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
@@ -56,8 +56,8 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
 
   defstruct [:token, :expires_at]
 
-  field(:token, 1, type: :string)
-  field(:expires_at, 2, type: Google.Protobuf.Timestamp)
+  field :token, 1, type: :string
+  field :expires_at, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.RepositoryIntegrator.CheckTokenRequest do
@@ -70,7 +70,7 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenRequest do
 
   defstruct [:project_id]
 
-  field(:project_id, 1, type: :string)
+  field :project_id, 1, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
@@ -84,9 +84,8 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
 
   defstruct [:valid, :integration_scope]
 
-  field(:valid, 1, type: :bool)
-
-  field(:integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true)
+  field :valid, 1, type: :bool
+  field :integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true
 end
 
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
@@ -101,9 +100,9 @@ defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
 
   defstruct [:project_id, :path, :ref]
 
-  field(:project_id, 1, type: :string)
-  field(:path, 2, type: :string)
-  field(:ref, 3, type: :string)
+  field :project_id, 1, type: :string
+  field :path, 2, type: :string
+  field :ref, 3, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
@@ -118,9 +117,9 @@ defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
 
   defstruct [:project_id, :path, :ref]
 
-  field(:project_id, 1, type: :string)
-  field(:path, 2, type: :string)
-  field(:ref, 3, type: :string)
+  field :project_id, 1, type: :string
+  field :path, 2, type: :string
+  field :ref, 3, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetFileResponse do
@@ -133,7 +132,7 @@ defmodule InternalApi.RepositoryIntegrator.GetFileResponse do
 
   defstruct [:content]
 
-  field(:content, 1, type: :string)
+  field :content, 1, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest do
@@ -146,7 +145,7 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest do
 
   defstruct [:project_id]
 
-  field(:project_id, 1, type: :string)
+  field :project_id, 1, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
@@ -161,9 +160,9 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
 
   defstruct [:installation_id, :application_url, :installation_url]
 
-  field(:installation_id, 1, type: :int64)
-  field(:application_url, 2, type: :string)
-  field(:installation_url, 3, type: :string)
+  field :installation_id, 1, type: :int64
+  field :application_url, 2, type: :string
+  field :installation_url, 3, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
@@ -193,8 +192,8 @@ defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
 
   defstruct [:user_id, :integration_type]
 
-  field(:user_id, 1, type: :string)
-  field(:integration_type, 2, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
+  field :user_id, 1, type: :string
+  field :integration_type, 2, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesResponse do
@@ -207,7 +206,7 @@ defmodule InternalApi.RepositoryIntegrator.GetRepositoriesResponse do
 
   defstruct [:repositories]
 
-  field(:repositories, 1, repeated: true, type: InternalApi.RepositoryIntegrator.Repository)
+  field :repositories, 1, repeated: true, type: InternalApi.RepositoryIntegrator.Repository
 end
 
 defmodule InternalApi.RepositoryIntegrator.Repository do
@@ -224,58 +223,44 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
 
   defstruct [:addable, :name, :full_name, :url, :description]
 
-  field(:addable, 1, type: :bool)
-  field(:name, 2, type: :string)
-  field(:full_name, 4, type: :string)
-  field(:url, 3, type: :string)
-  field(:description, 5, type: :string)
+  field :addable, 1, type: :bool
+  field :name, 2, type: :string
+  field :full_name, 4, type: :string
+  field :url, 3, type: :string
+  field :description, 5, type: :string
 end
 
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RepositoryIntegrator.RepositoryIntegratorService"
 
-  rpc(
-    :GetToken,
-    InternalApi.RepositoryIntegrator.GetTokenRequest,
-    InternalApi.RepositoryIntegrator.GetTokenResponse
-  )
+  rpc :GetToken,
+      InternalApi.RepositoryIntegrator.GetTokenRequest,
+      InternalApi.RepositoryIntegrator.GetTokenResponse
 
-  rpc(
-    :CheckToken,
-    InternalApi.RepositoryIntegrator.CheckTokenRequest,
-    InternalApi.RepositoryIntegrator.CheckTokenResponse
-  )
+  rpc :CheckToken,
+      InternalApi.RepositoryIntegrator.CheckTokenRequest,
+      InternalApi.RepositoryIntegrator.CheckTokenResponse
 
-  rpc(
-    :PreheatFileCache,
-    InternalApi.RepositoryIntegrator.PreheatFileCacheRequest,
-    Google.Protobuf.Empty
-  )
+  rpc :PreheatFileCache,
+      InternalApi.RepositoryIntegrator.PreheatFileCacheRequest,
+      Google.Protobuf.Empty
 
-  rpc(
-    :GetFile,
-    InternalApi.RepositoryIntegrator.GetFileRequest,
-    InternalApi.RepositoryIntegrator.GetFileResponse
-  )
+  rpc :GetFile,
+      InternalApi.RepositoryIntegrator.GetFileRequest,
+      InternalApi.RepositoryIntegrator.GetFileResponse
 
-  rpc(
-    :GithubInstallationInfo,
-    InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
-    InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
-  )
+  rpc :GithubInstallationInfo,
+      InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
+      InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
 
-  rpc(
-    :InitGithubInstallation,
-    InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
-    InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
-  )
+  rpc :InitGithubInstallation,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
 
-  rpc(
-    :GetRepositories,
-    InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
-    InternalApi.RepositoryIntegrator.GetRepositoriesResponse
-  )
+  rpc :GetRepositories,
+      InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
+      InternalApi.RepositoryIntegrator.GetRepositoriesResponse
 end
 
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Stub do
