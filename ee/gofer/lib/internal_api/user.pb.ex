@@ -5,7 +5,6 @@ defmodule InternalApi.User.Favorite.Kind do
   field :PROJECT, 0
   field :DASHBOARD, 1
 end
-
 defmodule InternalApi.User.DescribeResponse.RepoScope do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -14,7 +13,6 @@ defmodule InternalApi.User.DescribeResponse.RepoScope do
   field :PUBLIC, 1
   field :PRIVATE, 2
 end
-
 defmodule InternalApi.User.RepositoryProvider.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -23,7 +21,6 @@ defmodule InternalApi.User.RepositoryProvider.Type do
   field :BITBUCKET, 1
   field :GITLAB, 2
 end
-
 defmodule InternalApi.User.RepositoryProvider.Scope do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -33,7 +30,6 @@ defmodule InternalApi.User.RepositoryProvider.Scope do
   field :PUBLIC, 2
   field :PRIVATE, 3
 end
-
 defmodule InternalApi.User.RepositoryScopes.RepositoryScope.Scope do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -43,7 +39,6 @@ defmodule InternalApi.User.RepositoryScopes.RepositoryScope.Scope do
   field :PUBLIC, 2
   field :PRIVATE, 3
 end
-
 defmodule InternalApi.User.User.CreationSource do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -51,7 +46,6 @@ defmodule InternalApi.User.User.CreationSource do
   field :NOT_SET, 0
   field :OKTA, 1
 end
-
 defmodule InternalApi.User.ListFavoritesRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -59,14 +53,12 @@ defmodule InternalApi.User.ListFavoritesRequest do
   field :user_id, 1, type: :string, json_name: "userId"
   field :organization_id, 2, type: :string, json_name: "organizationId"
 end
-
 defmodule InternalApi.User.ListFavoritesResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :favorites, 1, repeated: true, type: InternalApi.User.Favorite
 end
-
 defmodule InternalApi.User.Favorite do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -76,14 +68,12 @@ defmodule InternalApi.User.Favorite do
   field :favorite_id, 3, type: :string, json_name: "favoriteId"
   field :kind, 4, type: InternalApi.User.Favorite.Kind, enum: true
 end
-
 defmodule InternalApi.User.DescribeManyRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_ids, 1, repeated: true, type: :string, json_name: "userIds"
 end
-
 defmodule InternalApi.User.DescribeManyResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -91,14 +81,12 @@ defmodule InternalApi.User.DescribeManyResponse do
   field :users, 1, repeated: true, type: InternalApi.User.User
   field :status, 2, type: InternalApi.ResponseStatus
 end
-
 defmodule InternalApi.User.DescribeRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 2, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.DescribeResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -132,7 +120,6 @@ defmodule InternalApi.User.DescribeResponse do
 
   field :user, 17, type: InternalApi.User.User
 end
-
 defmodule InternalApi.User.RepositoryProvider do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -142,7 +129,6 @@ defmodule InternalApi.User.RepositoryProvider do
   field :login, 3, type: :string
   field :uid, 4, type: :string
 end
-
 defmodule InternalApi.User.RepositoryScopes.RepositoryScope do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -151,7 +137,6 @@ defmodule InternalApi.User.RepositoryScopes.RepositoryScope do
   field :login, 3, type: :string
   field :uid, 4, type: :string
 end
-
 defmodule InternalApi.User.RepositoryScopes do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -159,14 +144,12 @@ defmodule InternalApi.User.RepositoryScopes do
   field :github, 1, type: InternalApi.User.RepositoryScopes.RepositoryScope
   field :bitbucket, 2, type: InternalApi.User.RepositoryScopes.RepositoryScope
 end
-
 defmodule InternalApi.User.UpdateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user, 1, type: InternalApi.User.User
 end
-
 defmodule InternalApi.User.UpdateResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -174,7 +157,6 @@ defmodule InternalApi.User.UpdateResponse do
   field :status, 1, type: Google.Rpc.Status
   field :user, 2, type: InternalApi.User.User
 end
-
 defmodule InternalApi.User.SearchUsersRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -182,28 +164,24 @@ defmodule InternalApi.User.SearchUsersRequest do
   field :query, 1, type: :string
   field :limit, 2, type: :int32
 end
-
 defmodule InternalApi.User.SearchUsersResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :users, 1, repeated: true, type: InternalApi.User.User
 end
-
 defmodule InternalApi.User.DeleteWithOwnedOrgsRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 1, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.RegenerateTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 1, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.RegenerateTokenResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -211,30 +189,12 @@ defmodule InternalApi.User.RegenerateTokenResponse do
   field :status, 1, type: Google.Rpc.Status
   field :api_token, 3, type: :string, json_name: "apiToken"
 end
-
-defmodule InternalApi.User.RefererRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-end
-
-defmodule InternalApi.User.RefererResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-  field :entry_url, 2, type: :string, json_name: "entryUrl"
-  field :http_referer, 3, type: :string, json_name: "httpReferer"
-end
-
 defmodule InternalApi.User.CheckGithubTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 1, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.CheckGithubTokenResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -243,21 +203,18 @@ defmodule InternalApi.User.CheckGithubTokenResponse do
   field :repo, 2, type: :bool
   field :public_repo, 3, type: :bool, json_name: "publicRepo"
 end
-
 defmodule InternalApi.User.BlockAccountRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 1, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.UnblockAccountRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :user_id, 1, type: :string, json_name: "userId"
 end
-
 defmodule InternalApi.User.GetRepositoryTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -269,7 +226,6 @@ defmodule InternalApi.User.GetRepositoryTokenRequest do
     json_name: "integrationType",
     enum: true
 end
-
 defmodule InternalApi.User.GetRepositoryTokenResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -277,14 +233,18 @@ defmodule InternalApi.User.GetRepositoryTokenResponse do
   field :token, 1, type: :string
   field :expires_at, 2, type: Google.Protobuf.Timestamp, json_name: "expiresAt"
 end
-
 defmodule InternalApi.User.DescribeByRepositoryProviderRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :provider, 1, type: InternalApi.User.RepositoryProvider
 end
+defmodule InternalApi.User.DescribeByEmailRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
+  field :email, 1, type: :string
+end
 defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -292,7 +252,6 @@ defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   field :user_id, 1, type: :string, json_name: "userId"
   field :type, 2, type: InternalApi.User.RepositoryProvider.Type, enum: true
 end
-
 defmodule InternalApi.User.RefreshRepositoryProviderResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -303,7 +262,21 @@ defmodule InternalApi.User.RefreshRepositoryProviderResponse do
     type: InternalApi.User.RepositoryProvider,
     json_name: "repositoryProvider"
 end
+defmodule InternalApi.User.CreateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
+  field :email, 1, type: :string
+  field :name, 2, type: :string
+  field :password, 3, type: :string
+
+  field :repository_providers, 4,
+    repeated: true,
+    type: InternalApi.User.RepositoryProvider,
+    json_name: "repositoryProviders"
+
+  field :skip_password_change, 5, type: :bool, json_name: "skipPasswordChange"
+end
 defmodule InternalApi.User.User do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -334,7 +307,6 @@ defmodule InternalApi.User.User do
 
   field :deactivated, 17, type: :bool
 end
-
 defmodule InternalApi.User.UserCreated do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -343,7 +315,6 @@ defmodule InternalApi.User.UserCreated do
   field :timestamp, 2, type: Google.Protobuf.Timestamp
   field :invited, 3, type: :bool
 end
-
 defmodule InternalApi.User.UserDeleted do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -351,7 +322,6 @@ defmodule InternalApi.User.UserDeleted do
   field :user_id, 1, type: :string, json_name: "userId"
   field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.UserUpdated do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -359,16 +329,6 @@ defmodule InternalApi.User.UserUpdated do
   field :user_id, 1, type: :string, json_name: "userId"
   field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
-
-defmodule InternalApi.User.UserRefererCreated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-  field :entry_url, 2, type: :string, json_name: "entryUrl"
-  field :http_referer, 3, type: :string, json_name: "httpReferer"
-end
-
 defmodule InternalApi.User.UserJoinedOrganization do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -377,7 +337,6 @@ defmodule InternalApi.User.UserJoinedOrganization do
   field :org_id, 2, type: :string, json_name: "orgId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.UserLeftOrganization do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -386,7 +345,6 @@ defmodule InternalApi.User.UserLeftOrganization do
   field :org_id, 2, type: :string, json_name: "orgId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.MemberInvited do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -395,7 +353,6 @@ defmodule InternalApi.User.MemberInvited do
   field :org_id, 2, type: :string, json_name: "orgId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.ActiveOwner do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -403,7 +360,6 @@ defmodule InternalApi.User.ActiveOwner do
   field :user_id, 1, type: :string, json_name: "userId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.InactiveOwner do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -411,7 +367,6 @@ defmodule InternalApi.User.InactiveOwner do
   field :user_id, 1, type: :string, json_name: "userId"
   field :timestamp, 3, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.WorkEmailAdded do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -421,7 +376,6 @@ defmodule InternalApi.User.WorkEmailAdded do
   field :old_email, 3, type: :string, json_name: "oldEmail"
   field :new_email, 4, type: :string, json_name: "newEmail"
 end
-
 defmodule InternalApi.User.FavoriteCreated do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -429,7 +383,6 @@ defmodule InternalApi.User.FavoriteCreated do
   field :favorite, 1, type: InternalApi.User.Favorite
   field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.FavoriteDeleted do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -437,7 +390,6 @@ defmodule InternalApi.User.FavoriteDeleted do
   field :favorite, 1, type: InternalApi.User.Favorite
   field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
-
 defmodule InternalApi.User.UserService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.User.UserService", protoc_gen_elixir_version: "0.10.0"
@@ -447,6 +399,8 @@ defmodule InternalApi.User.UserService.Service do
   rpc :DescribeByRepositoryProvider,
       InternalApi.User.DescribeByRepositoryProviderRequest,
       InternalApi.User.User
+
+  rpc :DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User
 
   rpc :SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse
 
@@ -468,8 +422,6 @@ defmodule InternalApi.User.UserService.Service do
 
   rpc :DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
 
-  rpc :Referer, InternalApi.User.RefererRequest, InternalApi.User.RefererResponse
-
   rpc :CheckGithubToken,
       InternalApi.User.CheckGithubTokenRequest,
       InternalApi.User.CheckGithubTokenResponse
@@ -485,6 +437,8 @@ defmodule InternalApi.User.UserService.Service do
   rpc :RefreshRepositoryProvider,
       InternalApi.User.RefreshRepositoryProviderRequest,
       InternalApi.User.RefreshRepositoryProviderResponse
+
+  rpc :Create, InternalApi.User.CreateRequest, InternalApi.User.User
 end
 
 defmodule InternalApi.User.UserService.Stub do

@@ -6,7 +6,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest.GitRefType do
   field :TAG, 1
   field :PR, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -18,7 +17,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status do
   field :CORDONED_TARGET, 4
   field :CORRUPTED_TARGET, 5
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest.CursorType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -27,7 +25,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest.CursorType do
   field :AFTER, 1
   field :BEFORE, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTarget.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -37,7 +34,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTarget.State do
   field :UNUSABLE, 2
   field :CORDONED, 3
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.Deployment.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -46,7 +42,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment.State do
   field :STARTED, 1
   field :FAILED, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.SubjectRule.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -57,7 +52,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.SubjectRule.Type do
   field :AUTO, 3
   field :ANY, 4
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -66,7 +60,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule.Type do
   field :TAG, 1
   field :PR, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule.Mode do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -75,7 +68,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule.Mode do
   field :EXACT, 1
   field :REGEX, 2
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.ListRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -83,14 +75,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.ListRequest do
   field :project_id, 1, type: :string, json_name: "projectId"
   field :requester_id, 2, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.ListResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :targets, 1, repeated: true, type: InternalApi.Gofer.DeploymentTargets.DeploymentTarget
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DescribeRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -99,14 +89,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.DescribeRequest do
   field :target_name, 2, type: :string, json_name: "targetName"
   field :target_id, 3, type: :string, json_name: "targetId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DescribeResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :target, 1, type: InternalApi.Gofer.DeploymentTargets.DeploymentTarget
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -121,14 +109,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest do
 
   field :git_ref_label, 4, type: :string, json_name: "gitRefLabel"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.VerifyResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :status, 1, type: InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status, enum: true
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -140,7 +126,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters do
   field :parameter2, 5, type: :string
   field :parameter3, 6, type: :string
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -156,7 +141,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
   field :filters, 4, type: InternalApi.Gofer.DeploymentTargets.HistoryRequest.Filters
   field :requester_id, 5, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.HistoryResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -165,7 +149,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryResponse do
   field :cursor_before, 2, type: :uint64, json_name: "cursorBefore"
   field :cursor_after, 3, type: :uint64, json_name: "cursorAfter"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.CordonRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -173,7 +156,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.CordonRequest do
   field :target_id, 1, type: :string, json_name: "targetId"
   field :cordoned, 2, type: :bool
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.CordonResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -181,7 +163,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.CordonResponse do
   field :target_id, 1, type: :string, json_name: "targetId"
   field :cordoned, 2, type: :bool
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.CreateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -191,14 +172,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.CreateRequest do
   field :unique_token, 3, type: :string, json_name: "uniqueToken"
   field :requester_id, 4, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.CreateResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :target, 1, type: InternalApi.Gofer.DeploymentTargets.DeploymentTarget
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.UpdateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -208,14 +187,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.UpdateRequest do
   field :unique_token, 3, type: :string, json_name: "uniqueToken"
   field :requester_id, 4, type: :string, json_name: "requesterId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.UpdateResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :target, 1, type: InternalApi.Gofer.DeploymentTargets.DeploymentTarget
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DeleteRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -224,14 +201,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.DeleteRequest do
   field :requester_id, 2, type: :string, json_name: "requesterId"
   field :unique_token, 3, type: :string, json_name: "uniqueToken"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DeleteResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :target_id, 1, type: :string, json_name: "targetId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTarget do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -269,7 +244,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTarget do
   field :bookmark_parameter3, 19, type: :string, json_name: "bookmarkParameter3"
   field :secret_name, 20, type: :string, json_name: "secretName"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -277,7 +251,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar do
   field :name, 1, type: :string
   field :value, 2, type: :string
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -300,7 +273,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
 
   field :can_requester_rerun, 12, type: :bool, json_name: "canRequesterRerun"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.SubjectRule do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -308,7 +280,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.SubjectRule do
   field :type, 1, type: InternalApi.Gofer.DeploymentTargets.SubjectRule.Type, enum: true
   field :subject_id, 2, type: :string, json_name: "subjectId"
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -322,7 +293,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.ObjectRule do
 
   field :pattern, 3, type: :string
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.EncryptedSecretData do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -332,7 +302,6 @@ defmodule InternalApi.Gofer.DeploymentTargets.EncryptedSecretData do
   field :init_vector, 4, type: :string, json_name: "initVector"
   field :payload, 5, type: :string
 end
-
 defmodule InternalApi.Gofer.DeploymentTargets.DeploymentTargets.Service do
   @moduledoc false
   use GRPC.Service,
