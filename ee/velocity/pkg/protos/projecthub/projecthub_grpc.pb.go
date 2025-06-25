@@ -19,20 +19,24 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ProjectService_List_FullMethodName                = "/InternalApi.Projecthub.ProjectService/List"
-	ProjectService_Describe_FullMethodName            = "/InternalApi.Projecthub.ProjectService/Describe"
-	ProjectService_DescribeMany_FullMethodName        = "/InternalApi.Projecthub.ProjectService/DescribeMany"
-	ProjectService_Create_FullMethodName              = "/InternalApi.Projecthub.ProjectService/Create"
-	ProjectService_Update_FullMethodName              = "/InternalApi.Projecthub.ProjectService/Update"
-	ProjectService_Destroy_FullMethodName             = "/InternalApi.Projecthub.ProjectService/Destroy"
-	ProjectService_Users_FullMethodName               = "/InternalApi.Projecthub.ProjectService/Users"
-	ProjectService_CheckDeployKey_FullMethodName      = "/InternalApi.Projecthub.ProjectService/CheckDeployKey"
-	ProjectService_RegenerateDeployKey_FullMethodName = "/InternalApi.Projecthub.ProjectService/RegenerateDeployKey"
-	ProjectService_CheckWebhook_FullMethodName        = "/InternalApi.Projecthub.ProjectService/CheckWebhook"
-	ProjectService_RegenerateWebhook_FullMethodName   = "/InternalApi.Projecthub.ProjectService/RegenerateWebhook"
-	ProjectService_ChangeProjectOwner_FullMethodName  = "/InternalApi.Projecthub.ProjectService/ChangeProjectOwner"
-	ProjectService_ForkAndCreate_FullMethodName       = "/InternalApi.Projecthub.ProjectService/ForkAndCreate"
-	ProjectService_GithubAppSwitch_FullMethodName     = "/InternalApi.Projecthub.ProjectService/GithubAppSwitch"
+	ProjectService_List_FullMethodName                    = "/InternalApi.Projecthub.ProjectService/List"
+	ProjectService_ListKeyset_FullMethodName              = "/InternalApi.Projecthub.ProjectService/ListKeyset"
+	ProjectService_Describe_FullMethodName                = "/InternalApi.Projecthub.ProjectService/Describe"
+	ProjectService_DescribeMany_FullMethodName            = "/InternalApi.Projecthub.ProjectService/DescribeMany"
+	ProjectService_Create_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Create"
+	ProjectService_Update_FullMethodName                  = "/InternalApi.Projecthub.ProjectService/Update"
+	ProjectService_Destroy_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Destroy"
+	ProjectService_Restore_FullMethodName                 = "/InternalApi.Projecthub.ProjectService/Restore"
+	ProjectService_Users_FullMethodName                   = "/InternalApi.Projecthub.ProjectService/Users"
+	ProjectService_CheckDeployKey_FullMethodName          = "/InternalApi.Projecthub.ProjectService/CheckDeployKey"
+	ProjectService_RegenerateDeployKey_FullMethodName     = "/InternalApi.Projecthub.ProjectService/RegenerateDeployKey"
+	ProjectService_CheckWebhook_FullMethodName            = "/InternalApi.Projecthub.ProjectService/CheckWebhook"
+	ProjectService_RegenerateWebhook_FullMethodName       = "/InternalApi.Projecthub.ProjectService/RegenerateWebhook"
+	ProjectService_RegenerateWebhookSecret_FullMethodName = "/InternalApi.Projecthub.ProjectService/RegenerateWebhookSecret"
+	ProjectService_ChangeProjectOwner_FullMethodName      = "/InternalApi.Projecthub.ProjectService/ChangeProjectOwner"
+	ProjectService_ForkAndCreate_FullMethodName           = "/InternalApi.Projecthub.ProjectService/ForkAndCreate"
+	ProjectService_GithubAppSwitch_FullMethodName         = "/InternalApi.Projecthub.ProjectService/GithubAppSwitch"
+	ProjectService_FinishOnboarding_FullMethodName        = "/InternalApi.Projecthub.ProjectService/FinishOnboarding"
 )
 
 // ProjectServiceClient is the client API for ProjectService service.
@@ -40,11 +44,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ProjectServiceClient interface {
 	List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error)
+	ListKeyset(ctx context.Context, in *ListKeysetRequest, opts ...grpc.CallOption) (*ListKeysetResponse, error)
 	Describe(ctx context.Context, in *DescribeRequest, opts ...grpc.CallOption) (*DescribeResponse, error)
 	DescribeMany(ctx context.Context, in *DescribeManyRequest, opts ...grpc.CallOption) (*DescribeManyResponse, error)
 	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
 	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*UpdateResponse, error)
 	Destroy(ctx context.Context, in *DestroyRequest, opts ...grpc.CallOption) (*DestroyResponse, error)
+	Restore(ctx context.Context, in *RestoreRequest, opts ...grpc.CallOption) (*RestoreResponse, error)
 	// Operation is called to list Semaphore users on the project.
 	// Operation is synchronous.
 	Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (*UsersResponse, error)
@@ -60,6 +66,10 @@ type ProjectServiceClient interface {
 	// Operation is called to regenerate a webhook.
 	// Operation is synchronous.
 	RegenerateWebhook(ctx context.Context, in *RegenerateWebhookRequest, opts ...grpc.CallOption) (*RegenerateWebhookResponse, error)
+	// Operation is called to regenerate a webhook secret token.
+	// Operation is synchronous.
+	// Operation is only available for git agnostic projects.
+	RegenerateWebhookSecret(ctx context.Context, in *RegenerateWebhookSecretRequest, opts ...grpc.CallOption) (*RegenerateWebhookSecretResponse, error)
 	// Operation is called to change a project owner within the same organization.
 	// Operation is synchronous.
 	ChangeProjectOwner(ctx context.Context, in *ChangeProjectOwnerRequest, opts ...grpc.CallOption) (*ChangeProjectOwnerResponse, error)
@@ -69,6 +79,9 @@ type ProjectServiceClient interface {
 	// Operation is called to switch project from github_oauth_token to github_app integration
 	// Operation is synchronous.
 	GithubAppSwitch(ctx context.Context, in *GithubAppSwitchRequest, opts ...grpc.CallOption) (*GithubAppSwitchResponse, error)
+	// Operation is called to transition project from onboarding to ready state.
+	// Operation is synchronous.
+	FinishOnboarding(ctx context.Context, in *FinishOnboardingRequest, opts ...grpc.CallOption) (*FinishOnboardingResponse, error)
 }
 
 type projectServiceClient struct {
@@ -82,6 +95,15 @@ func NewProjectServiceClient(cc grpc.ClientConnInterface) ProjectServiceClient {
 func (c *projectServiceClient) List(ctx context.Context, in *ListRequest, opts ...grpc.CallOption) (*ListResponse, error) {
 	out := new(ListResponse)
 	err := c.cc.Invoke(ctx, ProjectService_List_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *projectServiceClient) ListKeyset(ctx context.Context, in *ListKeysetRequest, opts ...grpc.CallOption) (*ListKeysetResponse, error) {
+	out := new(ListKeysetResponse)
+	err := c.cc.Invoke(ctx, ProjectService_ListKeyset_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +155,15 @@ func (c *projectServiceClient) Destroy(ctx context.Context, in *DestroyRequest, 
 	return out, nil
 }
 
+func (c *projectServiceClient) Restore(ctx context.Context, in *RestoreRequest, opts ...grpc.CallOption) (*RestoreResponse, error) {
+	out := new(RestoreResponse)
+	err := c.cc.Invoke(ctx, ProjectService_Restore_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *projectServiceClient) Users(ctx context.Context, in *UsersRequest, opts ...grpc.CallOption) (*UsersResponse, error) {
 	out := new(UsersResponse)
 	err := c.cc.Invoke(ctx, ProjectService_Users_FullMethodName, in, out, opts...)
@@ -178,6 +209,15 @@ func (c *projectServiceClient) RegenerateWebhook(ctx context.Context, in *Regene
 	return out, nil
 }
 
+func (c *projectServiceClient) RegenerateWebhookSecret(ctx context.Context, in *RegenerateWebhookSecretRequest, opts ...grpc.CallOption) (*RegenerateWebhookSecretResponse, error) {
+	out := new(RegenerateWebhookSecretResponse)
+	err := c.cc.Invoke(ctx, ProjectService_RegenerateWebhookSecret_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *projectServiceClient) ChangeProjectOwner(ctx context.Context, in *ChangeProjectOwnerRequest, opts ...grpc.CallOption) (*ChangeProjectOwnerResponse, error) {
 	out := new(ChangeProjectOwnerResponse)
 	err := c.cc.Invoke(ctx, ProjectService_ChangeProjectOwner_FullMethodName, in, out, opts...)
@@ -205,16 +245,27 @@ func (c *projectServiceClient) GithubAppSwitch(ctx context.Context, in *GithubAp
 	return out, nil
 }
 
+func (c *projectServiceClient) FinishOnboarding(ctx context.Context, in *FinishOnboardingRequest, opts ...grpc.CallOption) (*FinishOnboardingResponse, error) {
+	out := new(FinishOnboardingResponse)
+	err := c.cc.Invoke(ctx, ProjectService_FinishOnboarding_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ProjectServiceServer is the server API for ProjectService service.
 // All implementations should embed UnimplementedProjectServiceServer
 // for forward compatibility
 type ProjectServiceServer interface {
 	List(context.Context, *ListRequest) (*ListResponse, error)
+	ListKeyset(context.Context, *ListKeysetRequest) (*ListKeysetResponse, error)
 	Describe(context.Context, *DescribeRequest) (*DescribeResponse, error)
 	DescribeMany(context.Context, *DescribeManyRequest) (*DescribeManyResponse, error)
 	Create(context.Context, *CreateRequest) (*CreateResponse, error)
 	Update(context.Context, *UpdateRequest) (*UpdateResponse, error)
 	Destroy(context.Context, *DestroyRequest) (*DestroyResponse, error)
+	Restore(context.Context, *RestoreRequest) (*RestoreResponse, error)
 	// Operation is called to list Semaphore users on the project.
 	// Operation is synchronous.
 	Users(context.Context, *UsersRequest) (*UsersResponse, error)
@@ -230,6 +281,10 @@ type ProjectServiceServer interface {
 	// Operation is called to regenerate a webhook.
 	// Operation is synchronous.
 	RegenerateWebhook(context.Context, *RegenerateWebhookRequest) (*RegenerateWebhookResponse, error)
+	// Operation is called to regenerate a webhook secret token.
+	// Operation is synchronous.
+	// Operation is only available for git agnostic projects.
+	RegenerateWebhookSecret(context.Context, *RegenerateWebhookSecretRequest) (*RegenerateWebhookSecretResponse, error)
 	// Operation is called to change a project owner within the same organization.
 	// Operation is synchronous.
 	ChangeProjectOwner(context.Context, *ChangeProjectOwnerRequest) (*ChangeProjectOwnerResponse, error)
@@ -239,6 +294,9 @@ type ProjectServiceServer interface {
 	// Operation is called to switch project from github_oauth_token to github_app integration
 	// Operation is synchronous.
 	GithubAppSwitch(context.Context, *GithubAppSwitchRequest) (*GithubAppSwitchResponse, error)
+	// Operation is called to transition project from onboarding to ready state.
+	// Operation is synchronous.
+	FinishOnboarding(context.Context, *FinishOnboardingRequest) (*FinishOnboardingResponse, error)
 }
 
 // UnimplementedProjectServiceServer should be embedded to have forward compatible implementations.
@@ -247,6 +305,9 @@ type UnimplementedProjectServiceServer struct {
 
 func (UnimplementedProjectServiceServer) List(context.Context, *ListRequest) (*ListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method List not implemented")
+}
+func (UnimplementedProjectServiceServer) ListKeyset(context.Context, *ListKeysetRequest) (*ListKeysetResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListKeyset not implemented")
 }
 func (UnimplementedProjectServiceServer) Describe(context.Context, *DescribeRequest) (*DescribeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Describe not implemented")
@@ -263,6 +324,9 @@ func (UnimplementedProjectServiceServer) Update(context.Context, *UpdateRequest)
 func (UnimplementedProjectServiceServer) Destroy(context.Context, *DestroyRequest) (*DestroyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Destroy not implemented")
 }
+func (UnimplementedProjectServiceServer) Restore(context.Context, *RestoreRequest) (*RestoreResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Restore not implemented")
+}
 func (UnimplementedProjectServiceServer) Users(context.Context, *UsersRequest) (*UsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Users not implemented")
 }
@@ -278,6 +342,9 @@ func (UnimplementedProjectServiceServer) CheckWebhook(context.Context, *CheckWeb
 func (UnimplementedProjectServiceServer) RegenerateWebhook(context.Context, *RegenerateWebhookRequest) (*RegenerateWebhookResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegenerateWebhook not implemented")
 }
+func (UnimplementedProjectServiceServer) RegenerateWebhookSecret(context.Context, *RegenerateWebhookSecretRequest) (*RegenerateWebhookSecretResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegenerateWebhookSecret not implemented")
+}
 func (UnimplementedProjectServiceServer) ChangeProjectOwner(context.Context, *ChangeProjectOwnerRequest) (*ChangeProjectOwnerResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ChangeProjectOwner not implemented")
 }
@@ -286,6 +353,9 @@ func (UnimplementedProjectServiceServer) ForkAndCreate(context.Context, *ForkAnd
 }
 func (UnimplementedProjectServiceServer) GithubAppSwitch(context.Context, *GithubAppSwitchRequest) (*GithubAppSwitchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GithubAppSwitch not implemented")
+}
+func (UnimplementedProjectServiceServer) FinishOnboarding(context.Context, *FinishOnboardingRequest) (*FinishOnboardingResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FinishOnboarding not implemented")
 }
 
 // UnsafeProjectServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -313,6 +383,24 @@ func _ProjectService_List_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ProjectServiceServer).List(ctx, req.(*ListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ProjectService_ListKeyset_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListKeysetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProjectServiceServer).ListKeyset(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProjectService_ListKeyset_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProjectServiceServer).ListKeyset(ctx, req.(*ListKeysetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -407,6 +495,24 @@ func _ProjectService_Destroy_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProjectService_Restore_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProjectServiceServer).Restore(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProjectService_Restore_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProjectServiceServer).Restore(ctx, req.(*RestoreRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ProjectService_Users_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(UsersRequest)
 	if err := dec(in); err != nil {
@@ -497,6 +603,24 @@ func _ProjectService_RegenerateWebhook_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProjectService_RegenerateWebhookSecret_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegenerateWebhookSecretRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProjectServiceServer).RegenerateWebhookSecret(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProjectService_RegenerateWebhookSecret_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProjectServiceServer).RegenerateWebhookSecret(ctx, req.(*RegenerateWebhookSecretRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ProjectService_ChangeProjectOwner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ChangeProjectOwnerRequest)
 	if err := dec(in); err != nil {
@@ -551,6 +675,24 @@ func _ProjectService_GithubAppSwitch_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ProjectService_FinishOnboarding_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FinishOnboardingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ProjectServiceServer).FinishOnboarding(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ProjectService_FinishOnboarding_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ProjectServiceServer).FinishOnboarding(ctx, req.(*FinishOnboardingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ProjectService_ServiceDesc is the grpc.ServiceDesc for ProjectService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -561,6 +703,10 @@ var ProjectService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "List",
 			Handler:    _ProjectService_List_Handler,
+		},
+		{
+			MethodName: "ListKeyset",
+			Handler:    _ProjectService_ListKeyset_Handler,
 		},
 		{
 			MethodName: "Describe",
@@ -583,6 +729,10 @@ var ProjectService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ProjectService_Destroy_Handler,
 		},
 		{
+			MethodName: "Restore",
+			Handler:    _ProjectService_Restore_Handler,
+		},
+		{
 			MethodName: "Users",
 			Handler:    _ProjectService_Users_Handler,
 		},
@@ -603,6 +753,10 @@ var ProjectService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ProjectService_RegenerateWebhook_Handler,
 		},
 		{
+			MethodName: "RegenerateWebhookSecret",
+			Handler:    _ProjectService_RegenerateWebhookSecret_Handler,
+		},
+		{
 			MethodName: "ChangeProjectOwner",
 			Handler:    _ProjectService_ChangeProjectOwner_Handler,
 		},
@@ -613,6 +767,10 @@ var ProjectService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GithubAppSwitch",
 			Handler:    _ProjectService_GithubAppSwitch_Handler,
+		},
+		{
+			MethodName: "FinishOnboarding",
+			Handler:    _ProjectService_FinishOnboarding_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

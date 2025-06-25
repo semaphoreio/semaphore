@@ -8,6 +8,6 @@ defmodule InternalApi.Status do
         }
   defstruct [:code, :message]
 
-  field(:code, 1, type: Google.Rpc.Code, enum: true)
-  field(:message, 2, type: :string)
+  field :code, 1, type: Google.Rpc.Code, enum: true
+  field :message, 2, type: :string
 end

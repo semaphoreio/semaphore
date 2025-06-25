@@ -175,12 +175,14 @@ defmodule InternalApi.Artifacthub.ListPathRequest do
 
   @type t :: %__MODULE__{
           artifact_id: String.t(),
-          path: String.t()
+          path: String.t(),
+          unwrap_directories: boolean
         }
-  defstruct [:artifact_id, :path]
+  defstruct [:artifact_id, :path, :unwrap_directories]
 
   field(:artifact_id, 1, type: :string)
   field(:path, 2, type: :string)
+  field(:unwrap_directories, 3, type: :bool)
 end
 
 defmodule InternalApi.Artifacthub.ListPathResponse do
