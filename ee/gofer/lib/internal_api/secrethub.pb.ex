@@ -442,6 +442,7 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
   field :git_pull_request_branch, 17, type: :string, json_name: "gitPullRequestBranch"
   field :repo_slug, 18, type: :string, json_name: "repoSlug"
   field :triggerer, 19, type: :string
+  field :project_name, 20, type: :string, json_name: "projectName"
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
@@ -500,6 +501,54 @@ defmodule InternalApi.Secrethub.UpdateEncryptedResponse do
   field :encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData, json_name: "encryptedData"
 end
 
+defmodule InternalApi.Secrethub.GetJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+end
+
+defmodule InternalApi.Secrethub.GetJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+  field :claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig
+  field :is_active, 4, type: :bool, json_name: "isActive"
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+  field :claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig
+  field :is_active, 4, type: :bool, json_name: "isActive"
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+  field :project_id, 2, type: :string, json_name: "projectId"
+end
+
+defmodule InternalApi.Secrethub.ClaimConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :name, 1, type: :string
+  field :description, 2, type: :string
+  field :is_active, 3, type: :bool, json_name: "isActive"
+  field :is_mandatory, 4, type: :bool, json_name: "isMandatory"
+  field :is_aws_tag, 5, type: :bool, json_name: "isAwsTag"
+  field :is_system_claim, 6, type: :bool, json_name: "isSystemClaim"
+end
+
 defmodule InternalApi.Secrethub.SecretService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -543,6 +592,14 @@ defmodule InternalApi.Secrethub.SecretService.Service do
   rpc :CheckoutMany,
       InternalApi.Secrethub.CheckoutManyRequest,
       InternalApi.Secrethub.CheckoutManyResponse
+
+  rpc :GetJWTConfig,
+      InternalApi.Secrethub.GetJWTConfigRequest,
+      InternalApi.Secrethub.GetJWTConfigResponse
+
+  rpc :UpdateJWTConfig,
+      InternalApi.Secrethub.UpdateJWTConfigRequest,
+      InternalApi.Secrethub.UpdateJWTConfigResponse
 end
 
 defmodule InternalApi.Secrethub.SecretService.Stub do
