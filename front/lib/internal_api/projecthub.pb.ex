@@ -332,7 +332,6 @@ defmodule InternalApi.Projecthub.Project.Spec.Repository.RunType do
   field(:TAGS, 1)
   field(:PULL_REQUESTS, 2)
   field(:FORKED_PULL_REQUESTS, 3)
-  field(:DRAFT_PULL_REQUESTS, 4)
 end
 
 defmodule InternalApi.Projecthub.Project.Spec.Scheduler do
