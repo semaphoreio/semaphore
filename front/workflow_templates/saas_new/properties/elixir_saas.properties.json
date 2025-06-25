@@ -1,11 +1,12 @@
 {
-  "title": "Elixir",
-  "description": "Run quality checks and tests for your Elixir app using Mix tools for formatting, security, and type checking. Tests are parallelized for faster execution. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Mix</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Dialyzer</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Credo</span></div>",
-  "short_description": "Run your Elixir suite",
+  "title": "Elixir CI Pipeline",
+  "description": "End-to-end pipeline for non-Phoenix Elixir projects: dependency caching, code formatting, static analysis, security scanning, type checking, parallelised tests with PostgreSQL, and an optional Docker image build on <code>main</code>. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-green white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Mix</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Credo</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Sobelow</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Deps-Audit</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Dialyzer</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Postgres</span><span class='f6 normal mr1 ph1 br2 bg-gray white'>Docker</span></div>",
+  "short_description": "Comprehensive CI for Elixir apps",
   "group": "ci",
   "language": "Elixir",
   "environment": "linux",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-elixir.svg",
   "template_path": "templates/elixir_saas.yml",
   "workflow_tip": "other"
