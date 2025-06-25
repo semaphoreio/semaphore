@@ -9,9 +9,9 @@ defmodule InternalApi.PeriodicScheduler.ApplyRequest do
         }
   defstruct [:requester_id, :organization_id, :yml_definition]
 
-  field(:requester_id, 1, type: :string)
-  field(:organization_id, 2, type: :string)
-  field(:yml_definition, 3, type: :string)
+  field :requester_id, 1, type: :string
+  field :organization_id, 2, type: :string
+  field :yml_definition, 3, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.ApplyResponse do
@@ -24,8 +24,8 @@ defmodule InternalApi.PeriodicScheduler.ApplyResponse do
         }
   defstruct [:status, :id]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:id, 2, type: :string)
+  field :status, 1, type: InternalApi.Status
+  field :id, 2, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistRequest do
@@ -63,28 +63,28 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :project_id
   ]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:description, 3, type: :string)
-  field(:recurring, 4, type: :bool)
-  field(:state, 5, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true)
-  field(:organization_id, 6, type: :string)
-  field(:project_name, 7, type: :string)
-  field(:requester_id, 8, type: :string)
-  field(:branch, 9, type: :string)
-  field(:pipeline_file, 10, type: :string)
-  field(:at, 11, type: :string)
-  field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
-  field(:project_id, 13, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :description, 3, type: :string
+  field :recurring, 4, type: :bool
+  field :state, 5, type: InternalApi.PeriodicScheduler.PersistRequest.ScheduleState, enum: true
+  field :organization_id, 6, type: :string
+  field :project_name, 7, type: :string
+  field :requester_id, 8, type: :string
+  field :branch, 9, type: :string
+  field :pipeline_file, 10, type: :string
+  field :at, 11, type: :string
+  field :parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter
+  field :project_id, 13, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:UNCHANGED, 0)
-  field(:ACTIVE, 1)
-  field(:PAUSED, 2)
+  field :UNCHANGED, 0
+  field :ACTIVE, 1
+  field :PAUSED, 2
 end
 
 defmodule InternalApi.PeriodicScheduler.PersistResponse do
@@ -97,8 +97,8 @@ defmodule InternalApi.PeriodicScheduler.PersistResponse do
         }
   defstruct [:status, :periodic]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
+  field :status, 1, type: InternalApi.Status
+  field :periodic, 2, type: InternalApi.PeriodicScheduler.Periodic
 end
 
 defmodule InternalApi.PeriodicScheduler.PauseRequest do
@@ -111,8 +111,8 @@ defmodule InternalApi.PeriodicScheduler.PauseRequest do
         }
   defstruct [:id, :requester]
 
-  field(:id, 1, type: :string)
-  field(:requester, 2, type: :string)
+  field :id, 1, type: :string
+  field :requester, 2, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.PauseResponse do
@@ -124,7 +124,7 @@ defmodule InternalApi.PeriodicScheduler.PauseResponse do
         }
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.Status)
+  field :status, 1, type: InternalApi.Status
 end
 
 defmodule InternalApi.PeriodicScheduler.UnpauseRequest do
@@ -137,8 +137,8 @@ defmodule InternalApi.PeriodicScheduler.UnpauseRequest do
         }
   defstruct [:id, :requester]
 
-  field(:id, 1, type: :string)
-  field(:requester, 2, type: :string)
+  field :id, 1, type: :string
+  field :requester, 2, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.UnpauseResponse do
@@ -150,7 +150,7 @@ defmodule InternalApi.PeriodicScheduler.UnpauseResponse do
         }
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.Status)
+  field :status, 1, type: InternalApi.Status
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowRequest do
@@ -166,11 +166,11 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
         }
   defstruct [:id, :requester, :branch, :pipeline_file, :parameter_values]
 
-  field(:id, 1, type: :string)
-  field(:requester, 2, type: :string)
-  field(:branch, 3, type: :string)
-  field(:pipeline_file, 4, type: :string)
-  field(:parameter_values, 5, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
+  field :id, 1, type: :string
+  field :requester, 2, type: :string
+  field :branch, 3, type: :string
+  field :pipeline_file, 4, type: :string
+  field :parameter_values, 5, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do
@@ -185,10 +185,10 @@ defmodule InternalApi.PeriodicScheduler.RunNowResponse do
         }
   defstruct [:status, :periodic, :triggers, :trigger]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
-  field(:triggers, 3, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
-  field(:trigger, 4, type: InternalApi.PeriodicScheduler.Trigger)
+  field :status, 1, type: InternalApi.Status
+  field :periodic, 2, type: InternalApi.PeriodicScheduler.Periodic
+  field :triggers, 3, repeated: true, type: InternalApi.PeriodicScheduler.Trigger
+  field :trigger, 4, type: InternalApi.PeriodicScheduler.Trigger
 end
 
 defmodule InternalApi.PeriodicScheduler.DescribeRequest do
@@ -200,7 +200,7 @@ defmodule InternalApi.PeriodicScheduler.DescribeRequest do
         }
   defstruct [:id]
 
-  field(:id, 1, type: :string)
+  field :id, 1, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.DescribeResponse do
@@ -214,9 +214,9 @@ defmodule InternalApi.PeriodicScheduler.DescribeResponse do
         }
   defstruct [:status, :periodic, :triggers]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:periodic, 2, type: InternalApi.PeriodicScheduler.Periodic)
-  field(:triggers, 3, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
+  field :status, 1, type: InternalApi.Status
+  field :periodic, 2, type: InternalApi.PeriodicScheduler.Periodic
+  field :triggers, 3, repeated: true, type: InternalApi.PeriodicScheduler.Trigger
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic do
@@ -262,23 +262,23 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :organization_id
   ]
 
-  field(:id, 1, type: :string)
-  field(:name, 2, type: :string)
-  field(:project_id, 3, type: :string)
-  field(:branch, 4, type: :string)
-  field(:at, 5, type: :string)
-  field(:pipeline_file, 6, type: :string)
-  field(:requester_id, 7, type: :string)
-  field(:updated_at, 8, type: Google.Protobuf.Timestamp)
-  field(:suspended, 9, type: :bool)
-  field(:paused, 10, type: :bool)
-  field(:pause_toggled_by, 11, type: :string)
-  field(:pause_toggled_at, 12, type: Google.Protobuf.Timestamp)
-  field(:inserted_at, 13, type: Google.Protobuf.Timestamp)
-  field(:recurring, 14, type: :bool)
-  field(:parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
-  field(:description, 16, type: :string)
-  field(:organization_id, 17, type: :string)
+  field :id, 1, type: :string
+  field :name, 2, type: :string
+  field :project_id, 3, type: :string
+  field :branch, 4, type: :string
+  field :at, 5, type: :string
+  field :pipeline_file, 6, type: :string
+  field :requester_id, 7, type: :string
+  field :updated_at, 8, type: Google.Protobuf.Timestamp
+  field :suspended, 9, type: :bool
+  field :paused, 10, type: :bool
+  field :pause_toggled_by, 11, type: :string
+  field :pause_toggled_at, 12, type: Google.Protobuf.Timestamp
+  field :inserted_at, 13, type: Google.Protobuf.Timestamp
+  field :recurring, 14, type: :bool
+  field :parameters, 15, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter
+  field :description, 16, type: :string
+  field :organization_id, 17, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
@@ -294,11 +294,11 @@ defmodule InternalApi.PeriodicScheduler.Periodic.Parameter do
         }
   defstruct [:name, :required, :description, :default_value, :options]
 
-  field(:name, 1, type: :string)
-  field(:required, 2, type: :bool)
-  field(:description, 3, type: :string)
-  field(:default_value, 4, type: :string)
-  field(:options, 5, repeated: true, type: :string)
+  field :name, 1, type: :string
+  field :required, 2, type: :bool
+  field :description, 3, type: :string
+  field :default_value, 4, type: :string
+  field :options, 5, repeated: true, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.Trigger do
@@ -332,17 +332,17 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
     :parameter_values
   ]
 
-  field(:triggered_at, 1, type: Google.Protobuf.Timestamp)
-  field(:project_id, 2, type: :string)
-  field(:branch, 3, type: :string)
-  field(:pipeline_file, 4, type: :string)
-  field(:scheduling_status, 5, type: :string)
-  field(:scheduled_workflow_id, 6, type: :string)
-  field(:scheduled_at, 7, type: Google.Protobuf.Timestamp)
-  field(:error_description, 8, type: :string)
-  field(:run_now_requester_id, 9, type: :string)
-  field(:periodic_id, 10, type: :string)
-  field(:parameter_values, 11, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
+  field :triggered_at, 1, type: Google.Protobuf.Timestamp
+  field :project_id, 2, type: :string
+  field :branch, 3, type: :string
+  field :pipeline_file, 4, type: :string
+  field :scheduling_status, 5, type: :string
+  field :scheduled_workflow_id, 6, type: :string
+  field :scheduled_at, 7, type: Google.Protobuf.Timestamp
+  field :error_description, 8, type: :string
+  field :run_now_requester_id, 9, type: :string
+  field :periodic_id, 10, type: :string
+  field :parameter_values, 11, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue
 end
 
 defmodule InternalApi.PeriodicScheduler.ParameterValue do
@@ -355,8 +355,8 @@ defmodule InternalApi.PeriodicScheduler.ParameterValue do
         }
   defstruct [:name, :value]
 
-  field(:name, 1, type: :string)
-  field(:value, 2, type: :string)
+  field :name, 1, type: :string
+  field :value, 2, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.LatestTriggersRequest do
@@ -368,7 +368,7 @@ defmodule InternalApi.PeriodicScheduler.LatestTriggersRequest do
         }
   defstruct [:periodic_ids]
 
-  field(:periodic_ids, 1, repeated: true, type: :string)
+  field :periodic_ids, 1, repeated: true, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.LatestTriggersResponse do
@@ -381,8 +381,8 @@ defmodule InternalApi.PeriodicScheduler.LatestTriggersResponse do
         }
   defstruct [:status, :triggers]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
+  field :status, 1, type: InternalApi.Status
+  field :triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger
 end
 
 defmodule InternalApi.PeriodicScheduler.HistoryRequest do
@@ -397,12 +397,10 @@ defmodule InternalApi.PeriodicScheduler.HistoryRequest do
         }
   defstruct [:periodic_id, :cursor_type, :cursor_value, :filters]
 
-  field(:periodic_id, 1, type: :string)
-
-  field(:cursor_type, 2, type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType, enum: true)
-
-  field(:cursor_value, 3, type: :uint64)
-  field(:filters, 4, type: InternalApi.PeriodicScheduler.HistoryRequest.Filters)
+  field :periodic_id, 1, type: :string
+  field :cursor_type, 2, type: InternalApi.PeriodicScheduler.HistoryRequest.CursorType, enum: true
+  field :cursor_value, 3, type: :uint64
+  field :filters, 4, type: InternalApi.PeriodicScheduler.HistoryRequest.Filters
 end
 
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.Filters do
@@ -416,18 +414,18 @@ defmodule InternalApi.PeriodicScheduler.HistoryRequest.Filters do
         }
   defstruct [:branch_name, :pipeline_file, :triggered_by]
 
-  field(:branch_name, 1, type: :string)
-  field(:pipeline_file, 2, type: :string)
-  field(:triggered_by, 3, type: :string)
+  field :branch_name, 1, type: :string
+  field :pipeline_file, 2, type: :string
+  field :triggered_by, 3, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.CursorType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:FIRST, 0)
-  field(:AFTER, 1)
-  field(:BEFORE, 2)
+  field :FIRST, 0
+  field :AFTER, 1
+  field :BEFORE, 2
 end
 
 defmodule InternalApi.PeriodicScheduler.HistoryResponse do
@@ -442,10 +440,10 @@ defmodule InternalApi.PeriodicScheduler.HistoryResponse do
         }
   defstruct [:status, :triggers, :cursor_before, :cursor_after]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger)
-  field(:cursor_before, 3, type: :uint64)
-  field(:cursor_after, 4, type: :uint64)
+  field :status, 1, type: InternalApi.Status
+  field :triggers, 2, repeated: true, type: InternalApi.PeriodicScheduler.Trigger
+  field :cursor_before, 3, type: :uint64
+  field :cursor_after, 4, type: :uint64
 end
 
 defmodule InternalApi.PeriodicScheduler.ListRequest do
@@ -463,13 +461,13 @@ defmodule InternalApi.PeriodicScheduler.ListRequest do
         }
   defstruct [:organization_id, :project_id, :requester_id, :page, :page_size, :order, :query]
 
-  field(:organization_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:requester_id, 3, type: :string)
-  field(:page, 4, type: :int32)
-  field(:page_size, 5, type: :int32)
-  field(:order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true)
-  field(:query, 7, type: :string)
+  field :organization_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :requester_id, 3, type: :string
+  field :page, 4, type: :int32
+  field :page_size, 5, type: :int32
+  field :order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true
+  field :query, 7, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.ListResponse do
@@ -486,12 +484,12 @@ defmodule InternalApi.PeriodicScheduler.ListResponse do
         }
   defstruct [:status, :periodics, :page_number, :page_size, :total_entries, :total_pages]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
-  field(:page_number, 3, type: :int32)
-  field(:page_size, 4, type: :int32)
-  field(:total_entries, 5, type: :int32)
-  field(:total_pages, 6, type: :int32)
+  field :status, 1, type: InternalApi.Status
+  field :periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic
+  field :page_number, 3, type: :int32
+  field :page_size, 4, type: :int32
+  field :total_entries, 5, type: :int32
+  field :total_pages, 6, type: :int32
 end
 
 defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
@@ -509,23 +507,21 @@ defmodule InternalApi.PeriodicScheduler.ListKeysetRequest do
         }
   defstruct [:organization_id, :project_id, :page_token, :page_size, :direction, :order, :query]
 
-  field(:organization_id, 1, type: :string)
-  field(:project_id, 2, type: :string)
-  field(:page_token, 3, type: :string)
-  field(:page_size, 4, type: :int32)
-
-  field(:direction, 5, type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction, enum: true)
-
-  field(:order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true)
-  field(:query, 7, type: :string)
+  field :organization_id, 1, type: :string
+  field :project_id, 2, type: :string
+  field :page_token, 3, type: :string
+  field :page_size, 4, type: :int32
+  field :direction, 5, type: InternalApi.PeriodicScheduler.ListKeysetRequest.Direction, enum: true
+  field :order, 6, type: InternalApi.PeriodicScheduler.ListOrder, enum: true
+  field :query, 7, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.ListKeysetRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:NEXT, 0)
-  field(:PREV, 1)
+  field :NEXT, 0
+  field :PREV, 1
 end
 
 defmodule InternalApi.PeriodicScheduler.ListKeysetResponse do
@@ -541,11 +537,11 @@ defmodule InternalApi.PeriodicScheduler.ListKeysetResponse do
         }
   defstruct [:status, :periodics, :next_page_token, :prev_page_token, :page_size]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic)
-  field(:next_page_token, 3, type: :string)
-  field(:prev_page_token, 4, type: :string)
-  field(:page_size, 5, type: :int32)
+  field :status, 1, type: InternalApi.Status
+  field :periodics, 2, repeated: true, type: InternalApi.PeriodicScheduler.Periodic
+  field :next_page_token, 3, type: :string
+  field :prev_page_token, 4, type: :string
+  field :page_size, 5, type: :int32
 end
 
 defmodule InternalApi.PeriodicScheduler.DeleteRequest do
@@ -558,8 +554,8 @@ defmodule InternalApi.PeriodicScheduler.DeleteRequest do
         }
   defstruct [:id, :requester]
 
-  field(:id, 1, type: :string)
-  field(:requester, 4, type: :string)
+  field :id, 1, type: :string
+  field :requester, 4, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.DeleteResponse do
@@ -571,7 +567,7 @@ defmodule InternalApi.PeriodicScheduler.DeleteResponse do
         }
   defstruct [:status]
 
-  field(:status, 1, type: InternalApi.Status)
+  field :status, 1, type: InternalApi.Status
 end
 
 defmodule InternalApi.PeriodicScheduler.GetProjectIdRequest do
@@ -585,9 +581,9 @@ defmodule InternalApi.PeriodicScheduler.GetProjectIdRequest do
         }
   defstruct [:periodic_id, :project_name, :organization_id]
 
-  field(:periodic_id, 1, type: :string)
-  field(:project_name, 2, type: :string)
-  field(:organization_id, 3, type: :string)
+  field :periodic_id, 1, type: :string
+  field :project_name, 2, type: :string
+  field :organization_id, 3, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.GetProjectIdResponse do
@@ -600,8 +596,8 @@ defmodule InternalApi.PeriodicScheduler.GetProjectIdResponse do
         }
   defstruct [:status, :project_id]
 
-  field(:status, 1, type: InternalApi.Status)
-  field(:project_id, 2, type: :string)
+  field :status, 1, type: InternalApi.Status
+  field :project_id, 2, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.VersionRequest do
@@ -620,98 +616,70 @@ defmodule InternalApi.PeriodicScheduler.VersionResponse do
         }
   defstruct [:version]
 
-  field(:version, 1, type: :string)
+  field :version, 1, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.ListOrder do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field(:BY_NAME_ASC, 0)
-  field(:BY_CREATION_DATE_DESC, 1)
+  field :BY_NAME_ASC, 0
+  field :BY_CREATION_DATE_DESC, 1
 end
 
 defmodule InternalApi.PeriodicScheduler.PeriodicService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.PeriodicScheduler.PeriodicService"
 
-  rpc(
-    :Apply,
-    InternalApi.PeriodicScheduler.ApplyRequest,
-    InternalApi.PeriodicScheduler.ApplyResponse
-  )
+  rpc :Apply,
+      InternalApi.PeriodicScheduler.ApplyRequest,
+      InternalApi.PeriodicScheduler.ApplyResponse
 
-  rpc(
-    :Persist,
-    InternalApi.PeriodicScheduler.PersistRequest,
-    InternalApi.PeriodicScheduler.PersistResponse
-  )
+  rpc :Persist,
+      InternalApi.PeriodicScheduler.PersistRequest,
+      InternalApi.PeriodicScheduler.PersistResponse
 
-  rpc(
-    :Pause,
-    InternalApi.PeriodicScheduler.PauseRequest,
-    InternalApi.PeriodicScheduler.PauseResponse
-  )
+  rpc :Pause,
+      InternalApi.PeriodicScheduler.PauseRequest,
+      InternalApi.PeriodicScheduler.PauseResponse
 
-  rpc(
-    :Unpause,
-    InternalApi.PeriodicScheduler.UnpauseRequest,
-    InternalApi.PeriodicScheduler.UnpauseResponse
-  )
+  rpc :Unpause,
+      InternalApi.PeriodicScheduler.UnpauseRequest,
+      InternalApi.PeriodicScheduler.UnpauseResponse
 
-  rpc(
-    :RunNow,
-    InternalApi.PeriodicScheduler.RunNowRequest,
-    InternalApi.PeriodicScheduler.RunNowResponse
-  )
+  rpc :RunNow,
+      InternalApi.PeriodicScheduler.RunNowRequest,
+      InternalApi.PeriodicScheduler.RunNowResponse
 
-  rpc(
-    :Describe,
-    InternalApi.PeriodicScheduler.DescribeRequest,
-    InternalApi.PeriodicScheduler.DescribeResponse
-  )
+  rpc :Describe,
+      InternalApi.PeriodicScheduler.DescribeRequest,
+      InternalApi.PeriodicScheduler.DescribeResponse
 
-  rpc(
-    :LatestTriggers,
-    InternalApi.PeriodicScheduler.LatestTriggersRequest,
-    InternalApi.PeriodicScheduler.LatestTriggersResponse
-  )
+  rpc :LatestTriggers,
+      InternalApi.PeriodicScheduler.LatestTriggersRequest,
+      InternalApi.PeriodicScheduler.LatestTriggersResponse
 
-  rpc(
-    :History,
-    InternalApi.PeriodicScheduler.HistoryRequest,
-    InternalApi.PeriodicScheduler.HistoryResponse
-  )
+  rpc :History,
+      InternalApi.PeriodicScheduler.HistoryRequest,
+      InternalApi.PeriodicScheduler.HistoryResponse
 
-  rpc(
-    :List,
-    InternalApi.PeriodicScheduler.ListRequest,
-    InternalApi.PeriodicScheduler.ListResponse
-  )
+  rpc :List, InternalApi.PeriodicScheduler.ListRequest, InternalApi.PeriodicScheduler.ListResponse
 
-  rpc(
-    :ListKeyset,
-    InternalApi.PeriodicScheduler.ListKeysetRequest,
-    InternalApi.PeriodicScheduler.ListKeysetResponse
-  )
+  rpc :ListKeyset,
+      InternalApi.PeriodicScheduler.ListKeysetRequest,
+      InternalApi.PeriodicScheduler.ListKeysetResponse
 
-  rpc(
-    :Delete,
-    InternalApi.PeriodicScheduler.DeleteRequest,
-    InternalApi.PeriodicScheduler.DeleteResponse
-  )
+  rpc :Delete,
+      InternalApi.PeriodicScheduler.DeleteRequest,
+      InternalApi.PeriodicScheduler.DeleteResponse
 
-  rpc(
-    :GetProjectId,
-    InternalApi.PeriodicScheduler.GetProjectIdRequest,
-    InternalApi.PeriodicScheduler.GetProjectIdResponse
-  )
+  rpc :GetProjectId,
+      InternalApi.PeriodicScheduler.GetProjectIdRequest,
+      InternalApi.PeriodicScheduler.GetProjectIdResponse
 
-  rpc(
-    :Version,
-    InternalApi.PeriodicScheduler.VersionRequest,
-    InternalApi.PeriodicScheduler.VersionResponse
-  )
+  rpc :Version,
+      InternalApi.PeriodicScheduler.VersionRequest,
+      InternalApi.PeriodicScheduler.VersionResponse
 end
 
 defmodule InternalApi.PeriodicScheduler.PeriodicService.Stub do
