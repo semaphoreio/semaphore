@@ -5,7 +5,6 @@ defmodule InternalApi.ResponseStatus.Code do
   field :OK, 0
   field :BAD_PARAM, 1
 end
-
 defmodule InternalApi.ResponseStatus do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
