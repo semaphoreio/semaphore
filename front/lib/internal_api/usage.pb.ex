@@ -292,6 +292,7 @@ defmodule InternalApi.Usage.SeatOrigin do
   field(:SEAT_ORIGIN_SEMAPHORE, 1)
   field(:SEAT_ORIGIN_GITHUB, 2)
   field(:SEAT_ORIGIN_BITBUCKET, 3)
+  field(:SEAT_ORIGIN_GITLAB, 4)
 end
 
 defmodule InternalApi.Usage.SeatStatus do
