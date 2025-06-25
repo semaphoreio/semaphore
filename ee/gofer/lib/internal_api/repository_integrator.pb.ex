@@ -5,8 +5,9 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   field :GITHUB_OAUTH_TOKEN, 0
   field :GITHUB_APP, 1
   field :BITBUCKET, 2
+  field :GITLAB, 3
+  field :GIT, 4
 end
-
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -15,7 +16,6 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
   field :ONLY_PUBLIC, 1
   field :NO_CONNECTION, 2
 end
-
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -30,7 +30,6 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
 
   field :project_id, 4, type: :string, json_name: "projectId"
 end
-
 defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -38,14 +37,12 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
   field :token, 1, type: :string
   field :expires_at, 2, type: Google.Protobuf.Timestamp, json_name: "expiresAt"
 end
-
 defmodule InternalApi.RepositoryIntegrator.CheckTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :project_id, 1, type: :string, json_name: "projectId"
 end
-
 defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -57,7 +54,6 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
     json_name: "integrationScope",
     enum: true
 end
-
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -66,7 +62,6 @@ defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
   field :path, 2, type: :string
   field :ref, 3, type: :string
 end
-
 defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -75,21 +70,18 @@ defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
   field :path, 2, type: :string
   field :ref, 3, type: :string
 end
-
 defmodule InternalApi.RepositoryIntegrator.GetFileResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :content, 1, type: :string
 end
-
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :project_id, 1, type: :string, json_name: "projectId"
 end
-
 defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -98,7 +90,14 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   field :application_url, 2, type: :string, json_name: "applicationUrl"
   field :installation_url, 3, type: :string, json_name: "installationUrl"
 end
-
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+end
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+end
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -110,14 +109,12 @@ defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
     json_name: "integrationType",
     enum: true
 end
-
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :repositories, 1, repeated: true, type: InternalApi.RepositoryIntegrator.Repository
 end
-
 defmodule InternalApi.RepositoryIntegrator.Repository do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -128,7 +125,6 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
   field :url, 3, type: :string
   field :description, 5, type: :string
 end
-
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -154,6 +150,10 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
   rpc :GithubInstallationInfo,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
+
+  rpc :InitGithubInstallation,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
 
   rpc :GetRepositories,
       InternalApi.RepositoryIntegrator.GetRepositoriesRequest,
