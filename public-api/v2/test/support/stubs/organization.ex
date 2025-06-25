@@ -109,21 +109,7 @@ defmodule Support.Stubs.Organization do
 
     def describe(req, _) do
       org = DB.find(:organizations, req.org_id)
-
-      if req.include_quotas do
-        %DescribeResponse{
-          status: ok(),
-          organization: %InternalApi.Organization.Organization{
-            org_username: org.api_model.org_username,
-            name: org.api_model.name,
-            org_id: org.api_model.org_id,
-            created_at: %Google.Protobuf.Timestamp{seconds: 1_522_495_543},
-            quotas: []
-          }
-        }
-      else
-        %DescribeResponse{status: ok(), organization: org.api_model}
-      end
+      %DescribeResponse{status: ok(), organization: org.api_model}
     rescue
       _ ->
         %DescribeResponse{status: bad_param()}
