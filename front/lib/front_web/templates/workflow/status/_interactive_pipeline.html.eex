@@ -21,6 +21,10 @@
       <span class="gray mh2">&middot;</span>
       <%= link "Stop Pipeline", to: pipeline_stop_path(@conn, :stop, @workflow.id, @pipeline.id), class: "btn btn-secondary btn-tiny", pipeline_stop_button: "true" %>
     <% end %>
+    <%= if @conn.assigns.permissions["project.job.rerun"] && FrontWeb.PipelineView.pipeline_rebuildable?(@pipeline) && !FrontWeb.PipelineView.anonymous?(@conn) do %>
+      <span class="gray mh2">&middot;</span>
+      <%= link "Rebuild Pipeline", to: pipeline_rebuild_path(@conn, :rebuild, @workflow.id, @pipeline.id), class: "btn btn-secondary btn-tiny", pipeline_rebuild_button: "true", title: "Rerun only failed jobs in this pipeline" %>
+    <% end %>
     <span class="child ml2">←</span>
   </div>
 </div>

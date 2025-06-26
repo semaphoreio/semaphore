@@ -14,6 +14,7 @@ defmodule Front.Models.Pipeline do
     DescribeTopologyRequest,
     ListKeysetRequest,
     ListRequest,
+    PartialRebuildRequest,
     Pipeline,
     TerminateRequest
   }
@@ -346,6 +347,23 @@ defmodule Front.Models.Pipeline do
     case ResponseCode.key(response.response_status.code) do
       :OK -> :ok
       :BAD_PARAM -> {:error, response.response_status.message}
+    end
+  end
+
+  def rebuild(id, requester_id, _tracing_headers \\ nil) do
+    request =
+      PartialRebuildRequest.new(
+        ppl_id: id,
+        user_id: requester_id,
+        request_token: UUID.uuid4()
+      )
+
+    {:ok, response} = Clients.Pipeline.partial_rebuild(request)
+
+    case ResponseCode.key(response.response_status.code) do
+      :OK -> {:ok, response.ppl_id}
+      :BAD_PARAM -> {:error, response.response_status.message}
+      _ -> {:error, "Failed to rebuild pipeline"}
     end
   end
 

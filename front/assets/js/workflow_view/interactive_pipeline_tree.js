@@ -11,6 +11,7 @@ export var InteractivePipelineTree = {
   init: function(opts = {}) {
     InteractivePipelineTree.handleWorkflowTreeItemClicks(opts);
     InteractivePipelineTree.handlePipelineStopClicks();
+    InteractivePipelineTree.handlePipelineRebuildClicks();
     InteractivePipelineTree.handleToggleSkippedBlocksClicks();
   },
 
@@ -37,6 +38,35 @@ export var InteractivePipelineTree = {
           Notice.notice(data.message)
         }
         button.remove();
+      })
+    });
+  },
+
+  handlePipelineRebuildClicks: function() {
+    $("body").on("click", "[pipeline-rebuild-button]", function(event) {
+      event.preventDefault();
+      let button = $(event.currentTarget);
+      let href = button.attr("href");
+      button.text("Rebuilding...")
+      button.attr("disabled", true);
+
+      let req = $.ajax({
+        url: href,
+        type: "POST",
+        beforeSend: function(xhr) {
+          xhr.setRequestHeader("X-CSRF-Token", $("meta[name='csrf-token']").attr("content"));
+        }
+      });
+
+      req.done(function(data) {
+        if(data.error != undefined) {
+          Notice.error(data.error)
+          button.text("Rebuild Pipeline")
+          button.attr("disabled", false);
+        } else {
+          Notice.notice(data.message)
+          button.remove();
+        }
       })
     });
   },
