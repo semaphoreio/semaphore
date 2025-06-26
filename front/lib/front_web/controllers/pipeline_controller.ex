@@ -18,9 +18,10 @@ defmodule FrontWeb.PipelineController do
   plug(PublicPageAccess when action in @public_endpoints)
   plug(PageAccess, [permissions: "project.view"] when action not in @public_endpoints)
   plug(PageAccess, [permissions: "project.job.stop"] when action == :stop)
+  plug(PageAccess, [permissions: "project.job.rerun"] when action == :rebuild)
 
   plug(:assign_pipeline_with_blocks when action in [:show, :poll])
-  plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop])
+  plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop, :rebuild])
   plug(:preload_switch when action in [:show, :poll, :switch])
 
   def path(conn, params) do
@@ -130,6 +131,32 @@ defmodule FrontWeb.PipelineController do
     end
   end
 
+  def rebuild(conn, _params) do
+    Watchman.benchmark("rebuild.duration", fn ->
+      project = conn.assigns.project
+      workflow = conn.assigns.workflow
+      pipeline = conn.assigns.pipeline
+
+      log_rebuild(conn, project, workflow, pipeline)
+      rebuild_pipeline(conn, pipeline.id, conn.assigns.user_id, conn.assigns.tracing_headers)
+    end)
+  end
+
+  defp rebuild_pipeline(conn, ppl_id, user_id, tracing_headers) do
+    case Pipeline.rebuild(ppl_id, user_id, tracing_headers) do
+      {:ok, new_pipeline_id} ->
+        conn
+        |> json(%{
+          message: "Pipeline rebuild initiated successfully.",
+          pipeline_id: new_pipeline_id
+        })
+
+      {:error, message} ->
+        conn
+        |> json(%{error: message})
+    end
+  end
+
   defp organization_matches?(organization_id, pipeline_organization_id) do
     organization_id == pipeline_organization_id
   end
@@ -143,6 +170,20 @@ defmodule FrontWeb.PipelineController do
     |> Audit.new(:Pipeline, :Stopped)
     |> Audit.add(:resource_name, pipeline.name)
     |> Audit.add(:description, "Stopped the pipeline")
+    |> Audit.metadata(project_id: project.id)
+    |> Audit.metadata(project_name: project.name)
+    |> Audit.metadata(branch_name: workflow.branch_name)
+    |> Audit.metadata(workflow_id: workflow.id)
+    |> Audit.metadata(commit_sha: workflow.commit_sha)
+    |> Audit.metadata(pipeline_id: pipeline.id)
+    |> Audit.log()
+  end
+
+  defp log_rebuild(conn, project, workflow, pipeline) do
+    conn
+    |> Audit.new(:Pipeline, :Rebuild)
+    |> Audit.add(:resource_name, pipeline.name)
+    |> Audit.add(:description, "Rebuilt the pipeline")
     |> Audit.metadata(project_id: project.id)
     |> Audit.metadata(project_name: project.name)
     |> Audit.metadata(branch_name: workflow.branch_name)

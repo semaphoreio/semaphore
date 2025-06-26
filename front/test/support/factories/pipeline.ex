@@ -5,6 +5,7 @@ defmodule Support.Factories.Pipeline do
     Block,
     DescribeResponse,
     DescribeTopologyResponse,
+    PartialRebuildResponse,
     Pipeline,
     ResponseStatus,
     TerminateResponse
@@ -20,6 +21,13 @@ defmodule Support.Factories.Pipeline do
   def terminate_response do
     %TerminateResponse{
       response_status: ResponseStatus.new()
+    }
+  end
+
+  def partial_rebuild_response do
+    %PartialRebuildResponse{
+      response_status: ResponseStatus.new(code: ResponseCode.value(:OK)),
+      ppl_id: "new-pipeline-id-#{:rand.uniform(10000)}"
     }
   end
 

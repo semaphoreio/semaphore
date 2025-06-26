@@ -7,6 +7,7 @@ defmodule Front.Clients.PipelineTest do
     DescribeManyRequest,
     DescribeRequest,
     DescribeTopologyRequest,
+    PartialRebuildRequest,
     TerminateRequest
   }
 
@@ -51,6 +52,17 @@ defmodule Front.Clients.PipelineTest do
       GrpcMock.stub(PipelineMock, :terminate, response)
 
       assert {:ok, response} == Pipeline.terminate(request)
+    end
+  end
+
+  describe "partial_rebuild" do
+    test "returns PartialRebuildResponse for PartialRebuildRequest" do
+      request = PartialRebuildRequest.new()
+
+      response = Factories.Pipeline.partial_rebuild_response()
+      GrpcMock.stub(PipelineMock, :partial_rebuild, response)
+
+      assert {:ok, response} == Pipeline.partial_rebuild(request)
     end
   end
 end

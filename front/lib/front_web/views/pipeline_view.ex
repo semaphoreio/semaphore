@@ -299,6 +299,10 @@ defmodule FrontWeb.PipelineView do
     pipeline.state != :DONE && pipeline.state != :STOPPING
   end
 
+  def pipeline_rebuildable?(pipeline) do
+    pipeline.state == :DONE && pipeline.result != :PASSED
+  end
+
   def anonymous?(conn) do
     conn.assigns.anonymous
   end

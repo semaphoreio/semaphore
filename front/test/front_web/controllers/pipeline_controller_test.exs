@@ -262,4 +262,50 @@ defmodule FrontWeb.PipelineControllerTest do
       assert conn.status == 404
     end
   end
+
+  describe "rebuild" do
+    test "sends partial rebuild request", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      conn =
+        conn
+        |> post("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/rebuild")
+
+      assert conn.status == 200
+      assert json_response(conn, 200)["message"] == "Pipeline rebuild initiated successfully."
+      assert json_response(conn, 200)["pipeline_id"] != nil
+    end
+
+    test "returns 404 when organization_id mismatches", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      conn =
+        conn
+        |> Plug.Conn.put_req_header("x-semaphore-org-id", Ecto.UUID.generate())
+        |> post("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/rebuild")
+
+      assert conn.status == 404
+    end
+  end
+
+  describe "rebuild => when user does not have permission to rerun jobs" do
+    test "returns 404", %{conn: conn, workflow_id: workflow_id, pipeline_id: pipeline_id} do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+
+      org = Support.Stubs.DB.first(:organizations)
+      user = Support.Stubs.DB.first(:users)
+
+      Support.Stubs.PermissionPatrol.allow_everything_except(org.id, user.id, "project.job.rerun")
+
+      conn =
+        conn
+        |> post("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/rebuild")
+
+      assert conn.status == 404
+    end
+  end
 end

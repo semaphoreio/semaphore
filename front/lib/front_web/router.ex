@@ -638,6 +638,10 @@ defmodule FrontWeb.Router do
       as: :pipeline_stop
     )
 
+    post("/workflows/:workflow_id/pipelines/:pipeline_id/rebuild", PipelineController, :rebuild,
+      as: :pipeline_rebuild
+    )
+
     post(
       "/workflows/:workflow_id/pipelines/:pipeline_id/swithes/:switch_id/targets/:name",
       TargetController,
