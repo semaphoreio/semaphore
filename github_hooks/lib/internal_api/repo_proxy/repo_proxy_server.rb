@@ -51,6 +51,64 @@ module InternalApi
         end
       end
 
+      define_rpc :create_blank do |req, logger|
+        project = ::Project.find(req.project_id)
+        user    = ::User.find(req.requester_id)
+
+        payload_builder = InternalApi::RepoProxy::PayloadFactory.create(req.git.reference, req.git.commit_sha)
+        payload = payload_builder.call(project, user)
+
+        params = ActionController::Parameters.new
+        params["hash_id"] = project.id
+        params["payload"] = payload.to_json
+
+        workflow = ::Semaphore::RepoHost::Hooks::Recorder.record_hook(params, project)
+        workflow.update(:result => ::Workflow::RESULT_OK)
+
+        branch = ::Branch.find_or_create_for_workflow(workflow)
+        branch.unarchive
+        workflow.update(:branch_id => branch.id)
+
+        if workflow.payload.pull_request?
+          branch.update(:pull_request_mergeable => true)
+          workflow.update(
+            :commit_author => payload["commit_author"],
+            :commit_sha => payload["merge_commit_sha"],
+            :git_ref => payload["semaphore_ref"]
+          )
+        end
+
+        workflow.update(:ppl_id => req.pipeline_id)
+        workflow.update(:wf_id => req.wf_id)
+        workflow.update(:state => Workflow::STATE_LAUNCHING)
+
+        InternalApi::RepoProxy::CreateBlankResponse.new(
+          :hook_id => workflow.id,
+          :wf_id => req.wf_id,
+          :pipeline_id => req.pipeline_id,
+          :branch_id => branch.id,
+          :repo => InternalApi::RepoProxy::CreateBlankResponse::Repo.new(
+            :owner => branch.project.repository.owner,
+            :repo_name => branch.project.repository.name,
+            :branch_name => branch.name,
+            :commit_sha => workflow.commit_sha,
+            :repository_id => branch.project.repository.id
+          )
+        )
+
+      rescue ::InternalApi::RepoProxy::PrPayload::PrNotMergeableError => e
+        raise GRPC::Aborted, e.message
+      rescue ::InternalApi::RepoProxy::PayloadFactory::InvalidReferenceError => e
+        raise GRPC::InvalidArgument, e.message
+      rescue ::RepoHost::RemoteException::NotFound
+        raise GRPC::NotFound, "Reference not found on GitHub #{req.git.reference} #{req.git.commit_sha}"
+      rescue ::RepoHost::RemoteException::Unknown => e
+        logger.error("Unknown error", error: e.message)
+        raise GRPC::Internal, "Unknown error"
+      rescue ::ActiveRecord::RecordNotFound => e
+        raise GRPC::NotFound, e.message
+      end
+
       define_rpc :create do |req, logger|
         project = ::Project.find(req.project_id)
 
@@ -101,8 +159,6 @@ module InternalApi
           else
             workflow.branch_name
           end
-
-        integration_token, = ::Semaphore::ProjectIntegrationToken.new.project_token(branch.project)
 
         client  = InternalApi::PlumberWF::WorkflowService::Stub.new(App.plumber_internal_url, :this_channel_is_insecure)
         request = InternalApi::PlumberWF::ScheduleRequest.new(

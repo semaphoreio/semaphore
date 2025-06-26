@@ -20,15 +20,6 @@ defmodule PipelinesAPI.PipelinesClient do
   alias PipelinesAPI.Util.Metrics
   alias PipelinesAPI.PipelinesClient.{RequestFormatter, GrpcClient, ResponseFormatter}
 
-  def schedule(pipeline_request) do
-    Metrics.benchmark("PipelinesAPI.ppl_client", ["schedule"], fn ->
-      pipeline_request
-      |> RequestFormatter.form_schedule_request()
-      |> GrpcClient.schedule()
-      |> ResponseFormatter.process_schedule_response()
-    end)
-  end
-
   def describe(pipeline_id, params) do
     Metrics.benchmark("PipelinesAPI.ppl_client", ["describe"], fn ->
       pipeline_id

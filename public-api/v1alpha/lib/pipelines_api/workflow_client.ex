@@ -29,7 +29,7 @@ defmodule PipelinesAPI.WorkflowClient do
     Metrics.benchmark("PipelinesAPI.router", ["reschedule"], fn ->
       WFRequestFormatter.form_reschedule_request(wf_id, requester_id, request_token)
       |> WFGrpcClient.reschedule()
-      |> WFResponseFormatter.process_schedule_response()
+      |> WFResponseFormatter.process_reschedule_response()
     end)
   end
 

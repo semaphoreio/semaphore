@@ -13,42 +13,51 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
 
   def form_schedule_request(params) when is_map(params) do
     %{
-      service: service(params["service"]),
+      service: service_type(params["repository"].integration_type),
       repo: %{
-        owner: params["owner"],
-        repo_name: params["repo_name"],
-        branch_name: params["branch_name"],
-        commit_sha: params["commit_sha"]
+        branch_name: params |> Map.get("reference", "") |> branch_name(),
+        commit_sha: params |> Map.get("commit_sha", "")
       },
-      auth: %{
-        client_id: params["client_id"],
-        client_secret: params["client_secret"],
-        access_token: params["access_token"]
-      },
+      request_token: UUID.uuid4(),
       project_id: params["project_id"],
-      branch_id: params["branch_id"],
-      hook_id: params["hook_id"],
-      request_token: params["ppl_request_token"],
-      snapshot_id: Map.get(params, "snapshot_id", ""),
-      definition_file: Map.get(params, "definition_file", ""),
       requester_id: Map.get(params, "requester_id", ""),
-      organization_id: Map.get(params, "organization_id", "")
+      definition_file: Map.get(params, "definition_file", ".semaphore/semaphore.yml"),
+      organization_id: Map.get(params, "organization_id", ""),
+      git_reference: params |> Map.get("reference", "") |> ref(),
+      start_in_conceived_state: true,
+      triggered_by: :API,
+      env_vars: parameter_values_to_env_vars(params["parameters"])
     }
     |> Proto.deep_new(ScheduleRequest)
   end
 
   def form_schedule_request(_), do: ToTuple.internal_error("Internal error")
 
-  defp service(service_val) when is_integer(service_val), do: service_val
+  defp service_type(:GITHUB_OAUTH_TOKEN), do: :GIT_HUB
+  defp service_type(:GITHUB_APP), do: :GIT_HUB
+  defp service_type(:BITBUCKET), do: :BITBUCKET
+  defp service_type(:GITLAB), do: :GITLAB
+  defp service_type(:GIT), do: :GIT
 
-  defp service(service_val) when is_binary(service_val) do
-    service_val
-    |> String.upcase()
-    |> String.to_atom()
-    |> InternalApi.PlumberWF.ScheduleRequest.ServiceType.value()
+  defp parameter_values_to_env_vars(nil), do: []
+
+  defp parameter_values_to_env_vars(parameter_values) do
+    Enum.into(parameter_values, [], &parameter_value_to_env_var/1)
   end
 
-  defp service(_service_val), do: 0
+  defp parameter_value_to_env_var({name, value}) do
+    %{name: name, value: if(is_nil(value), do: "", else: value)}
+  end
+
+  defp ref(""), do: ""
+  defp ref(value = "refs/" <> _rest), do: value
+  defp ref(branch_name), do: "refs/heads/" <> branch_name
+
+  defp branch_name(""), do: ""
+  defp branch_name(tag = "refs/tags/" <> _rest), do: tag
+  defp branch_name("refs/pull/" <> number), do: "pull-request-" <> number
+  defp branch_name("refs/heads/" <> branch_name), do: branch_name
+  defp branch_name(name), do: name
 
   # Terminate
 

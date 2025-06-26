@@ -79,7 +79,7 @@ defmodule PipelinesAPI.Schedules.Describe.Test do
   def describe_schedule(identifier, expected_status_code, decode \\ true) do
     {:ok, response} = get_description(identifier)
     %{:body => body, :status_code => status_code} = response
-    IO.puts("Response body: #{inspect(body)}")
+    if(status_code != expected_status_code, do: IO.puts("Response body: #{inspect(body)}"))
     assert status_code == expected_status_code
 
     if decode do

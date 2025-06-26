@@ -49,13 +49,13 @@ defmodule Ppl.Ppls.Model.PplsQueries do
 
   @repo_fields ~w(owner repo_name branch_name commit_sha project_id label)
 
-  def insert(ctx, partial_rebuild_of \\ "", task_workflow? \\ false) do
+  def insert(ctx, partial_rebuild_of \\ "", start_in_conceived? \\ false) do
     req_args = ctx.request_args
     yml_file_path = Expand.full_name(req_args["working_dir"], req_args["file_name"])
     service = Map.get(ctx.request_args, "service")
     extension_of = Map.get(req_args, "extension_of", "")
     scheduler_task_id = Map.get(req_args, "scheduler_task_id", "")
-    with_repo_data? = not task_workflow?
+    with_repo_data? = not start_in_conceived?
 
     %{ppl_id: ctx.id, yml_file_path: yml_file_path}
       |> Map.put(:state, "initializing")

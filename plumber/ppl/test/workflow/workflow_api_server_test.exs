@@ -3,7 +3,6 @@ defmodule Plumber.WorkflowAPI.Server.Test do
   @test_commit_sha_2 "#{:crypto.strong_rand_bytes(20) |> Base.encode16(case: :lower)}"
   use Ppl.IntegrationCase
 
-  alias Test.GitHub.Credentials
   alias Util.{Proto, ToTuple}
   alias Ppl.Grpc.InFlightCounter
   alias Ppl.PplRequests.Model.PplRequestsQueries

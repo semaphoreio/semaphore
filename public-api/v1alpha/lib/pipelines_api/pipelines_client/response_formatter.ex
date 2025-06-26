@@ -11,28 +11,6 @@ defmodule PipelinesAPI.PipelinesClient.ResponseFormatter do
   alias InternalApi.Plumber.{Pipeline, Block}
   alias Util.Proto
 
-  # Schedule
-
-  def process_schedule_response({:ok, schedule_response}) do
-    with true <- is_map(schedule_response),
-         {:ok, response_status} <- Map.fetch(schedule_response, :response_status),
-         :OK <- response_code_value(response_status),
-         {:ok, ppl_id} <- Map.fetch(schedule_response, :ppl_id) do
-      {:ok, ppl_id}
-    else
-      :LIMIT_EXCEEDED ->
-        schedule_response.response_status |> Map.get(:message) |> ToTuple.user_error()
-
-      :BAD_PARAM ->
-        schedule_response.response_status |> Map.get(:message) |> ToTuple.user_error()
-
-      _ ->
-        log_invalid_response(schedule_response, "schedule")
-    end
-  end
-
-  def process_schedule_response(error), do: error
-
   # Describe
 
   def process_describe_response({:ok, describe_response}) do

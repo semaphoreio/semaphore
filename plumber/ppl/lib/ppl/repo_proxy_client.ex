@@ -73,7 +73,12 @@ defmodule Ppl.RepoProxyClient do
             )
         )
 
-      {:ok, channel} = GRPC.Stub.connect(new_url())
+      {:ok, channel} =
+        if ppl_req.request_args |> Map.get("service", "") == "git_hub" do
+          GRPC.Stub.connect(old_url())
+        else
+          GRPC.Stub.connect(new_url())
+        end
 
       channel
       |> RepoProxyService.Stub.create_blank(request, @opts)
@@ -95,14 +100,16 @@ defmodule Ppl.RepoProxyClient do
   end
 
   defp git_reference_from_ppl_req(ppl_req) do
-    branch_name = ppl_req.request_args |> Map.get("branch_name", "")
+    git_ref = ppl_req.request_args |> Map.get("git_reference", "")
 
-    if branch_name == "" do
-      raise "Provided an empty branch_name"
+    if git_ref == "" do
+      branch_name = ppl_req.request_args |> Map.get("branch_name", "")
+      "refs/heads/#{branch_name}"
+    else
+      git_ref
     end
-
-    "refs/heads/#{branch_name}"
   end
+
   defp process_status({:ok, map}) do
     case map |> Map.get(:status, %{}) |> Map.get(:code) do
       :OK ->

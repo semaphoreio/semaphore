@@ -1,11 +1,9 @@
 defmodule PipelinesAPI.PipelinesClient.RequestFormatter.Test do
   use ExUnit.Case
 
-  alias Test.GitHub.Credentials
   alias PipelinesAPI.PipelinesClient.RequestFormatter
 
   alias InternalApi.Plumber.{
-    ScheduleRequest,
     DescribeRequest,
     TerminateRequest,
     ListRequest,
@@ -13,69 +11,6 @@ defmodule PipelinesAPI.PipelinesClient.RequestFormatter.Test do
     DescribeTopologyRequest,
     ValidateYamlRequest
   }
-
-  alias PipelinesAPI.Validator
-  alias Util.ToTuple
-
-  # Schedule
-
-  @schedule_request_required_fields ~w(service ppl_request_token owner repo_name hook_id
-      branch_name commit_sha client_id client_secret access_token project_id branch_id)
-
-  test "form_schedule_request() returns {:ok, request} when called with map with all params" do
-    {:ok, params} = schedule_params() |> Validator.validate_post_pipelines() |> atom_keys()
-
-    assert {:ok, schedule_request} = RequestFormatter.form_schedule_request(params)
-    assert %ScheduleRequest{} = schedule_request
-  end
-
-  defp atom_keys({:ok, list}) do
-    list |> Enum.map(fn {k, v} -> {String.to_atom(k), v} end) |> Enum.into(%{}) |> ToTuple.ok()
-  end
-
-  test "form_schedule_request() returns error when called with map with misssing params" do
-    params = schedule_params()
-
-    @schedule_request_required_fields
-    |> Enum.map(fn field_name -> test_field_is_required(params, field_name) end)
-  end
-
-  defp test_field_is_required(params, field_name) do
-    params = Map.delete(params, field_name)
-
-    assert {:error, {:user, message}} = Validator.validate_post_pipelines(params)
-    assert message == "Missing field #{field_name} in pipeline schedule request"
-  end
-
-  test "form_schedule_request() returns error when called with map with wrong service field value" do
-    params = schedule_params() |> Map.put("service", "non-existing")
-
-    assert {:error, {:user, message}} = Validator.validate_post_pipelines(params)
-    assert message == "Invalid value for service field: non-existing"
-  end
-
-  test "form_schedule_request() returns internal error when it is not called with map as a param" do
-    params = "123"
-
-    assert {:error, {:internal, message}} = RequestFormatter.form_schedule_request(params)
-    assert message == "Internal error"
-  end
-
-  defp schedule_params() do
-    %{
-      "owner" => "renderedtext",
-      "repo_name" => "pipelines-test-repo-auto-call",
-      "service" => "git_hub",
-      "commit_sha" => "6a87726284a6109fc5ce27e02722abd4c6265de0",
-      "branch_name" => "non-default-branch",
-      "ppl_request_token" => UUID.uuid4(),
-      "project_id" => "test",
-      "hook_id" => UUID.uuid4(),
-      "branch_id" => UUID.uuid4(),
-      "organization_id" => UUID.uuid4()
-    }
-    |> Map.merge(Credentials.string_keys())
-  end
 
   # Describe
 

@@ -21,23 +21,6 @@ ExUnit.configure(
 
 ExUnit.start()
 
-defmodule Test.GitHub.Credentials do
-  @moduledoc """
-  User credentials for GH repo access
-  (only for public repos)
-  """
-
-  def string_keys, do: atom_keys() |> Jason.encode!() |> Jason.decode!()
-
-  def atom_keys do
-    %{
-      client_id: "328c742132e5407abd7d",
-      client_secret: "1d5559c02a2a20d8c3343967c331d93401959d9e",
-      access_token: "7e12be7748ab2e7ac9c4b1ecc3fcb19741fc28ec"
-    }
-  end
-end
-
 defmodule Test.PipelinesClient do
   use ExUnit.Case
 

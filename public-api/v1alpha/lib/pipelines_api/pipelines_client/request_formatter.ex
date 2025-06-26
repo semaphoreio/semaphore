@@ -7,7 +7,6 @@ defmodule PipelinesAPI.PipelinesClient.RequestFormatter do
   alias PipelinesAPI.Util.ToTuple
 
   alias InternalApi.Plumber.{
-    ScheduleRequest,
     DescribeRequest,
     TerminateRequest,
     ListRequest,
@@ -17,39 +16,7 @@ defmodule PipelinesAPI.PipelinesClient.RequestFormatter do
     PartialRebuildRequest
   }
 
-  alias InternalApi.Plumber.ScheduleRequest.{Repo, Auth}
   alias LogTee, as: LT
-
-  # Schedule
-
-  def form_schedule_request(params) when is_map(params) do
-    %{
-      service: params.service,
-      hook_id: params.hook_id,
-      branch_id: params.branch_id,
-      request_token: params.ppl_request_token,
-      repo:
-        Repo.new(
-          owner: params.owner,
-          repo_name: params.repo_name,
-          branch_name: params.branch_name,
-          commit_sha: params.commit_sha
-        ),
-      auth:
-        Auth.new(
-          client_id: params.client_id,
-          client_secret: params.client_secret,
-          access_token: params.access_token
-        ),
-      project_id: params.project_id,
-      snapshot_id: Map.get(params, :snapshot_id, ""),
-      definition_file: Map.get(params, :definition_file, "")
-    }
-    |> ScheduleRequest.new()
-    |> ToTuple.ok()
-  end
-
-  def form_schedule_request(_), do: ToTuple.internal_error("Internal error")
 
   # Describe
 
