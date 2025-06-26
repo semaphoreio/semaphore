@@ -473,6 +473,54 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       assert {:error, :not_found} == Rbac.Okta.Integration.find(integration.id)
     end
 
+    test "If okta is not removed as provider, restore everything", %{integration: integration} do
+      {:ok, okta_user} = Support.Factories.RbacUser.insert()
+
+      {:ok, _} =
+        Support.Factories.OktaUser.insert(
+          integration_id: integration.id,
+          org_id: integration.org_id,
+          user_id: okta_user.id
+        )
+
+      # Assigning org role to the okta user
+      {:ok, _} =
+        Support.Factories.SubjectRoleBinding.insert(
+          org_id: integration.org_id,
+          subject_id: okta_user.id,
+          project_id: nil,
+          binding_source: :okta
+        )
+
+      request = %InternalApi.Okta.DestroyRequest{
+        user_id: okta_user.id,
+        integration_id: integration.id
+      }
+
+      assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [:passthrough],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn _ -> {:error, :not_found} end,
+           update: fn org ->
+             # Assert that okta is removed from allowed_id_providers
+             refute "okta" in org.allowed_id_providers
+             {:ok, nil}
+           end
+         ]}
+      ]) do
+        assert {:ok, _res} = InternalApi.Okta.Okta.Stub.destroy(channel, request)
+        # The mocked function is executed async, hence the wait
+        :timer.sleep(2_000)
+      end
+
+      assert user_has_one_role_assigned?(okta_user.id)
+      assert match?({:ok, _}, Rbac.Okta.Integration.find(integration.id))
+    end
+
     test "Dont allow if user doesn't have permission", %{integration: integration} do
       request = %InternalApi.Okta.DestroyRequest{
         user_id: Ecto.UUID.generate(),
