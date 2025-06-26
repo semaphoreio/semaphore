@@ -184,4 +184,28 @@ defmodule Front.Clients.Pipeline do
       response
     end)
   end
+
+  def partial_rebuild(request) do
+    Watchman.benchmark("pipeline.partial_rebuild.duration", fn ->
+      response =
+        channel()
+        |> Stub.partial_rebuild(request, metadata: metadata(), timeout: timeout())
+
+      case response do
+        {:ok, _} -> Watchman.increment("pipeline.partial_rebuild.success")
+        {:error, _} -> Watchman.increment("pipeline.partial_rebuild.failure")
+      end
+
+      Logger.debug(fn ->
+        """
+        Pipeline API partial_rebuild returned response
+        #{inspect(response)}
+        for request
+        #{inspect(request)}
+        """
+      end)
+
+      response
+    end)
+  end
 end
