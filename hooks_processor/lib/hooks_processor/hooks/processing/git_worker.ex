@@ -55,7 +55,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   defp get_requester_id(webhook, email) do
     "email: #{email}"
-    |> LT.info("Hook #{webhook.id} - calling User API to find requester")
+    |> LT.debug("Hook #{webhook.id} - calling User API to find requester")
 
     case UserClient.describe_by_email(email) do
       {:ok, user} ->
@@ -73,7 +73,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   defp filter_membership(webhook, organization_id, user_id) do
     "organization_id: #{organization_id}, user_id: #{user_id}"
-    |> LT.info("Hook #{webhook.id} - calling RBAC API to check membership")
+    |> LT.debug("Hook #{webhook.id} - calling RBAC API to check membership")
 
     case RBACClient.member?(organization_id, user_id) do
       {:ok, true} ->
