@@ -41,11 +41,8 @@ defmodule Rbac.Api.Organization do
     Logger.info("Received Organization update response: #{inspect(grpc_result)}")
 
     case grpc_result do
-      {:ok, res} when res.status.code == :OK ->
-        {:ok, res.organization}
-
-      {:error, error} ->
-        {:error, error}
+      {:ok, res} -> {:ok, res.organization}
+      {:error, error} -> {:error, error}
     end
   end
 end
