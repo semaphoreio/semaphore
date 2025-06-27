@@ -23,21 +23,53 @@ defmodule Rbac.Okta.Integration do
         jit_provisioning_enabled,
         idempotency_token \\ Ecto.UUID.generate()
       ) do
-    with {:ok, fingerprint} <- Certificate.fingerprint(certificate),
-         {:ok, integration} <-
-           Rbac.Repo.OktaIntegration.insert_or_update(
-             org_id: org_id,
-             creator_id: creator_id,
-             sso_url: sso_url,
-             saml_issuer: saml_issuer,
-             saml_certificate_fingerprint: Base.encode64(fingerprint),
-             jit_provisioning_enabled: jit_provisioning_enabled,
-             idempotency_token: idempotency_token
-           ) do
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:fingerprint, fn _repo, _changes ->
+      Certificate.fingerprint(certificate)
+    end)
+    |> Ecto.Multi.run(:integration, fn _repo, %{fingerprint: fingerprint} ->
+      Rbac.Repo.OktaIntegration.insert_or_update(
+        org_id: org_id,
+        creator_id: creator_id,
+        sso_url: sso_url,
+        saml_issuer: saml_issuer,
+        saml_certificate_fingerprint: Base.encode64(fingerprint),
+        jit_provisioning_enabled: jit_provisioning_enabled,
+        idempotency_token: idempotency_token
+      )
+    end)
+    |> Ecto.Multi.run(:allowed_id_providers, fn _repo, _changes ->
       add_okta_to_allowed_id_providers(org_id)
-      {:ok, integration}
-    else
-      e -> e
+    end)
+    |> Rbac.Repo.transaction()
+    |> case do
+      {:ok, %{integration: integration}} ->
+        {:ok, integration}
+
+      {:error, :fingerprint, reason, _changes} ->
+        Logger.error("Failed to decode certificate for org #{org_id}: #{inspect(reason)}.")
+        {:error, :cert_decode_error}
+
+      {:error, :integration, reason, _changes} ->
+        Logger.error(
+          "Failed to create/update Okta integration for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, {:integration_failed, reason}}
+
+      {:error, :allowed_id_providers, reason, _changes} ->
+        Logger.error(
+          "Failed to add Okta to allowed ID providers for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, {:allowed_id_providers_failed, reason}}
+
+      {:error, operation, reason, _changes} ->
+        Logger.error(
+          "Unknown operation #{inspect(operation)} failed for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
     end
   end
 

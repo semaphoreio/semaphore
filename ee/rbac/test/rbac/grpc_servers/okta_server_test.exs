@@ -103,8 +103,23 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
         saml_certificate: cert
       }
 
-      with_mock Rbac.Store.UserPermissions, [:passthrough],
-        read_user_permissions: fn _ -> "organization.okta.manage" end do
+      org = %{
+        org_id: request.org_id,
+        allowed_id_providers: ["github", "okta"]
+      }
+
+      with_mocks([
+        {Rbac.Store.UserPermissions, [],
+         [read_user_permissions: fn _ -> "organization.okta.manage" end]},
+        {Rbac.Api.Organization, [],
+         [
+           find_by_id: fn _ -> {:ok, org} end,
+           update: fn org ->
+             assert "okta" in org.allowed_id_providers
+             {:ok, org}
+           end
+         ]}
+      ]) do
         assert {:ok, channel} = GRPC.Stub.connect("localhost:50051")
         assert {:ok, res1} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
         assert {:ok, res2} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
@@ -167,7 +182,7 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
       end
     end
 
-    test "Integration is created even if updating allowed_id_providers fails" do
+    test "Integration is not created if updating allowed_id_providers fails" do
       import ExUnit.CaptureLog
 
       {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
@@ -204,16 +219,8 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
 
         log =
           capture_log(fn ->
-            assert {:ok, res} = InternalApi.Okta.Okta.Stub.set_up(channel, request)
-
-            # Assert that the integration was created even though the org update failed
-            assert %InternalApi.Okta.SetUpResponse{} = res
-            assert res.integration.org_id == request.org_id
-            assert res.integration.creator_id == request.creator_id
-
-            # Verify that the integration was persisted
-            assert {:ok, integration} = Rbac.Okta.Integration.find(res.integration.id)
-            assert integration.org_id == org_id
+            assert match?({:error, _}, InternalApi.Okta.Okta.Stub.set_up(channel, request))
+            assert {:error, :not_found} = Rbac.Okta.Integration.find_by_org_id(org_id)
           end)
 
         # Verify API calls and logging
