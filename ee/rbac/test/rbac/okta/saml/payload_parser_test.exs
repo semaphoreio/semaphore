@@ -1,6 +1,7 @@
 defmodule Rbac.Okta.Saml.PayloadParser.Test do
   use Rbac.RepoCase, async: true
 
+  import Mock
   alias Rbac.Okta.Saml.PayloadParser, as: Parser
 
   @org_id Ecto.UUID.generate()
@@ -86,9 +87,24 @@ defmodule Rbac.Okta.Saml.PayloadParser.Test do
   def integration(issuer) do
     {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
-    {:ok, integration} =
-      Rbac.Okta.Integration.create_or_update(@org_id, @creator_id, @sso_url, issuer, cert, false)
+    with_mocks([
+      {Rbac.Api.Organization, [],
+       [
+         find_by_id: fn _ -> {:ok, %{allowed_id_providers: []}} end,
+         update: fn _ -> {:ok, %{}} end
+       ]}
+    ]) do
+      {:ok, integration} =
+        Rbac.Okta.Integration.create_or_update(
+          @org_id,
+          @creator_id,
+          @sso_url,
+          issuer,
+          cert,
+          false
+        )
 
-    integration
+      integration
+    end
   end
 end

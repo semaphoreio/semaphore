@@ -9,12 +9,18 @@ defmodule Rbac.Okta.Scim.ProvisionerTest do
   alias Rbac.Repo.OktaUser
   import Mock
 
-  setup do
+  # Setup global mocks that will be available for all tests
+  setup_with_mocks([
+    {Rbac.Api.Organization, [],
+     [
+       find_by_id: fn _ -> {:ok, %{allowed_id_providers: []}} end,
+       update: fn _ -> {:ok, %{}} end
+     ]}
+  ]) do
     Support.Rbac.Store.clear!()
     Support.Rbac.create_org_roles(@org_id)
 
     {:ok, provisioner} = Rbac.Okta.Scim.Provisioner.start_link()
-
     on_exit(fn -> Process.exit(provisioner, :kill) end)
 
     {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()

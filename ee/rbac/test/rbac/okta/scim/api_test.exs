@@ -15,14 +15,19 @@ defmodule Rbac.Okta.Scim.Api.Test do
     "x-semaphore-org-id": @org_id
   ]
 
-  setup do
+  setup_with_mocks([
+    {Rbac.Api.Organization, [],
+     [
+       find_by_id: fn _ -> {:ok, %{allowed_id_providers: []}} end,
+       update: fn _ -> {:ok, %{}} end
+     ]}
+  ]) do
     Rbac.FrontRepo.delete_all(Rbac.FrontRepo.User)
 
     Support.Rbac.create_org_roles(@org_id)
     Support.Rbac.create_project_roles(@org_id)
 
     {:ok, provisioner} = Rbac.Okta.Scim.Provisioner.start_link()
-
     on_exit(fn -> Process.exit(provisioner, :kill) end)
   end
 
@@ -196,7 +201,6 @@ defmodule Rbac.Okta.Scim.Api.Test do
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)
-
       {:ok, %{integration: integration, token: token}}
     end
 

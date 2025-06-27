@@ -4,6 +4,8 @@ defmodule Rbac.Okta.Integration do
   """
 
   require Ecto.Query
+  require Logger
+
   alias Ecto.Query
   alias Rbac.Repo
   alias Rbac.Okta.Saml.Certificate
@@ -21,21 +23,80 @@ defmodule Rbac.Okta.Integration do
         jit_provisioning_enabled,
         idempotency_token \\ Ecto.UUID.generate()
       ) do
-    with {:ok, fingerprint} <- Certificate.fingerprint(certificate),
-         {:ok, integration} <-
-           Rbac.Repo.OktaIntegration.insert_or_update(
-             org_id: org_id,
-             creator_id: creator_id,
-             sso_url: sso_url,
-             saml_issuer: saml_issuer,
-             saml_certificate_fingerprint: Base.encode64(fingerprint),
-             jit_provisioning_enabled: jit_provisioning_enabled,
-             idempotency_token: idempotency_token
-           ) do
-      {:ok, integration}
-    else
-      e -> e
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:fingerprint, fn _repo, _changes ->
+      Certificate.fingerprint(certificate)
+    end)
+    |> Ecto.Multi.run(:integration, fn _repo, %{fingerprint: fingerprint} ->
+      Rbac.Repo.OktaIntegration.insert_or_update(
+        org_id: org_id,
+        creator_id: creator_id,
+        sso_url: sso_url,
+        saml_issuer: saml_issuer,
+        saml_certificate_fingerprint: Base.encode64(fingerprint),
+        jit_provisioning_enabled: jit_provisioning_enabled,
+        idempotency_token: idempotency_token
+      )
+    end)
+    |> Ecto.Multi.run(:allowed_id_providers, fn _repo, _changes ->
+      add_okta_to_allowed_id_providers(org_id)
+    end)
+    |> Rbac.Repo.transaction()
+    |> case do
+      {:ok, %{integration: integration}} ->
+        {:ok, integration}
+
+      {:error, :fingerprint, reason, _changes} ->
+        Logger.error("Failed to decode certificate for org #{org_id}: #{inspect(reason)}.")
+        {:error, :cert_decode_error}
+
+      {:error, :integration, reason, _changes} ->
+        Logger.error(
+          "Failed to create/update Okta integration for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, {:integration_failed, reason}}
+
+      {:error, :allowed_id_providers, reason, _changes} ->
+        Logger.error(
+          "Failed to add Okta to allowed ID providers for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, {:allowed_id_providers_failed, reason}}
+
+      {:error, operation, reason, _changes} ->
+        Logger.error(
+          "Unknown operation #{inspect(operation)} failed for org #{org_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
     end
+  end
+
+  defp update_id_providers(org_id, operation, action) do
+    with {:ok, org} <- Rbac.Api.Organization.find_by_id(org_id),
+         updated_providers <- operation.(org.allowed_id_providers || []),
+         updated_org <- Map.put(org, :allowed_id_providers, updated_providers),
+         {:ok, updated} <- Rbac.Api.Organization.update(updated_org) do
+      {:ok, updated}
+    else
+      {:error, :not_found} ->
+        Logger.error("Failed to #{action} okta provider: Org #{org_id} not found")
+        {:error, :organization_not_found}
+
+      {:error, reason} ->
+        Logger.error("Failed to #{action} okta provider for org #{org_id}: #{inspect(reason)}")
+
+        {:error, :update_failed}
+    end
+  end
+
+  defp add_okta_to_allowed_id_providers(org_id) do
+    update_id_providers(org_id, &Enum.uniq(&1 ++ ["okta"]), "add")
+  end
+
+  defp remove_okta_from_allowed_id_providers(org_id) do
+    update_id_providers(org_id, &Enum.reject(&1, fn provider -> provider == "okta" end), "remove")
   end
 
   def generate_scim_token(integration) do
@@ -96,9 +157,12 @@ defmodule Rbac.Okta.Integration do
         Rbac.RoleManagement.retract_roles(rbi, :okta)
         {:ok, :retracted_roles}
       end)
-      |> Ecto.Multi.run(:delete_okta_users, fn _repo, _cahnges ->
+      |> Ecto.Multi.run(:delete_okta_users, fn _repo, _changes ->
         OktaUser.delete_all(id)
         {:ok, :okta_users_deleted}
+      end)
+      |> Ecto.Multi.run(:remove_okta_from_allowed_id_providers, fn _repo, _changes ->
+        remove_okta_from_allowed_id_providers(integration.org_id)
       end)
       |> Ecto.Multi.delete(:delete_okta_integration, integration)
       |> Rbac.Repo.transaction(timeout: 60_000)
