@@ -917,14 +917,22 @@ defmodule Rbac.GrpcServers.OktaServer.Test do
   def create_integration do
     {:ok, cert} = Support.Okta.Saml.PayloadBuilder.test_cert()
 
-    Rbac.Okta.Integration.create_or_update(
-      Ecto.UUID.generate(),
-      Ecto.UUID.generate(),
-      "https://sso-url.com",
-      "https://saml-issuer.com",
-      cert,
-      false
-    )
+    with_mocks([
+      {Rbac.Api.Organization, [],
+       [
+         find_by_id: fn _ -> {:ok, %{allowed_id_providers: []}} end,
+         update: fn _ -> {:ok, %{}} end
+       ]}
+    ]) do
+      Rbac.Okta.Integration.create_or_update(
+        Ecto.UUID.generate(),
+        Ecto.UUID.generate(),
+        "https://sso-url.com",
+        "https://saml-issuer.com",
+        cert,
+        false
+      )
+    end
   end
 
   defp user_has_one_role_assigned?(user_id) do

@@ -10,10 +10,16 @@ defmodule Rbac.Okta.Scim.ProvisionerTest do
   import Mock
 
   setup do
+    alias Rbac.Api.Organization
+
     Support.Rbac.Store.clear!()
     Support.Rbac.create_org_roles(@org_id)
 
     {:ok, provisioner} = Rbac.Okta.Scim.Provisioner.start_link()
+
+    :meck.new(Organization, [:passthrough])
+    :meck.expect(Organization, :find_by_id, fn _ -> {:ok, %{allowed_id_providers: []}} end)
+    :meck.expect(Organization, :update, fn _ -> {:ok, %{}} end)
 
     on_exit(fn -> Process.exit(provisioner, :kill) end)
 
