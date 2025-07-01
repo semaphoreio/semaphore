@@ -308,4 +308,38 @@ defmodule FrontWeb.PipelineControllerTest do
       assert conn.status == 404
     end
   end
+
+  describe "rebuild => with ui_partial_ppl_rebuild feature flag" do
+    test "returns 404 when feature flag is disabled", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      org = Support.Stubs.DB.first(:organizations)
+      Support.Stubs.Feature.disable_feature(org.id, :ui_partial_ppl_rebuild)
+
+      conn =
+        conn
+        |> post("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/rebuild")
+
+      assert conn.status == 404
+    end
+
+    test "returns 200 when feature flag is enabled", %{
+      conn: conn,
+      workflow_id: workflow_id,
+      pipeline_id: pipeline_id
+    } do
+      org = Support.Stubs.DB.first(:organizations)
+      Support.Stubs.Feature.enable_feature(org.id, :ui_partial_ppl_rebuild)
+
+      conn =
+        conn
+        |> post("/workflows/#{workflow_id}/pipelines/#{pipeline_id}/rebuild")
+
+      assert conn.status == 200
+      assert json_response(conn, 200)["message"] == "Pipeline rebuild initiated successfully."
+      assert json_response(conn, 200)["pipeline_id"] != nil
+    end
+  end
 end

@@ -5,7 +5,14 @@ defmodule FrontWeb.PipelineController do
   alias Front.Models.Pipeline
   alias Front.Models.Switch
   alias Front.WorkflowPage.PipelineStatus
-  alias FrontWeb.Plugs.{FetchPermissions, PageAccess, PublicPageAccess, PutProjectAssigns}
+
+  alias FrontWeb.Plugs.{
+    FeatureEnabled,
+    FetchPermissions,
+    PageAccess,
+    PublicPageAccess,
+    PutProjectAssigns
+  }
 
   require Logger
 
@@ -23,6 +30,11 @@ defmodule FrontWeb.PipelineController do
   plug(:assign_pipeline_with_blocks when action in [:show, :poll])
   plug(:assign_pipeline_without_blocks when action in [:status, :switch, :stop, :rebuild])
   plug(:preload_switch when action in [:show, :poll, :switch])
+
+  plug(
+    FeatureEnabled,
+    [:ui_partial_ppl_rebuild] when action in [:rebuild]
+  )
 
   def path(conn, params) do
     organization_id = conn.assigns.organization_id
