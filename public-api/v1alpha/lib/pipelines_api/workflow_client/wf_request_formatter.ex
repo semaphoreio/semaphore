@@ -21,7 +21,7 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
       request_token: UUID.uuid4(),
       project_id: params["project_id"],
       requester_id: Map.get(params, "requester_id", ""),
-      definition_file: Map.get(params, "definition_file", ".semaphore/semaphore.yml"),
+      definition_file: Map.get(params, "pipeline_file", ".semaphore/semaphore.yml"),
       organization_id: Map.get(params, "organization_id", ""),
       git_reference: params |> Map.get("reference", "") |> ref(),
       start_in_conceived_state: true,
