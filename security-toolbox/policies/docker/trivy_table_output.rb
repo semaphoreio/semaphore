@@ -3,6 +3,8 @@
 class Policy::TrivyTableOutput < Policy
   def initialize(args)
     super(args)
+
+    @scanners = args[:scanners]
   end
 
   def test
@@ -11,7 +13,7 @@ class Policy::TrivyTableOutput < Policy
       "convert",
       "--format table",
       "--output table.txt",
-      "--scanners vuln,secret,misconfig,license",
+      "--scanners #{@scanners}",
       "out/docker-scan-trivy.json"
     ]
 
