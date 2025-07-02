@@ -6,7 +6,9 @@ require_relative "policies/policy"
 
 Dir["#{__dir__}/policies/docker/*.rb"].each { |f| require_relative f }
 
-args = {}
+args = {
+  scanners: "vuln,misconfig,secret,license"
+}
 OptionParser.new do |parser|
   parser.on("-i", "--image IMAGE", "Docker image to scan") do |image|
     args[:image] = image
@@ -34,6 +36,10 @@ OptionParser.new do |parser|
 
   parser.on("-d", "--dependencies", "Install dependencies") do
     args[:install_dependencies] = true
+  end
+
+  parser.on("", "--scanners SCANNERS", "Which scanners to use") do |scanners|
+    args[:scanners] = scanners
   end
 end.parse!
 
