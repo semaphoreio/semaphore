@@ -28,6 +28,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   field(:LOCAL, 1)
   field(:SNAPSHOT, 2)
   field(:BITBUCKET, 3)
+  field(:GITLAB, 4)
+  field(:GIT, 5)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order do
