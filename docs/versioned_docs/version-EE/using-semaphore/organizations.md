@@ -99,7 +99,7 @@ To change user roles, go to the people option in the server menu and follow thes
 
 ### How to reset a user password {#reset-password}
 
-To reset a user password, go to the poeple option in the server menu and follow these steps:
+To reset a user password, go to the people option in the server menu and follow these steps:
 
 <Steps>
 

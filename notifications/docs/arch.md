@@ -45,7 +45,7 @@ that having a dedicated Slack notification service is not ideal.
   system is highly likely.
   
 For this reason, I propose that the notification service has multiple modules.
-Each module coresponds to one notification type, and they share a common set of abstractions
+Each module corresponds to one notification type, and they share a common set of abstractions
 for notification delivery.
 
 Each module can be started/scaled independently of others if necessary, but also bundled 

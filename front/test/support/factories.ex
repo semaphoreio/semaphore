@@ -2598,7 +2598,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Redirection to sempahoreci.com",
+        description: "Redirection to semaphoreci.com",
         name: "semaphoreapp",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",
