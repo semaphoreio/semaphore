@@ -145,7 +145,7 @@ $ sem version
 The Semaphore CLI supports the following flags:
 
 - `--help` or `-h`: prints the help screen for the given command
-- `--verbose` or `-v`: useful for debugging, prints vebose output. This flag shows the interactions between the tool and the [Semaphore API](./api)
+- `--verbose` or `-v`: useful for debugging, prints verbose output. This flag shows the interactions between the tool and the [Semaphore API](./api)
 - `--file` or `-f`: specifies the path to a file. Can be used to specify YAML resource files in [sem create](#sem-create) and [sem apply](#sem-apply). It can also be used to upload secrets as files using [sem create secret](#sem-create)
 - `--all`: used with [sem get job](#sem-get-job) to view running and recently-finished jobs
 

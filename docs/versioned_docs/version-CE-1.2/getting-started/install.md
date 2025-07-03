@@ -31,7 +31,7 @@ To install Semaphore, you need:
 - A DNS domain
 - The ability to create A, AAAA, or CNAME records for your domain
 - A Kubernetes cluster or a Ubuntu machine
-  - Minumum hardware: **16 GB of RAM and 8 CPUs**
+  - Minimum hardware: **16 GB of RAM and 8 CPUs**
 - Installation time
   - Ubuntu machine: 20 to 30 minutes
   - Kubernetes cluster: up to 1 hour
