@@ -1,121 +1,136 @@
 version: v1.0
-name: "💎 Ruby CI Pipeline"
+name: "💎 Ruby CI Pipeline"         
 
+# ---------------------------------------------------------------------
+# GLOBAL SETTINGS
+# ---------------------------------------------------------------------
 agent:
   machine:
-    type: {{ machine_type }}
+    type: {{ machine_type }}        # Filled by template variables
     os_image: {{ os_image }}
 
+# Fast feedback & cost control
 fail_fast:
   stop:
-    when: branch != 'master'  # Stop execution early for non-master branches
+    when: branch != 'main'          # Abort early on non-main branches
 auto_cancel:
   running:
-    when: branch != 'master'  # Auto-cancel running pipelines on non-master branches
+    when: branch != 'main'          # Cancel older runs on feature branches
   queued:
-    when: branch = 'master'  # Auto-cancel queued pipelines for master branch
+    when: branch = 'main'           # Keep the queue clean for main
 
+# Common pre-steps for every job
 global_job_config:
   prologue:
     commands:
-      - checkout  # Fetch the source code
-      - sem-service start postgres 17  # Start PostgreSQL 17 service
-      - sem-service start redis 7  # Start Redis 7 service
-      - sem-version ruby 3.2.2  # Use Ruby version 3.2.2
-      - sem-version node 20.11.0  # Use Node.js version 20.11.0
-      - cache restore  # Restore cached dependencies
-      - yarn install --frozen-lockfile  # Install JavaScript dependencies for Webpacker
-      - bundle install --deployment --path vendor/bundle  # Install Ruby gems
+      - checkout                        # Grab the code
+      - sem-service start postgres 17   # Start Postgres 17
+      - sem-service start redis 7       # Start Redis 7
+      - sem-version ruby 3.2.2          # Select Ruby 3.2.2
+      - sem-version node 20.11.0        # Select Node 20.11
+      - cache restore                   # Pull dependencies & packs from cache
 
+# ---------------------------------------------------------------------
+# WORKFLOW
+# ---------------------------------------------------------------------
 blocks:
-  - name: "🛠 Setup and Cache"
+  # ---------------- SETUP ----------------
+  - name: "🛠 Setup & Cache"
     task:
       jobs:
-        - name: Install Dependencies
+        - name: Install Gems & JS deps
           commands:
-            - cache store  # Store dependencies in cache for later reuse
+            - yarn install --frozen-lockfile                   # Install JS deps
+            - bundle install --deployment --path vendor/bundle # Install Ruby gems
+            - gem install --no-document semaphore_test_boosters  # Install Boosters gem
+            - cache store                                      # Save vendor/bundle & node_modules
     dependencies: []
 
-  - name: "📦 Webpacker Setup"
+  # ------------- FRONT-END BUILD -------------
+  - name: "🖼️ Webpacker Build"
     task:
       jobs:
-        - name: Precompile Webpacker Assets
+        - name: Compile Assets
           commands:
-            - bundle exec rake webpacker:compile  # Compile Webpacker assets for tests
+            - cache restore webpacker-assets               # Reuse previous packs if present
+            - bundle exec rake webpacker:compile           # Produce packs for tests
+            - cache store webpacker-assets public/packs    # Save packs for later blocks
     dependencies:
-      - "🛠 Setup and Cache"
+      - "🛠 Setup & Cache"
 
-  - name: "🔍 Lint Code"
+  # ------------- CODE QUALITY -------------
+  - name: "🔍 ESLint & Stylelint"
     task:
       jobs:
-        - name: Lint JavaScript and CSS
+        - name: JS / CSS Lint
           commands:
-            - yarn run eslint .  # Run ESLint for JavaScript code
-            - yarn run stylelint "**/*.scss"  # Run Stylelint for SCSS files
+            - yarn run eslint .                # Lint JavaScript
+            - yarn run stylelint '**/*.scss'   # Lint SCSS
     dependencies:
-      - "📦 Webpacker Setup"
+      - "🖼️ Webpacker Build"
 
-  - name: "🧹 Run RuboCop"
+  - name: "🧹 RuboCop"
     task:
       jobs:
-        - name: bundle exec rubocop
+        - name: Ruby Style Check
           commands:
-            - bundle exec rubocop  # Lint and enforce Ruby coding standards
+            - bundle exec rubocop             # Enforce Ruby style
     dependencies:
-      - "🛠 Setup and Cache"
+      - "🛠 Setup & Cache"
 
-  - name: "🛡️ Run Brakeman"
+  # ------------- SECURITY -------------
+  - name: "🛡️ Brakeman"
     task:
       jobs:
-        - name: bundle exec brakeman --force
+        - name: Static Analysis
           commands:
-            - bundle exec brakeman --force  # Perform security checks
+            - bundle exec brakeman --force    # Rails security scan
     dependencies:
-      - "🛠 Setup and Cache"
+      - "🛠 Setup & Cache"
 
-  - name: "🔍 Run Bundler Audit"
+  - name: "🛡️ Bundler Audit"
     task:
       jobs:
-        - name: bundle exec bundle-audit check --update
+        - name: Gem CVE Check
           commands:
-            - bundle exec bundle-audit check --update  # Check for known vulnerabilities in dependencies
+            - bundle exec bundle-audit check --update
     dependencies:
-      - "🛠 Setup and Cache"
+      - "🛠 Setup & Cache"
 
-  - name: "🚦 Test Suite"
+  # ------------- TEST SUITE (Boosters) -------------
+  - name: "🚦 RSpec Suite"
     task:
       env_vars:
         - name: RAILS_ENV
-          value: test  # Set environment to test
+          value: test              # Use the test environment
         - name: PGHOST
-          value: 127.0.0.1  # PostgreSQL host
+          value: 127.0.0.1         # PostgreSQL host
         - name: PGUSER
-          value: postgres  # PostgreSQL user
-        - name: KNAPSACK_TEST_FILE_PATTERN
-          value: 'spec/**{,/*/**}/*_spec.rb'  # Define test file pattern for RSpec
-        - name: KNAPSACK_REPORT_PATH
-          value: knapsack_rspec_rails_report.json  # Set path for Knapsack report
+          value: postgres          # PostgreSQL user
       jobs:
         - name: "🟢 RSpec Tests"
-          parallelism: 5  # Run tests in parallel across 5 jobs
+          parallelism: 5                       # Split across 5 nodes
           commands:
-            - 'bundle exec rake db:setup'  # Prepare the test database
-            - 'CI_NODE_TOTAL=$SEMAPHORE_JOB_COUNT CI_NODE_INDEX=$((SEMAPHORE_JOB_INDEX-1)) bundle exec rake "knapsack:rspec[-t ~manual -t ~v4 --format RspecJunitFormatter --out report.xml --format documentation]"'  # Run RSpec tests with Knapsack
-      secrets:
-        - name: KNAPSACK_PRO_TEST_SUITE_TOKEN_RSPEC  # Secure token for Knapsack Pro
+            - cache restore webpacker-assets   # Pull precompiled packs
+            - bundle exec rake db:setup        # Build fresh test DB
+            # Automatic test splitting via Semaphore Boosters
+            - rspec_booster --job "$SEMAPHORE_JOB_INDEX/$SEMAPHORE_JOB_COUNT" --format RspecJunitFormatter --out report.xml --format documentation
       epilogue:
         always:
           commands:
-            - '[[ -f report.xml ]] && test-results publish report.xml'  # Publish test results if available
+            - '[[ -f report.xml ]] && test-results publish report.xml'
     dependencies:
-      - "🔍 Run Bundler Audit"
-      - "🛡️ Run Brakeman"
-      - "🧹 Run RuboCop"
-      - "📦 Webpacker Setup"
+      - "🧹 RuboCop"
+      - "🛡️ Brakeman"
+      - "🛡️ Bundler Audit"
+      - "🖼️ Webpacker Build"
 
+# ---------------------------------------------------------------------
+# PIPELINE SUMMARY
+# ---------------------------------------------------------------------
 after_pipeline:
   task:
     jobs:
-      - name: "Merge Reports 📊"
+      - name: "📊 Merge Results"
         commands:
-          - test-results gen-pipeline-report  # Generate a summary of the test results
+          - test-results gen-pipeline-report  # Collate JUnit reports
