@@ -47,7 +47,7 @@ export var RetractRole = {
     .catch((error) => {
       console.log(error)
       toggleSpinner()
-      Notice.error("An error occured while removing a member, please contact our customer support.")
+      Notice.error("An error occurred while removing a member, please contact our customer support.")
     })
   },
 
