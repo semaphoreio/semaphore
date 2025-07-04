@@ -51,7 +51,7 @@ Each platform presents trade-off. Use the following table as a guide:
 | Facility | Single-alone machine | Kubernetes cluster |
 |--|--|--|
 | Backup and restore | Simple | Complex |
-| Infraststructure costs | Lower | Higher |
+| Infrastructure costs | Lower | Higher |
 | Scalability of control plane | Low  <div class="tooltip">ⓘ<span class="tooltiptext">Can only be scaled vertically with a more powerful machine.</span></div> | High <div class="tooltip">ⓘ<span class="tooltiptext">Can be scaled horizontally and vertically.</span></div> |
 | Scalability of job runner (agents) | High | High |
 | Redundancy | None | High |
