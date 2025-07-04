@@ -21,7 +21,7 @@ RSpec.describe Semaphore::SubdomainPath do
 
   describe "#ensure_safe_url" do
 
-    it "returns safe_url if provided one is on diffrent host" do
+    it "returns safe_url if provided one is on different host" do
       expect(described_class.new.ensure_safe_url("https://example.com", "safe_url")).to eql("safe_url")
     end
 

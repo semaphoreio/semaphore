@@ -91,7 +91,7 @@ export var GroupManagement = {
       })
       .catch(error => {
         console.error("Error while fetching group members: " + error)
-        Notice.error("An error occured while fetching group members. " +
+        Notice.error("An error occurred while fetching group members. " +
           "If this issue persists, please check console for any logs and contact our support team.")
       })
   },
@@ -136,7 +136,7 @@ export var GroupManagement = {
     .catch(e =>{
       toggleSpinner()
       console.error("Error while adding members to the the group: " + e)
-      Notice.error("An error occured while adding members to the group. Please check console for any logs and contact our support team.")
+      Notice.error("An error occurred while adding members to the group. Please check console for any logs and contact our support team.")
     })
   },
 
@@ -169,7 +169,7 @@ export var GroupManagement = {
     })
     .catch(e =>{
       console.error("Error while creating a group: " + e)
-      Notice.error("An error occured  while creating a group. Please check console for any logs and contact our support team.")
+      Notice.error("An error occurred  while creating a group. Please check console for any logs and contact our support team.")
     })
 
   },

@@ -95,7 +95,7 @@
 
         {Credo.Check.Refactor.DoubleBooleanNegation},
         {Credo.Check.Refactor.CondStatements},
-        # Accoriding to wikipedia on Cyclomatic Complexity, 10 is suggested value
+        # According to wikipedia on Cyclomatic Complexity, 10 is suggested value
         {Credo.Check.Refactor.CyclomaticComplexity, max_complexity: 10},
         {Credo.Check.Refactor.FunctionArity},
         {Credo.Check.Refactor.LongQuoteBlocks},

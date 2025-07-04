@@ -30,6 +30,5 @@ projecthub-*.tar
 shell.nix
 .devcontainer
 log
-.vscode
 
 # Where build artifacts live.

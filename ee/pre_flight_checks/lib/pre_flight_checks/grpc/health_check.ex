@@ -1,6 +1,6 @@
 defmodule PreFlightChecks.GRPC.HealthCheck do
   @moduledoc """
-  Serves as an backend for a go client used for livness probing on kubernetes.
+  Serves as an backend for a go client used for liveness probing on kubernetes.
   """
 
   alias Grpc.Health.V1.Health.Service, as: HealthService
