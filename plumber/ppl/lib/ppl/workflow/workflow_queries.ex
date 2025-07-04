@@ -533,20 +533,25 @@ defmodule Ppl.WorkflowQueries do
   end
 
   defp optimized_list_keyset_with_cte(params, keyset_params) do
-    ids_cte =
-      from id in fragment("unnest(?::text[])", ^params.projects),
-        select: %{project_id: id}
-
     page =
       PplRequests
-      |> with_cte("tmp_project_ids", as: ^ids_cte)
-      |> join(:inner, [p], t in "tmp_project_ids",
-           on: fragment("?->>'project_id'", p.request_args) == t.project_id
-         )
+      |> with_cte(
+        "tmp_project_ids",
+        as: fragment(
+          """
+          SELECT unnest(?::text[]) AS project_id
+          """,
+          ^params.projects
+        )
+      )
+      |> join(
+        :inner,
+        [p],
+        t in "tmp_project_ids",
+        on: fragment("?->>'project_id'", p.request_args) == t.project_id
+      )
       |> where([p], p.initial_request)
       |> filter_by_organization_id(params.org_id)
-      |> filter_by_projects(params.projects)
-      |> filter_by_project_id(params.project_id)
       |> filter_by_requesters(params.requesters)
       |> filter_by_requester_id(params.requester_id)
       |> filter_by_branch(params.branch_name)
