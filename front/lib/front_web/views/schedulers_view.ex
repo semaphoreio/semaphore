@@ -48,7 +48,7 @@ defmodule FrontWeb.SchedulersView do
 
   defp workflow_condition(%{hook: nil}, %{state: :DONE}), do: :MISCARRIED
   defp workflow_condition(%{hook: nil}, _root_pipeline), do: :CONCEIVING
-  defp workflow_condition(_workflow, _root_pipline), do: :DELIVERED
+  defp workflow_condition(_workflow, _root_pipeline), do: :DELIVERED
 
   def from_form(form, key) do
     if Map.has_key?(form.params, to_string(key)),

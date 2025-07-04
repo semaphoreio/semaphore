@@ -37,7 +37,7 @@ export class DirectedGraph {
     }
 
     //
-    // We itarate over each node trying to find a walk back to itself or a walk
+    // We iterate over each node trying to find a walk back to itself or a walk
     // to any of the already visited nodes in this DFS cycle.
     //
     for(let i = 0; i < this.nodes.length; i++) {
@@ -76,7 +76,7 @@ export class DirectedGraph {
 
     //
     // When we finish the recursion starting from this node, we remove the node
-    // from the recursion tree. The node is no longer part of the currenct
+    // from the recursion tree. The node is no longer part of the current
     // "recusion stack".
     //
     recStack[rootNode] = false;

@@ -205,7 +205,7 @@ defmodule Rbac.Okta.Saml.Api do
   end
 
   #
-  # Handle everything else as Unathorized
+  # Handle everything else as Unauthorized
   #
   match _ do
     send_resp(conn, 401, "Unauthorized")
