@@ -8,8 +8,11 @@ defmodule Guard.User.UpdateMails do
     the only use-case for this script was when a organization wants to use SCIM/SAML for SSO, and emails
     in their SAML provider need to match emails on Semaphoere.
   """
+
   import Ecto.Query
   require Logger
+
+  @github_api_domain "https://api.github.com/user/emails"
 
   @doc """
     If an organization has corporate email address that ends with important-org.org, that would be given
@@ -20,33 +23,21 @@ defmodule Guard.User.UpdateMails do
     token is not valid, or more likely they did not connect ther GitHub account with their corporate mail.
   """
   def migrate(org_id, corporate_email_domain) do
-    user_ids = get_wrong_email_users(org_id, corporate_email_domain)
+    get_wrong_email_users(org_id, corporate_email_domain)
+    |> Enum.map(fn id -> {id, get_api_token(id)} end)
+    |> Enum.filter(fn {_, token} -> token != nil end)
+    |> Enum.each(fn {id, token} ->
+      {:ok, resp} = HTTPoison.get(@github_api_domain, [{"Authorization", "Token #{token}"}])
+      {:ok, body} = resp |> Map.get(:body) |> Jason.decode()
 
-    all_emails =
-      user_ids
-      |> Enum.each(fn id ->
-        {:ok, token} = get_api_token(id)
-
-        {:ok, resp} =
-          HTTPoison.get("https://api.github.com/user/emails", [
-            {"Authorization", "Token #{token}"}
-          ])
-
-        {:ok, body} = resp |> Map.get(:body) |> Jason.decode()
-
-        if is_list(body) do
-          body
-          |> Enum.map(fn email ->
-            email["email"]
-          end)
-          |> update_email(id, corporate_email_domain)
-        else
-          Logger.error("Bad request for user #{id}: #{inspect(resp)}")
-          nil
-        end
-      end)
-
-    all_emails
+      if is_list(body) do
+        body
+        |> Enum.map(fn email -> email["email"] end)
+        |> update_email(id, corporate_email_domain)
+      else
+        Logger.error("Bad request for user #{id}: #{inspect(resp)}")
+      end
+    end)
   end
 
   def update_email(emails, user_id, corporate_email_domain) do
@@ -103,5 +94,13 @@ defmodule Guard.User.UpdateMails do
 
   defp get_api_token(user_id) do
     Guard.FrontRepo.RepoHostAccount.get_github_token(user_id)
+    |> case do
+      {:error, reason} ->
+        Logger.info("Failed to get GitHub token for user #{user_id}: #{inspect(reason)}")
+        nil
+
+      {:ok, token} ->
+        token
+    end
   end
 end
