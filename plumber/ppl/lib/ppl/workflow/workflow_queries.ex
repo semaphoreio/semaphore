@@ -497,8 +497,52 @@ defmodule Ppl.WorkflowQueries do
   end
 
   defp list_keyset_(params, keyset_params) do
+    # Use optimized query for requester_id + large number of projects
+    if params.requester_id != :skip && is_list(params.projects) && length(params.projects) > 100 do
+      optimized_list_keyset_with_cte(params, keyset_params)
+    else
+      # Use standard query for other cases
+      standard_list_keyset(params, keyset_params)
+    end
+  end
+
+  defp standard_list_keyset(params, keyset_params) do
     page =
       PplRequests
+      |> where([p], p.initial_request)
+      |> filter_by_organization_id(params.org_id)
+      |> filter_by_projects(params.projects)
+      |> filter_by_project_id(params.project_id)
+      |> filter_by_requesters(params.requesters)
+      |> filter_by_requester_id(params.requester_id)
+      |> filter_by_branch(params.branch_name)
+      |> filter_by_label_and_git_ref_types(params.label, params.git_ref_types)
+      |> filter_by_triggerers(params.triggerers)
+      |> filter_by_inserted_at(params.created_before, :before)
+      |> filter_by_inserted_at(params.created_after, :after)
+      |> order_by([p], desc: p.inserted_at, desc: p.id)
+      |> select_workflow_details()
+      |> paginate(keyset_params)
+
+    {:ok,
+     %{
+       workflows: page.entries,
+       next_page_token: page.metadata.after || "",
+       previous_page_token: page.metadata.before || ""
+     }}
+  end
+
+  defp optimized_list_keyset_with_cte(params, keyset_params) do
+    ids_cte =
+      from id in fragment("unnest(?::text[])", ^params.projects),
+        select: %{project_id: id}
+
+    page =
+      PplRequests
+      |> with_cte("tmp_project_ids", as: ^ids_cte)
+      |> join(:inner, [p], t in "tmp_project_ids",
+           on: fragment("?->>'project_id'", p.request_args) == t.project_id
+         )
       |> where([p], p.initial_request)
       |> filter_by_organization_id(params.org_id)
       |> filter_by_projects(params.projects)

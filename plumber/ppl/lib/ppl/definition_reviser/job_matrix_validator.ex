@@ -3,7 +3,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator do
   This module serves to validate that all job matrix values are provided
   as a list of strings either explicitly or after evaluation by SPC command line tool.
 
-  It also validates that there are no duplicate environment variable names in the job matrix.
+  It validates that there are no duplicate environment variable names in the job matrix.
   It also validates that the total product size of the matrix (product of number of values of each environment variable) is not too large.
   """
 
@@ -28,8 +28,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator do
   end
 
   defp do_validate_job_matrix_values(definition, "after_pipeline") do
-    Map.get(definition, "after_pipeline")
-    |> case do
+    case Map.get(definition, "after_pipeline") do
       nil ->
         {:ok, definition}
 
@@ -50,7 +49,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator do
     jobs = get_in(block, ["build", "jobs"]) |> List.wrap()
     block_name = get_in(block, ["name"])
 
-    # Calculate total matrix size across all jobs in the block
+    # Validate job matrices and calculate total matrix size across all jobs in the block
     total_result =
       Enum.reduce_while(jobs, {:ok, 0}, fn job, {:ok, total_size} ->
         case validate_job_matrices(block_name, job) do
@@ -121,12 +120,12 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator do
     values = get_in(matrix_entry, ["values"])
 
     if !is_list(values) || Enum.empty?(values) || !Enum.all?(values, &is_binary/1) do
-      {:error, {:malformed, error_mesasge(block_name, job_name, env_var)}}
+      {:error, {:malformed, error_message(block_name, job_name, env_var)}}
     end
   end
 
-  defp error_mesasge(block_name, job_name, env_var) do
-    "Matrix values for env_var '#{env_var}' (block '#{block_name}', job '#{job_name}' must be a non-empty list of strings."
+  defp error_message(block_name, job_name, env_var) do
+    "Matrix values for env_var '#{env_var}' (block '#{block_name}', job '#{job_name}') must be a non-empty list of strings."
   end
 
   defp duplicate_env_var_error_message(block_name, job_name, env_var_name) do

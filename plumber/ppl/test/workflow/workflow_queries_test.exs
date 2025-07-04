@@ -424,4 +424,181 @@ defmodule Ppl.WorkflowQueries.Test do
       |> WorkflowBuilder.schedule()
     end)
   end
+
+  describe "list_keyset with large number of project IDs" do
+    test "uses CTE optimization when requester_id and >100 projects are provided" do
+      # Setup test data
+      organization_id = UUID.uuid4()
+      requester_id = UUID.uuid4()
+      hook_id = UUID.uuid4()
+
+      # Create 110 project IDs (more than the 100 threshold)
+      project_ids = Enum.map(1..110, fn _ -> UUID.uuid4() end)
+
+      # Create workflows for 5 of these projects
+      test_project_ids = Enum.take(project_ids, 5)
+
+      workflow_ids =
+        test_project_ids
+        |> Enum.map(fn project_id ->
+          {:ok, wf_id, _ppl_id} =
+            %{
+              "organization_id" => organization_id,
+              "label" => "master",
+              "branch_name" => "master",
+              "hook_id" => hook_id,
+              "repo_name" => "semaphore",
+              "project_id" => project_id,
+              "requester_id" => requester_id
+            }
+            |> WorkflowBuilder.schedule()
+
+          wf_id
+        end)
+
+      # Create params with requester_id and large projects list to trigger CTE optimization
+      params = %{
+        org_id: organization_id,
+        projects: project_ids,
+        project_id: :skip,
+        requesters: :skip,
+        requester_id: requester_id,
+        label: :skip,
+        git_ref_types: :skip,
+        branch_name: :skip,
+        triggerers: :skip,
+        created_before: :skip,
+        created_after: :skip
+      }
+
+      keyset_params = %{
+        order: :BY_CREATION_TIME_DESC,
+        direction: :NEXT,
+        page_token: nil,
+        page_size: 10
+      }
+
+      # Capture logs to verify CTE is being used
+      ExUnit.CaptureLog.capture_log(fn ->
+        # Execute the query
+        {:ok,
+         %{
+           workflows: workflows,
+           next_page_token: _next_token,
+           previous_page_token: _previous_token
+         }} = WQ.list_keyset(params, keyset_params)
+
+        # Verify results
+        assert length(workflows) == 5
+        assert Enum.map(workflows, fn workflow -> workflow.wf_id end) |> Enum.sort() == Enum.sort(workflow_ids)
+
+        # Verify all workflows have the correct requester_id
+        Enum.each(workflows, fn workflow ->
+          assert workflow.requester_id == requester_id
+        end)
+
+        # Verify all workflows have project_ids from our test set
+        workflow_project_ids = Enum.map(workflows, fn workflow -> workflow.project_id end)
+        assert Enum.all?(workflow_project_ids, fn id -> id in test_project_ids end)
+      end)
+    end
+
+    test "pagination works correctly with CTE optimization" do
+      # Setup test data
+      organization_id = UUID.uuid4()
+      requester_id = UUID.uuid4()
+      hook_id = UUID.uuid4()
+
+      # Create 110 project IDs (more than the 100 threshold)
+      project_ids = Enum.map(1..110, fn _ -> UUID.uuid4() end)
+
+      # Create 10 workflows for testing pagination
+      test_project_ids = Enum.take(project_ids, 10)
+
+      workflow_ids =
+        test_project_ids
+        |> Enum.map(fn project_id ->
+          {:ok, wf_id, _ppl_id} =
+            %{
+              "organization_id" => organization_id,
+              "label" => "master",
+              "branch_name" => "master",
+              "hook_id" => hook_id,
+              "repo_name" => "semaphore",
+              "project_id" => project_id,
+              "requester_id" => requester_id
+            }
+            |> WorkflowBuilder.schedule()
+
+          # Add a small delay to ensure different timestamps
+          Process.sleep(10)
+          wf_id
+        end)
+
+      # Create params with requester_id and large projects list
+      params = %{
+        org_id: organization_id,
+        projects: project_ids,
+        project_id: :skip,
+        requesters: :skip,
+        requester_id: requester_id,
+        label: :skip,
+        git_ref_types: :skip,
+        branch_name: :skip,
+        triggerers: :skip,
+        created_before: :skip,
+        created_after: :skip
+      }
+
+      # First page - get 5 items
+      keyset_params_page1 = %{
+        order: :BY_CREATION_TIME_DESC,
+        direction: :NEXT,
+        page_token: nil,
+        page_size: 5
+      }
+
+      # Get first page
+      {:ok,
+       %{
+         workflows: workflows_page1,
+         next_page_token: next_token,
+         previous_page_token: _previous_token
+       }} = WQ.list_keyset(params, keyset_params_page1)
+
+      # Verify first page has 5 items
+      assert length(workflows_page1) == 5
+
+      # Get second page
+      keyset_params_page2 = %{
+        order: :BY_CREATION_TIME_DESC,
+        direction: :NEXT,
+        page_token: next_token,
+        page_size: 5
+      }
+
+      {:ok,
+       %{
+         workflows: workflows_page2,
+         next_page_token: _next_token_page2,
+         previous_page_token: _previous_token_page2
+       }} = WQ.list_keyset(params, keyset_params_page2)
+
+      # Verify second page has 5 items
+      assert length(workflows_page2) == 5
+
+      # Verify no duplicates between pages
+      page1_ids = Enum.map(workflows_page1, fn w -> w.wf_id end)
+      page2_ids = Enum.map(workflows_page2, fn w -> w.wf_id end)
+
+      assert length(page1_ids) + length(page2_ids) == 10
+      assert Enum.empty?(page1_ids -- workflow_ids)
+      assert Enum.empty?(page2_ids -- workflow_ids)
+      assert Enum.empty?(Enum.uniq(page1_ids ++ page2_ids) -- workflow_ids)
+
+      # Verify all 10 workflows were returned across both pages
+      all_returned_ids = page1_ids ++ page2_ids
+      assert Enum.sort(all_returned_ids) == Enum.sort(workflow_ids)
+    end
+  end
 end

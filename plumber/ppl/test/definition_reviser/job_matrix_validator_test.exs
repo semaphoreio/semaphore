@@ -70,7 +70,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator.Test do
       assert JobMatrixValidator.validate(pipeline) ==
                {:error,
                 {:malformed,
-                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1' must be a non-empty list of strings."}}
+                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1') must be a non-empty list of strings."}}
     end
 
     test "jobs with empty string of matrix values fail validation" do
@@ -105,7 +105,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator.Test do
       assert JobMatrixValidator.validate(pipeline) ==
                {:error,
                 {:malformed,
-                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1' must be a non-empty list of strings."}}
+                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1') must be a non-empty list of strings."}}
     end
 
     test "jobs with null matrix values fail validation" do
@@ -140,7 +140,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator.Test do
       assert JobMatrixValidator.validate(pipeline) ==
                {:error,
                 {:malformed,
-                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1' must be a non-empty list of strings."}}
+                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1') must be a non-empty list of strings."}}
     end
 
     test "jobs with matrix values as string fail validation" do
@@ -175,7 +175,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator.Test do
       assert JobMatrixValidator.validate(pipeline) ==
                {:error,
                 {:malformed,
-                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1' must be a non-empty list of strings."}}
+                 "Matrix values for env_var 'MOO' (block 'Block 2', job 'Job 1') must be a non-empty list of strings."}}
     end
 
     test "jobs with matrix values as string in after_pipeline job fail validation" do
@@ -221,7 +221,7 @@ defmodule Ppl.DefinitionReviser.JobMatrixValidator.Test do
       assert JobMatrixValidator.validate(pipeline) ==
                {:error,
                 {:malformed,
-                 "Matrix values for env_var 'MOO' (block 'after_pipeline', job 'Job 1' must be a non-empty list of strings."}}
+                 "Matrix values for env_var 'MOO' (block 'after_pipeline', job 'Job 1') must be a non-empty list of strings."}}
     end
   end
 
