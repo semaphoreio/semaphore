@@ -99,7 +99,7 @@ defmodule Rbac.Store.RbacRole.Test do
 
     # ========================================================================
 
-    test "succesfully create a role that does not inherit nor map to other roles" do
+    test "successfully create a role that does not inherit nor map to other roles" do
       with_mocks [{Rbac.RoleBindingIdentification, [:passthrough], [new: fn _ -> :ok end]}] do
         {:ok, role} = Role.create_or_update(create_role_params(scope: "project_scope"))
         assert role.name == "Test"
@@ -114,7 +114,7 @@ defmodule Rbac.Store.RbacRole.Test do
       end
     end
 
-    test "succesfully create a role that both inherits and maps to other roles" do
+    test "successfully create a role that both inherits and maps to other roles" do
       Support.Rbac.create_org_roles(@org_id)
       Support.Rbac.create_project_roles(@org_id)
       {:ok, org_member} = Repo.RbacRole.get_role_by_name("Member", "org_scope", @org_id)
@@ -151,7 +151,7 @@ defmodule Rbac.Store.RbacRole.Test do
       {:error, ^msg} = Role.create_or_update(create_role_params(id: role.id, name: "Name"))
     end
 
-    test "Succesfully update Admin role" do
+    test "successfully update Admin role" do
       {:ok, user} = Support.Factories.RbacUser.insert()
       Support.Rbac.create_org_roles(@org_id)
       Support.Rbac.create_project_roles(@org_id)

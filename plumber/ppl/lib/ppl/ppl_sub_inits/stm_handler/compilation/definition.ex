@@ -133,7 +133,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
       ~s[export OUTPUT_FILE="${SEMAPHORE_YAML_FILE_PATH}.output.yml"],
       ~s[export LOGS_FILE="${SEMAPHORE_YAML_FILE_PATH}.logs.jsonl"],
       ~s[cat $INPUT_FILE],
-      ~s[echo "Compiling $INPUT_FILE into $OUTPUT_FILE and storring logs to $LOGS_FILE"],
+      ~s[echo "Compiling $INPUT_FILE into $OUTPUT_FILE and storing logs to $LOGS_FILE"],
       ~s[spc compile --input $INPUT_FILE --output $OUTPUT_FILE --logs $LOGS_FILE]
     ]
   end
