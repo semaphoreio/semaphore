@@ -2,12 +2,12 @@ require "openssl"
 require "jwt"
 
 class Semaphore::GithubApp::Token
-  def self.organization_token(organiation_name)
-    installation = GithubAppInstallation.find_for_organization!(organiation_name)
+  def self.organization_token(organisation_name)
+    installation = GithubAppInstallation.find_for_organization!(organisation_name)
 
     installation_token(installation.installation_id)
   rescue ActiveRecord::RecordNotFound
-    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for organization: #{organiation_name}")
+    Rails.logger.error("[Semaphore::GithubApp::Token] GithubAppInstallation not found for organization: #{organisation_name}")
 
     nil
   end
