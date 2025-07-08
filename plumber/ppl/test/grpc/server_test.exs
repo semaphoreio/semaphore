@@ -2209,6 +2209,7 @@ defmodule Ppl.Grpc.Server.Test do
     assert new_ppl_id_1 == new_ppl_id_2
   end
 
+  @tag :integration
   test "gRPC partial_rebuild() - succeeds when no deployment target is specified" do
     {:ok, %{ppl_id: ppl_id}} =
       %{"repo_name" => "14_free_topology_failing_block"}
@@ -2224,6 +2225,7 @@ defmodule Ppl.Grpc.Server.Test do
     assert is_binary(new_ppl_id)
   end
 
+  @tag :integration
   test "gRPC partial_rebuild() - fails when deployment target permission is denied" do
     deployment_target_id = UUID.uuid4()
     {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
@@ -2237,6 +2239,7 @@ defmodule Ppl.Grpc.Server.Test do
     end
   end
 
+  @tag :integration
   test "gRPC partial_rebuild() - succeeds when deployment target permission is granted" do
     deployment_target_id = UUID.uuid4()
     {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
@@ -2251,6 +2254,7 @@ defmodule Ppl.Grpc.Server.Test do
     end
   end
 
+  @tag :integration
   test "gRPC partial_rebuild() - fails when deployment target verification returns error" do
     deployment_target_id = UUID.uuid4()
     {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
@@ -2264,6 +2268,7 @@ defmodule Ppl.Grpc.Server.Test do
     end
   end
 
+  @tag :integration
   test "gRPC partial_rebuild() - fails when pipeline has no source_args" do
     {:ok, %{ppl_id: ppl_id}} = create_pipeline_without_source_args()
 
@@ -2278,7 +2283,7 @@ defmodule Ppl.Grpc.Server.Test do
 
   defp create_pipeline_with_deployment_target(deployment_target_id) do
     source_args = Test.Support.RequestFactory.source_args(%{})
-    
+
     %{
       "repo_name" => "14_free_topology_failing_block",
       "deployment_target_id" => deployment_target_id
@@ -2298,7 +2303,7 @@ defmodule Ppl.Grpc.Server.Test do
 
   defp create_pipeline_without_source_args() do
     deployment_target_id = UUID.uuid4()
-    
+
     %{
       "repo_name" => "14_free_topology_failing_block",
       "deployment_target_id" => deployment_target_id
