@@ -531,10 +531,8 @@ defmodule Ppl.Grpc.Server do
       source_args ->
         case Map.get(source_args, "git_ref_type") do
           nil -> {:error, :missing_git_ref_type}
-          "branch" -> {:ok, :BRANCH}
-          "tag" -> {:ok, :TAG}
-          "pr" -> {:ok, :PR}
-          other -> {:error, {:unknown_git_ref_type, other}}
+          git_ref_type when is_binary(git_ref_type) -> {:ok, git_ref_type}
+          other -> {:error, {:invalid_git_ref_type, other}}
         end
     end
   end
