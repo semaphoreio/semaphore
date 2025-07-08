@@ -29,6 +29,7 @@ const (
 	JobService_GetAgentPayload_FullMethodName    = "/InternalApi.ServerFarm.Job.JobService/GetAgentPayload"
 	JobService_CanDebug_FullMethodName           = "/InternalApi.ServerFarm.Job.JobService/CanDebug"
 	JobService_CanAttach_FullMethodName          = "/InternalApi.ServerFarm.Job.JobService/CanAttach"
+	JobService_Create_FullMethodName             = "/InternalApi.ServerFarm.Job.JobService/Create"
 )
 
 // JobServiceClient is the client API for JobService service.
@@ -71,6 +72,8 @@ type JobServiceClient interface {
 	CanDebug(ctx context.Context, in *CanDebugRequest, opts ...grpc.CallOption) (*CanDebugResponse, error)
 	// Returns information if a user can attach a job.
 	CanAttach(ctx context.Context, in *CanAttachRequest, opts ...grpc.CallOption) (*CanAttachResponse, error)
+	// Create a new job based on the given job spec.
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error)
 }
 
 type jobServiceClient struct {
@@ -171,6 +174,15 @@ func (c *jobServiceClient) CanAttach(ctx context.Context, in *CanAttachRequest, 
 	return out, nil
 }
 
+func (c *jobServiceClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*CreateResponse, error) {
+	out := new(CreateResponse)
+	err := c.cc.Invoke(ctx, JobService_Create_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // JobServiceServer is the server API for JobService service.
 // All implementations should embed UnimplementedJobServiceServer
 // for forward compatibility
@@ -211,6 +223,8 @@ type JobServiceServer interface {
 	CanDebug(context.Context, *CanDebugRequest) (*CanDebugResponse, error)
 	// Returns information if a user can attach a job.
 	CanAttach(context.Context, *CanAttachRequest) (*CanAttachResponse, error)
+	// Create a new job based on the given job spec.
+	Create(context.Context, *CreateRequest) (*CreateResponse, error)
 }
 
 // UnimplementedJobServiceServer should be embedded to have forward compatible implementations.
@@ -246,6 +260,9 @@ func (UnimplementedJobServiceServer) CanDebug(context.Context, *CanDebugRequest)
 }
 func (UnimplementedJobServiceServer) CanAttach(context.Context, *CanAttachRequest) (*CanAttachResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CanAttach not implemented")
+}
+func (UnimplementedJobServiceServer) Create(context.Context, *CreateRequest) (*CreateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 
 // UnsafeJobServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -439,6 +456,24 @@ func _JobService_CanAttach_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _JobService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(JobServiceServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: JobService_Create_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(JobServiceServer).Create(ctx, req.(*CreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // JobService_ServiceDesc is the grpc.ServiceDesc for JobService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -485,6 +520,10 @@ var JobService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanAttach",
 			Handler:    _JobService_CanAttach_Handler,
+		},
+		{
+			MethodName: "Create",
+			Handler:    _JobService_Create_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

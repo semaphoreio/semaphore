@@ -145,6 +145,10 @@ module RepoHost::Bitbucket
       @data.dig("repository", "links", "html", "href")
     end
 
+    def is_draft_pull_request? # rubocop:disable Naming/PredicateName
+      false
+    end
+
     alias_method :pull_request?, :is_pull_request?
 
     # ❌

@@ -3,9 +3,10 @@ defmodule InternalApi.Status do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          code: integer,
+          code: Google.Rpc.Code.t(),
           message: String.t()
         }
+
   defstruct [:code, :message]
 
   field(:code, 1, type: Google.Rpc.Code, enum: true)

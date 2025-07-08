@@ -1,3 +1,31 @@
+defmodule InternalApi.RepositoryIntegrator.IntegrationType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :GITHUB_OAUTH_TOKEN | :GITHUB_APP | :BITBUCKET | :GITLAB | :GIT
+
+  field(:GITHUB_OAUTH_TOKEN, 0)
+
+  field(:GITHUB_APP, 1)
+
+  field(:BITBUCKET, 2)
+
+  field(:GITLAB, 3)
+
+  field(:GIT, 4)
+end
+
+defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+  @type t :: integer | :FULL_CONNECTION | :ONLY_PUBLIC | :NO_CONNECTION
+
+  field(:FULL_CONNECTION, 0)
+
+  field(:ONLY_PUBLIC, 1)
+
+  field(:NO_CONNECTION, 2)
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -5,9 +33,10 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenRequest do
   @type t :: %__MODULE__{
           user_id: String.t(),
           repository_slug: String.t(),
-          integration_type: integer,
+          integration_type: InternalApi.RepositoryIntegrator.IntegrationType.t(),
           project_id: String.t()
         }
+
   defstruct [:user_id, :repository_slug, :integration_type, :project_id]
 
   field(:user_id, 1, type: :string)
@@ -22,8 +51,9 @@ defmodule InternalApi.RepositoryIntegrator.GetTokenResponse do
 
   @type t :: %__MODULE__{
           token: String.t(),
-          expires_at: Google.Protobuf.Timestamp.t()
+          expires_at: Google.Protobuf.Timestamp.t() | nil
         }
+
   defstruct [:token, :expires_at]
 
   field(:token, 1, type: :string)
@@ -37,6 +67,7 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenRequest do
   @type t :: %__MODULE__{
           project_id: String.t()
         }
+
   defstruct [:project_id]
 
   field(:project_id, 1, type: :string)
@@ -48,16 +79,14 @@ defmodule InternalApi.RepositoryIntegrator.CheckTokenResponse do
 
   @type t :: %__MODULE__{
           valid: boolean,
-          integration_scope: integer
+          integration_scope: InternalApi.RepositoryIntegrator.IntegrationScope.t()
         }
+
   defstruct [:valid, :integration_scope]
 
   field(:valid, 1, type: :bool)
 
-  field(:integration_scope, 2,
-    type: InternalApi.RepositoryIntegrator.IntegrationScope,
-    enum: true
-  )
+  field(:integration_scope, 2, type: InternalApi.RepositoryIntegrator.IntegrationScope, enum: true)
 end
 
 defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
@@ -69,6 +98,7 @@ defmodule InternalApi.RepositoryIntegrator.PreheatFileCacheRequest do
           path: String.t(),
           ref: String.t()
         }
+
   defstruct [:project_id, :path, :ref]
 
   field(:project_id, 1, type: :string)
@@ -85,6 +115,7 @@ defmodule InternalApi.RepositoryIntegrator.GetFileRequest do
           path: String.t(),
           ref: String.t()
         }
+
   defstruct [:project_id, :path, :ref]
 
   field(:project_id, 1, type: :string)
@@ -99,6 +130,7 @@ defmodule InternalApi.RepositoryIntegrator.GetFileResponse do
   @type t :: %__MODULE__{
           content: String.t()
         }
+
   defstruct [:content]
 
   field(:content, 1, type: :string)
@@ -111,6 +143,7 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest do
   @type t :: %__MODULE__{
           project_id: String.t()
         }
+
   defstruct [:project_id]
 
   field(:project_id, 1, type: :string)
@@ -125,11 +158,28 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
           application_url: String.t(),
           installation_url: String.t()
         }
+
   defstruct [:installation_id, :application_url, :installation_url]
 
   field(:installation_id, 1, type: :int64)
   field(:application_url, 2, type: :string)
   field(:installation_url, 3, type: :string)
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
 end
 
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
@@ -138,8 +188,9 @@ defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
 
   @type t :: %__MODULE__{
           user_id: String.t(),
-          integration_type: integer
+          integration_type: InternalApi.RepositoryIntegrator.IntegrationType.t()
         }
+
   defstruct [:user_id, :integration_type]
 
   field(:user_id, 1, type: :string)
@@ -153,6 +204,7 @@ defmodule InternalApi.RepositoryIntegrator.GetRepositoriesResponse do
   @type t :: %__MODULE__{
           repositories: [InternalApi.RepositoryIntegrator.Repository.t()]
         }
+
   defstruct [:repositories]
 
   field(:repositories, 1, repeated: true, type: InternalApi.RepositoryIntegrator.Repository)
@@ -169,6 +221,7 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
           url: String.t(),
           description: String.t()
         }
+
   defstruct [:addable, :name, :full_name, :url, :description]
 
   field(:addable, 1, type: :bool)
@@ -176,24 +229,6 @@ defmodule InternalApi.RepositoryIntegrator.Repository do
   field(:full_name, 4, type: :string)
   field(:url, 3, type: :string)
   field(:description, 5, type: :string)
-end
-
-defmodule InternalApi.RepositoryIntegrator.IntegrationType do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:GITHUB_OAUTH_TOKEN, 0)
-  field(:GITHUB_APP, 1)
-  field(:BITBUCKET, 2)
-end
-
-defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:FULL_CONNECTION, 0)
-  field(:ONLY_PUBLIC, 1)
-  field(:NO_CONNECTION, 2)
 end
 
 defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service do
@@ -228,6 +263,12 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
     :GithubInstallationInfo,
     InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
     InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
+  )
+
+  rpc(
+    :InitGithubInstallation,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+    InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
   )
 
   rpc(

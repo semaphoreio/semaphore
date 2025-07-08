@@ -5,6 +5,8 @@ defmodule InternalApi.RepositoryIntegrator.IntegrationType do
   field :GITHUB_OAUTH_TOKEN, 0
   field :GITHUB_APP, 1
   field :BITBUCKET, 2
+  field :GITLAB, 3
+  field :GIT, 4
 end
 
 defmodule InternalApi.RepositoryIntegrator.IntegrationScope do
@@ -99,6 +101,16 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   field :installation_url, 3, type: :string, json_name: "installationUrl"
 end
 
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -154,6 +166,10 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
   rpc :GithubInstallationInfo,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
+
+  rpc :InitGithubInstallation,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
 
   rpc :GetRepositories,
       InternalApi.RepositoryIntegrator.GetRepositoriesRequest,

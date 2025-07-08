@@ -32,38 +32,6 @@ defmodule InternalApi.Organization.Member.Role do
   field :ADMIN, 2
 end
 
-defmodule InternalApi.Organization.Quota.Type do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  @type t ::
-          integer
-          | :MAX_PEOPLE_IN_ORG
-          | :MAX_PARALELLISM_IN_ORG
-          | :MAX_PROJECTS_IN_ORG
-          | :MAX_PARALLEL_E1_STANDARD_2
-          | :MAX_PARALLEL_E1_STANDARD_4
-          | :MAX_PARALLEL_E1_STANDARD_8
-          | :MAX_PARALLEL_A1_STANDARD_4
-          | :MAX_PARALLEL_A1_STANDARD_8
-
-  field :MAX_PEOPLE_IN_ORG, 0
-
-  field :MAX_PARALELLISM_IN_ORG, 1
-
-  field :MAX_PROJECTS_IN_ORG, 7
-
-  field :MAX_PARALLEL_E1_STANDARD_2, 2
-
-  field :MAX_PARALLEL_E1_STANDARD_4, 3
-
-  field :MAX_PARALLEL_E1_STANDARD_8, 4
-
-  field :MAX_PARALLEL_A1_STANDARD_4, 5
-
-  field :MAX_PARALLEL_A1_STANDARD_8, 6
-end
-
 defmodule InternalApi.Organization.OrganizationContact.ContactType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
@@ -91,14 +59,16 @@ defmodule InternalApi.Organization.DescribeRequest do
   @type t :: %__MODULE__{
           org_id: String.t(),
           org_username: String.t(),
-          include_quotas: boolean
+          include_quotas: boolean,
+          soft_deleted: boolean
         }
 
-  defstruct [:org_id, :org_username, :include_quotas]
+  defstruct [:org_id, :org_username, :include_quotas, :soft_deleted]
 
   field :org_id, 1, type: :string
   field :org_username, 2, type: :string
   field :include_quotas, 3, type: :bool
+  field :soft_deleted, 4, type: :bool
 end
 
 defmodule InternalApi.Organization.DescribeResponse do
@@ -121,12 +91,14 @@ defmodule InternalApi.Organization.DescribeManyRequest do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          org_ids: [String.t()]
+          org_ids: [String.t()],
+          soft_deleted: boolean
         }
 
-  defstruct [:org_ids]
+  defstruct [:org_ids, :soft_deleted]
 
   field :org_ids, 1, repeated: true, type: :string
+  field :soft_deleted, 2, type: :bool
 end
 
 defmodule InternalApi.Organization.DescribeManyResponse do
@@ -151,16 +123,18 @@ defmodule InternalApi.Organization.ListRequest do
           created_at_gt: Google.Protobuf.Timestamp.t() | nil,
           order: InternalApi.Organization.ListRequest.Order.t(),
           page_size: integer,
-          page_token: String.t()
+          page_token: String.t(),
+          soft_deleted: boolean
         }
 
-  defstruct [:user_id, :created_at_gt, :order, :page_size, :page_token]
+  defstruct [:user_id, :created_at_gt, :order, :page_size, :page_token, :soft_deleted]
 
   field :user_id, 2, type: :string
   field :created_at_gt, 3, type: Google.Protobuf.Timestamp
   field :order, 4, type: InternalApi.Organization.ListRequest.Order, enum: true
   field :page_size, 5, type: :int32
   field :page_token, 6, type: :string
+  field :soft_deleted, 7, type: :bool
 end
 
 defmodule InternalApi.Organization.ListResponse do
@@ -210,34 +184,6 @@ defmodule InternalApi.Organization.CreateResponse do
 
   field :status, 1, type: InternalApi.ResponseStatus
   field :organization, 2, type: InternalApi.Organization.Organization
-end
-
-defmodule InternalApi.Organization.CreateWithQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          organization: InternalApi.Organization.Organization.t() | nil,
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-
-  defstruct [:organization, :quotas]
-
-  field :organization, 1, type: InternalApi.Organization.Organization
-  field :quotas, 2, repeated: true, type: InternalApi.Organization.Quota
-end
-
-defmodule InternalApi.Organization.CreateWithQuotasResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          organization: InternalApi.Organization.Organization.t() | nil
-        }
-
-  defstruct [:organization]
-
-  field :organization, 1, type: InternalApi.Organization.Organization
 end
 
 defmodule InternalApi.Organization.UpdateRequest do
@@ -652,6 +598,19 @@ defmodule InternalApi.Organization.DestroyRequest do
   field :org_id, 1, type: :string
 end
 
+defmodule InternalApi.Organization.RestoreRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+
+  defstruct [:org_id]
+
+  field :org_id, 1, type: :string
+end
+
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -671,7 +630,6 @@ defmodule InternalApi.Organization.Organization do
           allowed_id_providers: [String.t()],
           deny_member_workflows: boolean,
           deny_non_member_workflows: boolean,
-          quotas: [InternalApi.Organization.Quota.t()],
           settings: [InternalApi.Organization.OrganizationSetting.t()]
         }
 
@@ -690,7 +648,6 @@ defmodule InternalApi.Organization.Organization do
     :allowed_id_providers,
     :deny_member_workflows,
     :deny_non_member_workflows,
-    :quotas,
     :settings
   ]
 
@@ -708,7 +665,6 @@ defmodule InternalApi.Organization.Organization do
   field :allowed_id_providers, 13, repeated: true, type: :string
   field :deny_member_workflows, 14, type: :bool
   field :deny_non_member_workflows, 15, type: :bool
-  field :quotas, 8, repeated: true, type: InternalApi.Organization.Quota
   field :settings, 16, repeated: true, type: InternalApi.Organization.OrganizationSetting
 end
 
@@ -767,21 +723,6 @@ defmodule InternalApi.Organization.Member do
   field :github_uid, 8, type: :string
 end
 
-defmodule InternalApi.Organization.Quota do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          type: InternalApi.Organization.Quota.Type.t(),
-          value: non_neg_integer
-        }
-
-  defstruct [:type, :value]
-
-  field :type, 1, type: InternalApi.Organization.Quota.Type, enum: true
-  field :value, 2, type: :uint32
-end
-
 defmodule InternalApi.Organization.OrganizationSetting do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -795,62 +736,6 @@ defmodule InternalApi.Organization.OrganizationSetting do
 
   field :key, 1, type: :string
   field :value, 2, type: :string
-end
-
-defmodule InternalApi.Organization.GetQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          types: [[InternalApi.Organization.Quota.Type.t()]]
-        }
-
-  defstruct [:org_id, :types]
-
-  field :org_id, 1, type: :string
-  field :types, 2, repeated: true, type: InternalApi.Organization.Quota.Type, enum: true
-end
-
-defmodule InternalApi.Organization.GetQuotaResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-
-  defstruct [:quotas]
-
-  field :quotas, 1, repeated: true, type: InternalApi.Organization.Quota
-end
-
-defmodule InternalApi.Organization.UpdateQuotasRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-
-  defstruct [:org_id, :quotas]
-
-  field :org_id, 1, type: :string
-  field :quotas, 2, repeated: true, type: InternalApi.Organization.Quota
-end
-
-defmodule InternalApi.Organization.UpdateQuotasResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          quotas: [InternalApi.Organization.Quota.t()]
-        }
-
-  defstruct [:quotas]
-
-  field :quotas, 1, repeated: true, type: InternalApi.Organization.Quota
 end
 
 defmodule InternalApi.Organization.RepositoryIntegratorsRequest do
@@ -1169,6 +1054,21 @@ defmodule InternalApi.Organization.OrganizationDailyUpdate do
   field :timestamp, 11, type: Google.Protobuf.Timestamp
 end
 
+defmodule InternalApi.Organization.OrganizationRestored do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          timestamp: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [:org_id, :timestamp]
+
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
+end
+
 defmodule InternalApi.Organization.OrganizationService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Organization.OrganizationService"
@@ -1188,12 +1088,6 @@ defmodule InternalApi.Organization.OrganizationService.Service do
   rpc(:List, InternalApi.Organization.ListRequest, InternalApi.Organization.ListResponse)
 
   rpc(:Create, InternalApi.Organization.CreateRequest, InternalApi.Organization.CreateResponse)
-
-  rpc(
-    :CreateWithQuotas,
-    InternalApi.Organization.CreateWithQuotasRequest,
-    InternalApi.Organization.CreateWithQuotasResponse
-  )
 
   rpc(:Update, InternalApi.Organization.UpdateRequest, InternalApi.Organization.UpdateResponse)
 
@@ -1251,19 +1145,9 @@ defmodule InternalApi.Organization.OrganizationService.Service do
     InternalApi.Organization.ListSuspensionsResponse
   )
 
-  rpc(
-    :UpdateQuotas,
-    InternalApi.Organization.UpdateQuotasRequest,
-    InternalApi.Organization.UpdateQuotasResponse
-  )
-
-  rpc(
-    :GetQuotas,
-    InternalApi.Organization.GetQuotasRequest,
-    InternalApi.Organization.GetQuotaResponse
-  )
-
   rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
+
+  rpc(:Restore, InternalApi.Organization.RestoreRequest, Google.Protobuf.Empty)
 
   rpc(
     :RepositoryIntegrators,

@@ -41,6 +41,7 @@ defmodule InternalApi.Organization.DescribeRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:org_username, 2, type: :string, json_name: "orgUsername")
   field(:include_quotas, 3, type: :bool, json_name: "includeQuotas")
+  field(:soft_deleted, 4, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.DescribeResponse do
@@ -56,6 +57,7 @@ defmodule InternalApi.Organization.DescribeManyRequest do
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
 
   field(:org_ids, 1, repeated: true, type: :string, json_name: "orgIds")
+  field(:soft_deleted, 2, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.DescribeManyResponse do
@@ -74,6 +76,7 @@ defmodule InternalApi.Organization.ListRequest do
   field(:order, 4, type: InternalApi.Organization.ListRequest.Order, enum: true)
   field(:page_size, 5, type: :int32, json_name: "pageSize")
   field(:page_token, 6, type: :string, json_name: "pageToken")
+  field(:soft_deleted, 7, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.ListResponse do
@@ -330,6 +333,13 @@ defmodule InternalApi.Organization.DestroyRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
 
+defmodule InternalApi.Organization.RestoreRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+end
+
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
@@ -558,6 +568,14 @@ defmodule InternalApi.Organization.OrganizationDailyUpdate do
   field(:timestamp, 11, type: Google.Protobuf.Timestamp)
 end
 
+defmodule InternalApi.Organization.OrganizationRestored do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.Organization.OrganizationService.Service do
   @moduledoc false
   use GRPC.Service,
@@ -637,6 +655,8 @@ defmodule InternalApi.Organization.OrganizationService.Service do
   )
 
   rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
+
+  rpc(:Restore, InternalApi.Organization.RestoreRequest, Google.Protobuf.Empty)
 
   rpc(
     :RepositoryIntegrators,

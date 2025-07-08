@@ -72,3 +72,19 @@ func (f FakeProjectHubServiceServer) GithubAppSwitch(ctx context.Context, in *pb
 	panic("implement me")
 
 }
+
+func (f FakeProjectHubServiceServer) FinishOnboarding(ctx context.Context, in *pb.FinishOnboardingRequest) (*pb.FinishOnboardingResponse, error) {
+	panic("implement me")
+}
+
+func (f FakeProjectHubServiceServer) ListKeyset(ctx context.Context, in *pb.ListKeysetRequest) (*pb.ListKeysetResponse, error) {
+	panic("implement me")
+}
+
+func (f FakeProjectHubServiceServer) RegenerateWebhookSecret(ctx context.Context, in *pb.RegenerateWebhookSecretRequest) (*pb.RegenerateWebhookSecretResponse, error) {
+	panic("implement me")
+}
+
+func (f FakeProjectHubServiceServer) Restore(ctx context.Context, in *pb.RestoreRequest) (*pb.RestoreResponse, error) {
+	panic("implement me")
+}
