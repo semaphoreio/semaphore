@@ -1530,6 +1530,55 @@ defmodule Guard.GrpcServers.OrganizationServerTest do
       assert org.ip_allow_list == "192.168.1.1,192.168.1.2"
     end
 
+    test "updates allowed_id_providers when non-empty list is provided", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      assert organization.allowed_id_providers == "api_token,oidc"
+
+      req =
+        Organization.UpdateRequest.new(
+          organization:
+            Organization.Organization.new(
+              org_id: organization.id,
+              name: organization.name,
+              org_username: organization.username,
+              allowed_id_providers: ["okta"]
+            )
+        )
+
+      {:ok, response} = channel |> Organization.OrganizationService.Stub.update(req)
+
+      assert response.organization.allowed_id_providers == ["okta"]
+
+      updated_org = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, organization.id)
+      assert updated_org.allowed_id_providers == "okta"
+    end
+
+    test "doesn't update allowed_id_providers when empty list is provided", %{
+      grpc_channel: channel,
+      organization: organization
+    } do
+      assert organization.allowed_id_providers == "api_token,oidc"
+
+      # Update with empty allowed_id_providers
+      request =
+        Organization.UpdateRequest.new(
+          organization:
+            Organization.Organization.new(
+              org_id: organization.id,
+              name: "Updated Organization",
+              org_username: "updated-org"
+            )
+        )
+
+      {:ok, response} = channel |> Organization.OrganizationService.Stub.update(request)
+
+      assert response.organization.allowed_id_providers == ["api_token", "oidc"]
+      updated_org = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, organization.id)
+      assert updated_org.allowed_id_providers == "api_token,oidc"
+    end
+
     test "returns error with invalid params", %{
       grpc_channel: channel,
       organization: organization

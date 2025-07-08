@@ -38,6 +38,7 @@ defmodule FrontWeb.Router do
     plug(FrontWeb.Plug.AssignOrgInfo)
     plug(FrontWeb.Plug.AssignBillingInfo)
     plug(FrontWeb.Plug.SentryContext)
+    plug(FrontWeb.Plugs.LicenseVerifier)
     plug(Traceman.Plug.TraceHeaders)
     plug(Front.Tracing.TracingPlug)
     plug(FrontWeb.Plugs.CacheControl, :private_cache)
@@ -635,6 +636,10 @@ defmodule FrontWeb.Router do
 
     post("/workflows/:workflow_id/pipelines/:pipeline_id/stop", PipelineController, :stop,
       as: :pipeline_stop
+    )
+
+    post("/workflows/:workflow_id/pipelines/:pipeline_id/rebuild", PipelineController, :rebuild,
+      as: :pipeline_rebuild
     )
 
     post(
