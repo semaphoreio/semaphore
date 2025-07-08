@@ -513,7 +513,7 @@ defmodule Ppl.Grpc.Server do
 
   defp verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
     with {:ok, git_ref_type} <- get_git_ref_type(ppl_req),
-         {:ok, git_ref_label} <- get_git_ref_label(ppl_req) do
+         {:ok, git_ref_label} <- get_git_ref_label(git_ref_type, ppl_req) do
       GoferClient.verify_deployment_target_access(
         deployment_target_id,
         user_id,
@@ -537,14 +537,22 @@ defmodule Ppl.Grpc.Server do
     end
   end
 
-  defp get_git_ref_label(ppl_req) do
+  defp get_git_ref_label(git_ref_type, ppl_req) do
     case ppl_req.source_args do
       nil -> {:error, :missing_source_args}
       source_args ->
-        case Map.get(source_args, "git_ref") do
-          nil -> {:error, :missing_git_ref}
-          git_ref when is_binary(git_ref) -> {:ok, git_ref}
-          other -> {:error, {:invalid_git_ref, other}}
+        field_name = case git_ref_type do
+          "branch" -> "branch_name"
+          "pr" -> "pr_name"
+          "tag" -> "tag_name"
+          _ -> "git_ref"  # fallback to git_ref for unknown types
+        end
+
+        case Map.get(source_args, field_name) do
+          nil -> {:error, {:missing_git_ref_label, field_name}}
+          "" -> {:error, {:empty_git_ref_label, field_name}}
+          label when is_binary(label) -> {:ok, label}
+          other -> {:error, {:invalid_git_ref_label, field_name, other}}
         end
     end
   end
