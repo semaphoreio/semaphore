@@ -1,91 +1,129 @@
-version: v1.0  # Semaphore configuration version
-name: "🐹 Go CI Pipeline"  # Pipeline display name
+# =============================================================================
+# Semaphore CI/CD pipeline for Go projects
+# Starter pipeline showcasing key Semaphore features for newcomers
+#
+# Additional references:
+#   Pipeline YAML reference     https://docs.semaphoreci.com/reference/pipeline-yaml/
+#   Agents & VM images          https://docs.semaphoreci.com/reference/agent/
+# =============================================================================
+version: v1.0
+name: "🚀 Go Project CI/CD Pipeline"
 
+# --------------------------------------------------------------------------- #
+# AGENT                                                                       #
+# --------------------------------------------------------------------------- #
 agent:
   machine:
-    type: {{ machine_type }}  # Define the machine type (e.g., e1-standard-2)
-    os_image: {{ os_image }}  # Specify the OS image (e.g., ubuntu2004)
+    type: {{ machine_type }}  # Define the machine type (e.g., f1-standard-2)
+    os_image: {{ os_image }}  # Specify the OS image (e.g., ubuntu2204)
 
-fail_fast:
+# --------------------------------------------------------------------------- #
+# WORKFLOW CONTROL                                                            #
+# --------------------------------------------------------------------------- #
+fail_fast:                        # Stop pipeline on first failure https://docs.semaphoreci.com/essentials/fail-fast/
   stop:
-    when: branch != 'main'  # Stop execution early for non-main branches
-auto_cancel:
-  running:
-    when: branch != 'main'  # Cancel running pipelines on non-main branches
-  queued:
-    when: branch = 'main'   # Cancel queued pipelines on main branch
+    when: "branch != 'main'"
 
+auto_cancel:                      # Cancel outdated pipelines       https://docs.semaphoreci.com/essentials/auto-cancel/
+  running:
+    when: "branch != 'main'"
+  queued:
+    when: "branch != 'main'"
+
+# --------------------------------------------------------------------------- #
+# GLOBAL JOB CONFIG (runs before every job)                                   #
+# --------------------------------------------------------------------------- #
 global_job_config:
   prologue:
     commands:
-      - checkout  # Fetch the latest code from the repository
-      - sem-version go 1.21  # Use Go version 1.21
-      - export GOPATH=~/go  # Set Go path
-      - export PATH=/home/semaphore/go/bin:$PATH  # Update PATH with Go bin directory
-      - cache restore  # Restore cached dependencies to save time
-      - go mod download  # Download project dependencies
-      - go install gotest.tools/gotestsum@latest  # Install gotestsum for enhanced test output
+      - checkout                  # Clone repository source code    https://docs.semaphoreci.com/reference/toolbox#checkout
+      - sem-version go 1.22       # Set Go toolchain version        https://docs.semaphoreci.com/using-semaphore/languages/go#versions
+      - cache restore             # Restore Go modules cache        https://docs.semaphoreci.com/using-semaphore/optimization/cache
 
+# --------------------------------------------------------------------------- #
+# BLOCKS                                                                      #
+# --------------------------------------------------------------------------- #
 blocks:
-  - name: "🛠️ Setup and Cache"
+  # ---------------------------------- #
+  - name: "🛠️ Setup & Dependency Caching"
     dependencies: []
     task:
       jobs:
-        - name: "📦 Install Dependencies"
+        - name: "📦 Install dependencies"
           commands:
-            - go install golang.org/x/lint/golint@latest  # Install linter
-            - go install honnef.co/go/tools/cmd/staticcheck@latest  # Install static checker
-            - cache store  # Save the current state of dependencies for future runs
+            - go mod download
+            - cache store          # Save Go modules cache          https://docs.semaphoreci.com/using-semaphore/languages/go#cache
 
-  - name: "🔍 Code Quality"
-    dependencies: ["🛠️ Setup and Cache"]
+  # ---------------------------------- #
+  - name: "🔍 Code Quality Checks"
+    dependencies: ["🛠️ Setup & Dependency Caching"]
     task:
       jobs:
-        - name: "✨ Lint and Vet"
+        - name: "🎨 go fmt check"
           commands:
-            - golint ./...  # Run linter to enforce coding standards
-            - go vet ./...  # Run vet tool to detect issues
-            - staticcheck ./...  # Perform static analysis
-            - go fmt ./...  # Ensure code is formatted correctly
+            - go fmt ./...        # Verify gofmt compliance        
+        - name: "📝 golangci-lint"
+          commands:
+            - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+            - golangci-lint run ./...
+        - name: "🧐 go vet"
+          commands:
+            - go vet ./...        # Static code vetting             https://pkg.go.dev/cmd/vet
+        - name: "🔎 staticcheck"
+          commands:
+            - go install honnef.co/go/tools/cmd/staticcheck@latest
+            - staticcheck ./...
 
-  - name: "🔐 Security Checks"
-    dependencies: ["🛠️ Setup and Cache"]
+  # ---------------------------------- #
+  - name: "🔒 Security Scanning"
+    dependencies: ["🛠️ Setup & Dependency Caching"]
     task:
       jobs:
-        - name: "🛡️ Security Scan"
+        - name: "🛡️ govulncheck"
           commands:
-            - go install golang.org/x/vuln/cmd/govulncheck@latest  # Install vulnerability scanner
-            - govulncheck ./...  # Check for known vulnerabilities in dependencies
+            - go install golang.org/x/vuln/cmd/govulncheck@latest
+            - govulncheck ./...   # Scan for known vulnerabilities  https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck
 
-  - name: "🧪 Test Suite"
-    dependencies: ["🛠️ Setup and Cache"]
+  # ---------------------------------- #
+  - name: "✅ Testing"
+    dependencies: ["🔒 Security Scanning"]
     task:
-      env_vars:
-        - name: GO_TEST_REPORT
-          value: "test-results.xml"  # Define the test report output path
       jobs:
-        - name: "🟢 Go Test"
-          parallelism: 4  # Run tests across 4 parallel jobs for efficiency
+        - name: "🧪 Run Go Tests"
+          parallelism: 4          # Split tests across 4 jobs       https://docs.semaphoreci.com/using-semaphore/jobs#job-parallelism
           commands:
-            - gotestsum --junitfile=$GO_TEST_REPORT -- -coverprofile=coverage.txt -covermode=atomic ./...  # Run tests with coverage and generate JUnit report
-            - go tool cover -func=coverage.txt  # Display coverage report
+            - go install gotest.tools/gotestsum@latest
+            - packages=$(go list ./... | awk "NR % $SEMAPHORE_JOB_TOTAL == $SEMAPHORE_JOB_INDEX") gotestsum --junitfile reports.xml $packages
       epilogue:
         always:
           commands:
-            - test-results publish $GO_TEST_REPORT  # Publish test results to Semaphore
+            - test-results publish reports.xml  # Upload JUnit report         https://docs.semaphoreci.com/using-semaphore/tests/test-reports
 
-  - name: "📦 Build"
-    dependencies: ["🧪 Test Suite"]
+  # ---------------------------------- #
+  - name: "🏗️ Build Artifact"
+    dependencies: ["✅ Testing"]
     task:
       jobs:
-        - name: "🔨 Build Binary"
+        - name: "🔨 Compile Go Binary"
           commands:
-            - GOOS=linux GOARCH=amd64 go build -o bin/app  # Build for Linux
-            - GOOS=darwin GOARCH=amd64 go build -o bin/app-darwin  # Build for macOS
+            - go build -o app     # Produce binary artifact         https://go.dev/cmd/go/#hdr-Compile_packages_and_dependencies
 
+  # ---------------------------------- #
+  - name: "🐳 Docker Image Build"
+    dependencies: ["🏗️ Build Artifact"]
+    task:
+      jobs:
+        - name: "🐋 Build & Tag Docker Image"
+          commands:
+            - docker build -t my-app:$SEMAPHORE_GIT_SHA .   # Build container image https://docs.docker.com/engine/reference/commandline/build/
+            - docker tag my-app:$SEMAPHORE_GIT_SHA my-app:latest
+
+# --------------------------------------------------------------------------- #
+# AFTER PIPELINE                                                              #
+# --------------------------------------------------------------------------- #
 after_pipeline:
   task:
     jobs:
-      - name: "Merge Reports 📊"
+      - name: "📊 Publish Test Results"
         commands:
-          - test-results gen-pipeline-report  # Generate a summary report of test results
+          - test-results gen-pipeline-report  # Generate summary report https://docs.semaphoreci.com/reference/test-results/
