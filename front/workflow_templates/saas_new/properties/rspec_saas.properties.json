@@ -1,11 +1,12 @@
 {
-  "title": "RSpec",
-  "description": "Use Bundler, Bundler-audit, RuboCop, and Brakeman to test your Rails app. This CI pipeline uses Knapsack Pro to paralelize your tests. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Rails</span><span class='f6 normal mr1 ph1 br2 bg-indigo white'>RuboCop</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Knapsack</span></div>",
-  "short_description": "Run your Ruby RSpec suite",
+  "title": "Ruby – RSpec CI Pipeline",
+  "description": "Set up a full-featured Rails pipeline with dependency caching, asset compilation, JS/CSS linting (ESLint + Stylelint), Ruby quality checks (RuboCop), security scanning (Brakeman + Bundler-Audit), and lightning-fast parallel test execution powered by Semaphore Boosters. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Rails</span><span class='f6 normal mr1 ph1 br2 bg-indigo white'>RuboCop</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Boosters</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>ESLint</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Stylelint</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Brakeman</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Bundler-Audit</span></div>",
+  "short_description": "Parallel RSpec pipeline for Rails apps",
   "group": "ci",
   "language": "Ruby",
   "environment": "linux",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-ruby.svg",
   "template_path": "templates/rspec_saas.yml",
   "workflow_tip": "other"

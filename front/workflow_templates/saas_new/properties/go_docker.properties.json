@@ -1,11 +1,12 @@
 {
-  "title": "Go",
-  "description": "Run quality checks and tests for your Go app in Docker using gotestsum for enhanced test reporting. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>gotestsum</span></div>",
-  "short_description": "Run your Go suite",
+  "title": "Go – Docker CI Pipeline",
+  "description": "Run a full featured Go CI pipeline inside Docker with dependency caching, code formatting and static analysis (gofmt, golangci-lint, staticcheck), security scanning via govulncheck, fast parallel tests and JUnit reports with gotestsum, binary compilation, and Docker image packaging. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Go</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>gotestsum</span><span class='f6 normal mr1 ph1 br2 bg-indigo white'>golangci-lint</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>staticcheck</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>govulncheck</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>JUnit</span></div>",
+  "short_description": "Full Go CI pipeline in Docker with parallel tests",
   "group": "ci",
-  "language": "Go",
+  "language": "golang",
   "environment": "docker",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-go.svg",
   "template_path": "templates/go_docker.yml",
   "workflow_tip": "other"
