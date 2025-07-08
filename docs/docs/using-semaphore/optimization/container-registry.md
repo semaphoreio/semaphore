@@ -553,6 +553,9 @@ This is a PostgreSQL container extended with [PostGIS](https://postgis.net/).
 |--------|--------|
 | valkey:8.1 | `registry.semaphoreci.com/valkey:8.1` |
 
+</div>
+</details>
+
 ### ElasticSearch
 
 <details>
