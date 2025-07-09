@@ -498,6 +498,7 @@ defmodule Ppl.Grpc.Server do
   defp verify_deployment_target_permission(ppl_req, user_id) do
     case get_deployment_target_id(ppl_req) do
       nil -> {:ok}
+      "" -> {:ok}
       deployment_target_id ->
         case verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
           {:ok, :access_granted} -> {:ok}
