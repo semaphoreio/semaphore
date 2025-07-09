@@ -5,6 +5,7 @@ defmodule GoferClient.ResponseParser do
   """
 
   alias InternalApi.Gofer.ResponseStatus.ResponseCode
+  alias InternalApi.Gofer.DeploymentTargets.VerifyResponse.Status
   alias LogTee, as: LT
   alias Util.ToTuple
 
@@ -47,6 +48,29 @@ defmodule GoferClient.ResponseParser do
 
   def process_pipeline_done_response(error), do: error
 
+  # Verify
+
+  def process_verify_response({:ok, response}) do
+    with true <- is_map(response),
+         {:ok, status} <- Map.fetch(response, :status),
+         status_atom <- verify_status_value(status)
+    do
+      case status_atom do
+        :ACCESS_GRANTED -> {:ok, :access_granted}
+        :SYNCING_TARGET -> {:error, :syncing_target}
+        :BANNED_SUBJECT -> {:error, :banned_subject}
+        :BANNED_OBJECT -> {:error, :banned_object}
+        :CORDONED_TARGET -> {:error, :cordoned_target}
+        :CORRUPTED_TARGET -> {:error, :corrupted_target}
+        _ -> log_invalid_response(response, "verify")
+      end
+    else
+      _ -> log_invalid_response(response, "verify")
+    end
+  end
+
+  def process_verify_response(error), do: error
+
   # Util
 
   defp response_code_value(%{code: code}) do
@@ -55,6 +79,12 @@ defmodule GoferClient.ResponseParser do
     nil
   end
   defp response_code_value(_), do: nil
+
+  defp verify_status_value(status) do
+    Status.key(status)
+  rescue _ ->
+    nil
+  end
 
   defp log_invalid_response(response, rpc_method) do
     response
