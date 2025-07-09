@@ -13,6 +13,6 @@
   "ranch": {:hex, :ranch, "1.6.2", "6db93c78f411ee033dbb18ba8234c5574883acb9a75af0fb90a9b82ea46afa00", [:rebar3], [], "hexpm", "0b65d1de7f1ebe96feb57803c8d698f7776b663ba10b6dcff34527e4a4f8ff43"},
   "util": {:git, "https://github.com/renderedtext/elixir-util.git", "56bf64ee78b93d9d075a2fe35074d17d4be9e8b7", []},
   "uuid": {:hex, :uuid, "1.1.8", "e22fc04499de0de3ed1116b770c7737779f226ceefa0badb3592e64d5cfb4eb9", [:mix], [], "hexpm", "c790593b4c3b601f5dc2378baae7efaf5b3d73c4c6456ba85759905be792f2ac"},
-  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "9a13fb1992967857570e09130c55efb3e4ef577f", []},
+  "watchman": {:git, "https://github.com/renderedtext/ex-watchman.git", "db1a91b55110140213e0b5fd37afb15dc4ede2bc", []},
   "wormhole": {:hex, :wormhole, "2.3.0", "5539d538b87fd70fd2b9cd95b8ce8b272c38aa4adf18690cbe8d1736c56054b6", [:mix], [], "hexpm", "5a82445fe84193adafe64eb2c144d703b93d3ddac8aa7e1b0ab0ce3968b22440"},
 }
