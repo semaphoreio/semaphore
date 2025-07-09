@@ -418,6 +418,8 @@ defmodule Ppl.Grpc.Server do
            {:ok, false}       <- project_deleted?(ppl.project_id),
            {"done", result} when result != "passed"
                               <- {ppl.state, ppl.result},
+            {:ok, ppl_req}     <- PplRequestsQueries.get_by_id(request.ppl_id),
+            {:ok}              <- verify_deployment_target_permission(ppl_req, request.user_id),
             {:ok, ppl_id}     <- Actions.partial_rebuild(request)
       do
         Proto.deep_new!(PartialRebuildResponse,
@@ -425,6 +427,8 @@ defmodule Ppl.Grpc.Server do
       else
         {:error, {:project_deleted, project_id}} ->
           responed_refused(PartialRebuildResponse, "Project with id #{project_id} was deleted.")
+        {:error, {:deployment_target_permission_denied, reason}} ->
+          rebuild_error_resp("Access to deployment target denied: #{inspect reason}")
         {:error, message} ->
           rebuild_error_resp("#{inspect message}")
         {"done", "passed"} ->
@@ -490,6 +494,72 @@ defmodule Ppl.Grpc.Server do
 
   defp limit_status(message),
     do: ResponseStatus.new(code: ResponseCode.value(:LIMIT_EXCEEDED), message: to_str(message))
+
+  defp verify_deployment_target_permission(ppl_req, user_id) do
+    case get_deployment_target_id(ppl_req) do
+      nil -> {:ok}
+      "" -> {:ok}
+      deployment_target_id ->
+        case verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
+          {:ok, :access_granted} -> {:ok}
+          {:error, reason} -> {:error, {:deployment_target_permission_denied, reason}}
+        end
+    end
+  end
+
+  defp get_deployment_target_id(ppl_req) do
+    ppl_req.request_args
+    |> Map.get("deployment_target_id")
+  end
+
+  defp verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
+    with {:ok, git_ref_type} <- get_git_ref_type(ppl_req),
+         {:ok, git_ref_label} <- get_git_ref_label(git_ref_type, ppl_req) do
+      GoferClient.verify_deployment_target_access(
+        deployment_target_id,
+        user_id,
+        git_ref_type,
+        git_ref_label
+      )
+    else
+      error -> error
+    end
+  end
+
+  defp get_git_ref_type(ppl_req) do
+    case ppl_req.source_args do
+      nil -> {:error, :missing_source_args}
+      source_args ->
+        case Map.get(source_args, "git_ref_type") do
+          nil -> {:error, :missing_git_ref_type}
+          git_ref_type when is_binary(git_ref_type) -> {:ok, git_ref_type}
+          other -> {:error, {:invalid_git_ref_type, other}}
+        end
+    end
+  end
+
+  defp get_git_ref_label(git_ref_type, ppl_req) do
+    case ppl_req.source_args do
+      nil -> {:error, :missing_source_args}
+      source_args ->
+        field_name = get_git_ref_label_field_name(git_ref_type)
+        case Map.get(source_args, field_name) do
+          nil -> {:error, {:missing_git_ref_label, field_name}}
+          "" -> {:error, {:empty_git_ref_label, field_name}}
+          label when is_binary(label) -> {:ok, label}
+          other -> {:error, {:invalid_git_ref_label, field_name, other}}
+        end
+    end
+  end
+
+  defp get_git_ref_label_field_name(git_ref_type) do
+    case git_ref_type do
+      "branch" -> "branch_name"
+      "pr" -> "pr_name"
+      "tag" -> "tag_name"
+      _ -> "git_ref"  # fallback to git_ref for unknown types
+    end
+  end
 
   defp string_keys(map), do: map |> Poison.encode!() |> Poison.decode!()
 
