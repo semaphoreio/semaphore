@@ -538,6 +538,20 @@ This is a PostgreSQL container extended with [PostGIS](https://postgis.net/).
 | redis:5.0 | `registry.semaphoreci.com/redis:5.0` |    
 | redis:6.2 | `registry.semaphoreci.com/redis:6.2` |
 | redis:7.0 | `registry.semaphoreci.com/redis:7.0` |
+| redis:8.0 | `registry.semaphoreci.com/redis:8.0` |
+
+</div>
+</details>
+
+### Valkey
+
+<details>
+<summary>Valkey images</summary>
+<div>
+
+| Image | Link |
+|--------|--------|
+| valkey:8.1 | `registry.semaphoreci.com/valkey:8.1` |
 
 </div>
 </details>
