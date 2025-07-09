@@ -5,6 +5,7 @@ defmodule GoferClient.RequestFormatter do
   """
 
   alias InternalApi.Gofer.{CreateRequest, PipelineDoneRequest, GitRefType}
+  alias InternalApi.Gofer.DeploymentTargets.VerifyRequest
   alias Util.{ToTuple, Proto}
 
   # Create
@@ -77,6 +78,20 @@ defmodule GoferClient.RequestFormatter do
   end
   def form_pipeline_done_request(switch_id, result, result_reason) do
     "One or more of these params: #{inspect switch_id}, #{inspect result} and #{inspect result_reason} is not string."
+    |> ToTuple.error()
+  end
+
+  # Verify
+
+  def form_verify_request(target_id, triggerer, git_ref_type, git_ref_label)
+    when is_binary(target_id) and is_binary(triggerer) and is_binary(git_ref_type) and is_binary(git_ref_label) do
+    verify_params = %{target_id: target_id, triggerer: triggerer, git_ref_type: git_ref_type, git_ref_label: git_ref_label}
+
+    Proto.deep_new(VerifyRequest, verify_params,
+      transformations: %{VerifyRequest.GitRefType => {__MODULE__, :string_to_enum_atom}})
+  end
+  def form_verify_request(target_id, triggerer, git_ref_type, git_ref_label) do
+    "One or more of these params: #{inspect target_id}, #{inspect triggerer}, #{inspect git_ref_type} and #{inspect git_ref_label} is not in the expected format."
     |> ToTuple.error()
   end
 end
