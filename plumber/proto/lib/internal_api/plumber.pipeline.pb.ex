@@ -25,15 +25,15 @@ defmodule InternalApi.Plumber.ScheduleRequest do
     :definition_file
   ]
 
-  field :service, 2, type: InternalApi.Plumber.ScheduleRequest.ServiceType, enum: true
-  field :repo, 3, type: InternalApi.Plumber.ScheduleRequest.Repo
-  field :auth, 4, type: InternalApi.Plumber.ScheduleRequest.Auth
-  field :project_id, 6, type: :string
-  field :branch_id, 7, type: :string
-  field :hook_id, 8, type: :string
-  field :request_token, 9, type: :string
-  field :snapshot_id, 10, type: :string
-  field :definition_file, 11, type: :string
+  field(:service, 2, type: InternalApi.Plumber.ScheduleRequest.ServiceType, enum: true)
+  field(:repo, 3, type: InternalApi.Plumber.ScheduleRequest.Repo)
+  field(:auth, 4, type: InternalApi.Plumber.ScheduleRequest.Auth)
+  field(:project_id, 6, type: :string)
+  field(:branch_id, 7, type: :string)
+  field(:hook_id, 8, type: :string)
+  field(:request_token, 9, type: :string)
+  field(:snapshot_id, 10, type: :string)
+  field(:definition_file, 11, type: :string)
 end
 
 defmodule InternalApi.Plumber.ScheduleRequest.Repo do
@@ -48,10 +48,10 @@ defmodule InternalApi.Plumber.ScheduleRequest.Repo do
         }
   defstruct [:owner, :repo_name, :branch_name, :commit_sha]
 
-  field :owner, 1, type: :string
-  field :repo_name, 2, type: :string
-  field :branch_name, 4, type: :string
-  field :commit_sha, 5, type: :string
+  field(:owner, 1, type: :string)
+  field(:repo_name, 2, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:commit_sha, 5, type: :string)
 end
 
 defmodule InternalApi.Plumber.ScheduleRequest.Auth do
@@ -65,18 +65,18 @@ defmodule InternalApi.Plumber.ScheduleRequest.Auth do
         }
   defstruct [:client_id, :client_secret, :access_token]
 
-  field :client_id, 1, type: :string
-  field :client_secret, 2, type: :string
-  field :access_token, 3, type: :string
+  field(:client_id, 1, type: :string)
+  field(:client_secret, 2, type: :string)
+  field(:access_token, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.ScheduleRequest.ServiceType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :GIT_HUB, 0
-  field :LOCAL, 1
-  field :SNAPSHOT, 2
+  field(:GIT_HUB, 0)
+  field(:LOCAL, 1)
+  field(:SNAPSHOT, 2)
 end
 
 defmodule InternalApi.Plumber.ScheduleResponse do
@@ -89,8 +89,8 @@ defmodule InternalApi.Plumber.ScheduleResponse do
         }
   defstruct [:response_status, :ppl_id]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :ppl_id, 2, type: :string
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:ppl_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.DescribeRequest do
@@ -103,8 +103,8 @@ defmodule InternalApi.Plumber.DescribeRequest do
         }
   defstruct [:ppl_id, :detailed]
 
-  field :ppl_id, 1, type: :string
-  field :detailed, 2, type: :bool
+  field(:ppl_id, 1, type: :string)
+  field(:detailed, 2, type: :bool)
 end
 
 defmodule InternalApi.Plumber.DescribeResponse do
@@ -118,9 +118,9 @@ defmodule InternalApi.Plumber.DescribeResponse do
         }
   defstruct [:response_status, :pipeline, :blocks]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :pipeline, 3, type: InternalApi.Plumber.Pipeline
-  field :blocks, 4, repeated: true, type: InternalApi.Plumber.Block
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:pipeline, 3, type: InternalApi.Plumber.Pipeline)
+  field(:blocks, 4, repeated: true, type: InternalApi.Plumber.Block)
 end
 
 defmodule InternalApi.Plumber.Block do
@@ -148,14 +148,14 @@ defmodule InternalApi.Plumber.Block do
     :jobs
   ]
 
-  field :block_id, 1, type: :string
-  field :name, 2, type: :string
-  field :build_req_id, 3, type: :string
-  field :state, 4, type: InternalApi.Plumber.Block.State, enum: true
-  field :result, 5, type: InternalApi.Plumber.Block.Result, enum: true
-  field :result_reason, 6, type: InternalApi.Plumber.Block.ResultReason, enum: true
-  field :error_description, 7, type: :string
-  field :jobs, 8, repeated: true, type: InternalApi.Plumber.Block.Job
+  field(:block_id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:build_req_id, 3, type: :string)
+  field(:state, 4, type: InternalApi.Plumber.Block.State, enum: true)
+  field(:result, 5, type: InternalApi.Plumber.Block.Result, enum: true)
+  field(:result_reason, 6, type: InternalApi.Plumber.Block.ResultReason, enum: true)
+  field(:error_description, 7, type: :string)
+  field(:jobs, 8, repeated: true, type: InternalApi.Plumber.Block.Job)
 end
 
 defmodule InternalApi.Plumber.Block.Job do
@@ -171,48 +171,48 @@ defmodule InternalApi.Plumber.Block.Job do
         }
   defstruct [:name, :index, :job_id, :status, :result]
 
-  field :name, 1, type: :string
-  field :index, 2, type: :uint32
-  field :job_id, 3, type: :string
-  field :status, 4, type: :string
-  field :result, 5, type: :string
+  field(:name, 1, type: :string)
+  field(:index, 2, type: :uint32)
+  field(:job_id, 3, type: :string)
+  field(:status, 4, type: :string)
+  field(:result, 5, type: :string)
 end
 
 defmodule InternalApi.Plumber.Block.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :WAITING, 0
-  field :RUNNING, 1
-  field :STOPPING, 2
-  field :DONE, 3
-  field :INITIALIZING, 4
+  field(:WAITING, 0)
+  field(:RUNNING, 1)
+  field(:STOPPING, 2)
+  field(:DONE, 3)
+  field(:INITIALIZING, 4)
 end
 
 defmodule InternalApi.Plumber.Block.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :STOPPED, 1
-  field :CANCELED, 2
-  field :FAILED, 3
+  field(:PASSED, 0)
+  field(:STOPPED, 1)
+  field(:CANCELED, 2)
+  field(:FAILED, 3)
 end
 
 defmodule InternalApi.Plumber.Block.ResultReason do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :TEST, 0
-  field :MALFORMED, 1
-  field :STUCK, 2
-  field :USER, 3
-  field :INTERNAL, 4
-  field :STRATEGY, 5
-  field :FAST_FAILING, 6
-  field :DELETED, 7
-  field :TIMEOUT, 8
-  field :SKIPPED, 9
+  field(:TEST, 0)
+  field(:MALFORMED, 1)
+  field(:STUCK, 2)
+  field(:USER, 3)
+  field(:INTERNAL, 4)
+  field(:STRATEGY, 5)
+  field(:FAST_FAILING, 6)
+  field(:DELETED, 7)
+  field(:TIMEOUT, 8)
+  field(:SKIPPED, 9)
 end
 
 defmodule InternalApi.Plumber.DescribeManyRequest do
@@ -224,7 +224,7 @@ defmodule InternalApi.Plumber.DescribeManyRequest do
         }
   defstruct [:ppl_ids]
 
-  field :ppl_ids, 1, repeated: true, type: :string
+  field(:ppl_ids, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Plumber.DescribeManyResponse do
@@ -237,8 +237,8 @@ defmodule InternalApi.Plumber.DescribeManyResponse do
         }
   defstruct [:response_status, :pipelines]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
 end
 
 defmodule InternalApi.Plumber.DescribeTopologyRequest do
@@ -250,7 +250,7 @@ defmodule InternalApi.Plumber.DescribeTopologyRequest do
         }
   defstruct [:ppl_id]
 
-  field :ppl_id, 1, type: :string
+  field(:ppl_id, 1, type: :string)
 end
 
 defmodule InternalApi.Plumber.DescribeTopologyResponse do
@@ -264,9 +264,9 @@ defmodule InternalApi.Plumber.DescribeTopologyResponse do
         }
   defstruct [:status, :blocks, :after_pipeline]
 
-  field :status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :blocks, 2, repeated: true, type: InternalApi.Plumber.DescribeTopologyResponse.Block
-  field :after_pipeline, 3, type: InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline
+  field(:status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:blocks, 2, repeated: true, type: InternalApi.Plumber.DescribeTopologyResponse.Block)
+  field(:after_pipeline, 3, type: InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline)
 end
 
 defmodule InternalApi.Plumber.DescribeTopologyResponse.Block do
@@ -280,9 +280,9 @@ defmodule InternalApi.Plumber.DescribeTopologyResponse.Block do
         }
   defstruct [:name, :jobs, :dependencies]
 
-  field :name, 1, type: :string
-  field :jobs, 2, repeated: true, type: :string
-  field :dependencies, 3, repeated: true, type: :string
+  field(:name, 1, type: :string)
+  field(:jobs, 2, repeated: true, type: :string)
+  field(:dependencies, 3, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline do
@@ -294,7 +294,7 @@ defmodule InternalApi.Plumber.DescribeTopologyResponse.AfterPipeline do
         }
   defstruct [:jobs]
 
-  field :jobs, 1, repeated: true, type: :string
+  field(:jobs, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Plumber.TerminateRequest do
@@ -307,8 +307,8 @@ defmodule InternalApi.Plumber.TerminateRequest do
         }
   defstruct [:ppl_id, :requester_id]
 
-  field :ppl_id, 1, type: :string
-  field :requester_id, 2, type: :string
+  field(:ppl_id, 1, type: :string)
+  field(:requester_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.TerminateResponse do
@@ -320,7 +320,7 @@ defmodule InternalApi.Plumber.TerminateResponse do
         }
   defstruct [:response_status]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
 end
 
 defmodule InternalApi.Plumber.ListQueuesRequest do
@@ -336,11 +336,11 @@ defmodule InternalApi.Plumber.ListQueuesRequest do
         }
   defstruct [:page, :page_size, :project_id, :organization_id, :queue_types]
 
-  field :page, 1, type: :int32
-  field :page_size, 2, type: :int32
-  field :project_id, 3, type: :string
-  field :organization_id, 4, type: :string
-  field :queue_types, 5, repeated: true, type: InternalApi.Plumber.QueueType, enum: true
+  field(:page, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
+  field(:project_id, 3, type: :string)
+  field(:organization_id, 4, type: :string)
+  field(:queue_types, 5, repeated: true, type: InternalApi.Plumber.QueueType, enum: true)
 end
 
 defmodule InternalApi.Plumber.ListQueuesResponse do
@@ -357,12 +357,12 @@ defmodule InternalApi.Plumber.ListQueuesResponse do
         }
   defstruct [:response_status, :queues, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :queues, 2, repeated: true, type: InternalApi.Plumber.Queue
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:queues, 2, repeated: true, type: InternalApi.Plumber.Queue)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.Plumber.ListGroupedRequest do
@@ -378,11 +378,11 @@ defmodule InternalApi.Plumber.ListGroupedRequest do
         }
   defstruct [:page, :page_size, :project_id, :organization_id, :queue_type]
 
-  field :page, 1, type: :int32
-  field :page_size, 2, type: :int32
-  field :project_id, 3, type: :string
-  field :organization_id, 4, type: :string
-  field :queue_type, 5, repeated: true, type: InternalApi.Plumber.QueueType, enum: true
+  field(:page, 1, type: :int32)
+  field(:page_size, 2, type: :int32)
+  field(:project_id, 3, type: :string)
+  field(:organization_id, 4, type: :string)
+  field(:queue_type, 5, repeated: true, type: InternalApi.Plumber.QueueType, enum: true)
 end
 
 defmodule InternalApi.Plumber.ListGroupedResponse do
@@ -399,12 +399,12 @@ defmodule InternalApi.Plumber.ListGroupedResponse do
         }
   defstruct [:response_status, :pipelines, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.Plumber.ListKeysetRequest do
@@ -448,37 +448,37 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
     :pr_target_branch
   ]
 
-  field :page_size, 1, type: :int32
-  field :page_token, 2, type: :string
-  field :order, 3, type: InternalApi.Plumber.ListKeysetRequest.Order, enum: true
-  field :direction, 4, type: InternalApi.Plumber.ListKeysetRequest.Direction, enum: true
-  field :project_id, 5, type: :string
-  field :yml_file_path, 6, type: :string
-  field :wf_id, 7, type: :string
-  field :created_before, 8, type: Google.Protobuf.Timestamp
-  field :created_after, 9, type: Google.Protobuf.Timestamp
-  field :done_before, 10, type: Google.Protobuf.Timestamp
-  field :done_after, 11, type: Google.Protobuf.Timestamp
-  field :label, 12, type: :string
-  field :git_ref_types, 13, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true
-  field :queue_id, 14, type: :string
-  field :pr_head_branch, 15, type: :string
-  field :pr_target_branch, 16, type: :string
+  field(:page_size, 1, type: :int32)
+  field(:page_token, 2, type: :string)
+  field(:order, 3, type: InternalApi.Plumber.ListKeysetRequest.Order, enum: true)
+  field(:direction, 4, type: InternalApi.Plumber.ListKeysetRequest.Direction, enum: true)
+  field(:project_id, 5, type: :string)
+  field(:yml_file_path, 6, type: :string)
+  field(:wf_id, 7, type: :string)
+  field(:created_before, 8, type: Google.Protobuf.Timestamp)
+  field(:created_after, 9, type: Google.Protobuf.Timestamp)
+  field(:done_before, 10, type: Google.Protobuf.Timestamp)
+  field(:done_after, 11, type: Google.Protobuf.Timestamp)
+  field(:label, 12, type: :string)
+  field(:git_ref_types, 13, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
+  field(:queue_id, 14, type: :string)
+  field(:pr_head_branch, 15, type: :string)
+  field(:pr_target_branch, 16, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListKeysetRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BY_CREATION_TIME_DESC, 0
+  field(:BY_CREATION_TIME_DESC, 0)
 end
 
 defmodule InternalApi.Plumber.ListKeysetRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :NEXT, 0
-  field :PREVIOUS, 1
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.Plumber.ListKeysetResponse do
@@ -492,9 +492,9 @@ defmodule InternalApi.Plumber.ListKeysetResponse do
         }
   defstruct [:pipelines, :next_page_token, :previous_page_token]
 
-  field :pipelines, 1, repeated: true, type: InternalApi.Plumber.Pipeline
-  field :next_page_token, 2, type: :string
-  field :previous_page_token, 3, type: :string
+  field(:pipelines, 1, repeated: true, type: InternalApi.Plumber.Pipeline)
+  field(:next_page_token, 2, type: :string)
+  field(:previous_page_token, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListRequest do
@@ -536,21 +536,21 @@ defmodule InternalApi.Plumber.ListRequest do
     :pr_target_branch
   ]
 
-  field :project_id, 1, type: :string
-  field :branch_name, 2, type: :string
-  field :page, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :yml_file_path, 5, type: :string
-  field :wf_id, 6, type: :string
-  field :created_before, 7, type: Google.Protobuf.Timestamp
-  field :created_after, 8, type: Google.Protobuf.Timestamp
-  field :done_before, 9, type: Google.Protobuf.Timestamp
-  field :done_after, 10, type: Google.Protobuf.Timestamp
-  field :label, 11, type: :string
-  field :git_ref_types, 12, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true
-  field :queue_id, 13, type: :string
-  field :pr_head_branch, 14, type: :string
-  field :pr_target_branch, 15, type: :string
+  field(:project_id, 1, type: :string)
+  field(:branch_name, 2, type: :string)
+  field(:page, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:yml_file_path, 5, type: :string)
+  field(:wf_id, 6, type: :string)
+  field(:created_before, 7, type: Google.Protobuf.Timestamp)
+  field(:created_after, 8, type: Google.Protobuf.Timestamp)
+  field(:done_before, 9, type: Google.Protobuf.Timestamp)
+  field(:done_after, 10, type: Google.Protobuf.Timestamp)
+  field(:label, 11, type: :string)
+  field(:git_ref_types, 12, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
+  field(:queue_id, 13, type: :string)
+  field(:pr_head_branch, 14, type: :string)
+  field(:pr_target_branch, 15, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListResponse do
@@ -567,12 +567,12 @@ defmodule InternalApi.Plumber.ListResponse do
         }
   defstruct [:response_status, :pipelines, :page_number, :page_size, :total_entries, :total_pages]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline
-  field :page_number, 3, type: :int32
-  field :page_size, 4, type: :int32
-  field :total_entries, 5, type: :int32
-  field :total_pages, 6, type: :int32
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:pipelines, 2, repeated: true, type: InternalApi.Plumber.Pipeline)
+  field(:page_number, 3, type: :int32)
+  field(:page_size, 4, type: :int32)
+  field(:total_entries, 5, type: :int32)
+  field(:total_pages, 6, type: :int32)
 end
 
 defmodule InternalApi.Plumber.Queue do
@@ -589,12 +589,12 @@ defmodule InternalApi.Plumber.Queue do
         }
   defstruct [:queue_id, :name, :scope, :project_id, :organization_id, :type]
 
-  field :queue_id, 1, type: :string
-  field :name, 2, type: :string
-  field :scope, 3, type: :string
-  field :project_id, 4, type: :string
-  field :organization_id, 5, type: :string
-  field :type, 6, type: InternalApi.Plumber.QueueType, enum: true
+  field(:queue_id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:scope, 3, type: :string)
+  field(:project_id, 4, type: :string)
+  field(:organization_id, 5, type: :string)
+  field(:type, 6, type: InternalApi.Plumber.QueueType, enum: true)
 end
 
 defmodule InternalApi.Plumber.Pipeline do
@@ -678,79 +678,79 @@ defmodule InternalApi.Plumber.Pipeline do
     :organization_id
   ]
 
-  field :ppl_id, 1, type: :string
-  field :name, 2, type: :string
-  field :project_id, 3, type: :string
-  field :branch_name, 4, type: :string
-  field :commit_sha, 5, type: :string
-  field :created_at, 6, type: Google.Protobuf.Timestamp
-  field :pending_at, 7, type: Google.Protobuf.Timestamp
-  field :queuing_at, 8, type: Google.Protobuf.Timestamp
-  field :running_at, 9, type: Google.Protobuf.Timestamp
-  field :stopping_at, 10, type: Google.Protobuf.Timestamp
-  field :done_at, 11, type: Google.Protobuf.Timestamp
-  field :state, 12, type: InternalApi.Plumber.Pipeline.State, enum: true
-  field :result, 13, type: InternalApi.Plumber.Pipeline.Result, enum: true
-  field :result_reason, 14, type: InternalApi.Plumber.Pipeline.ResultReason, enum: true
-  field :terminate_request, 15, type: :string
-  field :hook_id, 16, type: :string
-  field :branch_id, 17, type: :string
-  field :error_description, 18, type: :string
-  field :switch_id, 19, type: :string
-  field :working_directory, 20, type: :string
-  field :yaml_file_name, 21, type: :string
-  field :terminated_by, 22, type: :string
-  field :wf_id, 23, type: :string
-  field :snapshot_id, 24, type: :string
-  field :queue, 25, type: InternalApi.Plumber.Queue
-  field :promotion_of, 26, type: :string
-  field :partial_rerun_of, 27, type: :string
-  field :commit_message, 28, type: :string
-  field :partially_rerun_by, 29, type: :string
-  field :compile_task_id, 30, type: :string
-  field :with_after_task, 31, type: :bool
-  field :after_task_id, 32, type: :string
-  field :repository_id, 33, type: :string
-  field :env_vars, 34, repeated: true, type: InternalApi.Plumber.EnvVariable
-  field :triggerer, 35, type: InternalApi.Plumber.Triggerer
-  field :organization_id, 36, type: :string
+  field(:ppl_id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:project_id, 3, type: :string)
+  field(:branch_name, 4, type: :string)
+  field(:commit_sha, 5, type: :string)
+  field(:created_at, 6, type: Google.Protobuf.Timestamp)
+  field(:pending_at, 7, type: Google.Protobuf.Timestamp)
+  field(:queuing_at, 8, type: Google.Protobuf.Timestamp)
+  field(:running_at, 9, type: Google.Protobuf.Timestamp)
+  field(:stopping_at, 10, type: Google.Protobuf.Timestamp)
+  field(:done_at, 11, type: Google.Protobuf.Timestamp)
+  field(:state, 12, type: InternalApi.Plumber.Pipeline.State, enum: true)
+  field(:result, 13, type: InternalApi.Plumber.Pipeline.Result, enum: true)
+  field(:result_reason, 14, type: InternalApi.Plumber.Pipeline.ResultReason, enum: true)
+  field(:terminate_request, 15, type: :string)
+  field(:hook_id, 16, type: :string)
+  field(:branch_id, 17, type: :string)
+  field(:error_description, 18, type: :string)
+  field(:switch_id, 19, type: :string)
+  field(:working_directory, 20, type: :string)
+  field(:yaml_file_name, 21, type: :string)
+  field(:terminated_by, 22, type: :string)
+  field(:wf_id, 23, type: :string)
+  field(:snapshot_id, 24, type: :string)
+  field(:queue, 25, type: InternalApi.Plumber.Queue)
+  field(:promotion_of, 26, type: :string)
+  field(:partial_rerun_of, 27, type: :string)
+  field(:commit_message, 28, type: :string)
+  field(:partially_rerun_by, 29, type: :string)
+  field(:compile_task_id, 30, type: :string)
+  field(:with_after_task, 31, type: :bool)
+  field(:after_task_id, 32, type: :string)
+  field(:repository_id, 33, type: :string)
+  field(:env_vars, 34, repeated: true, type: InternalApi.Plumber.EnvVariable)
+  field(:triggerer, 35, type: InternalApi.Plumber.Triggerer)
+  field(:organization_id, 36, type: :string)
 end
 
 defmodule InternalApi.Plumber.Pipeline.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :INITIALIZING, 0
-  field :PENDING, 1
-  field :QUEUING, 2
-  field :RUNNING, 3
-  field :STOPPING, 4
-  field :DONE, 5
+  field(:INITIALIZING, 0)
+  field(:PENDING, 1)
+  field(:QUEUING, 2)
+  field(:RUNNING, 3)
+  field(:STOPPING, 4)
+  field(:DONE, 5)
 end
 
 defmodule InternalApi.Plumber.Pipeline.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :STOPPED, 1
-  field :CANCELED, 2
-  field :FAILED, 3
+  field(:PASSED, 0)
+  field(:STOPPED, 1)
+  field(:CANCELED, 2)
+  field(:FAILED, 3)
 end
 
 defmodule InternalApi.Plumber.Pipeline.ResultReason do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :TEST, 0
-  field :MALFORMED, 1
-  field :STUCK, 2
-  field :USER, 3
-  field :INTERNAL, 4
-  field :STRATEGY, 5
-  field :FAST_FAILING, 6
-  field :DELETED, 7
-  field :TIMEOUT, 8
+  field(:TEST, 0)
+  field(:MALFORMED, 1)
+  field(:STUCK, 2)
+  field(:USER, 3)
+  field(:INTERNAL, 4)
+  field(:STRATEGY, 5)
+  field(:FAST_FAILING, 6)
+  field(:DELETED, 7)
+  field(:TIMEOUT, 8)
 end
 
 defmodule InternalApi.Plumber.Triggerer do
@@ -782,16 +782,16 @@ defmodule InternalApi.Plumber.Triggerer do
     :workflow_rerun_of
   ]
 
-  field :wf_triggered_by, 1, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :wf_triggerer_id, 2, type: :string
-  field :wf_triggerer_user_id, 3, type: :string
-  field :wf_triggerer_provider_login, 4, type: :string
-  field :wf_triggerer_provider_uid, 5, type: :string
-  field :wf_triggerer_provider_avatar, 6, type: :string
-  field :ppl_triggered_by, 7, type: InternalApi.Plumber.TriggeredBy, enum: true
-  field :ppl_triggerer_id, 8, type: :string
-  field :ppl_triggerer_user_id, 9, type: :string
-  field :workflow_rerun_of, 10, type: :string
+  field(:wf_triggered_by, 1, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:wf_triggerer_id, 2, type: :string)
+  field(:wf_triggerer_user_id, 3, type: :string)
+  field(:wf_triggerer_provider_login, 4, type: :string)
+  field(:wf_triggerer_provider_uid, 5, type: :string)
+  field(:wf_triggerer_provider_avatar, 6, type: :string)
+  field(:ppl_triggered_by, 7, type: InternalApi.Plumber.TriggeredBy, enum: true)
+  field(:ppl_triggerer_id, 8, type: :string)
+  field(:ppl_triggerer_user_id, 9, type: :string)
+  field(:workflow_rerun_of, 10, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListActivityRequest do
@@ -807,26 +807,26 @@ defmodule InternalApi.Plumber.ListActivityRequest do
         }
   defstruct [:page_size, :page_token, :order, :organization_id, :direction]
 
-  field :page_size, 1, type: :int32
-  field :page_token, 2, type: :string
-  field :order, 3, type: InternalApi.Plumber.ListActivityRequest.Order, enum: true
-  field :organization_id, 4, type: :string
-  field :direction, 5, type: InternalApi.Plumber.ListActivityRequest.Direction, enum: true
+  field(:page_size, 1, type: :int32)
+  field(:page_token, 2, type: :string)
+  field(:order, 3, type: InternalApi.Plumber.ListActivityRequest.Order, enum: true)
+  field(:organization_id, 4, type: :string)
+  field(:direction, 5, type: InternalApi.Plumber.ListActivityRequest.Direction, enum: true)
 end
 
 defmodule InternalApi.Plumber.ListActivityRequest.Order do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BY_CREATION_TIME_DESC, 0
+  field(:BY_CREATION_TIME_DESC, 0)
 end
 
 defmodule InternalApi.Plumber.ListActivityRequest.Direction do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :NEXT, 0
-  field :PREVIOUS, 1
+  field(:NEXT, 0)
+  field(:PREVIOUS, 1)
 end
 
 defmodule InternalApi.Plumber.ListActivityResponse do
@@ -840,9 +840,9 @@ defmodule InternalApi.Plumber.ListActivityResponse do
         }
   defstruct [:next_page_token, :previous_page_token, :pipelines]
 
-  field :next_page_token, 1, type: :string
-  field :previous_page_token, 2, type: :string
-  field :pipelines, 3, repeated: true, type: InternalApi.Plumber.ActivePipeline
+  field(:next_page_token, 1, type: :string)
+  field(:previous_page_token, 2, type: :string)
+  field(:pipelines, 3, repeated: true, type: InternalApi.Plumber.ActivePipeline)
 end
 
 defmodule InternalApi.Plumber.ListRequestersRequest do
@@ -858,11 +858,11 @@ defmodule InternalApi.Plumber.ListRequestersRequest do
         }
   defstruct [:organization_id, :page_token, :page_size, :requested_at_gt, :requested_at_lte]
 
-  field :organization_id, 1, type: :string
-  field :page_token, 2, type: :string
-  field :page_size, 3, type: :int32
-  field :requested_at_gt, 4, type: Google.Protobuf.Timestamp
-  field :requested_at_lte, 5, type: Google.Protobuf.Timestamp
+  field(:organization_id, 1, type: :string)
+  field(:page_token, 2, type: :string)
+  field(:page_size, 3, type: :int32)
+  field(:requested_at_gt, 4, type: Google.Protobuf.Timestamp)
+  field(:requested_at_lte, 5, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.ListRequestersResponse do
@@ -875,8 +875,8 @@ defmodule InternalApi.Plumber.ListRequestersResponse do
         }
   defstruct [:requesters, :next_page_token]
 
-  field :requesters, 1, repeated: true, type: InternalApi.Plumber.Requester
-  field :next_page_token, 2, type: :string
+  field(:requesters, 1, repeated: true, type: InternalApi.Plumber.Requester)
+  field(:next_page_token, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.Requester do
@@ -906,15 +906,15 @@ defmodule InternalApi.Plumber.Requester do
     :requested_at
   ]
 
-  field :organization_id, 1, type: :string
-  field :project_id, 2, type: :string
-  field :ppl_id, 3, type: :string
-  field :user_id, 4, type: :string
-  field :provider_login, 5, type: :string
-  field :provider_uid, 6, type: :string
-  field :provider, 7, type: InternalApi.User.RepositoryProvider.Type, enum: true
-  field :triggerer, 8, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :requested_at, 9, type: Google.Protobuf.Timestamp
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:ppl_id, 3, type: :string)
+  field(:user_id, 4, type: :string)
+  field(:provider_login, 5, type: :string)
+  field(:provider_uid, 6, type: :string)
+  field(:provider, 7, type: InternalApi.User.RepositoryProvider.Type, enum: true)
+  field(:triggerer, 8, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:requested_at, 9, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.ActivePipeline do
@@ -988,37 +988,37 @@ defmodule InternalApi.Plumber.ActivePipeline do
     :triggerer
   ]
 
-  field :organization_id, 1, type: :string
-  field :project_id, 2, type: :string
-  field :wf_id, 3, type: :string
-  field :wf_number, 4, type: :uint32
-  field :name, 5, type: :string
-  field :ppl_id, 6, type: :string
-  field :hook_id, 7, type: :string
-  field :switch_id, 8, type: :string
-  field :definition_file, 9, type: :string
-  field :priority, 10, type: :uint32
-  field :wf_triggered_by, 11, type: InternalApi.PlumberWF.TriggeredBy, enum: true
-  field :requester_id, 12, type: :string
-  field :partial_rerun_of, 13, type: :string
-  field :promotion_of, 14, type: :string
-  field :promoter_id, 15, type: :string
-  field :auto_promoted, 16, type: :bool
-  field :git_ref, 17, type: :string
-  field :commit_sha, 18, type: :string
-  field :branch_id, 19, type: :string
-  field :created_at, 20, type: Google.Protobuf.Timestamp
-  field :pending_at, 21, type: Google.Protobuf.Timestamp
-  field :queuing_at, 22, type: Google.Protobuf.Timestamp
-  field :running_at, 23, type: Google.Protobuf.Timestamp
-  field :queue, 24, type: InternalApi.Plumber.Queue
-  field :blocks, 25, repeated: true, type: InternalApi.Plumber.BlockDetails
-  field :state, 26, type: InternalApi.Plumber.Pipeline.State, enum: true
-  field :git_ref_type, 27, type: InternalApi.Plumber.GitRefType, enum: true
-  field :commit_message, 28, type: :string
-  field :commiter_username, 29, type: :string
-  field :commiter_avatar_url, 30, type: :string
-  field :triggerer, 31, type: InternalApi.Plumber.Triggerer
+  field(:organization_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:wf_id, 3, type: :string)
+  field(:wf_number, 4, type: :uint32)
+  field(:name, 5, type: :string)
+  field(:ppl_id, 6, type: :string)
+  field(:hook_id, 7, type: :string)
+  field(:switch_id, 8, type: :string)
+  field(:definition_file, 9, type: :string)
+  field(:priority, 10, type: :uint32)
+  field(:wf_triggered_by, 11, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
+  field(:requester_id, 12, type: :string)
+  field(:partial_rerun_of, 13, type: :string)
+  field(:promotion_of, 14, type: :string)
+  field(:promoter_id, 15, type: :string)
+  field(:auto_promoted, 16, type: :bool)
+  field(:git_ref, 17, type: :string)
+  field(:commit_sha, 18, type: :string)
+  field(:branch_id, 19, type: :string)
+  field(:created_at, 20, type: Google.Protobuf.Timestamp)
+  field(:pending_at, 21, type: Google.Protobuf.Timestamp)
+  field(:queuing_at, 22, type: Google.Protobuf.Timestamp)
+  field(:running_at, 23, type: Google.Protobuf.Timestamp)
+  field(:queue, 24, type: InternalApi.Plumber.Queue)
+  field(:blocks, 25, repeated: true, type: InternalApi.Plumber.BlockDetails)
+  field(:state, 26, type: InternalApi.Plumber.Pipeline.State, enum: true)
+  field(:git_ref_type, 27, type: InternalApi.Plumber.GitRefType, enum: true)
+  field(:commit_message, 28, type: :string)
+  field(:commiter_username, 29, type: :string)
+  field(:commiter_avatar_url, 30, type: :string)
+  field(:triggerer, 31, type: InternalApi.Plumber.Triggerer)
 end
 
 defmodule InternalApi.Plumber.BlockDetails do
@@ -1048,15 +1048,15 @@ defmodule InternalApi.Plumber.BlockDetails do
     :jobs
   ]
 
-  field :block_id, 1, type: :string
-  field :name, 2, type: :string
-  field :priority, 3, type: :uint32
-  field :dependencies, 4, repeated: true, type: :string
-  field :state, 5, type: InternalApi.Plumber.Block.State, enum: true
-  field :result, 6, type: InternalApi.Plumber.Block.Result, enum: true
-  field :result_reason, 7, type: InternalApi.Plumber.Block.ResultReason, enum: true
-  field :error_description, 8, type: :string
-  field :jobs, 9, repeated: true, type: InternalApi.Plumber.BlockDetails.JobDetails
+  field(:block_id, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:priority, 3, type: :uint32)
+  field(:dependencies, 4, repeated: true, type: :string)
+  field(:state, 5, type: InternalApi.Plumber.Block.State, enum: true)
+  field(:result, 6, type: InternalApi.Plumber.Block.Result, enum: true)
+  field(:result_reason, 7, type: InternalApi.Plumber.Block.ResultReason, enum: true)
+  field(:error_description, 8, type: :string)
+  field(:jobs, 9, repeated: true, type: InternalApi.Plumber.BlockDetails.JobDetails)
 end
 
 defmodule InternalApi.Plumber.BlockDetails.JobDetails do
@@ -1070,9 +1070,9 @@ defmodule InternalApi.Plumber.BlockDetails.JobDetails do
         }
   defstruct [:name, :index, :status]
 
-  field :name, 1, type: :string
-  field :index, 2, type: :uint32
-  field :status, 3, type: :string
+  field(:name, 1, type: :string)
+  field(:index, 2, type: :uint32)
+  field(:status, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.RunNowRequest do
@@ -1088,20 +1088,20 @@ defmodule InternalApi.Plumber.RunNowRequest do
         }
   defstruct [:requester_id, :type, :ppl_id, :block_id, :job_id]
 
-  field :requester_id, 1, type: :string
-  field :type, 2, type: InternalApi.Plumber.RunNowRequest.Type, enum: true
-  field :ppl_id, 3, type: :string
-  field :block_id, 4, type: :string
-  field :job_id, 5, type: :string
+  field(:requester_id, 1, type: :string)
+  field(:type, 2, type: InternalApi.Plumber.RunNowRequest.Type, enum: true)
+  field(:ppl_id, 3, type: :string)
+  field(:block_id, 4, type: :string)
+  field(:job_id, 5, type: :string)
 end
 
 defmodule InternalApi.Plumber.RunNowRequest.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PIPELINE, 0
-  field :BLOCK, 1
-  field :JOB, 2
+  field(:PIPELINE, 0)
+  field(:BLOCK, 1)
+  field(:JOB, 2)
 end
 
 defmodule InternalApi.Plumber.RunNowResponse do
@@ -1120,7 +1120,7 @@ defmodule InternalApi.Plumber.GetProjectIdRequest do
         }
   defstruct [:ppl_id]
 
-  field :ppl_id, 1, type: :string
+  field(:ppl_id, 1, type: :string)
 end
 
 defmodule InternalApi.Plumber.GetProjectIdResponse do
@@ -1133,8 +1133,8 @@ defmodule InternalApi.Plumber.GetProjectIdResponse do
         }
   defstruct [:response_status, :project_id]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :project_id, 2, type: :string
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:project_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.ValidateYamlRequest do
@@ -1147,8 +1147,8 @@ defmodule InternalApi.Plumber.ValidateYamlRequest do
         }
   defstruct [:yaml_definition, :ppl_id]
 
-  field :yaml_definition, 1, type: :string
-  field :ppl_id, 2, type: :string
+  field(:yaml_definition, 1, type: :string)
+  field(:ppl_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.ValidateYamlResponse do
@@ -1161,8 +1161,8 @@ defmodule InternalApi.Plumber.ValidateYamlResponse do
         }
   defstruct [:response_status, :ppl_id]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :ppl_id, 2, type: :string
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:ppl_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.ScheduleExtensionRequest do
@@ -1192,15 +1192,15 @@ defmodule InternalApi.Plumber.ScheduleExtensionRequest do
     :deployment_target_id
   ]
 
-  field :file_path, 1, type: :string
-  field :ppl_id, 2, type: :string
-  field :request_token, 3, type: :string
-  field :env_variables, 4, repeated: true, type: InternalApi.Plumber.EnvVariable
-  field :prev_ppl_artefact_ids, 6, repeated: true, type: :string
-  field :promoted_by, 7, type: :string
-  field :auto_promoted, 8, type: :bool
-  field :secret_names, 9, repeated: true, type: :string
-  field :deployment_target_id, 10, type: :string
+  field(:file_path, 1, type: :string)
+  field(:ppl_id, 2, type: :string)
+  field(:request_token, 3, type: :string)
+  field(:env_variables, 4, repeated: true, type: InternalApi.Plumber.EnvVariable)
+  field(:prev_ppl_artefact_ids, 6, repeated: true, type: :string)
+  field(:promoted_by, 7, type: :string)
+  field(:auto_promoted, 8, type: :bool)
+  field(:secret_names, 9, repeated: true, type: :string)
+  field(:deployment_target_id, 10, type: :string)
 end
 
 defmodule InternalApi.Plumber.EnvVariable do
@@ -1213,8 +1213,8 @@ defmodule InternalApi.Plumber.EnvVariable do
         }
   defstruct [:name, :value]
 
-  field :name, 1, type: :string
-  field :value, 2, type: :string
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.ScheduleExtensionResponse do
@@ -1227,8 +1227,8 @@ defmodule InternalApi.Plumber.ScheduleExtensionResponse do
         }
   defstruct [:response_status, :ppl_id]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :ppl_id, 2, type: :string
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:ppl_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.DeleteRequest do
@@ -1241,8 +1241,8 @@ defmodule InternalApi.Plumber.DeleteRequest do
         }
   defstruct [:project_id, :requester]
 
-  field :project_id, 1, type: :string
-  field :requester, 3, type: :string
+  field(:project_id, 1, type: :string)
+  field(:requester, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.DeleteResponse do
@@ -1254,7 +1254,7 @@ defmodule InternalApi.Plumber.DeleteResponse do
         }
   defstruct [:status]
 
-  field :status, 1, type: InternalApi.Plumber.ResponseStatus
+  field(:status, 1, type: InternalApi.Plumber.ResponseStatus)
 end
 
 defmodule InternalApi.Plumber.PartialRebuildRequest do
@@ -1268,9 +1268,9 @@ defmodule InternalApi.Plumber.PartialRebuildRequest do
         }
   defstruct [:ppl_id, :request_token, :user_id]
 
-  field :ppl_id, 1, type: :string
-  field :request_token, 2, type: :string
-  field :user_id, 3, type: :string
+  field(:ppl_id, 1, type: :string)
+  field(:request_token, 2, type: :string)
+  field(:user_id, 3, type: :string)
 end
 
 defmodule InternalApi.Plumber.PartialRebuildResponse do
@@ -1283,8 +1283,8 @@ defmodule InternalApi.Plumber.PartialRebuildResponse do
         }
   defstruct [:response_status, :ppl_id]
 
-  field :response_status, 1, type: InternalApi.Plumber.ResponseStatus
-  field :ppl_id, 2, type: :string
+  field(:response_status, 1, type: InternalApi.Plumber.ResponseStatus)
+  field(:ppl_id, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.VersionRequest do
@@ -1303,7 +1303,7 @@ defmodule InternalApi.Plumber.VersionResponse do
         }
   defstruct [:version]
 
-  field :version, 1, type: :string
+  field(:version, 1, type: :string)
 end
 
 defmodule InternalApi.Plumber.ResponseStatus do
@@ -1316,18 +1316,18 @@ defmodule InternalApi.Plumber.ResponseStatus do
         }
   defstruct [:code, :message]
 
-  field :code, 1, type: InternalApi.Plumber.ResponseStatus.ResponseCode, enum: true
-  field :message, 2, type: :string
+  field(:code, 1, type: InternalApi.Plumber.ResponseStatus.ResponseCode, enum: true)
+  field(:message, 2, type: :string)
 end
 
 defmodule InternalApi.Plumber.ResponseStatus.ResponseCode do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :OK, 0
-  field :BAD_PARAM, 1
-  field :LIMIT_EXCEEDED, 2
-  field :REFUSED, 3
+  field(:OK, 0)
+  field(:BAD_PARAM, 1)
+  field(:LIMIT_EXCEEDED, 2)
+  field(:REFUSED, 3)
 end
 
 defmodule InternalApi.Plumber.PipelineEvent do
@@ -1341,9 +1341,9 @@ defmodule InternalApi.Plumber.PipelineEvent do
         }
   defstruct [:pipeline_id, :state, :timestamp]
 
-  field :pipeline_id, 1, type: :string
-  field :state, 2, type: InternalApi.Plumber.Pipeline.State, enum: true
-  field :timestamp, 3, type: Google.Protobuf.Timestamp
+  field(:pipeline_id, 1, type: :string)
+  field(:state, 2, type: InternalApi.Plumber.Pipeline.State, enum: true)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.PipelineBlockEvent do
@@ -1358,10 +1358,10 @@ defmodule InternalApi.Plumber.PipelineBlockEvent do
         }
   defstruct [:pipeline_id, :block_id, :state, :timestamp]
 
-  field :pipeline_id, 1, type: :string
-  field :block_id, 2, type: :string
-  field :state, 3, type: InternalApi.Plumber.Block.State, enum: true
-  field :timestamp, 4, type: Google.Protobuf.Timestamp
+  field(:pipeline_id, 1, type: :string)
+  field(:block_id, 2, type: :string)
+  field(:state, 3, type: InternalApi.Plumber.Block.State, enum: true)
+  field(:timestamp, 4, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.AfterPipeline do
@@ -1377,38 +1377,38 @@ defmodule InternalApi.Plumber.AfterPipeline do
         }
   defstruct [:pipeline_id, :state, :result, :result_reason, :created_at]
 
-  field :pipeline_id, 1, type: :string
-  field :state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true
-  field :result, 3, type: InternalApi.Plumber.AfterPipeline.Result, enum: true
-  field :result_reason, 4, type: InternalApi.Plumber.AfterPipeline.ResultReason, enum: true
-  field :created_at, 5, type: Google.Protobuf.Timestamp
+  field(:pipeline_id, 1, type: :string)
+  field(:state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true)
+  field(:result, 3, type: InternalApi.Plumber.AfterPipeline.Result, enum: true)
+  field(:result_reason, 4, type: InternalApi.Plumber.AfterPipeline.ResultReason, enum: true)
+  field(:created_at, 5, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.AfterPipeline.State do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :WAITING, 0
-  field :PENDING, 1
-  field :RUNNING, 2
-  field :DONE, 3
+  field(:WAITING, 0)
+  field(:PENDING, 1)
+  field(:RUNNING, 2)
+  field(:DONE, 3)
 end
 
 defmodule InternalApi.Plumber.AfterPipeline.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :STOPPED, 1
-  field :FAILED, 2
+  field(:PASSED, 0)
+  field(:STOPPED, 1)
+  field(:FAILED, 2)
 end
 
 defmodule InternalApi.Plumber.AfterPipeline.ResultReason do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :TEST, 0
-  field :STUCK, 1
+  field(:TEST, 0)
+  field(:STUCK, 1)
 end
 
 defmodule InternalApi.Plumber.AfterPipelineEvent do
@@ -1422,92 +1422,110 @@ defmodule InternalApi.Plumber.AfterPipelineEvent do
         }
   defstruct [:pipeline_id, :state, :timestamp]
 
-  field :pipeline_id, 1, type: :string
-  field :state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true
-  field :timestamp, 3, type: Google.Protobuf.Timestamp
+  field(:pipeline_id, 1, type: :string)
+  field(:state, 2, type: InternalApi.Plumber.AfterPipeline.State, enum: true)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Plumber.QueueType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :IMPLICIT, 0
-  field :USER_GENERATED, 1
+  field(:IMPLICIT, 0)
+  field(:USER_GENERATED, 1)
 end
 
 defmodule InternalApi.Plumber.GitRefType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :BRANCH, 0
-  field :TAG, 1
-  field :PR, 2
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+  field(:PR, 2)
 end
 
 defmodule InternalApi.Plumber.TriggeredBy do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :WORKFLOW, 0
-  field :PROMOTION, 1
-  field :AUTO_PROMOTION, 2
-  field :PARTIAL_RE_RUN, 3
+  field(:WORKFLOW, 0)
+  field(:PROMOTION, 1)
+  field(:AUTO_PROMOTION, 2)
+  field(:PARTIAL_RE_RUN, 3)
 end
 
 defmodule InternalApi.Plumber.PipelineService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Plumber.PipelineService"
 
-  rpc :Schedule, InternalApi.Plumber.ScheduleRequest, InternalApi.Plumber.ScheduleResponse
-  rpc :Describe, InternalApi.Plumber.DescribeRequest, InternalApi.Plumber.DescribeResponse
+  rpc(:Schedule, InternalApi.Plumber.ScheduleRequest, InternalApi.Plumber.ScheduleResponse)
+  rpc(:Describe, InternalApi.Plumber.DescribeRequest, InternalApi.Plumber.DescribeResponse)
 
-  rpc :DescribeMany,
-      InternalApi.Plumber.DescribeManyRequest,
-      InternalApi.Plumber.DescribeManyResponse
+  rpc(
+    :DescribeMany,
+    InternalApi.Plumber.DescribeManyRequest,
+    InternalApi.Plumber.DescribeManyResponse
+  )
 
-  rpc :DescribeTopology,
-      InternalApi.Plumber.DescribeTopologyRequest,
-      InternalApi.Plumber.DescribeTopologyResponse
+  rpc(
+    :DescribeTopology,
+    InternalApi.Plumber.DescribeTopologyRequest,
+    InternalApi.Plumber.DescribeTopologyResponse
+  )
 
-  rpc :Terminate, InternalApi.Plumber.TerminateRequest, InternalApi.Plumber.TerminateResponse
-  rpc :ListKeyset, InternalApi.Plumber.ListKeysetRequest, InternalApi.Plumber.ListKeysetResponse
-  rpc :List, InternalApi.Plumber.ListRequest, InternalApi.Plumber.ListResponse
+  rpc(:Terminate, InternalApi.Plumber.TerminateRequest, InternalApi.Plumber.TerminateResponse)
+  rpc(:ListKeyset, InternalApi.Plumber.ListKeysetRequest, InternalApi.Plumber.ListKeysetResponse)
+  rpc(:List, InternalApi.Plumber.ListRequest, InternalApi.Plumber.ListResponse)
 
-  rpc :ListGrouped,
-      InternalApi.Plumber.ListGroupedRequest,
-      InternalApi.Plumber.ListGroupedResponse
+  rpc(
+    :ListGrouped,
+    InternalApi.Plumber.ListGroupedRequest,
+    InternalApi.Plumber.ListGroupedResponse
+  )
 
-  rpc :ListQueues, InternalApi.Plumber.ListQueuesRequest, InternalApi.Plumber.ListQueuesResponse
+  rpc(:ListQueues, InternalApi.Plumber.ListQueuesRequest, InternalApi.Plumber.ListQueuesResponse)
 
-  rpc :ListActivity,
-      InternalApi.Plumber.ListActivityRequest,
-      InternalApi.Plumber.ListActivityResponse
+  rpc(
+    :ListActivity,
+    InternalApi.Plumber.ListActivityRequest,
+    InternalApi.Plumber.ListActivityResponse
+  )
 
-  rpc :ListRequesters,
-      InternalApi.Plumber.ListRequestersRequest,
-      InternalApi.Plumber.ListRequestersResponse
+  rpc(
+    :ListRequesters,
+    InternalApi.Plumber.ListRequestersRequest,
+    InternalApi.Plumber.ListRequestersResponse
+  )
 
-  rpc :RunNow, InternalApi.Plumber.RunNowRequest, InternalApi.Plumber.RunNowResponse
+  rpc(:RunNow, InternalApi.Plumber.RunNowRequest, InternalApi.Plumber.RunNowResponse)
 
-  rpc :GetProjectId,
-      InternalApi.Plumber.GetProjectIdRequest,
-      InternalApi.Plumber.GetProjectIdResponse
+  rpc(
+    :GetProjectId,
+    InternalApi.Plumber.GetProjectIdRequest,
+    InternalApi.Plumber.GetProjectIdResponse
+  )
 
-  rpc :ValidateYaml,
-      InternalApi.Plumber.ValidateYamlRequest,
-      InternalApi.Plumber.ValidateYamlResponse
+  rpc(
+    :ValidateYaml,
+    InternalApi.Plumber.ValidateYamlRequest,
+    InternalApi.Plumber.ValidateYamlResponse
+  )
 
-  rpc :ScheduleExtension,
-      InternalApi.Plumber.ScheduleExtensionRequest,
-      InternalApi.Plumber.ScheduleExtensionResponse
+  rpc(
+    :ScheduleExtension,
+    InternalApi.Plumber.ScheduleExtensionRequest,
+    InternalApi.Plumber.ScheduleExtensionResponse
+  )
 
-  rpc :Delete, InternalApi.Plumber.DeleteRequest, InternalApi.Plumber.DeleteResponse
+  rpc(:Delete, InternalApi.Plumber.DeleteRequest, InternalApi.Plumber.DeleteResponse)
 
-  rpc :PartialRebuild,
-      InternalApi.Plumber.PartialRebuildRequest,
-      InternalApi.Plumber.PartialRebuildResponse
+  rpc(
+    :PartialRebuild,
+    InternalApi.Plumber.PartialRebuildRequest,
+    InternalApi.Plumber.PartialRebuildResponse
+  )
 
-  rpc :Version, InternalApi.Plumber.VersionRequest, InternalApi.Plumber.VersionResponse
+  rpc(:Version, InternalApi.Plumber.VersionRequest, InternalApi.Plumber.VersionResponse)
 end
 
 defmodule InternalApi.Plumber.PipelineService.Stub do
