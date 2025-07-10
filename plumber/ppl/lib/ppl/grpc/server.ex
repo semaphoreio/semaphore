@@ -495,57 +495,21 @@ defmodule Ppl.Grpc.Server do
   defp limit_status(message),
     do: ResponseStatus.new(code: ResponseCode.value(:LIMIT_EXCEEDED), message: to_str(message))
 
-  defp verify_deployment_target_permission(ppl_req, user_id) do
-    case get_deployment_target_id(ppl_req) do
-      nil -> {:ok}
-      "" -> {:ok}
-      deployment_target_id ->
-        case verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
-          {:ok, :access_granted} -> {:ok}
-          {:error, reason} -> {:error, {:deployment_target_permission_denied, reason}}
-        end
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => ""}}, _user_id), do: {:ok}
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => nil}}, _user_id), do: {:ok}
+  defp verify_deployment_target_permission(%{
+    request_args: %{"deployment_target_id" => deployment_target_id, "label" => label},
+    source_args: %{"git_ref_type" => git_ref_type}
+  }, user_id) when is_binary(git_ref_type) and is_binary(label) and label != "" do
+    case GoferClient.verify_deployment_target_access(deployment_target_id, user_id, git_ref_type, label) do
+      {:ok, :access_granted} -> {:ok}
+      {:error, reason} -> {:error, {:deployment_target_permission_denied, reason}}
+      error -> {:error, {:deployment_target_permission_denied, error}}
     end
   end
-
-  defp get_deployment_target_id(ppl_req) do
-    ppl_req.request_args
-    |> Map.get("deployment_target_id")
-  end
-
-  defp verify_user_access_to_deployment_target(deployment_target_id, user_id, ppl_req) do
-    with {:ok, git_ref_type} <- get_git_ref_type(ppl_req),
-         {:ok, git_ref_label} <- get_git_ref_label(ppl_req) do
-      GoferClient.verify_deployment_target_access(
-        deployment_target_id,
-        user_id,
-        git_ref_type,
-        git_ref_label
-      )
-    else
-      error -> error
-    end
-  end
-
-  defp get_git_ref_type(ppl_req) do
-    case ppl_req.source_args do
-      nil -> {:error, :missing_source_args}
-      source_args ->
-        case Map.get(source_args, "git_ref_type") do
-          nil -> {:error, :missing_git_ref_type}
-          git_ref_type when is_binary(git_ref_type) -> {:ok, git_ref_type}
-          other -> {:error, {:invalid_git_ref_type, other}}
-        end
-    end
-  end
-
-  defp get_git_ref_label(ppl_req) do
-    ppl_req.request_args
-    |> Map.get("label", "")
-    |> case do
-      "" -> {:error, :missing_source_args}
-      label -> {:ok, label}
-    end
-  end
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => deployment_target_id}}, _user_id) when is_binary(deployment_target_id) and deployment_target_id != "",
+   do: {:error, {:deployment_target_permission_denied, "Missing label or git_ref_type"}}
+  defp verify_deployment_target_permission(_, _), do: {:ok}
 
   defp string_keys(map), do: map |> Poison.encode!() |> Poison.decode!()
 
