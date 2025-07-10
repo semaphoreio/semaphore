@@ -36,4 +36,11 @@ defmodule GoferClient do
     |> GrpcClient.pipeline_done()
     |> ResponseParser.process_pipeline_done_response()
   end
+
+  def verify_deployment_target_access(target_id, triggerer, git_ref_type, git_ref_label) do
+    target_id
+    |> RequestFormatter.form_verify_request(triggerer, git_ref_type, git_ref_label)
+    |> GrpcClient.verify_deployment_target_access()
+    |> ResponseParser.process_verify_response()
+  end
 end

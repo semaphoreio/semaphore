@@ -418,6 +418,8 @@ defmodule Ppl.Grpc.Server do
            {:ok, false}       <- project_deleted?(ppl.project_id),
            {"done", result} when result != "passed"
                               <- {ppl.state, ppl.result},
+            {:ok, ppl_req}     <- PplRequestsQueries.get_by_id(request.ppl_id),
+            {:ok}              <- verify_deployment_target_permission(ppl_req, request.user_id),
             {:ok, ppl_id}     <- Actions.partial_rebuild(request)
       do
         Proto.deep_new!(PartialRebuildResponse,
@@ -425,6 +427,8 @@ defmodule Ppl.Grpc.Server do
       else
         {:error, {:project_deleted, project_id}} ->
           responed_refused(PartialRebuildResponse, "Project with id #{project_id} was deleted.")
+        {:error, {:deployment_target_permission_denied, reason}} ->
+          rebuild_error_resp("Access to deployment target denied: #{inspect reason}")
         {:error, message} ->
           rebuild_error_resp("#{inspect message}")
         {"done", "passed"} ->
@@ -490,6 +494,22 @@ defmodule Ppl.Grpc.Server do
 
   defp limit_status(message),
     do: ResponseStatus.new(code: ResponseCode.value(:LIMIT_EXCEEDED), message: to_str(message))
+
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => ""}}, _user_id), do: {:ok}
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => nil}}, _user_id), do: {:ok}
+  defp verify_deployment_target_permission(%{
+    request_args: %{"deployment_target_id" => deployment_target_id, "label" => label},
+    source_args: %{"git_ref_type" => git_ref_type}
+  }, user_id) when is_binary(git_ref_type) and is_binary(label) and label != "" do
+    case GoferClient.verify_deployment_target_access(deployment_target_id, user_id, git_ref_type, label) do
+      {:ok, :access_granted} -> {:ok}
+      {:error, reason} -> {:error, {:deployment_target_permission_denied, reason}}
+      error -> {:error, {:deployment_target_permission_denied, error}}
+    end
+  end
+  defp verify_deployment_target_permission(%{request_args: %{"deployment_target_id" => deployment_target_id}}, _user_id) when is_binary(deployment_target_id) and deployment_target_id != "",
+   do: {:error, {:deployment_target_permission_denied, "Missing label or git_ref_type"}}
+  defp verify_deployment_target_permission(_, _), do: {:ok}
 
   defp string_keys(map), do: map |> Poison.encode!() |> Poison.decode!()
 

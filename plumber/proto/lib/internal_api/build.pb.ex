@@ -11,11 +11,11 @@ defmodule InternalApi.Build.ScheduleRequest do
         }
   defstruct [:build, :build_request_id, :ppl_id, :hook_id, :wf_id]
 
-  field :build, 1, type: InternalApi.Build.Build
-  field :build_request_id, 5, type: :string
-  field :ppl_id, 6, type: :string
-  field :hook_id, 7, type: :string
-  field :wf_id, 8, type: :string
+  field(:build, 1, type: InternalApi.Build.Build)
+  field(:build_request_id, 5, type: :string)
+  field(:ppl_id, 6, type: :string)
+  field(:hook_id, 7, type: :string)
+  field(:wf_id, 8, type: :string)
 end
 
 defmodule InternalApi.Build.Build do
@@ -28,8 +28,8 @@ defmodule InternalApi.Build.Build do
         }
   defstruct [:jobs, :boosters]
 
-  field :jobs, 1, repeated: true, type: InternalApi.Build.Job
-  field :boosters, 2, repeated: true, type: InternalApi.Build.Booster
+  field(:jobs, 1, repeated: true, type: InternalApi.Build.Job)
+  field(:boosters, 2, repeated: true, type: InternalApi.Build.Booster)
 end
 
 defmodule InternalApi.Build.Job do
@@ -61,16 +61,16 @@ defmodule InternalApi.Build.Job do
     :epilogue_commands
   ]
 
-  field :name, 2, type: :string
-  field :semaphore_image, 8, type: :string
-  field :agent, 12, type: InternalApi.Build.Agent
-  field :ppl_env_variables, 10, repeated: true, type: InternalApi.Build.EnvVariable
-  field :env_variables, 3, repeated: true, type: InternalApi.Build.EnvVariable
-  field :secrets, 11, repeated: true, type: InternalApi.Build.Secret
-  field :ppl_commands, 9, repeated: true, type: :string
-  field :prologue_commands, 5, repeated: true, type: :string
-  field :commands, 1, repeated: true, type: :string
-  field :epilogue_commands, 6, repeated: true, type: :string
+  field(:name, 2, type: :string)
+  field(:semaphore_image, 8, type: :string)
+  field(:agent, 12, type: InternalApi.Build.Agent)
+  field(:ppl_env_variables, 10, repeated: true, type: InternalApi.Build.EnvVariable)
+  field(:env_variables, 3, repeated: true, type: InternalApi.Build.EnvVariable)
+  field(:secrets, 11, repeated: true, type: InternalApi.Build.Secret)
+  field(:ppl_commands, 9, repeated: true, type: :string)
+  field(:prologue_commands, 5, repeated: true, type: :string)
+  field(:commands, 1, repeated: true, type: :string)
+  field(:epilogue_commands, 6, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Build.Agent do
@@ -82,7 +82,7 @@ defmodule InternalApi.Build.Agent do
         }
   defstruct [:machine]
 
-  field :machine, 1, type: InternalApi.Build.Agent.Machine
+  field(:machine, 1, type: InternalApi.Build.Agent.Machine)
 end
 
 defmodule InternalApi.Build.Agent.Machine do
@@ -95,8 +95,8 @@ defmodule InternalApi.Build.Agent.Machine do
         }
   defstruct [:type, :os_image]
 
-  field :type, 1, type: :string
-  field :os_image, 2, type: :string
+  field(:type, 1, type: :string)
+  field(:os_image, 2, type: :string)
 end
 
 defmodule InternalApi.Build.EnvVariable do
@@ -109,8 +109,8 @@ defmodule InternalApi.Build.EnvVariable do
         }
   defstruct [:key, :value]
 
-  field :key, 1, type: :string
-  field :value, 2, type: :string
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.Build.Booster do
@@ -142,24 +142,24 @@ defmodule InternalApi.Build.Booster do
     :ppl_env_variables
   ]
 
-  field :name, 1, type: :string
-  field :job_count, 2, type: :int32
-  field :type, 3, type: InternalApi.Build.Booster.Type, enum: true
-  field :env_variables, 4, repeated: true, type: InternalApi.Build.EnvVariable
-  field :prologue_commands, 6, repeated: true, type: :string
-  field :epilogue_commands, 7, repeated: true, type: :string
-  field :secrets, 12, repeated: true, type: InternalApi.Build.Secret
-  field :semaphore_image, 9, type: :string
-  field :ppl_commands, 10, repeated: true, type: :string
-  field :ppl_env_variables, 11, repeated: true, type: InternalApi.Build.EnvVariable
+  field(:name, 1, type: :string)
+  field(:job_count, 2, type: :int32)
+  field(:type, 3, type: InternalApi.Build.Booster.Type, enum: true)
+  field(:env_variables, 4, repeated: true, type: InternalApi.Build.EnvVariable)
+  field(:prologue_commands, 6, repeated: true, type: :string)
+  field(:epilogue_commands, 7, repeated: true, type: :string)
+  field(:secrets, 12, repeated: true, type: InternalApi.Build.Secret)
+  field(:semaphore_image, 9, type: :string)
+  field(:ppl_commands, 10, repeated: true, type: :string)
+  field(:ppl_env_variables, 11, repeated: true, type: InternalApi.Build.EnvVariable)
 end
 
 defmodule InternalApi.Build.Booster.Type do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :RSPEC, 0
-  field :CUCUMBER, 1
+  field(:RSPEC, 0)
+  field(:CUCUMBER, 1)
 end
 
 defmodule InternalApi.Build.Secret do
@@ -173,9 +173,9 @@ defmodule InternalApi.Build.Secret do
         }
   defstruct [:name, :env_var_names, :config_file_paths]
 
-  field :name, 1, type: :string
-  field :env_var_names, 2, repeated: true, type: :string
-  field :config_file_paths, 3, repeated: true, type: :string
+  field(:name, 1, type: :string)
+  field(:env_var_names, 2, repeated: true, type: :string)
+  field(:config_file_paths, 3, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Build.ScheduleResponse do
@@ -188,8 +188,8 @@ defmodule InternalApi.Build.ScheduleResponse do
         }
   defstruct [:response_status, :status]
 
-  field :response_status, 2, type: InternalApi.Build.ResponseStatus
-  field :status, 3, type: InternalApi.ResponseStatus
+  field(:response_status, 2, type: InternalApi.Build.ResponseStatus)
+  field(:status, 3, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Build.ResponseStatus do
@@ -202,16 +202,16 @@ defmodule InternalApi.Build.ResponseStatus do
         }
   defstruct [:code, :message]
 
-  field :code, 1, type: InternalApi.Build.ResponseStatus.ResponseCode, enum: true
-  field :message, 2, type: :string
+  field(:code, 1, type: InternalApi.Build.ResponseStatus.ResponseCode, enum: true)
+  field(:message, 2, type: :string)
 end
 
 defmodule InternalApi.Build.ResponseStatus.ResponseCode do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :OK, 0
-  field :BAD_PARAM, 2
+  field(:OK, 0)
+  field(:BAD_PARAM, 2)
 end
 
 defmodule InternalApi.Build.DescribeRequest do
@@ -223,7 +223,7 @@ defmodule InternalApi.Build.DescribeRequest do
         }
   defstruct [:build_request_id]
 
-  field :build_request_id, 2, type: :string
+  field(:build_request_id, 2, type: :string)
 end
 
 defmodule InternalApi.Build.DescribeManyRequest do
@@ -235,7 +235,7 @@ defmodule InternalApi.Build.DescribeManyRequest do
         }
   defstruct [:build_request_ids]
 
-  field :build_request_ids, 1, repeated: true, type: :string
+  field(:build_request_ids, 1, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Build.DescribeResponse do
@@ -250,10 +250,10 @@ defmodule InternalApi.Build.DescribeResponse do
         }
   defstruct [:build_status, :response_status, :build, :status]
 
-  field :build_status, 1, type: InternalApi.Build.ExecutionStatus
-  field :response_status, 3, type: InternalApi.Build.ResponseStatus
-  field :build, 4, type: InternalApi.Build.BuildDescription
-  field :status, 5, type: InternalApi.ResponseStatus
+  field(:build_status, 1, type: InternalApi.Build.ExecutionStatus)
+  field(:response_status, 3, type: InternalApi.Build.ResponseStatus)
+  field(:build, 4, type: InternalApi.Build.BuildDescription)
+  field(:status, 5, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Build.DescribeManyResponse do
@@ -267,9 +267,9 @@ defmodule InternalApi.Build.DescribeManyResponse do
         }
   defstruct [:response_status, :builds, :status]
 
-  field :response_status, 1, type: InternalApi.Build.ResponseStatus
-  field :builds, 2, repeated: true, type: InternalApi.Build.BuildDescription
-  field :status, 3, type: InternalApi.ResponseStatus
+  field(:response_status, 1, type: InternalApi.Build.ResponseStatus)
+  field(:builds, 2, repeated: true, type: InternalApi.Build.BuildDescription)
+  field(:status, 3, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Build.BuildDescription do
@@ -284,10 +284,10 @@ defmodule InternalApi.Build.BuildDescription do
         }
   defstruct [:build_request_id, :status, :result, :jobs]
 
-  field :build_request_id, 1, type: :string
-  field :status, 2, type: InternalApi.Build.BuildDescription.Status, enum: true
-  field :result, 3, type: InternalApi.Build.BuildDescription.Result, enum: true
-  field :jobs, 4, repeated: true, type: InternalApi.Build.BuildDescription.Job
+  field(:build_request_id, 1, type: :string)
+  field(:status, 2, type: InternalApi.Build.BuildDescription.Status, enum: true)
+  field(:result, 3, type: InternalApi.Build.BuildDescription.Result, enum: true)
+  field(:jobs, 4, repeated: true, type: InternalApi.Build.BuildDescription.Job)
 end
 
 defmodule InternalApi.Build.BuildDescription.Job do
@@ -303,50 +303,50 @@ defmodule InternalApi.Build.BuildDescription.Job do
         }
   defstruct [:job_id, :status, :result, :name, :index]
 
-  field :job_id, 1, type: :string
-  field :status, 2, type: InternalApi.Build.BuildDescription.Job.Status, enum: true
-  field :result, 3, type: InternalApi.Build.BuildDescription.Job.Result, enum: true
-  field :name, 4, type: :string
-  field :index, 5, type: :int32
+  field(:job_id, 1, type: :string)
+  field(:status, 2, type: InternalApi.Build.BuildDescription.Job.Status, enum: true)
+  field(:result, 3, type: InternalApi.Build.BuildDescription.Job.Result, enum: true)
+  field(:name, 4, type: :string)
+  field(:index, 5, type: :int32)
 end
 
 defmodule InternalApi.Build.BuildDescription.Job.Status do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :ENQUEUED, 0
-  field :RUNNING, 1
-  field :STOPPING, 2
-  field :FINISHED, 3
+  field(:ENQUEUED, 0)
+  field(:RUNNING, 1)
+  field(:STOPPING, 2)
+  field(:FINISHED, 3)
 end
 
 defmodule InternalApi.Build.BuildDescription.Job.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :FAILED, 1
-  field :STOPPED, 2
+  field(:PASSED, 0)
+  field(:FAILED, 1)
+  field(:STOPPED, 2)
 end
 
 defmodule InternalApi.Build.BuildDescription.Status do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :ENQUEUED, 0
-  field :RUNNING, 1
-  field :STOPPING, 2
-  field :FINISHED, 3
-  field :DELETED, 4
+  field(:ENQUEUED, 0)
+  field(:RUNNING, 1)
+  field(:STOPPING, 2)
+  field(:FINISHED, 3)
+  field(:DELETED, 4)
 end
 
 defmodule InternalApi.Build.BuildDescription.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :FAILED, 1
-  field :STOPPED, 2
+  field(:PASSED, 0)
+  field(:FAILED, 1)
+  field(:STOPPED, 2)
 end
 
 defmodule InternalApi.Build.ExecutionStatus do
@@ -360,29 +360,29 @@ defmodule InternalApi.Build.ExecutionStatus do
         }
   defstruct [:status, :result, :name]
 
-  field :status, 1, type: InternalApi.Build.ExecutionStatus.Status, enum: true
-  field :result, 2, type: InternalApi.Build.ExecutionStatus.Result, enum: true
-  field :name, 3, type: :string
+  field(:status, 1, type: InternalApi.Build.ExecutionStatus.Status, enum: true)
+  field(:result, 2, type: InternalApi.Build.ExecutionStatus.Result, enum: true)
+  field(:name, 3, type: :string)
 end
 
 defmodule InternalApi.Build.ExecutionStatus.Status do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :ENQUEUED, 0
-  field :RUNNING, 1
-  field :STOPPING, 2
-  field :FINISHED, 3
-  field :DELETED, 4
+  field(:ENQUEUED, 0)
+  field(:RUNNING, 1)
+  field(:STOPPING, 2)
+  field(:FINISHED, 3)
+  field(:DELETED, 4)
 end
 
 defmodule InternalApi.Build.ExecutionStatus.Result do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
 
-  field :PASSED, 0
-  field :FAILED, 1
-  field :STOPPED, 2
+  field(:PASSED, 0)
+  field(:FAILED, 1)
+  field(:STOPPED, 2)
 end
 
 defmodule InternalApi.Build.VersionRequest do
@@ -401,7 +401,7 @@ defmodule InternalApi.Build.VersionResponse do
         }
   defstruct [:version]
 
-  field :version, 1, type: :string
+  field(:version, 1, type: :string)
 end
 
 defmodule InternalApi.Build.TerminateRequest do
@@ -413,7 +413,7 @@ defmodule InternalApi.Build.TerminateRequest do
         }
   defstruct [:build_request_id]
 
-  field :build_request_id, 1, type: :string
+  field(:build_request_id, 1, type: :string)
 end
 
 defmodule InternalApi.Build.TerminateResponse do
@@ -426,8 +426,8 @@ defmodule InternalApi.Build.TerminateResponse do
         }
   defstruct [:response_status, :status]
 
-  field :response_status, 1, type: InternalApi.Build.ResponseStatus
-  field :status, 2, type: InternalApi.ResponseStatus
+  field(:response_status, 1, type: InternalApi.Build.ResponseStatus)
+  field(:status, 2, type: InternalApi.ResponseStatus)
 end
 
 defmodule InternalApi.Build.BuildStarted do
@@ -440,8 +440,8 @@ defmodule InternalApi.Build.BuildStarted do
         }
   defstruct [:build_request_id, :timestamp]
 
-  field :build_request_id, 1, type: :string
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field(:build_request_id, 1, type: :string)
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Build.BuildFinished do
@@ -454,19 +454,25 @@ defmodule InternalApi.Build.BuildFinished do
         }
   defstruct [:build_request_id, :timestamp]
 
-  field :build_request_id, 1, type: :string
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
+  field(:build_request_id, 1, type: :string)
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.Build.BuildService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Build.BuildService"
 
-  rpc :Schedule, InternalApi.Build.ScheduleRequest, InternalApi.Build.ScheduleResponse
-  rpc :Describe, InternalApi.Build.DescribeRequest, InternalApi.Build.DescribeResponse
-  rpc :DescribeMany, InternalApi.Build.DescribeManyRequest, InternalApi.Build.DescribeManyResponse
-  rpc :Version, InternalApi.Build.VersionRequest, InternalApi.Build.VersionResponse
-  rpc :Terminate, InternalApi.Build.TerminateRequest, InternalApi.Build.TerminateResponse
+  rpc(:Schedule, InternalApi.Build.ScheduleRequest, InternalApi.Build.ScheduleResponse)
+  rpc(:Describe, InternalApi.Build.DescribeRequest, InternalApi.Build.DescribeResponse)
+
+  rpc(
+    :DescribeMany,
+    InternalApi.Build.DescribeManyRequest,
+    InternalApi.Build.DescribeManyResponse
+  )
+
+  rpc(:Version, InternalApi.Build.VersionRequest, InternalApi.Build.VersionResponse)
+  rpc(:Terminate, InternalApi.Build.TerminateRequest, InternalApi.Build.TerminateResponse)
 end
 
 defmodule InternalApi.Build.BuildService.Stub do

@@ -9,13 +9,14 @@ defmodule InternalApi.Stethoscope.EventRequest do
         }
   defstruct [:request_token, :listener, :attributes]
 
-  field :request_token, 1, type: :string
-  field :listener, 2, type: :string
+  field(:request_token, 1, type: :string)
+  field(:listener, 2, type: :string)
 
-  field :attributes, 3,
+  field(:attributes, 3,
     repeated: true,
     type: InternalApi.Stethoscope.EventRequest.AttributesEntry,
     map: true
+  )
 end
 
 defmodule InternalApi.Stethoscope.EventRequest.AttributesEntry do
@@ -28,8 +29,8 @@ defmodule InternalApi.Stethoscope.EventRequest.AttributesEntry do
         }
   defstruct [:key, :value]
 
-  field :key, 1, type: :string
-  field :value, 2, type: :string
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule InternalApi.Stethoscope.EventResponse do
@@ -41,7 +42,7 @@ defmodule InternalApi.Stethoscope.EventResponse do
         }
   defstruct [:event_id]
 
-  field :event_id, 1, type: :string
+  field(:event_id, 1, type: :string)
 end
 
 defmodule InternalApi.Stethoscope.GetBlobRequest do
@@ -54,8 +55,8 @@ defmodule InternalApi.Stethoscope.GetBlobRequest do
         }
   defstruct [:wf_id, :uri]
 
-  field :wf_id, 1, type: :string
-  field :uri, 2, type: :string
+  field(:wf_id, 1, type: :string)
+  field(:uri, 2, type: :string)
 end
 
 defmodule InternalApi.Stethoscope.GetBlobResponse do
@@ -67,15 +68,15 @@ defmodule InternalApi.Stethoscope.GetBlobResponse do
         }
   defstruct [:content]
 
-  field :content, 1, type: :string
+  field(:content, 1, type: :string)
 end
 
 defmodule InternalApi.Stethoscope.StethoscopeService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Stethoscope.StethoscopeService"
 
-  rpc :Event, InternalApi.Stethoscope.EventRequest, InternalApi.Stethoscope.EventResponse
-  rpc :GetBlob, InternalApi.Stethoscope.GetBlobRequest, InternalApi.Stethoscope.GetBlobResponse
+  rpc(:Event, InternalApi.Stethoscope.EventRequest, InternalApi.Stethoscope.EventResponse)
+  rpc(:GetBlob, InternalApi.Stethoscope.GetBlobRequest, InternalApi.Stethoscope.GetBlobResponse)
 end
 
 defmodule InternalApi.Stethoscope.StethoscopeService.Stub do

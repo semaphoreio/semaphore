@@ -5,12 +5,14 @@ defmodule Proto.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :proto,
-     version: "0.2.0",
-     elixir: "~> 1.11",
-     build_embedded: Mix.env == :prod,
-     start_permanent: Mix.env == :prod,
-     deps: deps()]
+    [
+      app: :proto,
+      version: "0.2.0",
+      elixir: "~> 1.11",
+      build_embedded: Mix.env() == :prod,
+      start_permanent: Mix.env() == :prod,
+      deps: deps()
+    ]
   end
 
   # Configuration for the OTP application
@@ -18,8 +20,7 @@ defmodule Proto.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     # Specify extra applications you'll use from Erlang/Elixir
-    [extra_applications: [:logger],
-     mod: {Proto.Application, []}]
+    [extra_applications: [:logger], mod: {Proto.Application, []}]
   end
 
   # Dependencies can be Hex packages:
@@ -35,7 +36,7 @@ defmodule Proto.Mixfile do
     [
       {:grpc, "~> 0.3"},
       {:log_tee, git: "https://github.com/renderedtext/log-tee.git"},
-      {:uuid, "~> 1.1"},
+      {:uuid, "~> 1.1"}
     ]
   end
 end
