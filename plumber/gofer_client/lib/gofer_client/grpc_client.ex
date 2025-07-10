@@ -6,6 +6,7 @@ defmodule GoferClient.GrpcClient do
   """
 
   alias InternalApi.Gofer.Switch
+  alias InternalApi.Gofer.DeploymentTargets
   alias Util.Metrics
   alias LogTee, as: LT
 
@@ -51,6 +52,26 @@ defmodule GoferClient.GrpcClient do
       channel
       |> Switch.Stub.pipeline_done(request, opts())
       |> is_ok?("pipeline_done")
+    end)
+  end
+
+  # Verify Deployment Target Access
+
+  def verify_deployment_target_access({:ok, verify_request}) do
+    result = Wormhole.capture(__MODULE__, :verify_deployment_target_access_, [verify_request], stacktrace: true, timeout: 2_345)
+    case result do
+      {:ok, result} -> result
+      error -> error
+    end
+  end
+  def verify_deployment_target_access(error), do: error
+
+  def verify_deployment_target_access_(verify_request) do
+    {:ok, channel} = GRPC.Stub.connect(url())
+    Metrics.benchmark("Ppl.gofer_client.grpc_client", "verify_deployment_target", fn ->
+      channel
+      |> DeploymentTargets.DeploymentTargets.Stub.verify(verify_request, opts())
+      |> is_ok?("verify_deployment_target")
     end)
   end
 
