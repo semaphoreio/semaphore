@@ -1,6 +1,7 @@
 defmodule Ppl.Grpc.Server.Test do
   use Ppl.IntegrationCase
   @moduletag capture_log: true
+  import Mock
   alias Test.Helpers
   alias Util.{ToTuple, Proto}
   alias Ppl.PplRequests.Model.PplRequestsQueries
@@ -2206,6 +2207,85 @@ defmodule Ppl.Grpc.Server.Test do
     new_ppl_id_1 = assert_partial_rebuild(ppl_id, request_token, :ok)
     new_ppl_id_2 = assert_partial_rebuild(ppl_id, request_token, :ok)
     assert new_ppl_id_1 == new_ppl_id_2
+  end
+
+  @tag :integration
+  test "gRPC partial_rebuild() - succeeds when no deployment target is specified" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "14_free_topology_failing_block"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = Test.Helpers.start_all_loopers()
+    {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 20_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    request_token = UUID.uuid4()
+    new_ppl_id = assert_partial_rebuild(ppl_id, request_token, :ok)
+    assert is_binary(new_ppl_id)
+  end
+
+  @tag :integration
+  test "gRPC partial_rebuild() - fails when deployment target permission is denied" do
+    deployment_target_id = UUID.uuid4()
+    {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
+
+    # Mock GoferClient to return access denied
+    with_mock GoferClient, [
+      verify_deployment_target_access: fn(_, _, _, _) -> {:error, :banned_subject} end
+    ] do
+      expected_message = "Access to deployment target denied: :banned_subject"
+      assert_partial_rebuild(ppl_id, UUID.uuid4(), :error, expected_message)
+    end
+  end
+
+  @tag :integration
+  test "gRPC partial_rebuild() - succeeds when deployment target permission is granted" do
+    deployment_target_id = UUID.uuid4()
+    {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
+
+    # Mock GoferClient to return access granted
+    with_mock GoferClient, [
+      verify_deployment_target_access: fn(_, _, _, _) -> {:ok, :access_granted} end
+    ] do
+      request_token = UUID.uuid4()
+      new_ppl_id = assert_partial_rebuild(ppl_id, request_token, :ok)
+      assert is_binary(new_ppl_id)
+    end
+  end
+
+  @tag :integration
+  test "gRPC partial_rebuild() - fails when deployment target verification returns error" do
+    deployment_target_id = UUID.uuid4()
+    {:ok, %{ppl_id: ppl_id}} = create_pipeline_with_deployment_target(deployment_target_id)
+
+    # Mock GoferClient to return syncing target error
+    with_mock GoferClient, [
+      verify_deployment_target_access: fn(_, _, _, _) -> {:error, :syncing_target} end
+    ] do
+      expected_message = "Access to deployment target denied: :syncing_target"
+      assert_partial_rebuild(ppl_id, UUID.uuid4(), :error, expected_message)
+    end
+  end
+
+  defp create_pipeline_with_deployment_target(deployment_target_id) do
+    source_args = Test.Support.RequestFactory.source_args(%{})
+
+    %{
+      "repo_name" => "14_free_topology_failing_block",
+      "deployment_target_id" => deployment_target_id
+    }
+    |> Test.Helpers.schedule_request_factory(:local)
+    |> Map.put("source_args", source_args)
+    |> Actions.schedule()
+    |> case do
+      {:ok, %{ppl_id: ppl_id}} = result ->
+        loopers = Test.Helpers.start_all_loopers()
+        {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 20_000)
+        Test.Helpers.stop_all_loopers(loopers)
+        result
+      error -> error
+    end
   end
 
   defp assert_partial_rebuild(ppl_id, request_token, expected_status, expected_message \\ "") do
