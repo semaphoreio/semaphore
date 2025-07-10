@@ -1,11 +1,12 @@
 {
-  "title": "RSpec",
-  "description": "Run parallel RSpec tests in Docker with PostgreSQL and Redis support. Uses Knapsack for test distribution. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Ruby</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>RSpec</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Knapsack</span></div>",
-  "short_description": "Run your Ruby RSpec suite",
+  "title": "Ruby – RSpec (Docker)",
+  "description": "Run a Rails-ready CI pipeline inside Docker with PostgreSQL 17 & Redis 7 service containers, dependency caching, asset compilation, JS/CSS linting (ESLint + Stylelint), Ruby quality checks (RuboCop), security scanning (Brakeman + Bundler-Audit), and fast parallel RSpec execution via Semaphore Boosters. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-red white'>Ruby</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>RSpec</span><span class='f6 normal mr1 ph1 br2 bg-indigo white'>RuboCop</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Brakeman</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Bundler</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>ESLint</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Stylelint</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Boosters</span></div>",
+  "short_description": "Full RSpec pipeline in Docker",
   "group": "ci",
   "language": "Ruby",
   "environment": "docker",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-ruby.svg",
   "template_path": "templates/rspec_docker.yml",
   "workflow_tip": "other"
