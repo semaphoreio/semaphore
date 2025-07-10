@@ -539,11 +539,11 @@ defmodule Ppl.Grpc.Server do
   end
 
   defp get_git_ref_label(ppl_req) do
-    label = ppl_req.request_args
+    ppl_req.request_args
     |> Map.get("label", "")
-    case do
+    |> case do
       "" -> {:error, :missing_source_args}
-      label -> label
+      label -> {:ok, label}
     end
   end
 
