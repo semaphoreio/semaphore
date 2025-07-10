@@ -55,15 +55,7 @@ defmodule GoferClient.ResponseParser do
          {:ok, status} <- Map.fetch(response, :status),
          status_atom <- verify_status_value(status)
     do
-      case status_atom do
-        :ACCESS_GRANTED -> {:ok, :access_granted}
-        :SYNCING_TARGET -> {:error, :syncing_target}
-        :BANNED_SUBJECT -> {:error, :banned_subject}
-        :BANNED_OBJECT -> {:error, :banned_object}
-        :CORDONED_TARGET -> {:error, :cordoned_target}
-        :CORRUPTED_TARGET -> {:error, :corrupted_target}
-        _ -> log_invalid_response(response, "verify")
-      end
+      handle_verify_status(status_atom, response)
     else
       _ -> log_invalid_response(response, "verify")
     end
@@ -72,6 +64,14 @@ defmodule GoferClient.ResponseParser do
   def process_verify_response(error), do: error
 
   # Util
+
+  defp handle_verify_status(:ACCESS_GRANTED, _response), do: {:ok, :access_granted}
+  defp handle_verify_status(:SYNCING_TARGET, _response), do: {:error, :syncing_target}
+  defp handle_verify_status(:BANNED_SUBJECT, _response), do: {:error, :banned_subject}
+  defp handle_verify_status(:BANNED_OBJECT, _response), do: {:error, :banned_object}
+  defp handle_verify_status(:CORDONED_TARGET, _response), do: {:error, :cordoned_target}
+  defp handle_verify_status(:CORRUPTED_TARGET, _response), do: {:error, :corrupted_target}
+  defp handle_verify_status(_status_atom, response), do: log_invalid_response(response, "verify")
 
   defp response_code_value(%{code: code}) do
     ResponseCode.key(code)
