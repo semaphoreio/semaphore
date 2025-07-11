@@ -1,0 +1,19 @@
+version: "v1.0"
+name: Pipeline
+agent:
+  machine:
+    type: e1-standard-2
+    os_image: ubuntu1804
+blocks:
+  - name: Failing block
+    task:
+      jobs:
+        - commands:
+            - exit 127
+  - name: Deployment - skip on dev branches
+    skip:
+      when: "(branch =~ '^dev' and branch != 'dev-execute-dpl') or tag =~ '^v0\.' or pull_request =~ '1.*'"
+    task:
+      jobs:
+        - commands:
+            - exit 127
