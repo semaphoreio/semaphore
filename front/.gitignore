@@ -31,7 +31,6 @@ npm-debug.log
 tags
 .elixir_ls/
 browser_logs.log
-/log
 .vscode
 .tool-versions
 .direnv

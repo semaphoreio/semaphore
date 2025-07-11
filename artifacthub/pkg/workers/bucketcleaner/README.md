@@ -22,10 +22,10 @@ The bucket cleaner is a distributed system based on supervisor/worker pattern.
 In this system, we have:
 
 - A supervisor called "Scheduler" that schedules which buckets need to be cleaned up
-- A worker called "Worker" which listens to the suprvisor and executes the cleanup
+- A worker called "Worker" which listens to the supervisor and executes the cleanup
 
 Communication between the supervisor and the worker is done via AMQP.
-The recomended setup for the system is to have one instance (in kubernetes a pod)
+The recommended setup for the system is to have one instance (in kubernetes a pod)
 that runs the scheduler, and multiple instances that listen and do the work.
 
 Diagram of communication:

@@ -115,7 +115,7 @@
         <div class="mt3 pt3 bt b--lighter-gray">
           <div class="db f5 b mb1">Pipeline file location</div>
           <div>
-            <%= text_input f, :initial_pipeline_file, disabled: !@permissions["project.general_settings.manage"], class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }", placeholder: ".semaphore/sempahore.yml" %>
+            <%= text_input f, :initial_pipeline_file, disabled: !@permissions["project.general_settings.manage"], class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }", placeholder: ".semaphore/semaphore.yml" %>
             <%= if f.errors[:initial_pipeline_file] do %>
               <div class="f5 b mv1 red"><%= translate_error(f.errors[:initial_pipeline_file]) %></div>
             <% end %>

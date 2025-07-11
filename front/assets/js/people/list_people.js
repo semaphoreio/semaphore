@@ -127,7 +127,7 @@ export var ListPeople = {
     .catch((e) => {
       console.error("Error while filtering members: " + e)
       toggleSpinner()
-      Notice.error("An error occured while filtering members. Please contact our support team.")
+      Notice.error("An error occurred while filtering members. Please contact our support team.")
     })
   },
 
