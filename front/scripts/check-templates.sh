@@ -63,19 +63,35 @@ validate_yaml_blocks() {
     return 0
   fi
   
-  # Check each block's dependencies
+  # Check blocks for valid dependencies (if present)
   local invalid_deps=0
   while IFS= read -r block; do
     local block_name
     block_name=$(yq eval '.blocks[] | select(.name == "'$block'") | .name' "$yaml_file")
     
-    # Get dependencies for this block
-    while IFS= read -r dep; do
-      if [ ! -z "$dep" ] && ! echo "$block_names" | grep -Fxq "$dep"; then
-        echo "❌ Error: Block '${block_name}' in '${title}' has undefined dependency: ${dep}"
+    # Check if dependencies field exists (optional)
+    local deps_field
+    deps_field=$(yq eval '.blocks[] | select(.name == "'$block'") | has("dependencies")' "$yaml_file")
+    
+    # Only validate dependencies if the field exists
+    if [ "$deps_field" = "true" ]; then
+      # Check if dependencies field is an array
+      local deps_type
+      deps_type=$(yq eval '.blocks[] | select(.name == "'$block'") | .dependencies | type' "$yaml_file")
+      
+      if [ "$deps_type" != "!!seq" ]; then
+        echo "❌ Error: Block '${block_name}' in '${title}' has dependencies field that is not an array"
         ((invalid_deps++))
+      else
+        # Validate each dependency in this block
+        while IFS= read -r dep; do
+          if [ ! -z "$dep" ] && ! echo "$block_names" | grep -Fxq "$dep"; then
+            echo "❌ Error: Block '${block_name}' in '${title}' has undefined dependency: ${dep}"
+            ((invalid_deps++))
+          fi
+        done < <(yq eval '.blocks[] | select(.name == "'$block'") | .dependencies[]' "$yaml_file")
       fi
-    done < <(yq eval '.blocks[] | select(.name == "'$block'") | .dependencies[]' "$yaml_file")
+    fi
   done < <(yq eval '.blocks[].name' "$yaml_file")
   
   if [ $invalid_deps -eq 0 ]; then
