@@ -25,7 +25,6 @@ auto_cancel:
 blocks:
   # Block for testing
   - name: "🧪 Test"
-    dependencies: []
     task:
       jobs:
         - name: "🟢 Run Tests"
