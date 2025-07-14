@@ -26,6 +26,7 @@ global_job_config:
 
 blocks:
   - name: "🛠️ Setup and Cache"
+    dependencies: []
     task:
       jobs:
         - name: "Install Dependencies"
