@@ -1,7 +1,9 @@
 <%= if show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
   <div>
     <%= if @org_scope? do %>
-      <div id="add-people" data-config="<%= Poison.encode!(add_people_config(@conn)) %>"></div>
+      <%= if !Front.on_prem?() do %>
+        <div id="add-people" data-config="<%= Poison.encode!(add_people_config(@conn)) %>"></div>
+      <% end %>
     <% else %>
       <div class="flex-m">
         <div>
