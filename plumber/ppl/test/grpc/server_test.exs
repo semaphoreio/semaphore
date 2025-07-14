@@ -2268,6 +2268,35 @@ defmodule Ppl.Grpc.Server.Test do
     end
   end
 
+  @tag :integration
+  test "gRPC partial_rebuild() - handles skipped blocks correctly" do
+    {:ok, %{ppl_id: ppl_id}} =
+      %{"repo_name" => "22_skip_block", "file_name" => "skip_block_with_failed_job.yml", "label" => "dev-test"}
+      |> Test.Helpers.schedule_request_factory(:local)
+      |> Actions.schedule()
+
+    loopers = Test.Helpers.start_all_loopers()
+    {:ok, _ppl} = Test.Helpers.wait_for_ppl_state(ppl_id, "done", 18_000)
+
+
+    {:ok, orig_blk} = PplBlocksQueries.get_by_id_and_index(ppl_id, 2)
+    assert orig_blk.result == "passed"
+    assert orig_blk.result_reason == "skipped"
+    assert orig_blk.block_id == nil
+
+    request_token = UUID.uuid4()
+    new_ppl_id = assert_partial_rebuild(ppl_id, request_token, :ok)
+
+    {:ok, _new_ppl} = Test.Helpers.wait_for_ppl_state(new_ppl_id, "done", 18_000)
+    Test.Helpers.stop_all_loopers(loopers)
+
+    {:ok, new_blk} = PplBlocksQueries.get_by_id_and_index(new_ppl_id, 2)
+    assert new_blk.result == "passed"
+    assert new_blk.result_reason == "skipped"
+    assert new_blk.block_id == nil
+    assert new_blk.duplicate == true
+  end
+
   defp create_pipeline_with_deployment_target(deployment_target_id) do
     source_args = Test.Support.RequestFactory.source_args(%{})
 

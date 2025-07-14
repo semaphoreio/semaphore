@@ -60,6 +60,10 @@ defmodule Ppl.PplBlocks.STMHandler.InitializingState do
     end
   end
 
+  defp rebuild_or_duplicate_block(orig_ppl_blk = %{block_id: nil, state: "done", result: "passed", result_reason: "skipped"}, new_ppl_id) do
+    {:ok, fn _, _ -> {:ok, %{state: "done", result: "passed", result_reason: "skipped"}} end}
+  end
+
   defp rebuild_or_duplicate_block(orig_ppl_blk = %{state: "done", result: "passed"}, new_ppl_id) do
     case  Block.duplicate(orig_ppl_blk.block_id, new_ppl_id) do
       {:ok, new_block_id} ->
