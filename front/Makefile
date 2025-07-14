@@ -83,13 +83,6 @@ pb.gen.public:
 	scripts/vagrant_sudo chown -R $$(id -u $${USER}):$$(id -g $${USER}) lib/public_api
 	rm -rf $(TMP_REPO_DIR)
 
-workflow.templates.gen:
-	@echo "Generating workflow templates"
-	rm -rf $(TMP_REPO_DIR)
-	git clone git@github.com:renderedtext/app-design.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(APP_DESIGN_BRANCH) && make check.templates && cd -)
-	./scripts/generate-workflow-templates.sh $(TMP_REPO_DIR)
-	rm -rf $(TMP_REPO_DIR)
-
 deps.check: build
 ifeq ($(CI),)
 	docker compose $(DOCKER_COMPOSE_OPTS) run --no-deps -e MIX_ENV=dev app ash -c 'mix deps.unlock --check-unused'
@@ -158,3 +151,8 @@ dev.ce.server: build
 
 console.ce.bash:
 	DOCKER_COMPOSE_RUN_OPTS="--service-ports $(CONTAINER_CE_ENV_VARS)" $(MAKE) console.bash
+
+workflow.templates.check:
+	@echo "📦 Checking templates..."
+	./scripts/check-templates.sh workflow_templates/saas_new 
+	./scripts/check-templates.sh workflow_templates/ce_new

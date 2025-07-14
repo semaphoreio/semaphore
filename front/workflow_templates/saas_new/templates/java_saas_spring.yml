@@ -24,6 +24,7 @@ global_job_config:
 
 blocks:
   - name: "⚙️ Build"
+    dependencies: []
     task:
       env_vars:
         - name: MAVEN_OPTS
@@ -35,6 +36,7 @@ blocks:
             - cache store  # Cache the build output for later use
 
   - name: "🧪 Test"
+    dependencies: ["⚙️ Build"]
     task:
       env_vars:
         - name: MAVEN_OPTS
@@ -54,6 +56,7 @@ blocks:
             - test-results publish target/surefire-reports/*.xml  # Publish test reports to Semaphore
 
   - name: "🚀 Performance Tests"
+    dependencies: ["⚙️ Build"]
     task:
       env_vars:
         - name: MAVEN_OPTS
@@ -68,6 +71,7 @@ blocks:
             - 'mvn jmeter:results'  # Process JMeter test results
 
   - name: "🐳 Dockerize"
+    dependencies: ["🚀 Performance Tests"]
     task:
       env_vars:
         - name: MAVEN_OPTS
