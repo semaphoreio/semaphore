@@ -32,9 +32,7 @@
           <div class="b">People</div>
         </div>
       </div>
-      <%= if !@org_scope? || !Front.on_prem?() || Front.ce_roles?() do %>
-        <%= render "members/_add_people_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
-      <% end %>
+      <%= render "members/_add_people_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
     </div>
 
     <div id="members">
