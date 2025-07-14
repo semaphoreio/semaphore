@@ -60,11 +60,16 @@ spec:
             - name: DASHBOARDS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
               value: "dashboards-v1alpha-public-grpc-api:50051"
             - name: JOBS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
-              value: "jobs-v1alpha-public-grpc-api:50051"
+              value: "jobs-v1alpha-public-grpc-api-headless:50051"
             - name: NOTIFICATIONS_V1ALPHA_PUBLIC_GRPC_API_ENDPOINT
               value: "notifications-v1alpha-public-grpc-api:50051"
             - name: PROJECT_SECRETS_V1_PUBLIC_GRPC_API_ENDPOINT
               value: "secrethub-grpc:50051"
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
 {{- if .Values.resources }}
           resources:
 {{ toYaml .Values.resources | indent 13 }}
