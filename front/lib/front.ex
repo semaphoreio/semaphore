@@ -35,4 +35,12 @@ defmodule Front do
   def os? do
     ee?() || ce?()
   end
+
+  @doc """
+  Check if we're running on saas or not
+  """
+  @spec saas?() :: boolean()
+  def saas? do
+    !(on_prem?() or os?())
+  end
 end

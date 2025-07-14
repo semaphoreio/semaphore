@@ -125,9 +125,7 @@ defmodule Front.Models.OrganizationOnboarding do
 
   @spec validate_billing(model :: t()) :: :ok | {:error, String.t()}
   defp validate_billing(model) do
-    if Front.on_prem?() do
-      :ok
-    else
+    if Front.saas?() do
       BillingClient.can_setup_organization(%{
         owner_id: model.user_id
       })
@@ -136,6 +134,8 @@ defmodule Front.Models.OrganizationOnboarding do
         {:ok, %{allowed: false, errors: messages}} -> {:error, Enum.join(messages, ", ")}
         {:error, _} -> {:error, "Account check failed"}
       end
+    else
+      :ok
     end
   end
 
