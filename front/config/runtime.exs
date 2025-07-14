@@ -133,14 +133,11 @@ config :front,
 
 config :front, :on_prem?, on_prem?
 
-if on_prem? do
-  config :front,
-    feature_provider:
-      {FeatureProvider.YamlProvider,
-       [yaml_path: System.get_env("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
 
-  config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
-else
+edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
+is_saas? = !(on_prem? or edition in ["ce", "ee"])
+
+if is_saas? do
   config :front,
     feature_provider:
       {Front.FeatureHubProvider,
@@ -149,6 +146,13 @@ else
            {FeatureProvider.CachexCache,
             name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
        ]}
+else
+  config :front,
+    feature_provider:
+      {FeatureProvider.YamlProvider,
+       [yaml_path: System.get_env("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
+
+  config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
 end
 
 if System.get_env("AMQP_URL") != nil do
@@ -192,6 +196,4 @@ config :front,
        :single_tenant,
        System.get_env("SINGLE_TENANT") == "true"
 
-config :front,
-       :edition,
-       System.get_env("EDITION", "") |> String.trim() |> String.downcase()
+config :front, :edition, edition
