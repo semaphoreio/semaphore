@@ -46,7 +46,9 @@ defmodule Support.Stubs.RBAC do
     "organization.plans_and_billing.manage",
     "organization.repo_to_role_mappers.manage",
     "organization.dashboards.view",
-    "organization.dashboards.manage"
+    "organization.dashboards.manage",
+    "service_accounts.view",
+    "service_accounts.manage"
   ]
 
   @project_permissions [
