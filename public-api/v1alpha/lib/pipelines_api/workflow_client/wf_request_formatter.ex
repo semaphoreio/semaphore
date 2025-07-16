@@ -14,6 +14,7 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
   def form_schedule_request(params) when is_map(params) do
     %{
       service: service_type(params["repository"].integration_type),
+      label: params |> Map.get("reference", "") |> branch_name(),
       repo: %{
         branch_name: params |> Map.get("reference", "") |> branch_name(),
         commit_sha: params |> Map.get("commit_sha", "")
