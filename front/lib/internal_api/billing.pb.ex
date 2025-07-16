@@ -908,6 +908,38 @@ defmodule InternalApi.Billing.NoteChanged do
   field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
+defmodule InternalApi.Billing.BudgetAlert do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          spending_amount: String.t(),
+          spending_limit: String.t(),
+          email: String.t(),
+          percentage_threshold: integer,
+          from_date: Google.Protobuf.Timestamp.t(),
+          to_date: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [
+    :org_id,
+    :spending_amount,
+    :spending_limit,
+    :email,
+    :percentage_threshold,
+    :from_date,
+    :to_date
+  ]
+
+  field(:org_id, 1, type: :string)
+  field(:spending_amount, 2, type: :string)
+  field(:spending_limit, 3, type: :string)
+  field(:email, 4, type: :string)
+  field(:percentage_threshold, 5, type: :int32)
+  field(:from_date, 6, type: Google.Protobuf.Timestamp)
+  field(:to_date, 7, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.Billing.TrialOwnerOnboarded do
   @moduledoc false
   use Protobuf, syntax: :proto3
