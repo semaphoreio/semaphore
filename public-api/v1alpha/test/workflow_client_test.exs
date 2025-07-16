@@ -55,6 +55,7 @@ defmodule PipelinesAPI.WorkflowClient.Test do
 
     assert {:ok, request} = WFRequestFormatter.form_schedule_request(params)
     assert request.service == ServiceType.value(:GIT_HUB)
+    assert request.label == "main"
     assert request.repo.branch_name == "main"
     assert request.repo.commit_sha == "773d5c953bd68cc97efa81d2e014449336265fb4"
     assert {:ok, _} = UUID.info(request.request_token)

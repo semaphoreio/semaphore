@@ -14,6 +14,7 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
   def form_schedule_request(params) when is_map(params) do
     %{
       service: service_type(params["repository"].integration_type),
+      label: params |> Map.get("reference", "") |> label(),
       repo: %{
         branch_name: params |> Map.get("reference", "") |> branch_name(),
         commit_sha: params |> Map.get("commit_sha", "")
@@ -58,6 +59,12 @@ defmodule PipelinesAPI.WorkflowClient.WFRequestFormatter do
   defp branch_name("refs/pull/" <> number), do: "pull-request-" <> number
   defp branch_name("refs/heads/" <> branch_name), do: branch_name
   defp branch_name(name), do: name
+
+  defp label(""), do: ""
+  defp label("refs/tags/" <> tag), do: tag
+  defp label("refs/pull/" <> number), do: number
+  defp label("refs/heads/" <> branch_name), do: branch_name
+  defp label(name), do: name
 
   # Terminate
 
