@@ -5,14 +5,16 @@ defmodule FrontWeb.ServiceAccountController do
   alias Front.{Audit, ServiceAccount}
   alias FrontWeb.Plugs
 
-  plug(Plugs.FetchPermissions)
-  plug(Plugs.PageAccess, permission: "service_accounts.view")
+  plug(Plugs.FetchPermissions, scope: "org")
+  plug(Plugs.PageAccess, permissions: "service_accounts.view")
 
   plug(
     Plugs.PageAccess,
-    [permission: "service_accounts.manage"]
+    [permissions: "service_accounts.manage"]
     when action in [:create, :update, :delete, :regenerate_token]
   )
+
+  plug(Plugs.FeatureEnabled, [:service_accounts])
 
   def index(conn, params) do
     org_id = conn.assigns.organization_id
