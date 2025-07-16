@@ -16,14 +16,21 @@ defmodule Front.Application do
       {&:logger_filters.domain/2, {:stop, :equal, [:progress]}}
     )
 
+    base_children = [
+      {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
+      FrontWeb.Endpoint,
+      {Task.Supervisor, [name: Front.TaskSupervisor]},
+      Front.Tracing.Store,
+      Front.FeatureProviderInvalidatorWorker
+    ]
+
     children =
-      [
-        {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
-        FrontWeb.Endpoint,
-        {Task.Supervisor, [name: Front.TaskSupervisor]},
-        Front.Tracing.Store,
-        Front.FeatureProviderInvalidatorWorker
-      ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
+      base_children ++
+        reactor() ++
+        cache() ++
+        telemetry() ++
+        feature_provider(provider) ++
+        clients()
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]
 
@@ -88,6 +95,16 @@ defmodule Front.Application do
   def feature_provider(provider) do
     if System.get_env("FEATURE_YAML_PATH") != nil do
       [provider]
+    else
+      []
+    end
+  end
+
+  def clients do
+    if Application.get_env(:front, :environment) in [:dev, :test] do
+      [
+        Application.get_env(:front, :service_account_client)
+      ]
     else
       []
     end
