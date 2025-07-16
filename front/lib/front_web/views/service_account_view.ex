@@ -9,7 +9,7 @@ defmodule FrontWeb.ServiceAccountView do
     }
   end
 
-  def render("show.json", %{service_account: %ServiceAccount{} = service_account} = assigns) do
+  def render("show.json", assigns = %{service_account: service_account = %ServiceAccount{}}) do
     data = service_account_json(service_account)
 
     # Only include api_token if it's present (on create/regenerate)
@@ -19,7 +19,7 @@ defmodule FrontWeb.ServiceAccountView do
     end
   end
 
-  defp service_account_json(%ServiceAccount{} = service_account) do
+  defp service_account_json(service_account = %ServiceAccount{}) do
     %{
       id: service_account.id,
       name: service_account.name,
@@ -32,7 +32,7 @@ defmodule FrontWeb.ServiceAccountView do
 
   defp format_datetime(nil), do: nil
 
-  defp format_datetime(%DateTime{} = datetime) do
+  defp format_datetime(datetime = %DateTime{}) do
     DateTime.to_iso8601(datetime)
   end
 end
