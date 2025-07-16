@@ -29,7 +29,7 @@ defmodule FrontWeb.ServiceAccountController do
 
       {:error, message} ->
         conn
-        |> put_status(:bad_request)
+        |> put_status(422)
         |> json(%{error: message})
     end
   end
@@ -57,7 +57,7 @@ defmodule FrontWeb.ServiceAccountController do
 
       {:error, message} ->
         conn
-        |> put_status(:bad_request)
+        |> put_status(422)
         |> json(%{error: message})
     end
   end
@@ -67,10 +67,10 @@ defmodule FrontWeb.ServiceAccountController do
       {:ok, service_account} ->
         render(conn, "show.json", service_account: service_account)
 
-      {:error, _message} ->
+      {:error, message} ->
         conn
-        |> put_status(:not_found)
-        |> json(%{error: "Service account not found"})
+        |> put_status(422)
+        |> json(%{error: message})
     end
   end
 
@@ -91,10 +91,10 @@ defmodule FrontWeb.ServiceAccountController do
 
         render(conn, "show.json", service_account: service_account)
 
-      {:error, _message} ->
+      {:error, message} ->
         conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Failed to update service account"})
+        |> put_status(422)
+        |> json(%{error: message})
     end
   end
 
@@ -112,10 +112,10 @@ defmodule FrontWeb.ServiceAccountController do
 
       send_resp(conn, :no_content, "")
     else
-      {:error, _message} ->
+      {:error, message} ->
         conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Failed to delete service account"})
+        |> put_status(422)
+        |> json(%{error: message})
     end
   end
 
@@ -133,10 +133,10 @@ defmodule FrontWeb.ServiceAccountController do
 
       json(conn, %{api_token: api_token})
     else
-      {:error, _message} ->
+      {:error, message} ->
         conn
-        |> put_status(:bad_request)
-        |> json(%{error: "Failed to regenerate token"})
+        |> put_status(422)
+        |> json(%{error: message})
     end
   end
 end
