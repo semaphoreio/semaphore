@@ -313,6 +313,8 @@ defmodule Front.Auth do
       "project.secrets.manage" -> :ManageProjectSecrets
       "project.deployment_targets.view" -> :ViewDeploymentTargets
       "project.deployment_targets.manage" -> :ManageDeploymentTargets
+      "service_accounts.view" -> :ViewServiceAccounts
+      "service_accounts.manage" -> :ManageServiceAccounts
       _ -> :unknown
     end
   end
