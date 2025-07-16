@@ -38,6 +38,8 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.Project.Spec.Repository
 
   def describe(request, _) do
+    IO.puts("DESCRIBE REQ")
+    IO.inspect(request)
     Watchman.benchmark("projecthub_api.describe.duration", fn ->
       find_project(request, request.soft_deleted)
       |> case do
@@ -702,15 +704,19 @@ defmodule Projecthub.Api.GrpcServer do
   defp find_project(req, soft_deleted \\ false) do
     cond do
       req.id != "" and req.metadata.org_id != "" ->
+        IO.puts("FIND IN ORG")
         Project.find_in_org(req.metadata.org_id, req.id, soft_deleted)
 
       req.id != "" ->
+        IO.puts("FIND")
         Project.find(req.id, soft_deleted)
 
       req.name != "" ->
+        IO.puts("FIND BY NAME")
         Project.find_by_name(req.name, req.metadata.org_id, soft_deleted)
 
       true ->
+        IO.puts("FIND INVALIDE")
         {:error, :failed_precondition, "Name or ID must be provided"}
     end
     |> unwrap(&Project.preload_repository/1)

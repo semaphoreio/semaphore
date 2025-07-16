@@ -17,6 +17,8 @@ defmodule PipelinesAPI.Util.Auth do
       do: {:error, {:user, :unauthorized}}
 
   def project_belongs_to_org(org_id, project_id) do
+    IO.puts("LAST")
+
     case fetch_project(project_id) do
       {:ok, %{metadata: %{org_id: ^org_id}}} ->
         :ok
@@ -28,10 +30,13 @@ defmodule PipelinesAPI.Util.Auth do
   end
 
   defp fetch_project(project_id) do
+    project_id |> fetch_project_through_cache() |> IO.inspect()
     project_id |> fetch_project_through_cache() |> elem(1)
   end
 
   defp fetch_project_through_cache(project_id) do
+    IO.puts("FETCH CACHE")
+
     Cachex.fetch(:project_api_cache, project_id, fn key ->
       case ProjectClient.describe(key) do
         {:ok, project} -> {:commit, {:ok, project}}

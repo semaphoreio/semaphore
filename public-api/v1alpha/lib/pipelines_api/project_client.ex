@@ -20,16 +20,22 @@ defmodule PipelinesAPI.ProjectClient do
         timeout: @wormhole_timeout
       )
 
-    case result do
+    ret = case result do
       {:ok, result} -> result
       error -> error
     end
+
+    IO.puts("RET")
+    IO.inspect(ret)
+    ret
   end
 
   def describe_project(project_id) do
     Metrics.benchmark(__MODULE__, ["describe"], fn ->
       metadata = RequestMeta.new()
       request = DescribeRequest.new(metadata: metadata, id: project_id)
+      IO.puts("DESCRIBE REQ")
+      IO.inspect(request)
       {:ok, channel} = GRPC.Stub.connect(url())
 
       channel

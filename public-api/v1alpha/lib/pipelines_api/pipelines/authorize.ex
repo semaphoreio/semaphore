@@ -68,7 +68,10 @@ defmodule PipelinesAPI.Pipelines.Authorize do
   end
 
   defp get_project_id(conn = %{params: %{"project_id" => project_id}}, _org_id) do
+    IO.puts("PROJECT ID")
+    IO.inspect(project_id)
     org_id = Conn.get_req_header(conn, "x-semaphore-org-id") |> Enum.at(0, "")
+    IO.inspect(org_id)
 
     case Auth.project_belongs_to_org(org_id, project_id) do
       :ok -> {:ok, project_id}
