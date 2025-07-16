@@ -74,7 +74,7 @@ defmodule FrontWeb.ServiceAccountController do
     end
   end
 
-  def update(conn, %{"id" => id} = params) do
+  def update(conn, params = %{"id" => id}) do
     name = params["name"] || ""
     description = params["description"] || ""
 
