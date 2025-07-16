@@ -47,8 +47,8 @@ defmodule Support.Stubs.RBAC do
     "organization.repo_to_role_mappers.manage",
     "organization.dashboards.view",
     "organization.dashboards.manage",
-    "service_accounts.view",
-    "service_accounts.manage"
+    "organization.service_accounts.view",
+    "organization.service_accounts.manage"
   ]
 
   @project_permissions [

@@ -6,11 +6,11 @@ defmodule FrontWeb.ServiceAccountController do
   alias FrontWeb.Plugs
 
   plug(Plugs.FetchPermissions, scope: "org")
-  plug(Plugs.PageAccess, permissions: "service_accounts.view")
+  plug(Plugs.PageAccess, permissions: "organization.service_accounts.view")
 
   plug(
     Plugs.PageAccess,
-    [permissions: "service_accounts.manage"]
+    [permissions: "organization.service_accounts.manage"]
     when action in [:create, :update, :delete, :regenerate_token]
   )
 
