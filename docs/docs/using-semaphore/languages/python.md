@@ -29,8 +29,7 @@ sem-version python 3.12
 
 The `sem-version` tool does not work on Docker containers. You must use a pre-built Docker image with the language versions you need and run the job using [Docker environments](../../using-semaphore/pipelines#docker-environments).
 
-You can use the pre-build [Python images](../../using-semaphore/optimization/container-registry#python) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
-
+You can use the pre-build [Python images](../../using-semaphore/containers/container-registry#python) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
 
 ## How to cache packages {#caching}
 
@@ -103,4 +102,3 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 
 </div>
 </details>
-
