@@ -20,7 +20,7 @@ defmodule Ppl.Ppls.STMHandler.Common do
 
   @doc """
   Sends termination reguest based on given auto_cancel strategy with "strategy"
-  as value of termination_request_desc field and returns function for transtion to
+  as value of termination_request_desc field and returns function for transition to
   given exit_state.
   """
   def do_auto_cancel(ppl, ac_strategy, exit_state) do

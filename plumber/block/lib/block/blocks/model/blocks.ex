@@ -2,7 +2,7 @@ defmodule Block.Blocks.Model.Blocks do
   @moduledoc """
   Blocks type
   Block execution transitions through multiple states.
-  Each transtion is represented with 'block' object.
+  Each transition is represented with 'block' object.
   """
 
   alias Block.BlockRequests.Model.BlockRequests

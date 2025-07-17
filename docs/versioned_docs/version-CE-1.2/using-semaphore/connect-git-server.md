@@ -91,7 +91,7 @@ To connect with this method, press the **Create new** button.
 
 5. SSH into the Git server add the SSH key copied in the previous step to `$HOME/.ssh/authorized_keys` (relative to the user that runs the Git service) and press **Continue**
 
-6. Back in Sempahore, press the **Generate Script** button
+6. Back in Semaphore, press the **Generate Script** button
 
     <details>
     <summary>Show me</summary>

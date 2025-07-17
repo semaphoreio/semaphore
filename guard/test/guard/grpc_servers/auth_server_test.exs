@@ -329,7 +329,7 @@ defmodule Guard.GrpcServers.AuthServerTest do
       assert_response(response, user, "OIDC")
     end
 
-    test "return false for valid oidc cookie when session expire but refresh token is for diffrenet user",
+    test "return false for valid oidc cookie when session expire but refresh token is for different user",
          %{
            bypass: bypass,
            client_id: client_id,

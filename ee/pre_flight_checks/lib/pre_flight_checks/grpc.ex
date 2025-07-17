@@ -1,6 +1,6 @@
 defmodule PreFlightChecks.GRPC do
   @moduledoc """
-  gRPC server supervisor definiton
+  gRPC server supervisor definition
   """
 
   def child_spec([]) do
