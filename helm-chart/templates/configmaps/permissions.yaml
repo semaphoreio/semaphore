@@ -50,6 +50,10 @@ data:
           description: "Create new dashboard views."
         - name: "organization.instance_git_integration.manage"
           description: "Manage the instance Git integration settings."
+        - name: "organization.service_accounts.view"
+          description: "View service accounts within the organization."
+        - name: "organization.service_accounts.manage"
+          description: "Manage service accounts within the organization."
       project:
         - name: "project.view"
           description: "Access the project. This permission is needed to see any page within the project."
@@ -186,6 +190,10 @@ data:
           description: "Create new dashboard views."
         - name: "organization.instance_git_integration.manage"
           description: "Manage the instance Git integration settings."
+        - name: "organization.service_accounts.view"
+          description: "View service accounts within the organization."
+        - name: "organization.service_accounts.manage"
+          description: "Manage service accounts within the organization."
       project:
         - name: "project.view"
           description: "Access the project. This permission is needed to see any page within the project."
@@ -249,4 +257,5 @@ data:
           description: "Manually stop running jobs or workflows."
         - name: "project.job.attach"
           description: "SSH into the running job, or start a debug session."
+
 {{- end }}
