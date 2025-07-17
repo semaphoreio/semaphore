@@ -40,6 +40,8 @@ spec:
         - name: {{ . }}
 {{- end }}
 {{- end }}
+      initContainers:
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
       automountServiceAccountToken: false
       containers:
         - name: "{{ .Chart.Name }}"
