@@ -70,6 +70,10 @@ permissions:
       description: "View the existing dashboards within the organization."
     - name: "organization.dashboards.manage"
       description: "Create new dashboard views."
+    - name: "organization.service_accounts.view"
+      description: "View service accounts within the organization."
+    - name: "organization.service_accounts.manage"
+      description: "Manage service accounts within the organization."
   project:
     - name: "project.view"
       description: "Access the project. This permission is needed to see any page within the project."
@@ -133,3 +137,7 @@ permissions:
       description: "Manually stop running jobs or workflows."
     - name: "project.job.attach"
       description: "SSH into the running job, or start a debug session."
+    - name: "project.service_accounts.view"
+      description: "View service accounts within the project."
+    - name: "project.service_accounts.manage"
+      description: "Manage service accounts within the project."
