@@ -19,7 +19,6 @@ defmodule FrontWeb.Plugs.OrganizationAuthorization do
   alias FrontWeb.SelfHostedAgentController, as: SelfHostedAgent
   alias FrontWeb.SettingsController, as: Settings
   alias FrontWeb.SupportController, as: Support
-  alias FrontWeb.ServiceAccountController, as: ServiceAccount
 
   alias Front.Auth
 
@@ -119,12 +118,6 @@ defmodule FrontWeb.Plugs.OrganizationAuthorization do
   defp authorize(Billing, :set_budget, conn), do: Auth.private(conn, :ManageBilling)
   defp authorize(Billing, :invoices, conn), do: Auth.private(conn, :ManageBilling)
   defp authorize(Billing, _, conn), do: Auth.private(conn, :ViewBilling)
-
-  defp authorize(ServiceAccount, action, conn)
-       when action in [:create, :update, :delete, :regenerate_token],
-       do: Auth.private(conn, :ManageServiceAccounts)
-
-  defp authorize(ServiceAccount, _, conn), do: Auth.private(conn, :ViewServiceAccounts)
 
   defp can?(conn, permission) do
     user_id = conn.assigns.user_id

@@ -24,8 +24,10 @@ defmodule FrontWeb.ServiceAccountController do
     case ServiceAccount.list(org_id, page_size, page_token) do
       {:ok, {service_accounts, next_page_token}} ->
         conn
-        |> put_resp_header("x-next-page-token", next_page_token || "")
-        |> render("index.json", service_accounts: service_accounts)
+        |> render("index.json",
+          service_accounts: service_accounts,
+          next_page_token: next_page_token
+        )
 
       {:error, message} ->
         conn
