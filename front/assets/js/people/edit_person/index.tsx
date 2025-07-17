@@ -163,53 +163,48 @@ export const Button = () => {
         <span className="material-symbols-outlined mr1">manage_accounts</span>
         <span>Edit</span>
       </button>
-      <toolbox.Modal isOpen={isOpen} close={close} title="Add people">
-        <div className="bg-white br3 shadow-1 w-90 w-50-m mw6 relative popup">
-          <div className="pa3">
-            <div className="flex items-center justify-between mb3">
-              <h2 className="f3 mb0">Edit user</h2>
-            </div>
-            <div className="mb3">
-              <label className="db mb2 b">Email address</label>
-              <div className="flex">
-                <input
-                  type="email"
-                  className="form-control w-100"
-                  value={email}
-                  onChange={onEmailChanged}
-                  disabled={emailResponse.status == `loading`}
-                />
-              </div>
-              <ResponseHandler response={emailResponse}/>
-            </div>
-
-            <div className="mb3">
-              <label className="db mb2 b">Password</label>
-              <PasswordReset user={user}/>
-            </div>
-
-            <div>
-              <label className="db mb2 b">Role</label>
-              <ChangeRole
-                user={user}
-                selectRole={setSelectedRole}
-                selectedRole={selectedRole}
+      <toolbox.Modal isOpen={isOpen} close={close} title="Edit user">
+        <div className="pa3">
+          <div className="mb3">
+            <label className="db mb2 b">Email address</label>
+            <div className="flex">
+              <input
+                type="email"
+                className="form-control w-100"
+                value={email}
+                onChange={onEmailChanged}
+                disabled={emailResponse.status == `loading`}
               />
-              <ResponseHandler response={roleResponse}/>
             </div>
-            <div className="flex justify-end mt4">
-              <button className="btn btn-secondary mr3" onClick={close}>
-                Cancel
-              </button>
+            <ResponseHandler response={emailResponse}/>
+          </div>
 
-              <button
-                className="btn btn-primary"
-                onClick={save}
-                disabled={!roleChanged && !emailChanged}
-              >
+          <div className="mb3">
+            <label className="db mb2 b">Password</label>
+            <PasswordReset user={user}/>
+          </div>
+
+          <div>
+            <label className="db mb2 b">Role</label>
+            <ChangeRole
+              user={user}
+              selectRole={setSelectedRole}
+              selectedRole={selectedRole}
+            />
+            <ResponseHandler response={roleResponse}/>
+          </div>
+          <div className="flex justify-end mt4">
+            <button className="btn btn-secondary mr3" onClick={close}>
+                Cancel
+            </button>
+
+            <button
+              className="btn btn-primary"
+              onClick={save}
+              disabled={!roleChanged && !emailChanged}
+            >
                 Save changes
-              </button>
-            </div>
+            </button>
           </div>
         </div>
       </toolbox.Modal>

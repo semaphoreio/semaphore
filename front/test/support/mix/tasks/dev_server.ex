@@ -69,6 +69,8 @@ defmodule Mix.Tasks.Dev.Server do
       Stubs.Project.set_project_state(project, :READY)
     end)
 
+    Support.FakeClients.ServiceAccount.seed(org.id, user.id)
+
     {user, org}
   end
 
