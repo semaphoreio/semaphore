@@ -278,12 +278,6 @@ defmodule Front.Auth do
       :ManageDeploymentTargets ->
         "project.deployment_targets.manage"
 
-      :ViewServiceAccounts ->
-        "organization.service_accounts.view"
-
-      :ManageServiceAccounts ->
-        "organization.service_accounts.manage"
-
       _ ->
         Logger.error(
           "operation with name id #{inspect(operation)}, which is not supported in mapper"
@@ -319,8 +313,6 @@ defmodule Front.Auth do
       "project.secrets.manage" -> :ManageProjectSecrets
       "project.deployment_targets.view" -> :ViewDeploymentTargets
       "project.deployment_targets.manage" -> :ManageDeploymentTargets
-      "organization.service_accounts.view" -> :ViewServiceAccounts
-      "organization.service_accounts.manage" -> :ManageServiceAccounts
       _ -> :unknown
     end
   end
