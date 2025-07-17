@@ -61,9 +61,9 @@ For development and testing, you can run Semaphore locally using Minikube:
 
     ```bash
     # Get credentials
-    kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d
-    kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d
-    kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d
+     kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d
+    kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d
+    kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d
     ```
 
 Open `https://id.semaphore.localhost` and log in!
