@@ -101,12 +101,13 @@ defmodule Front.Application do
   end
 
   def clients do
-    if Application.get_env(:front, :environment) in [:dev, :test] do
-      [
-        Application.get_env(:front, :service_account_client)
-      ]
-    else
-      []
+    Application.get_env(:front, :service_account_client)
+    |> case do
+      {client_mod, _} = client when client_mod in [Support.FakeClients.ServiceAccount] ->
+        [client]
+
+      _ ->
+        []
     end
   end
 

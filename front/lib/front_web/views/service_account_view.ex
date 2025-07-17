@@ -3,10 +3,16 @@ defmodule FrontWeb.ServiceAccountView do
 
   alias Front.Models.ServiceAccount
 
-  def render("index.json", %{service_accounts: service_accounts}) do
-    %{
+  def render("index.json", %{service_accounts: service_accounts} = assigns) do
+    response = %{
       service_accounts: Enum.map(service_accounts, &service_account_json/1)
     }
+
+    # Include next_page_token if present
+    case Map.get(assigns, :next_page_token) do
+      nil -> response
+      token -> Map.put(response, :next_page_token, token)
+    end
   end
 
   def render("show.json", assigns = %{service_account: service_account = %ServiceAccount{}}) do
