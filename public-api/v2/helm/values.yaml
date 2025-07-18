@@ -10,7 +10,7 @@ resources:
     cpu: 500m
     memory: 100Mi
   limits:
-    memory: 250Mi
+    memory: 300Mi
 
 statsd:
   resources:
