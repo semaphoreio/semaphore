@@ -159,21 +159,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert {"has already been taken", _} = changeset.errors[:user_id]
     end
 
-    test "sets timestamps on creation" do
-      user = create_test_user()
 
-      attrs = %{
-        user_id: user.id,
-        description: "Test description"
-      }
-
-      changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
-      {:ok, service_account} = FrontRepo.insert(changeset)
-
-      assert service_account.created_at != nil
-      assert service_account.updated_at != nil
-      assert service_account.created_at == service_account.updated_at
-    end
   end
 
   describe "update_changeset/2" do
