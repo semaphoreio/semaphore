@@ -86,7 +86,8 @@ config :front,
   rbac_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_RBAC"),
   repo_proxy_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPO_PROXY"),
   repohub_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPOHUB"),
-  repository_integrator_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPOSITORY_INTEGRATOR"),
+  repository_integrator_grpc_endpoint:
+    System.fetch_env!("INTERNAL_API_URL_REPOSITORY_INTEGRATOR"),
   repositoryhub_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_REPOSITORY"),
   scouter_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SCOUTER"),
   # sobelow_skip ["Config.Secrets"]
