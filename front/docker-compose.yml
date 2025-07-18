@@ -32,7 +32,6 @@ services:
       SEED_PROJECTS: "initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket,generic_git"
       SECRET_KEY_BASE: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
       SESSION_SIGNING_SALT: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
-      # Internal API endpoints - using stub endpoints for Docker Compose development
       INTERNAL_API_URL_ARTIFACTHUB: "127.0.0.1:50052"
       INTERNAL_API_URL_AUDIT: "127.0.0.1:50052"
       INTERNAL_API_URL_AUTHENTICATION: "127.0.0.1:50051"
