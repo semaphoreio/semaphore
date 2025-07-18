@@ -109,6 +109,7 @@ if config_env() == :prod do
     # sobelow_skip ["Config.Secrets"]
     secrets_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB"),
     self_hosted_agents_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SELFHOSTEDHUB"),
+    # service_account_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SERVICE_ACCOUNT"),
     superjerry_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SUPERJERRY"),
     task_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_TASK"),
     velocity_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_VELOCITY"),

@@ -70,6 +70,10 @@ permissions:
       description: "View the existing dashboards within the organization."
     - name: "organization.dashboards.manage"
       description: "Create new dashboard views."
+    - name: "organization.service_accounts.view"
+      description: "View service accounts within the organization."
+    - name: "organization.service_accounts.manage"
+      description: "Manage service accounts within the organization."
   project:
     - name: "project.view"
       description: "Access the project. This permission is needed to see any page within the project."

@@ -4,6 +4,7 @@ interface ModalProps extends React.HTMLAttributes<HTMLDivElement> {
   isOpen: boolean;
   close: () => void;
   title: string;
+  width?: string;
 }
 
 export const Modal = (props: ModalProps) => {
@@ -40,11 +41,23 @@ export const Modal = (props: ModalProps) => {
   return createPortal(
     <div
       ref={modalRef}
-      className="fixed overlay flex items-center justify-center vh-100 w-100"
-      style="display: block; z-index: 1000; left: 0; top: 0;"
+      className="fixed flex items-center justify-center vh-100 w-100"
+      style={{ 
+        zIndex: 1000, 
+        backgroundColor: `rgba(0, 0, 0, 0.5)`,
+        left: 0,
+        top: 0
+      }}
       onClick={close}
     >
-      {props.children}
+      <div className={`bg-white br3 shadow-1 w-90 ${props.width || `w-50-m`} mw6 relative`}>
+        {props.title && (
+          <div className="pa3 bb b--black-10">
+            <h2 className="f3 mb0">{props.title}</h2>
+          </div>
+        )}
+        {props.children}
+      </div>
     </div>,
     modalRoot
   );
