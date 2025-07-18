@@ -41,7 +41,7 @@ defmodule Guard.FrontRepo.User do
     field(:remember_created_at, :utc_datetime)
     field(:visited_at, :utc_datetime)
 
-    field(:creation_source, Ecto.Enum, values: [:okta, :saml_jit])
+    field(:creation_source, Ecto.Enum, values: [:okta, :saml_jit, :service_account])
     field(:single_org_user, :boolean)
     field(:org_id, :binary_id)
     field(:idempotency_token, :string)
@@ -52,6 +52,9 @@ defmodule Guard.FrontRepo.User do
     # deactivated as part of Okta integration
     field(:deactivated, :boolean)
     field(:deactivated_at, :utc_datetime)
+
+    # Service account relationship
+    has_one(:service_account, Guard.FrontRepo.ServiceAccount, foreign_key: :id)
 
     timestamps(inserted_at: :created_at, updated_at: :updated_at, type: :utc_datetime)
   end
@@ -228,5 +231,59 @@ defmodule Guard.FrontRepo.User do
       end
 
     invalid_token_string or exists_by_token
+  end
+
+  @doc """
+  Returns true if the user is a service account.
+  """
+  def service_account?(%__MODULE__{creation_source: :service_account}), do: true
+  def service_account?(_user), do: false
+
+  @doc """
+  Changeset for creating a service account user.
+  This validates the specific requirements for service account users.
+  """
+  def service_account_changeset(user, params) do
+    user
+    |> cast(params, [
+      :email,
+      :name,
+      :company,
+      :authentication_token,
+      :salt,
+      :creation_source,
+      :single_org_user,
+      :org_id,
+      :idempotency_token
+    ])
+    |> validate_required([:email, :name, :creation_source, :org_id])
+    |> validate_inclusion(:creation_source, [:service_account])
+    |> put_change(:single_org_user, true)
+    |> validate_format(:email, ~r/^[\w\-\.]+@sa\.[\w\-\.]+\.semaphoreci\.com$/i,
+      message:
+        "Service account email must follow the format: name@sa.organization.semaphoreci.com"
+    )
+    |> unique_constraint(:email, name: :index_users_on_email)
+    |> unique_constraint(:authentication_token, name: :index_users_on_authentication_token)
+    |> unique_constraint(:idempotency_token, name: "users_idempotency_token_index")
+  end
+
+  @doc """
+  Generates a synthetic email for a service account.
+  """
+  def generate_service_account_email(service_account_name, organization_name) do
+    # Sanitize names to ensure valid email format
+    sanitized_sa_name = sanitize_email_part(service_account_name)
+    sanitized_org_name = sanitize_email_part(organization_name)
+
+    "#{sanitized_sa_name}@sa.#{sanitized_org_name}.semaphoreci.com"
+  end
+
+  defp sanitize_email_part(name) do
+    name
+    |> String.downcase()
+    |> String.replace(~r/[^a-z0-9\-]/, "-")
+    |> String.replace(~r/-+/, "-")
+    |> String.trim("-")
   end
 end
