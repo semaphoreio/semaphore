@@ -80,7 +80,6 @@ To configure your Android container using YAML, follow these steps:
 
 </Steps>
 
-
 </TabItem>
 </Tabs>
 
@@ -184,7 +183,7 @@ blocks:
 
 ## Building custom images {#custom-images}
 
-You can find the pre-build Android images in the [Semaphore Container Registry](../optimization/container-registry).
+You can find the pre-build Android images in the [Semaphore Container Registry](../containers/container-registry).
 
 The image definition and Dockerfiles for these images can be found in the repository [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images). Clone this repository to build your own image variants.
 

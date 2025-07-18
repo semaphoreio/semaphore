@@ -27,7 +27,7 @@ Here is the recommended plan to migrate from any CI provider to Semaphore.
 
     Write down your goals and reasons for migrating your CI to Semaphore. For example, you might wish to reduce costs or speed up your builds. Setting expectations from the get-go will make the whole migration process clearer and more straightforward.
 
-    If at any point in the process, you have doubts, contact us at support@semaphoreci.com. We want this process to be as smooth and painless as possible.
+    If at any point in the process, you have doubts, contact us at `support@semaphoreci.com`. We want this process to be as smooth and painless as possible.
 
 2. Compare features
 
@@ -36,7 +36,7 @@ Here is the recommended plan to migrate from any CI provider to Semaphore.
     - Must have
     - Nice to have
     - Optional
-    
+
     Compare the list against [Semaphore Features](https://semaphoreci.com/pricing). Some of the requirements can be implemented in several ways by combining several features.
 
 3. Create a proof of concept in Semaphore
@@ -45,34 +45,32 @@ Here is the recommended plan to migrate from any CI provider to Semaphore.
 
         - [Connect your GitHub](../../using-semaphore/connect-github) or [connect your BitBucket](../../using-semaphore/connect-bitbucket) repository to Semaphore 
         - Configure a CI pipeline, the objective is to reach a green build. See the [Guided Tour](../guided-tour) to get an overview of Semaphore
-    
+
     The following pages describe key features you might need for the migration:
 
         - [How to create jobs](../../using-semaphore/jobs)
         - [Persist data with Artifacts](../../using-semaphore/artifacts)
         - [How to use Docker Environments](../../using-semaphore/pipelines#docker-environments)
-        - [How to use the Cache](../../using-semaphore/optimization/cache)
+        - [How to use the Cache](../../using-semaphore/cache)
         - [Using promotions for Continuous Delivery](../../using-semaphore/promotions)
         - [How to specify language versions](../../reference/toolbox#sem-version)
-
 
 4. Optimize performance
 
     Once your project is building on Semaphore, begin optimizing for performance.
 
         - Pick the best [machine type](../../reference/machine-types) for the CI pipeline
-        - Learn and implement the optimization strategies like [caching](../../using-semaphore/optimization/cache), [fail-fast](../../using-semaphore/pipelines#fail-fast), and [auto-cancel](../../using-semaphore/pipelines#auto-cancel)
+        - Learn and implement the optimization strategies like [caching](../../using-semaphore/cache), [fail-fast](../../using-semaphore/pipelines#fail-fast), and [auto-cancel](../../using-semaphore/pipelines#auto-cancel)
 
 5. Optimize costs
 
     Once you have your project running, you can track your spending in the [Plans & Billing page](../../using-semaphore/billing).
 
     The figure to optimize is the cost-per-pipeline. In other words, you should balance the cost of running your CI pipeline against the expected performance.
-        
+
     You want to focus on the CI pipeline because it accounts for the vast majority of your usage, so optimizing this value has the most impact on your costs.
 
     You can optimize your costs by trying different [machine types](../../reference/machine-types), using [skip conditions](../../using-semaphore/jobs#skip-run), testing different levels of [job parallelism](../../using-semaphore/jobs#job-parallelism) and exploring [pipeline queues](../../using-semaphore/pipelines#pipeline-queues)
-
 
 6. Onboard your team
 

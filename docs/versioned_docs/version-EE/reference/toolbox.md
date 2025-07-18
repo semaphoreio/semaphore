@@ -41,10 +41,10 @@ The available namespaces are:
 See [artifact namespaces](../using-semaphore/artifacts#namespaces) for more details.
 
 The optional flags are:
+
 - `--force` or `-f`: overwrite file or directory if already exists
 - `--destination` of `-d`: pull or yank the file into a different path
 - `--verbose` or `-v`: verbose logging
-
 
 ### Examples
 
@@ -83,7 +83,7 @@ The uploaded files must meet the following requirements:
 - File names cannot contain non-URI-encodable characters like `{, }, |, \, ^, ~, [, ]`
 - Files cannot be named `.` or `...`
 
-You can workaround these limitations by compressing the file with tar before pushing it to the artifact store. For example: 
+You can workaround these limitations by compressing the file with tar before pushing it to the artifact store. For example:
 
 ```shell title="Creating a tarball before storing the artifact"
 tar -czvf example.tar.gz ~/example
@@ -99,7 +99,7 @@ tar -xzf example.tar.gz
 
 ## cache {#cache}
 
-The cache tool lets you interact with your project's [Semaphore cache](../using-semaphore/optimization/cache).
+The cache tool lets you interact with your project's [Semaphore cache](../using-semaphore/cache).
 
 The syntax is:
 
@@ -159,7 +159,6 @@ The supported options for `--cleanup-by` are:
 - `SIZE`: delete biggest files first
 - `STORE_TIME`: (default) delete oldest files first
 - `ACCESS_TIME`: delete oldest accessed files first
-
 
 ### Environment variables {#cache-env-vars}
 
@@ -222,7 +221,7 @@ The checkout command uses the following environment variables.
 
 ## checksum {#checksum}
 
-This tool takes a single argument which is the file to checksum. It outputs the MD5 checksum of the file's contents. This tool is useful for tagging [artifacts](../using-semaphore/artifacts) or generating [cache keys](../using-semaphore/optimization/cache).
+This tool takes a single argument which is the file to checksum. It outputs the MD5 checksum of the file's contents. This tool is useful for tagging [artifacts](../using-semaphore/artifacts) or generating [cache keys](../using-semaphore/cache).
 
 The syntax is:
 
@@ -241,7 +240,6 @@ $ checksum package-lock.json
 
 The `install-package` tool is used to manage Ubuntu packages you may need for your jobs. It downloads and caches packages in a way that can be quickly reinstalled over and over again in different jobs. This is a convenient tool, you can still use `sudo` to install packages using the system's package manager.
 
-
 The syntax is:
 
 ```shell title="install-package syntax"
@@ -254,8 +252,8 @@ Where command is one of the following:
 
 - `update`: Retrieve new lists of packages
 - `upgrade`: Perform an upgrade
-- `install`: Install new packages 
-- `reinstall`: Reinstall packages 
+- `install`: Install new packages
+- `reinstall`: Reinstall packages
 - `remove`: Remove packages
 - `purge`: Remove packages and config files
 - `autoremove`: Remove automatically all unused packages
@@ -276,7 +274,7 @@ You can supply multiple packages with their versions in the same invocation:
  install-package install mongodb-clients=3.6.8 mysql-client=8.0.36-0ubuntu0.20.04.1
 ```
 
-The tool integrates with the [Semaphore cache](../using-semaphore/optimization/cache) to save, retrieve, and update the Deb packages as needed.
+The tool integrates with the [Semaphore cache](../using-semaphore/cache) to save, retrieve, and update the Deb packages as needed.
 
 You can reinstall the packages in a different job within the same project with:
 
@@ -363,6 +361,7 @@ $ sem-context get ReleaseVersion
 ```
 
 Exit status codes:
+
 - 0: key retrieved successfully
 - 1: key not found
 - 2: connection to the artifacts server failed
@@ -377,6 +376,7 @@ sem-context delete ReleaseVersion
 ```
 
 Exit status codes:
+
 - 0: key deleted successfully
 - 1: key not found
 - 2: connection to the artifacts server failed
@@ -429,7 +429,7 @@ The test-results CLI is open-sourced and available on [semaphoreci/test-results]
 
 ### Merging test results {#test-result-merge}
 
-To use the test result feature you must add the following command at the end of every test job. 
+To use the test result feature you must add the following command at the end of every test job.
 
 The syntax is:
 
@@ -493,5 +493,5 @@ kubectl apply -f deployment.yml
 ## See also
 
 - [Semaphore command line tool reference](./semaphore-cli)
-- [Working with Docker](../using-semaphore/optimization/docker)
+- [Working with Docker](../using-semaphore/containers/docker)
 - [Environment variable reference](./env-vars)

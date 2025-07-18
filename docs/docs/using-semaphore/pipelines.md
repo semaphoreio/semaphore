@@ -4,7 +4,6 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Available from '@site/src/components/Available';
@@ -17,7 +16,7 @@ A pipeline is a group of connected blocks. This page explains what pipelines are
 
 Pipelines are groups of blocks that can be connected via dependencies to define their execution order.
 
-Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder. 
+Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder.
 
 For reference, here is an example pipeline with its respective YAML.
 
@@ -163,7 +162,7 @@ For more information, see the [Promotions page](./promotions).
 
 ## Pipeline settings {#settings}
 
-Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML. 
+Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML.
 
 ### Agents {#agents}
 
@@ -174,7 +173,7 @@ Semaphore Cloud provides the following agent types in x86 and ARM architectures:
 - [Linux](../reference/machine-types#linux) Virtual Machines
 - [Docker containers](#docker-environments) running on Linux
 - [Apple macOS](../reference/machine-types#macos) Machines
-- [Windows](./self-hosted-install) Virtual Machines (only for self-hosted agents) 
+- [Windows](./self-hosted-install) Virtual Machines (only for self-hosted agents)
 
 You can add your own machines by [installing self-hosted agents](./self-hosted).
 
@@ -198,7 +197,6 @@ The available hardware changes depending on the type of environment you selected
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
-
 
 <Steps>
 
@@ -234,18 +232,17 @@ blocks:
 </TabItem>
 </Tabs>
 
-
 ### Docker containers {#docker-environments}
 
 :::tip
 
-If you want to build and run Docker images in your jobs, check the [working with Docker page](./optimization/docker).
+If you want to build and run Docker images in your jobs, check the [working with Docker page](./containers/docker).
 
 :::
 
 Jobs can run inside Docker containers. This allows you to define a custom-build environment with pre-installed tools and dependencies needed for your project. You can enable this setting in the pipeline agent or in the [block agent override](./jobs#agent-override).
 
-You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate. 
+You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate.
 
 The network addresses of all containers are mapped to their names. Let's say you have two containers, "main" and "mysql", you can connect to the database from main with:
 
@@ -319,7 +316,7 @@ To use images in private repositories see [Private Docker Registries](#docker-pr
 
 :::info
 
-Semaphore provides a [public Docker registry](./optimization/container-registry) for popular images.
+Semaphore provides a [public Docker registry](./containers/container-registry) for popular images.
 
 :::
 
@@ -419,6 +416,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -462,6 +460,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -575,9 +574,9 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
-
 
 ### YAML file path {#yaml-path}
 
@@ -678,7 +677,6 @@ after_pipeline:
 </TabItem>
 </Tabs>
 
-
 ## Private Docker Registries {#docker-private}
 
 If the images you need for your [docker environment](#docker-environments) are not publicly available, you need to provide authentication credentials in your pipeline. This feature is only available by editing the pipeline YAML directly.
@@ -745,7 +743,6 @@ To pull images from a private AWS Elastic Container Registry (ECR), follow these
 </Steps>
 
 ### Images in Google GCR {#docker-gcr}
-
 
 To pull images from a private Google Container Registry (GCR), follow these steps:
 
@@ -841,14 +838,13 @@ To pull images from any arbitrary Docker registry, follow these steps:
 
 </Steps>
 
-
 ## Pipeline queues {#pipeline-queues}
 
 Queues allow you to control the order in which pipelines run. Semaphore pipelines can run sequentially or in parallel. For example, you can run CI pipelines in parallel on the main branch, while limiting deployment pipelines to run one at at time to prevent conflicts or race conditions.
 
 ### Default and named queues {#named-queues}
 
-Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially. 
+Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially.
 
 In other words, every time you re-run a workflow, create a pull request, push a tag, or start a [promotion](./pipelines#connecting-pipelines), the pipeline is added to the end of the same-commit queue.
 
@@ -964,7 +960,7 @@ blocks:
 
 ### Conditional queues {#conditional-queues}
 
-You can use conditional statements to assign pipelines based on parameters like branch name or tag name. 
+You can use conditional statements to assign pipelines based on parameters like branch name or tag name.
 
 The following example uses three rules:
 
@@ -1046,7 +1042,6 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-
 <Steps>
 
 1. Open the pipeline YAML
@@ -1090,13 +1085,13 @@ See [job time limit](./jobs#job-duration) to change the maximum duration for a s
 
 You can workaround the queue limit by assigning pipelines to [named queues](#named-queues).
 
-If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+If you have a use case in which this limit is too constraining, please contact us at `support@semaphoreci.com` and we will try to work out a solution.
 
 ### Max blocks per pipeline {#max-blocks}
 
 There is a hard limit of a 100 blocks per pipeline.
 
-This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at `support@semaphoreci.com` and we will try to work out a solution.
 
 ## See also
 

@@ -19,7 +19,6 @@ Node.js is pre-installed in the Linux and macOS Semaphore environments. You can 
 
 You may also use Docker images.
 
-
 ## How to select Node versions {#switch}
 
 Change the active Node.js versions on Linux and macOS with [sem-version](../../reference/toolbox#sem-version).
@@ -45,8 +44,7 @@ sem-version node --lts carbon
 
 The `sem-version` tool does not work on Docker containers. You must use a pre-built Docker image with the language versions you need and run the job using [Docker environments](../../using-semaphore/pipelines#docker-environments).
 
-You can use the pre-built [Node images](../../using-semaphore/optimization/container-registry#node) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
-
+You can use the pre-built [Node images](../../using-semaphore/containers/container-registry#node) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
 
 ## How to cache Node dependencies {#cache}
 
@@ -84,7 +82,7 @@ To perform semantic releases, follow these steps
 
 <Steps>
 
-1. Create a [Secret] with your GitHub Token. 
+1. Create a [Secret] with your GitHub Token.
 
     - The token should have write permissions on the repository
     - The secret name should be `semantic-release-credentials`
@@ -153,6 +151,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
     ```shell
     test-results publish junit.xml
     ```
+
 </Steps>
 
 <details>

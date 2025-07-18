@@ -96,7 +96,7 @@ In order to change your credit card or PayPal information, follow these steps:
 
 ### Can I change my billing information?
 
-Yes. If you want to change the recipient name, company name, address, phone number, billing email, VAT ID, or country on the invoice, please get in touch with us at: support@semaphoreci.com
+Yes. If you want to change the recipient name, company name, address, phone number, billing email, VAT ID, or country on the invoice, please get in touch with us at: `support@semaphoreci.com`
 
 :::note
 
@@ -108,7 +108,7 @@ Billing change requests must originate from a user with Admin or Owner permissio
 
 Not directly from the Semaphore website. After a subscription has been purchased, users can't add or change a VAT number (VAT ID) from the UI.
 
-If you wish to change the VAT number associated with your subscription, please get in touch with support@semaphoreci.com with the VAT number you want to add and we will gladly make it happen.
+If you wish to change the VAT number associated with your subscription, please get in touch with `support@semaphoreci.com` with the VAT number you want to add and we will gladly make it happen.
 
 For security reasons, these requests **must originate from an email** linked to a user with the [Owner role](../using-semaphore/rbac#org-owner), or from the current Billing contact associated with the organization’s FastSpring subscription. This ensuress that only authorized individuals can make changes to the billing information.
 
@@ -120,15 +120,15 @@ You can also find your invoices at the bottom of the **Plans & Billing** in your
 
 ### What is your refund policy?
 
-Apart from cases of extended downtime (multiple hours in a day, or multiple days in a month), we do not offer refunds. 
+Apart from cases of extended downtime (multiple hours in a day, or multiple days in a month), we do not offer refunds.
 
-We will, however, consider requests for refunds in extenuating circumstances. If you would like to request a refund, please email us at billing@semaphoreci.com and our team will do what we can to work out a solution. 
+We will, however, consider requests for refunds in extenuating circumstances. If you would like to request a refund, please email us at `billing@semaphoreci.com` and our team will do what we can to work out a solution.
 
 Please include the affected Workflow ID when contacting our Billing team regarding refunds.
 
 ### Why are you still charging my old credit card?
 
-If you’ve added a new credit card to the subscription, but the old one is still being charged, it means that the new credit card wasn't properly marked for usage. 
+If you’ve added a new credit card to the subscription, but the old one is still being charged, it means that the new credit card wasn't properly marked for usage.
 
 Here’s how to do that:
 
@@ -182,6 +182,7 @@ Yes. To do that, follow these steps:
     git submodule init
     git submodule update
     ```
+
 2. Append the these commands in the [epilogue](../using-semaphore/jobs#epilogue)
 
     ```shell
@@ -190,11 +191,11 @@ Yes. To do that, follow these steps:
 
 </Steps>
 
-Make sure that Semaphore has permissions to clone your submodules repository. 
+Make sure that Semaphore has permissions to clone your submodules repository.
 
 ### Can I redeliver webhooks from Github to Semaphore?
 
-Yes. Rarely Semaphore does not receive a webhook from GitHub. This results in a workflow not being triggered. When this happens, you can redeliver the webhook to trigger the workflow. 
+Yes. Rarely Semaphore does not receive a webhook from GitHub. This results in a workflow not being triggered. When this happens, you can redeliver the webhook to trigger the workflow.
 
 These are the steps to redeliver webhooks from Github:
 
@@ -207,7 +208,7 @@ These are the steps to redeliver webhooks from Github:
 
 ### Can I send a comment on a pull request on GitHub from a workflow?
 
-Yes. You can use the [GitHub API](https://docs.github.com/en/rest/issues?apiVersion=2022-11-28#create-an-issue-comment) to comment on pull requests. 
+Yes. You can use the [GitHub API](https://docs.github.com/en/rest/issues?apiVersion=2022-11-28#create-an-issue-comment) to comment on pull requests.
 
 For example:
 
@@ -288,7 +289,7 @@ Yes. Semaphore provides template support on [parameterized promotions](../using-
 
 ### Can I change the timezone?
 
-The default timezone is UTC. The timezone can be changed in 2 ways in Linux agents: 
+The default timezone is UTC. The timezone can be changed in 2 ways in Linux agents:
 
 - Assign a different value to the TZ environment variable:
 
@@ -365,15 +366,13 @@ While an issue is ongoing, you might consider using a shorter [execution_time_li
 
 :::
 
-
 ### Why is my job failing if all commands have passed?
 
 This can happen because of code coverage tools, e.g. simplecov, which can be set to fail the test suite if a [minimum coverage level is not achieved](https://github.com/simplecov-ruby/simplecov#minimum-coverage).
 
-
 ### Why are tests passing locally but not on Semaphore?
 
-The main reason for this behavior is differences in the stacks. As a first step, ensure that the same versions of languages, services, tools, and frameworks such as Selenium, browser drivers, Capybara, Cypress are used both locally and in the CI environment. 
+The main reason for this behavior is differences in the stacks. As a first step, ensure that the same versions of languages, services, tools, and frameworks such as Selenium, browser drivers, Capybara, Cypress are used both locally and in the CI environment.
 
 To achieve this, use [sem-service](../reference/toolbox#sem-service), [sem-version](../reference/toolbox#sem-version), and the OS package manager. Environment variables can also lead to unexpected behaviors, for instance, Semaphore will set `CI=true` by default.
 
@@ -389,7 +388,7 @@ You might be hitting the quota limitation. To see your activity across the organ
 2. Select Activity Monitor
 3. Check your agent usage, jobs won't start until a suitable agent is free
 
-You can also run [`sem get jobs`](../reference/semaphore-cli#sem-get-job) to display all running jobs to confirm how much of the quota is being used. 
+You can also run [`sem get jobs`](../reference/semaphore-cli#sem-get-job) to display all running jobs to confirm how much of the quota is being used.
 
 ### Why does my job fail when I specify "exit 0" in commands?
 
@@ -411,7 +410,7 @@ Some commands like `bash -e` or `set -x otrace` may override this behavior and m
 
 This is commonly due to a rate-limit of third-party providers such as Docker Hub. These services limit how many unauthenticated pulls you can do in an hour, often based on IP. The machine you are running your jobs on may have been provisioned for another user, resulting in that particular IP being rate-limited.
 
-You can bypass this issue by creating a free account on Docker Hub, and then [authenticating with Docker](../using-semaphore/optimization/docker#auth) within the job. This way, the [pulls are limited by your account (100 per hour)](https://docs.docker.com/docker-hub/usage/), and not by the IP of the machine.
+You can bypass this issue by creating a free account on Docker Hub, and then [authenticating with Docker](../using-semaphore/containers/docker#auth) within the job. This way, the [pulls are limited by your account (100 per hour)](https://docs.docker.com/docker-hub/usage/), and not by the IP of the machine.
 
 :::tip
 
@@ -422,7 +421,6 @@ If you cannot authenticate, you can use other third-party Docker registries such
 ### Pull request on GitHub is stuck
 
 If you have a pull request stuck when using GitHub, check if you have renamed the pipeline recently. If you did, see how to [fix stuck PRs on GitHub](../using-semaphore/connect-github#stuck-pr)
-
 
 ## Project
 
@@ -442,7 +440,7 @@ To change the project ownership:
 
 After project ownership has been transferred, you need to push a new commit. Old workflows cannot be re-run after transferring ownership.
 
-If you come across any issues, please reach out to support@semaphoreci.com and include the name of the project and the GitHub/Bitbucket username of the new owner in your message.
+If you come across any issues, please reach out to `support@semaphoreci.com` and include the name of the project and the GitHub/Bitbucket/GitLab username of the new owner in your message.
 
 ### Can I rename a project?
 
@@ -474,7 +472,6 @@ Deleting a project cannot be reversed.
 
 :::
 
-
 ### Can I change the visibility of a project?
 
 Yes. To make the project visible or private follow these steps:
@@ -483,7 +480,6 @@ Yes. To make the project visible or private follow these steps:
 2. Go to **Settings**
 3. Click the link next to **Public** or **Private** to toggle the visibility
 4. Press **Save Changes**
-
 
 ### Why can't I make my project private?
 
@@ -506,13 +502,12 @@ If you are using a [filter for contributors](../using-semaphore/workflows#projec
 
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
-
 ### How do I fix the error "Revision: COMMIT_SHA not found. Exiting"
 
 This happens when the repository receives pushed while Semaphore is still processing the incoming webhook. For example, when someone modifies or removes with a `git rebase` or `git commit --amend` command followed by a `git push --force` shortly after.
 
 You can prevent this error by enabling the [auto-cancel](../using-semaphore/pipelines#auto-cancel) option in the pipeline.
- 
+
 ### Why are my workflows not running in parallel?
 
 Git pushes to the same branch are [queued](../using-semaphore/pipelines#pipeline-queues) by default. Pushes to different branches do run in parallel. You can use [named queues in your pipelines](../using-semaphore/pipelines#named-queues) to better control how workflows are parallelized or activate [auto-cancel](../using-semaphore/pipelines#auto-cancel) to stop running pipelines when new pushes arrive to the queue.
@@ -571,4 +566,3 @@ Enabling the `set -e` option in the Bash shell causes autocomplete to fail and e
 ### Why are my secrets empty?
 
 We have discontinued exposing secret content via the CLI, API, and web interface to ensure enhanced security measures. Retrieval of secret values is now exclusively available through the job mechanism.
-

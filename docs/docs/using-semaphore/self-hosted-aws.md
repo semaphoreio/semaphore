@@ -14,7 +14,6 @@ import Steps from '@site/src/components/Steps';
 
 Semaphore provides the open-source [AWS agent stack](https://github.com/renderedtext/agent-aws-stack) to help you deploy an autoscaling fleet of self-hosted agents in AWS.
 
-
 ## Overview
 
 The AWS agent stack lets you autoscale EC2 instances on demand. Running cloud instances only when they are needed can help you gracefully manage bursts of activity and save costs when there is no work being done.
@@ -30,7 +29,6 @@ The AWS agent stack provides the following features:
 
 ![Self-hosted agent AWS stack](./img/self-hosted-aws-stack.jpg)
 
-
 ## Prerequisites
 
 The AWS agent stack requires the following:
@@ -45,7 +43,6 @@ The AWS agent stack requires the following:
 ## How to deploy AWS agents {#deploy}
 
 Follow these steps to deploy self-hosted agents in AWS.
-
 
 <Steps>
 
@@ -92,7 +89,6 @@ Follow these steps to deploy self-hosted agents in AWS.
     </div>
     </details>
 
-
     <details>
     <summary>macOS AMI</summary>
     <div>
@@ -109,7 +105,6 @@ Follow these steps to deploy self-hosted agents in AWS.
 
     </div>
     </details>
-
 
 3. Encrypt your registration token
 
@@ -128,7 +123,6 @@ Follow these steps to deploy self-hosted agents in AWS.
 
     - `<ssm-parameter-name>` with the name for the secret, e.g. `semaphore-registration-token`
     - `<token>` with the registration token obtained during [agent registration](./self-hosted-install#register-agent)
-
 
 4. Create an execution policy for Cloudformation
 
@@ -156,7 +150,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     <summary>Linux</summary>
     <div>
 
-    ```json title="config.json for Linux" 
+    ```json title="config.json for Linux"
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
@@ -164,6 +158,7 @@ Follow these steps to deploy self-hosted agents in AWS.
         "SEMAPHORE_ENDPOINT": "<organization-url>.semaphoreci.com"
     }
     ```
+
     </div>
     </details>
 
@@ -171,7 +166,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     <summary>Windows</summary>
     <div>
 
-    ```json title="config.json for Windows" 
+    ```json title="config.json for Windows"
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
@@ -180,6 +175,7 @@ Follow these steps to deploy self-hosted agents in AWS.
         "SEMAPHORE_AGENT_OS": "windows"
     }
     ```
+
     </div>
     </details>
 
@@ -187,7 +183,7 @@ Follow these steps to deploy self-hosted agents in AWS.
     <summary>macOS</summary>
     <div>
 
-    ```json title="config.json for macOS" 
+    ```json title="config.json for macOS"
     {
         "SEMAPHORE_AGENT_STACK_NAME": "<stack-name>",
         "SEMAPHORE_AGENT_TOKEN_PARAMETER_NAME": "<ssm-parameter-name>",
@@ -204,7 +200,6 @@ Follow these steps to deploy self-hosted agents in AWS.
 
     :::info
 
-
     When a macOS instance is terminated it may take a long time for new one to start in its place. This may affect the time to rotate agents.
 
     macOS dedicated hosts are allocated for a minimum of 24 hours. It is recommended to set [`SEMAPHORE_AGENT_DISCONNECT_AFTER_IDLE_TIMEOUT`](../reference/agent-aws-stack#disconnect-after-idle-timeout) to at least 24 hours for macOS-based agents. This means that new instances started up due to a burst of demand may continue running idle for a long time before being shutdown.
@@ -218,7 +213,7 @@ Follow these steps to deploy self-hosted agents in AWS.
 
 6. Bootstrap the CDK application
 
-    Open the file `execution-policy.json` created in Step 4 and copy the ARN value. 
+    Open the file `execution-policy.json` created in Step 4 and copy the ARN value.
 
     ```shell title="Bootstrapping the CDK application"
     SEMAPHORE_AGENT_STACK_CONFIG=config.json \
@@ -282,7 +277,7 @@ See the [AWS stack parameters reference](../reference/agent-aws-stack) for all t
 
 ### Cache
 
-See [setting up S3 cache](./optimization/cache#aws) to learn how to configure cache with AWS S3 buckets.
+See [setting up S3 cache](./cache#aws) to learn how to configure cache with AWS S3 buckets.
 
 ### Autoscaling {#scale}
 
@@ -319,7 +314,6 @@ Self-hosted agents in AWS connect to your [default AWS VPC](https://docs.aws.ama
 
 You can change this behavior by creating a new VPC and subnets and configuring the parameters `SEMAPHORE_AGENT_VPC_ID` and `SEMAPHORE_AGENT_SUBNETS` during setup.
 
-
 ## Troubleshooting tips
 
 This section explains how to troubleshoot, view logs, and access the EC2 instances.
@@ -330,7 +324,7 @@ Agents use [CloudWatch](https://docs.aws.amazon.com/AmazonCloudWatch/latest/moni
 
 You can find the logs in these locations:
 
-- **Agent logs**: agent log belong to the `semaphore/agent` log group 
+- **Agent logs**: agent log belong to the `semaphore/agent` log group
   - **Linux logs**: located at `/tmp/agent_log`
   - **Windows logs**: located at `/tmp/agent_log`
 - **Linux cloud init logs**: pushed to the `/semaphore/cloud-init` and `/semaphore/cloud-init/output` log groups
@@ -370,4 +364,3 @@ If you experience agent registration errors, follow these steps to troubleshoot:
 - [AWS autoscaler stack reference](../reference/agent-aws-stack)
 - [Self-hosted agents configuration reference](../reference/self-hosted-config)
 - [Docker environments](./pipelines#docker-environments)
-

@@ -74,15 +74,14 @@ global_job_config:
 </TabItem>
 </Tabs>
 
-
 ### Language versions
 
-Both Github Actions and Semaphore allow you to use specific language versions. 
+Both Github Actions and Semaphore allow you to use specific language versions.
 
 <Tabs groupId="migration">
 <TabItem value="ga" label="GitHub Actions">
 
-GitHub Actions uses a language-specific setup action. 
+GitHub Actions uses a language-specific setup action.
 
 The following example sets the Ruby version to `3.3.4`
 
@@ -94,6 +93,7 @@ jobs:
         with:
           ruby-version: '3.3.4'
 ```
+
 </TabItem>
 <TabItem value="semaphore" label="Semaphore">
 
@@ -101,7 +101,6 @@ Semaphore provides the [Docker environments](../../using-semaphore/pipelines#doc
 
 </TabItem>
 </Tabs>
-
 
 ### Caching
 
@@ -136,7 +135,7 @@ The following commands, when added to a job downloads, cache, and install Gems i
     - cache store 
 ```
 
-See [caching](../../using-semaphore/optimization/cache) for more details.
+See [caching](../../using-semaphore/cache) for more details.
 
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
@@ -145,7 +144,6 @@ See [caching](../../using-semaphore/optimization/cache) for more details.
 
 </TabItem>
 </Tabs>
-
 
 ### Database and services
 
@@ -175,7 +173,7 @@ jobs:
 <TabItem value="semaphore" label="Semaphore">
 
 Semaphore provides the [Docker environments](../../using-semaphore/pipelines#docker-environments) to run your jobs in environments with all your build tools. You can connect multiple Docker images to provide database services for your end-to-end or smoke tests.
-    
+
 </TabItem>
 </Tabs>
 
@@ -281,12 +279,11 @@ global_job_config:
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
 
-On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server or project level and activate it on a block. 
+On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server or project level and activate it on a block.
 
 The secret's contents are automatically injected as environment variables in all jobs in that block.
 
 ![Using secrets on Semaphore](./img/secrets.jpg)
-
 
 </TabItem>
 </Tabs>
@@ -446,7 +443,6 @@ blocks:
 
 </TabItem>
 </Tabs>
-
 
 ## See also
 
