@@ -89,6 +89,8 @@ spec:
               value: "false"
             - name: START_GRPC_USER_API
               value: "true"
+            - name: START_GRPC_SERVICE_ACCOUNT_API
+              value: "true"
             - name: START_GPRC_HEALTH_CHECK
               value: "true"
             - name: RABBIT_CONSUMER
