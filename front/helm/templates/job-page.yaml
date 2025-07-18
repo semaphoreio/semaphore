@@ -65,7 +65,7 @@ spec:
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem | default true }}
+            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem }}
             capabilities:
               drop:
                 - ALL
@@ -154,11 +154,6 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.global.redis.secretName }}
                   key: port
-            - name: BRANCH_GRPC_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ .Values.global.internalApi.configMapName }}
-                  key: INTERNAL_API_URL_BRANCH
 
           startupProbe:
             httpGet:
