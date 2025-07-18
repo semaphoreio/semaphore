@@ -68,6 +68,7 @@ services:
       INTERNAL_API_URL_GOFER: "127.0.0.1:50052"
       INTERNAL_API_URL_GROUPS: "127.0.0.1:50052"
       INTERNAL_API_URL_LOGHUB: "127.0.0.1:50051"
+      INTERNAL_API_URL_LICENSE_CHECKER: "127.0.0.1:50052"
 
     links:
       - redis-cache:redis-cache
