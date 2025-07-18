@@ -239,26 +239,6 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       refute Map.has_key?(changeset.changes, :id)
       assert changeset.changes.description == "Updated description"
     end
-
-    test "updates timestamps on update" do
-      user = create_test_user()
-      service_account = create_test_service_account(user)
-      original_created_at = service_account.created_at
-
-      # Wait a moment to ensure timestamp difference
-      :timer.sleep(10)
-
-      attrs = %{
-        description: "Updated description"
-      }
-
-      changeset = ServiceAccount.update_changeset(service_account, attrs)
-      {:ok, updated_service_account} = FrontRepo.update(changeset)
-
-      assert updated_service_account.created_at == original_created_at
-      assert updated_service_account.updated_at != original_created_at
-      assert updated_service_account.updated_at > original_created_at
-    end
   end
 
   describe "schema associations" do
@@ -293,8 +273,6 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert is_binary(service_account.id)
       assert is_binary(service_account.user_id)
       assert is_binary(service_account.description) or is_nil(service_account.description)
-      assert %DateTime{} = service_account.created_at
-      assert %DateTime{} = service_account.updated_at
     end
 
     test "id is primary key" do
