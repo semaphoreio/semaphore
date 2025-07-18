@@ -10,8 +10,6 @@ defmodule Guard.FrontRepo.ServiceAccount do
           description: String.t(),
           creator_id: String.t(),
           user: Guard.FrontRepo.User.t() | nil,
-          created_at: DateTime.t(),
-          updated_at: DateTime.t()
         }
 
   schema "service_accounts" do
@@ -20,8 +18,6 @@ defmodule Guard.FrontRepo.ServiceAccount do
 
     # The id field itself is the foreign key to user
     belongs_to(:user, Guard.FrontRepo.User, foreign_key: :id, define_field: false)
-
-    timestamps(inserted_at: :created_at, updated_at: :updated_at, type: :utc_datetime)
   end
 
   @doc """
