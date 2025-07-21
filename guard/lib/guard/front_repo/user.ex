@@ -78,6 +78,7 @@ defmodule Guard.FrontRepo.User do
       :visited_at
     ])
     |> validate_required([:email, :name])
+    |> validate_length(:name, max: 255, message: "Name cannot exceed 255 characters")
     |> validate_format(:email, ~r/^([\w\.%\+\-]+)@([\w\-]+\.)+([\w]{2,})$/i,
       message: "is not a valid email"
     )
@@ -257,6 +258,7 @@ defmodule Guard.FrontRepo.User do
       :idempotency_token
     ])
     |> validate_required([:email, :name, :creation_source, :org_id])
+    |> validate_length(:name, max: 255, message: "Name cannot exceed 255 characters")
     |> validate_inclusion(:creation_source, [:service_account])
     |> put_change(:single_org_user, true)
     |> validate_format(:email, ~r/^[\w\-\.]+@sa\.[\w\-\.]+\.semaphoreci\.com$/i,
