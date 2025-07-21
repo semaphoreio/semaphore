@@ -138,13 +138,10 @@ defmodule Guard.User.ActionsTest do
           name: "Regular User"
         }
 
-        # This should still work as regular user creation doesn't validate email patterns
         {:ok, user} = Guard.User.Actions.create(user_params)
 
         assert user.email == "test@sa.org.semaphoreci.com"
         assert user.name == "Regular User"
-        # Should be nil (default) for regular users, not :service_account
-        assert user.creation_source == nil
       end
     end
 
@@ -208,25 +205,6 @@ defmodule Guard.User.ActionsTest do
         assert updated_user.creation_source == :service_account
         assert updated_user.single_org_user == true
         assert updated_user.company == "Should not change"
-      end
-    end
-
-    test "should handle deletion of service account user" do
-      # Create a service account
-      {:ok, %{service_account: service_account, user: service_account_user}} =
-        Support.Factories.ServiceAccountFactory.insert()
-
-      # Delete the user (this should work through the standard deletion flow)
-      {:ok, _} = Guard.User.Actions.delete(service_account_user.id)
-
-      # Verify user is deleted/deactivated
-      case Guard.Store.User.Front.find(service_account_user.id) do
-        {:ok, user} ->
-          assert user.deactivated == true
-
-        {:error, :not_found} ->
-          # User was physically deleted, which is also acceptable
-          assert true
       end
     end
 

@@ -33,6 +33,7 @@ defmodule Guard.FrontRepo.ServiceAccount do
     )
     |> foreign_key_constraint(:id, name: :service_accounts_id_fkey)
     |> foreign_key_constraint(:creator_id, name: :service_accounts_creator_id_fkey)
+    |> unique_constraint(:id, name: :service_accounts_pkey)
   end
 
   @doc """
