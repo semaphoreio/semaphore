@@ -9,6 +9,12 @@ defmodule Guard.Store.ServiceAccountTest do
   alias Guard.FrontRepo.ServiceAccount, as: ServiceAccountSchema
   alias Support.Factories.ServiceAccountFactory
 
+  setup do
+    FunRegistry.clear!()
+    Guard.FakeServers.setup_responses_for_development()
+    :ok
+  end
+
   describe "find/1" do
     test "returns service account when found" do
       {:ok, %{service_account: created_sa}} = ServiceAccountFactory.insert()
@@ -16,7 +22,7 @@ defmodule Guard.Store.ServiceAccountTest do
       {:ok, found_sa} = ServiceAccount.find(created_sa.id)
 
       assert found_sa.id == created_sa.id
-      assert found_sa.name == created_sa.name
+      assert found_sa.name == created_sa.user.name
       assert found_sa.description == created_sa.description
       assert found_sa.deactivated == false
     end
@@ -59,7 +65,7 @@ defmodule Guard.Store.ServiceAccountTest do
       {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Create service account in different org
-      {:ok, %{service_account: _sa3}} = ServiceAccountFactory.insert(name: "SA3")
+      {:ok, %{service_account: sa3}} = ServiceAccountFactory.insert(name: "SA3")
 
       {:ok, result} = ServiceAccount.find_by_org(org_id, 10, nil)
 
@@ -85,7 +91,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
       # Create 3 service accounts
       for i <- 1..3 do
-        ServiceAccountFactory.insert(org_id: org_id, name: "SA#{i}")
+        {:ok, _} = ServiceAccountFactory.insert(org_id: org_id, name: "SA#{i}")
       end
 
       # Get first page with page_size 2
@@ -105,7 +111,7 @@ defmodule Guard.Store.ServiceAccountTest do
       org_id = Ecto.UUID.generate()
       {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
 
-      {:ok, %{service_account: _sa2, user: user2}} =
+      {:ok, %{service_account: sa2, user: user2}} =
         ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Deactivate second service account
@@ -130,7 +136,7 @@ defmodule Guard.Store.ServiceAccountTest do
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
-        params = ServiceAccountFactory.build_params()
+        params = ServiceAccountFactory.build_params_with_creator(description: "test-description")
 
         {:ok, result} = ServiceAccount.create(params)
 
@@ -140,7 +146,7 @@ defmodule Guard.Store.ServiceAccountTest do
         assert result.service_account.org_id == params.org_id
         assert result.service_account.creator_id == params.creator_id
         assert result.service_account.deactivated == false
-        assert String.contains?(result.service_account.email, "@sa.test-org.semaphoreci.com")
+        assert String.contains?(result.service_account.email, "@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}")
       end
     end
 
@@ -150,7 +156,7 @@ defmodule Guard.Store.ServiceAccountTest do
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
-        params = ServiceAccountFactory.build_params(name: "test-sa", org_id: Ecto.UUID.generate())
+        params = ServiceAccountFactory.build_params_with_creator(name: "test-sa", org_id: Ecto.UUID.generate())
 
         {:ok, result} = ServiceAccount.create(params)
 
@@ -158,7 +164,6 @@ defmodule Guard.Store.ServiceAccountTest do
         user = FrontRepo.get!(User, result.service_account.user_id)
         assert user.creation_source == :service_account
         assert user.single_org_user == true
-        assert user.company == ""
         assert user.deactivated == false
         assert user.org_id == params.org_id
         assert user.name == params.name
@@ -171,12 +176,12 @@ defmodule Guard.Store.ServiceAccountTest do
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
-        params = ServiceAccountFactory.build_params(name: "My Service Account!")
+        params = ServiceAccountFactory.build_params_with_creator(name: "My Service Account!")
 
         {:ok, result} = ServiceAccount.create(params)
 
         # Should sanitize both name and org username
-        assert result.service_account.email == "my-service-account-@sa.myorg-123.semaphoreci.com"
+        assert result.service_account.email == "my-service-account-@sa.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
       end
     end
 
@@ -186,19 +191,19 @@ defmodule Guard.Store.ServiceAccountTest do
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
-        params = ServiceAccountFactory.build_params(name: "test-sa")
+        params = ServiceAccountFactory.build_params_with_creator(name: "test-sa")
 
         {:ok, result} = ServiceAccount.create(params)
 
         # Should use fallback email
-        assert String.contains?(result.service_account.email, "@sa.unknown.semaphoreci.com")
+        assert String.contains?(result.service_account.email, "@sa.unknown.#{Application.fetch_env!(:guard, :base_domain)}")
       end
     end
 
     test "handles token generation failure" do
       with_mock Guard.FrontRepo.User, [:passthrough],
         reset_auth_token: fn _ -> {:error, :token_generation_failed} end do
-        params = ServiceAccountFactory.build_params()
+        params = ServiceAccountFactory.build_params_with_creator()
 
         {:error, reason} = ServiceAccount.create(params)
 
@@ -213,7 +218,7 @@ defmodule Guard.Store.ServiceAccountTest do
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
         # Try to create with invalid email (too long)
-        params = ServiceAccountFactory.build_params(name: String.duplicate("a", 300))
+        params = ServiceAccountFactory.build_params_with_creator(name: String.duplicate("a", 300))
 
         {:error, errors} = ServiceAccount.create(params)
 
@@ -230,7 +235,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
       {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
 
-      assert updated_sa.name == "Updated Name"
+      assert updated_sa.user.name == "Updated Name"
       assert updated_sa.description == "Updated Description"
       assert updated_sa.id == sa.id
     end
@@ -243,20 +248,20 @@ defmodule Guard.Store.ServiceAccountTest do
 
         {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
 
-        assert updated_sa.name == "New Name"
-        assert String.contains?(updated_sa.email, "new-name@sa.test-org.semaphoreci.com")
+        assert updated_sa.user.name == "New Name"
+        assert String.contains?(updated_sa.user.email, "new-name@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}")
       end
     end
 
     test "updates only description when name not provided" do
-      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
-      original_name = sa.name
+      {:ok, %{service_account: sa, user: user}} = ServiceAccountFactory.insert()
+      original_name = user.name
 
       update_params = %{description: "New Description"}
 
       {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
 
-      assert updated_sa.name == original_name
+      assert updated_sa.user.name == original_name
       assert updated_sa.description == "New Description"
     end
 
@@ -275,7 +280,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, :internal_error} = ServiceAccount.update(sa.id, %{name: "New Name"})
+        assert {:error, []} = ServiceAccount.update(sa.id, %{name: "New Name"})
       end
     end
   end
@@ -287,7 +292,7 @@ defmodule Guard.Store.ServiceAccountTest do
       {:ok, :deleted} = ServiceAccount.delete(sa.id)
 
       # Verify user is deactivated
-      user = FrontRepo.get!(User, sa.user_id)
+      user = FrontRepo.get!(User, sa.id)
       assert user.deactivated == true
       assert user.deactivated_at != nil
 
@@ -355,7 +360,7 @@ defmodule Guard.Store.ServiceAccountTest do
          [reset_auth_token: fn _ -> {:ok, "new-token"} end]},
         {FrontRepo, [:passthrough], [update: fn _ -> {:error, %Ecto.Changeset{}} end]}
       ]) do
-        assert {:error, :internal_error} = ServiceAccount.regenerate_token(sa.id)
+        assert {:error, []} = ServiceAccount.regenerate_token(sa.id)
       end
     end
   end

@@ -149,15 +149,20 @@ defmodule Guard.Store.ServiceAccount do
   @spec delete(String.t()) :: {:ok, :deleted} | {:error, :not_found | :internal_error}
   def delete(service_account_id) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
-      FrontRepo.transaction(fn ->
+      case FrontRepo.transaction(fn ->
         with {:ok, current_data} <- find(service_account_id),
              {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
           :deleted
         else
-          {:error, reason} ->
-            FrontRepo.rollback(reason)
+          {:error, :not_found} ->
+            FrontRepo.rollback(:not_found)
+          {:error, _reason} ->
+            FrontRepo.rollback(:internal_error)
         end
-      end)
+      end) do
+        {:ok, :deleted} -> {:ok, :deleted}
+        {:error, reason} -> {:error, reason}
+      end
     else
       {:error, :invalid_id}
     end
@@ -216,8 +221,6 @@ defmodule Guard.Store.ServiceAccount do
         description: sa.description,
         org_id: u.org_id,
         creator_id: sa.creator_id,
-        created_at: sa.created_at,
-        updated_at: sa.updated_at,
         deactivated: u.deactivated,
         email: u.email
       }
@@ -252,6 +255,8 @@ defmodule Guard.Store.ServiceAccount do
       authentication_token: hashed_token
     }
 
+    require Logger
+    Logger.info("User params: #{inspect(user_params)}")
     changeset = User.changeset(%User{}, user_params)
 
     case FrontRepo.insert(changeset) do
@@ -377,11 +382,10 @@ defmodule Guard.Store.ServiceAccount do
       description: service_account.description,
       org_id: user.org_id,
       creator_id: service_account.creator_id,
-      created_at: service_account.created_at,
-      updated_at: service_account.updated_at,
       deactivated: user.deactivated,
       user_id: user.id,
-      email: user.email
+      email: user.email,
+      user: user
     }
   end
 end
