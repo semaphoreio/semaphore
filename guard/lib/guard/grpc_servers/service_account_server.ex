@@ -4,6 +4,7 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   require Logger
 
   import Guard.Utils, only: [grpc_error!: 2, valid_uuid?: 1, validate_uuid!: 1]
+  import Guard.GrpcServers.Utils, only: [observe_and_log: 3]
 
   alias Guard.Store.ServiceAccount
   alias Guard.Api.Organization
@@ -266,25 +267,4 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
   end
 
   defp grpc_timestamp(_), do: nil
-
-  defp observe_and_log(name, request, f) do
-    Watchman.benchmark(name, fn ->
-      try do
-        Logger.debug(fn -> "Service #{name} - request: #{inspect(request)} - Started" end)
-        result = f.()
-        Logger.debug(fn -> "Service #{name} - request: #{inspect(request)} - Finished" end)
-
-        Watchman.increment({name, ["OK"]})
-        result
-      rescue
-        e ->
-          Logger.error(
-            "Service #{name} - request: #{inspect(request)} - Exited with an error: #{inspect(e)}"
-          )
-
-          Watchman.increment({name, ["ERROR"]})
-          reraise e, __STACKTRACE__
-      end
-    end)
-  end
 end
