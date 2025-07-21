@@ -12,7 +12,7 @@ defmodule Guard.Store.ServiceAccount do
   import Guard.Utils, only: [valid_uuid?: 1]
 
   alias Guard.FrontRepo
-  alias Guard.FrontRepo.{User, ServiceAccount, Organization}
+  alias Guard.FrontRepo.{User, ServiceAccount}
   alias Guard.AuthenticationToken
   alias Ecto.Changeset
 
@@ -119,7 +119,7 @@ defmodule Guard.Store.ServiceAccount do
   def update(service_account_id, params) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
       FrontRepo.transaction(fn ->
-        with {:ok, current_data} <- find(service_account_id),
+        with {:ok, _current_data} <- find(service_account_id),
              {:ok, updated_user} <- update_user_record(service_account_id, params),
              {:ok, updated_service_account} <-
                update_service_account_record(service_account_id, params) do
@@ -150,7 +150,7 @@ defmodule Guard.Store.ServiceAccount do
   def delete(service_account_id) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
       case FrontRepo.transaction(fn ->
-             with {:ok, current_data} <- find(service_account_id),
+             with {:ok, _current_data} <- find(service_account_id),
                   {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
                :deleted
              else
@@ -187,7 +187,7 @@ defmodule Guard.Store.ServiceAccount do
   def regenerate_token(service_account_id) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
       FrontRepo.transaction(fn ->
-        with {:ok, current_data} <- find(service_account_id),
+        with {:ok, _current_data} <- find(service_account_id),
              {:ok, {plain_token, hashed_token}} <- generate_api_token(),
              {:ok, _updated_user} <- update_user_token(service_account_id, hashed_token) do
           plain_token

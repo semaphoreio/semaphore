@@ -9,7 +9,6 @@ defmodule Guard.ServiceAccount.Actions do
 
   require Logger
 
-  alias Guard.Repo
   alias Guard.FrontRepo
   alias Guard.Store.ServiceAccount
 
@@ -19,8 +18,6 @@ defmodule Guard.ServiceAccount.Actions do
           description: String.t(),
           creator_id: String.t()
         }
-
-  @exchange_name "user_exchange"
 
   @doc """
   Create a new service account.
@@ -38,7 +35,8 @@ defmodule Guard.ServiceAccount.Actions do
   @spec create(service_account_params()) ::
           {:ok, %{service_account: map(), api_token: String.t()}} | {:error, atom() | list()}
   def create(
-        %{org_id: org_id, name: name, description: description, creator_id: creator_id} = params
+        %{org_id: _org_id, name: _name, description: _description, creator_id: _creator_id} =
+          params
       ) do
     case _create(params) do
       {:ok, {service_account, api_token}} ->
@@ -127,7 +125,7 @@ defmodule Guard.ServiceAccount.Actions do
     # Use nested transactions because FrontRepo and Repo are different databases
     FrontRepo.transaction(fn ->
       with {:ok, result} <- ServiceAccount.create(params),
-           {:ok, rbac_user} <- create_rbac_user_in_transaction(result.service_account) do
+           {:ok, _rbac_user} <- create_rbac_user_in_transaction(result.service_account) do
         # Return the service account data and API token
         {result.service_account, result.api_token}
       else
@@ -139,24 +137,19 @@ defmodule Guard.ServiceAccount.Actions do
 
   defp create_rbac_user_in_transaction(service_account) do
     # RBAC operations use Guard.Repo (different database from FrontRepo)
-    case Repo.transaction(fn ->
-           case Guard.Store.RbacUser.create(
-                  service_account.id,
-                  service_account.email,
-                  service_account.name
-                ) do
-             :ok ->
-               case Guard.Store.RbacUser.fetch(service_account.id) do
-                 nil -> Repo.rollback(:rbac_user_not_found)
-                 rbac_user -> rbac_user
-               end
+    case Guard.Store.RbacUser.create(
+           service_account.id,
+           service_account.email,
+           service_account.name
+         ) do
+      :ok ->
+        case Guard.Store.RbacUser.fetch(service_account.id) do
+          nil -> {:error, :rbac_user_not_found}
+          rbac_user -> {:ok, rbac_user}
+        end
 
-             :error ->
-               Repo.rollback(:rbac_user_creation_failed)
-           end
-         end) do
-      {:ok, rbac_user} -> {:ok, rbac_user}
-      {:error, error} -> {:error, error}
+      :error ->
+        {:error, :rbac_user_creation_failed}
     end
   end
 end
