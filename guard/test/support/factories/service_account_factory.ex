@@ -105,7 +105,7 @@ defmodule Support.Factories.ServiceAccountFactory do
   defp get_description(nil), do: ""
   defp get_description(description), do: description
 
-  defp generate_synthetic_email(name, org_id) do
+  defp generate_synthetic_email(name, _org_id) do
     sanitized_name = String.downcase(name) |> String.replace(~r/[^a-z0-9\-]/, "-")
     "#{sanitized_name}@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
   end
