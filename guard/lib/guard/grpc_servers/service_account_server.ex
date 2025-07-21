@@ -3,17 +3,13 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
 
   require Logger
 
-  import Guard.Utils, only: [grpc_error!: 2, valid_uuid?: 1, validate_uuid!: 1]
+  import Guard.Utils, only: [grpc_error!: 2, validate_uuid!: 1]
   import Guard.GrpcServers.Utils, only: [observe_and_log: 3]
 
   alias Guard.Store.ServiceAccount
   alias Guard.Api.Organization
   alias Google.Protobuf.Timestamp
   alias InternalApi.ServiceAccount, as: ServiceAccountPB
-
-  @user_exchange "user_exchange"
-  @updated_routing_key "updated"
-  @deleted_routing_key "deleted"
 
   @spec create(ServiceAccountPB.CreateRequest.t(), GRPC.Server.Stream.t()) ::
           ServiceAccountPB.CreateResponse.t()
