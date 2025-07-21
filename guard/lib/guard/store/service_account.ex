@@ -150,16 +150,17 @@ defmodule Guard.Store.ServiceAccount do
   def delete(service_account_id) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
       case FrontRepo.transaction(fn ->
-        with {:ok, current_data} <- find(service_account_id),
-             {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
-          :deleted
-        else
-          {:error, :not_found} ->
-            FrontRepo.rollback(:not_found)
-          {:error, _reason} ->
-            FrontRepo.rollback(:internal_error)
-        end
-      end) do
+             with {:ok, current_data} <- find(service_account_id),
+                  {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
+               :deleted
+             else
+               {:error, :not_found} ->
+                 FrontRepo.rollback(:not_found)
+
+               {:error, _reason} ->
+                 FrontRepo.rollback(:internal_error)
+             end
+           end) do
         {:ok, :deleted} -> {:ok, :deleted}
         {:error, reason} -> {:error, reason}
       end
