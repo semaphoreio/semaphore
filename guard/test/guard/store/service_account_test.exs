@@ -146,7 +146,11 @@ defmodule Guard.Store.ServiceAccountTest do
         assert result.service_account.org_id == params.org_id
         assert result.service_account.creator_id == params.creator_id
         assert result.service_account.deactivated == false
-        assert String.contains?(result.service_account.email, "@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}")
+
+        assert String.contains?(
+                 result.service_account.email,
+                 "@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+               )
       end
     end
 
@@ -156,7 +160,11 @@ defmodule Guard.Store.ServiceAccountTest do
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
-        params = ServiceAccountFactory.build_params_with_creator(name: "test-sa", org_id: Ecto.UUID.generate())
+        params =
+          ServiceAccountFactory.build_params_with_creator(
+            name: "test-sa",
+            org_id: Ecto.UUID.generate()
+          )
 
         {:ok, result} = ServiceAccount.create(params)
 
@@ -181,7 +189,8 @@ defmodule Guard.Store.ServiceAccountTest do
         {:ok, result} = ServiceAccount.create(params)
 
         # Should sanitize both name and org username
-        assert result.service_account.email == "my-service-account-@sa.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
+        assert result.service_account.email ==
+                 "my-service-account-@sa.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
       end
     end
 
@@ -196,7 +205,10 @@ defmodule Guard.Store.ServiceAccountTest do
         {:ok, result} = ServiceAccount.create(params)
 
         # Should use fallback email
-        assert String.contains?(result.service_account.email, "@sa.unknown.#{Application.fetch_env!(:guard, :base_domain)}")
+        assert String.contains?(
+                 result.service_account.email,
+                 "@sa.unknown.#{Application.fetch_env!(:guard, :base_domain)}"
+               )
       end
     end
 
@@ -249,7 +261,11 @@ defmodule Guard.Store.ServiceAccountTest do
         {:ok, updated_sa} = ServiceAccount.update(sa.id, update_params)
 
         assert updated_sa.user.name == "New Name"
-        assert String.contains?(updated_sa.user.email, "new-name@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}")
+
+        assert String.contains?(
+                 updated_sa.user.email,
+                 "new-name@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+               )
       end
     end
 
