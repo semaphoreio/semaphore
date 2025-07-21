@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 9.6.24
--- Dumped by pg_dump version 13.7 (Debian 13.7-0+deb11u1)
+-- Dumped by pg_dump version 15.13 (Debian 15.13-0+deb12u1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15,6 +15,13 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
+
+-- *not* creating schema, since initdb creates it
+
 
 --
 -- Name: uuid-ossp; Type: EXTENSION; Schema: -; Owner: -
@@ -33,37 +40,18 @@ COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UU
 SET default_tablespace = '';
 
 --
--- Name: branch_metrics; Type: TABLE; Schema: public; Owner: -
+-- Name: flaky_tests_filters; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.branch_metrics (
-    id bigint NOT NULL,
+CREATE TABLE public.flaky_tests_filters (
+    id uuid NOT NULL,
+    name character varying NOT NULL,
+    value character varying NOT NULL,
     project_id uuid NOT NULL,
-    branch_id uuid NOT NULL,
-    pipeline_yml_file character varying NOT NULL,
-    pipeline_name character varying NOT NULL,
-    latest_pipeline_runs jsonb,
-    weekly_metrics jsonb
+    organization_id uuid NOT NULL,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: branch_metrics_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.branch_metrics_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: branch_metrics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.branch_metrics_id_seq OWNED BY public.branch_metrics.id;
 
 
 --
@@ -71,7 +59,6 @@ ALTER SEQUENCE public.branch_metrics_id_seq OWNED BY public.branch_metrics.id;
 --
 
 CREATE TABLE public.job_summaries (
-    id bigint NOT NULL,
     project_id uuid NOT NULL,
     pipeline_id uuid NOT NULL,
     job_id uuid NOT NULL,
@@ -88,102 +75,54 @@ CREATE TABLE public.job_summaries (
 
 
 --
--- Name: job_summaries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: metrics_dashboard_items; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.job_summaries_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: job_summaries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.job_summaries_id_seq OWNED BY public.job_summaries.id;
-
-
---
--- Name: pipeline_event_buffer; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.pipeline_event_buffer (
-    id bigint NOT NULL,
-    pipeline_id uuid NOT NULL,
-    workflow_id uuid NOT NULL,
-    project_id uuid NOT NULL,
-    branch_id uuid NOT NULL,
+CREATE TABLE public.metrics_dashboard_items (
+    id uuid NOT NULL,
+    metrics_dashboard_id uuid NOT NULL,
+    name character varying NOT NULL,
+    branch_name character varying NOT NULL,
     pipeline_file_name character varying NOT NULL,
-    pipeline_name character varying NOT NULL,
-    running_at timestamp without time zone,
-    done_at timestamp without time zone NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
-    result character varying NOT NULL,
-    reason character varying NOT NULL,
-    state character varying NOT NULL
+    settings jsonb DEFAULT '{}'::jsonb NOT NULL,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL,
+    notes text DEFAULT ''::text NOT NULL
 );
 
 
 --
--- Name: pipeline_event_buffer_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: metrics_dashboards; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.pipeline_event_buffer_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: pipeline_event_buffer_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.pipeline_event_buffer_id_seq OWNED BY public.pipeline_event_buffer.id;
-
-
---
--- Name: pipeline_event_results; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.pipeline_event_results (
-    id bigint NOT NULL,
-    pipeline_id uuid NOT NULL,
-    workflow_id uuid NOT NULL,
+CREATE TABLE public.metrics_dashboards (
+    id uuid NOT NULL,
+    name character varying NOT NULL,
     project_id uuid NOT NULL,
-    branch_id uuid NOT NULL,
-    pipeline_file_name character varying NOT NULL,
-    pipeline_name character varying NOT NULL,
-    running_at timestamp without time zone,
-    done_at timestamp without time zone NOT NULL,
-    "timestamp" timestamp without time zone NOT NULL,
-    result character varying NOT NULL,
-    reason character varying NOT NULL,
-    state character varying NOT NULL
+    organization_id uuid NOT NULL,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
 );
 
 
 --
--- Name: pipeline_event_results_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: pipeline_runs; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.pipeline_event_results_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: pipeline_event_results_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.pipeline_event_results_id_seq OWNED BY public.pipeline_event_results.id;
+CREATE TABLE public.pipeline_runs (
+    pipeline_id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    branch_id uuid NOT NULL,
+    branch_name character varying NOT NULL,
+    pipeline_file_name character varying NOT NULL,
+    result character varying NOT NULL,
+    reason character varying NOT NULL,
+    queueing_at timestamp without time zone,
+    running_at timestamp without time zone,
+    done_at timestamp without time zone,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone
+);
 
 
 --
@@ -191,7 +130,6 @@ ALTER SEQUENCE public.pipeline_event_results_id_seq OWNED BY public.pipeline_eve
 --
 
 CREATE TABLE public.pipeline_summaries (
-    id bigint NOT NULL,
     project_id uuid NOT NULL,
     pipeline_id uuid NOT NULL,
     total integer NOT NULL,
@@ -207,22 +145,66 @@ CREATE TABLE public.pipeline_summaries (
 
 
 --
--- Name: pipeline_summaries_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: project_last_successful_runs; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE public.pipeline_summaries_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
+CREATE TABLE public.project_last_successful_runs (
+    id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    pipeline_file_name character varying NOT NULL,
+    branch_name character varying NOT NULL,
+    last_successful_run_at timestamp without time zone NOT NULL,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
 
 
 --
--- Name: pipeline_summaries_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: project_metrics; Type: TABLE; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE public.pipeline_summaries_id_seq OWNED BY public.pipeline_summaries.id;
+CREATE TABLE public.project_metrics (
+    project_id uuid NOT NULL,
+    pipeline_file_name character varying NOT NULL,
+    collected_at date NOT NULL,
+    organization_id uuid NOT NULL,
+    branch_name character varying NOT NULL,
+    metrics jsonb DEFAULT '{}'::jsonb NOT NULL
+);
+
+
+--
+-- Name: project_mttr; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.project_mttr (
+    id uuid NOT NULL,
+    project_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    pipeline_file_name character varying NOT NULL,
+    branch_name character varying NOT NULL,
+    failed_ppl_id uuid NOT NULL,
+    failed_at timestamp without time zone NOT NULL,
+    passed_ppl_id uuid,
+    passed_at timestamp without time zone,
+    inserted_at timestamp without time zone DEFAULT now() NOT NULL,
+    updated_at timestamp without time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: project_settings; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.project_settings (
+    project_id uuid NOT NULL,
+    organization_id uuid,
+    cd_branch_name character varying NOT NULL,
+    cd_pipeline_file_name character varying NOT NULL,
+    ci_branch_name character varying DEFAULT ''::character varying NOT NULL,
+    ci_pipeline_file_name character varying DEFAULT ''::character varying NOT NULL
+);
 
 
 --
@@ -236,91 +218,11 @@ CREATE TABLE public.schema_migrations (
 
 
 --
--- Name: weekly_pipeline_metrics; Type: TABLE; Schema: public; Owner: -
+-- Name: flaky_tests_filters flaky_tests_filters_pk; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-CREATE TABLE public.weekly_pipeline_metrics (
-    id bigint NOT NULL,
-    project_id uuid NOT NULL,
-    branch_id uuid NOT NULL,
-    pipeline_file_name character varying NOT NULL,
-    pipeline_name character varying NOT NULL,
-    week_of_year integer NOT NULL,
-    year integer NOT NULL,
-    average bigint NOT NULL,
-    pass_rate numeric(12,2) NOT NULL,
-    created_at timestamp without time zone DEFAULT now() NOT NULL,
-    processed_at timestamp without time zone
-);
-
-
---
--- Name: weekly_pipeline_metrics_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.weekly_pipeline_metrics_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: weekly_pipeline_metrics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.weekly_pipeline_metrics_id_seq OWNED BY public.weekly_pipeline_metrics.id;
-
-
---
--- Name: branch_metrics id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.branch_metrics ALTER COLUMN id SET DEFAULT nextval('public.branch_metrics_id_seq'::regclass);
-
-
---
--- Name: job_summaries id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.job_summaries ALTER COLUMN id SET DEFAULT nextval('public.job_summaries_id_seq'::regclass);
-
-
---
--- Name: pipeline_event_buffer id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pipeline_event_buffer ALTER COLUMN id SET DEFAULT nextval('public.pipeline_event_buffer_id_seq'::regclass);
-
-
---
--- Name: pipeline_event_results id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pipeline_event_results ALTER COLUMN id SET DEFAULT nextval('public.pipeline_event_results_id_seq'::regclass);
-
-
---
--- Name: pipeline_summaries id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.pipeline_summaries ALTER COLUMN id SET DEFAULT nextval('public.pipeline_summaries_id_seq'::regclass);
-
-
---
--- Name: weekly_pipeline_metrics id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.weekly_pipeline_metrics ALTER COLUMN id SET DEFAULT nextval('public.weekly_pipeline_metrics_id_seq'::regclass);
-
-
---
--- Name: branch_metrics branch_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.branch_metrics
-    ADD CONSTRAINT branch_metrics_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.flaky_tests_filters
+    ADD CONSTRAINT flaky_tests_filters_pk PRIMARY KEY (id);
 
 
 --
@@ -328,23 +230,31 @@ ALTER TABLE ONLY public.branch_metrics
 --
 
 ALTER TABLE ONLY public.job_summaries
-    ADD CONSTRAINT job_summaries_pk PRIMARY KEY (id);
+    ADD CONSTRAINT job_summaries_pk PRIMARY KEY (job_id);
 
 
 --
--- Name: pipeline_event_buffer pipeline_event_buffer_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: metrics_dashboard_items metrics_dashboard_items_pk; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pipeline_event_buffer
-    ADD CONSTRAINT pipeline_event_buffer_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.metrics_dashboard_items
+    ADD CONSTRAINT metrics_dashboard_items_pk PRIMARY KEY (id);
 
 
 --
--- Name: pipeline_event_results pipeline_event_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: metrics_dashboards metrics_dashboards_pk; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.pipeline_event_results
-    ADD CONSTRAINT pipeline_event_results_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.metrics_dashboards
+    ADD CONSTRAINT metrics_dashboards_pk PRIMARY KEY (id);
+
+
+--
+-- Name: pipeline_runs pipeline_runs_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.pipeline_runs
+    ADD CONSTRAINT pipeline_runs_pk PRIMARY KEY (pipeline_id);
 
 
 --
@@ -352,7 +262,39 @@ ALTER TABLE ONLY public.pipeline_event_results
 --
 
 ALTER TABLE ONLY public.pipeline_summaries
-    ADD CONSTRAINT pipeline_summaries_pk PRIMARY KEY (id);
+    ADD CONSTRAINT pipeline_summaries_pk PRIMARY KEY (pipeline_id);
+
+
+--
+-- Name: project_last_successful_runs plsr_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_last_successful_runs
+    ADD CONSTRAINT plsr_pk PRIMARY KEY (id);
+
+
+--
+-- Name: project_metrics project_metrics_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_metrics
+    ADD CONSTRAINT project_metrics_pk PRIMARY KEY (project_id, pipeline_file_name, branch_name, collected_at);
+
+
+--
+-- Name: project_mttr project_mttr_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_mttr
+    ADD CONSTRAINT project_mttr_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: project_settings ps_pk; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.project_settings
+    ADD CONSTRAINT ps_pk PRIMARY KEY (project_id);
 
 
 --
@@ -364,88 +306,193 @@ ALTER TABLE ONLY public.schema_migrations
 
 
 --
--- Name: weekly_pipeline_metrics weekly_pipeline_metrics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: flaky_tests_filters_project_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.weekly_pipeline_metrics
-    ADD CONSTRAINT weekly_pipeline_metrics_pkey PRIMARY KEY (id);
+CREATE INDEX flaky_tests_filters_project_id_index ON public.flaky_tests_filters USING btree (project_id);
 
 
 --
--- Name: branch_metrics_unique_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: flaky_tests_filters_project_id_name_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX branch_metrics_unique_idx ON public.branch_metrics USING btree (project_id, branch_id, pipeline_yml_file);
+CREATE UNIQUE INDEX flaky_tests_filters_project_id_name_uindex ON public.flaky_tests_filters USING btree (project_id, name);
+
+
+--
+-- Name: idx_project_metrics_optimization; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_project_metrics_optimization ON public.project_metrics USING btree (branch_name, collected_at, project_id);
 
 
 --
 -- Name: job_summaries_id_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX job_summaries_id_uindex ON public.job_summaries USING btree (id);
+CREATE UNIQUE INDEX job_summaries_id_uindex ON public.job_summaries USING btree (job_id);
 
 
 --
 -- Name: job_summaries_project_id_pipeline_id_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX job_summaries_project_id_pipeline_id_uindex ON public.job_summaries USING btree (project_id, pipeline_id, job_id);
+CREATE INDEX job_summaries_project_id_pipeline_id_uindex ON public.job_summaries USING btree (project_id, pipeline_id, job_id);
 
 
 --
--- Name: per_project_id_branch_id_pipeline_file_name_buffer_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: mdi_metrics_dashboard_id_index; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX per_project_id_branch_id_pipeline_file_name_buffer_idx ON public.pipeline_event_buffer USING btree (project_id, branch_id, pipeline_file_name);
-
-
---
--- Name: per_project_id_branch_id_pipeline_file_name_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX per_project_id_branch_id_pipeline_file_name_idx ON public.pipeline_event_results USING btree (project_id, branch_id, pipeline_file_name);
+CREATE INDEX mdi_metrics_dashboard_id_index ON public.metrics_dashboard_items USING btree (metrics_dashboard_id);
 
 
 --
--- Name: pipeline_event_buffer_pipeline_id_unique_index; Type: INDEX; Schema: public; Owner: -
+-- Name: metrics_dashboards_name_project_id_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX pipeline_event_buffer_pipeline_id_unique_index ON public.pipeline_event_buffer USING btree (pipeline_id);
+CREATE UNIQUE INDEX metrics_dashboards_name_project_id_uindex ON public.metrics_dashboards USING btree (name, project_id);
 
 
 --
--- Name: pipeline_event_results_pipeline_id_unique_index; Type: INDEX; Schema: public; Owner: -
+-- Name: mttr_branch_name_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX pipeline_event_results_pipeline_id_unique_index ON public.pipeline_event_results USING btree (pipeline_id);
+CREATE INDEX mttr_branch_name_idx ON public.project_mttr USING btree (branch_name);
+
+
+--
+-- Name: mttr_passed_ppl_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX mttr_passed_ppl_id_idx ON public.project_mttr USING btree (passed_ppl_id);
+
+
+--
+-- Name: mttr_pipeline_file_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX mttr_pipeline_file_name_idx ON public.project_mttr USING btree (pipeline_file_name);
+
+
+--
+-- Name: mttr_project_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX mttr_project_id_idx ON public.project_mttr USING btree (project_id);
+
+
+--
+-- Name: organization_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX organization_id_idx ON public.project_last_successful_runs USING btree (organization_id);
+
+
+--
+-- Name: pipeline_file_name_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_file_name_idx ON public.project_last_successful_runs USING btree (pipeline_file_name);
+
+
+--
+-- Name: pipeline_run_bid_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_bid_idx ON public.pipeline_runs USING btree (branch_id);
+
+
+--
+-- Name: pipeline_run_bname_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_bname_idx ON public.pipeline_runs USING btree (branch_name);
+
+
+--
+-- Name: pipeline_run_pfname_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_pfname_idx ON public.pipeline_runs USING btree (pipeline_file_name);
+
+
+--
+-- Name: pipeline_run_proj_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_proj_idx ON public.pipeline_runs USING btree (project_id);
+
+
+--
+-- Name: pipeline_run_reason_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_reason_idx ON public.pipeline_runs USING btree (reason);
+
+
+--
+-- Name: pipeline_run_result_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX pipeline_run_result_idx ON public.pipeline_runs USING btree (result);
+
+
+--
+-- Name: pipeline_runs_pipeline_id_uindex; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX pipeline_runs_pipeline_id_uindex ON public.pipeline_runs USING btree (pipeline_id);
 
 
 --
 -- Name: pipeline_summaries_id_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX pipeline_summaries_id_uindex ON public.pipeline_summaries USING btree (id);
+CREATE UNIQUE INDEX pipeline_summaries_id_uindex ON public.pipeline_summaries USING btree (pipeline_id);
 
 
 --
 -- Name: pipeline_summaries_project_id_pipeline_id_uindex; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX pipeline_summaries_project_id_pipeline_id_uindex ON public.pipeline_summaries USING btree (project_id, pipeline_id);
+CREATE INDEX pipeline_summaries_project_id_pipeline_id_uindex ON public.pipeline_summaries USING btree (project_id, pipeline_id);
 
 
 --
--- Name: pm_project_id_branch_id_pipeline_file_name_kind_unique_idx; Type: INDEX; Schema: public; Owner: -
+-- Name: plsr_unq_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX pm_project_id_branch_id_pipeline_file_name_kind_unique_idx ON public.weekly_pipeline_metrics USING btree (project_id, branch_id, pipeline_file_name);
+CREATE UNIQUE INDEX plsr_unq_idx ON public.project_last_successful_runs USING btree (project_id, pipeline_file_name, branch_name);
 
 
 --
--- Name: weekly_pipeline_metrics_uindex; Type: INDEX; Schema: public; Owner: -
+-- Name: project_id_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX weekly_pipeline_metrics_uindex ON public.weekly_pipeline_metrics USING btree (project_id, branch_id, pipeline_file_name, year, week_of_year);
+CREATE INDEX project_id_idx ON public.project_last_successful_runs USING btree (project_id);
+
+
+--
+-- Name: project_last_runs_project_id_last_run_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX project_last_runs_project_id_last_run_idx ON public.project_last_successful_runs USING btree (project_id, last_successful_run_at DESC);
+
+
+--
+-- Name: project_mttr_unq_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX project_mttr_unq_idx ON public.project_mttr USING btree (project_id, pipeline_file_name, branch_name, failed_ppl_id);
+
+
+--
+-- Name: metrics_dashboard_items metrics_dashboard_items_metrics_dashboard_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.metrics_dashboard_items
+    ADD CONSTRAINT metrics_dashboard_items_metrics_dashboard_id_fkey FOREIGN KEY (metrics_dashboard_id) REFERENCES public.metrics_dashboards(id) ON DELETE CASCADE;
 
 
 --
@@ -457,7 +504,7 @@ CREATE UNIQUE INDEX weekly_pipeline_metrics_uindex ON public.weekly_pipeline_met
 --
 
 -- Dumped from database version 9.6.24
--- Dumped by pg_dump version 13.7 (Debian 13.7-0+deb11u1)
+-- Dumped by pg_dump version 15.13 (Debian 15.13-0+deb12u1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -475,7 +522,7 @@ SET row_security = off;
 --
 
 COPY public.schema_migrations (version, dirty) FROM stdin;
-7	f
+25	f
 \.
 
 

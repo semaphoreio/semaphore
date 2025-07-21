@@ -23,6 +23,10 @@ module RepoHost::Github::Responses::Payload
     get_payload("fixtures/github_payloads/post_receive_hook_pull_request_closed.json")
   end
 
+  def post_receive_draft_hook_pull_request
+    get_payload("fixtures/github_payloads/post_receive_hook_pull_request_draft.json")
+  end
+
   def post_receive_hook_pull_request
     get_payload("fixtures/github_payloads/post_receive_hook_pull_request.json")
   end
