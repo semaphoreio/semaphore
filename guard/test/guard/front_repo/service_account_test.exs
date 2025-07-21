@@ -64,7 +64,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
 
     test "requires creator_id field" do
       user = create_test_user()
-      
+
       attrs = %{
         id: user.id,
         description: "Test description"
@@ -183,7 +183,6 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       {:error, changeset} = FrontRepo.insert(changeset2)
       assert {"has already been taken", _} = changeset.errors[:id]
     end
-
   end
 
   describe "update_changeset/2" do
@@ -339,7 +338,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
   defp create_test_service_account(user) do
     # Create a creator user to satisfy foreign key constraint
     creator_user = create_test_user()
-    
+
     attrs = %{
       id: user.id,
       description: "Test service account description",
