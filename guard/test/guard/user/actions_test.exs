@@ -148,7 +148,7 @@ defmodule Guard.User.ActionsTest do
     test "should handle service account user in update operations" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         # Create a service account using the factory
-        {:ok, %{service_account: service_account, user: service_account_user}} =
+        {:ok, %{service_account: _service_account, user: service_account_user}} =
           Support.Factories.ServiceAccountFactory.insert(name: "Original SA Name")
 
         # Try to update the service account user via User.Actions
@@ -168,12 +168,9 @@ defmodule Guard.User.ActionsTest do
     test "should prevent email changes for service account users" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         # Create a service account
-        {:ok, %{service_account: service_account, user: service_account_user}} =
+        {:ok, %{service_account: _service_account, user: service_account_user}} =
           Support.Factories.ServiceAccountFactory.insert()
 
-        original_email = service_account_user.email
-
-        # Try to change the email of a service account user
         update_params = %{
           email: "new.email@example.com"
         }
@@ -190,7 +187,7 @@ defmodule Guard.User.ActionsTest do
     test "should maintain service account properties during update" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         # Create a service account
-        {:ok, %{service_account: service_account, user: service_account_user}} =
+        {:ok, %{service_account: _service_account, user: service_account_user}} =
           Support.Factories.ServiceAccountFactory.insert()
 
         # Update with various parameters
@@ -211,7 +208,7 @@ defmodule Guard.User.ActionsTest do
     test "should not create repository providers for service account users" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         # Create a service account
-        {:ok, %{service_account: service_account, user: service_account_user}} =
+        {:ok, %{service_account: _service_account, user: service_account_user}} =
           Support.Factories.ServiceAccountFactory.insert()
 
         # Try to add repository providers (should not work or should be ignored)
