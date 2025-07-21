@@ -19,7 +19,7 @@ defmodule Support.Factories.ServiceAccountFactory do
     org_id = get_org_id(options[:org_id])
     name = get_name(options[:name])
     description = get_description(options[:description])
-    creator_id = get_creator_id(options[:creator_id])
+    creator_id = get_creator_id_with_user(options[:creator_id])
 
     # Create the user record first
     user_params = %{
@@ -40,13 +40,16 @@ defmodule Support.Factories.ServiceAccountFactory do
     service_account_params = %{
       id: user.id,
       description: description,
-      creator_id: creator_id
+      creator_id: creator_id,
+      user: user
     }
 
     {:ok, service_account} =
       ServiceAccount.changeset(%ServiceAccount{}, service_account_params) |> FrontRepo.insert()
 
-    {:ok, %{user: user, service_account: service_account}}
+    service_account = FrontRepo.preload(service_account, :user)
+
+    {:ok, %{service_account: service_account, user: user}}
   end
 
   @doc """
@@ -84,6 +87,14 @@ defmodule Support.Factories.ServiceAccountFactory do
 
   defp get_creator_id(nil), do: UUID.generate()
   defp get_creator_id(creator_id), do: creator_id
+
+  defp get_creator_id_with_user(nil) do
+    # Create a real user to use as creator to satisfy foreign key constraint
+    {:ok, creator_user} = Support.Factories.FrontUser.insert()
+    creator_user.id
+  end
+
+  defp get_creator_id_with_user(creator_id), do: creator_id
 
   defp get_name(nil) do
     "test-service-account-" <> for(_ <- 1..8, into: "", do: <<Enum.random('abcdefghijk')>>)

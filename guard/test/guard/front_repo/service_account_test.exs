@@ -9,15 +9,15 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id,
+        id: user.id,
         description: "Test service account description",
-        creator_id: Ecto.UUID.generate()
+        creator_id: user.id
       }
 
       changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
 
       assert changeset.valid?
-      assert changeset.changes.user_id == user.id
+      assert changeset.changes.id == user.id
       assert changeset.changes.description == "Test service account description"
       assert changeset.changes.creator_id == attrs.creator_id
     end
@@ -26,21 +26,8 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id
-      }
-
-      changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
-
-      assert changeset.valid?
-      assert changeset.changes.user_id == user.id
-    end
-
-    test "sets id to match user_id" do
-      user = create_test_user()
-
-      attrs = %{
-        user_id: user.id,
-        description: "Test description"
+        id: user.id,
+        creator_id: user.id
       }
 
       changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
@@ -49,7 +36,22 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert changeset.changes.id == user.id
     end
 
-    test "requires user_id field" do
+    test "sets id to match user id" do
+      user = create_test_user()
+
+      attrs = %{
+        id: user.id,
+        description: "Test description",
+        creator_id: user.id
+      }
+
+      changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
+
+      assert changeset.valid?
+      assert changeset.changes.id == user.id
+    end
+
+    test "requires id field" do
       attrs = %{
         description: "Test description"
       }
@@ -57,14 +59,29 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
 
       refute changeset.valid?
-      assert {"can't be blank", _} = changeset.errors[:user_id]
+      assert {"can't be blank", _} = changeset.errors[:id]
+    end
+
+    test "requires creator_id field" do
+      user = create_test_user()
+      
+      attrs = %{
+        id: user.id,
+        description: "Test description"
+      }
+
+      changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
+
+      refute changeset.valid?
+      assert {"can't be blank", _} = changeset.errors[:creator_id]
     end
 
     test "validates description length" do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: user.id,
         # Exceeds 500 character limit
         description: String.duplicate("a", 501)
       }
@@ -79,7 +96,8 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: user.id,
         # Exactly 500 characters
         description: String.duplicate("a", 500)
       }
@@ -93,7 +111,8 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: user.id,
         description: ""
       }
 
@@ -106,7 +125,8 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       user = create_test_user()
 
       attrs = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: user.id,
         description: nil
       }
 
@@ -115,11 +135,13 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert changeset.valid?
     end
 
-    test "enforces foreign key constraint on user_id" do
+    test "enforces foreign key constraint on id" do
       non_existent_user_id = Ecto.UUID.generate()
+      creator_user = create_test_user()
 
       attrs = %{
-        user_id: non_existent_user_id,
+        id: non_existent_user_id,
+        creator_id: creator_user.id,
         description: "Test description"
       }
 
@@ -129,24 +151,27 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert changeset.valid?
 
       {:error, changeset} = FrontRepo.insert(changeset)
-      assert {"does not exist", _} = changeset.errors[:user_id]
+      assert {"does not exist", _} = changeset.errors[:id]
     end
 
-    test "enforces unique constraint on user_id" do
+    test "enforces unique constraint on id" do
       user = create_test_user()
+      creator_user = create_test_user()
 
       # Create first service account
       attrs1 = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: creator_user.id,
         description: "First service account"
       }
 
       changeset1 = ServiceAccount.changeset(%ServiceAccount{}, attrs1)
       {:ok, _} = FrontRepo.insert(changeset1)
 
-      # Try to create second service account with same user_id
+      # Try to create second service account with same id
       attrs2 = %{
-        user_id: user.id,
+        id: user.id,
+        creator_id: creator_user.id,
         description: "Second service account"
       }
 
@@ -156,7 +181,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert changeset2.valid?
 
       {:error, changeset} = FrontRepo.insert(changeset2)
-      assert {"has already been taken", _} = changeset.errors[:user_id]
+      assert {"has already been taken", _} = changeset.errors[:id]
     end
 
   end
@@ -204,31 +229,13 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       assert changeset.valid?
     end
 
-    test "does not allow updating user_id" do
+    test "does not allow updating id" do
       user = create_test_user()
       service_account = create_test_service_account(user)
       another_user = create_test_user()
 
       attrs = %{
-        user_id: another_user.id,
-        description: "Updated description"
-      }
-
-      changeset = ServiceAccount.update_changeset(service_account, attrs)
-
-      # user_id should not be in the changeset changes
-      assert changeset.valid?
-      refute Map.has_key?(changeset.changes, :user_id)
-      assert changeset.changes.description == "Updated description"
-    end
-
-    test "does not allow updating id" do
-      user = create_test_user()
-      service_account = create_test_service_account(user)
-      new_id = Ecto.UUID.generate()
-
-      attrs = %{
-        id: new_id,
+        id: another_user.id,
         description: "Updated description"
       }
 
@@ -237,6 +244,24 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       # id should not be in the changeset changes
       assert changeset.valid?
       refute Map.has_key?(changeset.changes, :id)
+      assert changeset.changes.description == "Updated description"
+    end
+
+    test "does not allow updating creator_id" do
+      user = create_test_user()
+      service_account = create_test_service_account(user)
+      new_creator_id = Ecto.UUID.generate()
+
+      attrs = %{
+        creator_id: new_creator_id,
+        description: "Updated description"
+      }
+
+      changeset = ServiceAccount.update_changeset(service_account, attrs)
+
+      # creator_id should not be in the changeset changes
+      assert changeset.valid?
+      refute Map.has_key?(changeset.changes, :creator_id)
       assert changeset.changes.description == "Updated description"
     end
   end
@@ -271,7 +296,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
       service_account = create_test_service_account(user)
 
       assert is_binary(service_account.id)
-      assert is_binary(service_account.user_id)
+      assert is_binary(service_account.creator_id)
       assert is_binary(service_account.description) or is_nil(service_account.description)
     end
 
@@ -280,7 +305,7 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
 
       attrs = %{
         id: user.id,
-        user_id: user.id,
+        creator_id: user.id,
         description: "Test description"
       }
 
@@ -312,10 +337,13 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
   end
 
   defp create_test_service_account(user) do
+    # Create a creator user to satisfy foreign key constraint
+    creator_user = create_test_user()
+    
     attrs = %{
-      user_id: user.id,
+      id: user.id,
       description: "Test service account description",
-      creator_id: Ecto.UUID.generate()
+      creator_id: creator_user.id
     }
 
     changeset = ServiceAccount.changeset(%ServiceAccount{}, attrs)
