@@ -9,7 +9,7 @@ defmodule Guard.FrontRepo.ServiceAccount do
           id: String.t(),
           description: String.t(),
           creator_id: String.t(),
-          user: Guard.FrontRepo.User.t() | nil,
+          user: Guard.FrontRepo.User.t() | nil
         }
 
   schema "service_accounts" do
