@@ -95,17 +95,15 @@ defmodule Guard.Store.ServiceAccount do
           {:ok, %{service_account: map(), api_token: String.t()}}
           | {:error, term()}
   def create(params) do
-    FrontRepo.transaction(fn ->
-      with {:ok, {plain_token, hashed_token}} <- generate_api_token(),
-           {:ok, user} <- create_user_record(params, hashed_token),
-           {:ok, service_account} <- create_service_account_record(user.id, params),
-           service_account_data <- format_service_account_response(service_account, user) do
-        %{service_account: service_account_data, api_token: plain_token}
-      else
-        {:error, reason} ->
-          FrontRepo.rollback(reason)
-      end
-    end)
+    with {:ok, {plain_token, hashed_token}} <- generate_api_token(),
+         {:ok, user} <- create_user_record(params, hashed_token),
+         {:ok, service_account} <- create_service_account_record(user.id, params),
+         service_account_data <- format_service_account_response(service_account, user) do
+      {:ok, %{service_account: service_account_data, api_token: plain_token}}
+    else
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @doc """
