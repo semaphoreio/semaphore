@@ -1365,7 +1365,7 @@ defmodule Guard.GrpcServers.UserServerTest do
   describe "describe service accounts" do
     test "should describe service account successfully", %{grpc_channel: channel} do
       # Create a service account using the factory
-      {:ok, %{service_account: service_account, user: user}} =
+      {:ok, %{service_account: _service_account, user: user}} =
         Support.Factories.ServiceAccountFactory.insert()
 
       request = User.DescribeRequest.new(user_id: user.id)
@@ -1392,7 +1392,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
     test "should describe service account with correct user metadata", %{grpc_channel: channel} do
       # Create service account with specific details
-      {:ok, %{service_account: service_account, user: user}} =
+      {:ok, %{service_account: _service_account, user: user}} =
         Support.Factories.ServiceAccountFactory.insert(
           name: "Test Service Account",
           description: "Test Description"
@@ -1419,7 +1419,7 @@ defmodule Guard.GrpcServers.UserServerTest do
 
     test "should not return repository providers for service accounts", %{grpc_channel: channel} do
       # Service accounts should not have repository providers
-      {:ok, %{service_account: service_account, user: user}} =
+      {:ok, %{service_account: _service_account, user: user}} =
         Support.Factories.ServiceAccountFactory.insert()
 
       request = User.DescribeRequest.new(user_id: user.id)
@@ -1455,7 +1455,7 @@ defmodule Guard.GrpcServers.UserServerTest do
     end
 
     test "should describe service account by email", %{grpc_channel: channel} do
-      {:ok, %{service_account: service_account, user: user}} =
+      {:ok, %{service_account: _service_account, user: user}} =
         Support.Factories.ServiceAccountFactory.insert()
 
       request = User.DescribeByEmailRequest.new(email: user.email)
@@ -1475,7 +1475,7 @@ defmodule Guard.GrpcServers.UserServerTest do
     end
 
     test "should include service accounts in search results", %{grpc_channel: channel} do
-      {:ok, %{service_account: service_account, user: user}} =
+      {:ok, %{service_account: _service_account, user: user}} =
         Support.Factories.ServiceAccountFactory.insert(name: "SearchableServiceAccount")
 
       request =
@@ -1496,10 +1496,10 @@ defmodule Guard.GrpcServers.UserServerTest do
     end
 
     test "should include service accounts in describe_many results", %{grpc_channel: channel} do
-      {:ok, %{service_account: sa1, user: user1}} =
+      {:ok, %{service_account: _sa1, user: user1}} =
         Support.Factories.ServiceAccountFactory.insert(name: "SA1")
 
-      {:ok, %{service_account: sa2, user: user2}} =
+      {:ok, %{service_account: _sa2, user: user2}} =
         Support.Factories.ServiceAccountFactory.insert(name: "SA2")
 
       request = User.DescribeManyRequest.new(user_ids: [user1.id, user2.id])
