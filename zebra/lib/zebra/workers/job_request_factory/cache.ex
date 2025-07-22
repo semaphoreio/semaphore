@@ -25,6 +25,8 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     Watchman.benchmark("external.cachehub.describe", fn ->
       IO.puts("Repo proxy")
       IO.inspect(repo_proxy)
+      IO.puts("is forked pr")
+      IO.inspect(is_forked_pr?(repo_proxy))
       req = Request.new(cache_id: cache_id)
 
       with false <- is_forked_pr?(repo_proxy),
@@ -90,11 +92,18 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     end
   end
 
-  defp is_forked_pr?(%{pr_slug: ""} = _repo), do: false
+  defp is_forked_pr?(%{pr_slug: ""} = _repo) do
+    IO.puts("EMPTY PR SLUG")
+    false
+  end
 
   defp is_forked_pr?(repo) do
     [pr_repo | _rest] = repo.pr_slug |> String.split("/")
     [base_repo | _rest] = repo.repo_slug |> String.split("/")
-    pr_repo == base_repo
+    IO.puts("PRREPO")
+    IO.inspect(pr_repo)
+    IO.puts("BASEREPO")
+    IO.inspect(base_repo)
+    pr_repo != base_repo
   end
 end
