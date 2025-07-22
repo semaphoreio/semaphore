@@ -139,7 +139,8 @@ defmodule Guard.ServiceAccount.Actions do
     case Guard.Store.RbacUser.create(
            service_account.id,
            service_account.email,
-           service_account.name
+           service_account.name,
+           "service_account"
          ) do
       :ok ->
         case Guard.Store.RbacUser.fetch(service_account.id) do
