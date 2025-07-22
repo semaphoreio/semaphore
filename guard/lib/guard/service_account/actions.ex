@@ -122,10 +122,9 @@ defmodule Guard.ServiceAccount.Actions do
   # Private helper functions
 
   defp _create(params) do
-    # Use nested transactions because FrontRepo and Repo are different databases
     FrontRepo.transaction(fn ->
       with {:ok, result} <- ServiceAccount.create(params),
-           {:ok, _rbac_user} <- create_rbac_user_in_transaction(result.service_account) do
+           {:ok, _rbac_user} <- create_rbac_user(result.service_account) do
         # Return the service account data and API token
         {result.service_account, result.api_token}
       else
@@ -135,7 +134,7 @@ defmodule Guard.ServiceAccount.Actions do
     end)
   end
 
-  defp create_rbac_user_in_transaction(service_account) do
+  defp create_rbac_user(service_account) do
     # RBAC operations use Guard.Repo (different database from FrontRepo)
     case Guard.Store.RbacUser.create(
            service_account.id,
