@@ -215,13 +215,14 @@ defmodule Guard.Store.ServiceAccount do
       where: u.creation_source == :service_account,
       select: %{
         id: sa.id,
-        user_id: u.id,
         name: u.name,
         description: sa.description,
         org_id: u.org_id,
         creator_id: sa.creator_id,
         deactivated: u.deactivated,
-        email: u.email
+        email: u.email,
+        created_at: u.created_at,
+        updated_at: u.updated_at
       }
     )
   end
@@ -254,8 +255,6 @@ defmodule Guard.Store.ServiceAccount do
       authentication_token: hashed_token
     }
 
-    require Logger
-    Logger.info("User params: #{inspect(user_params)}")
     changeset = User.changeset(%User{}, user_params)
 
     case FrontRepo.insert(changeset) do
