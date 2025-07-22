@@ -54,11 +54,32 @@ module InternalApi
         #
         rpc :ListRoles, ::InternalApi::RBAC::ListRolesRequest, ::InternalApi::RBAC::ListRolesResponse
         #
+        # Endpoint for describing one specific Role
+        # Operation is synchronous and idempotent.
+        #
+        rpc :DescribeRole, ::InternalApi::RBAC::DescribeRoleRequest, ::InternalApi::RBAC::DescribeRoleResponse
+        #
+        # Endpoint for modifying a Role
+        # Operation is synchronous and idempotent.
+        #
+        rpc :ModifyRole, ::InternalApi::RBAC::ModifyRoleRequest, ::InternalApi::RBAC::ModifyRoleResponse
+        #
+        # Endpoint for deleting a Role
+        # Operation is synchronous and idempotent.
+        #
+        rpc :DestroyRole, ::InternalApi::RBAC::DestroyRoleRequest, ::InternalApi::RBAC::DestroyRoleResponse
+        #
         # Endpoint for fetching all organization or project members (Users who have any
         # role within the given org/project)
         # Operation is synchronous and idempotent.
-        # 
+        #
         rpc :ListMembers, ::InternalApi::RBAC::ListMembersRequest, ::InternalApi::RBAC::ListMembersResponse
+        #
+        # Endpoint for counting all organization members (Users who have any
+        # role within the given org)
+        # Operation is synchronous and idempotent.
+        #
+        rpc :CountMembers, ::InternalApi::RBAC::CountMembersRequest, ::InternalApi::RBAC::CountMembersResponse
         #
         # Endpoint for fetching ids of all organization a given user has access to.
         # User is assumed to have access to an organization if they have any role assigned
@@ -67,12 +88,18 @@ module InternalApi
         #
         rpc :ListAccessibleOrgs, ::InternalApi::RBAC::ListAccessibleOrgsRequest, ::InternalApi::RBAC::ListAccessibleOrgsResponse
         #
-        # Endpoint for fetching ids of all projects a given user has access to within 
+        # Endpoint for fetching ids of all projects a given user has access to within
         # given organization.
         # to them within that organization.
         # Operation is synchronous and idempotent.
         #
         rpc :ListAccessibleProjects, ::InternalApi::RBAC::ListAccessibleProjectsRequest, ::InternalApi::RBAC::ListAccessibleProjectsResponse
+        #
+        # Queues refreshing the resources (Collaborators and Projects) from a given Organization.
+        # The list of collaborators is refreshed based on the Projects that are added to the Organization.
+        # The operation is asynchronous.
+        #
+        rpc :RefreshCollaborators, ::InternalApi::RBAC::RefreshCollaboratorsRequest, ::InternalApi::RBAC::RefreshCollaboratorsResponse
       end
 
       Stub = Service.rpc_stub_class

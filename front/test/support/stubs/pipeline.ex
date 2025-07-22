@@ -299,10 +299,21 @@ defmodule Support.Stubs.Pipeline do
       GrpcMock.stub(PipelineMock, :list_keyset, &__MODULE__.list_keyset/2)
       GrpcMock.stub(PipelineMock, :describe_topology, &__MODULE__.describe_topology/2)
       GrpcMock.stub(PipelineMock, :terminate, &__MODULE__.terminate/2)
+      GrpcMock.stub(PipelineMock, :partial_rebuild, &__MODULE__.partial_rebuild/2)
     end
 
     def terminate(_req, _) do
       InternalApi.Plumber.TerminateResponse.new(response_status: ok())
+    end
+
+    def partial_rebuild(_req, _) do
+      # Create a new pipeline for the partial rebuild
+      new_pipeline_id = Support.Stubs.UUID.gen()
+
+      InternalApi.Plumber.PartialRebuildResponse.new(
+        response_status: ok(),
+        ppl_id: new_pipeline_id
+      )
     end
 
     def describe(req, _) do

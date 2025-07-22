@@ -244,4 +244,26 @@ defmodule FrontWeb.PipelineViewTest do
       assert action =~ "Triggered"
     end
   end
+
+  describe ".pipeline_rebuildable?" do
+    test "returns true when pipeline is in DONE state" do
+      pipeline = %Models.Pipeline{state: :DONE}
+      assert PipelineView.pipeline_rebuildable?(pipeline) == true
+    end
+
+    test "returns false when pipeline is in PENDING state" do
+      pipeline = %Models.Pipeline{state: :PENDING}
+      assert PipelineView.pipeline_rebuildable?(pipeline) == false
+    end
+
+    test "returns false when pipeline is in RUNNING state" do
+      pipeline = %Models.Pipeline{state: :RUNNING}
+      assert PipelineView.pipeline_rebuildable?(pipeline) == false
+    end
+
+    test "returns false when pipeline is in STOPPING state" do
+      pipeline = %Models.Pipeline{state: :STOPPING}
+      assert PipelineView.pipeline_rebuildable?(pipeline) == false
+    end
+  end
 end

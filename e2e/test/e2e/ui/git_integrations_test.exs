@@ -98,7 +98,7 @@ defmodule E2E.UI.GitIntegrationsTest do
       session
       |> assert_has(Wallaby.Query.text("GitHub App Connection"))
       # Green circle indicator
-      |> assert_has(Wallaby.Query.css("[data-testid='connection-status']"))
+      |> assert_has(Wallaby.Query.css("[data-testid='connection-status']", minimum: 1))
     end
 
     test "has required permissions section", %{session: session} do

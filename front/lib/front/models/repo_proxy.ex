@@ -45,7 +45,7 @@ defmodule Front.Models.RepoProxy do
 
   def find(id, tracing_headers) do
     Watchman.benchmark("fetch_repo_proxy.duration", fn ->
-      Cacheman.fetch(:front, cache_key(id), fn ->
+      Cacheman.fetch(:front, cache_key(id), [ttl: :timer.hours(1)], fn ->
         request = %RepoProxy.DescribeRequest{hook_id: id}
 
         {:ok, response} = Stub.describe(channel(), request, options(tracing_headers))
@@ -229,6 +229,11 @@ defmodule Front.Models.RepoProxy do
   def ids_missing_in_cache(cached, ids) do
     ids
     |> Enum.filter(fn id -> !Enum.any?(cached, fn hook -> hook.id == id end) end)
+  end
+
+  def invalidate(id) do
+    cache_key(id)
+    |> then(&Cacheman.delete(:front, &1))
   end
 
   defp sort_in_requested_order(hooks, ids) do

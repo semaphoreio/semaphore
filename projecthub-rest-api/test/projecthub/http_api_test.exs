@@ -283,6 +283,176 @@ defmodule Projecthub.HttpApi.Test do
     end
   end
 
+  describe "GET /api/<version>/projects pagination" do
+    setup do
+      # Setup three projects to test pagination
+      p1_id = uuid()
+      p2_id = uuid()
+      p3_id = uuid()
+      p1 = create("project1", p1_id)
+      p2 = create("project2", p2_id)
+      p3 = create("project3", p3_id)
+      page_size = Application.get_env(:projecthub, :projects_page_size)
+
+      FunRegistry.set!(FakeServices.RbacService, :list_accessible_projects, fn _, _ ->
+        InternalApi.RBAC.ListAccessibleProjectsResponse.new(project_ids: [p1_id, p2_id, p3_id])
+      end)
+
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn req, _ ->
+        alias InternalApi.Projecthub, as: PH
+        page = req.pagination.page
+        all_projects = [p1, p2, p3]
+        projects = Enum.slice(all_projects, (page - 1) * page_size, page_size)
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:OK))
+            ),
+          projects: projects,
+          pagination:
+            PH.PaginationResponse.new(
+              page_number: page,
+              page_size: page_size,
+              total_entries: length(all_projects),
+              total_pages: div(length(all_projects) + page_size - 1, page_size)
+            )
+        )
+      end)
+
+      :ok
+    end
+
+    test "returns correct pagination headers for /projects" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=1",
+          @headers
+        )
+
+      assert response.status_code == 200
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "1" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "true" end)
+      projects = Poison.decode!(response.body)
+      assert length(projects) == 2
+
+      {:ok, response2} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=2",
+          @headers
+        )
+
+      assert response2.status_code == 200
+      assert response2.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "2" end)
+      assert response2.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects2 = Poison.decode!(response2.body)
+      assert length(projects2) == 1
+
+      {:ok, response3} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=3",
+          @headers
+        )
+
+      assert response3.status_code == 200
+      assert response3.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "3" end)
+      assert response3.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects3 = Poison.decode!(response3.body)
+      assert Enum.empty?(projects3)
+    end
+
+    test "returns correct pagination headers for /projects when there are no more projects" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=2",
+          @headers
+        )
+
+      assert response.status_code == 200
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-page" and v == "2" end)
+      assert response.headers |> Enum.any?(fn {k, v} -> k == "x-has-more" and v == "false" end)
+      projects = Poison.decode!(response.body)
+      assert length(projects) == 1
+    end
+
+    test "returns 404 on out-of-range page" do
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status: PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:NOT_FOUND))
+            ),
+          projects: []
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=10",
+          @headers
+        )
+
+      assert response.status_code == 404
+    end
+
+    test "returns 400 on bad request" do
+      FunRegistry.set!(FakeServices.ProjectService, :list, fn _, _ ->
+        alias InternalApi.Projecthub, as: PH
+
+        PH.ListResponse.new(
+          metadata:
+            PH.ResponseMeta.new(
+              status:
+                PH.ResponseMeta.Status.new(code: PH.ResponseMeta.Code.value(:FAILED_PRECONDITION))
+            ),
+          projects: [],
+          pagination:
+            PH.PaginationResponse.new(
+              total_count: 0,
+              page_number: 0,
+              page_size: 0,
+              total_pages: 0
+            )
+        )
+      end)
+
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=foo",
+          @headers
+        )
+
+      assert response.status_code == 400
+    end
+
+    test "returns 400 on negative page" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=-1",
+          @headers
+        )
+
+      assert response.status_code == 400
+      assert Poison.decode!(response.body)["message"] =~ "page must be at least 1"
+    end
+
+    test "returns 400 on too large page" do
+      {:ok, response} =
+        HTTPoison.get(
+          "http://localhost:#{@port}/api/#{@version}/projects?page=9999",
+          @headers
+        )
+
+      assert response.status_code == 400 or response.status_code == 200
+
+      if response.status_code == 400 do
+        assert Poison.decode!(response.body)["message"] =~ "page must be at most"
+      end
+    end
+  end
+
   describe "GET /api/<version>/projects/:name with authorized user" do
     setup do
       FunRegistry.set!(FakeServices.RbacService, :list_user_permissions, fn _, _ ->
@@ -1644,7 +1814,7 @@ defmodule Projecthub.HttpApi.Test do
 
   def create(name, id) do
     alias InternalApi.Projecthub.Project
-    alias InternalApi.Projecthub.Project.Spec.{Repository, Visibility, PermissionType}
+    alias InternalApi.Projecthub.Project.Spec.{PermissionType, Repository, Visibility}
 
     Project.new(
       metadata: Project.Metadata.new(name: name, id: id),
