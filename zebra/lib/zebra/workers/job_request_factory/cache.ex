@@ -13,7 +13,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   # Overall, if cache system is down, we ignore every issue.
   #
 
-  def find(nil) do
+  def find(nil, _repo_proxy) do
     # We don't fail any jobs due to a missing cache connection,
     # but we should make sure we are aware of any issues in this area.
     Watchman.increment("external.cachehub.describe.failed")
@@ -21,7 +21,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     {:ok, nil}
   end
 
-  def find(cache_id) do
+  def find(cache_id, repo_proxy) do
     Watchman.benchmark("external.cachehub.describe", fn ->
       req = Request.new(cache_id: cache_id)
 
@@ -29,7 +29,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
            {:ok, response} <- Stub.describe(channel, req, timeout: 30_000) do
         if response.status.code == InternalApi.ResponseStatus.Code.value(:OK) do
-          if response.cache && response.cache.credential != " " do
+          if response.cache && response.cache.credential != " " and not is_forked_pr?(repo_proxy) do
             {:ok, response.cache}
           else
             {:ok, nil}
@@ -81,5 +81,13 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     else
       {:ok, vars}
     end
+  end
+
+  defp is_forked_pr?(%{pr_slug: ""} = _repo), do: false
+
+  defp is_forked_pr?(repo) do
+    [pr_repo | _rest] = repo.pr_slug |> String.split("/")
+    [base_repo | _rest] = repo.repo_slug |> String.split("/")
+    pr_repo == base_repo
   end
 end
