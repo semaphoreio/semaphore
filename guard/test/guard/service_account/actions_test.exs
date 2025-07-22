@@ -31,7 +31,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
          ]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn _, _, _ -> :ok end,
+           create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
          ]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
@@ -129,7 +129,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
          ]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn _, _, _ -> :error end
+           create: fn _, _, _, _ -> :error end
          ]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
@@ -165,7 +165,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
          ]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn _, _, _ -> :ok end,
+           create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> nil end
          ]}
       ]) do
