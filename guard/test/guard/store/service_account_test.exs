@@ -65,7 +65,7 @@ defmodule Guard.Store.ServiceAccountTest do
       {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Create service account in different org
-      {:ok, %{service_account: sa3}} = ServiceAccountFactory.insert(name: "SA3")
+      {:ok, %{service_account: _sa3}} = ServiceAccountFactory.insert(name: "SA3")
 
       {:ok, result} = ServiceAccount.find_by_org(org_id, 10, nil)
 
@@ -111,7 +111,7 @@ defmodule Guard.Store.ServiceAccountTest do
       org_id = Ecto.UUID.generate()
       {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
 
-      {:ok, %{service_account: sa2, user: user2}} =
+      {:ok, %{service_account: _sa2, user: user2}} =
         ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
 
       # Deactivate second service account
