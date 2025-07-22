@@ -23,6 +23,8 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
 
   def find(cache_id, repo_proxy) do
     Watchman.benchmark("external.cachehub.describe", fn ->
+      IO.puts("Repo proxy")
+      IO.inspect(repo_proxy)
       req = Request.new(cache_id: cache_id)
 
       with {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
