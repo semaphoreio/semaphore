@@ -242,8 +242,8 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
       description: service_account.description || "",
       org_id: service_account.org_id,
       creator_id: service_account.creator_id || "",
-      created_at: grpc_timestamp(service_account.user.created_at),
-      updated_at: grpc_timestamp(service_account.user.updated_at),
+      created_at: grpc_timestamp(service_account.created_at),
+      updated_at: grpc_timestamp(service_account.updated_at),
       deactivated: service_account.deactivated || false
     )
   end
