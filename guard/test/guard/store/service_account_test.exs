@@ -6,7 +6,6 @@ defmodule Guard.Store.ServiceAccountTest do
   alias Guard.Store.ServiceAccount
   alias Guard.FrontRepo
   alias Guard.FrontRepo.User
-  alias Guard.FrontRepo.ServiceAccount, as: ServiceAccountSchema
   alias Support.Factories.ServiceAccountFactory
 
   setup do
