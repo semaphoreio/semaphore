@@ -72,7 +72,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
          ]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn user_id, email, name ->
+           create: fn user_id, email, name, "service_account" ->
              assert user_id == "user-id"
              assert email == "test@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
              assert name == "Test SA"
