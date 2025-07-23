@@ -45,6 +45,20 @@ defmodule FrontWeb.PeopleView do
     }
   end
 
+  def service_accounts_config(conn) do
+    org_id = conn.assigns.organization_id
+    permissions = conn.assigns.permissions
+
+    %{
+      organization_id: org_id,
+      project_id: conn.assigns[:project_id],
+      permissions: %{
+        view: permissions["organization.service_accounts.view"] || false,
+        manage: permissions["organization.service_accounts.manage"] || false
+      }
+    }
+  end
+
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
