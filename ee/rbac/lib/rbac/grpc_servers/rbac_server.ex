@@ -371,7 +371,7 @@ defmodule Rbac.GrpcServers.RbacServer do
       total_pages: total_pages,
       members:
         Enum.map(subject_role_bindings, fn binding ->
-          subject_type = if binding.type == "user", do: :USER, else: :GROUP
+          subject_type = binding.type |> String.upcase() |> String.to_existing_atom()
 
           %RBAC.ListMembersResponse.Member{
             subject: %RBAC.Subject{

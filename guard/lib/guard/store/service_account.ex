@@ -383,7 +383,9 @@ defmodule Guard.Store.ServiceAccount do
       deactivated: user.deactivated,
       user_id: user.id,
       email: user.email,
-      user: user
+      user: user,
+      created_at: service_account.created_at,
+      updated_at: service_account.updated_at
     }
   end
 end
