@@ -51,13 +51,15 @@ defmodule InternalApi.Repository.DeployKey do
   @type t :: %__MODULE__{
           title: String.t(),
           fingerprint: String.t(),
-          created_at: Google.Protobuf.Timestamp.t()
+          created_at: Google.Protobuf.Timestamp.t(),
+          public_key: String.t()
         }
-  defstruct [:title, :fingerprint, :created_at]
+  defstruct [:title, :fingerprint, :created_at, :public_key]
 
   field(:title, 1, type: :string)
   field(:fingerprint, 2, type: :string)
   field(:created_at, 3, type: Google.Protobuf.Timestamp)
+  field(:public_key, 4, type: :string)
 end
 
 defmodule InternalApi.Repository.DescribeRemoteRepositoryRequest do
@@ -460,7 +462,8 @@ defmodule InternalApi.Repository.Repository do
           commit_status: InternalApi.Projecthub.Project.Spec.Repository.Status.t(),
           whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t(),
           hook_id: String.t(),
-          default_branch: String.t()
+          default_branch: String.t(),
+          connected: boolean
         }
   defstruct [
     :id,
@@ -475,7 +478,8 @@ defmodule InternalApi.Repository.Repository do
     :commit_status,
     :whitelist,
     :hook_id,
-    :default_branch
+    :default_branch,
+    :connected
   ]
 
   field(:id, 1, type: :string)
@@ -491,6 +495,7 @@ defmodule InternalApi.Repository.Repository do
   field(:whitelist, 11, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist)
   field(:hook_id, 12, type: :string)
   field(:default_branch, 13, type: :string)
+  field(:connected, 14, type: :bool)
 end
 
 defmodule InternalApi.Repository.RemoteRepository do
@@ -903,6 +908,54 @@ defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
   field(:valid, 1, type: :bool)
 end
 
+defmodule InternalApi.Repository.ClearExternalDataRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository_id: String.t()
+        }
+  defstruct [:repository_id]
+
+  field(:repository_id, 1, type: :string)
+end
+
+defmodule InternalApi.Repository.ClearExternalDataResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository: InternalApi.Repository.Repository.t()
+        }
+  defstruct [:repository]
+
+  field(:repository, 1, type: InternalApi.Repository.Repository)
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository_id: String.t()
+        }
+  defstruct [:repository_id]
+
+  field(:repository_id, 1, type: :string)
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          secret: String.t()
+        }
+  defstruct [:secret]
+
+  field(:secret, 1, type: :string)
+end
+
 defmodule InternalApi.Repository.RepositoryService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Repository.RepositoryService"
@@ -996,6 +1049,18 @@ defmodule InternalApi.Repository.RepositoryService.Service do
     :VerifyWebhookSignature,
     InternalApi.Repository.VerifyWebhookSignatureRequest,
     InternalApi.Repository.VerifyWebhookSignatureResponse
+  )
+
+  rpc(
+    :ClearExternalData,
+    InternalApi.Repository.ClearExternalDataRequest,
+    InternalApi.Repository.ClearExternalDataResponse
+  )
+
+  rpc(
+    :RegenerateWebhookSecret,
+    InternalApi.Repository.RegenerateWebhookSecretRequest,
+    InternalApi.Repository.RegenerateWebhookSecretResponse
   )
 end
 

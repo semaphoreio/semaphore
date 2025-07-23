@@ -40,6 +40,7 @@ defmodule Front.Models.Project do
     field(:tag_whitelist, :string)
     field(:build_prs, :boolean)
     field(:build_forked_prs, :boolean)
+    field(:build_draft_prs, :boolean, default: true)
     field(:expose_secrets, :boolean)
     field(:allowed_secrets, :string)
     field(:filter_contributors, :boolean)
@@ -82,6 +83,7 @@ defmodule Front.Models.Project do
     :build_tags,
     :build_prs,
     :build_forked_prs,
+    :build_draft_prs,
     :custom_permissions,
     :allow_debug_empty_session,
     :allow_debug_default_branch,
@@ -236,7 +238,11 @@ defmodule Front.Models.Project do
             Project.Spec.Repository.new(
               integration_type: map_integration_type(integration_type),
               url: repo_url,
-              run_on: [RunType.value(:TAGS), RunType.value(:BRANCHES)],
+              run_on: [
+                RunType.value(:TAGS),
+                RunType.value(:BRANCHES),
+                RunType.value(:DRAFT_PULL_REQUESTS)
+              ],
               run_present: {:run, true}
             )
         )
@@ -809,6 +815,8 @@ defmodule Front.Models.Project do
       :build_prs => project.spec.repository.run_on |> Enum.member?(RunType.value(:PULL_REQUESTS)),
       :build_forked_prs =>
         project.spec.repository.run_on |> Enum.member?(RunType.value(:FORKED_PULL_REQUESTS)),
+      :build_draft_prs =>
+        project.spec.repository.run_on |> Enum.member?(RunType.value(:DRAFT_PULL_REQUESTS)),
       :custom_permissions => project.spec.custom_permissions,
       :allow_debug_empty_session =>
         project.spec.debug_permissions |> Enum.member?(PermissionType.value(:EMPTY)),
@@ -1129,7 +1137,8 @@ defmodule Front.Models.Project do
         {:TAGS, data.build_tags},
         {:BRANCHES, data.build_branches},
         {:PULL_REQUESTS, data.build_prs},
-        {:FORKED_PULL_REQUESTS, data.build_forked_prs}
+        {:FORKED_PULL_REQUESTS, data.build_forked_prs},
+        {:DRAFT_PULL_REQUESTS, data.build_draft_prs}
       ]
       |> Enum.filter(fn e -> elem(e, 1) end)
       |> Enum.map(fn e -> elem(e, 0) end)

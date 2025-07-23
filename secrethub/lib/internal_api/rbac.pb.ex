@@ -33,6 +33,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
           | :ROLE_BINDING_SOURCE_GITLAB
           | :ROLE_BINDING_SOURCE_SCIM
           | :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
+          | :ROLE_BINDING_SOURCE_SAML_JIT
 
   field :ROLE_BINDING_SOURCE_UNSPECIFIED, 0
 
@@ -47,6 +48,8 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field :ROLE_BINDING_SOURCE_SCIM, 5
 
   field :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6
+
+  field :ROLE_BINDING_SOURCE_SAML_JIT, 7
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do

@@ -125,6 +125,7 @@ defmodule Projecthub.Models.ProjectTest do
       assert project.build_tag == true
       assert project.build_branch == true
       assert project.build_forked_pr == false
+      assert project.build_draft_pr == true
     end
 
     test "it should create a repo record" do
@@ -285,6 +286,7 @@ defmodule Projecthub.Models.ProjectTest do
         id: project.id,
         org_id: org_id,
         description: "A repo for testing SemaphoreCI features",
+        build_draft_pr: false,
         state: "ready"
       }
 
@@ -310,6 +312,7 @@ defmodule Projecthub.Models.ProjectTest do
       assert updated_project.creator_id == creator_id
       assert updated_project.organization_id == project.organization_id
       assert updated_project.description == "A repo for testing SemaphoreCI features"
+      assert updated_project.build_draft_pr == false
     end
 
     test "it emits a project created event" do

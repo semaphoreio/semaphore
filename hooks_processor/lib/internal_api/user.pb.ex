@@ -235,24 +235,6 @@ defmodule InternalApi.User.RegenerateTokenResponse do
   field :api_token, 3, type: :string, json_name: "apiToken"
 end
 
-defmodule InternalApi.User.RefererRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-end
-
-defmodule InternalApi.User.RefererResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-  field :entry_url, 2, type: :string, json_name: "entryUrl"
-  field :http_referer, 3, type: :string, json_name: "httpReferer"
-end
-
 defmodule InternalApi.User.CheckGithubTokenRequest do
   @moduledoc false
 
@@ -423,16 +405,6 @@ defmodule InternalApi.User.UserUpdated do
   field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
-defmodule InternalApi.User.UserRefererCreated do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field :user_id, 1, type: :string, json_name: "userId"
-  field :entry_url, 2, type: :string, json_name: "entryUrl"
-  field :http_referer, 3, type: :string, json_name: "httpReferer"
-end
-
 defmodule InternalApi.User.UserJoinedOrganization do
   @moduledoc false
 
@@ -542,8 +514,6 @@ defmodule InternalApi.User.UserService.Service do
   rpc :CreateFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
 
   rpc :DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite
-
-  rpc :Referer, InternalApi.User.RefererRequest, InternalApi.User.RefererResponse
 
   rpc :CheckGithubToken,
       InternalApi.User.CheckGithubTokenRequest,
