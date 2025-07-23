@@ -1,8 +1,8 @@
 module github.com/semaphoreio/semaphore/bootstrapper
 
-go 1.22.7
+go 1.23.0
 
-toolchain go1.22.9
+toolchain go1.24.3
 
 require (
 	github.com/golang/protobuf v1.5.4
@@ -43,7 +43,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
