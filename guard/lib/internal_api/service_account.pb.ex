@@ -6,14 +6,16 @@ defmodule InternalApi.ServiceAccount.CreateRequest do
           org_id: String.t(),
           name: String.t(),
           description: String.t(),
-          creator_id: String.t()
+          creator_id: String.t(),
+          role_id: String.t()
         }
 
-  defstruct [:org_id, :name, :description, :creator_id]
+  defstruct [:org_id, :name, :description, :creator_id, :role_id]
   field(:org_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
   field(:creator_id, 4, type: :string)
+  field(:role_id, 5, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.CreateResponse do
