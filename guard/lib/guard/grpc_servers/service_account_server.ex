@@ -18,17 +18,25 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
           org_id: org_id,
           name: name,
           description: description,
-          creator_id: creator_id
+          creator_id: creator_id,
+          role_id: role_id
         },
         _stream
       ) do
     observe_and_log(
       "grpc.service_account.create",
-      %{org_id: org_id, name: name, description: description, creator_id: creator_id},
+      %{
+        org_id: org_id,
+        name: name,
+        description: description,
+        creator_id: creator_id,
+        role_id: role_id
+      },
       fn ->
         # Validate input parameters
         validate_uuid!(org_id)
         validate_uuid!(creator_id)
+        validate_uuid!(role_id)
 
         if String.trim(name) == "" do
           grpc_error!(:invalid_argument, "Service account name cannot be empty")
@@ -45,7 +53,8 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
               org_id: org_id,
               name: String.trim(name),
               description: String.trim(description || ""),
-              creator_id: creator_id
+              creator_id: creator_id,
+              role_id: role_id
             }
 
             case Guard.ServiceAccount.Actions.create(params) do

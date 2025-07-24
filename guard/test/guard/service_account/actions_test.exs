@@ -7,36 +7,76 @@ defmodule Guard.ServiceAccount.ActionsTest do
   alias Guard.Store.ServiceAccount
   alias Support.Factories.ServiceAccountFactory
 
+  # Common mock helpers
+  defp setup_common_mocks do
+    [
+      {Guard.Store.RbacUser, [:passthrough],
+       [
+         create: fn _, _, _, _ -> :ok end,
+         fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
+       ]},
+      {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
+      {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
+    ]
+  end
+
+  defp successful_service_account_mock(email \\ "test@example.com") do
+    {ServiceAccount, [:passthrough],
+     [
+       create: fn _ ->
+         {:ok,
+          %{
+            service_account: %{
+              id: "user-id",
+              user_id: "user-id",
+              name: "Test SA",
+              description: "Test Description",
+              org_id: "org-id",
+              creator_id: "creator-id",
+              deactivated: false,
+              email: email
+            },
+            api_token: "test-token"
+          }}
+       end
+     ]}
+  end
+
+  defp rbac_failure_mocks do
+    [
+      {Guard.Store.RbacUser, [:passthrough], [create: fn _, _, _, _ -> :error end]},
+      {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
+      {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
+    ]
+  end
+
+  defp rbac_user_not_found_mocks do
+    [
+      {Guard.Store.RbacUser, [:passthrough],
+       [
+         create: fn _, _, _, _ -> :ok end,
+         fetch: fn _ -> nil end
+       ]},
+      {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]}
+    ]
+  end
+
+  defp role_assignment_failure_mocks do
+    [
+      {Guard.Store.RbacUser, [:passthrough],
+       [
+         create: fn _, _, _, _ -> :ok end,
+         fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
+       ]},
+      {Guard.Api.Rbac, [:passthrough],
+       [assign_role: fn _, _, _ -> {:error, :assignment_failed} end]},
+      {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
+    ]
+  end
+
   describe "create/1" do
     test "creates service account successfully and publishes event" do
-      with_mocks([
-        {ServiceAccount, [:passthrough],
-         [
-           create: fn _ ->
-             {:ok,
-              %{
-                service_account: %{
-                  id: "user-id",
-                  user_id: "user-id",
-                  name: "Test SA",
-                  description: "Test Description",
-                  org_id: "org-id",
-                  creator_id: "creator-id",
-                  deactivated: false,
-                  email: "test@example.com"
-                },
-                api_token: "test-token"
-              }}
-           end
-         ]},
-        {Guard.Store.RbacUser, [:passthrough],
-         [
-           create: fn _, _, _, _ -> :ok end,
-           fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
-         ]},
-        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
-        {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-      ]) do
+      with_mocks([successful_service_account_mock() | setup_common_mocks()]) do
         params = ServiceAccountFactory.build_params()
 
         {:ok, %{service_account: service_account, api_token: api_token}} = Actions.create(params)
@@ -115,33 +155,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
 
     test "handles RBAC user creation failure" do
-      with_mocks([
-        {ServiceAccount, [:passthrough],
-         [
-           create: fn _ ->
-             {:ok,
-              %{
-                service_account: %{
-                  id: "user-id",
-                  user_id: "user-id",
-                  name: "Test SA",
-                  description: "Test Description",
-                  org_id: "org-id",
-                  creator_id: "creator-id",
-                  deactivated: false,
-                  email: "test@example.com"
-                },
-                api_token: "test-token"
-              }}
-           end
-         ]},
-        {Guard.Store.RbacUser, [:passthrough],
-         [
-           create: fn _, _, _, _ -> :error end
-         ]},
-        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
-        {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-      ]) do
+      with_mocks([successful_service_account_mock() | rbac_failure_mocks()]) do
         params = ServiceAccountFactory.build_params()
 
         {:error, :rbac_user_creation_failed} = Actions.create(params)
@@ -152,33 +166,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
 
     test "handles RBAC user fetch failure after creation" do
-      with_mocks([
-        {ServiceAccount, [:passthrough],
-         [
-           create: fn _ ->
-             {:ok,
-              %{
-                service_account: %{
-                  id: "user-id",
-                  user_id: "user-id",
-                  name: "Test SA",
-                  description: "Test Description",
-                  org_id: "org-id",
-                  creator_id: "creator-id",
-                  deactivated: false,
-                  email: "test@example.com"
-                },
-                api_token: "test-token"
-              }}
-           end
-         ]},
-        {Guard.Store.RbacUser, [:passthrough],
-         [
-           create: fn _, _, _, _ -> :ok end,
-           fetch: fn _ -> nil end
-         ]},
-        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]}
-      ]) do
+      with_mocks([successful_service_account_mock() | rbac_user_not_found_mocks()]) do
         params = ServiceAccountFactory.build_params()
 
         {:error, :rbac_user_not_found} = Actions.create(params)
@@ -186,35 +174,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
 
     test "handles role assignment failure" do
-      with_mocks([
-        {ServiceAccount, [:passthrough],
-         [
-           create: fn _ ->
-             {:ok,
-              %{
-                service_account: %{
-                  id: "user-id",
-                  user_id: "user-id",
-                  name: "Test SA",
-                  description: "Test Description",
-                  org_id: "org-id",
-                  creator_id: "creator-id",
-                  deactivated: false,
-                  email: "test@example.com"
-                },
-                api_token: "test-token"
-              }}
-           end
-         ]},
-        {Guard.Store.RbacUser, [:passthrough],
-         [
-           create: fn _, _, _, _ -> :ok end,
-           fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
-         ]},
-        {Guard.Api.Rbac, [:passthrough],
-         [assign_role: fn _, _, _ -> {:error, :assignment_failed} end]},
-        {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-      ]) do
+      with_mocks([successful_service_account_mock() | role_assignment_failure_mocks()]) do
         params = ServiceAccountFactory.build_params()
 
         {:error, :assignment_failed} = Actions.create(params)
@@ -380,8 +340,8 @@ defmodule Guard.ServiceAccount.ActionsTest do
   end
 
   describe "integration tests" do
-    test "full create flow with database" do
-      with_mocks([
+    defp setup_integration_mocks do
+      [
         {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "test-token"} end]},
@@ -392,7 +352,11 @@ defmodule Guard.ServiceAccount.ActionsTest do
          ]},
         {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-      ]) do
+      ]
+    end
+
+    test "full create flow with database" do
+      with_mocks(setup_integration_mocks()) do
         params =
           ServiceAccountFactory.build_params_with_creator(
             name: "Integration Test SA",
@@ -419,18 +383,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
 
     test "full update flow with database" do
-      with_mocks([
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
-        {Guard.FrontRepo.User, [:passthrough],
-         [reset_auth_token: fn _ -> {:ok, "test-token"} end]},
-        {Guard.Store.RbacUser, [:passthrough],
-         [
-           create: fn _, _, _, _ -> :ok end,
-           fetch: fn _ -> %{id: "rbac-user-id"} end
-         ]},
-        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
-        {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-      ]) do
+      with_mocks(setup_integration_mocks()) do
         # Create service account first
         params = ServiceAccountFactory.build_params_with_creator(name: "Original Name")
         {:ok, %{service_account: service_account, api_token: _}} = Actions.create(params)
