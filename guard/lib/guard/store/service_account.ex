@@ -384,8 +384,8 @@ defmodule Guard.Store.ServiceAccount do
       user_id: user.id,
       email: user.email,
       user: user,
-      created_at: service_account.created_at,
-      updated_at: service_account.updated_at
+      created_at: user.created_at,
+      updated_at: user.updated_at
     }
   end
 end
