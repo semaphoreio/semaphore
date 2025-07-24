@@ -60,7 +60,8 @@ defmodule Support.Factories.ServiceAccountFactory do
       org_id: get_org_id(options[:org_id]),
       name: get_name(options[:name]),
       description: get_description(options[:description]),
-      creator_id: get_creator_id(options[:creator_id])
+      creator_id: get_creator_id(options[:creator_id]),
+      role_id: get_role_id(options[:role_id])
     }
   end
 
@@ -75,7 +76,8 @@ defmodule Support.Factories.ServiceAccountFactory do
       org_id: get_org_id(options[:org_id]),
       name: get_name(options[:name]),
       description: get_description(options[:description]),
-      creator_id: creator_user.id
+      creator_id: creator_user.id,
+      role_id: get_role_id(options[:role_id])
     }
   end
 
@@ -109,6 +111,9 @@ defmodule Support.Factories.ServiceAccountFactory do
     sanitized_name = String.downcase(name) |> String.replace(~r/[^a-z0-9\-]/, "-")
     "#{sanitized_name}@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
   end
+
+  defp get_role_id(nil), do: UUID.generate()
+  defp get_role_id(role_id), do: role_id
 
   defp generate_token_hash do
     # Generate a simple hash for testing
