@@ -38,6 +38,10 @@ OptionParser.new do |parser|
     args[:install_dependencies] = true
   end
 
+  parser.on("-v", "--vuln-severity-source SOURCES", "Vulnerability severity source (e.g., nvd,auto)") do |vuln_severity_source|
+    args[:vuln_severity_source] = vuln_severity_source
+  end
+
   parser.on("", "--scanners SCANNERS", "Which scanners to use") do |scanners|
     args[:scanners] = scanners
   end
