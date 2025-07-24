@@ -34,6 +34,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
            create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
          ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
         params = ServiceAccountFactory.build_params()
@@ -80,6 +81,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
            end,
            fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
          ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
         params = ServiceAccountFactory.build_params()
@@ -95,11 +97,17 @@ defmodule Guard.ServiceAccount.ActionsTest do
             "Test SA"
           )
         )
+
+        # Verify role assignment was called
+        assert_called(Guard.Api.Rbac.assign_role("org-id", "user-id", :_))
       end
     end
 
     test "handles service account creation failure" do
-      with_mock ServiceAccount, [:passthrough], create: fn _ -> {:error, :creation_failed} end do
+      with_mocks([
+        {ServiceAccount, [:passthrough], [create: fn _ -> {:error, :creation_failed} end]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]}
+      ]) do
         params = ServiceAccountFactory.build_params()
 
         {:error, :creation_failed} = Actions.create(params)
@@ -131,6 +139,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
          [
            create: fn _, _, _, _ -> :error end
          ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
         params = ServiceAccountFactory.build_params()
@@ -167,7 +176,8 @@ defmodule Guard.ServiceAccount.ActionsTest do
          [
            create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> nil end
-         ]}
+         ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]}
       ]) do
         params = ServiceAccountFactory.build_params()
 
@@ -175,8 +185,50 @@ defmodule Guard.ServiceAccount.ActionsTest do
       end
     end
 
+    test "handles role assignment failure" do
+      with_mocks([
+        {ServiceAccount, [:passthrough],
+         [
+           create: fn _ ->
+             {:ok,
+              %{
+                service_account: %{
+                  id: "user-id",
+                  user_id: "user-id",
+                  name: "Test SA",
+                  description: "Test Description",
+                  org_id: "org-id",
+                  creator_id: "creator-id",
+                  deactivated: false,
+                  email: "test@example.com"
+                },
+                api_token: "test-token"
+              }}
+           end
+         ]},
+        {Guard.Store.RbacUser, [:passthrough],
+         [
+           create: fn _, _, _, _ -> :ok end,
+           fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
+         ]},
+        {Guard.Api.Rbac, [:passthrough],
+         [assign_role: fn _, _, _ -> {:error, :assignment_failed} end]},
+        {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
+      ]) do
+        params = ServiceAccountFactory.build_params()
+
+        {:error, :assignment_failed} = Actions.create(params)
+
+        # Verify event was NOT published on failure
+        refute called(Guard.Events.UserCreated.publish(:_, :_))
+      end
+    end
+
     test "handles service account store creation failure" do
-      with_mock ServiceAccount, [:passthrough], create: fn _ -> {:error, :creation_failed} end do
+      with_mocks([
+        {ServiceAccount, [:passthrough], [create: fn _ -> {:error, :creation_failed} end]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]}
+      ]) do
         params = ServiceAccountFactory.build_params()
 
         {:error, :creation_failed} = Actions.create(params)
@@ -335,9 +387,10 @@ defmodule Guard.ServiceAccount.ActionsTest do
          [reset_auth_token: fn _ -> {:ok, "test-token"} end]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn _, _, _ -> :ok end,
+           create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> %{id: "rbac-user-id"} end
          ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
         params =
@@ -372,9 +425,10 @@ defmodule Guard.ServiceAccount.ActionsTest do
          [reset_auth_token: fn _ -> {:ok, "test-token"} end]},
         {Guard.Store.RbacUser, [:passthrough],
          [
-           create: fn _, _, _ -> :ok end,
+           create: fn _, _, _, _ -> :ok end,
            fetch: fn _ -> %{id: "rbac-user-id"} end
          ]},
+        {Guard.Api.Rbac, [:passthrough], [assign_role: fn _, _, _ -> :ok end]},
         {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
       ]) do
         # Create service account first
