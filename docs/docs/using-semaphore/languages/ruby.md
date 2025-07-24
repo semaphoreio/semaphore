@@ -35,7 +35,7 @@ rbenv install --list
 
 The `sem-version` tool does not work on Docker containers. You must use a pre-built Docker image with the language versions you need and run the job using [Docker environments](../../using-semaphore/pipelines#docker-environments).
 
-You can use the pre-build [Ruby images](../../using-semaphore/optimization/container-registry#ruby) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
+You can use the pre-build [Ruby images](../../using-semaphore/containers/container-registry#ruby) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
 
 ## How to cache Gems {#caching}
 
@@ -85,6 +85,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
         --out junit.xml
         --format documentation
         ```
+
     - Or, changing the `rspec` invocation
 
         ```shell
@@ -134,7 +135,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 
 ## How to parallelize tests
 
-You can run RSpec and Cucumber tests in parallel automatically using [job parallelism](../../using-semaphore/jobs#job-parallelism). 
+You can run RSpec and Cucumber tests in parallel automatically using [job parallelism](../../using-semaphore/jobs#job-parallelism).
 
 For RSpec, follow these steps:
 
@@ -163,5 +164,3 @@ On Cucumber, we use `cucumber_booster` instead:
     ```
 
 </Steps>
-
-

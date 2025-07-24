@@ -50,7 +50,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarCollapsible: false,
+          sidebarCollapsible: true,
           routeBasePath: '/', // move docs to the website root
           sidebarPath: './sidebars.js',
           docItemComponent: "@theme/ApiItem", // Derived from docusaurus-theme-openapi
@@ -195,12 +195,12 @@ const config = {
       },
 
       // This is an optional announcement bar. It goes on the top of the page
-      announcementBar: {
-        id: `announcementBar-1`,
-        content: `Semaphore <strong>Enterprise Edition</strong> v1.3.0 is available! — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
-        backgroundColor: '#49a26e',
-        textColor: '#f5f6f7'
-      },
+      // announcementBar: {
+      //   id: `announcementBar-1`,
+      //   content: `Semaphore <strong>Enterprise Edition</strong> v1.3.0 is available! — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
+      //   backgroundColor: '#49a26e',
+      //   textColor: '#f5f6f7'
+      // },
       footer: {
         style: 'dark',
         links: [
