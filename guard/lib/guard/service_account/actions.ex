@@ -16,7 +16,8 @@ defmodule Guard.ServiceAccount.Actions do
           org_id: String.t(),
           name: String.t(),
           description: String.t(),
-          creator_id: String.t()
+          creator_id: String.t(),
+          role_id: String.t()
         }
 
   @doc """
@@ -28,15 +29,21 @@ defmodule Guard.ServiceAccount.Actions do
   3. Creates a service_account record
   4. Generates an API token
   5. Creates RBAC user record
-  6. Publishes UserCreated event
+  6. Assigns the specified role to the service account
+  7. Publishes UserCreated event
 
   Returns {:ok, %{service_account: service_account, api_token: api_token}} or {:error, reason}
   """
   @spec create(service_account_params()) ::
           {:ok, %{service_account: map(), api_token: String.t()}} | {:error, atom() | list()}
   def create(
-        %{org_id: _org_id, name: _name, description: _description, creator_id: _creator_id} =
-          params
+        %{
+          org_id: _org_id,
+          name: _name,
+          description: _description,
+          creator_id: _creator_id,
+          role_id: _role_id
+        } = params
       ) do
     case _create(params) do
       {:ok, {service_account, api_token}} ->
@@ -124,7 +131,13 @@ defmodule Guard.ServiceAccount.Actions do
   defp _create(params) do
     FrontRepo.transaction(fn ->
       with {:ok, result} <- ServiceAccount.create(params),
-           {:ok, _rbac_user} <- create_rbac_user(result.service_account) do
+           {:ok, _rbac_user} <- create_rbac_user(result.service_account),
+           :ok <-
+             Guard.Api.Rbac.assign_role(
+               result.service_account.org_id,
+               result.service_account.id,
+               params.role_id
+             ) do
         # Return the service account data and API token
         {result.service_account, result.api_token}
       else
