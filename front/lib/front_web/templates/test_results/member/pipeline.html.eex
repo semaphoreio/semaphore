@@ -8,7 +8,7 @@
   window.InjectedDataByBackend.pollURL = "<%= workflow_path(@conn, :status, @workflow.id) %>";
   window.InjectedDataByBackend.pipelineId = "<%= @selected_pipeline_id %>";
   window.InjectedDataByBackend.pipelineStatus = "<%= raw FrontWeb.PipelineView.pipeline_status_large(@pipeline) %>";
-  window.InjectedDataByBackend.pipelineName = "<%= @pipeline.name %>"
+  window.InjectedDataByBackend.pipelineName = "<%= raw @pipeline.name %>";
 </script>
 
 <div id="test-results" class="no-ligatures">
