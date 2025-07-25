@@ -1407,7 +1407,8 @@ defmodule Guard.GrpcServers.UserServerTest do
                  id: user_id,
                  name: user_name,
                  email: user_email,
-                 repository_providers: []
+                 repository_providers: [],
+                 creation_source: creation_source
                }
              } = response
 
@@ -1415,6 +1416,9 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert user_name == "Test Service Account"
       assert user_email == user.email
       assert user.creation_source == :service_account
+      # Verify that SERVICE_ACCOUNT enum value (2) is returned
+      assert creation_source == InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+      assert creation_source == 2
     end
 
     test "should not return repository providers for service accounts", %{grpc_channel: channel} do
@@ -1516,7 +1520,33 @@ defmodule Guard.GrpcServers.UserServerTest do
       # All should be service accounts with no repository providers
       Enum.each(users, fn user ->
         assert user.repository_providers == []
+        # Verify creation_source is SERVICE_ACCOUNT (2)
+        assert user.creation_source ==
+                 InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+
+        assert user.creation_source == 2
       end)
+    end
+
+    test "should return creation_source as SERVICE_ACCOUNT for service accounts", %{
+      grpc_channel: channel
+    } do
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert()
+
+      request = User.DescribeRequest.new(user_id: user.id)
+
+      {:ok, response} = channel |> Stub.describe(request)
+
+      assert %User.DescribeResponse{
+               user: %User.User{
+                 creation_source: creation_source
+               }
+             } = response
+
+      # Verify creation_source is exactly SERVICE_ACCOUNT (enum value 2)
+      assert creation_source == InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+      assert creation_source == 2
     end
   end
 end
