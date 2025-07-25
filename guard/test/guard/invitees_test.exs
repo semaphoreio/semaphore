@@ -40,7 +40,7 @@ defmodule Guard.InviteesTest do
       assert Invitees.inject_provider_uid(invitees, @inviter_id) == {:ok, invitees}
     end
 
-    test "skip injecting when provider is diffrent then github" do
+    test "skip injecting when provider is different then github" do
       invitee = %{provider: %{uid: "", type: :BITBUCKET}}
 
       assert Invitees.inject_provider_uid(invitee, @inviter_id) ==

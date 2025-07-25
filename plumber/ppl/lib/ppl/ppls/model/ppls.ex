@@ -10,11 +10,11 @@ defmodule Ppl.Ppls.Model.Ppls do
 
   If there are no other pipelines from same repo and branch that are running, pipeline
   transitions from 'pending' to 'running', otherwise it transitions to 'queuing' state.
-  If piepline is terminated while in 'pending' state - it goes to 'done'(canceled).
+  If pipeline is terminated while in 'pending' state - it goes to 'done'(canceled).
 
   Pipelines form 'queuing' state transition to 'running' when there are no older
   pipelines from same repo and branch in 'pending', 'queuing' or 'running' state.
-  If pieplineis terminated while in 'queuing' state - it goes to 'done'(canceled).
+  If pipelineis terminated while in 'queuing' state - it goes to 'done'(canceled).
 
   From 'running' state pipeline transitions to 'done' when execution of all of
   it's blocks is done, or when one of them fails. If pipeline is terminated while
@@ -23,7 +23,7 @@ defmodule Ppl.Ppls.Model.Ppls do
   From 'stopping' state pipeline transitions to 'done'(stopped) when all of it's
   blocks are terminated.
 
-  Theese transtions are represented with 'pipeline' objects.
+  Theese transitions are represented with 'pipeline' objects.
   """
 
   use Ecto.Schema

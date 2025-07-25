@@ -55,7 +55,7 @@ defmodule Badges.ApiTest do
   end
 
   describe "/badges/testproject.svg" do
-    test "when branch is ommited => look for master" do
+    test "when branch is omitted => look for master" do
       GrpcMock.stub(PipelineMock, :list_keyset, fn _, _ ->
         InternalApi.Plumber.ListKeysetResponse.new(pipelines: [Support.Factories.pipeline()])
       end)
@@ -127,7 +127,7 @@ defmodule Badges.ApiTest do
       assert conn.resp_body =~ "passed"
     end
 
-    test "private project wihout key => returns 404" do
+    test "private project without key => returns 404" do
       GrpcMock.stub(ProjectMock, :describe, fn _, _ ->
         InternalApi.Projecthub.DescribeResponse.new(
           metadata: Support.Factories.response_meta(:OK),

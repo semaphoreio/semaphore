@@ -2,7 +2,7 @@
 
 ### Components of the system
 
-- __Notificaitons API__: Public API for managing notification settings
+- __Notifications API__: Public API for managing notification settings
 - __Event Coordinator__: Filters incoming Rabbit messages from the pipeline system, creates new
   specific messages and ships them to dedicated RabbitMQ queues.
 - __Observer__: Observes the states of queues and ships Statsd messages for monitoring and alerting
@@ -45,7 +45,7 @@ that having a dedicated Slack notification service is not ideal.
   system is highly likely.
   
 For this reason, I propose that the notification service has multiple modules.
-Each module coresponds to one notification type, and they share a common set of abstractions
+Each module corresponds to one notification type, and they share a common set of abstractions
 for notification delivery.
 
 Each module can be started/scaled independently of others if necessary, but also bundled 

@@ -2,7 +2,7 @@
 if [ "$SEMAPHORE_PIPELINE_2_ARTEFACT_ID" != "" ]; then sleep 3m; fi;
 
 PPL_ID="8a9de6e5-8476-4357-bbaa-c5bcf9fd6459"
-echo "Pipline id is: $PPL_ID"
+echo "Pipeline id is: $PPL_ID"
 
 ##Helper functions
 parse_response(){

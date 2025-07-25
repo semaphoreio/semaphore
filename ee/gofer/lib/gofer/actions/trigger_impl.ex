@@ -76,7 +76,10 @@ defmodule Gofer.Actions.TriggerImpl do
 
   defp valid_value(env_vars_map, name, value) do
     env_vars_map
-    |> Map.get(name, {:error, "Parameter '#{name}' is not defined in promotion's yml definiton."})
+    |> Map.get(
+      name,
+      {:error, "Parameter '#{name}' is not defined in promotion's yml definition."}
+    )
     |> valid_value_(value)
     |> remove_env_var_from_map(env_vars_map, name)
   end

@@ -90,7 +90,7 @@ export var ChangeRoleDropdown = {
     .catch((error) => {
       console.log(error)
       toggleSpinner()
-      Notice.error("An error occured while changing the role. Please contact our support team.")
+      Notice.error("An error occurred while changing the role. Please contact our support team.")
     })
   }
 }

@@ -1,6 +1,6 @@
 defmodule Ppl.DeleteRequests.STMHandler.DeletingState do
   @moduledoc """
-  Handles  pipline's deletion
+  Handles  pipeline's deletion
   """
 
   alias Ppl.DeleteRequests.Model.DeleteRequests

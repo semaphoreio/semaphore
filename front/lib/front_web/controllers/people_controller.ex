@@ -157,7 +157,7 @@ defmodule FrontWeb.PeopleController do
           {:error, error} ->
             Logger.error("[PeopleController] Error in assign_role function: #{inspect(error)}")
 
-            {:error, "Error occured while assigning the role. Please contact our support team."}
+            {:error, "error occurred while assigning the role. Please contact our support team."}
         end
       end
     end)
@@ -233,7 +233,7 @@ defmodule FrontWeb.PeopleController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while removing member, please contact our support team."
+              "An error occurred while removing member, please contact our support team."
             )
             |> redirect_to.()
         end
@@ -759,7 +759,7 @@ defmodule FrontWeb.PeopleController do
           conn
           |> put_flash(
             :alert,
-            "An error occured while rotating the API token. Please contact our support team."
+            "An error occurred while rotating the API token. Please contact our support team."
           )
           |> redirect(to: people_path(conn, :show, user_id))
       end
@@ -874,7 +874,7 @@ defmodule FrontWeb.PeopleController do
             Logger.error("Error during password reset #{user_id}: #{inspect(error)}")
 
             {:error,
-             "An error occured while rotating the password. Please contact our support team."}
+             "An error occurred while rotating the password. Please contact our support team."}
         end
       else
         {:error, :render_404}
@@ -1015,7 +1015,7 @@ defmodule FrontWeb.PeopleController do
         _ ->
           conn
           |> put_status(500)
-          |> json(%{message: "Internal error occured"})
+          |> json(%{message: "Internal error occurred"})
       end
     end)
   end

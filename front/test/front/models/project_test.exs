@@ -173,7 +173,7 @@ defmodule Front.Models.ProjectTest do
               status:
                 ResponseMeta.Status.new(
                   code: ResponseMeta.Code.value(:FAILED_PRECONDITION),
-                  message: "Error occured"
+                  message: "Error occurred"
                 )
             )
         )
@@ -186,7 +186,7 @@ defmodule Front.Models.ProjectTest do
                project.metadata.name,
                "",
                "github_oauth_token"
-             ) == {:error, "Error occured"}
+             ) == {:error, "Error occurred"}
     end
 
     test "when project is created => returns project" do

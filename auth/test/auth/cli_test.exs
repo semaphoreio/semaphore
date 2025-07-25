@@ -9,7 +9,7 @@ defmodule Auth.CliTest do
       refute Auth.Cli.is_call_from_deprecated_cli?(conn)
     end
 
-    test "SempahoreCLI user agent with a fresh version => returns false" do
+    test "SemaphoreCLI user agent with a fresh version => returns false" do
       conn = conn(:get, "https://org1.semaphoretest.test/exauth/api/v1alpha/jobs")
       conn = conn |> put_req_header("user-agent", "SemaphoreCLI/v0.30.0 (...)")
 

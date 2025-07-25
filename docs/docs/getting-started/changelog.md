@@ -1045,7 +1045,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](../reference/os-ub
 - Rust 1.70.0 -> 1.72.1
 - Sbt 1.8.3 -> 1.9.6
 - Terraform 1.4.6 -> 1.5.7
-- Vrtualenv 20.23.0 -> 20.24.5
+- Virtualenv 20.23.0 -> 20.24.5
 
 To learn more about this image, check our [Ubuntu 22.04 ARM page](../reference/os-ubuntu-images/ubuntu-2204-arm-image)
 
@@ -3647,7 +3647,7 @@ The Ubuntu 18.04 image has been deprecated.
 - Fixed ligatures that are displayed in test output.
 - More generic test result sample files.
 
-To learn how to set up a Test Summary check [our docummentation](../using-semaphore/tests/test-reports).
+To learn how to set up a Test Summary check [our documentation](../using-semaphore/tests/test-reports).
 
 **(Improved) Ubuntu 20.04 image update**
 
@@ -3727,7 +3727,7 @@ Take the advantage of this new feature now to:
 - Sort and filter the output of your tests however you see fit.
 - Search through big test suits to find what you're looking for.
 
-To learn more about how to configure the Test Summary feature, check our [docummentation](../using-semaphore/tests/test-reports).
+To learn more about how to configure the Test Summary feature, check our [documentation](../using-semaphore/tests/test-reports).
 
 **(New) Parameterized promotions (beta)**  
 With parameterized promotions, you can re-use a single promotion pipeline and use environment variables to achieve different results based on the variable values. 
@@ -4539,10 +4539,10 @@ If you want to try out the new UI, but it hasn't yet rolled out to your organiza
 To learn more about this image, check our macOS Xcode 11 page.
 
 ## Week of August 24, 2020
-**(New) Information on promoter is stored in related enviroment variable**  
+**(New) Information on promoter is stored in related environment variable**  
 Inside a Semaphore job you can now see who initiated a promotion by checking the value of the `SEMAPHORE_PIPELINE_PROMOTED_BY` environment variable.
 
-Information on all available enviroment variables can be found in our [documentation](../reference/env-vars).
+Information on all available environment variables can be found in our [documentation](../reference/env-vars).
   
 **(Improved) Ubuntu 18.04 image update**  
 **(Updated)** Language versions:
