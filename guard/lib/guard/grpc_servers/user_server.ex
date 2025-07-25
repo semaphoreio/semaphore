@@ -664,6 +664,7 @@ defmodule Guard.GrpcServers.UserServer do
   defp map_creation_source(user) do
     case user[:creation_source] do
       :okta -> User.User.CreationSource.value(:OKTA)
+      :service_account -> User.User.CreationSource.value(:SERVICE_ACCOUNT)
       _ -> User.User.CreationSource.value(:NOT_SET)
     end
   end
