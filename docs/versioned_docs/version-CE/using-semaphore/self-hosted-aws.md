@@ -275,7 +275,7 @@ See the [AWS stack parameters reference](../reference/agent-aws-stack) for all t
 
 ### Cache
 
-See [setting up S3 cache](./optimization/cache#aws) to learn how to configure cache with AWS S3 buckets.
+See [setting up S3 cache](./cache#aws) to learn how to configure cache with AWS S3 buckets.
 
 ### Autoscaling {#scale}
 

@@ -179,7 +179,7 @@ const Features = [
       </span>
     ),
     image: require('@site/static/home/optimization-guide.png'),
-    url: 'using-semaphore/optimization/cache',
+    url: 'using-semaphore/cache',
     description: (
       <Translate id="features.optimization.description">
         Learn how to speed up workflows using the cache and container registry.
