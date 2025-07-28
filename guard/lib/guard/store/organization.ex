@@ -3,11 +3,12 @@ defmodule Guard.Store.Organization do
 
   import Ecto.Query
 
-  @spec get_by_id(String.t()) ::
+  @spec get_by_id(String.t(), Keyword.t()) ::
           {:ok, FrontRepo.Organization.t()} | {:error, {:not_found, String.t()}}
-  def get_by_id(id) when is_binary(id) and id != "" do
+  def get_by_id(id, opts \\ []) when is_binary(id) and id != "" do
     Guard.FrontRepo.Organization
     |> where([o], o.id == ^id)
+    |> filter_deleted_query(opts[:soft_deleted])
     |> Guard.FrontRepo.one()
     |> case do
       nil -> Util.ToTuple.error("Organization '#{id}' not found.", :not_found)
@@ -15,11 +16,12 @@ defmodule Guard.Store.Organization do
     end
   end
 
-  @spec get_by_username(String.t()) ::
+  @spec get_by_username(String.t(), Keyword.t()) ::
           {:ok, FrontRepo.Organization.t()} | {:error, {:not_found, String.t()}}
-  def get_by_username(username) when is_binary(username) and username != "" do
+  def get_by_username(username, opts \\ []) when is_binary(username) and username != "" do
     Guard.FrontRepo.Organization
     |> where([o], o.username == ^username)
+    |> filter_deleted_query(opts[:soft_deleted])
     |> Guard.FrontRepo.one()
     |> case do
       nil -> Util.ToTuple.error("Organization '#{username}' not found.", :not_found)
@@ -27,9 +29,10 @@ defmodule Guard.Store.Organization do
     end
   end
 
-  def exists?(org_id) do
+  def exists?(org_id, opts \\ []) do
     Guard.FrontRepo.Organization
     |> where([o], o.id == ^org_id)
+    |> filter_deleted_query(opts[:soft_deleted])
     |> Guard.FrontRepo.exists?()
   end
 
@@ -68,8 +71,11 @@ defmodule Guard.Store.Organization do
 
   @spec list(map(), map()) :: {[FrontRepo.Organization.t()], String.t() | nil}
   def list(params, keyset_params) do
+    soft_deleted = Map.get(params, :soft_deleted, false)
+
     query =
       Guard.FrontRepo.Organization
+      |> filter_deleted_query(soft_deleted)
       |> filter_by_created_at_gt(params.created_at_gt)
 
     flop =
@@ -84,9 +90,10 @@ defmodule Guard.Store.Organization do
   end
 
   @spec list_by_ids([String.t()]) :: [FrontRepo.Organization.t()]
-  def list_by_ids(ids) when is_list(ids) do
+  def list_by_ids(ids, opts \\ []) when is_list(ids) do
     Guard.FrontRepo.Organization
     |> where([o], o.id in ^ids)
+    |> filter_deleted_query(opts[:soft_deleted])
     |> Guard.FrontRepo.all()
   end
 
@@ -296,12 +303,85 @@ defmodule Guard.Store.Organization do
   end
 
   @doc """
-  Deletes an organization.
+  Soft deletes an organization.
   Returns {:ok, organization} if successful, or {:error, changeset} if not.
   """
-  @spec destroy(Guard.FrontRepo.Organization.t()) ::
+  @spec soft_destroy(Guard.FrontRepo.Organization.t()) ::
           {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
-  def destroy(%Guard.FrontRepo.Organization{} = organization) do
-    Guard.FrontRepo.delete(organization)
+  def soft_destroy(%Guard.FrontRepo.Organization{} = organization) do
+    timestamp = DateTime.utc_now() |> DateTime.to_unix(:second)
+    soft_deleted_org_username = "#{organization.username}-deleted-#{timestamp}"
+
+    result =
+      organization
+      |> Guard.FrontRepo.Organization.changeset(%{
+        username: soft_deleted_org_username,
+        deleted_at: DateTime.utc_now()
+      })
+      |> Guard.FrontRepo.update()
+
+    case result do
+      {:ok, _} ->
+        :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :soft_delete)
+        result
+
+      _ ->
+        result
+    end
   end
+
+  @doc """
+  Deletes an organization completely from the database.
+  Returns {:ok, organization} if successful, or {:error, changeset} if not.
+  """
+  @spec hard_destroy(Guard.FrontRepo.Organization.t()) ::
+          {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
+  def hard_destroy(%Guard.FrontRepo.Organization{} = organization) do
+    result = Guard.FrontRepo.delete(organization)
+
+    case result do
+      {:ok, _} ->
+        :ok = Guard.Events.OrganizationDeleted.publish(organization.id, type: :hard_delete)
+        result
+
+      _ ->
+        result
+    end
+  end
+
+  @spec restore(Guard.FrontRepo.Organization.t()) ::
+          {:ok, Guard.FrontRepo.Organization.t()} | {:error, Ecto.Changeset.t()}
+  def restore(%Guard.FrontRepo.Organization{} = organization) do
+    result =
+      organization
+      |> Guard.FrontRepo.Organization.changeset(%{deleted_at: nil})
+      |> Guard.FrontRepo.update()
+
+    case result do
+      {:ok, _} ->
+        :ok = Guard.Events.OrganizationRestored.publish(organization.id)
+        result
+
+      _ ->
+        result
+    end
+  end
+
+  @spec find_candidates_for_hard_destroy() :: [Guard.FrontRepo.Organization.t()]
+  def find_candidates_for_hard_destroy do
+    grace_period_days = Application.get_env(:guard, :hard_destroy_grace_period_days)
+
+    grace_period =
+      DateTime.utc_now()
+      |> DateTime.add(-grace_period_days * 24 * 60 * 60)
+      |> DateTime.truncate(:second)
+
+    Guard.FrontRepo.Organization
+    |> where([o], not is_nil(o.deleted_at) and o.deleted_at < ^grace_period)
+    |> Guard.FrontRepo.all()
+  end
+
+  defp filter_deleted_query(query, true), do: query |> where([o], not is_nil(o.deleted_at))
+  defp filter_deleted_query(query, false), do: query |> where([o], is_nil(o.deleted_at))
+  defp filter_deleted_query(query, _), do: filter_deleted_query(query, false)
 end

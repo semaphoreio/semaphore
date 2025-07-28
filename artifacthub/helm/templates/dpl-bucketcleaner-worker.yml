@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -26,7 +27,6 @@ spec:
       containers:
         - name: {{ .Chart.Name }}-bucketcleaner-worker
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -84,4 +84,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

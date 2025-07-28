@@ -15,6 +15,7 @@ defmodule RepositoryHub.Adapters do
     CommitRequest,
     ListCollaboratorsRequest,
     CreateBuildStatusRequest,
+    ClearExternalDataRequest,
     ListAccessibleRepositoriesRequest,
     ForkRequest,
     CheckDeployKeyRequest,
@@ -24,7 +25,8 @@ defmodule RepositoryHub.Adapters do
     UpdateRequest,
     DescribeRemoteRepositoryRequest,
     DescribeRevisionRequest,
-    VerifyWebhookSignatureRequest
+    VerifyWebhookSignatureRequest,
+    RegenerateWebhookSecretRequest
   }
 
   alias RepositoryHub.Model
@@ -123,6 +125,7 @@ defmodule RepositoryHub.Adapters do
       ListRequest -> universal() |> wrap()
       CreateRequest -> from_integration_type(request)
       DeleteRequest -> from_repository_id(request)
+      ClearExternalDataRequest -> from_repository_id(request)
       GetSshKeyRequest -> universal() |> wrap()
       GetFileRequest -> from_repository_id(request)
       GetFilesRequest -> from_repository_id(request)
@@ -139,6 +142,7 @@ defmodule RepositoryHub.Adapters do
       DescribeRemoteRepositoryRequest -> from_integration_type(request)
       DescribeRevisionRequest -> from_repository_id(request)
       ForkRequest -> from_integration_type(request)
+      RegenerateWebhookSecretRequest -> from_repository_id(request)
       _ -> error("Can't find adapter for request #{request}")
     end
   end

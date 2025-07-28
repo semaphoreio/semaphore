@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -41,7 +42,6 @@ spec:
       containers:
         - name: "{{ .Chart.Name }}-public-grpc-api"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
@@ -106,4 +106,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

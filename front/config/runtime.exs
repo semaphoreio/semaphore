@@ -111,10 +111,10 @@ if config_env() == :prod do
     self_hosted_agents_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SELFHOSTEDHUB"),
     superjerry_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SUPERJERRY"),
     task_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_TASK"),
-    user_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_USER"),
     velocity_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_VELOCITY"),
     workflow_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),
-    jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB")
+    jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB"),
+    license_grpc_endpoint: System.get_env("INTERNAL_API_URL_LICENSE", "license-checker:50051")
 
   config :front,
     gofer_grpc_endpoint: System.get_env("INTERNAL_API_URL_GOFER"),

@@ -16,7 +16,7 @@ test.setup:
 	$(MAKE) db.migrate
 
 test: build
-	docker-compose run --rm app gotestsum --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 wait.for.postgres:
 	docker-compose run --rm app scripts/wait-for-postgres.sh

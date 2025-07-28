@@ -7,7 +7,7 @@
   window.InjectedDataByBackend.Tasks.PipelineFile = "<%= @form_params.pipeline_file %>";
   window.InjectedDataByBackend.Tasks.Parameters = <%= raw injectable(@form_params.parameters) %>;
 </script>
-<%= if @permissions["project.scheduler.manage"] do %>
+<%= if @permissions["project.scheduler.run_manually"] do %>
   <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
     <div class="nb3 nb4-l pb4">
       <div class="w-100-l pa3 pa4-l bg-white shadow-1 br3">

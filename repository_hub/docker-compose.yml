@@ -34,6 +34,11 @@ services:
 
     volumes:
       - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
 
   db:
     image: postgres:9.6
@@ -41,11 +46,23 @@ services:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: "the-cake-is-a-lie"
+    restart: "on-failure"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3-management
     environment:
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "-rabbit log_levels [{connection,error}]"
+    restart: "on-failure"
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 3s
+      timeout: 3s
+      retries: 5
 
 
 volumes:

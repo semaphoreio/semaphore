@@ -12,7 +12,7 @@ import Steps from '@site/src/components/Steps';
 
 :::note
 
-The Ubuntu 22.04 images is not available for the older generation agent type [e1-standard](../machine-types#e1). This OS version is in technical preview and versions of preinstalled software are subject to change.
+The Ubuntu 22.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
 
 :::
 
@@ -67,8 +67,8 @@ Following version control tools are pre-installed:
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
 - Geckodriver 0.36.0
-- Google Chrome 134.0.6998.117
-- ChromeDriver 134.0.6998.117
+- Google Chrome 131.0.6778.139
+- ChromeDriver 131.0.6778.139
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 

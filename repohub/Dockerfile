@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 ARG UBUNTU_VERSION=22.04
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -52,8 +52,8 @@ FROM base AS dev
 
 WORKDIR /tmp
 RUN curl -sL https://github.com/google/protobuf/releases/download/v3.20.0/protoc-3.20.0-linux-x86_64.zip -o protoc && \
-  unzip protoc && \
-  mv bin/protoc /usr/local/bin/protoc
+    unzip protoc && \
+    mv bin/protoc /usr/local/bin/protoc
 
 RUN curl -sL https://github.com/golang-migrate/migrate/releases/download/v4.18.1/migrate.linux-amd64.tar.gz | tar xvz && \
     mv /tmp/migrate /usr/bin/migrate && \

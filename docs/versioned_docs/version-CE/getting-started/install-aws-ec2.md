@@ -331,7 +331,7 @@ Finally, install the Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
+  --version v1.3.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
@@ -353,14 +353,15 @@ To start using the app, go to https://id.semaphore.example.com/login
 
 You can fetch credentials for the login by running this command:
 
-echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
+
 =============================================================================================
 ```
 
 Execute the shown command to retrieve the login credentials.
 
 ```shell title="remote shell - get login credentials"
-$ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+$ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 Email: root@example.com
 Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
@@ -400,7 +401,7 @@ Once your have Semaphore up and running, check out the following pages to finish
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -421,12 +422,18 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     ls certs/live/${DOMAIN}/privkey.pem
     ```
 
-4. Run the following command to upgrade to `v1.1.0`
+4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+
+    ```shell
+    openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
+    ```
+
+5. Run the following command to upgrade to `v1.3.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
+      --version v1.3.0 \
       --timeout 20m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \

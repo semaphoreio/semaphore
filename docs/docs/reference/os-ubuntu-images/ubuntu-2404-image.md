@@ -10,9 +10,9 @@ import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 import Steps from '@site/src/components/Steps';
 
-:::info
+:::note
 
-This image is in the Technical Preview stage. If you wish to use this machine, please contact `support@semaphoreci.com`
+The Ubuntu 24.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
 
 :::
 
@@ -28,7 +28,7 @@ To use this operating system, and choose `ubuntu2404` in the **OS Image** select
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system,  you must select an [`f1-standard`] machine and use `ubuntu2204` as the `os_image`:
+To use this operating system,  you must select an [`f1-standard`] machine and use `ubuntu2404` as the `os_image`:
 
 ```yaml
 version: 1.0
@@ -67,8 +67,8 @@ Following version control tools are pre-installed:
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
 - Geckodriver 0.36.0
-- Google Chrome 134.0.6998.117
-- ChromeDriver 134.0.6998.117
+- Google Chrome 131.0.6778.139
+- ChromeDriver 131.0.6778.139
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 

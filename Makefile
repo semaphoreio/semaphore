@@ -6,7 +6,9 @@ TAG_NAME=$(shell git describe --exact-match --tags HEAD 2>/dev/null)
 # If we are building on a tag, we use the branch name which contains the tag.
 #
 ifneq ($(TAG_NAME),)
-	export BRANCH?=$(shell git branch --contains tags/$(TAG_NAME) | sed '/HEAD/d' | sed 's/[^a-z]//g' | cut -c 1-40)
+	export BRANCH?=$(shell git branch --contains tags/$(TAG_NAME) | head -n 1 | sed '/HEAD/d' | sed 's/[^a-z]//g' | cut -c 1-40)
+else ifneq ($(SEMAPHORE_GIT_PR_NUMBER),)
+	export BRANCH?=pr$(SEMAPHORE_GIT_PR_NUMBER)
 else
 	export BRANCH?=$(shell git rev-parse --abbrev-ref HEAD | sed 's/[^a-z]//g' | cut -c 1-40)
 endif
@@ -17,7 +19,7 @@ export MAIN_IMAGE?=$(APP_NAME)/main
 
 APP_DIRECTORY=.
 ifeq ($(CI),)
-	APP_DIRECTORY?=/app
+	APP_DIRECTORY=/app
 endif
 
 #
@@ -30,9 +32,10 @@ ifeq ($(BUILD_ENV),)
 endif
 
 IMAGE_TAG=$(BUILD_ENV)
-DOCKER_BUILD_TARGET=runner
 ifneq ($(BUILD_ENV),prod)
-	DOCKER_BUILD_TARGET=dev
+	DOCKER_BUILD_TARGET?=dev
+else
+	DOCKER_BUILD_TARGET?=runner
 endif
 
 #
@@ -63,9 +66,10 @@ BUILDKIT_INLINE_CACHE=1
 #
 # Using tty progress output makes our job logs difficult to read
 #
-DOCKER_BUILD_PROGRESS=plain
 ifeq ($(CI),)
-	DOCKER_BUILD_PROGRESS=tty
+	DOCKER_BUILD_PROGRESS?=tty
+else
+	DOCKER_BUILD_PROGRESS?=plain
 endif
 
 DOCKER_BUILD_PATH=.
@@ -82,7 +86,8 @@ ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 SECURITY_TOOLBOX_TMP_DIR?=/tmp/security-toolbox
 check.code:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/code --language $(LANGUAGE) -d $(CHECK_CODE_OPTS)'
@@ -102,7 +107,8 @@ check.js.code:
 
 check.deps:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
 		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
@@ -122,14 +128,37 @@ check.js.deps:
 
 check.docker:
 ifeq ($(CI),)
-	docker run -it -v $$(pwd):/app \
+	docker run -it \
+		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		-v $(XDG_RUNTIME_DIR)/docker.sock:/var/run/docker.sock \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c '$(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY); $(SECURITY_TOOLBOX_TMP_DIR)/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)'
 else
 	# ruby version is set in prologue
-	$(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/docker -d --image $(IMAGE):$(IMAGE_TAG) -s CRITICAL $(CHECK_DOCKER_OPTS)
+endif
+
+check.generate-report:
+ifeq ($(CI),)
+	docker run -it \
+		-v $$(pwd):/app \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		registry.semaphoreci.com/ruby:3 \
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/report --service-name "[$(CHECK_TYPE)] $(APP_NAME)"'
+else
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/report --service-name "[$(CHECK_TYPE)] $(APP_NAME)"
+endif
+
+check.generate-global-report:
+ifeq ($(CI),)
+	docker run -it \
+		-v $$(pwd):/app \
+		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
+		registry.semaphoreci.com/ruby:3 \
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/global-report -i reports -o out'
+else
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/global-report -i reports -o out
 endif
 
 #
@@ -178,6 +207,20 @@ else
 		$(DOCKER_BUILD_PATH)
 endif
 
+build.skaffold: DOCKER_BUILD_PROGRESS=plain
+build.skaffold: pull
+ifneq ($(MIX_ENV),)
+	mkdir -p deps _build
+endif
+	docker build -f Dockerfile \
+		--target $(DOCKER_BUILD_TARGET) \
+		--progress $(DOCKER_BUILD_PROGRESS) \
+		--build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) \
+		--build-arg APP_NAME=$(APP_NAME) \
+		--build-arg BUILD_ENV=$(BUILD_ENV) \
+		-t $(IMAGE) \
+		$(DOCKER_BUILD_PATH)
+
 #
 # Development operations
 #
@@ -198,6 +241,10 @@ console.ex:
 console.bash:
 	docker compose $(DOCKER_COMPOSE_OPTS) build --build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) --build-arg MIX_ENV=$(MIX_ENV) app
 	docker compose $(DOCKER_COMPOSE_OPTS) run $(DOCKER_COMPOSE_RUN_OPTS) --rm app /bin/bash
+
+console.sh:
+	docker compose $(DOCKER_COMPOSE_OPTS) build --build-arg BUILDKIT_INLINE_CACHE=$(BUILDKIT_INLINE_CACHE) --build-arg MIX_ENV=$(MIX_ENV) app
+	docker compose $(DOCKER_COMPOSE_OPTS) run $(DOCKER_COMPOSE_RUN_OPTS) --rm app /bin/sh
 
 #
 # The default test.ex.setup target does nothing.

@@ -348,7 +348,8 @@ defmodule InternalApi.Secrethub.ListKeysetRequest do
           order: integer,
           secret_level: integer,
           project_id: String.t(),
-          deployment_target_id: String.t()
+          deployment_target_id: String.t(),
+          ignore_contents: boolean
         }
   defstruct [
     :metadata,
@@ -357,7 +358,8 @@ defmodule InternalApi.Secrethub.ListKeysetRequest do
     :order,
     :secret_level,
     :project_id,
-    :deployment_target_id
+    :deployment_target_id,
+    :ignore_contents
   ]
 
   field(:metadata, 1, type: InternalApi.Secrethub.RequestMeta)
@@ -367,6 +369,7 @@ defmodule InternalApi.Secrethub.ListKeysetRequest do
   field(:secret_level, 5, type: InternalApi.Secrethub.Secret.SecretLevel, enum: true)
   field(:project_id, 6, type: :string)
   field(:deployment_target_id, 7, type: :string)
+  field(:ignore_contents, 8, type: :bool)
 end
 
 defmodule InternalApi.Secrethub.ListKeysetRequest.Order do
@@ -638,11 +641,13 @@ defmodule InternalApi.Secrethub.DestroyResponse do
   use Protobuf, syntax: :proto3
 
   @type t :: %__MODULE__{
-          metadata: InternalApi.Secrethub.ResponseMeta.t()
+          metadata: InternalApi.Secrethub.ResponseMeta.t(),
+          id: String.t()
         }
-  defstruct [:metadata]
+  defstruct [:metadata, :id]
 
   field(:metadata, 1, type: InternalApi.Secrethub.ResponseMeta)
+  field(:id, 2, type: :string)
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
@@ -664,7 +669,12 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
           git_ref_type: String.t(),
           git_branch_name: String.t(),
           git_pull_request_number: String.t(),
-          org_username: String.t()
+          org_username: String.t(),
+          job_type: String.t(),
+          git_pull_request_branch: String.t(),
+          repo_slug: String.t(),
+          triggerer: String.t(),
+          project_name: String.t()
         }
   defstruct [
     :org_id,
@@ -681,7 +691,12 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
     :git_ref_type,
     :git_branch_name,
     :git_pull_request_number,
-    :org_username
+    :org_username,
+    :job_type,
+    :git_pull_request_branch,
+    :repo_slug,
+    :triggerer,
+    :project_name
   ]
 
   field(:org_id, 1, type: :string)
@@ -699,6 +714,11 @@ defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenRequest do
   field(:git_branch_name, 13, type: :string)
   field(:git_pull_request_number, 14, type: :string)
   field(:org_username, 15, type: :string)
+  field(:job_type, 16, type: :string)
+  field(:git_pull_request_branch, 17, type: :string)
+  field(:repo_slug, 18, type: :string)
+  field(:triggerer, 19, type: :string)
+  field(:project_name, 20, type: :string)
 end
 
 defmodule InternalApi.Secrethub.GenerateOpenIDConnectTokenResponse do
@@ -798,6 +818,92 @@ defmodule InternalApi.Secrethub.UpdateEncryptedResponse do
   field(:encrypted_data, 3, type: InternalApi.Secrethub.EncryptedData)
 end
 
+defmodule InternalApi.Secrethub.GetJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t()
+        }
+  defstruct [:org_id, :project_id]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+end
+
+defmodule InternalApi.Secrethub.GetJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t(),
+          claims: [InternalApi.Secrethub.ClaimConfig.t()],
+          is_active: boolean
+        }
+  defstruct [:org_id, :project_id, :claims, :is_active]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
+  field(:is_active, 4, type: :bool)
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t(),
+          claims: [InternalApi.Secrethub.ClaimConfig.t()],
+          is_active: boolean
+        }
+  defstruct [:org_id, :project_id, :claims, :is_active]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+  field(:claims, 3, repeated: true, type: InternalApi.Secrethub.ClaimConfig)
+  field(:is_active, 4, type: :bool)
+end
+
+defmodule InternalApi.Secrethub.UpdateJWTConfigResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          project_id: String.t()
+        }
+  defstruct [:org_id, :project_id]
+
+  field(:org_id, 1, type: :string)
+  field(:project_id, 2, type: :string)
+end
+
+defmodule InternalApi.Secrethub.ClaimConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t(),
+          is_active: boolean,
+          is_mandatory: boolean,
+          is_aws_tag: boolean,
+          is_system_claim: boolean
+        }
+  defstruct [:name, :description, :is_active, :is_mandatory, :is_aws_tag, :is_system_claim]
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+  field(:is_active, 3, type: :bool)
+  field(:is_mandatory, 4, type: :bool)
+  field(:is_aws_tag, 5, type: :bool)
+  field(:is_system_claim, 6, type: :bool)
+end
+
 defmodule InternalApi.Secrethub.SecretService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Secrethub.SecretService"
@@ -847,6 +953,18 @@ defmodule InternalApi.Secrethub.SecretService.Service do
     :CheckoutMany,
     InternalApi.Secrethub.CheckoutManyRequest,
     InternalApi.Secrethub.CheckoutManyResponse
+  )
+
+  rpc(
+    :GetJWTConfig,
+    InternalApi.Secrethub.GetJWTConfigRequest,
+    InternalApi.Secrethub.GetJWTConfigResponse
+  )
+
+  rpc(
+    :UpdateJWTConfig,
+    InternalApi.Secrethub.UpdateJWTConfigRequest,
+    InternalApi.Secrethub.UpdateJWTConfigResponse
   )
 end
 

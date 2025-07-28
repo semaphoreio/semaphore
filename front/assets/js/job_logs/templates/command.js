@@ -22,6 +22,10 @@ export class CommandTemplate {
         <span class="job-log-line-time ${this.statusBackground(command, isJobFinished)}">
           ${this.renderSpinnerIfNotFullyFetched(command)}${this.status(command, isJobFinished)}${this.duration(command, isJobFinished)}
         </span>
+        
+      </div>
+      <div class="job-log-line-expand dn">
+          ↓ Expand ↓
       </div>
 
       <div cmd-lines-container ${this.logLinesVisibility(command, isJobFinished)}>

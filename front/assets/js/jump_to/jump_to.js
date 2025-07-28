@@ -68,13 +68,8 @@ export class JumpTo {
 
     let afterUserEvents = !!options.afterUserEvents
 
-    console.log(`Registering event: '${event}', target: '${selector}'. AfterUserEvents: ${afterUserEvents}`)
-
     let handler = (e) => {
-      console.log(`Event for '${event}' on ${selector} started`)
       let result = callback(e)
-      console.log(`Event for '${event}' on ${selector} finished`)
-
       return result
     }
 

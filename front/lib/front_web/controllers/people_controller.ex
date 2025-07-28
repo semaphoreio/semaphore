@@ -233,7 +233,7 @@ defmodule FrontWeb.PeopleController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while removing member, please contac our support team."
+              "An error occured while removing member, please contact our support team."
             )
             |> redirect_to.()
         end
@@ -700,11 +700,10 @@ defmodule FrontWeb.PeopleController do
 
   def update(conn, params = %{"user_id" => user_id}) do
     Watchman.benchmark("people.update", fn ->
-      org_id = conn.assigns.organization_id
-      fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id, org_id) end)
+      fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
       {:ok, user} = Async.await(fetch_user)
 
-      case Models.User.update(user, %{name: params["name"]}, nil, org_id) do
+      case Models.User.update(user, %{name: params["name"]}) do
         {:ok, _updated_user} ->
           conn
           |> put_flash(:notice, "Changes saved.")
@@ -747,9 +746,7 @@ defmodule FrontWeb.PeopleController do
       |> Audit.add(resource_id: user_id)
       |> Audit.log()
 
-      org_id = conn.assigns.organization_id
-
-      case Models.User.regenerate_token(user_id, nil, org_id) do
+      case Models.User.regenerate_token(user_id) do
         {:ok, new_token} ->
           conn
           |> put_flash(:notice, "Token reset.")
@@ -924,8 +921,7 @@ defmodule FrontWeb.PeopleController do
   defp render_show(conn, user_id, errors \\ nil)
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
-    org_id = conn.assigns.organization_id
-    fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id, org_id) end)
+    fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
     {:ok, user} = Async.await(fetch_user)
 
     render_show(conn, user, errors)

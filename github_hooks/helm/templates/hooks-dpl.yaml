@@ -31,7 +31,6 @@ spec:
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["bash", "-c"]
           args: ["bundle exec rails db:create db:migrate && bundle exec puma"]
-          imagePullPolicy: Always
           ports:
             - name: web-port
               containerPort: 3000
@@ -49,6 +48,9 @@ spec:
               value: production
             - name: RAILS_ENV
               value: production
+
+            - name: SEMAPHORE_EDITION
+              value: {{ .Values.global.edition }}
 
             - name: SECRET_KEY_BASE
               valueFrom: { secretKeyRef: { name: {{ include "secrets.authentication.name" . }}, key: SESSION_SECRET_KEY_BASE } }

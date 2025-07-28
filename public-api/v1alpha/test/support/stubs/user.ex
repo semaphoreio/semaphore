@@ -10,6 +10,7 @@ defmodule Support.Stubs.User do
   alias Support.Stubs.{DB, Time, UUID}
 
   def default_user_id, do: "78114608-be8a-465a-b9cd-81970fb802c5"
+  def default_user_email, do: "madeup@mail.com"
 
   def init do
     DB.add_table(:users, [:id, :api_model])
@@ -30,6 +31,7 @@ defmodule Support.Stubs.User do
   def create_default(params \\ []) do
     defaults = [
       user_id: default_user_id(),
+      email: default_user_email(),
       github_repositry_scope: "private"
     ]
 
@@ -63,12 +65,11 @@ defmodule Support.Stubs.User do
           code: InternalApi.ResponseStatus.Code.value(:OK),
           message: ""
         ),
-      user_id: UUID.gen(),
+      user_id: params[:user_id],
       name: "Milica",
-      email: "dhh@basecamp.com",
+      email: params[:email],
       created_at: Time.now(),
       avatar_url: "https://gravatar.com/avatar/c716c3715a66612b070b6408b89c1190.png",
-      api_token: "q8u38dj3dd83jd83j",
       github_token: "c716c3715a66612b070b6408b89c1190",
       github_scope: map_github_scope(params[:github_repositry_scope]),
       github_login: "milica-nerlovic",
@@ -100,7 +101,6 @@ defmodule Support.Stubs.User do
       name: "Milica",
       avatar_url: "https://gravatar.com/avatar/c716c3715a66612b070b6408b89c1190.png",
       github_uid: "githubuid",
-      api_token: "skjelkejfde",
       github_login: "milica-nerlovic",
       single_org_user: false
     ]
@@ -116,6 +116,7 @@ defmodule Support.Stubs.User do
     def init do
       GrpcMock.stub(UserMock, :describe, &__MODULE__.describe/2)
       GrpcMock.stub(UserMock, :describe_many, &__MODULE__.describe_many/2)
+      GrpcMock.stub(UserMock, :describe_by_email, &__MODULE__.describe_by_email/2)
       GrpcMock.stub(UserMock, :update, &__MODULE__.update/2)
       GrpcMock.stub(UserMock, :regenerate_token, &__MODULE__.regenerate_token/2)
       GrpcMock.stub(UserMock, :list_favorites, &__MODULE__.list_favorites/2)
@@ -153,7 +154,6 @@ defmodule Support.Stubs.User do
             avatar_url: u.avatar_url,
             github_uid: u.github_uid,
             name: u.name,
-            api_token: u.api_token,
             company: u.company,
             email: u.email,
             repository_providers: u.repository_providers
@@ -161,6 +161,33 @@ defmodule Support.Stubs.User do
         end)
 
       Response.new(status: internal_status(:OK), users: users)
+    end
+
+    def describe_by_email(req, _) do
+      alias InternalApi.User.User, as: Response
+
+      user =
+        DB.all(:users)
+        |> Enum.find(fn u -> u.api_model.email == req.email end)
+
+      if user do
+        user_model = DB.extract(user, :api_model)
+
+        Response.new(
+          id: user_model.user_id,
+          avatar_url: user_model.avatar_url,
+          github_uid: user_model.github_uid,
+          name: user_model.name,
+          company: user_model.company,
+          email: user_model.email,
+          repository_providers: user_model.repository_providers
+        )
+      else
+        raise(GRPC.RPCError,
+          message: "User with email #{req.email} not found",
+          status: GRPC.Status.not_found()
+        )
+      end
     end
 
     def update(req, _) do
@@ -267,7 +294,6 @@ defmodule Support.Stubs.User do
         name: user.name,
         email: user.email,
         avatar_url: user.avatar_url,
-        api_token: user.api_token,
         company: user.company,
         repository_scopes:
           RS.new(
@@ -293,7 +319,6 @@ defmodule Support.Stubs.User do
         avatar_url: user.avatar_url,
         github_uid: user.repository_scopes.github.uid,
         name: user.name,
-        api_token: user.api_token,
         github_login: user.repository_scopes.github.login,
         company: user.company,
         email: user.email,

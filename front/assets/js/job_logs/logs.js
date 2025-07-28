@@ -101,7 +101,7 @@ export class JobLogs {
     this.update()
 
     this.on("click", ".job-log-line.command", (e) => {
-      let fold = e.target.closest(".job-log-fold")
+      const fold = e.target.closest(".job-log-fold")
 
       if (FoldToggle.isTogglable(fold)) {
         FoldToggle.toggle(fold)
@@ -109,15 +109,77 @@ export class JobLogs {
     })
 
     this.on("click", ".job-log-line-number", (e) => {
-      let line = e.target.closest('.job-log-line');
+      const line = e.target.closest('.job-log-line');
       Highlight.highlightLine(line, event.shiftKey)
 
       e.stopPropagation()
     })
   }
 
+  setupFoldExpandButtons() {
+    this.configureExpandsButton()
+
+    this.on("click", ".job-log-line-expand", (e) => {
+      const fold = e.target.closest(".job-log-fold");
+      const jobCommand = fold.querySelector('.job-log-line.command')
+      this.toggleExpandCommand(e.target, jobCommand)
+    })
+  }
+
+  toggleExpandCommand(expandButton, jobCommand) {
+    if (jobCommand.style.maxHeight) {
+      this.collapseCommand(expandButton, jobCommand)
+    } else {
+      this.expandCommand(expandButton, jobCommand)
+    }
+  }
+
+  expandCommand(expandButton, jobCommand) {
+    jobCommand.style.maxHeight = "none"
+    expandButton.innerText = "↑ Collapse ↑"
+    expandButton.style.top = jobCommand.offsetHeight.toString() + "px"
+  }
+
+  collapseCommand(expandButton, jobCommand) {
+    jobCommand.style.maxHeight = ""
+    expandButton.innerText = "↓ Expand ↓"
+    expandButton.style.top = jobCommand.offsetHeight.toString() + "px"
+  }
+
+  configureExpandsButton() {
+    if (State.get("sticky")) {
+      this.enableExpandsButton()
+    } else {
+      this.disableExpandsButton()
+    }
+  }
+
+  enableExpandsButton() {
+    document.querySelectorAll('.job-log-line.command').forEach((element) => {
+      const fold = element.closest(".job-log-fold");
+      const expandButton = fold?.querySelector(".job-log-line-expand");
+        
+      if (element.offsetHeight >= 250) {
+        expandButton.style.top = element.offsetHeight.toString() + "px"
+        expandButton?.classList.remove("dn");
+      } else {
+        expandButton?.classList.add("dn");
+      }
+    });
+  }
+
+  disableExpandsButton() {
+    document.querySelectorAll('.job-log-line.command').forEach((element) => {
+      const fold = element.closest(".job-log-fold");
+      const expandButton = fold?.querySelector(".job-log-line-expand");
+        
+      expandButton?.classList.add("dn");
+    });
+  }
+
   update() {
     _.forIn(this.components, (component) => component.update())
+    this.configureExpandsButton()
   }
 
   on(event, selector, callback) {
@@ -155,6 +217,7 @@ export class JobLogs {
       if(this.config.isJobFinished === true) {
         this.logRenderDuration(this.startTime, performance.now(), "v2");
         this.scrollToLastOpenFold();
+        this.setupFoldExpandButtons()
       }
     })
   }

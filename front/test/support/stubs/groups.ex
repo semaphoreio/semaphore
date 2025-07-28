@@ -141,17 +141,13 @@ defmodule Support.Stubs.Groups do
       group = DB.find_by(:groups, :id, req.group.id)
 
       if group do
-        # Ensure member_ids is always a list
         current_members = group.member_ids || []
 
-        # Make sure members_to_add and members_to_remove are lists
         members_to_add = ensure_list(req.members_to_add)
         members_to_remove = ensure_list(req.members_to_remove)
 
-        # Calculate new member list safely
         new_member_ids = update_member_ids(current_members, members_to_add, members_to_remove)
 
-        # Apply changes to the group
         updated_group = %{
           id: group.id,
           name: req.group.name || group.name,

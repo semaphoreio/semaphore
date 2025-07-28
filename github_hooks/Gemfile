@@ -13,7 +13,9 @@ gem "bunny"
 gem "faraday", "~> 1.3.0"
 gem "faraday_middleware" # used for json
 gem "net-http" # https://github.com/ruby/net-imap/issues/16#issuecomment-803086765
-gem "grpc", "~> 1.57.0"
+gem 'net-imap', '~> 0.5.7'
+gem "grpc", "~> 1.62.1"
+gem "googleapis-common-protos-types", "~> 1.18.0"
 gem "httparty", "~> 0.21.0"
 gem "httpclient"
 gem "json"
@@ -32,7 +34,7 @@ gem "sentry-rails"
 gem "sentry-sidekiq"
 
 gem "sprockets", "< 4"
-gem "nokogiri", "~> 1.18.4"
+gem "nokogiri", "~> 1.18.8"
 
 gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "74530687a232aea678b6738114c82dfc163657cd"
 gem "rt-logman", :require => "logman"

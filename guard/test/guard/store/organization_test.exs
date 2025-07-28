@@ -538,19 +538,54 @@ defmodule Guard.Store.OrganizationTest do
     end
   end
 
-  describe "destroy/1" do
+  describe "hard_destroy/1" do
     test "deletes organization when it exists", %{org_id: org_id} do
       organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
 
       contact = Support.Factories.Organization.insert_contact!(organization.id)
       suspension = Support.Factories.Organization.insert_suspension!(organization.id)
 
-      assert {:ok, deleted_org} = Organization.destroy(organization)
+      assert {:ok, deleted_org} = Organization.hard_destroy(organization)
       assert deleted_org.id == org_id
 
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.Organization, org_id))
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.OrganizationContact, contact.id))
       assert is_nil(Guard.FrontRepo.get(Guard.FrontRepo.OrganizationSuspension, suspension.id))
+    end
+  end
+
+  describe "soft_destroy/1" do
+    test "marks an organization as deleted", %{org_id: org_id} do
+      organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
+      username = organization.username
+
+      assert {:ok, deleted_org} = Organization.soft_destroy(organization)
+      assert deleted_org.id == org_id
+
+      soft_deleted_org = Guard.FrontRepo.get(Guard.FrontRepo.Organization, org_id)
+      assert soft_deleted_org.deleted_at != nil
+
+      assert {:error, {:not_found, _message}} = Organization.get_by_id(org_id)
+
+      assert {:error, {:not_found, _message}} =
+               Organization.get_by_username(soft_deleted_org.username)
+
+      half_timestamp = Integer.floor_div(DateTime.utc_now() |> DateTime.to_unix(:second), 1000)
+      assert soft_deleted_org.username =~ "#{username}-deleted-#{half_timestamp}"
+    end
+  end
+
+  describe "restore/1" do
+    test "restores an organization", %{org_id: org_id} do
+      organization = Guard.FrontRepo.get!(Guard.FrontRepo.Organization, org_id)
+
+      assert {:ok, deleted_org} = Organization.soft_destroy(organization)
+      assert deleted_org.id == org_id
+      assert deleted_org.deleted_at != nil
+
+      assert {:ok, restored_org} = Organization.restore(organization)
+      assert restored_org.id == org_id
+      assert restored_org.deleted_at == nil
     end
   end
 

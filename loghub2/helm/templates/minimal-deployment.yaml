@@ -1,0 +1,173 @@
+{{- if .Values.global.development.minimalDeployment }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-public-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Chart.Name }}-internal-api
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: {{ .Chart.Name }}
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  replicas: 1
+  template:
+    metadata:
+      name: {{ .Chart.Name }}
+      labels:
+        app: {{ .Chart.Name }}
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      initContainers:
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          ports:
+            - name: grpc-port
+              containerPort: 50051
+            - name: http-port
+              containerPort: 8000
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - secretRef:
+                name: {{ .Values.global.logs.secretName }}
+          env:
+            - name: START_ARCHIVATOR
+              value: "yes"
+            - name: START_PUBLIC_API
+              value: "yes"
+            - name: PUBLIC_API_HOST
+              value: "0.0.0.0"
+            - name: PUBLIC_API_PORT
+              value: "8000"
+            - name: ORGANIZATION_API_GRPC_API_ENDPOINT
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.internalApi.configMapName }}
+                  key: INTERNAL_API_URL_ORGANIZATION
+            - name: START_INTERNAL_API
+              value: "yes"
+            - name: LOGHUB2_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.jwt.name" . }}
+                  key: logs
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: host
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: port
+            - name: REDIS_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: username
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.redis.secretName }}
+                  key: password
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+            - name: LOGHUB2_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "secrets.jwt.name" . }}
+                  key: logs
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+          readinessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 5
+
+{{- if .Values.archivator.resources }}
+          resources:
+{{ toYaml .Values.archivator.resources | indent 13 }}
+{{- end }}
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- end }}
+{{- end }}

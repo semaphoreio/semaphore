@@ -41,6 +41,7 @@ global_job_config:
 
 blocks:
   - name: "🛠️ Setup"
+    dependencies: []
     task:
       jobs:
         - name: "Compile Code"
@@ -48,6 +49,7 @@ blocks:
             - mix compile  # Compile the project
 
   - name: "🔍 Analyze Code"
+    dependencies: ["🛠️ Setup"]
     task:
       jobs:
         - name: "Run Credo"
@@ -58,6 +60,7 @@ blocks:
             - mix format --check-formatted  # Ensure all code is properly formatted
 
   - name: "🧪 Run Tests"
+    dependencies: ["🔍 Analyze Code"]
     task:
       jobs:
         - name: "Run Tests and Generate Coverage"
@@ -71,6 +74,7 @@ blocks:
             - cache store coverage-$SEMAPHORE_WORKFLOW_ID cover  # Store coverage results
 
   - name: "📦 Build Docker Image"
+    dependencies: ["🧪 Run Tests"]
     task:
       prologue:
         commands:

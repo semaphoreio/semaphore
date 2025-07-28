@@ -9,6 +9,10 @@
     <%= System.get_env("HOSTNAME") %> | Backend: <%= duration %>ms
   </span>
   |
+  <span id="x-inspect-data" class="pointer">
+    Inspect
+  </span>
+  |
   <span id="x-pollman">
     Pollman(<span id="x-pollman-state">running</span>) <a class="pointer" id="x-pollman-toggle">Stop</a><a class="ml2 hide pointer" title="poll once" id="x-pollman-poll-once">🔄</a>
   </span>
@@ -20,9 +24,14 @@
   let pollmanRunning = true;
   const pollmanToggle = document.getElementById("x-pollman-toggle");
   const pollmanPollOnce = document.getElementById("x-pollman-poll-once");
+  const inspectData = document.getElementById("x-inspect-data");
 
   pollmanPollOnce.onclick = function() {
     Pollman.pollNow(Pollman.options);
+  }
+
+  inspectData.onclick = function() {
+    console.info(window.InjectedDataByBackend);
   }
 
   pollmanToggle.onclick = function() {

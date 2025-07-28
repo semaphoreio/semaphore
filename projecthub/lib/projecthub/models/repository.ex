@@ -42,7 +42,8 @@ defmodule Projecthub.Models.Repository do
     :commit_status,
     :whitelist,
     :default_branch,
-    :hook_id
+    :hook_id,
+    :connected
   ]
 
   @type t() :: %Repository{
@@ -57,7 +58,8 @@ defmodule Projecthub.Models.Repository do
           integration_type: InternalApi.RepositoryIntegrator.IntegrationType.t(),
           commit_status: InternalApi.Projecthub.Project.Spec.Repository.Status.t(),
           whitelist: InternalApi.Projecthub.Project.Spec.Repository.Whitelist.t(),
-          hook_id: String.t()
+          hook_id: String.t(),
+          connected: boolean()
         }
 
   @type create_params() :: %{
@@ -119,6 +121,11 @@ defmodule Projecthub.Models.Repository do
 
   def destroy(repository) do
     RepositoryHubClient.delete(%{repository_id: repository.id})
+    |> unwrap_with_repository()
+  end
+
+  def clear_external_data(repository) do
+    RepositoryHubClient.clear_external_data(%{repository_id: repository.id})
     |> unwrap_with_repository()
   end
 
@@ -189,7 +196,8 @@ defmodule Projecthub.Models.Repository do
       commit_status: message.commit_status,
       whitelist: message.whitelist,
       hook_id: message.hook_id,
-      default_branch: message.default_branch
+      default_branch: message.default_branch,
+      connected: message.connected
     }
     |> wrap()
   end

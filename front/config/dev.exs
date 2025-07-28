@@ -66,10 +66,10 @@ config :front,
   self_hosted_agents_grpc_endpoint: "127.0.0.1:50052",
   superjerry_grpc_endpoint: "127.0.0.1:50051",
   task_grpc_endpoint: "127.0.0.1:50052",
-  user_grpc_endpoint: "127.0.0.1:50052",
   velocity_grpc_endpoint: "127.0.0.1:50052",
   workflow_api_grpc_endpoint: "127.0.0.1:50052",
-  jwt_grpc_endpoint: "127.0.0.1:50052"
+  jwt_grpc_endpoint: "127.0.0.1:50052",
+  license_grpc_endpoint: "127.0.0.1:50052"
 
 config :front, domain: "semaphoredev.dev"
 config :front, me_host: nil, me_path: "/me"
@@ -82,3 +82,5 @@ config :front, :connect_github_app_url, "http://localhost:4004/github_app_manife
 config :front,
   support_app_id: "du8TzC9z2pBIrojNZo10I232e5vsD69O",
   support_app_secret: "d27Yd4IrbHcJ1jmz1QDrGjx3ji7COoJq"
+
+config :front, :artifact_host, "http://localhost:9000"
