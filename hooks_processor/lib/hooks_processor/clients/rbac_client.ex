@@ -10,7 +10,7 @@ defmodule HooksProcessor.Clients.RBACClient do
   @grpc_timeout 5_000
 
   def member?(org_id, user_id) do
-    Logger.info("Calling RBAC API to check membership: org_id: #{org_id} user_id: #{user_id}")
+    Logger.debug("Calling RBAC API to check membership: org_id: #{org_id} user_id: #{user_id}")
 
     Metrics.benchmark("HooksProcessor.RBACClient", ["is_member?"], fn ->
       %ListUserPermissionsRequest{

@@ -39,7 +39,7 @@ defmodule HooksProcessor.Hooks.Processing.Utils do
 
   def get_requester_id(webhook, provider_uid, provider_type) do
     "provider_uid: #{provider_uid} for provider: #{provider_type}"
-    |> LT.info("Hook #{webhook.id} - calling User API to find requester")
+    |> LT.debug("Hook #{webhook.id} - calling User API to find requester")
 
     case UserClient.describe_by_repository_provider(provider_uid, provider_type) do
       {:ok, user} ->
