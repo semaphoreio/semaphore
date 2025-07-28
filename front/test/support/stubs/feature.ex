@@ -137,7 +137,8 @@ defmodule Support.Stubs.Feature do
       {"new_project_onboarding", state: :ENABLED, quantity: 1},
       {"open_id_connect_filter", state: :ENABLED, quantity: 1},
       {"wf_editor_via_jobs", state: :HIDDEN, quantity: 0},
-      {"ui_reports", state: :ENABLED, quantity: 1}
+      {"ui_reports", state: :ENABLED, quantity: 1},
+      {"ui_partial_ppl_rebuild", state: :ENABLED, quantity: 1}
     ]
   end
 

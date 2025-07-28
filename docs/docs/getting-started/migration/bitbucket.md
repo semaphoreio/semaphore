@@ -33,9 +33,7 @@ Checkout is implicit in all Travis CI workflows by default.
 </TabItem>
 <TabItem value="new" label="Semaphore">
 
-
 Semaphore does not clone the repository by default. This is because there are certain scenarios in which you don't need the code or you want to customize the cloning process.
-
 
 To clone the repository in Semaphore we only need to execute [`checkout`](../../reference/toolbox#checkout).
 
@@ -45,7 +43,6 @@ checkout
 # now the code is the current working directory
 cat README.md
 ```
-
 
 </TabItem>
 </Tabs>
@@ -92,7 +89,6 @@ pipelines:
 </TabItem>
 <TabItem value="new" label="Semaphore">
 
-
 In Semaphore, we use the [artifact](../../reference/toolbox#artifact) command to download and upload files to the artifact store.
 
 The following command stores `test.log` from any job:
@@ -108,7 +104,6 @@ artifact pull workflow test.log
 ```
 
 See [artifacts](../../using-semaphore/artifacts) for more details.
-
 
 </TabItem>
 </Tabs>
@@ -153,14 +148,13 @@ bundle install
 cache store
 ```
 
-See [caching](../../using-semaphore/optimization/cache) for more details.
+See [caching](../../using-semaphore/cache) for more details.
 </TabItem>
 </Tabs>
 
 ### Language versions
 
 We often need to activate specific language or tool versions to ensure consistent builds.
-
 
 <Tabs groupId="migration">
 <TabItem value="old" label="BitBucket Pipelines">
@@ -261,13 +255,11 @@ pipelines:
 </TabItem>
 <TabItem value="new" label="Semaphore">
 
-
-In Semaphore, we create the [secret](../../using-semaphore/secrets) at the organization or project level and activate it on a block. 
+In Semaphore, we create the [secret](../../using-semaphore/secrets) at the organization or project level and activate it on a block.
 
 The secret contents are automatically injected as environment variables in all jobs contained on that block.
 
 ![Using secrets on Semaphore](./img/secrets.jpg)
-
 
 </TabItem>
 </Tabs>
