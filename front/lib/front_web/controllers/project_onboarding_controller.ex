@@ -630,6 +630,7 @@ defmodule FrontWeb.ProjectOnboardingController do
          ) do
         project_onboarding_path(conn, :onboarding_index, project.name, [""])
       else
+        # TODO: check with Amir
         if Front.on_prem?() do
           if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
             project_onboarding_path(conn, :existing_configuration, project.name)

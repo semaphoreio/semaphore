@@ -44,7 +44,7 @@
         <a href="https://me.<%= Application.fetch_env!(:front, :domain) %>/" class="db">
           <img src="<%= assets_path() %>/images/semaphore-logo-full-white.svg" alt="Semaphore Logo">
         </a>
-        <%= if not Front.on_prem?() do %>
+        <%= if Front.saas?() do %>
           <div class="flex-ns items-center">
             <div class="f5 fw5 pr2 mv3 mv0-m flex justify-center">
               <a href="https://<%= Application.fetch_env!(:front, :domain) %>/product" class="link white-90 hover-white ph2">Product</a>
@@ -72,7 +72,7 @@
         <%= if anonymous?(@conn) do %>
           <p class="f4 black-80 mb3=0">Perhaps you need to <a href="<%= login_url(@conn) %>" class="link black-50 hover-black-80">log in →</a></p>
         <% else %>
-        <%= if not Front.on_prem?() do %>
+        <%= if Front.saas?() do %>
           <%= if Enum.all?([:user, :project], fn m -> Enum.member?(Map.keys(@conn.assigns), m) end) do %>
             <%= if @conn.assigns.user.gitlab_scope == :NONE &&
               @conn.assigns.project.integration_type == :GITLAB do %>
