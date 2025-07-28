@@ -75,15 +75,14 @@ global_job_config:
 </TabItem>
 </Tabs>
 
-
 ### Language versions
 
-Both CircleCI and Semaphore allow you to use specific language versions. 
+Both CircleCI and Semaphore allow you to use specific language versions.
 
 <Tabs groupId="migration">
 <TabItem value="circle" label="CircleCI">
 
-CircleCI uses a language-specific setup orb. 
+CircleCI uses a language-specific setup orb.
 
 The following example sets the Ruby version to `3.3.4`
 
@@ -101,6 +100,7 @@ jobs:
           version: '3.3.4'
       # highlight-end
 ```
+
 </TabItem>
 <TabItem value="semaphore" label="Semaphore">
 
@@ -108,7 +108,6 @@ Semaphore provides the [Docker environments](../../using-semaphore/pipelines#doc
 
 </TabItem>
 </Tabs>
-
 
 ### Caching
 
@@ -152,7 +151,7 @@ The following commands, when added to a job downloads, cache, and install Gems i
     - cache store 
 ```
 
-See [caching](../../using-semaphore/optimization/cache) for more details.
+See [caching](../../using-semaphore/cache) for more details.
 
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
@@ -161,7 +160,6 @@ See [caching](../../using-semaphore/optimization/cache) for more details.
 
 </TabItem>
 </Tabs>
-
 
 ### Database and services
 
@@ -193,7 +191,6 @@ jobs:
 
 Semaphore provides the [Docker environments](../../using-semaphore/pipelines#docker-environments) to run your jobs in environments with all your build tools. You can connect multiple Docker images to provide database services for your end-to-end or smoke tests.
 
-    
 </TabItem>
 </Tabs>
 
@@ -260,7 +257,7 @@ Secrets inject sensitive data and credentials into the workflow securely.
 <Tabs groupId="migration">
 <TabItem value="circle" label="CircleCI">
 
-CircleCI uses contexts instead of secrets. You must create the context and its value through the UI. 
+CircleCI uses contexts instead of secrets. You must create the context and its value through the UI.
 Then, you can use the `context` keyword to include it in your jobs.
 
 ```yaml
@@ -277,7 +274,7 @@ workflows:
 </TabItem>
 <TabItem value="semaphore" label="Semaphore YAML">
 
-On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server (instance) or project level and activate it on a block. 
+On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server (instance) or project level and activate it on a block.
 
 The secret's contents are automatically injected as environment variables in all jobs in that block.
 
@@ -304,12 +301,11 @@ global_job_config:
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
 
-On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server (instance) or project level and activate it on a block. 
+On Semaphore, we create the [secret](../../using-semaphore/secrets) at the server (instance) or project level and activate it on a block.
 
 The secret's contents are automatically injected as environment variables in all jobs in that block.
 
 ![Using secrets on Semaphore](./img/secrets.jpg)
-
 
 </TabItem>
 </Tabs>
@@ -506,7 +502,6 @@ blocks:
 
 </TabItem>
 </Tabs>
-
 
 ## See also
 

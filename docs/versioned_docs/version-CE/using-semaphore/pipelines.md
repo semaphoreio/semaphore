@@ -4,7 +4,6 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import Available from '@site/src/components/Available';
@@ -13,12 +12,11 @@ import Steps from '@site/src/components/Steps';
 
 A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available. In this page, the terms organization, server, and instance are used interchangeably.
 
-
 ## Overview {#overview}
 
 Pipelines are groups of blocks that can be connected via dependencies to define their execution order.
 
-Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder. 
+Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder.
 
 For reference, here is an example pipeline with its respective YAML.
 
@@ -143,7 +141,7 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 ## Pipeline settings {#settings}
 
-Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML. 
+Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML.
 
 ### Agents {#agents}
 
@@ -168,13 +166,12 @@ To select the agent running your jobs in a pipeline:
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-
 <Steps>
 
 1. Add the `agent` and `machine` keys
 2. Add the hardware `type`. The default is `s1-kubernetes`, which is the [self-hosted agent](./self-hosted) built-in in the Sempahore server
 3. Leave `os_image` empty
-4. Add the `containers` key, this contains a list with keys `name` and `image`. The first container must have `name = main` and the image is the Docker image where the jobs run 
+4. Add the `containers` key, this contains a list with keys `name` and `image`. The first container must have `name = main` and the image is the Docker image where the jobs run
 
 </Steps>
 
@@ -207,13 +204,13 @@ blocks:
 
 :::tip
 
-If you want to build and run Docker images in your jobs, check the [working with Docker page](./optimization/docker).
+If you want to build and run Docker images in your jobs, check the [working with Docker page](./containers/docker).
 
 :::
 
 Jobs can run inside Docker containers. This allows you to define a custom-build environment with pre-installed tools and dependencies needed for your project. You can enable this setting in the pipeline agent or in the [block agent override](./jobs#agent-override).
 
-You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate. 
+You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate.
 
 The network addresses of all containers are mapped to their names. Let's say you have two containers, "main" and "mysql", you can connect to the database from main with:
 
@@ -290,7 +287,7 @@ To use images in private repositories see [Private Docker Registries](#docker-pr
 
 :::info
 
-Semaphore provides a [public Docker registry](./optimization/container-registry) for popular images.
+Semaphore provides a [public Docker registry](./containers/container-registry) for popular images.
 
 :::
 
@@ -396,6 +393,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -442,6 +440,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -561,9 +560,9 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
-
 
 ### YAML file path {#yaml-path}
 
@@ -666,7 +665,6 @@ after_pipeline:
 </TabItem>
 </Tabs>
 
-
 ## Private Docker Registries {#docker-private}
 
 If the images you need for your [docker environment](#docker-environments) are not publicly available, you need to provide authentication credentials in your pipeline. This feature is only available by editing the pipeline YAML directly.
@@ -733,7 +731,6 @@ To pull images from a private AWS Elastic Container Registry (ECR), follow these
 </Steps>
 
 ### Images in Google GCR {#docker-gcr}
-
 
 To pull images from a private Google Container Registry (GCR), follow these steps:
 
@@ -835,7 +832,7 @@ Queues allow you to control the order in which pipelines run. Semaphore pipeline
 
 ### Default and named queues {#named-queues}
 
-Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially. 
+Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially.
 
 In other words, every time you re-run a workflow, create a pull request, push a tag, the pipeline is added to the end of the same-commit queue.
 
@@ -960,7 +957,7 @@ blocks:
 
 ### Conditional queues {#conditional-queues}
 
-You can use conditional statements to assign pipelines based on parameters like branch name or tag name. 
+You can use conditional statements to assign pipelines based on parameters like branch name or tag name.
 
 The following example uses three rules:
 
@@ -1044,7 +1041,6 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
-
 
 <Steps>
 

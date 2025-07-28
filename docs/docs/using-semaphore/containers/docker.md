@@ -3,7 +3,7 @@ description: Build and deploy Docker containers
 sidebar_position: 5
 ---
 
-# Working with Docker
+# Building Docker Images
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
