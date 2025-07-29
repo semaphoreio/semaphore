@@ -27,21 +27,6 @@ defmodule InternalApi.Organization.Member.Role do
   field(:ADMIN, 2)
 end
 
-defmodule InternalApi.Organization.Quota.Type do
-  @moduledoc false
-
-  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:MAX_PEOPLE_IN_ORG, 0)
-  field(:MAX_PARALELLISM_IN_ORG, 1)
-  field(:MAX_PROJECTS_IN_ORG, 7)
-  field(:MAX_PARALLEL_E1_STANDARD_2, 2)
-  field(:MAX_PARALLEL_E1_STANDARD_4, 3)
-  field(:MAX_PARALLEL_E1_STANDARD_8, 4)
-  field(:MAX_PARALLEL_A1_STANDARD_4, 5)
-  field(:MAX_PARALLEL_A1_STANDARD_8, 6)
-end
-
 defmodule InternalApi.Organization.OrganizationContact.ContactType do
   @moduledoc false
 
@@ -61,6 +46,7 @@ defmodule InternalApi.Organization.DescribeRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
   field(:org_username, 2, type: :string, json_name: "orgUsername")
   field(:include_quotas, 3, type: :bool, json_name: "includeQuotas")
+  field(:soft_deleted, 4, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.DescribeResponse do
@@ -78,6 +64,7 @@ defmodule InternalApi.Organization.DescribeManyRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
   field(:org_ids, 1, repeated: true, type: :string, json_name: "orgIds")
+  field(:soft_deleted, 2, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.DescribeManyResponse do
@@ -98,6 +85,7 @@ defmodule InternalApi.Organization.ListRequest do
   field(:order, 4, type: InternalApi.Organization.ListRequest.Order, enum: true)
   field(:page_size, 5, type: :int32, json_name: "pageSize")
   field(:page_token, 6, type: :string, json_name: "pageToken")
+  field(:soft_deleted, 7, type: :bool, json_name: "softDeleted")
 end
 
 defmodule InternalApi.Organization.ListResponse do
@@ -127,23 +115,6 @@ defmodule InternalApi.Organization.CreateResponse do
 
   field(:status, 1, type: InternalApi.ResponseStatus)
   field(:organization, 2, type: InternalApi.Organization.Organization)
-end
-
-defmodule InternalApi.Organization.CreateWithQuotasRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:organization, 1, type: InternalApi.Organization.Organization)
-  field(:quotas, 2, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.CreateWithQuotasResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:organization, 1, type: InternalApi.Organization.Organization)
 end
 
 defmodule InternalApi.Organization.UpdateRequest do
@@ -401,6 +372,14 @@ defmodule InternalApi.Organization.DestroyRequest do
   field(:org_id, 1, type: :string, json_name: "orgId")
 end
 
+defmodule InternalApi.Organization.RestoreRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+end
+
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
 
@@ -420,7 +399,6 @@ defmodule InternalApi.Organization.Organization do
   field(:allowed_id_providers, 13, repeated: true, type: :string, json_name: "allowedIdProviders")
   field(:deny_member_workflows, 14, type: :bool, json_name: "denyMemberWorkflows")
   field(:deny_non_member_workflows, 15, type: :bool, json_name: "denyNonMemberWorkflows")
-  field(:quotas, 8, repeated: true, type: InternalApi.Organization.Quota)
   field(:settings, 16, repeated: true, type: InternalApi.Organization.OrganizationSetting)
 end
 
@@ -450,15 +428,6 @@ defmodule InternalApi.Organization.Member do
   field(:github_uid, 8, type: :string, json_name: "githubUid")
 end
 
-defmodule InternalApi.Organization.Quota do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:type, 1, type: InternalApi.Organization.Quota.Type, enum: true)
-  field(:value, 2, type: :uint32)
-end
-
 defmodule InternalApi.Organization.OrganizationSetting do
   @moduledoc false
 
@@ -466,40 +435,6 @@ defmodule InternalApi.Organization.OrganizationSetting do
 
   field(:key, 1, type: :string)
   field(:value, 2, type: :string)
-end
-
-defmodule InternalApi.Organization.GetQuotasRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:types, 2, repeated: true, type: InternalApi.Organization.Quota.Type, enum: true)
-end
-
-defmodule InternalApi.Organization.GetQuotaResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:quotas, 1, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.UpdateQuotasRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:org_id, 1, type: :string, json_name: "orgId")
-  field(:quotas, 2, repeated: true, type: InternalApi.Organization.Quota)
-end
-
-defmodule InternalApi.Organization.UpdateQuotasResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:quotas, 1, repeated: true, type: InternalApi.Organization.Quota)
 end
 
 defmodule InternalApi.Organization.RepositoryIntegratorsRequest do
@@ -696,6 +631,15 @@ defmodule InternalApi.Organization.OrganizationDailyUpdate do
   field(:timestamp, 11, type: Google.Protobuf.Timestamp)
 end
 
+defmodule InternalApi.Organization.OrganizationRestored do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:timestamp, 2, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.Organization.OrganizationService.Service do
   @moduledoc false
 
@@ -718,12 +662,6 @@ defmodule InternalApi.Organization.OrganizationService.Service do
   rpc(:List, InternalApi.Organization.ListRequest, InternalApi.Organization.ListResponse)
 
   rpc(:Create, InternalApi.Organization.CreateRequest, InternalApi.Organization.CreateResponse)
-
-  rpc(
-    :CreateWithQuotas,
-    InternalApi.Organization.CreateWithQuotasRequest,
-    InternalApi.Organization.CreateWithQuotasResponse
-  )
 
   rpc(:Update, InternalApi.Organization.UpdateRequest, InternalApi.Organization.UpdateResponse)
 
@@ -781,19 +719,9 @@ defmodule InternalApi.Organization.OrganizationService.Service do
     InternalApi.Organization.ListSuspensionsResponse
   )
 
-  rpc(
-    :UpdateQuotas,
-    InternalApi.Organization.UpdateQuotasRequest,
-    InternalApi.Organization.UpdateQuotasResponse
-  )
-
-  rpc(
-    :GetQuotas,
-    InternalApi.Organization.GetQuotasRequest,
-    InternalApi.Organization.GetQuotaResponse
-  )
-
   rpc(:Destroy, InternalApi.Organization.DestroyRequest, Google.Protobuf.Empty)
+
+  rpc(:Restore, InternalApi.Organization.RestoreRequest, Google.Protobuf.Empty)
 
   rpc(
     :RepositoryIntegrators,

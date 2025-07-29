@@ -26,6 +26,7 @@ const (
 	ArtifactService_ListPath_FullMethodName              = "/InternalApi.Artifacthub.ArtifactService/ListPath"
 	ArtifactService_DeletePath_FullMethodName            = "/InternalApi.Artifacthub.ArtifactService/DeletePath"
 	ArtifactService_UpdateRetentionPolicy_FullMethodName = "/InternalApi.Artifacthub.ArtifactService/UpdateRetentionPolicy"
+	ArtifactService_GenerateToken_FullMethodName         = "/InternalApi.Artifacthub.ArtifactService/GenerateToken"
 	ArtifactService_Cleanup_FullMethodName               = "/InternalApi.Artifacthub.ArtifactService/Cleanup"
 	ArtifactService_GetSignedURL_FullMethodName          = "/InternalApi.Artifacthub.ArtifactService/GetSignedURL"
 	ArtifactService_ListBuckets_FullMethodName           = "/InternalApi.Artifacthub.ArtifactService/ListBuckets"
@@ -46,6 +47,10 @@ type ArtifactServiceClient interface {
 	ListPath(ctx context.Context, in *ListPathRequest, opts ...grpc.CallOption) (*ListPathResponse, error)
 	DeletePath(ctx context.Context, in *DeletePathRequest, opts ...grpc.CallOption) (*DeletePathResponse, error)
 	UpdateRetentionPolicy(ctx context.Context, in *UpdateRetentionPolicyRequest, opts ...grpc.CallOption) (*UpdateRetentionPolicyResponse, error)
+	// Used to zebra to generate a short-lived JWT token, granting temporary access
+	// to a project/workflow/job artifacts for a newly created job.
+	// This is how jobs get access to the artifact API.
+	GenerateToken(ctx context.Context, in *GenerateTokenRequest, opts ...grpc.CallOption) (*GenerateTokenResponse, error)
 	// if the cleanup result has errors, that does NOT mean it has been failed: it means that there were errors
 	Cleanup(ctx context.Context, in *CleanupRequest, opts ...grpc.CallOption) (*CleanupResponse, error)
 	GetSignedURL(ctx context.Context, in *GetSignedURLRequest, opts ...grpc.CallOption) (*GetSignedURLResponse, error)
@@ -130,6 +135,15 @@ func (c *artifactServiceClient) UpdateRetentionPolicy(ctx context.Context, in *U
 	return out, nil
 }
 
+func (c *artifactServiceClient) GenerateToken(ctx context.Context, in *GenerateTokenRequest, opts ...grpc.CallOption) (*GenerateTokenResponse, error) {
+	out := new(GenerateTokenResponse)
+	err := c.cc.Invoke(ctx, ArtifactService_GenerateToken_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *artifactServiceClient) Cleanup(ctx context.Context, in *CleanupRequest, opts ...grpc.CallOption) (*CleanupResponse, error) {
 	out := new(CleanupResponse)
 	err := c.cc.Invoke(ctx, ArtifactService_Cleanup_FullMethodName, in, out, opts...)
@@ -196,6 +210,10 @@ type ArtifactServiceServer interface {
 	ListPath(context.Context, *ListPathRequest) (*ListPathResponse, error)
 	DeletePath(context.Context, *DeletePathRequest) (*DeletePathResponse, error)
 	UpdateRetentionPolicy(context.Context, *UpdateRetentionPolicyRequest) (*UpdateRetentionPolicyResponse, error)
+	// Used to zebra to generate a short-lived JWT token, granting temporary access
+	// to a project/workflow/job artifacts for a newly created job.
+	// This is how jobs get access to the artifact API.
+	GenerateToken(context.Context, *GenerateTokenRequest) (*GenerateTokenResponse, error)
 	// if the cleanup result has errors, that does NOT mean it has been failed: it means that there were errors
 	Cleanup(context.Context, *CleanupRequest) (*CleanupResponse, error)
 	GetSignedURL(context.Context, *GetSignedURLRequest) (*GetSignedURLResponse, error)
@@ -233,6 +251,9 @@ func (UnimplementedArtifactServiceServer) DeletePath(context.Context, *DeletePat
 }
 func (UnimplementedArtifactServiceServer) UpdateRetentionPolicy(context.Context, *UpdateRetentionPolicyRequest) (*UpdateRetentionPolicyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateRetentionPolicy not implemented")
+}
+func (UnimplementedArtifactServiceServer) GenerateToken(context.Context, *GenerateTokenRequest) (*GenerateTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GenerateToken not implemented")
 }
 func (UnimplementedArtifactServiceServer) Cleanup(context.Context, *CleanupRequest) (*CleanupResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Cleanup not implemented")
@@ -390,6 +411,24 @@ func _ArtifactService_UpdateRetentionPolicy_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ArtifactService_GenerateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GenerateTokenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArtifactServiceServer).GenerateToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ArtifactService_GenerateToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArtifactServiceServer).GenerateToken(ctx, req.(*GenerateTokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ArtifactService_Cleanup_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CleanupRequest)
 	if err := dec(in); err != nil {
@@ -532,6 +571,10 @@ var ArtifactService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateRetentionPolicy",
 			Handler:    _ArtifactService_UpdateRetentionPolicy_Handler,
+		},
+		{
+			MethodName: "GenerateToken",
+			Handler:    _ArtifactService_GenerateToken_Handler,
 		},
 		{
 			MethodName: "Cleanup",

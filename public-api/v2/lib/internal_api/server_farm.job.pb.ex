@@ -63,7 +63,6 @@ defmodule InternalApi.ServerFarm.Job.DescribeRequest do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:job_id, 1, type: :string, json_name: "jobId")
-  field(:with_spec, 2, type: :bool, json_name: "withSpec")
 end
 
 defmodule InternalApi.ServerFarm.Job.Job.Timeline do
@@ -117,147 +116,7 @@ defmodule InternalApi.ServerFarm.Job.Job do
   field(:organization_id, 23, type: :string, json_name: "organizationId")
   field(:build_req_id, 24, type: :string, json_name: "buildReqId")
   field(:agent_name, 25, type: :string, json_name: "agentName")
-  field(:job_spec, 26, type: InternalApi.ServerFarm.Job.JobSpec, json_name: "jobSpec")
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.Secret do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.EnvVar do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-  field(:value, 2, type: :string)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.File do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:path, 1, type: :string)
-  field(:content, 2, type: :string)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.AgentType.Machine do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:type, 1, type: :string)
-  field(:os_image, 2, type: :string, json_name: "osImage")
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.AgentType.Container do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-  field(:image, 2, type: :string)
-  field(:command, 3, type: :string)
-
-  field(:env_vars, 4,
-    repeated: true,
-    type: InternalApi.ServerFarm.Job.JobSpec.EnvVar,
-    json_name: "envVars"
-  )
-
-  field(:secrets, 5, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.AgentType.ImagePullSecret do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.AgentType do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:machine, 1, type: InternalApi.ServerFarm.Job.JobSpec.AgentType.Machine)
-
-  field(:containers, 2,
-    repeated: true,
-    type: InternalApi.ServerFarm.Job.JobSpec.AgentType.Container
-  )
-
-  field(:image_pull_secrets, 3,
-    repeated: true,
-    type: InternalApi.ServerFarm.Job.JobSpec.AgentType.ImagePullSecret,
-    json_name: "imagePullSecrets"
-  )
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.Port do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:name, 1, type: :string)
-  field(:number, 2, type: :int32)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec.Agent do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:ip, 1, type: :string)
-  field(:ports, 2, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Agent.Port)
-  field(:name, 3, type: :string)
-end
-
-defmodule InternalApi.ServerFarm.Job.JobSpec do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:agent_type, 1,
-    type: InternalApi.ServerFarm.Job.JobSpec.AgentType,
-    json_name: "agentType"
-  )
-
-  field(:secrets, 2, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
-
-  field(:env_vars, 3,
-    repeated: true,
-    type: InternalApi.ServerFarm.Job.JobSpec.EnvVar,
-    json_name: "envVars"
-  )
-
-  field(:files, 4, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.File)
-  field(:agent, 5, type: InternalApi.ServerFarm.Job.JobSpec.Agent)
-  field(:commands, 6, repeated: true, type: :string)
-
-  field(:epilogue_always_commands, 7,
-    repeated: true,
-    type: :string,
-    json_name: "epilogueAlwaysCommands"
-  )
-
-  field(:epilogue_on_pass_commands, 8,
-    repeated: true,
-    type: :string,
-    json_name: "epilogueOnPassCommands"
-  )
-
-  field(:epilogue_on_fail_commands, 9,
-    repeated: true,
-    type: :string,
-    json_name: "epilogueOnFailCommands"
-  )
+  field(:agent_id, 27, type: :string, json_name: "agentId")
 end
 
 defmodule InternalApi.ServerFarm.Job.DescribeResponse do
@@ -292,7 +151,8 @@ defmodule InternalApi.ServerFarm.Job.ListRequest do
   field(:ppl_ids, 9, repeated: true, type: :string, json_name: "pplIds")
   field(:created_at_gte, 10, type: Google.Protobuf.Timestamp, json_name: "createdAtGte")
   field(:created_at_lte, 11, type: Google.Protobuf.Timestamp, json_name: "createdAtLte")
-  field(:with_spec, 12, type: :bool, json_name: "withSpec")
+  field(:project_ids, 13, repeated: true, type: :string, json_name: "projectIds")
+  field(:machine_types, 14, repeated: true, type: :string, json_name: "machineTypes")
 end
 
 defmodule InternalApi.ServerFarm.Job.ListResponse do
@@ -505,7 +365,13 @@ defmodule InternalApi.ServerFarm.Job.CreateRequest do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:job, 1, type: InternalApi.ServerFarm.Job.Job)
+  field(:requester_id, 1, type: :string, json_name: "requesterId")
+  field(:organization_id, 2, type: :string, json_name: "organizationId")
+  field(:project_id, 3, type: :string, json_name: "projectId")
+  field(:branch_name, 4, type: :string, json_name: "branchName")
+  field(:commit_sha, 5, type: :string, json_name: "commitSha")
+  field(:job_spec, 6, type: InternalApi.ServerFarm.Job.JobSpec, json_name: "jobSpec")
+  field(:restricted_job, 7, type: :bool, json_name: "restrictedJob")
 end
 
 defmodule InternalApi.ServerFarm.Job.CreateResponse do
@@ -513,52 +379,124 @@ defmodule InternalApi.ServerFarm.Job.CreateResponse do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:job, 1, type: InternalApi.ServerFarm.Job.Job)
+  field(:status, 1, type: InternalApi.ResponseStatus)
+  field(:job, 2, type: InternalApi.ServerFarm.Job.Job)
 end
 
-defmodule InternalApi.ServerFarm.Job.GetDebugSSHKeyRequest do
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.Machine do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:job_id, 1, type: :string, json_name: "jobId")
+  field(:type, 1, type: :string)
+  field(:os_image, 2, type: :string, json_name: "osImage")
 end
 
-defmodule InternalApi.ServerFarm.Job.GetDebugSSHKeyResponse do
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.Container do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:key, 1, type: :string)
+  field(:name, 1, type: :string)
+  field(:image, 2, type: :string)
+  field(:command, 3, type: :string)
+
+  field(:env_vars, 4,
+    repeated: true,
+    type: InternalApi.ServerFarm.Job.JobSpec.EnvVar,
+    json_name: "envVars"
+  )
+
+  field(:secrets, 5, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
 end
 
-defmodule InternalApi.ServerFarm.Job.CreateDebugJobRequest do
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent.ImagePullSecret do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:job_id, 1, type: :string, json_name: "jobId")
-  field(:duration, 2, type: :uint32)
-  field(:user_id, 3, type: :string, json_name: "userId")
+  field(:name, 1, type: :string)
 end
 
-defmodule InternalApi.ServerFarm.Job.CreateDebugProjectRequest do
+defmodule InternalApi.ServerFarm.Job.JobSpec.Agent do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:project_id, 1, type: :string, json_name: "projectId")
-  field(:duration, 2, type: :uint32)
-  field(:machine_type, 3, type: :string, json_name: "machineType")
-  field(:user_id, 4, type: :string, json_name: "userId")
+  field(:machine, 1, type: InternalApi.ServerFarm.Job.JobSpec.Agent.Machine)
+  field(:containers, 2, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Agent.Container)
+
+  field(:image_pull_secrets, 3,
+    repeated: true,
+    type: InternalApi.ServerFarm.Job.JobSpec.Agent.ImagePullSecret,
+    json_name: "imagePullSecrets"
+  )
 end
 
-defmodule InternalApi.ServerFarm.Job.CreateDebugResponse do
+defmodule InternalApi.ServerFarm.Job.JobSpec.Secret do
   @moduledoc false
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
-  field(:job, 1, type: InternalApi.ServerFarm.Job.Job)
+  field(:name, 1, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.EnvVar do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:name, 1, type: :string)
+  field(:value, 2, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec.File do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:path, 1, type: :string)
+  field(:content, 2, type: :string)
+end
+
+defmodule InternalApi.ServerFarm.Job.JobSpec do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:job_name, 1, type: :string, json_name: "jobName")
+  field(:agent, 2, type: InternalApi.ServerFarm.Job.JobSpec.Agent)
+  field(:secrets, 3, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.Secret)
+
+  field(:env_vars, 4,
+    repeated: true,
+    type: InternalApi.ServerFarm.Job.JobSpec.EnvVar,
+    json_name: "envVars"
+  )
+
+  field(:files, 5, repeated: true, type: InternalApi.ServerFarm.Job.JobSpec.File)
+  field(:commands, 6, repeated: true, type: :string)
+
+  field(:epilogue_always_commands, 7,
+    repeated: true,
+    type: :string,
+    json_name: "epilogueAlwaysCommands"
+  )
+
+  field(:epilogue_on_pass_commands, 8,
+    repeated: true,
+    type: :string,
+    json_name: "epilogueOnPassCommands"
+  )
+
+  field(:epilogue_on_fail_commands, 9,
+    repeated: true,
+    type: :string,
+    json_name: "epilogueOnFailCommands"
+  )
+
+  field(:priority, 10, type: :int32)
+  field(:execution_time_limit, 11, type: :int32, json_name: "executionTimeLimit")
 end
 
 defmodule InternalApi.ServerFarm.Job.JobService.Service do
@@ -617,27 +555,9 @@ defmodule InternalApi.ServerFarm.Job.JobService.Service do
   )
 
   rpc(
-    :GetDebugSSHKey,
-    InternalApi.ServerFarm.Job.GetDebugSSHKeyRequest,
-    InternalApi.ServerFarm.Job.GetDebugSSHKeyResponse
-  )
-
-  rpc(
     :Create,
     InternalApi.ServerFarm.Job.CreateRequest,
     InternalApi.ServerFarm.Job.CreateResponse
-  )
-
-  rpc(
-    :CreateJobDebug,
-    InternalApi.ServerFarm.Job.CreateDebugJobRequest,
-    InternalApi.ServerFarm.Job.CreateDebugResponse
-  )
-
-  rpc(
-    :CreateProjectDebug,
-    InternalApi.ServerFarm.Job.CreateDebugProjectRequest,
-    InternalApi.ServerFarm.Job.CreateDebugResponse
   )
 end
 

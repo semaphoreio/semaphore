@@ -23,6 +23,8 @@ secrethub
 self_hosted
 server_farm.job
 user
+loghub
+loghub2
 '
 
 for element in $list;do

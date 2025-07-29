@@ -357,6 +357,23 @@ defmodule InternalApi.RepoProxy.CreateBlankResponse do
   field(:repo, 5, type: InternalApi.RepoProxy.CreateBlankResponse.Repo)
 end
 
+defmodule InternalApi.RepoProxy.PullRequestUnmergeable do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          project_id: String.t(),
+          branch_name: String.t(),
+          timestamp: Google.Protobuf.Timestamp.t() | nil
+        }
+
+  defstruct [:project_id, :branch_name, :timestamp]
+
+  field(:project_id, 1, type: :string)
+  field(:branch_name, 2, type: :string)
+  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
+end
+
 defmodule InternalApi.RepoProxy.RepoProxyService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.RepoProxy.RepoProxyService"
