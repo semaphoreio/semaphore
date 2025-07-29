@@ -22,8 +22,8 @@ class ProjectsController < ApplicationController
         head :ok and return
       end
 
-      if webhook_filter.github_app_webhook?
-        signature = repo_host_request.headers["X-Hub-Signature-256"]
+      if webhook_filter.github_app_webhook? || webhook_filter.github_app_installation_webhook?
+        signature = repo_host_request.headers["X-Hub-Signature-256"] || ""
         secret = Semaphore::GithubApp::Credentials.github_app_webhook_secret
 
         if Semaphore::GithubApp::Hook.webhook_signature_valid?(secret, signature, repo_host_request.body.string) != :ok
