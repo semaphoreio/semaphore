@@ -12,6 +12,7 @@ defmodule Rbac.Models.RoleAssignment do
     field(:role_id, :binary_id)
     field(:org_id, :binary_id, primary_key: true)
     field(:user_id, :binary_id, primary_key: true)
+    field(:subject_type, :string, default: "user")
 
     timestamps(inserted_at: :created_at, updated_at: :updated_at)
   end
@@ -19,7 +20,7 @@ defmodule Rbac.Models.RoleAssignment do
   @doc false
   def changeset(role_assignment, attrs) do
     role_assignment
-    |> cast(attrs, [:user_id, :org_id, :role_id])
+    |> cast(attrs, [:user_id, :org_id, :role_id, :subject_type])
     |> validate_required([:user_id, :org_id, :role_id])
   end
 
@@ -45,6 +46,7 @@ defmodule Rbac.Models.RoleAssignment do
           :user_id -> from(r in query, where: r.user_id == ^value)
           :org_id -> from(r in query, where: r.org_id == ^value)
           :role_id -> from(r in query, where: r.role_id == ^value)
+          :subject_type -> from(r in query, where: r.subject_type == ^value)
           _ -> query
         end
       end)
