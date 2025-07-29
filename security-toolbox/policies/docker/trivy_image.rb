@@ -12,9 +12,11 @@ class Policy::TrivyImage < Policy
     @severity = args[:severity] || "HIGH,CRITICAL"
     @ignore_policy = args[:ignore_policy] || nil
     @scanners = args[:scanners] || "vuln,secret,license,misconfig"
+    @vuln_severity_source = args[:vuln_severity_source]
 
     @skip_files = args[:skip_files].to_s.split(",") || []
     @skip_dirs = args[:skip_dirs].to_s.split(",") || []
+    @scanners = args[:scanners]
   end
 
   def test
@@ -32,6 +34,10 @@ class Policy::TrivyImage < Policy
 
     if @ignore_policy != nil
       command << "--ignore-policy #{@ignore_policy}"
+    end
+
+    if @vuln_severity_source != nil
+      command << "--vuln-severity-source #{@vuln_severity_source}"
     end
 
     @skip_files.each do |skip_file|

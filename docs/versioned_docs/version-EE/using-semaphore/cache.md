@@ -17,14 +17,14 @@ The cache provides fast and convenient storage for your jobs. Use the cache to s
 
 ## Overview
 
-Semaphore provides a [cache tool](../../reference/toolbox#cache) in all jobs to reuse files your project depends on but are not part of the repository.
+Semaphore provides a [cache tool](../reference/toolbox#cache) in all jobs to reuse files your project depends on but are not part of the repository.
 
 Typical uses of the cache are:
 
 - to propagate a file from one block to the next
 - to reuse dependencies that are normally downloaded from the internet, like NPM modules
 
-Semaphore creates a separate cache for every [project](../projects). For jobs running on Semaphore Cloud, the total cache size is 9.6GB. Older files are automatically deleted after 30 days or when the cache fills up.
+Semaphore creates a separate cache for every [project](./projects). For jobs running on Semaphore Cloud, the total cache size is 9.6GB. Older files are automatically deleted after 30 days or when the cache fills up.
 
 :::note
 
@@ -53,7 +53,6 @@ The cache tools recognize the following languages and dependency managers. See [
 
 When using one of the supported dependency managers:
 
-
 <Steps>
 
 1. Run `cache restore` to restore the latest files from the cache
@@ -73,6 +72,7 @@ cache restore
 npm install
 cache store
 ```
+
 </TabItem>
 <TabItem value="pip" label="Python (pip)">
 
@@ -92,12 +92,13 @@ cache restore
 bundle install --path vendor/bundle
 cache store
 ```
+
 </TabItem>
 </Tabs>
 
 :::warning
 
-Avoid using `cache store` in the [prologue](../pipelines#prologue) as this can cause file corruption due to multiple jobs trying to write the same key simultaneously. Instead, use `cache store` in the individual job commands.
+Avoid using `cache store` in the [prologue](./pipelines#prologue) as this can cause file corruption due to multiple jobs trying to write the same key simultaneously. Instead, use `cache store` in the individual job commands.
 
 :::
 
@@ -121,7 +122,7 @@ cache restore <keys>
 
 Where keys are again a comma-separated lists of keys. Semaphore searches for the keys in the order provided and restores the first match to the working directory.
 
-### Using multiple keys 
+### Using multiple keys
 
 It's recommended to use multiple keys to increase the chances of matching a key. The following example uses two keys:
 
@@ -183,7 +184,7 @@ cache clear
 
 ## Custom backends {#custom-backends}
 
-The cache storage is available for all Semaphore Cloud users. If you're running a different version such as On-Premise or [self-hosted agents](../self-hosted), the cache might not be available.
+The cache storage is available for all Semaphore Cloud users. If you're running a different version such as On-Premise or [self-hosted agents](./self-hosted), the cache might not be available.
 
 For these cases, you need to provide storage. This section explains how to configure custom storage in other platforms.
 
@@ -195,11 +196,11 @@ To provision the storage, follow these steps:
 
 <Steps>
 
-1. Create and configure an S3 bucket as explained in [How to set up caching on self-hosted agents](../self-hosted-configure#aws-cache)
-2. Configure the following [environment variables](../jobs#environment-variables) in your job
+1. Create and configure an S3 bucket as explained in [How to set up caching on self-hosted agents](./self-hosted-configure#aws-cache)
+2. Configure the following [environment variables](./jobs#environment-variables) in your job
     - `SEMAPHORE_CACHE_BACKEND` set its value to "s3"
     - `SEMAPHORE_CACHE_S3_BUCKET` set its value to the S3 bucket name
-3. Create a [secret](../secrets) with the following credentials
+3. Create a [secret](./secrets) with the following credentials
     - `AWS_ACCESS_KEY_ID`: the key for an IAM account with access to the bucket
     - `AWS_SECRET_ACCESS_KEY`: the secret key for the account
     - `AWS_DEFAULT_REGION`: the region where the bucket is located
@@ -215,7 +216,7 @@ To provision storage, follow these steps
 <Steps>
 
 1. [Create a Google Cloud Bucket](https://cloud.google.com/storage/docs/creating-buckets)
-2. Configure the following [environment variables](../jobs#environment-variables) in your job
+2. Configure the following [environment variables](./jobs#environment-variables) in your job
     - `SEMAPHORE_CACHE_BACKEND` set it to "gcs"
     - `SEMAPHORE_CACHE_GCS_BUCKET` set it to your Google Cloud bucket name
 3. Provide the Google Cloud Application Default Credentials. See [How Application Default Credentials work](https://cloud.google.com/docs/authentication/application-default-credentials) to learn more
@@ -226,16 +227,16 @@ To provision storage, follow these steps
 
 You can provide an SFTP server to provide custom storage for the cache.
 
-To use SFTP, define the following [environment variables](../jobs#environment-variables) in your job:
+To use SFTP, define the following [environment variables](./jobs#environment-variables) in your job:
 
 - `SEMAPHORE_CACHE_BACKEND`: set its value to "sftp"
 - `SEMAPHORE_CACHE_URL`: the IP address and port number of the SFTP server, e.g. "1.2.3.4:29920"
 - `SEMAPHORE_CACHE_USERNAME`: the username used to connect to the server
 - `SEMAPHORE_CACHE_PRIVATE_KEY_PATH`: the path of the private SSH key used to connect to the SFTP server
 
-In addition, you must create a [secret](../secrets) to store the private SSH key and expose it inside the job.
+In addition, you must create a [secret](./secrets) to store the private SSH key and expose it inside the job.
 
 ## See also
 
-- [Using cache in jobs](../jobs#cache)
-- [Cache toolbox reference](../../reference/toolbox#cache)
+- [Using cache in jobs](./jobs#cache)
+- [Cache toolbox reference](../reference/toolbox#cache)
