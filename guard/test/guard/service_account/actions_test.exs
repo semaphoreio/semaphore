@@ -134,7 +134,8 @@ defmodule Guard.ServiceAccount.ActionsTest do
           Guard.Store.RbacUser.create(
             "user-id",
             "test@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}",
-            "Test SA"
+            "Test SA",
+            "service_account"
           )
         )
 
