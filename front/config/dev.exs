@@ -16,11 +16,10 @@ config :front, FrontWeb.Endpoint,
   ],
   live_reload: [
     patterns: [
-      ~r{priv/static/.*(js|css|png|jpeg|jpg|gif)$},
+      ~r{priv/static/assets/.*(js|css)$},
+      ~r{priv/static/assets/.*(png|jpeg|jpg|gif|svg)$},
       ~r{lib/front_web/views/.*(ex)$},
-      ~r{lib/front_web/templates/.*(eex)$},
-      ~r{lib/front_web/templates/.*(eex)$},
-      ~r{assets/js/.*(ts|tsx|js)$}
+      ~r{lib/front_web/templates/.*(eex)$}
     ]
   ]
 
