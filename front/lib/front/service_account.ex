@@ -4,7 +4,8 @@ defmodule Front.ServiceAccount do
                 org_id :: String.t(),
                 name :: String.t(),
                 description :: String.t(),
-                creator_id :: String.t()
+                creator_id :: String.t(),
+                role_id :: String.t()
               ) :: {:ok, {Front.Models.ServiceAccount.t(), String.t()}} | {:error, any}
 
     @callback list(
@@ -28,8 +29,8 @@ defmodule Front.ServiceAccount do
                 {:ok, String.t()} | {:error, any}
   end
 
-  def create(org_id, name, description, creator_id),
-    do: service_account_impl().create(org_id, name, description, creator_id)
+  def create(org_id, name, description, creator_id, role_id \\ ""),
+    do: service_account_impl().create(org_id, name, description, creator_id, role_id)
 
   def list(org_id, page_size, page_token \\ nil),
     do: service_account_impl().list(org_id, page_size, page_token)

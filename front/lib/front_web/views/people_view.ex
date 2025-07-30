@@ -51,7 +51,7 @@ defmodule FrontWeb.PeopleView do
 
     # Fetch organization roles for the dropdown
     {:ok, all_roles} = Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope")
-    
+
     # Filter roles - exclude Owner unless user has change_owner permission
     filtered_roles =
       all_roles

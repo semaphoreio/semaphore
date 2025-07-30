@@ -15,12 +15,13 @@ defmodule Front.Clients.ServiceAccount do
   @behaviour Front.ServiceAccount.Behaviour
 
   @impl Front.ServiceAccount.Behaviour
-  def create(org_id, name, description, creator_id) do
+  def create(org_id, name, description, creator_id, role_id) do
     %CreateRequest{
       org_id: org_id,
       name: name,
       description: description,
-      creator_id: creator_id
+      creator_id: creator_id,
+      role_id: role_id
     }
     |> grpc_call(:create)
     |> case do

@@ -6,14 +6,16 @@ defmodule InternalApi.ServiceAccount.CreateRequest do
           org_id: String.t(),
           name: String.t(),
           description: String.t(),
-          creator_id: String.t()
+          creator_id: String.t(),
+          role_id: String.t()
         }
-  defstruct [:org_id, :name, :description, :creator_id]
+  defstruct [:org_id, :name, :description, :creator_id, :role_id]
 
   field(:org_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
   field(:creator_id, 4, type: :string)
+  field(:role_id, 5, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.CreateResponse do
@@ -188,70 +190,6 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
   field(:created_at, 6, type: Google.Protobuf.Timestamp)
   field(:updated_at, 7, type: Google.Protobuf.Timestamp)
   field(:deactivated, 8, type: :bool)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountCreated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountUpdated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountDeleted do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountTokenRegenerated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
 end
 
 defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do

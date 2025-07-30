@@ -37,13 +37,14 @@ defmodule Support.FakeClients.ServiceAccount do
         org_id,
         "Test Service Account #{i}",
         "Description for test service account #{i}",
-        creator_id
+        creator_id,
+        ""
       )
     end)
   end
 
   @impl Front.ServiceAccount.Behaviour
-  def create(org_id, name, description, creator_id) do
+  def create(org_id, name, description, creator_id, role_id) do
     cond do
       name == "" ->
         {:error, "Service account name cannot be empty"}
