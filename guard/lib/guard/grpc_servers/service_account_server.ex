@@ -33,7 +33,6 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
         role_id: role_id
       },
       fn ->
-        # Validate input parameters
         validate_uuid!(org_id)
         validate_uuid!(creator_id)
         validate_uuid!(role_id)
@@ -42,13 +41,11 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
           grpc_error!(:invalid_argument, "Service account name cannot be empty")
         end
 
-        # Verify organization exists
         case Organization.fetch(org_id) do
           nil ->
             grpc_error!(:not_found, "Organization #{org_id} not found")
 
           _organization ->
-            # Create service account
             params = %{
               org_id: org_id,
               name: String.trim(name),
@@ -89,7 +86,6 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
       fn ->
         validate_uuid!(org_id)
 
-        # Use default page size if not provided or invalid
         effective_page_size = if page_size > 0 and page_size <= 100, do: page_size, else: 20
         effective_page_token = if page_token == "", do: nil, else: page_token
 
