@@ -17,6 +17,7 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
 
   const [name, setName] = useState(``);
   const [description, setDescription] = useState(``);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -26,7 +27,7 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
     setError(null);
     setLoading(true);
 
-    const response = await api.create(name, description);
+    const response = await api.create(name, description, selectedRoleId);
 
     if (response.error) {
       setError(response.error);
@@ -43,12 +44,13 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
     }
     setName(``);
     setDescription(``);
+    setSelectedRoleId("");
     setError(null);
     setToken(null);
     onClose();
   };
 
-  const canSubmit = name.trim().length > 0 && !loading;
+  const canSubmit = name.trim().length > 0 && selectedRoleId.length > 0 && !loading;
 
   return (
     <Modal isOpen={isOpen} close={handleClose} title="Create Service Account">
@@ -78,6 +80,23 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
                 rows={3}
                 disabled={loading}
               />
+            </div>
+
+            <div className="mb3">
+              <label className="db mb2 f6 b">Role *</label>
+              <select
+                className="form-control w-100"
+                value={selectedRoleId}
+                onChange={(e) => setSelectedRoleId(e.currentTarget.value)}
+                disabled={loading}
+              >
+                <option value="">Select a role...</option>
+                {config.roles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.name} - {role.description}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && (

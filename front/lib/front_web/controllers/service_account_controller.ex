@@ -3,6 +3,7 @@ defmodule FrontWeb.ServiceAccountController do
   require Logger
 
   alias Front.{Audit, ServiceAccount}
+  alias Front.RBAC.RoleManagement
   alias FrontWeb.Plugs
 
   plug(Plugs.FetchPermissions, scope: "org")
@@ -41,21 +42,41 @@ defmodule FrontWeb.ServiceAccountController do
     user_id = conn.assigns.user_id
     name = params["name"] || ""
     description = params["description"] || ""
+    role_id = params["role_id"] || ""
 
     case ServiceAccount.create(org_id, name, description, user_id) do
       {:ok, {service_account, api_token}} ->
-        conn
-        |> Audit.new(:ServiceAccount, :Added)
-        |> Audit.add(resource_id: service_account.id)
-        |> Audit.add(resource_name: service_account.name)
-        |> Audit.add(description: "Service account created")
-        |> Audit.metadata(organization_id: org_id)
-        |> Audit.metadata(user_id: user_id)
-        |> Audit.log()
+        # Assign role to the service account if role_id is provided
+        role_assignment_result = 
+          if role_id != "" do
+            RoleManagement.assign_role(user_id, org_id, service_account.id, role_id)
+          else
+            {:ok, "No role assigned"}
+          end
 
-        conn
-        |> put_status(:created)
-        |> render("show.json", service_account: service_account, api_token: api_token)
+        case role_assignment_result do
+          {:ok, _} ->
+            conn
+            |> Audit.new(:ServiceAccount, :Added)
+            |> Audit.add(resource_id: service_account.id)
+            |> Audit.add(resource_name: service_account.name)
+            |> Audit.add(description: "Service account created#{if role_id != "", do: " with role assigned", else: ""}")
+            |> Audit.metadata(organization_id: org_id)
+            |> Audit.metadata(user_id: user_id)
+            |> Audit.log()
+
+            conn
+            |> put_status(:created)
+            |> render("show.json", service_account: service_account, api_token: api_token)
+
+          {:error, role_error} ->
+            # Service account was created but role assignment failed
+            Logger.error("Failed to assign role to service account #{service_account.id}: #{role_error}")
+            
+            conn
+            |> put_status(422)
+            |> json(%{error: "Service account created but role assignment failed: #{role_error}"})
+        end
 
       {:error, message} ->
         conn

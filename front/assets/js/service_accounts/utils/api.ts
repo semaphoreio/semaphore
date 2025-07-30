@@ -38,11 +38,12 @@ export class ServiceAccountsAPI {
 
   async create(
     name: string,
-    description: string
+    description: string,
+    roleId: string
   ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccountWithToken>> {
     return toolbox.APIRequest.post<ServiceAccountWithToken>(
       this.config.urls.create,
-      { name, description }
+      { name, description, role_id: roleId }
     );
   }
 

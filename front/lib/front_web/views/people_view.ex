@@ -49,13 +49,32 @@ defmodule FrontWeb.PeopleView do
     org_id = conn.assigns.organization_id
     permissions = conn.assigns.permissions
 
+    # Fetch organization roles for the dropdown
+    {:ok, all_roles} = Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope")
+    
+    # Filter roles - exclude Owner unless user has change_owner permission
+    filtered_roles =
+      all_roles
+      |> Enum.filter(fn
+        %{name: "Owner"} -> permissions["organization.change_owner"] || false
+        _role -> true
+      end)
+      |> Enum.map(fn role ->
+        %{
+          id: role.id,
+          name: role.name,
+          description: role.description
+        }
+      end)
+
     %{
       organization_id: org_id,
       project_id: conn.assigns[:project_id],
       permissions: %{
         view: permissions["organization.service_accounts.view"] || false,
         manage: permissions["organization.service_accounts.manage"] || false
-      }
+      },
+      roles: filtered_roles
     }
   end
 

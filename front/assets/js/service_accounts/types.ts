@@ -57,6 +57,7 @@ export interface Config {
     canView: boolean;
     canManage: boolean;
   };
+  roles: Role[];
   urls: {
     list: string;
     create: string;
