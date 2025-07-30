@@ -185,28 +185,88 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
     )
   end
 
-  @spec delete(ServiceAccountPB.DeleteRequest.t(), GRPC.Server.Stream.t()) ::
-          ServiceAccountPB.DeleteResponse.t()
-  def delete(%ServiceAccountPB.DeleteRequest{service_account_id: service_account_id}, _stream) do
+  @spec deactivate(ServiceAccountPB.DeactivateRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.DeactivateResponse.t()
+  def deactivate(
+        %ServiceAccountPB.DeactivateRequest{service_account_id: service_account_id},
+        _stream
+      ) do
     observe_and_log(
-      "grpc.service_account.delete",
+      "grpc.service_account.deactivate",
       %{service_account_id: service_account_id},
       fn ->
         validate_uuid!(service_account_id)
 
-        case Guard.ServiceAccount.Actions.delete(service_account_id) do
-          {:ok, :deleted} ->
-            ServiceAccountPB.DeleteResponse.new()
+        case Guard.ServiceAccount.Actions.deactivate(service_account_id) do
+          {:ok, :deactivated} ->
+            ServiceAccountPB.DeactivateResponse.new()
 
           {:error, :not_found} ->
             grpc_error!(:not_found, "Service account #{service_account_id} not found")
 
           {:error, reason} ->
             Logger.error(
-              "Failed to delete service account #{service_account_id}: #{inspect(reason)}"
+              "Failed to deactivate service account #{service_account_id}: #{inspect(reason)}"
             )
 
-            grpc_error!(:internal, "Failed to delete service account")
+            grpc_error!(:internal, "Failed to deactivate service account")
+        end
+      end
+    )
+  end
+
+  @spec reactivate(ServiceAccountPB.ReactivateRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.ReactivateResponse.t()
+  def reactivate(
+        %ServiceAccountPB.ReactivateRequest{service_account_id: service_account_id},
+        _stream
+      ) do
+    observe_and_log(
+      "grpc.service_account.reactivate",
+      %{service_account_id: service_account_id},
+      fn ->
+        validate_uuid!(service_account_id)
+
+        case Guard.ServiceAccount.Actions.reactivate(service_account_id) do
+          {:ok, :reactivated} ->
+            ServiceAccountPB.ReactivateResponse.new()
+
+          {:error, :not_found} ->
+            grpc_error!(:not_found, "Service account #{service_account_id} not found")
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to reactivate service account #{service_account_id}: #{inspect(reason)}"
+            )
+
+            grpc_error!(:internal, "Failed to reactivate service account")
+        end
+      end
+    )
+  end
+
+  @spec destroy(ServiceAccountPB.DestroyRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.DestroyResponse.t()
+  def destroy(%ServiceAccountPB.DestroyRequest{service_account_id: service_account_id}, _stream) do
+    observe_and_log(
+      "grpc.service_account.destroy",
+      %{service_account_id: service_account_id},
+      fn ->
+        validate_uuid!(service_account_id)
+
+        case Guard.ServiceAccount.Actions.destroy(service_account_id) do
+          {:ok, :destroyed} ->
+            ServiceAccountPB.DestroyResponse.new()
+
+          {:error, :not_found} ->
+            grpc_error!(:not_found, "Service account #{service_account_id} not found")
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to destroy service account #{service_account_id}: #{inspect(reason)}"
+            )
+
+            grpc_error!(:internal, "Failed to destroy service account")
         end
       end
     )
