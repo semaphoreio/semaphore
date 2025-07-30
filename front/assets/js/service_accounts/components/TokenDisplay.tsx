@@ -1,4 +1,5 @@
 import { useState } from "preact/hooks";
+import { Box } from "js/toolbox";
 
 interface TokenDisplayProps {
   token: string;
@@ -27,29 +28,15 @@ export const TokenDisplay = ({ token, onClose }: TokenDisplayProps) => {
         </p>
       </div>
 
-      <div className="bg-washed-yellow ba b--gold br2 pa3 mb3">
-        <div className="flex items-center justify-between">
-          <code className="f6 truncate mr2" style={{ maxWidth: `80%` }}>
-            {token}
-          </code>
-          <button
-            className="btn btn-secondary btn-sm flex items-center"
-            onClick={() => void copyToClipboard()}
-          >
-            <span className="material-symbols-outlined mr1 f6">
-              {copied ? `check` : `content_copy`}
-            </span>
-            {copied ? `Copied!` : `Copy`}
-          </button>
-        </div>
-      </div>
+      <Box type="info" className="mb3" showCopy={true} copyContent={token}>
+        {token}
+      </Box>
 
-      <div className="bg-washed-red ba b--red br2 pa2 mb3">
-        <p className="f6 mb0 red">
-          <strong>Warning:</strong> This token provides API access to your organization.
-          Keep it secure and do not share it publicly.
-        </p>
-      </div>
+      <Box type="warning" className="mb3">
+        This token provides API access to your organization.
+        <br/>
+        Keep it secure and do not share it publicly.
+      </Box>
 
       <div className="flex justify-end">
         <button className="btn btn-primary" onClick={onClose}>

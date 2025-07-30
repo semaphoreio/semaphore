@@ -1,6 +1,6 @@
 import { Fragment, render } from "preact";
 import { useState, useContext, useEffect, useCallback } from "preact/hooks";
-import { Modal } from "js/toolbox";
+import { Modal, Box } from "js/toolbox";
 import { AppConfig, ConfigContext } from "./config";
 import { ServiceAccount, AppState, ModalState } from "./types";
 import { ServiceAccountsAPI } from "./utils/api";
@@ -201,12 +201,11 @@ const App = () => {
             Are you sure you want to regenerate the API token for{` `}
             <strong>{state.selectedServiceAccount?.name}</strong>?
           </p>
-          <div className="bg-washed-red ba b--red br2 pa3 mb3">
-            <p className="f6 mb0 red">
-              <strong>Warning:</strong> The current token will be immediately invalidated.
-              Any systems using the old token will lose access.
-            </p>
-          </div>
+          <Box type="warning" className="mb3">
+            The current token will be immediately invalidated.
+            <br/>
+            Any systems using the old token will lose access.
+          </Box>
         </div>
         <div className="flex justify-end items-center pa4 bt b--black-10">
           <button
