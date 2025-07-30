@@ -74,16 +74,50 @@ defmodule Guard.ServiceAccount.Actions do
   end
 
   @doc """
-  Soft delete a service account by deactivating the associated user.
+  Deactivate a service account by setting the user's deactivated flag to true.
 
   This marks the user as deactivated rather than physically deleting records,
   allowing for audit trails and potential recovery.
   """
-  @spec delete(String.t()) :: {:ok, :deleted} | {:error, atom()}
-  def delete(service_account_id) do
-    case ServiceAccount.delete(service_account_id) do
-      {:ok, :deleted} ->
-        {:ok, :deleted}
+  @spec deactivate(String.t()) :: {:ok, :deactivated} | {:error, atom()}
+  def deactivate(service_account_id) do
+    case ServiceAccount.deactivate(service_account_id) do
+      {:ok, :deactivated} ->
+        {:ok, :deactivated}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Reactivate a previously deactivated service account.
+
+  This sets the user's deactivated flag to false, allowing the service account
+  to be used again.
+  """
+  @spec reactivate(String.t()) :: {:ok, :reactivated} | {:error, atom()}
+  def reactivate(service_account_id) do
+    case ServiceAccount.reactivate(service_account_id) do
+      {:ok, :reactivated} ->
+        {:ok, :reactivated}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  @doc """
+  Permanently destroy a service account and all associated records.
+
+  This physically deletes the service account and user records from the database.
+  This action cannot be undone and should be used with caution.
+  """
+  @spec destroy(String.t()) :: {:ok, :destroyed} | {:error, atom()}
+  def destroy(service_account_id) do
+    case ServiceAccount.destroy(service_account_id) do
+      {:ok, :destroyed} ->
+        {:ok, :destroyed}
 
       {:error, error} ->
         {:error, error}
