@@ -233,24 +233,70 @@ defmodule Guard.ServiceAccount.ActionsTest do
     end
   end
 
-  describe "delete/1" do
-    test "deletes service account successfully" do
+  describe "deactivate/1" do
+    test "deactivates service account successfully" do
       service_account_id = "sa-id"
 
       with_mock ServiceAccount, [:passthrough],
-        delete: fn id ->
+        deactivate: fn id ->
           assert id == service_account_id
-          {:ok, :deleted}
+          {:ok, :deactivated}
         end do
-        {:ok, :deleted} = Actions.delete(service_account_id)
+        {:ok, :deactivated} = Actions.deactivate(service_account_id)
       end
     end
 
-    test "handles delete failure" do
+    test "handles deactivate failure" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough], delete: fn _ -> {:error, :delete_failed} end do
-        {:error, :delete_failed} = Actions.delete(service_account_id)
+      with_mock ServiceAccount, [:passthrough],
+        deactivate: fn _ -> {:error, :deactivate_failed} end do
+        {:error, :deactivate_failed} = Actions.deactivate(service_account_id)
+      end
+    end
+  end
+
+  describe "reactivate/1" do
+    test "reactivates service account successfully" do
+      service_account_id = "sa-id"
+
+      with_mock ServiceAccount, [:passthrough],
+        reactivate: fn id ->
+          assert id == service_account_id
+          {:ok, :reactivated}
+        end do
+        {:ok, :reactivated} = Actions.reactivate(service_account_id)
+      end
+    end
+
+    test "handles reactivate failure" do
+      service_account_id = "sa-id"
+
+      with_mock ServiceAccount, [:passthrough],
+        reactivate: fn _ -> {:error, :reactivate_failed} end do
+        {:error, :reactivate_failed} = Actions.reactivate(service_account_id)
+      end
+    end
+  end
+
+  describe "destroy/1" do
+    test "destroys service account successfully" do
+      service_account_id = "sa-id"
+
+      with_mock ServiceAccount, [:passthrough],
+        destroy: fn id ->
+          assert id == service_account_id
+          {:ok, :destroyed}
+        end do
+        {:ok, :destroyed} = Actions.destroy(service_account_id)
+      end
+    end
+
+    test "handles destroy failure" do
+      service_account_id = "sa-id"
+
+      with_mock ServiceAccount, [:passthrough], destroy: fn _ -> {:error, :destroy_failed} end do
+        {:error, :destroy_failed} = Actions.destroy(service_account_id)
       end
     end
   end

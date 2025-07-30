@@ -487,23 +487,23 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     end
   end
 
-  describe "delete/2" do
-    test "deletes service account successfully", %{grpc_channel: channel} do
+  describe "deactivate/2" do
+    test "deactivates service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()
 
       with_mocks([
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           delete: fn id ->
+           deactivate: fn id ->
              assert id == service_account_id
-             {:ok, :deleted}
+             {:ok, :deactivated}
            end
          ]}
       ]) do
-        request = ServiceAccount.DeleteRequest.new(service_account_id: service_account_id)
+        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
 
-        {:ok, response} = channel |> Stub.delete(request)
+        {:ok, response} = channel |> Stub.deactivate(request)
       end
     end
 
@@ -514,12 +514,13 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           delete: fn _ -> {:error, :not_found} end
+           deactivate: fn _ -> {:error, :not_found} end
          ]}
       ]) do
-        request = ServiceAccount.DeleteRequest.new(service_account_id: service_account_id)
+        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
 
-        {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.delete(request)
+        {:error, %GRPC.RPCError{status: 5, message: message}} =
+          channel |> Stub.deactivate(request)
 
         assert String.contains?(message, "Service account #{service_account_id} not found")
       end
@@ -532,14 +533,131 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
         {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
         {Guard.ServiceAccount.Actions, [:passthrough],
          [
-           delete: fn _ -> {:error, :database_error} end
+           deactivate: fn _ -> {:error, :database_error} end
          ]}
       ]) do
-        request = ServiceAccount.DeleteRequest.new(service_account_id: service_account_id)
+        request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
 
-        {:error, %GRPC.RPCError{status: 13, message: message}} = channel |> Stub.delete(request)
+        {:error, %GRPC.RPCError{status: 13, message: message}} =
+          channel |> Stub.deactivate(request)
 
-        assert String.contains?(message, "Failed to delete service account")
+        assert String.contains?(message, "Failed to deactivate service account")
+      end
+    end
+  end
+
+  describe "reactivate/2" do
+    test "reactivates service account successfully", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           reactivate: fn id ->
+             assert id == service_account_id
+             {:ok, :reactivated}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+
+        {:ok, response} = channel |> Stub.reactivate(request)
+      end
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           reactivate: fn _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} =
+          channel |> Stub.reactivate(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "handles internal errors", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           reactivate: fn _ -> {:error, :database_error} end
+         ]}
+      ]) do
+        request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
+
+        {:error, %GRPC.RPCError{status: 13, message: message}} =
+          channel |> Stub.reactivate(request)
+
+        assert String.contains?(message, "Failed to reactivate service account")
+      end
+    end
+  end
+
+  describe "destroy/2" do
+    test "destroys service account successfully", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           destroy: fn id ->
+             assert id == service_account_id
+             {:ok, :destroyed}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+
+        {:ok, response} = channel |> Stub.destroy(request)
+      end
+    end
+
+    test "handles service account not found", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           destroy: fn _ -> {:error, :not_found} end
+         ]}
+      ]) do
+        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+
+        {:error, %GRPC.RPCError{status: 5, message: message}} = channel |> Stub.destroy(request)
+
+        assert String.contains?(message, "Service account #{service_account_id} not found")
+      end
+    end
+
+    test "handles internal errors", %{grpc_channel: channel} do
+      service_account_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.ServiceAccount.Actions, [:passthrough],
+         [
+           destroy: fn _ -> {:error, :database_error} end
+         ]}
+      ]) do
+        request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
+
+        {:error, %GRPC.RPCError{status: 13, message: message}} = channel |> Stub.destroy(request)
+
+        assert String.contains?(message, "Failed to destroy service account")
       end
     end
   end
