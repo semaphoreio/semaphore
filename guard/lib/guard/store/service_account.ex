@@ -140,17 +140,17 @@ defmodule Guard.Store.ServiceAccount do
   end
 
   @doc """
-  Delete (deactivate) a service account.
+  Deactivate a service account.
 
   Performs a soft delete by setting the user's deactivated flag to true.
   """
-  @spec delete(String.t()) :: {:ok, :deleted} | {:error, :not_found | :internal_error}
-  def delete(service_account_id) when is_binary(service_account_id) do
+  @spec deactivate(String.t()) :: {:ok, :deactivated} | {:error, :not_found | :internal_error}
+  def deactivate(service_account_id) when is_binary(service_account_id) do
     if valid_uuid?(service_account_id) do
       case FrontRepo.transaction(fn ->
              with {:ok, _current_data} <- find(service_account_id),
                   {:ok, _updated_user} <- deactivate_user_record(service_account_id) do
-               :deleted
+               :deactivated
              else
                {:error, :not_found} ->
                  FrontRepo.rollback(:not_found)
@@ -159,7 +159,7 @@ defmodule Guard.Store.ServiceAccount do
                  FrontRepo.rollback(:internal_error)
              end
            end) do
-        {:ok, :deleted} -> {:ok, :deleted}
+        {:ok, :deactivated} -> {:ok, :deactivated}
         {:error, reason} -> {:error, reason}
       end
     else
@@ -168,7 +168,92 @@ defmodule Guard.Store.ServiceAccount do
   rescue
     e ->
       Logger.error(
-        "Error during service account deletion #{inspect(service_account_id)}: #{inspect(e)}"
+        "Error during service account deactivation #{inspect(service_account_id)}: #{inspect(e)}"
+      )
+
+      {:error, :internal_error}
+  end
+
+  @doc """
+  Reactivate a service account.
+
+  Reactivates a previously deactivated service account by setting the user's deactivated flag to false.
+  """
+  @spec reactivate(String.t()) :: {:ok, :reactivated} | {:error, :not_found | :internal_error}
+  def reactivate(service_account_id) when is_binary(service_account_id) do
+    if valid_uuid?(service_account_id) do
+      case FrontRepo.transaction(fn ->
+             # Use a modified query that includes deactivated service accounts
+             query =
+               build_service_account_query()
+               |> where([sa, u], sa.id == ^service_account_id)
+               |> where([sa, u], is_nil(u.blocked_at))
+
+             case FrontRepo.one(query) do
+               nil ->
+                 FrontRepo.rollback(:not_found)
+
+               _service_account ->
+                 case reactivate_user_record(service_account_id) do
+                   {:ok, _updated_user} -> :reactivated
+                   {:error, _reason} -> FrontRepo.rollback(:internal_error)
+                 end
+             end
+           end) do
+        {:ok, :reactivated} -> {:ok, :reactivated}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :invalid_id}
+    end
+  rescue
+    e ->
+      Logger.error(
+        "Error during service account reactivation #{inspect(service_account_id)}: #{inspect(e)}"
+      )
+
+      {:error, :internal_error}
+  end
+
+  @doc """
+  Destroy a service account.
+
+  Permanently deletes the service account and associated user records from the database.
+  This action cannot be undone.
+  """
+  @spec destroy(String.t()) :: {:ok, :destroyed} | {:error, :not_found | :internal_error}
+  def destroy(service_account_id) when is_binary(service_account_id) do
+    if valid_uuid?(service_account_id) do
+      case FrontRepo.transaction(fn ->
+             # Use a modified query that includes deactivated service accounts for destruction
+             query =
+               build_service_account_query()
+               |> where([sa, u], sa.id == ^service_account_id)
+               |> where([sa, u], is_nil(u.blocked_at))
+
+             case FrontRepo.one(query) do
+               nil ->
+                 FrontRepo.rollback(:not_found)
+
+               _service_account ->
+                 with {:ok, _} <- destroy_service_account_record(service_account_id),
+                      {:ok, _} <- destroy_user_record(service_account_id) do
+                   :destroyed
+                 else
+                   {:error, _reason} -> FrontRepo.rollback(:internal_error)
+                 end
+             end
+           end) do
+        {:ok, :destroyed} -> {:ok, :destroyed}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :invalid_id}
+    end
+  rescue
+    e ->
+      Logger.error(
+        "Error during service account destruction #{inspect(service_account_id)}: #{inspect(e)}"
       )
 
       {:error, :internal_error}
@@ -337,6 +422,47 @@ defmodule Guard.Store.ServiceAccount do
     case FrontRepo.update(changeset) do
       {:ok, user} -> {:ok, user}
       {:error, changeset} -> {:error, changeset.errors}
+    end
+  end
+
+  defp reactivate_user_record(user_id) do
+    user = FrontRepo.get!(User, user_id)
+
+    changeset =
+      User.changeset(user, %{
+        deactivated: false,
+        deactivated_at: nil
+      })
+
+    case FrontRepo.update(changeset) do
+      {:ok, user} -> {:ok, user}
+      {:error, changeset} -> {:error, changeset.errors}
+    end
+  end
+
+  defp destroy_service_account_record(service_account_id) do
+    case FrontRepo.get(ServiceAccount, service_account_id) do
+      nil ->
+        {:error, :not_found}
+
+      service_account ->
+        case FrontRepo.delete(service_account) do
+          {:ok, _} -> {:ok, :deleted}
+          {:error, changeset} -> {:error, changeset.errors}
+        end
+    end
+  end
+
+  defp destroy_user_record(user_id) do
+    case FrontRepo.get(User, user_id) do
+      nil ->
+        {:error, :not_found}
+
+      user ->
+        case FrontRepo.delete(user) do
+          {:ok, _} -> {:ok, :deleted}
+          {:error, changeset} -> {:error, changeset.errors}
+        end
     end
   end
 
