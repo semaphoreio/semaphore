@@ -879,6 +879,93 @@ defmodule Rbac.GrpcServers.RbacServerTest do
 
       assert Enum.empty?(response.members)
     end
+
+    test "Should return only service accounts when member_type is SERVICE_ACCOUNT", %{
+      channel: channel,
+      org_id: org_id
+    } do
+      # Create a service account role assignment
+      service_account_id = Ecto.UUID.generate()
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: service_account_id,
+        role_id: Rbac.Roles.Member.role().id,
+        org_id: org_id,
+        subject_type: "service_account"
+      })
+
+      # Mock the User API to return service account information
+      GrpcMock.stub(UserMock, :describe_many, fn request, _ ->
+        %InternalApi.User.DescribeManyResponse{
+          users:
+            [
+              %InternalApi.User.User{
+                id: service_account_id,
+                name: "Test Service Account",
+                creation_source: :SERVICE_ACCOUNT
+              }
+            ]
+            |> Enum.filter(fn user -> user.id in request.user_ids end)
+        }
+      end)
+
+      request = %InternalApi.RBAC.ListMembersRequest{
+        org_id: org_id,
+        member_type: :SERVICE_ACCOUNT,
+        page: %InternalApi.RBAC.ListMembersRequest.Page{
+          page_no: 1,
+          page_size: 10
+        }
+      }
+
+      {:ok, response} = Stub.list_members(channel, request)
+
+      assert length(response.members) == 1
+
+      [member] = response.members
+      assert member.subject.subject_type == :SERVICE_ACCOUNT
+      assert member.subject.subject_id == service_account_id
+    end
+
+    test "Should exclude service accounts by default when no member_type is specified", %{
+      channel: channel,
+      org_id: org_id,
+      valid_requester: owner_user,
+      member_user: member_user
+    } do
+      # Create a service account role assignment to ensure it's filtered out by default
+      service_account_id = Ecto.UUID.generate()
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: service_account_id,
+        role_id: Rbac.Roles.Admin.role().id,
+        org_id: org_id,
+        subject_type: "service_account"
+      })
+
+      request = %InternalApi.RBAC.ListMembersRequest{
+        org_id: org_id,
+        page: %InternalApi.RBAC.ListMembersRequest.Page{
+          page_no: 1,
+          page_size: 10
+        }
+      }
+
+      {:ok, response} = Stub.list_members(channel, request)
+
+      # Should only return the 2 regular users, not the service account
+      assert length(response.members) == 2
+
+      assert Enum.all?(response.members, fn member ->
+               member.subject.subject_type == :USER and
+                 member.subject.subject_id in [member_user.user_id, owner_user.user_id]
+             end)
+
+      # Verify service account is not in the results
+      refute Enum.any?(response.members, fn member ->
+               member.subject.subject_id == service_account_id
+             end)
+    end
   end
 
   describe "count_members/2" do
