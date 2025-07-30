@@ -135,7 +135,7 @@ defmodule InternalApi.ServiceAccount.DeactivateResponse do
   defstruct []
 end
 
-defmodule InternalApi.ServiceAccount.DeleteRequest do
+defmodule InternalApi.ServiceAccount.ReactivateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
@@ -147,7 +147,26 @@ defmodule InternalApi.ServiceAccount.DeleteRequest do
   field(:service_account_id, 1, type: :string)
 end
 
-defmodule InternalApi.ServiceAccount.DeleteResponse do
+defmodule InternalApi.ServiceAccount.ReactivateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
+defmodule InternalApi.ServiceAccount.DestroyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t()
+        }
+
+  defstruct [:service_account_id]
+  field(:service_account_id, 1, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.DestroyResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
@@ -245,9 +264,15 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
   )
 
   rpc(
-    :Delete,
-    InternalApi.ServiceAccount.DeleteRequest,
-    InternalApi.ServiceAccount.DeleteResponse
+    :Reactivate,
+    InternalApi.ServiceAccount.ReactivateRequest,
+    InternalApi.ServiceAccount.ReactivateResponse
+  )
+
+  rpc(
+    :Destroy,
+    InternalApi.ServiceAccount.DestroyRequest,
+    InternalApi.ServiceAccount.DestroyResponse
   )
 
   rpc(

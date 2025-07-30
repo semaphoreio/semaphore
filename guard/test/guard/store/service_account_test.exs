@@ -300,11 +300,11 @@ defmodule Guard.Store.ServiceAccountTest do
     end
   end
 
-  describe "delete/1" do
+  describe "deactivate/1" do
     test "soft deletes service account by deactivating user" do
       {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
 
-      {:ok, :deleted} = ServiceAccount.delete(sa.id)
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
 
       # Verify user is deactivated
       user = FrontRepo.get!(User, sa.id)
@@ -318,11 +318,11 @@ defmodule Guard.Store.ServiceAccountTest do
     test "returns error when service account not found" do
       non_existent_id = Ecto.UUID.generate()
 
-      assert {:error, :not_found} = ServiceAccount.delete(non_existent_id)
+      assert {:error, :not_found} = ServiceAccount.deactivate(non_existent_id)
     end
 
     test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.delete("invalid-uuid")
+      assert {:error, :invalid_id} = ServiceAccount.deactivate("invalid-uuid")
     end
 
     test "handles database errors gracefully" do
@@ -330,7 +330,97 @@ defmodule Guard.Store.ServiceAccountTest do
 
       # Mock a database error
       with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
-        assert {:error, :internal_error} = ServiceAccount.delete(sa.id)
+        assert {:error, :internal_error} = ServiceAccount.deactivate(sa.id)
+      end
+    end
+  end
+
+  describe "reactivate/1" do
+    test "reactivates a deactivated service account" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+
+      # First deactivate it
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
+
+      # Then reactivate it
+      {:ok, :reactivated} = ServiceAccount.reactivate(sa.id)
+
+      # Verify user is reactivated
+      user = FrontRepo.get!(User, sa.id)
+      assert user.deactivated == false
+      assert user.deactivated_at == nil
+
+      # Verify service account is findable again
+      assert {:ok, found_sa} = ServiceAccount.find(sa.id)
+      assert found_sa.id == sa.id
+    end
+
+    test "returns error when service account not found" do
+      non_existent_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.reactivate(non_existent_id)
+    end
+
+    test "returns error for invalid UUID" do
+      assert {:error, :invalid_id} = ServiceAccount.reactivate("invalid-uuid")
+    end
+
+    test "handles database errors gracefully" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+
+      # First deactivate it
+      {:ok, :deactivated} = ServiceAccount.deactivate(sa.id)
+
+      # Mock a database error
+      with_mock FrontRepo, [:passthrough], update: fn _ -> {:error, %Ecto.Changeset{}} end do
+        assert {:error, :internal_error} = ServiceAccount.reactivate(sa.id)
+      end
+    end
+  end
+
+  describe "destroy/1" do
+    test "permanently deletes service account and user records" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      service_account_id = sa.id
+
+      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id)
+
+      # Verify both records are deleted
+      assert FrontRepo.get(User, service_account_id) == nil
+      assert FrontRepo.get(Guard.FrontRepo.ServiceAccount, service_account_id) == nil
+    end
+
+    test "can destroy deactivated service account" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+      service_account_id = sa.id
+
+      # First deactivate it
+      {:ok, :deactivated} = ServiceAccount.deactivate(service_account_id)
+
+      # Then destroy it
+      {:ok, :destroyed} = ServiceAccount.destroy(service_account_id)
+
+      # Verify both records are deleted
+      assert FrontRepo.get(User, service_account_id) == nil
+      assert FrontRepo.get(Guard.FrontRepo.ServiceAccount, service_account_id) == nil
+    end
+
+    test "returns error when service account not found" do
+      non_existent_id = Ecto.UUID.generate()
+
+      assert {:error, :not_found} = ServiceAccount.destroy(non_existent_id)
+    end
+
+    test "returns error for invalid UUID" do
+      assert {:error, :invalid_id} = ServiceAccount.destroy("invalid-uuid")
+    end
+
+    test "handles database errors gracefully" do
+      {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
+
+      # Mock a database error
+      with_mock FrontRepo, [:passthrough], delete: fn _ -> {:error, %Ecto.Changeset{}} end do
+        assert {:error, :internal_error} = ServiceAccount.destroy(sa.id)
       end
     end
   end
