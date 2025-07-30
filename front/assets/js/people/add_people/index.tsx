@@ -85,7 +85,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
     const Link = (props: { icon: VNode, title: string, }) => {
       return (
         <ActiveShadowLink
-          className={`btn btn-secondary ${
+          className={`flex-grow-1 btn btn-secondary ${
             currentProvider === provider ? `active` : ``
           }`}
           disabled={loading}
@@ -136,7 +136,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
   return (
     <div className="pa4">
       {userProviders.length > 1 && (
-        <div className="mb3 button-group w-100 items-center justify-center">
+        <div className="mb3 button-group w-100 items-center">
           {userProviders.map(userProviderBox)}
         </div>
       )}
