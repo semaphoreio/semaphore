@@ -93,8 +93,8 @@ export const ServiceAccountsList = ({
         </div>
       ) : (
         <div id="service-accounts">
-          {serviceAccounts.map((account) => (
-            <div key={account.id} className="bg-white shadow-1 ph3 pv2">
+          {serviceAccounts.map((account, idx) => (
+            <div key={account.id} className={`bg-white shadow-1 ph3 pv2 ${idx == serviceAccounts.length - 1 ? `br2 br--bottom` : ``}`}>
               <div className="flex items-center justify-between" style={{ minHeight: `45px` }}>
                 <div className="flex items-center">
                   <span className="material-symbols-outlined mr2 f4 gray">key</span>
@@ -117,25 +117,27 @@ export const ServiceAccountsList = ({
                   <div className="flex-shrink-0 pl2">
                     <div className="button-group">
                       <button
-                        className="btn btn-sm btn-secondary"
+                        className="flex items-center btn btn-sm btn-secondary"
                         onClick={() => onEdit(account)}
                         title="Edit"
                       >
-                        <span className="material-symbols-outlined f6">edit</span>
+                        <span className="material-symbols-outlined mr1">edit</span>
+                        <span>Edit</span>
                       </button>
                       <button
-                        className="btn btn-sm btn-secondary"
+                        className="flex items-center btn btn-sm btn-secondary"
                         onClick={() => onRegenerateToken(account)}
                         title="Regenerate Token"
                       >
-                        <span className="material-symbols-outlined f6">refresh</span>
+                        <span className="material-symbols-outlined mr1">refresh</span>
+                        <span>Refresh</span>
                       </button>
                       <button
-                        className="btn btn-sm btn-danger"
+                        className="flex items-center btn btn-sm btn-danger"
                         onClick={() => onDelete(account)}
                         title="Delete"
                       >
-                        <span className="material-symbols-outlined f6">delete</span>
+                        ×
                       </button>
                     </div>
                   </div>
