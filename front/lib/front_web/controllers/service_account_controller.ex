@@ -3,18 +3,14 @@ defmodule FrontWeb.ServiceAccountController do
   require Logger
 
   alias Front.{Audit, ServiceAccount}
-  alias FrontWeb.Plugs
+  alias FrontWeb.Plugs.{FetchPermissions, PageAccess, FeatureEnabled}
 
-  plug(Plugs.FetchPermissions, scope: "org")
-  plug(Plugs.PageAccess, permissions: "organization.service_accounts.view")
+  @manage ~w(create update delete regenerate_token)a
 
-  plug(
-    Plugs.PageAccess,
-    [permissions: "organization.service_accounts.manage"]
-    when action in [:create, :update, :delete, :regenerate_token]
-  )
-
-  plug(Plugs.FeatureEnabled, [:service_accounts])
+  plug(FetchPermissions, scope: "org")
+  plug(PageAccess, permissions: "organization.service_accounts.view")
+  plug(PageAccess, [permissions: "organization.service_accounts.manage"] when action in @manage)
+  plug(FeatureEnabled, [:service_accounts])
 
   def index(conn, params) do
     org_id = conn.assigns.organization_id
@@ -28,6 +24,18 @@ defmodule FrontWeb.ServiceAccountController do
           service_accounts: service_accounts,
           next_page_token: next_page_token
         )
+
+      {:error, message} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: message})
+    end
+  end
+
+  def show(conn, %{"id" => id}) do
+    case ServiceAccount.describe(id) do
+      {:ok, service_account} ->
+        render(conn, "show.json", service_account: service_account)
 
       {:error, message} ->
         conn
@@ -56,18 +64,6 @@ defmodule FrontWeb.ServiceAccountController do
         conn
         |> put_status(:created)
         |> render("show.json", service_account: service_account, api_token: api_token)
-
-      {:error, message} ->
-        conn
-        |> put_status(422)
-        |> json(%{error: message})
-    end
-  end
-
-  def show(conn, %{"id" => id}) do
-    case ServiceAccount.describe(id) do
-      {:ok, service_account} ->
-        render(conn, "show.json", service_account: service_account)
 
       {:error, message} ->
         conn
