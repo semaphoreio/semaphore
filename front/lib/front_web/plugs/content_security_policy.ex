@@ -31,6 +31,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       nonces_for: [:script_src],
       report_only: Application.get_env(:front, :environment) in [:dev, :test],
       directives: %{
+        base_uri: ~w('self'),
         connect_src: connect_src(),
         default_src: ~w('none'),
         media_src: ~w(beacon-v2.helpscout.net),
