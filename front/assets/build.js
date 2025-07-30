@@ -19,21 +19,19 @@ const outputDir = '../priv/static/assets'
 // Function to process CSS files
 const processCss = async () => {
   console.log('Processing CSS files...')
-  
+
   try {
     // Process main.css which imports all other CSS files
     const inputFile = 'css/main.css'
     const outputFile = path.join(outputDir, 'css/app.css')
-    
+
     // Set NODE_ENV for PostCSS to handle minification
     const env = isProd ? 'NODE_ENV=production' : 'NODE_ENV=development'
     const postcssCmd = `${env} npx postcss ${inputFile} -o ${outputFile}`
-    
+
     await execAsync(postcssCmd)
     console.log(`CSS processed successfully (${isProd ? 'production' : 'development'} mode)`)
-    
-    // No need to copy other CSS files since they're imported by main.css
-    
+
   } catch (error) {
     console.error('Error processing CSS:', error)
     throw error
@@ -50,7 +48,7 @@ const copyAssets = async () => {
 
   // Process CSS files
   await processCss()
-  
+
   // Copy fonts and images
   fs.copySync('fonts', path.join(outputDir, 'fonts'), { overwrite: true })
   fs.copySync('images', path.join(outputDir, 'images'), { overwrite: true })
@@ -87,19 +85,40 @@ if (watch) {
   esbuild.context(buildOptions).then(async context => {
     context.watch()
     await copyAssets()
-    
-    // Watch CSS files for changes
+
     const chokidar = require('chokidar')
-    const cssWatcher = chokidar.watch('css/**/*.css', {
+    const cssDir = path.join(__dirname, 'css')
+
+    const cssWatcher = chokidar.watch(cssDir, {
       persistent: true,
-      ignoreInitial: true
+      ignoreInitial: true,
+      usePolling: true, // REQUIRED for macOS Docker
+      interval: 1000,
+      binaryInterval: 1000,
+      awaitWriteFinish: {
+        stabilityThreshold: 500,
+        pollInterval: 100
+      },
+      useFsEvents: false,
+      alwaysStat: true,
+      depth: 99,
+      atomic: false
     })
-    
-    cssWatcher.on('change', async () => {
-      console.log('CSS file changed, reprocessing...')
-      await processCss()
-    })
-    
+
+    cssWatcher
+      .on('change', async (path) => {
+        // Only process CSS files
+        if (path.endsWith('.css')) {
+          console.log('CSS file changed, reprocessing...')
+          try {
+            await processCss()
+          } catch (error) {
+            console.error('Error processing CSS:', error)
+          }
+        }
+      })
+      .on('ready', () => console.log('CSS watcher ready'))
+
     process.stdin.on('close', () => {
       cssWatcher.close()
       context.dispose()
