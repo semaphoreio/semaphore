@@ -35,8 +35,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         default_src: ~w('none'),
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
-        font_src:
-          ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
+        font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
         img_src:
           ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com docs.semaphoreci.com),
         script_src:
