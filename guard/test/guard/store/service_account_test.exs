@@ -32,14 +32,14 @@ defmodule Guard.Store.ServiceAccountTest do
       assert {:error, :not_found} = ServiceAccount.find(non_existent_id)
     end
 
-    test "returns error when service account is deactivated" do
+    test "returns deactivated service account" do
       {:ok, %{service_account: created_sa, user: user}} = ServiceAccountFactory.insert()
 
       # Deactivate the user
       User.changeset(user, %{deactivated: true, deactivated_at: DateTime.utc_now()})
       |> FrontRepo.update()
 
-      assert {:error, :not_found} = ServiceAccount.find(created_sa.id)
+      assert {:ok, %{deactivated: true}} = ServiceAccount.find(created_sa.id)
     end
 
     test "returns error when service account is blocked" do
@@ -104,23 +104,6 @@ defmodule Guard.Store.ServiceAccountTest do
 
       assert length(result2.service_accounts) == 1
       assert result2.next_page_token == nil
-    end
-
-    test "filters out deactivated service accounts" do
-      org_id = Ecto.UUID.generate()
-      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(org_id: org_id, name: "SA1")
-
-      {:ok, %{service_account: _sa2, user: user2}} =
-        ServiceAccountFactory.insert(org_id: org_id, name: "SA2")
-
-      # Deactivate second service account
-      User.changeset(user2, %{deactivated: true, deactivated_at: DateTime.utc_now()})
-      |> FrontRepo.update()
-
-      {:ok, result} = ServiceAccount.find_by_org(org_id, 10, nil)
-
-      assert length(result.service_accounts) == 1
-      assert List.first(result.service_accounts).id == sa1.id
     end
 
     test "returns error for invalid org_id" do
@@ -312,7 +295,7 @@ defmodule Guard.Store.ServiceAccountTest do
       assert user.deactivated_at != nil
 
       # Verify service account is no longer findable
-      assert {:error, :not_found} = ServiceAccount.find(sa.id)
+      assert {:ok, %{deactivated: true}} = ServiceAccount.find(sa.id)
     end
 
     test "returns error when service account not found" do

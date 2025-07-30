@@ -27,7 +27,7 @@ defmodule Guard.Store.ServiceAccount do
       query =
         build_service_account_query()
         |> where([sa, u], sa.id == ^service_account_id)
-        |> where([sa, u], is_nil(u.blocked_at) and u.deactivated == false)
+        |> where([sa, u], is_nil(u.blocked_at))
 
       case FrontRepo.one(query) do
         nil -> {:error, :not_found}
@@ -55,7 +55,7 @@ defmodule Guard.Store.ServiceAccount do
       query =
         build_service_account_query()
         |> where([sa, u], u.org_id == ^org_id)
-        |> where([sa, u], is_nil(u.blocked_at) and u.deactivated == false)
+        |> where([sa, u], is_nil(u.blocked_at))
         |> order_by([sa, u], asc: u.created_at, asc: sa.id)
         # Get one extra to check if there are more
         |> limit(^(page_size + 1))
