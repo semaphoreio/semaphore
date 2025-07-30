@@ -93,13 +93,15 @@ defmodule InternalApi.ServiceAccount.UpdateRequest do
   @type t :: %__MODULE__{
           service_account_id: String.t(),
           name: String.t(),
-          description: String.t()
+          description: String.t(),
+          role_id: String.t()
         }
 
-  defstruct [:service_account_id, :name, :description]
+  defstruct [:service_account_id, :name, :description, :role_id]
   field(:service_account_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
+  field(:role_id, 4, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.UpdateResponse do
@@ -112,6 +114,25 @@ defmodule InternalApi.ServiceAccount.UpdateResponse do
 
   defstruct [:service_account]
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
+end
+
+defmodule InternalApi.ServiceAccount.DeactivateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t()
+        }
+
+  defstruct [:service_account_id]
+  field(:service_account_id, 1, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.DeactivateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
 end
 
 defmodule InternalApi.ServiceAccount.DeleteRequest do
@@ -215,6 +236,12 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
     :Update,
     InternalApi.ServiceAccount.UpdateRequest,
     InternalApi.ServiceAccount.UpdateResponse
+  )
+
+  rpc(
+    :Deactivate,
+    InternalApi.ServiceAccount.DeactivateRequest,
+    InternalApi.ServiceAccount.DeactivateResponse
   )
 
   rpc(
