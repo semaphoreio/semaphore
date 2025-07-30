@@ -90,7 +90,9 @@ defmodule Guard.FrontRepo.User do
   def active_user_by_token(token) do
     case FrontRepo.one(
            from(u in FrontRepo.User,
-             where: u.authentication_token == ^token and is_nil(u.blocked_at)
+             where:
+               u.authentication_token == ^token and is_nil(u.blocked_at) and
+                 (is_nil(u.deactivated) or u.deactivated == false)
            )
          ) do
       nil -> {:error, :not_found}
@@ -101,7 +103,9 @@ defmodule Guard.FrontRepo.User do
   def active_user_by_id(id) do
     case FrontRepo.one(
            from(u in FrontRepo.User,
-             where: u.id == ^id and is_nil(u.blocked_at)
+             where:
+               u.id == ^id and is_nil(u.blocked_at) and
+                 (is_nil(u.deactivated) or u.deactivated == false)
            )
          ) do
       nil ->
@@ -115,7 +119,9 @@ defmodule Guard.FrontRepo.User do
   def active_user_by_email(email) do
     case FrontRepo.one(
            from(u in FrontRepo.User,
-             where: u.email == ^email and is_nil(u.blocked_at)
+             where:
+               u.email == ^email and is_nil(u.blocked_at) and
+                 (is_nil(u.deactivated) or u.deactivated == false)
            )
          ) do
       nil ->
