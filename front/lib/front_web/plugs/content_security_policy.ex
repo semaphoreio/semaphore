@@ -31,18 +31,18 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       nonces_for: [:script_src],
       report_only: Application.get_env(:front, :environment) in [:dev, :test],
       directives: %{
+        base_uri: ~w('self'),
         connect_src: connect_src(),
         default_src: ~w('none'),
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
-        font_src:
-          ~w('self' storage.googleapis.com beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
+        font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
         img_src:
-          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com storage.googleapis.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com *.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com docs.semaphoreci.com),
+          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com docs.semaphoreci.com),
         script_src:
           ~w(https: 'self' 'strict-dynamic' *.userpilot.io static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net),
         style_src:
-          ~w('self' 'unsafe-inline' *.userpilot.io fonts.gstatic.com fonts.googleapis.com storage.googleapis.com cdnjs.cloudflare.com beacon-v2.helpscout.net cdn.jsdelivr.net),
+          ~w('self' 'unsafe-inline' *.userpilot.io fonts.gstatic.com fonts.googleapis.com cdnjs.cloudflare.com beacon-v2.helpscout.net cdn.jsdelivr.net),
         frame_src: ~w('self' beacon-v2.helpscout.net),
         object_src: ~w(beacon-v2.helpscout.net)
       }
@@ -61,7 +61,6 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       "ekr.zdassets.com",
       "beaconapi.helpscout.net",
       "chatapi.helpscout.net",
-      "storage.googleapis.com",
       "d3hb14vkzrxvla.cloudfront.net",
       "wss://*.pusher.com",
       "*.sumologic.com",
