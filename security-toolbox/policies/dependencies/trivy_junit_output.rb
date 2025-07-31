@@ -5,6 +5,7 @@ class Policy::TrivyJunitOutput < Policy
     super(args)
 
     @template_path = File.join(File.dirname(__FILE__), "trivyfs/junit.tpl")
+    @output_dir = args[:output_dir] || "out"
   end
 
   def test
@@ -13,8 +14,8 @@ class Policy::TrivyJunitOutput < Policy
       "convert",
       "--format template",
       "--template '@#{@template_path}'",
-      "--output out/dependency-scan-junit.xml",
-      "out/dependency-scan-trivy.json"
+      "--output #{@output_dir}/dependency-scan-junit.xml",
+      "#{@output_dir}/dependency-scan-trivy.json"
     ]
 
     @output = `#{command.join(" ")}`
