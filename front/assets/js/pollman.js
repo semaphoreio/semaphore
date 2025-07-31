@@ -165,14 +165,24 @@ export var Pollman = {
   },
 
   fetchAndReplace: function (node, callback) {
-    let url = Pollman.requestUrl(node);
+    let url;
+
+    try {
+      url = Pollman.requestUrl(node);
+    } catch (error) {
+      console.error('Invalid poll URL, removing element:', error);
+      // Remove the invalid polling element to prevent further attempts
+      $(node).remove();
+      return;
+    }
+
     if (this.urlInProgress(url)) {
       return;
     }
 
     let newFetch = this.rememberFetch(Date.now());
-
     this.startForUrl(url);
+
     fetch(url, { credentials: "same-origin" })
       .then(function (response) {
         if (response.status >= 200 && response.status < 300) {
@@ -230,15 +240,31 @@ export var Pollman = {
   },
 
   requestUrl: function (node) {
-    var queryParams = new URLSearchParams();
+    const pollHref = node.getAttribute("data-poll-href");
 
-    Array.from(node.attributes).forEach(function (attribute) {
-      if (attribute.name.startsWith("data-poll-param-")) {
-        var name = attribute.name.substring("data-poll-param-".length);
-        queryParams.append(name, attribute.value);
+    try {
+      const pollUrl = new URL(pollHref, window.location.origin);
+
+      // Only allow same origin (same protocol, host, and port)
+      if (pollUrl.origin !== window.location.origin) {
+        console.error(`Blocked data-poll-href to unauthorized host: ${pollUrl.origin}`);
+        throw new Error(`data-poll-href must be same-origin. Got: ${pollUrl.origin}, Expected: ${window.location.origin}`);
       }
-    });
 
-    return `${node.getAttribute("data-poll-href")}?${queryParams}`;
+      // Build query parameters from data-poll-param-* attributes (existing logic)
+      var queryParams = new URLSearchParams();
+      Array.from(node.attributes).forEach(function (attribute) {
+        if (attribute.name.startsWith("data-poll-param-")) {
+          var name = attribute.name.substring("data-poll-param-".length);
+          queryParams.append(name, attribute.value);
+        }
+      });
+
+      return `${pollUrl.href}?${queryParams}`;
+
+    } catch (error) {
+      console.error('Invalid data-poll-href URL:', pollHref, error);
+      throw new Error('Invalid or unauthorized data-poll-href URL');
+    }
   },
 };
