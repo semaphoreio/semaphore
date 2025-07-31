@@ -356,9 +356,18 @@ defmodule FrontWeb.PeopleController do
           member_type: "user"
         )
 
+      fetch_service_accounts =
+        async_fetch_members(org_id, project_id,
+          username: username,
+          role_id: role_id,
+          page_no: page_no,
+          member_type: "service_account"
+        )
+
       conn = conn |> assign_permissions(project_id)
       {:ok, {:ok, {members, total_pages}}} = Async.await(fetch_members)
       {:ok, {:ok, {groups, _total_pages}}} = Async.await(fetch_groups)
+      {:ok, {:ok, {service_accounts, _total_pages}}} = Async.await(fetch_service_accounts)
       {:ok, {:ok, all_roles}} = Async.await(fetch_roles)
 
       conn
@@ -367,6 +376,7 @@ defmodule FrontWeb.PeopleController do
       |> render("members/members_list.html",
         members: members,
         groups: groups,
+        service_accounts: service_accounts,
         roles: all_roles,
         groups: groups,
         org_scope?: project_id == "",
