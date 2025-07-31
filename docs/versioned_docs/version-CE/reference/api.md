@@ -472,6 +472,8 @@ curl -i -X POST \
 
 ## Tasks {#tasks}
 
+### Trigger a taks
+
 [Tasks](../using-semaphore/tasks) can be triggered via the API.
 
 To trigger a task with its default parameters:
@@ -624,9 +626,9 @@ curl -H "Authorization: Token {api_token}" \
      "https://<semaphore-server-url>/api/v1alpha/logs/:job_id"
 ```
 
-### Self-hosted agent types
+## Self-hosted agent types
 
-#### Listing agent types
+### Listing agent types
 
 ```text
 GET <semaphore-server-url>/api/v1alpha/self_hosted_agent_types
@@ -687,7 +689,7 @@ curl -i \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types"
 ```
 
-#### Create an agent type
+### Create an agent type
 
 ```text
 POST <semaphore-server-url>/api/v1alpha/self_hosted_agent_types
@@ -740,7 +742,7 @@ curl -i \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types"
 ```
 
-#### Update an agent type
+### Update an agent type
 
 ```text
 PATCH <semaphore-server-url>/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -792,7 +794,7 @@ curl -X PATCH -i \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types/s1-aws-small"
 ```
 
-#### Describe an agent type
+### Describe an agent type
 
 ```text
 GET <semaphore-server-url>/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -833,7 +835,7 @@ curl -i \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types/s1-aws-small"
 ```
 
-#### Delete an agent type
+### Delete an agent type
 
 ```text
 DELETE <semaphore-server-url>/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -858,7 +860,7 @@ curl -i -X DELETE \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types/s1-aws-small"
 ```
 
-#### Disable agents for an agent type
+### Disable agents for an agent type
 
 ```text
 POST <semaphore-server-url>/api/v1alpha/self_hosted_agent_types/:agent_type_name/disable_all
@@ -885,9 +887,9 @@ curl -i \
   "https://<semaphore-server-url>/api/v1alpha/self_hosted_agent_types/s1-aws-small/disable_all"
 ```
 
-### Self-hosted agents
+## Self-hosted agents
 
-#### List agents for an agent type
+### List agents for an agent type
 
 ```text
 GET <semaphore-server-url>/api/v1alpha/agents?agent_type=:agent_type&page_size=:page_size&cursor=:cursor
