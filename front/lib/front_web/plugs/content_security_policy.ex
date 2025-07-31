@@ -61,6 +61,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       "ekr.zdassets.com",
       "beaconapi.helpscout.net",
       "chatapi.helpscout.net",
+      "storage.googleapis.com",
       "d3hb14vkzrxvla.cloudfront.net",
       "wss://*.pusher.com",
       "*.sumologic.com",
