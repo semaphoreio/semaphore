@@ -3,7 +3,7 @@ defmodule Front.Clients.ServiceAccount do
 
   alias InternalApi.ServiceAccount.{
     CreateRequest,
-    DeleteRequest,
+    DestroyRequest,
     DescribeRequest,
     ListRequest,
     RegenerateTokenRequest,
@@ -92,7 +92,7 @@ defmodule Front.Clients.ServiceAccount do
 
   @impl Front.ServiceAccount.Behaviour
   def delete(service_account_id) do
-    %DeleteRequest{
+    %DestroyRequest{
       service_account_id: service_account_id
     }
     |> grpc_call(:delete)
