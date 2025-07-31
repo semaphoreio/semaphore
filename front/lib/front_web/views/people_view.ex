@@ -218,18 +218,30 @@ defmodule FrontWeb.PeopleView do
   defp map_role_to_colour(_), do: "cyan"
 
   def construct_member_avatar(member) do
-    avatar_url =
-      if member.has_avatar do
-        member.avatar
-      else
-        first_letter = member.name |> String.first() |> String.downcase()
-        "#{assets_path()}/images/org-#{first_letter}.svg"
-      end
+    # Check if this is a service account
+    is_service_account = member.subject_type == "service_account"
+    
+    if is_service_account do
+      """
+        <div class="w2 h2 br-100 mr2 ba b--black-50 flex items-center justify-center bg-light-gray">
+          <span class="material-symbols-outlined f6 gray">smart_toy</span>
+        </div>
+      """
+      |> raw()
+    else
+      avatar_url =
+        if member.has_avatar do
+          member.avatar
+        else
+          first_letter = member.name |> String.first() |> String.downcase()
+          "#{assets_path()}/images/org-#{first_letter}.svg"
+        end
 
-    """
-      <img src="#{avatar_url}" class="w2 h2 br-100 mr2 ba b--black-50">
-    """
-    |> raw()
+      """
+        <img src="#{avatar_url}" class="w2 h2 br-100 mr2 ba b--black-50">
+      """
+      |> raw()
+    end
   end
 
   def build_roles(member, roles) do
