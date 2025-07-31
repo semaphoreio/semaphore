@@ -4,8 +4,6 @@ import { NavLink } from 'react-router-dom';
 import * as stores from '../stores';
 import { State } from '../stores/dashboards';
 import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css'; // optional
-import 'tippy.js/themes/light.css';
 
 
 interface Props {

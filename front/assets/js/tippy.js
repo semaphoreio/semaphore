@@ -1,6 +1,4 @@
 import tippy, {roundArrow} from 'tippy.js';
-import 'tippy.js/dist/tippy.css';
-import 'tippy.js/dist/svg-arrow.css';
 
 window.tippy = tippy;
 

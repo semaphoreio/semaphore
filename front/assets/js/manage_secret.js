@@ -1,6 +1,5 @@
 import $ from "jquery"
 
-import 'tom-select/dist/css/tom-select.min.css'
 import TomSelect from 'tom-select'
 
 

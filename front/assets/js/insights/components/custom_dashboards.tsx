@@ -16,8 +16,6 @@ import { DashboardItemCard } from './dashboard_item_card';
 import { InsightsType, typeByMetric } from '../types/insights_type';
 import { empty_custom_dashboard } from './zero_state/empty_custom_dashboard';
 import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css'; // optional
-import 'tippy.js/themes/light.css';
 import { handleMetricDatePickerChanged } from "../util/event_handlers";
 import * as stores from "../stores";
 

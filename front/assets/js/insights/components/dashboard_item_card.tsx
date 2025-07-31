@@ -2,8 +2,6 @@ import { DashboardItem } from '../types/dashboard';
 import { InsightsType, typeByMetric } from '../types/insights_type';
 import * as customCharts from './custom_charts';
 import Tippy from '@tippyjs/react';
-import 'tippy.js/dist/tippy.css'; // optional
-import 'tippy.js/themes/light.css';
 import { useState } from 'preact/hooks';
 import { metricFromNumber } from "../util/metric";
 

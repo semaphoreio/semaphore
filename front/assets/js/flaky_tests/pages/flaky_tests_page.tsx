@@ -6,8 +6,6 @@ import * as types from "../types";
 // @ts-ignore
 import { Notice } from "js/notice";
 import * as components from "../components";
-import 'tippy.js/dist/tippy.css'; // optional
-import 'tippy.js/themes/light.css';
 import { RequestStatus, Status } from "../types";
 import { FetchData } from "../network/request";
 import { FlakyTestItem, HistoryItem } from "../types/flaky_test_item";

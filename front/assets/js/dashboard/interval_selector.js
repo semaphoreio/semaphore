@@ -1,7 +1,6 @@
 import $ from "jquery"; // live on click event
 
 import pikaday from 'pikaday';
-import 'pikaday/css/pikaday.css';
 import querystringify from 'querystringify';
 
 export class IntervalSelector {

@@ -3,7 +3,6 @@ import { render } from "preact";
 import MarkdownIt, { PluginSimple } from "markdown-it";
 import markdownItTextualUml from "markdown-it-textual-uml";
 import Mermaid from "mermaid";
-import "github-markdown-css/github-markdown-light.css";
 
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
