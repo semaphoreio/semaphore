@@ -13,6 +13,32 @@ defmodule Front.ServiceAccount do
                 page_token :: String.t() | nil
               ) :: {:ok, {[Front.Models.ServiceAccount.t()], String.t() | nil}} | {:error, any}
 
+    @callback list_for_project(
+                org_id :: String.t(),
+                project_id :: String.t(),
+                page_size :: integer(),
+                page_token :: String.t() | nil
+              ) :: {:ok, {[Front.Models.ServiceAccount.t()], String.t() | nil}} | {:error, any}
+
+    @callback list_available_for_project(
+                org_id :: String.t(),
+                project_id :: String.t(),
+                page_size :: integer(),
+                page_token :: String.t() | nil
+              ) :: {:ok, {[Front.Models.ServiceAccount.t()], String.t() | nil}} | {:error, any}
+
+    @callback assign_to_project(
+                service_account_id :: String.t(),
+                project_id :: String.t(),
+                creator_id :: String.t()
+              ) :: {:ok, Front.Models.ServiceAccount.t()} | {:error, any}
+
+    @callback unassign_from_project(
+                service_account_id :: String.t(),
+                project_id :: String.t(),
+                creator_id :: String.t()
+              ) :: {:ok, Front.Models.ServiceAccount.t()} | {:error, any}
+
     @callback describe(service_account_id :: String.t()) ::
                 {:ok, Front.Models.ServiceAccount.t()} | {:error, any}
 
