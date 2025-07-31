@@ -39,7 +39,9 @@ feature
 superjerry
 instance_config
 usage
-scouter'
+scouter
+license
+service_account'
 
 for element in $list;do
   echo "$element"
