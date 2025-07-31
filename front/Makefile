@@ -29,6 +29,11 @@ CACHE_PORT=6379
 CACHE_POOL_SIZE=5
 AMQP_URL=amqp://0.0.0.0:5672
 
+#
+# Internal API URLs env file
+#
+INTERNAL_API_ENV_FILE = env/.env.internal-apis
+
 CONTAINER_ENV_VARS = \
 	-e CI=$(CI) \
 	-e MIX_ENV=$(MIX_ENV) \
@@ -42,7 +47,8 @@ CONTAINER_ENV_VARS = \
 	-e SEED_PROJECTS="initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket" \
 	-e SEED_CLOUD_MACHINES=true \
 	-e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
-	-e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+	-e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
+	--env-file $(INTERNAL_API_ENV_FILE)
 
 
 CONTAINER_CE_ENV_VARS =\
@@ -55,7 +61,8 @@ CONTAINER_CE_ENV_VARS =\
 	 -e WORKFLOW_TEMPLATES_YAMLS_PATH="/app/workflow_templates/ce" \
 	 -e EXCLUDE_STUBS="GoferMock" \
 	 -e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
-	 -e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+	 -e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
+	 --env-file $(INTERNAL_API_ENV_FILE)
 
 test.ex.setup: export MIX_ENV=test
 test.ex.setup:

@@ -24,7 +24,7 @@ build:
     - image: ghcr.io/semaphoreio/front
       context: front
       custom:
-        buildCommand: "DOCKER_BUILD_TARGET=dev MIX_ENV=prod make build.skaffold"
+        buildCommand: "DOCKER_BUILD_TARGET=dev MIX_ENV=dev make build.skaffold"
       sync:
         manual:
           - src: 'lib/**/*'

@@ -24,6 +24,8 @@ spec:
   prefix: /
   rewrite: ""
   service: project-page.{{ .Release.Namespace }}:80
+  allow_upgrade:
+  - websocket
   timeout_ms: 30000
   envoy_override:
     retry_policy:

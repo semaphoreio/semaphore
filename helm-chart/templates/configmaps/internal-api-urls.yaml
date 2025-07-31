@@ -20,6 +20,7 @@ data:
   INTERNAL_API_URL_HOOKS: hooks-processor-api:50050
   INTERNAL_API_URL_INSTANCE_CONFIG: guard-instance-config:50051
   INTERNAL_API_URL_JOB: zebra-job-api:50051
+  INTERNAL_API_URL_LICENSE_CHECKER: license-checker:50051
   INTERNAL_API_URL_LOGHUB2: loghub2-internal-api:50051
   INTERNAL_API_URL_NOTIFICATION: notifications-v1alpha-public-grpc-api:50051
   INTERNAL_API_URL_ORGANIZATION: guard-organization-api:50051
