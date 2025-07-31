@@ -34,6 +34,9 @@ services:
       SECRET_KEY_BASE: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
       SESSION_SIGNING_SALT: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
 
+    env_file:
+      - ./env/.env.internal-apis
+
     links:
       - redis-cache:redis-cache
       - rabbitmq:rabbitmq
