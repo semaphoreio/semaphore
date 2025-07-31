@@ -112,7 +112,7 @@ export var Blocked = {
   },
 
   afterBuildHandler(branch, workflowId, checkUrl) {
-    var query = [`branch=${branch}`, `workflow_id=${workflowId}`].join("&")
+    var query = [`branch=${encodeURIComponent(branch)}`, `workflow_id=${encodeURIComponent(workflowId)}`].join("&")
     var url   = checkUrl + "?" + query
 
     console.log(`Checking workflows ${url}`)

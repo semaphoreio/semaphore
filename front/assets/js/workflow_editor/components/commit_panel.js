@@ -223,7 +223,7 @@ export class CommitPanel {
   }
 
   afterCommitHandler(branch, commitSha) {
-    var query = [`branch=${branch}`, `commit_sha=${commitSha}`].join("&")
+    var query = [`branch=${encodeURIComponent(branch)}`, `commit_sha=${encodeURIComponent(commitSha)}`].join("&")
     var url   = this.paths.checkWorkflow + "?" + query
 
     console.log(`Checking workflows ${url}`)

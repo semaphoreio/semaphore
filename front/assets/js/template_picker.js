@@ -155,7 +155,7 @@ export var TemplatePicker = {
   },
 
   afterCommitHandler: function(branch, commitSha, workflowTip, projectName) {
-    var query = [`branch=${branch}`, `commit_sha=${commitSha}`].join("&")
+    var query = [`branch=${encodeURIComponent(branch)}`, `commit_sha=${encodeURIComponent(commitSha)}`].join("&")
     var url   = "check_workflow?" + query
 
     console.log(`Checking workflows ${url}`)
