@@ -83,7 +83,7 @@ defmodule Front.Mixfile do
   defp aliases do
     [
       sentry_recompile: ["compile", "deps.compile sentry --force"],
-      "assets.deploy": ["cmd --cd assets node build.js", "phx.digest"]
+      "assets.deploy": ["cmd --cd assets MIX_ENV=prod node build.js", "phx.digest"]
     ]
   end
 
