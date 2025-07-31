@@ -34,6 +34,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         base_uri: ~w('self'),
         connect_src: connect_src(),
         default_src: ~w('none'),
+        form_action: ~w('self'),
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
         font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
