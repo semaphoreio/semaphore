@@ -6,14 +6,16 @@ defmodule InternalApi.ServiceAccount.CreateRequest do
           org_id: String.t(),
           name: String.t(),
           description: String.t(),
-          creator_id: String.t()
+          creator_id: String.t(),
+          role_id: String.t()
         }
-  defstruct [:org_id, :name, :description, :creator_id]
+  defstruct [:org_id, :name, :description, :creator_id, :role_id]
 
   field(:org_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
   field(:creator_id, 4, type: :string)
+  field(:role_id, 5, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.CreateResponse do
@@ -91,13 +93,15 @@ defmodule InternalApi.ServiceAccount.UpdateRequest do
   @type t :: %__MODULE__{
           service_account_id: String.t(),
           name: String.t(),
-          description: String.t()
+          description: String.t(),
+          role_id: String.t()
         }
-  defstruct [:service_account_id, :name, :description]
+  defstruct [:service_account_id, :name, :description, :role_id]
 
   field(:service_account_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
+  field(:role_id, 4, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.UpdateResponse do
@@ -112,7 +116,7 @@ defmodule InternalApi.ServiceAccount.UpdateResponse do
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
-defmodule InternalApi.ServiceAccount.DeleteRequest do
+defmodule InternalApi.ServiceAccount.DeactivateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
@@ -124,7 +128,45 @@ defmodule InternalApi.ServiceAccount.DeleteRequest do
   field(:service_account_id, 1, type: :string)
 end
 
-defmodule InternalApi.ServiceAccount.DeleteResponse do
+defmodule InternalApi.ServiceAccount.DeactivateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
+defmodule InternalApi.ServiceAccount.ReactivateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t()
+        }
+  defstruct [:service_account_id]
+
+  field(:service_account_id, 1, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.ReactivateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
+defmodule InternalApi.ServiceAccount.DestroyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_account_id: String.t()
+        }
+  defstruct [:service_account_id]
+
+  field(:service_account_id, 1, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.DestroyResponse do
   @moduledoc false
   use Protobuf, syntax: :proto3
 
@@ -190,70 +232,6 @@ defmodule InternalApi.ServiceAccount.ServiceAccount do
   field(:deactivated, 8, type: :bool)
 end
 
-defmodule InternalApi.ServiceAccount.ServiceAccountCreated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountUpdated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountDeleted do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.ServiceAccount.ServiceAccountTokenRegenerated do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          service_account_id: String.t(),
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:service_account_id, :org_id, :timestamp]
-
-  field(:service_account_id, 1, type: :string)
-  field(:org_id, 2, type: :string)
-  field(:timestamp, 3, type: Google.Protobuf.Timestamp)
-end
-
 defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.ServiceAccount.ServiceAccountService"
@@ -279,9 +257,21 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
   )
 
   rpc(
-    :Delete,
-    InternalApi.ServiceAccount.DeleteRequest,
-    InternalApi.ServiceAccount.DeleteResponse
+    :Deactivate,
+    InternalApi.ServiceAccount.DeactivateRequest,
+    InternalApi.ServiceAccount.DeactivateResponse
+  )
+
+  rpc(
+    :Reactivate,
+    InternalApi.ServiceAccount.ReactivateRequest,
+    InternalApi.ServiceAccount.ReactivateResponse
+  )
+
+  rpc(
+    :Destroy,
+    InternalApi.ServiceAccount.DestroyRequest,
+    InternalApi.ServiceAccount.DestroyResponse
   )
 
   rpc(
