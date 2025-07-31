@@ -8,8 +8,6 @@
     "test": "mocha .",
     "watch": "mocha --reporter min --watch -watch-files **/*.ts .",
     "coverage": "nyc npm run test",
-    "build:css": "postcss css/app-semaphore.css -o ../priv/static/assets/css/app-semaphore.css",
-    "build:css:prod": "NODE_ENV=production postcss css/app-semaphore.css -o ../priv/static/assets/css/app-semaphore-min.css",
     "build:assets": "node build.js"
   },
   "eslintConfig": {

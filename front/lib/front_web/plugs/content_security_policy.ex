@@ -50,7 +50,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
   end
 
   defp connect_src do
-    base_sources = [
+    [
       "'self'",
       "*.#{System.get_env("BASE_DOMAIN")}",
       "wss://*.userpilot.io",
@@ -68,12 +68,5 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
       "www.google-analytics.com",
       "*.sitesearch360.com"
     ]
-    
-    # Add WebSocket support for Phoenix LiveReload in development
-    if Application.get_env(:front, :environment) == :dev do
-      base_sources ++ ["ws://localhost:4000", "wss://localhost:4000"]
-    else
-      base_sources
-    end
   end
 end
