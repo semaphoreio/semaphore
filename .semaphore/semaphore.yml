@@ -790,10 +790,12 @@ blocks:
         - name: JS - dependencies
           commands:
             - make check.js.deps APP_DIRECTORY=assets
+            - mv assets/out out
         - name: JS - code
           commands:
             - export PATH=$PATH:/home/semaphore/.local/bin
             - make check.js.code APP_DIRECTORY=assets
+            - mv assets/out out
         - name: Elixir - dependencies
           commands:
             - make check.ex.deps CHECK_DEPS_OPTS='--ignore-packages phoenix'
