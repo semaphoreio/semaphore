@@ -111,10 +111,10 @@ ifeq ($(CI),)
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir /app/out $(CHECK_DEPS_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d --output-dir $(ROOT_MAKEFILE_PATH)/out $(CHECK_DEPS_OPTS)
 endif
 
 check.ex.deps:
