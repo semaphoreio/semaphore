@@ -76,6 +76,7 @@ DOCKER_BUILD_PATH=.
 EX_CATCH_WARRNINGS_FLAG=--warnings-as-errors
 CHECK_DEPS_EXTRA_OPTS?=-w feature_provider,grpc_health_check,tentacat,util,watchman,fun_registry,sentry_grpc,traceman,cacheman,log_tee,spec,proto,sys2app,looper,job_matrix,definition_validator,gofer_client,open_api_spex,when,uuid,esaml,openid_connect,block
 ROOT_MAKEFILE_PATH := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+SCAN_RESULT_DIR?=out
 
 #
 # Security checks
@@ -111,10 +112,10 @@ ifeq ($(CI),)
 		-v $$(pwd):/app \
 		-v $(ROOT_MAKEFILE_PATH)/security-toolbox:$(SECURITY_TOOLBOX_TMP_DIR) \
 		registry.semaphoreci.com/ruby:3 \
-		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)'
+		bash -c 'cd $(APP_DIRECTORY) && $(SECURITY_TOOLBOX_TMP_DIR)/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)'
 else
 	# ruby version is set in prologue
-	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d $(CHECK_DEPS_OPTS)
+	cd $(APP_DIRECTORY) && $(ROOT_MAKEFILE_PATH)/security-toolbox/dependencies --language $(LANGUAGE) -d --output-dir $(SCAN_RESULT_DIR) $(CHECK_DEPS_OPTS)
 endif
 
 check.ex.deps:

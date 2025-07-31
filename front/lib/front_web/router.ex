@@ -18,15 +18,21 @@ defmodule FrontWeb.Router do
         subdomains: true,
         preload: true
       )
+
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin",
+        "cross-origin-embedder-policy" => "credentialless"
+      })
+    else
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin"
+        # Omit COEP in dev to allow Phoenix LiveReload iframe
+      })
     end
 
     plug(:protect_from_forgery)
-
-    plug(:put_secure_browser_headers, %{
-      "cross-origin-resource-policy" => "same-site",
-      "cross-origin-opener-policy" => "same-origin",
-      "cross-origin-embedder-policy" => "credentialless"
-    })
 
     plug(FrontWeb.Plug.ContentSecurityPolicy)
 

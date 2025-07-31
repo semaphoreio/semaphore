@@ -2624,7 +2624,7 @@ template {
 }
 /* Modules */
 /*
- 
+
   BOX SIZING
 
 */
@@ -2656,7 +2656,7 @@ blockquote,
 figcaption,
 figure,
 textarea,
-table, 
+table,
 td,
 th,
 tr,
@@ -2895,7 +2895,7 @@ img { max-width: 100%; }
       border-top-right-radius: 0;
       border-bottom-right-radius: 0;
   }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .br0-ns {     border-radius: 0; }
   .br1-ns {     border-radius: .125rem; }
@@ -3000,7 +3000,7 @@ img { max-width: 100%; }
 .b--dashed { border-style: dashed; }
 .b--solid {  border-style: solid; }
 .b--none {   border-style: none; }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .b--dotted-ns { border-style: dotted; }
   .b--dashed-ns { border-style: dashed; }
@@ -3192,7 +3192,7 @@ img { max-width: 100%; }
   bottom: 0;
   left: 0;
 }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .top-0-ns     { top:   0; }
   .left-0-ns    { left:  0; }
@@ -3798,7 +3798,7 @@ code, .code, pre {
 */
 .i         { font-style: italic; }
 .fs-normal { font-style: normal; }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .i-ns       { font-style: italic; }
   .fs-normal-ns     { font-style: normal; }
@@ -3850,7 +3850,7 @@ code, .code, pre {
 .fw7    { font-weight: 700; }
 .fw8    { font-weight: 800; }
 .fw9    { font-weight: 900; }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .normal-ns { font-weight: normal; }
   .b-ns      { font-weight: bold; }
@@ -3896,7 +3896,7 @@ code, .code, pre {
 /*
 
    FORMS
-   
+
 */
 .input-reset {
   -webkit-appearance: none;
@@ -4037,7 +4037,7 @@ code, .code, pre {
 .tracked       { letter-spacing:  .1em; }
 .tracked-tight { letter-spacing: -.05em; }
 .tracked-mega  { letter-spacing:  .25em; }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .tracked-ns       { letter-spacing:  .1em; }
   .tracked-tight-ns { letter-spacing: -.05em; }
@@ -6326,7 +6326,7 @@ code, .code, pre {
 .ttl { text-transform: lowercase; }
 .ttu { text-transform: uppercase; }
 .ttn { text-transform: none; }
-/* 
+/*
 @media (--breakpoint-not-small) {
   .ttc-ns { text-transform: capitalize; }
   .ttl-ns { text-transform: lowercase; }

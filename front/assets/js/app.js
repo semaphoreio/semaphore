@@ -1,5 +1,4 @@
 import "phoenix_html";
-import "../css/app.css";
 
 import $ from "jquery";
 import { install } from '@github/hotkey';

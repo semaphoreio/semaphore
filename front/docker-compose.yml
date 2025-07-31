@@ -21,6 +21,7 @@ services:
       CACHE_HOST: "redis-cache"
       CACHE_PORT: "6379"
       CACHE_POOL_SIZE: "5"
+      BASE_DOMAIN: ${BASE_DOMAIN:-localhost}
       AMQP_URL: "amqp://rabbitmq:5672"
       SSH_AUTH_SOCK: /ssh-agent
       MIX_ENV: ${MIX_ENV:-dev}
