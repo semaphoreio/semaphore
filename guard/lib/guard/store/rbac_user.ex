@@ -59,9 +59,9 @@ defmodule Guard.Store.RbacUser do
     {page, users}
   end
 
-  @spec create(Ecto.UUID.t(), String.t(), String.t()) :: :ok | :error
-  def create(user_id, email, name) do
-    subject_changeset = Subject.changeset(%Subject{}, %{id: user_id, name: name, type: "user"})
+  @spec create(Ecto.UUID.t(), String.t(), String.t(), String.t()) :: :ok | :error
+  def create(user_id, email, name, type \\ "user") do
+    subject_changeset = Subject.changeset(%Subject{}, %{id: user_id, name: name, type: type})
     user_changeset = RbacUser.changeset(%RbacUser{}, %{id: user_id, email: email})
 
     Multi.new()

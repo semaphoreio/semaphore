@@ -185,6 +185,10 @@ defmodule Guard.Application do
         active: System.get_env("START_GRPC_USER_API") == "true"
       },
       %{
+        worker: Guard.GrpcServers.ServiceAccountServer,
+        active: System.get_env("START_GRPC_SERVICE_ACCOUNT_API") == "true"
+      },
+      %{
         worker: Guard.GrpcServers.InstanceConfigServer,
         active: System.get_env("START_GRPC_INSTANCE_CONFIG_API") == "true"
       },

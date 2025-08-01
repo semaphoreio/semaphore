@@ -101,6 +101,25 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: "{{ .Chart.Name }}-service-account-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    {{- if .Values.global.development.minimalDeployment }}
+    app: "{{ .Chart.Name }}"
+    {{- else }}
+    app: "{{ .Chart.Name }}-user-api"
+    {{- end }}
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: "{{ .Chart.Name }}-organization-api"
   namespace: {{ .Release.Namespace }}
 spec:
