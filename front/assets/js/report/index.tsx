@@ -3,12 +3,18 @@ import { render } from "preact";
 import MarkdownIt, { PluginSimple } from "markdown-it";
 import markdownItTextualUml from "markdown-it-textual-uml";
 import Mermaid from "mermaid";
+import "github-markdown-css/github-markdown-light.css";
+import DOMPurify from 'dompurify';
 
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
 
 Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `strict` });
-const md = MarkdownIt().use(markdownItTextualUml as PluginSimple);
+const md = MarkdownIt({
+  html: true,
+  linkify: false,
+  typographer: true
+}).use(markdownItTextualUml as PluginSimple);
 
 export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
   render(<App reportUrl={config.reportUrl} context={config.reportContext}/>, dom);
@@ -76,10 +82,37 @@ const MarkdownBody = (props: { markdown: string, }) => {
     }
   }, [props.markdown]);
 
+  const renderedHtml = md.render(props.markdown);
+  const sanitizedHtml = DOMPurify.sanitize(renderedHtml, {
+    ALLOWED_TAGS: [
+      // Basic
+      `details`, `summary`, `p`, `br`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`,
+      `ul`, `ol`, `li`, `blockquote`, `pre`, `hr`, `div`,
+      // Tables
+      `table`, `thead`, `tbody`, `tr`, `td`, `th`,
+      //Formating
+      `strong`, `b`, `em`, `i`, `u`, `code`, `span`,
+      `del`, `s`,
+      `sup`, `sub`,
+      `kbd`,
+      `mark`,
+      `ins`,
+      `small`,
+      `abbr`
+    ],
+    ALLOWED_ATTR: [
+      `title`,
+      `open`
+    ],
+    FORBID_TAGS: [`a`, `img`, `script`, `object`, `embed`, `iframe`, `link`],
+    FORBID_ATTR: [`href`, `src`, `class`, `id`, `style`, `target`],
+    ALLOW_DATA_ATTR: false
+  });
+
   return (
     <div
       className="markdown-body"
-      dangerouslySetInnerHTML={{ __html: md.render(props.markdown) }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 };
