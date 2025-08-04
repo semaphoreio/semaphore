@@ -139,7 +139,8 @@ defmodule Support.Stubs.Feature do
       {"wf_editor_via_jobs", state: :HIDDEN, quantity: 0},
       {"ui_reports", state: :ENABLED, quantity: 1},
       {"ui_partial_ppl_rebuild", state: :ENABLED, quantity: 1},
-      {"service_accounts", state: :ENABLED, quantity: 1}
+      {"service_accounts", state: :ENABLED, quantity: 1},
+      {"rbac__project_roles", state: :ENABLED, quantity: 1}
     ]
   end
 

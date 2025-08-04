@@ -51,7 +51,7 @@ export const ServiceAccountsList = ({
               className="btn btn-primary flex items-center"
               onClick={onCreateNew}
             >
-              <span className="material-symbols-outlined mr2">add</span>
+              <span className="material-symbols-outlined mr2">smart_toy</span>
               Create Service Account
             </button>
           )}
@@ -77,7 +77,7 @@ export const ServiceAccountsList = ({
             className="btn btn-primary flex items-center"
             onClick={onCreateNew}
           >
-            <span className="material-symbols-outlined mr2">add</span>
+            <span className="material-symbols-outlined mr2">smart_toy</span>
             Create Service Account
           </button>
         )}
@@ -97,15 +97,22 @@ export const ServiceAccountsList = ({
             <div key={account.id} className={`bg-white shadow-1 ph3 pv2 ${idx == serviceAccounts.length - 1 ? `br2 br--bottom` : ``}`}>
               <div className="flex items-center justify-between" style={{ minHeight: `45px` }}>
                 <div className="flex items-center">
-                  <span className="material-symbols-outlined mr2 f4 gray">key</span>
+                  <div className={`br2 ${account.deactivated ? `bg-washed-red red` : `bg-washed-green green`} br-100 w2 h2 flex items-center justify-center mr2`}>
+                    <toolbox.Tooltip
+                      anchor={<span className={`material-symbols-outlined`}>smart_toy</span>}
+                      content={account.deactivated ? `Deactivated account` : `Active account`}
+                    />
+
+                  </div>
                   <div>
                     <div className="flex items-center">
                       <span className="b black">{account.name}</span>
-                      {account.deactivated ? (
-                        <span className="ml2 f7 red bg-washed-red ph2 pv1 br2">Deactivated</span>
-                      ) : (
-                        <span className="ml2 f7 green bg-washed-green ph2 pv1 br2">Active</span>
-                      )}
+                      {(() => {
+                        const role = account.roles.find((role) => role.source == `manual`);
+                        if(role){
+                          return <span className={`f6 normal ml1 ph1 br2 bg-${role.color} white`}>{role.name}</span>;
+                        }
+                      })()}
                     </div>
                     <div className="f7 gray mt1">
                       {account.description || `No description`} • Created {formatDate(account.created_at)}
@@ -149,7 +156,7 @@ export const ServiceAccountsList = ({
       )}
 
       {hasMore && (
-        <div className="tc pa4">
+        <div className="tc pa3">
           <button
             className="btn btn-secondary"
             onClick={onLoadMore}

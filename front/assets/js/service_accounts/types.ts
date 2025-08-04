@@ -5,6 +5,14 @@ export interface ServiceAccount {
   created_at: string;
   updated_at: string;
   deactivated: boolean;
+  roles: Role[];
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  source: string;
+  color: string;
 }
 
 export interface ServiceAccountWithToken extends ServiceAccount {
@@ -24,29 +32,19 @@ export interface Permission {
   description: string;
 }
 
-// Using toolbox.APIRequest.ApiResponse instead of custom type
-
 export interface PaginatedResponse<T> {
   items: T[];
-  next_page_token?: string;
-}
-
-export enum ModalState {
-  Closed,
-  Open,
-  Loading,
-  Success,
-  Error
+  totalPages?: number;
 }
 
 export interface AppState {
   serviceAccounts: ServiceAccount[];
   loading: boolean;
-  error: string | null;
-  selectedServiceAccount: ServiceAccount | null;
-  modalState: ModalState;
-  newToken: string | null;
-  nextPageToken: string | null;
+  error?: string;
+  selectedServiceAccount?: ServiceAccount;
+  newToken?: string;
+  page?: number;
+  totalPages?: number;
 }
 
 export interface Config {
@@ -57,6 +55,7 @@ export interface Config {
     canView: boolean;
     canManage: boolean;
   };
+  roles: Role[];
   urls: {
     list: string;
     create: string;

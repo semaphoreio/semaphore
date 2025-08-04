@@ -1,4 +1,3 @@
-import { useState } from "preact/hooks";
 import { Box } from "js/toolbox";
 
 interface TokenDisplayProps {
@@ -7,20 +6,8 @@ interface TokenDisplayProps {
 }
 
 export const TokenDisplay = ({ token, onClose }: TokenDisplayProps) => {
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = async () => {
-    try {
-      await navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      // Failed to copy token
-    }
-  };
-
   return (
-    <div className="pa4">
+    <div className="pa3">
       <div className="mb3">
         <h3 className="f4 mb2">API Token Generated</h3>
         <p className="f6 gray mb3">

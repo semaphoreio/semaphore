@@ -5,12 +5,11 @@ defmodule Front.Clients.ServiceAccount do
     CreateRequest,
     DestroyRequest,
     DescribeRequest,
+    DescribeManyRequest,
     ListRequest,
     RegenerateTokenRequest,
     UpdateRequest
   }
-
-  alias Front.Models.ServiceAccount
 
   @behaviour Front.ServiceAccount.Behaviour
 
@@ -25,8 +24,7 @@ defmodule Front.Clients.ServiceAccount do
     |> grpc_call(:create)
     |> case do
       {:ok, result} ->
-        service_account = ServiceAccount.from_proto(result.service_account)
-        {:ok, {service_account, result.api_token}}
+        {:ok, {result.service_account, result.api_token}}
 
       err ->
         Logger.error("Error creating service account for org #{org_id}: #{inspect(err)}")
@@ -44,9 +42,8 @@ defmodule Front.Clients.ServiceAccount do
     |> grpc_call(:list)
     |> case do
       {:ok, result} ->
-        service_accounts = Enum.map(result.service_accounts, &ServiceAccount.from_proto/1)
         next_page_token = if result.next_page_token == "", do: nil, else: result.next_page_token
-        {:ok, {service_accounts, next_page_token}}
+        {:ok, {result.service_accounts, next_page_token}}
 
       err ->
         Logger.error("Error listing service accounts for org #{org_id}: #{inspect(err)}")
@@ -61,12 +58,27 @@ defmodule Front.Clients.ServiceAccount do
     }
     |> grpc_call(:describe)
     |> case do
-      {:ok, result} ->
-        service_account = ServiceAccount.from_proto(result.service_account)
+      {:ok, service_account} ->
         {:ok, service_account}
 
       err ->
         Logger.error("Error describing service account #{service_account_id}: #{inspect(err)}")
+        handle_error(err)
+    end
+  end
+
+  @impl Front.ServiceAccount.Behaviour
+  def describe_many(service_account_ids) do
+    %DescribeManyRequest{
+      sa_ids: service_account_ids
+    }
+    |> grpc_call(:describe_many)
+    |> case do
+      {:ok, service_accounts} ->
+        {:ok, service_accounts}
+
+      err ->
+        Logger.error("Error describing multiple service accounts: #{inspect(err)}")
         handle_error(err)
     end
   end
@@ -80,8 +92,7 @@ defmodule Front.Clients.ServiceAccount do
     }
     |> grpc_call(:update)
     |> case do
-      {:ok, result} ->
-        service_account = ServiceAccount.from_proto(result.service_account)
+      {:ok, service_account} ->
         {:ok, service_account}
 
       err ->
