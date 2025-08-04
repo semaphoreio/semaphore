@@ -84,6 +84,30 @@ defmodule InternalApi.ServiceAccount.DescribeResponse do
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
+defmodule InternalApi.ServiceAccount.DescribeManyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          sa_ids: [String.t()]
+        }
+
+  defstruct [:sa_ids]
+  field(:sa_ids, 1, repeated: true, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.DescribeManyResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_accounts: [InternalApi.ServiceAccount.ServiceAccount.t()]
+        }
+
+  defstruct [:service_accounts]
+  field(:service_accounts, 1, repeated: true, type: InternalApi.ServiceAccount.ServiceAccount)
+end
+
 defmodule InternalApi.ServiceAccount.UpdateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -245,6 +269,12 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
     :Describe,
     InternalApi.ServiceAccount.DescribeRequest,
     InternalApi.ServiceAccount.DescribeResponse
+  )
+
+  rpc(
+    :DescribeMany,
+    InternalApi.ServiceAccount.DescribeManyRequest,
+    InternalApi.ServiceAccount.DescribeManyResponse
   )
 
   rpc(
