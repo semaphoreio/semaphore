@@ -10,6 +10,8 @@ defmodule Front.RBAC.RoleManagement do
   @type id :: Ecto.UUID.t()
   @type role :: RBAC.Role.t()
 
+  @extended_grpc_timeout 30_000
+
   @doc """
   Lists all permissions avaiable within given scope
 
@@ -137,7 +139,7 @@ defmodule Front.RBAC.RoleManagement do
 
       request = RBAC.ModifyRoleRequest.new(role: role, requester_id: requester_id)
 
-      case channel() |> RBAC.RBAC.Stub.modify_role(request) do
+      case channel() |> RBAC.RBAC.Stub.modify_role(request, timeout: @extended_grpc_timeout) do
         {:ok, resp} -> {:ok, %{role_id: resp.role.id}}
         e -> e
       end
@@ -166,7 +168,7 @@ defmodule Front.RBAC.RoleManagement do
       req =
         RBAC.DestroyRoleRequest.new(org_id: org_id, role_id: role_id, requester_id: requester_id)
 
-      case channel() |> RBAC.RBAC.Stub.destroy_role(req) do
+      case channel() |> RBAC.RBAC.Stub.destroy_role(req, timeout: @extended_grpc_timeout) do
         {:ok, resp} -> {:ok, %{role_id: resp.role_id}}
         e -> e
       end
@@ -197,7 +199,7 @@ defmodule Front.RBAC.RoleManagement do
           requester_id: requester_id
         )
 
-      case channel() |> RBAC.RBAC.Stub.assign_role(req) do
+      case channel() |> RBAC.RBAC.Stub.assign_role(req, timeout: @extended_grpc_timeout) do
         {:ok, _resp} -> {:ok, "Role succesfully assigned."}
         e -> e
       end
@@ -227,7 +229,7 @@ defmodule Front.RBAC.RoleManagement do
           requester_id: requester_id
         )
 
-      case channel() |> RBAC.RBAC.Stub.retract_role(req) do
+      case channel() |> RBAC.RBAC.Stub.retract_role(req, timeout: @extended_grpc_timeout) do
         {:ok, _resp} -> {:ok, "Role successfully retracted"}
         e -> e
       end
