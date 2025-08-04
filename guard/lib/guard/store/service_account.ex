@@ -63,7 +63,10 @@ defmodule Guard.Store.ServiceAccount do
     end
   rescue
     e ->
-      Logger.error("Error during find_many for service accounts #{inspect(service_account_ids)}: #{inspect(e)}")
+      Logger.error(
+        "Error during find_many for service accounts #{inspect(service_account_ids)}: #{inspect(e)}"
+      )
+
       {:error, :internal_error}
   end
 
@@ -210,30 +213,26 @@ defmodule Guard.Store.ServiceAccount do
   """
   @spec reactivate(String.t()) :: {:ok, :reactivated} | {:error, :not_found | :internal_error}
   def reactivate(service_account_id) when is_binary(service_account_id) do
-    if valid_uuid?(service_account_id) do
-      case FrontRepo.transaction(fn ->
-             # Use a modified query that includes deactivated service accounts
-             query =
-               build_service_account_query()
-               |> where([sa, u], sa.id == ^service_account_id)
-               |> where([sa, u], is_nil(u.blocked_at))
+    case FrontRepo.transaction(fn ->
+           # Use a modified query that includes deactivated service accounts
+           query =
+             build_service_account_query()
+             |> where([sa, u], sa.id == ^service_account_id)
+             |> where([sa, u], is_nil(u.blocked_at))
 
-             case FrontRepo.one(query) do
-               nil ->
-                 FrontRepo.rollback(:not_found)
+           with service_account when not is_nil(service_account) <- FrontRepo.one(query),
+                {:ok, _updated_user} <- reactivate_user_record(service_account_id) do
+             :reactivated
+           else
+             nil ->
+               FrontRepo.rollback(:not_found)
 
-               _service_account ->
-                 case reactivate_user_record(service_account_id) do
-                   {:ok, _updated_user} -> :reactivated
-                   {:error, _reason} -> FrontRepo.rollback(:internal_error)
-                 end
-             end
-           end) do
-        {:ok, :reactivated} -> {:ok, :reactivated}
-        {:error, reason} -> {:error, reason}
-      end
-    else
-      {:error, :invalid_id}
+             {:error, _reason} ->
+               FrontRepo.rollback(:internal_error)
+           end
+         end) do
+      {:ok, :reactivated} -> {:ok, :reactivated}
+      {:error, reason} -> {:error, reason}
     end
   rescue
     e ->
