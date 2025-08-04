@@ -18,8 +18,7 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
           org_id: org_id,
           name: name,
           description: description,
-          creator_id: creator_id,
-          role_id: role_id
+          creator_id: creator_id
         },
         _stream
       ) do
@@ -29,13 +28,11 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
         org_id: org_id,
         name: name,
         description: description,
-        creator_id: creator_id,
-        role_id: role_id
+        creator_id: creator_id
       },
       fn ->
         validate_uuid!(org_id)
         validate_uuid!(creator_id)
-        validate_uuid!(role_id)
 
         if String.trim(name) == "" do
           grpc_error!(:invalid_argument, "Service account name cannot be empty")
@@ -50,8 +47,7 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
               org_id: org_id,
               name: String.trim(name),
               description: String.trim(description || ""),
-              creator_id: creator_id,
-              role_id: role_id
+              creator_id: creator_id
             }
 
             case Guard.ServiceAccount.Actions.create(params) do
@@ -131,6 +127,30 @@ defmodule Guard.GrpcServers.ServiceAccountServer do
             )
 
             grpc_error!(:internal, "Failed to describe service account")
+        end
+      end
+    )
+  end
+
+  @spec describe_many(ServiceAccountPB.DescribeManyRequest.t(), GRPC.Server.Stream.t()) ::
+          ServiceAccountPB.DescribeManyResponse.t()
+  def describe_many(%ServiceAccountPB.DescribeManyRequest{sa_ids: sa_ids}, _stream) do
+    observe_and_log(
+      "grpc.service_account.describe_many",
+      %{sa_ids: sa_ids, count: length(sa_ids)},
+      fn ->
+        # Validate all UUIDs
+        Enum.each(sa_ids, &validate_uuid!/1)
+
+        case ServiceAccount.find_many(sa_ids) do
+          {:ok, service_accounts} ->
+            ServiceAccountPB.DescribeManyResponse.new(
+              service_accounts: Enum.map(service_accounts, &map_service_account/1)
+            )
+
+          {:error, reason} ->
+            Logger.error("Failed to describe many service accounts: #{inspect(reason)}")
+            grpc_error!(:internal, "Failed to describe service accounts")
         end
       end
     )

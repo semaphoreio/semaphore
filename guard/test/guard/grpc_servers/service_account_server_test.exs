@@ -382,6 +382,232 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
     end
   end
 
+  describe "describe_many/2" do
+    test "describes multiple service accounts successfully", %{grpc_channel: channel} do
+      sa1_id = Ecto.UUID.generate()
+      sa2_id = Ecto.UUID.generate()
+      sa3_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn ids ->
+             assert length(ids) == 3
+             assert sa1_id in ids
+             assert sa2_id in ids
+             assert sa3_id in ids
+
+             {:ok,
+              [
+                %{
+                  id: sa1_id,
+                  name: "Service Account 1",
+                  description: "Description 1",
+                  org_id: "org-id-1",
+                  creator_id: "creator-1",
+                  created_at: DateTime.utc_now(),
+                  updated_at: DateTime.utc_now(),
+                  deactivated: false
+                },
+                %{
+                  id: sa2_id,
+                  name: "Service Account 2",
+                  description: "Description 2",
+                  org_id: "org-id-2",
+                  creator_id: "creator-2",
+                  created_at: DateTime.utc_now(),
+                  updated_at: DateTime.utc_now(),
+                  deactivated: true
+                },
+                %{
+                  id: sa3_id,
+                  name: "Service Account 3",
+                  description: nil,
+                  org_id: "org-id-3",
+                  creator_id: nil,
+                  created_at: DateTime.utc_now(),
+                  updated_at: DateTime.utc_now(),
+                  deactivated: false
+                }
+              ]}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id, sa3_id])
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert length(response.service_accounts) == 3
+
+        # Verify first service account
+        sa1 = Enum.find(response.service_accounts, &(&1.id == sa1_id))
+        assert sa1.name == "Service Account 1"
+        assert sa1.description == "Description 1"
+        assert sa1.org_id == "org-id-1"
+        assert sa1.creator_id == "creator-1"
+        assert sa1.deactivated == false
+
+        # Verify second service account (deactivated)
+        sa2 = Enum.find(response.service_accounts, &(&1.id == sa2_id))
+        assert sa2.name == "Service Account 2"
+        assert sa2.deactivated == true
+
+        # Verify third service account (nil handling)
+        sa3 = Enum.find(response.service_accounts, &(&1.id == sa3_id))
+        assert sa3.name == "Service Account 3"
+        assert sa3.description == ""
+        assert sa3.creator_id == ""
+        assert sa3.deactivated == false
+      end
+    end
+
+    test "returns empty list when no service accounts found", %{grpc_channel: channel} do
+      sa1_id = Ecto.UUID.generate()
+      sa2_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn ids ->
+             assert length(ids) == 2
+             {:ok, []}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa1_id, sa2_id])
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert response.service_accounts == []
+      end
+    end
+
+    test "handles partial matches correctly", %{grpc_channel: channel} do
+      existing_id = Ecto.UUID.generate()
+      non_existent_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn ids ->
+             assert length(ids) == 2
+             assert existing_id in ids
+             assert non_existent_id in ids
+
+             # Return only the existing one
+             {:ok,
+              [
+                %{
+                  id: existing_id,
+                  name: "Existing SA",
+                  description: "Exists",
+                  org_id: "org-id",
+                  creator_id: "creator-id",
+                  created_at: DateTime.utc_now(),
+                  updated_at: DateTime.utc_now(),
+                  deactivated: false
+                }
+              ]}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [existing_id, non_existent_id])
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert length(response.service_accounts) == 1
+        assert hd(response.service_accounts).id == existing_id
+      end
+    end
+
+    test "handles empty input list", %{grpc_channel: channel} do
+      with_mocks([
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn ids ->
+             assert ids == []
+             {:ok, []}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [])
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert response.service_accounts == []
+      end
+    end
+
+    test "validates UUID format for all IDs", %{grpc_channel: channel} do
+      valid_id = Ecto.UUID.generate()
+
+      request = ServiceAccount.DescribeManyRequest.new(sa_ids: [valid_id, "invalid-uuid"])
+
+      {:error, %GRPC.RPCError{status: 3}} = channel |> Stub.describe_many(request)
+    end
+
+    test "handles internal errors", %{grpc_channel: channel} do
+      sa_id = Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn _ -> {:error, :database_error} end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: [sa_id])
+
+        {:error, %GRPC.RPCError{status: 13, message: message}} =
+          channel |> Stub.describe_many(request)
+
+        assert String.contains?(message, "Failed to describe service accounts")
+      end
+    end
+
+    test "handles large number of IDs", %{grpc_channel: channel} do
+      # Generate 50 IDs to test batch processing
+      ids = for _ <- 1..50, do: Ecto.UUID.generate()
+
+      with_mocks([
+        {Guard.Utils, [:passthrough], [validate_uuid!: fn _ -> :ok end]},
+        {Guard.Store.ServiceAccount, [:passthrough],
+         [
+           find_many: fn received_ids ->
+             assert length(received_ids) == 50
+             # Return only the first 10 to simulate partial results
+             service_accounts =
+               received_ids
+               |> Enum.take(10)
+               |> Enum.map(fn id ->
+                 %{
+                   id: id,
+                   name: "SA #{id}",
+                   description: "Description",
+                   org_id: "org-id",
+                   creator_id: "creator-id",
+                   created_at: DateTime.utc_now(),
+                   updated_at: DateTime.utc_now(),
+                   deactivated: false
+                 }
+               end)
+
+             {:ok, service_accounts}
+           end
+         ]}
+      ]) do
+        request = ServiceAccount.DescribeManyRequest.new(sa_ids: ids)
+
+        {:ok, response} = channel |> Stub.describe_many(request)
+
+        assert length(response.service_accounts) == 10
+      end
+    end
+  end
+
   describe "update/2" do
     test "updates service account successfully", %{grpc_channel: channel} do
       service_account_id = Ecto.UUID.generate()

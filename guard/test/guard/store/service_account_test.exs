@@ -57,6 +57,97 @@ defmodule Guard.Store.ServiceAccountTest do
     end
   end
 
+  describe "find_many/1" do
+    test "returns multiple service accounts when found" do
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+      {:ok, %{service_account: sa3}} = ServiceAccountFactory.insert(name: "SA3")
+
+      ids = [sa1.id, sa2.id, sa3.id]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+
+      assert length(found_accounts) == 3
+      found_ids = Enum.map(found_accounts, & &1.id) |> Enum.sort()
+      expected_ids = [sa1.id, sa2.id, sa3.id] |> Enum.sort()
+      assert found_ids == expected_ids
+    end
+
+    test "returns empty list when no service accounts found" do
+      non_existent_ids = [Ecto.UUID.generate(), Ecto.UUID.generate()]
+
+      {:ok, found_accounts} = ServiceAccount.find_many(non_existent_ids)
+
+      assert found_accounts == []
+    end
+
+    test "filters out invalid UUIDs and returns valid ones" do
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+
+      ids = [sa1.id, "invalid-uuid", sa2.id, "another-invalid"]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+
+      assert length(found_accounts) == 2
+      found_ids = Enum.map(found_accounts, & &1.id) |> Enum.sort()
+      expected_ids = [sa1.id, sa2.id] |> Enum.sort()
+      assert found_ids == expected_ids
+    end
+
+    test "excludes blocked service accounts" do
+      {:ok, %{service_account: sa1, user: user1}} = ServiceAccountFactory.insert(name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+
+      # Block the first user
+      User.changeset(user1, %{blocked_at: DateTime.utc_now()})
+      |> FrontRepo.update()
+
+      ids = [sa1.id, sa2.id]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+
+      assert length(found_accounts) == 1
+      assert hd(found_accounts).id == sa2.id
+    end
+
+    test "includes deactivated service accounts" do
+      {:ok, %{service_account: sa1, user: user1}} = ServiceAccountFactory.insert(name: "SA1")
+      {:ok, %{service_account: sa2}} = ServiceAccountFactory.insert(name: "SA2")
+
+      # Deactivate the first user
+      User.changeset(user1, %{deactivated: true, deactivated_at: DateTime.utc_now()})
+      |> FrontRepo.update()
+
+      ids = [sa1.id, sa2.id]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+
+      assert length(found_accounts) == 2
+      deactivated_account = Enum.find(found_accounts, &(&1.id == sa1.id))
+      assert deactivated_account.deactivated == true
+    end
+
+    test "returns empty list for empty input" do
+      {:ok, found_accounts} = ServiceAccount.find_many([])
+
+      assert found_accounts == []
+    end
+
+    test "returns empty list for only invalid UUIDs" do
+      {:ok, found_accounts} = ServiceAccount.find_many(["invalid", "also-invalid"])
+
+      assert found_accounts == []
+    end
+
+    test "handles partial matches correctly" do
+      {:ok, %{service_account: sa1}} = ServiceAccountFactory.insert(name: "SA1")
+      non_existent_id = Ecto.UUID.generate()
+
+      ids = [sa1.id, non_existent_id]
+      {:ok, found_accounts} = ServiceAccount.find_many(ids)
+
+      assert length(found_accounts) == 1
+      assert hd(found_accounts).id == sa1.id
+    end
+  end
+
   describe "find_by_org/3" do
     test "returns service accounts for organization" do
       org_id = Ecto.UUID.generate()
