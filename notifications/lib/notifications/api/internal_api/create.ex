@@ -8,6 +8,10 @@ defmodule Notifications.Api.InternalApi.Create do
   alias InternalApi.Notifications.CreateResponse
 
   def run(req) do
+    IO.puts("REQ RUN")
+    IO.inspect(req.metadata)
+    IO.inspect(req)
+
     org_id = req.metadata.org_id
 
     with {:ok, :valid} <- Validator.validate(req.notification),
