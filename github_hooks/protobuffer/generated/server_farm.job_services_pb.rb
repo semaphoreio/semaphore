@@ -72,9 +72,9 @@ module InternalApi
           # Returns information if a user can attach a job.
           #
           rpc :CanAttach, ::InternalApi::ServerFarm::Job::CanAttachRequest, ::InternalApi::ServerFarm::Job::CanAttachResponse
-          # 
+          #
           # Create a new job based on the given job spec.
-          # 
+          #
           rpc :Create, ::InternalApi::ServerFarm::Job::CreateRequest, ::InternalApi::ServerFarm::Job::CreateResponse
         end
 

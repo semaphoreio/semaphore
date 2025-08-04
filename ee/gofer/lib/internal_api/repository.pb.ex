@@ -79,6 +79,7 @@ defmodule InternalApi.Repository.DeployKey do
   field :title, 1, type: :string
   field :fingerprint, 2, type: :string
   field :created_at, 3, type: Google.Protobuf.Timestamp, json_name: "createdAt"
+  field :public_key, 4, type: :string, json_name: "publicKey"
 end
 
 defmodule InternalApi.Repository.DescribeRemoteRepositoryRequest do
@@ -327,6 +328,7 @@ defmodule InternalApi.Repository.Repository do
   field :whitelist, 11, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist
   field :hook_id, 12, type: :string, json_name: "hookId"
   field :default_branch, 13, type: :string, json_name: "defaultBranch"
+  field :connected, 14, type: :bool
 end
 
 defmodule InternalApi.Repository.RemoteRepository do
@@ -481,6 +483,7 @@ defmodule InternalApi.Repository.CreateRequest do
     json_name: "commitStatus"
 
   field :whitelist, 9, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist
+  field :default_branch, 10, type: :string, json_name: "defaultBranch"
 end
 
 defmodule InternalApi.Repository.CreateResponse do
@@ -522,6 +525,7 @@ defmodule InternalApi.Repository.UpdateRequest do
     json_name: "commitStatus"
 
   field :whitelist, 6, type: InternalApi.Projecthub.Project.Spec.Repository.Whitelist
+  field :default_branch, 7, type: :string, json_name: "defaultBranch"
 end
 
 defmodule InternalApi.Repository.UpdateResponse do
@@ -554,6 +558,34 @@ defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 
   field :valid, 1, type: :bool
+end
+
+defmodule InternalApi.Repository.ClearExternalDataRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :repository_id, 1, type: :string, json_name: "repositoryId"
+end
+
+defmodule InternalApi.Repository.ClearExternalDataResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :repository, 1, type: InternalApi.Repository.Repository
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :repository_id, 1, type: :string, json_name: "repositoryId"
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :secret, 1, type: :string
 end
 
 defmodule InternalApi.Repository.RepositoryService.Service do
@@ -631,6 +663,14 @@ defmodule InternalApi.Repository.RepositoryService.Service do
   rpc :VerifyWebhookSignature,
       InternalApi.Repository.VerifyWebhookSignatureRequest,
       InternalApi.Repository.VerifyWebhookSignatureResponse
+
+  rpc :ClearExternalData,
+      InternalApi.Repository.ClearExternalDataRequest,
+      InternalApi.Repository.ClearExternalDataResponse
+
+  rpc :RegenerateWebhookSecret,
+      InternalApi.Repository.RegenerateWebhookSecretRequest,
+      InternalApi.Repository.RegenerateWebhookSecretResponse
 end
 
 defmodule InternalApi.Repository.RepositoryService.Stub do

@@ -2,6 +2,7 @@ version: '3.6'
 
 services:
   app:
+    platform: linux/amd64
     container_name: projecthub
     image: "${IMAGE:-projecthub-app}:${IMAGE_TAG:-latest}"
     build:
