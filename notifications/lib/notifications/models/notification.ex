@@ -18,10 +18,11 @@ defmodule Notifications.Models.Notification do
     timestamps()
   end
 
-  def new(org_id, name, spec) do
+  def new(org_id, name, creator_id, spec) do
     %__MODULE__{}
     |> changeset(%{
       org_id: org_id,
+      creator_id: creator_id,
       name: name,
       spec: spec
     })
@@ -78,8 +79,8 @@ defmodule Notifications.Models.Notification do
 
   def changeset(notification, params \\ %{}) do
     notification
-    |> cast(params, [:org_id, :name, :spec])
-    |> validate_required([:org_id, :name, :spec])
+    |> cast(params, [:org_id, :creator_id, :name, :spec])
+    |> validate_required([:org_id, :creator_id, :name, :spec])
     |> valid_name_format(params)
     |> unique_constraint(
       :unique_names,

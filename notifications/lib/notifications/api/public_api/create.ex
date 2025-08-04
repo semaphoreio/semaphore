@@ -45,6 +45,7 @@ defmodule Notifications.Api.PublicApi.Create do
         Models.Notification.new(
           org_id,
           notification.metadata.name,
+          notification.metadata.creator_id,
           Notifications.Util.Transforms.encode_spec(notification.spec)
         )
 
