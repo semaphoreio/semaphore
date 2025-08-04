@@ -1,21 +1,17 @@
 # 📚 Semaphore docs:
 # - Pipeline YAML reference: https://docs.semaphoreci.com/reference/pipeline-yaml
-# - Job parallelism:        https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
-# - Cache:                  https://docs.semaphoreci.com/using-semaphore/optimization/cache
-# - Test Reports:           https://docs.semaphoreci.com/using-semaphore/tests/test-reports
-# - Artifacts:              https://docs.semaphoreci.com/using-semaphore/artifacts
+# - Apple macOS images:      https://docs.semaphoreci.com/reference/os-apple
+# - Job parallelism:         https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+# - Test Reports:            https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+# - Artifacts:               https://docs.semaphoreci.com/using-semaphore/artifacts
 
 version: v1.0
-name: "🐳 Flutter (Docker) • Web build"
+name: "🍏 Flutter iOS • Build & Test (macOS)"
 
 agent:
   machine:
     type: {{ machine_type }}
     os_image: {{ os_image }}
-  containers:
-    - name: main
-      image: registry.semaphoreci.com/android:34-flutter
-
 
 fail_fast:
   # 🔴 Stop all running jobs on failure (configurable):
@@ -33,20 +29,16 @@ auto_cancel:
 
 global_job_config:
   env_vars:
-    - name: FLUTTER_HOME
-      value: $HOME/flutter
-    - name: PATH
-      value: '$HOME/.pub-cache/bin:$FLUTTER_HOME/bin:$PATH'
     - name: JUNIT_FILE
       value: test-results/junit.xml
+    - name: PATH
+      value: "$HOME/.pub-cache/bin:$PATH"
   prologue:
     commands:
       - checkout
       # 💾 Restore dependency cache (keyed by pubspec.lock):
       # https://docs.semaphoreci.com/using-semaphore/optimization/cache
       - cache restore "pub-cache-$(checksum pubspec.lock)"
-      # If the container doesn't include Flutter, install it; otherwise, reuse preinstalled toolchain.
-      - 'command -v flutter >/dev/null 2>&1 || git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$FLUTTER_HOME"'
       - flutter --version
       - flutter doctor -v
       - flutter pub get
@@ -90,28 +82,22 @@ blocks:
     dependencies:
       - "🧹 Quality"
 
-  - name: "🛡️ Security (pub deps)"
-    task:
-      jobs:
-        - name: "🛡️ Pub outdated (informational)"
-          commands:
-            - dart pub outdated || true
-    dependencies:
-      - "🧪 Tests (parallel)"
-
-  - name: "📦 Build Web (artifact)"
+  - name: "📦 Build iOS (artifact)"
     dependencies:
       - "🧪 Tests (parallel)"
     skip:
       when: branch != 'main'
     task:
       jobs:
-        - name: "🌐 flutter build web"
+        - name: "📦 flutter build ios (no codesign)"
           commands:
-            - flutter build web --release
-            # 📦 Store build output as an artifact:
+            # Builds an unsigned iOS app bundle; suitable for local install/signing later
+            - flutter build ios --release --no-codesign
+            # 📦 Store build output as an artifact (Runner.app and products):
             # https://docs.semaphoreci.com/using-semaphore/artifacts
-            - artifact push job build/web
+            - artifact push job build/ios
+            # Optionally cache pub again (if dependencies changed in this job)
+            - cache store "pub-cache-$(checksum pubspec.lock)" "$HOME/.pub-cache"
 
 after_pipeline:
   task:
