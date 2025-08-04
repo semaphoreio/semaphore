@@ -61,19 +61,6 @@ defmodule Guard.ServiceAccount.ActionsTest do
     ]
   end
 
-  defp role_assignment_failure_mocks do
-    [
-      {Guard.Store.RbacUser, [:passthrough],
-       [
-         create: fn _, _, _, _ -> :ok end,
-         fetch: fn _ -> %{id: "rbac-user-id", user_id: "user-id"} end
-       ]},
-      {Guard.Api.Rbac, [:passthrough],
-       [assign_role: fn _, _, _ -> {:error, :assignment_failed} end]},
-      {Guard.Events.UserCreated, [:passthrough], [publish: fn _, _ -> :ok end]}
-    ]
-  end
-
   describe "create/1" do
     test "creates service account successfully and publishes event" do
       with_mocks([successful_service_account_mock() | setup_common_mocks()]) do
