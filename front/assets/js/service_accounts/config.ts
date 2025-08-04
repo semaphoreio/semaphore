@@ -15,6 +15,7 @@ export class AppConfig {
         canView: json.permissions?.view || false,
         canManage: json.permissions?.manage || false,
       },
+      roles: json.roles || [],
       urls: {
         list: `/service_accounts`,
         create: `/service_accounts`,

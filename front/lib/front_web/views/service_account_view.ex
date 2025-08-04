@@ -3,16 +3,11 @@ defmodule FrontWeb.ServiceAccountView do
 
   alias Front.Models.ServiceAccount
 
-  def render("index.json", %{service_accounts: service_accounts} = assigns) do
-    response = %{
-      service_accounts: Enum.map(service_accounts, &service_account_json/1)
+  def render("index.json", %{service_accounts: service_accounts, total_pages: total_pages}) do
+    %{
+      service_accounts: Enum.map(service_accounts, &service_account_json/1),
+      total_pages: total_pages
     }
-
-    # Include next_page_token if present
-    case Map.get(assigns, :next_page_token) do
-      nil -> response
-      token -> Map.put(response, :next_page_token, token)
-    end
   end
 
   def render("show.json", assigns = %{service_account: service_account = %ServiceAccount{}}) do
@@ -32,7 +27,17 @@ defmodule FrontWeb.ServiceAccountView do
       description: service_account.description,
       created_at: format_datetime(service_account.created_at),
       updated_at: format_datetime(service_account.updated_at),
-      deactivated: service_account.deactivated
+      deactivated: service_account.deactivated,
+      roles: Enum.map(service_account.roles, &role_json/1)
+    }
+  end
+
+  defp role_json(role) do
+    %{
+      id: role.id,
+      name: role.name,
+      source: role.source,
+      color: FrontWeb.PeopleView.map_role_to_colour(role.name)
     }
   end
 

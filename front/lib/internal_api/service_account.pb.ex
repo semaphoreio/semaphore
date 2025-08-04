@@ -6,16 +6,14 @@ defmodule InternalApi.ServiceAccount.CreateRequest do
           org_id: String.t(),
           name: String.t(),
           description: String.t(),
-          creator_id: String.t(),
-          role_id: String.t()
+          creator_id: String.t()
         }
-  defstruct [:org_id, :name, :description, :creator_id, :role_id]
+  defstruct [:org_id, :name, :description, :creator_id]
 
   field(:org_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
   field(:creator_id, 4, type: :string)
-  field(:role_id, 5, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.CreateResponse do
@@ -86,6 +84,30 @@ defmodule InternalApi.ServiceAccount.DescribeResponse do
   field(:service_account, 1, type: InternalApi.ServiceAccount.ServiceAccount)
 end
 
+defmodule InternalApi.ServiceAccount.DescribeManyRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          sa_ids: [String.t()]
+        }
+  defstruct [:sa_ids]
+
+  field(:sa_ids, 1, repeated: true, type: :string)
+end
+
+defmodule InternalApi.ServiceAccount.DescribeManyResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          service_accounts: [InternalApi.ServiceAccount.ServiceAccount.t()]
+        }
+  defstruct [:service_accounts]
+
+  field(:service_accounts, 1, repeated: true, type: InternalApi.ServiceAccount.ServiceAccount)
+end
+
 defmodule InternalApi.ServiceAccount.UpdateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -93,15 +115,13 @@ defmodule InternalApi.ServiceAccount.UpdateRequest do
   @type t :: %__MODULE__{
           service_account_id: String.t(),
           name: String.t(),
-          description: String.t(),
-          role_id: String.t()
+          description: String.t()
         }
-  defstruct [:service_account_id, :name, :description, :role_id]
+  defstruct [:service_account_id, :name, :description]
 
   field(:service_account_id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:description, 3, type: :string)
-  field(:role_id, 4, type: :string)
 end
 
 defmodule InternalApi.ServiceAccount.UpdateResponse do
@@ -248,6 +268,12 @@ defmodule InternalApi.ServiceAccount.ServiceAccountService.Service do
     :Describe,
     InternalApi.ServiceAccount.DescribeRequest,
     InternalApi.ServiceAccount.DescribeResponse
+  )
+
+  rpc(
+    :DescribeMany,
+    InternalApi.ServiceAccount.DescribeManyRequest,
+    InternalApi.ServiceAccount.DescribeManyResponse
   )
 
   rpc(

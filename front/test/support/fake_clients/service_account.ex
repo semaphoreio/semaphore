@@ -9,7 +9,8 @@ defmodule Support.FakeClients.ServiceAccount do
   use Agent
   @behaviour Front.ServiceAccount.Behaviour
 
-  alias Front.Models.ServiceAccount
+  alias InternalApi.ServiceAccount.ServiceAccount
+  alias Support.Stubs.RBAC
 
   @doc """
   Starts the fake service account agent with empty state
@@ -28,20 +29,6 @@ defmodule Support.FakeClients.ServiceAccount do
     Agent.update(__MODULE__, fn _ -> %{service_accounts: %{}, tokens: %{}} end)
   end
 
-  @doc """
-  Seeds the agent with some test data - useful for development
-  """
-  def seed(org_id, creator_id) do
-    Enum.each(1..3, fn i ->
-      create(
-        org_id,
-        "Test Service Account #{i}",
-        "Description for test service account #{i}",
-        creator_id
-      )
-    end)
-  end
-
   @impl Front.ServiceAccount.Behaviour
   def create(org_id, name, description, creator_id) do
     cond do
@@ -58,14 +45,16 @@ defmodule Support.FakeClients.ServiceAccount do
           description: description,
           org_id: org_id,
           creator_id: creator_id,
-          created_at: DateTime.utc_now(),
-          updated_at: DateTime.utc_now(),
+          created_at: now_proto_timestamp(),
+          updated_at: now_proto_timestamp(),
           deactivated: false
         }
 
         api_token = generate_token()
 
         Agent.update(__MODULE__, fn state ->
+          Support.Stubs.RBAC.add_service_account(org_id, service_account)
+
           state
           |> put_in([:service_accounts, service_account.id], service_account)
           |> put_in([:tokens, service_account.id], api_token)
@@ -73,6 +62,22 @@ defmodule Support.FakeClients.ServiceAccount do
 
         {:ok, {service_account, api_token}}
     end
+  end
+
+  @impl Front.ServiceAccount.Behaviour
+  def describe_many(service_account_ids) do
+    service_accounts =
+      service_account_ids
+      |> Enum.map(fn id ->
+        describe(id)
+      end)
+      |> Enum.filter(fn
+        {:ok, _} -> true
+        _ -> false
+      end)
+      |> Enum.map(fn {:ok, account} -> account end)
+
+    {:ok, service_accounts}
   end
 
   @impl Front.ServiceAccount.Behaviour
@@ -132,7 +137,7 @@ defmodule Support.FakeClients.ServiceAccount do
                 service_account
                 | name: name,
                   description: description,
-                  updated_at: DateTime.utc_now()
+                  updated_at: now_proto_timestamp()
               }
 
               new_state = put_in(state, [:service_accounts, service_account_id], updated_account)
@@ -204,4 +209,9 @@ defmodule Support.FakeClients.ServiceAccount do
 
   defp generate_page_token([]), do: nil
   defp generate_page_token(accounts), do: List.last(accounts).id
+
+  defp now_proto_timestamp() do
+    seconds = DateTime.utc_now() |> DateTime.to_unix()
+    Google.Protobuf.Timestamp.new(seconds: seconds)
+  end
 end
