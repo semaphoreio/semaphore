@@ -21,7 +21,7 @@ A [monorepo](https://semaphoreci.com/blog/what-is-monorepo) is a repository that
 
 Semaphore can detect changes between commits, allowing you to set up fine-grained jobs that only run when the underlying code changes. Skipping jobs covering unchanged code can greatly speed testing and reduce costs on big codebases.
 
-:::note 
+:::note
 
 The `change_in` expressions are evaluated in the [pipeline initialization job](./pipelines#init-job).
 
@@ -129,7 +129,6 @@ To enable change detection, follow these steps.
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">
 
-
 <Steps>
 
 1. Open the **Workflow Editor** for your Semaphore project
@@ -158,7 +157,7 @@ Conditions are ignored by default when you change the pipeline file. So, the ver
 3. Add `run.when` under the block
 4. Type the [change condition](#condition), e.g. `change_in('/frontend', {default_branch: 'main'})`
 5. Repeat the process for the other blocks that need conditions
-6. Push the pipeline file to the remote repository 
+6. Push the pipeline file to the remote repository
 
 </Steps>
 
@@ -228,7 +227,7 @@ All paths are relative to the root of the repository.
 
 You can use change detection in [promotions](./pipelines#connecting-pipelines). This is useful when you have continuous delivery or deployment pipelines that only need to run when certain folders or files in your project change.
 
-With change detection, you can set up smarter deployment pipelines. Imagine you have web and mobile apps in the same repository. The process for deploying each component is different: for a web app you might use a [Docker container](./optimization/docker), the Android app is deployed to the Google Store, while the iOS version goes to Apple.
+With change detection, you can set up smarter deployment pipelines. Imagine you have web and mobile apps in the same repository. The process for deploying each component is different: for a web app you might use a [Docker container](./containers/docker), the Android app is deployed to the Google Store, while the iOS version goes to Apple.
 
 With change detection on promotions, you can activate the correct deployment pipeline based on what component has changed in the last push.
 
@@ -261,7 +260,7 @@ To use change detection, follow these steps:
 3. Add `auto_promote.when` under the block
 4. Type the [change condition](#condition), e.g. `change_in('/frontend', {default_branch: 'main'})`
 5. Repeat the process for the other promotions that need conditions
-6. Push the pipeline file to the remote repository 
+6. Push the pipeline file to the remote repository
 
 </Steps>
 
@@ -328,7 +327,6 @@ promotions:
 Conditions are ignored by default when you change the pipeline file. So, the very next run executes all blocks. Subsequent pushes should respect your change detection conditions.
 
 :::
-
 
 ## Conditions options {#condition}
 
@@ -431,6 +429,7 @@ The `options` is an optional hashmap to change the change detection behavior. Fo
 ```text title="Using main instead of master"
 change_in('/backend/', {default_branch: 'main'})
 ```
+
 The most common options are:
 The supported options are:
 
@@ -481,7 +480,7 @@ branch =~ '^hotfix/' and change_in('/backend/', {default_branch: 'main'})
 
 ## Demo project {#demo}
 
-This section showcases how to use `change_in` in a working demo project. 
+This section showcases how to use `change_in` in a working demo project.
 
 The project is a microservice application consisting of three components. Each component is located in a separate folder:
 
@@ -594,9 +593,9 @@ blocks:
           commands:
             - go test ./...
 ```
+
 </TabItem>
 </Tabs>
-
 
 ## See also
 

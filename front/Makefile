@@ -29,6 +29,11 @@ CACHE_PORT=6379
 CACHE_POOL_SIZE=5
 AMQP_URL=amqp://0.0.0.0:5672
 
+#
+# Internal API URLs env file
+#
+INTERNAL_API_ENV_FILE = env/.env.internal-apis
+
 CONTAINER_ENV_VARS = \
 	-e CI=$(CI) \
 	-e MIX_ENV=$(MIX_ENV) \
@@ -42,7 +47,8 @@ CONTAINER_ENV_VARS = \
 	-e SEED_PROJECTS="initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket" \
 	-e SEED_CLOUD_MACHINES=true \
 	-e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
-	-e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+	-e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
+	--env-file $(INTERNAL_API_ENV_FILE)
 
 
 CONTAINER_CE_ENV_VARS =\
@@ -55,7 +61,8 @@ CONTAINER_CE_ENV_VARS =\
 	 -e WORKFLOW_TEMPLATES_YAMLS_PATH="/app/workflow_templates/ce" \
 	 -e EXCLUDE_STUBS="GoferMock" \
 	 -e SECRET_KEY_BASE="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
-	 -e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+	 -e SESSION_SIGNING_SALT="keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure" \
+	 --env-file $(INTERNAL_API_ENV_FILE)
 
 test.ex.setup: export MIX_ENV=test
 test.ex.setup:
@@ -81,13 +88,6 @@ pb.gen.public:
 	scripts/vagrant_sudo rm -rf lib/public_api && mkdir -p lib/public_api
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t renderedtext/protoc:$(PROTOC_TAG) sh -c /home/protoc/code/scripts/public_protos.sh
 	scripts/vagrant_sudo chown -R $$(id -u $${USER}):$$(id -g $${USER}) lib/public_api
-	rm -rf $(TMP_REPO_DIR)
-
-workflow.templates.gen:
-	@echo "Generating workflow templates"
-	rm -rf $(TMP_REPO_DIR)
-	git clone git@github.com:renderedtext/app-design.git $(TMP_REPO_DIR) && (cd $(TMP_REPO_DIR) && git checkout $(APP_DESIGN_BRANCH) && make check.templates && cd -)
-	./scripts/generate-workflow-templates.sh $(TMP_REPO_DIR)
 	rm -rf $(TMP_REPO_DIR)
 
 deps.check: build
@@ -158,3 +158,8 @@ dev.ce.server: build
 
 console.ce.bash:
 	DOCKER_COMPOSE_RUN_OPTS="--service-ports $(CONTAINER_CE_ENV_VARS)" $(MAKE) console.bash
+
+workflow.templates.check:
+	@echo "📦 Checking templates..."
+	./scripts/check-templates.sh workflow_templates/saas_new 
+	./scripts/check-templates.sh workflow_templates/ce_new

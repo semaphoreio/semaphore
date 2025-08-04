@@ -29,7 +29,7 @@ sem-version elixir 1.16
 
 ### Using Docker containers {#containers}
 
-Semaphore distributes the pre-built `semaphoreci:elixir` image on the [Semaphore Container Registry](../../using-semaphore/optimization/container-registry#elixir). Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
+Semaphore distributes the pre-built `semaphoreci:elixir` image on the [Semaphore Container Registry](../../using-semaphore/containers/container-registry#elixir). Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
 
 ## How to cache Elixir dependencies {#cache}
 
@@ -55,14 +55,13 @@ checkout
 cache restore
 ```
 
-
 ## How to set up test reports {#test-results1}
 
 This section explains how to set up [test reports](../../using-semaphore/tests/test-reports) (and flaky tests) for Elixir and mix.
 
 <Steps>
 
-1. Add  junit-formatter to your `mix.exs` dependencies 
+1. Add  junit-formatter to your `mix.exs` dependencies
 
     ```elixir
     defp deps do
@@ -129,7 +128,6 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 </div>
 </details>
 
-
 ## How to change Erlang versions {#erlang-version}
 
 Elixir is available on Linux [Ubuntu](../../reference/os-ubuntu) machines and [Docker Environments](../../using-semaphore/pipelines#docker-environments).
@@ -164,4 +162,3 @@ sem-version erlang 25
 erlc hello.erl
 erl -noshell -s hello helloWorld -s init stop
 ```
-
