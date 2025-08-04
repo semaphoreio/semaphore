@@ -39,6 +39,35 @@ defmodule Guard.Store.ServiceAccount do
   end
 
   @doc """
+  Find multiple service accounts by IDs.
+
+  Returns a list of service accounts for the given IDs.
+  Invalid or non-existent IDs are filtered out.
+  """
+  @spec find_many([String.t()]) :: {:ok, [map()]} | {:error, term()}
+  def find_many(service_account_ids) when is_list(service_account_ids) do
+    # Filter out invalid UUIDs
+    valid_ids = Enum.filter(service_account_ids, &valid_uuid?/1)
+
+    if length(valid_ids) > 0 do
+      query =
+        build_service_account_query()
+        |> where([sa, u], sa.id in ^valid_ids)
+        |> where([sa, u], is_nil(u.blocked_at))
+        |> order_by([sa, u], asc: u.created_at, asc: sa.id)
+
+      service_accounts = FrontRepo.all(query)
+      {:ok, service_accounts}
+    else
+      {:ok, []}
+    end
+  rescue
+    e ->
+      Logger.error("Error during find_many for service accounts #{inspect(service_account_ids)}: #{inspect(e)}")
+      {:error, :internal_error}
+  end
+
+  @doc """
   Find service accounts by organization with pagination.
 
   Returns a list of service accounts for the given organization.

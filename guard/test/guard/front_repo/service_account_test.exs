@@ -319,10 +319,16 @@ defmodule Guard.FrontRepo.ServiceAccountTest do
   # Helper functions
 
   defp create_test_user do
+    # Generate a unique suffix using current timestamp in microseconds + random number
+    # This ensures better test isolation by making each user truly unique
+    timestamp = System.system_time(:microsecond)
+    random_suffix = :rand.uniform(999_999)
+    unique_suffix = "#{timestamp}-#{random_suffix}"
+
     user_attrs = %{
       id: Ecto.UUID.generate(),
-      email: "test-#{:rand.uniform(10000)}@example.com",
-      name: "Test User",
+      email: "test-#{unique_suffix}@example.com",
+      name: "Test User #{unique_suffix}",
       org_id: Ecto.UUID.generate(),
       creation_source: :service_account,
       single_org_user: true,

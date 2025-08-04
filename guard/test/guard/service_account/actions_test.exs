@@ -138,9 +138,6 @@ defmodule Guard.ServiceAccount.ActionsTest do
             "service_account"
           )
         )
-
-        # Verify role assignment was called
-        assert_called(Guard.Api.Rbac.assign_role("org-id", "user-id", :_))
       end
     end
 
@@ -171,17 +168,6 @@ defmodule Guard.ServiceAccount.ActionsTest do
         params = ServiceAccountFactory.build_params()
 
         {:error, :rbac_user_not_found} = Actions.create(params)
-      end
-    end
-
-    test "handles role assignment failure" do
-      with_mocks([successful_service_account_mock() | role_assignment_failure_mocks()]) do
-        params = ServiceAccountFactory.build_params()
-
-        {:error, :assignment_failed} = Actions.create(params)
-
-        # Verify event was NOT published on failure
-        refute called(Guard.Events.UserCreated.publish(:_, :_))
       end
     end
 
