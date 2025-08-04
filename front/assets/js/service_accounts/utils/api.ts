@@ -10,10 +10,12 @@ export class ServiceAccountsAPI {
   constructor(private config: Config) {}
 
   async list(
-    pageToken?: string
-  ): Promise<toolbox.APIRequest.ApiResponse<PaginatedResponse<ServiceAccount>>> {
+    page?: number
+  ): Promise<
+    toolbox.APIRequest.ApiResponse<PaginatedResponse<ServiceAccount>>
+    > {
     const params = new URLSearchParams();
-    if (pageToken) params.append(`page_token`, pageToken);
+    if (page) params.append(`page`, `${page}`);
 
     const response = await toolbox.APIRequest.get<any>(
       `${this.config.urls.list}?${params.toString()}`
@@ -23,13 +25,13 @@ export class ServiceAccountsAPI {
       return { data: null, error: response.error, status: response.status };
     }
 
-    // Extract next page token from response
-    const nextPageToken = response.data?.next_page_token || null;
+    // Extract total pages from response
+    const totalPages = response.data?.total_pages || null;
 
     return {
       data: {
         items: response.data?.service_accounts || [],
-        next_page_token: nextPageToken,
+        totalPages: totalPages,
       },
       error: null,
       status: response.status,
@@ -38,23 +40,26 @@ export class ServiceAccountsAPI {
 
   async create(
     name: string,
-    description: string
+    description: string,
+    roleId: string
   ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccountWithToken>> {
     return toolbox.APIRequest.post<ServiceAccountWithToken>(
       this.config.urls.create,
-      { name, description }
+      { name, description, role_id: roleId }
     );
   }
 
   async update(
     id: string,
     name: string,
-    description: string
+    description: string,
+    role_id: string
   ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccount>> {
-    return toolbox.APIRequest.put<ServiceAccount>(
-      this.config.urls.update(id),
-      { name, description }
-    );
+    return toolbox.APIRequest.put<ServiceAccount>(this.config.urls.update(id), {
+      name,
+      description,
+      role_id,
+    });
   }
 
   async delete(id: string): Promise<toolbox.APIRequest.ApiResponse<void>> {

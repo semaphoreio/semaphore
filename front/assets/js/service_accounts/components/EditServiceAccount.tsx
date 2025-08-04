@@ -23,13 +23,15 @@ export const EditServiceAccount = ({
 
   const [name, setName] = useState(``);
   const [description, setDescription] = useState(``);
+  const [selectedRoleId, setSelectedRoleId] = useState(``);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(``);
 
   useEffect(() => {
     if (serviceAccount) {
       setName(serviceAccount.name);
       setDescription(serviceAccount.description);
+      setSelectedRoleId(serviceAccount.roles.find((role) => role.source == `manual`)?.id || ``);
     }
   }, [serviceAccount]);
 
@@ -40,7 +42,7 @@ export const EditServiceAccount = ({
     setError(null);
     setLoading(true);
 
-    const response = await api.update(serviceAccount.id, name, description);
+    const response = await api.update(serviceAccount.id, name, description, selectedRoleId);
 
     if (response.error) {
       setError(response.error);
@@ -59,7 +61,8 @@ export const EditServiceAccount = ({
 
   const hasChanges = serviceAccount && (
     name !== serviceAccount.name ||
-    description !== serviceAccount.description
+    description !== serviceAccount.description ||
+    selectedRoleId !== serviceAccount.roles.find((role) => role.source == `manual`)?.id
   );
 
   const canSubmit = name.trim().length > 0 && !loading && hasChanges;
@@ -69,7 +72,7 @@ export const EditServiceAccount = ({
   return (
     <Modal isOpen={isOpen} close={handleClose} title="Edit Service Account">
       <form onSubmit={(e) => void handleSubmit(e)}>
-        <div className="pa4">
+        <div className="pa3">
           <div className="mb3">
             <label className="db mb2 f6 b">Name *</label>
             <input
@@ -95,6 +98,24 @@ export const EditServiceAccount = ({
             />
           </div>
 
+
+          <div className="mb3">
+            <label className="db mb2 f6 b">Role *</label>
+            <select
+              className="form-control w-100"
+              value={selectedRoleId}
+              onChange={(e) => setSelectedRoleId(e.currentTarget.value)}
+              disabled={loading}
+            >
+              <option value="">Select a role...</option>
+              {config.roles.map((role) => (
+                <option key={role.id} value={role.id}>
+                  {role.name} - {role.description}
+                </option>
+              ))}
+            </select>
+          </div>
+
           {error && (
             <div className="bg-washed-red ba b--red br2 pa2 mb3">
               <p className="f6 mb0 red">{error}</p>
@@ -102,7 +123,7 @@ export const EditServiceAccount = ({
           )}
         </div>
 
-        <div className="flex justify-end items-center pa4 bt b--black-10">
+        <div className="flex justify-end items-center pa3 bt b--black-10">
           <button
             type="button"
             className="btn btn-secondary mr3"

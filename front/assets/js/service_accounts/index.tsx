@@ -2,7 +2,7 @@ import { Fragment, render } from "preact";
 import { useState, useContext, useEffect, useCallback } from "preact/hooks";
 import { Modal, Box } from "js/toolbox";
 import { AppConfig, ConfigContext } from "./config";
-import { ServiceAccount, AppState, ModalState } from "./types";
+import { ServiceAccount, AppState } from "./types";
 import { ServiceAccountsAPI } from "./utils/api";
 import { ServiceAccountsList } from "./components/ServiceAccountsList";
 import { CreateServiceAccount } from "./components/CreateServiceAccount";
@@ -33,9 +33,9 @@ const App = () => {
     loading: true,
     error: null,
     selectedServiceAccount: null,
-    modalState: ModalState.Closed,
     newToken: null,
-    nextPageToken: null,
+    page: 1,
+    totalPages: 0,
   });
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
@@ -43,10 +43,10 @@ const App = () => {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
 
-  const loadServiceAccounts = useCallback(async (pageToken?: string) => {
+  const loadServiceAccounts = useCallback(async (page?: number) => {
     setState(prev => ({ ...prev, loading: true, error: null }));
 
-    const response = await api.list(pageToken);
+    const response = await api.list(page);
 
     if (response.error) {
       setState(prev => ({
@@ -58,10 +58,11 @@ const App = () => {
       setState(prev => ({
         ...prev,
         loading: false,
-        serviceAccounts: pageToken
+        page: page || 1,
+        serviceAccounts: page > 1
           ? [...prev.serviceAccounts, ...response.data.items]
           : response.data.items,
-        nextPageToken: response.data.next_page_token || null,
+        totalPages: response.data.totalPages || null,
       }));
     }
   }, []);
@@ -119,9 +120,11 @@ const App = () => {
     void loadServiceAccounts();
   };
 
+  const hasMorePages = state.totalPages && state.page < state.totalPages;
+
   const handleLoadMore = () => {
-    if (state.nextPageToken) {
-      void loadServiceAccounts(state.nextPageToken);
+    if (hasMorePages) {
+      void loadServiceAccounts(state.page + 1);
     }
   };
 
@@ -140,7 +143,7 @@ const App = () => {
         onDelete={handleDelete}
         onRegenerateToken={handleRegenerateToken}
         onLoadMore={handleLoadMore}
-        hasMore={!!state.nextPageToken}
+        hasMore={hasMorePages}
         onCreateNew={() => setCreateModalOpen(true)}
       />
 
@@ -165,7 +168,7 @@ const App = () => {
         close={() => setDeleteModalOpen(false)}
         title="Delete Service Account"
       >
-        <div className="pa4">
+        <div className="pa3">
           <p className="f5 mb3">
             Are you sure you want to delete the service account{` `}
             <strong>{state.selectedServiceAccount?.name}</strong>?
@@ -174,7 +177,7 @@ const App = () => {
             This will immediately revoke API access. This action cannot be undone.
           </p>
         </div>
-        <div className="flex justify-end items-center pa4 bt b--black-10">
+        <div className="flex justify-end items-center pa3 bt b--black-10">
           <button
             className="btn btn-secondary mr3"
             onClick={() => setDeleteModalOpen(false)}
@@ -196,7 +199,7 @@ const App = () => {
         close={() => setRegenerateModalOpen(false)}
         title="Regenerate API Token"
       >
-        <div className="pa4">
+        <div className="pa3">
           <p className="f5 mb3">
             Are you sure you want to regenerate the API token for{` `}
             <strong>{state.selectedServiceAccount?.name}</strong>?
@@ -207,7 +210,7 @@ const App = () => {
             Any systems using the old token will lose access.
           </Box>
         </div>
-        <div className="flex justify-end items-center pa4 bt b--black-10">
+        <div className="flex justify-end items-center pa3 bt b--black-10">
           <button
             className="btn btn-secondary mr3"
             onClick={() => setRegenerateModalOpen(false)}
