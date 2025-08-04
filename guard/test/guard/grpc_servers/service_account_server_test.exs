@@ -7,7 +7,6 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
   alias InternalApi.ServiceAccount
   alias InternalApi.ServiceAccount.ServiceAccountService.Stub
   alias Guard.GrpcServers.ServiceAccountServer
-  alias Support.Factories.ServiceAccountFactory
 
   setup do
     {:ok, channel} = GRPC.Stub.connect("localhost:50051")
@@ -237,6 +236,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
           )
 
         {:ok, response} = channel |> Stub.list(request)
+        assert response.service_accounts == []
       end
     end
 
@@ -262,7 +262,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
             page_token: ""
           )
 
-        {:ok, response} = channel |> Stub.list(request)
+        {:ok, _response} = channel |> Stub.list(request)
       end
     end
 
@@ -729,7 +729,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       ]) do
         request = ServiceAccount.DeactivateRequest.new(service_account_id: service_account_id)
 
-        {:ok, response} = channel |> Stub.deactivate(request)
+        {:ok, _response} = channel |> Stub.deactivate(request)
       end
     end
 
@@ -788,7 +788,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       ]) do
         request = ServiceAccount.ReactivateRequest.new(service_account_id: service_account_id)
 
-        {:ok, response} = channel |> Stub.reactivate(request)
+        {:ok, _response} = channel |> Stub.reactivate(request)
       end
     end
 
@@ -847,7 +847,7 @@ defmodule Guard.GrpcServers.ServiceAccountServerTest do
       ]) do
         request = ServiceAccount.DestroyRequest.new(service_account_id: service_account_id)
 
-        {:ok, response} = channel |> Stub.destroy(request)
+        {:ok, _response} = channel |> Stub.destroy(request)
       end
     end
 
