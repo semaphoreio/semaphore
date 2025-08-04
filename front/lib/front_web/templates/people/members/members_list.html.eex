@@ -44,13 +44,13 @@
     </div>
   </div>
 
-  <%= if FeatureProvider.feature_enabled?(:service_accounts, param: @conn.assigns[:organization_id]) && 
+  <%= if FeatureProvider.feature_enabled?(:service_accounts, param: @conn.assigns[:organization_id]) &&
          Map.has_key?(assigns, :service_accounts) do %>
     <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
       <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
         <div>
           <div class="flex items-center">
-            <span class="material-symbols-outlined pr2">smart_toy</span>
+            <span class="material-symbols-outlined pr2">key</span>
             <div class="b">Service Accounts</div>
           </div>
         </div>
