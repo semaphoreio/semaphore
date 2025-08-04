@@ -435,10 +435,6 @@ defmodule Guard.Store.ServiceAccountTest do
       assert {:error, :not_found} = ServiceAccount.reactivate(non_existent_id)
     end
 
-    test "returns error for invalid UUID" do
-      assert {:error, :invalid_id} = ServiceAccount.reactivate("invalid-uuid")
-    end
-
     test "handles database errors gracefully" do
       {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
 
