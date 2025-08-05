@@ -12,6 +12,7 @@ defmodule Notifications.Models.Notification do
     has_many(:rules, Notifications.Models.Rule, on_delete: :delete_all)
 
     field(:org_id, :binary_id)
+    field(:creator_id, :binary_id)
     field(:name, :string)
     field(:spec, :map)
 

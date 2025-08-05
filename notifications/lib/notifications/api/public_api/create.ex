@@ -15,7 +15,7 @@ defmodule Notifications.Api.PublicApi.Create do
 
     with {:ok, :authorized} <- Auth.can_manage?(user_id, org_id),
          {:ok, :valid} <- Validator.validate(notification),
-         {:ok, n} <- create_notification(org_id, notification) do
+         {:ok, n} <- create_notification(org_id, user_id, notification) do
       Serialization.serialize(n)
     else
       {:error, :permission_denied} ->
@@ -36,13 +36,13 @@ defmodule Notifications.Api.PublicApi.Create do
     end
   end
 
-  def create_notification(org_id, notification) do
+  def create_notification(org_id, creator_id, notification) do
     Repo.transaction(fn ->
       n =
         Models.Notification.new(
           org_id,
           notification.metadata.name,
-          notification.metadata.creator_id,
+          creator_id,
           Notifications.Util.Transforms.encode_spec(notification.spec)
         )
 
