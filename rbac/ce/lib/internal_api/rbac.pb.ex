@@ -5,6 +5,7 @@ defmodule InternalApi.RBAC.SubjectType do
 
   field(:USER, 0)
   field(:GROUP, 1)
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.RBAC.Scope do
@@ -29,6 +30,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field(:ROLE_BINDING_SOURCE_GITLAB, 4)
   field(:ROLE_BINDING_SOURCE_SCIM, 5)
   field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
+  field(:ROLE_BINDING_SOURCE_SAML_JIT, 7)
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do

@@ -50,6 +50,7 @@ services:
       START_GPRC_GUARD_API: "true"
       START_GRPC_AUTH_API: "true"
       START_GRPC_USER_API: "true"
+      START_GRPC_SERVICE_ACCOUNT_API: "true"
       START_GRPC_ORGANIZATION_API: "true"
       START_GRPC_INSTANCE_CONFIG_API: "true"
       INSTANCE_CONFIG_API: "true"
