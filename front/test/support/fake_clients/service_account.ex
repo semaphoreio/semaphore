@@ -210,7 +210,7 @@ defmodule Support.FakeClients.ServiceAccount do
   defp generate_page_token([]), do: nil
   defp generate_page_token(accounts), do: List.last(accounts).id
 
-  defp now_proto_timestamp() do
+  defp now_proto_timestamp do
     seconds = DateTime.utc_now() |> DateTime.to_unix()
     Google.Protobuf.Timestamp.new(seconds: seconds)
   end
