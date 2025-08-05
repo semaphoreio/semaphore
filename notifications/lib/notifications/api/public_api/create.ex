@@ -7,8 +7,6 @@ defmodule Notifications.Api.PublicApi.Create do
   alias Notifications.Util.Validator
 
   def run(notification, org_id, user_id) do
-    IO.puts("Create Run public")
-    IO.inspect(notification)
     name = notification.metadata.name
 
     Logger.info("#{inspect(org_id)} #{inspect(user_id)} #{name}")
