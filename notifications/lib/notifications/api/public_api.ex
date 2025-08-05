@@ -19,7 +19,11 @@ defmodule Notifications.Api.PublicApi do
   end
 
   def create_notification(notification, call) do
+    IO.puts("CREATE NOTIFICATIONS PUBLIC")
+    IO.inspect(notification)
     {org_id, user_id} = extract_headers(call)
+    IO.inspect(org_id)
+    IO.inspect(user_id)
 
     Notifications.Api.PublicApi.Create.run(notification, org_id, user_id)
   end
