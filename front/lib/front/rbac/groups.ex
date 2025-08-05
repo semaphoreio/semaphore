@@ -130,24 +130,22 @@ defmodule Front.RBAC.Groups do
     member_user_ids = members |> Enum.map(& &1.id)
     non_member_ids = group.member_ids -- member_user_ids
 
-    # N+1 :see_no_evil
     service_accounts =
-      non_member_ids
-      |> Enum.map(fn service_account_id ->
-        Front.ServiceAccount.describe(service_account_id)
-      end)
-      |> Enum.map(fn
-        {:ok, service_account} ->
-          %{
-            id: service_account.id,
-            name: service_account.name,
-            avatar: ""
-          }
+      Front.ServiceAccount.describe_many(non_member_ids)
+      |> case do
+        {:ok, service_accounts} ->
+          service_accounts
 
         _ ->
-          nil
-      end)
-      |> Enum.filter(& &1)
+          []
+      end
+      |> Enum.map(
+        &%{
+          id: &1.id,
+          name: &1.name,
+          avatar: ""
+        }
+      )
 
     group |> Map.put(:members, members ++ service_accounts)
   end
