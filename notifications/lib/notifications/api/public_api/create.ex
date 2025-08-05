@@ -12,7 +12,7 @@ defmodule Notifications.Api.PublicApi.Create do
     Logger.info("#{inspect(org_id)} #{inspect(user_id)} #{name}")
 
     with {:ok, :authorized} <- Auth.can_manage?(user_id, org_id),
-         {:ok, :valid} <- Validator.validate(notification),
+         {:ok, :valid} <- Validator.validate(notification, user_id),
          {:ok, n} <- create_notification(org_id, user_id, notification) do
       Serialization.serialize(n)
     else

@@ -14,7 +14,7 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       req = %UpdateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         name: "non-exist",
         notification: Support.Factories.Notification.internal_api_model("first")
       }
@@ -41,7 +41,7 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
         })
 
       req = %UpdateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         name: "first",
         notification: Support.Factories.Notification.internal_api_model("first")
       }
@@ -126,7 +126,7 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
              end)
     end
 
-    test "it returns serialized notification" do
+    test "returs error when user_id not present in metadata" do
       alias Notifications.Models.Notification
 
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
@@ -141,6 +141,30 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
 
       req = %UpdateRequest{
         metadata: %RequestMeta{org_id: @org_id},
+        name: "first",
+        notification: Support.Factories.Notification.internal_api_model("first")
+      }
+
+      {:error, result} = Stub.update(channel, req)
+
+      assert match?(%GRPC.RPCError{message: "Invalid user_id: expected a valid UUID"}, result)
+    end
+
+    test "it returns serialized notification" do
+      alias Notifications.Models.Notification
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      notification = Support.Factories.Notification.internal_api_model("first")
+
+      {:ok, _} =
+        Stub.create(channel, %CreateRequest{
+          metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
+          notification: notification
+        })
+
+      req = %UpdateRequest{
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         name: "first",
         notification: Support.Factories.Notification.internal_api_model("first")
       }
@@ -196,7 +220,7 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
 
       req =
         UpdateRequest.new(
-          metadata: %RequestMeta{org_id: @org_id},
+          metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
           name: "first",
           notification: notif
         )
@@ -239,7 +263,7 @@ defmodule Notifications.Api.InternalApi.UpdateTest do
 
       req =
         UpdateRequest.new(
-          metadata: %RequestMeta{org_id: @org_id},
+          metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
           name: "second-notification",
           notification: notif
         )

@@ -11,7 +11,7 @@ defmodule Notifications.Api.InternalApi.Create do
     org_id = req.metadata.org_id
     creator_id = req.metadata.user_id
 
-    with {:ok, :valid} <- Validator.validate(req.notification),
+    with {:ok, :valid} <- Validator.validate(req.notification, creator_id),
          {:ok, n} <- create_notification(org_id, creator_id, req.notification) do
       %CreateResponse{notification: Serialization.serialize(n)}
     else
