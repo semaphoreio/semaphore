@@ -95,8 +95,6 @@ spec:
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
-            - name: ON_PREM
-              value: "true"
             - name: FEATURE_YAML_PATH
               value: {{ .Values.featureFlags.mountPath | quote }}
             - name: GETTING_STARTED_YAML_PATH
