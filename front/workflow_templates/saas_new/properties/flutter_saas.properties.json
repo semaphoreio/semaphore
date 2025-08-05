@@ -1,11 +1,12 @@
 {
-  "title": "Flutter",
-  "description": "Run a robust CI/CD pipeline for Flutter projects, including dependency management, linting, unit/widget tests, UI tests, and iOS build artifact generation. This pipeline leverages Semaphore's caching and parallelism to optimize execution for mobile app development. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-green white'>iOS</span><span class='f6 normal mr1 ph1 br2 bg-red white'>Android</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>UI Tests</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>pub</span></div>",
-  "short_description": "Run your Flutter application",
+  "title": "Flutter CI Pipeline",
+  "description": "Run a production-ready Flutter CI with dependency caching, code formatting and static analysis (format + analyze), parallelized tests using job parallelism, JUnit reports via junitreport/tojunit, and a release web build published as an artifact. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Web</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Cache</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Parallelism</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>JUnit</span><span class='f6 normal mr1 ph1 br2 bg-gray white'>Artifacts</span></div>",
+  "short_description": "Parallel Flutter tests and web build with JUnit reports",
   "group": "ci",
   "language": "Dart",
-  "environment": "macOS",
+  "environment": "linux",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-flutter.svg",
   "template_path": "templates/flutter_saas.yml",
   "workflow_tip": "other"

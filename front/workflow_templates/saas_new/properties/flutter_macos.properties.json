@@ -1,0 +1,13 @@
+{
+  "title": "Flutter – iOS CI Pipeline",
+  "description": "Build and test your Flutter app for iOS using macOS runners with Xcode and Flutter preinstalled. This lean pipeline includes format and analyze checks, parallelized tests with JUnit reports, and an unsigned iOS release build published as an artifact. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-red white'>iOS</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Cache</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Parallelism</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>JUnit</span><span class='f6 normal mr1 ph1 br2 bg-gray white'>Artifacts</span></div>",
+  "short_description": "Build and test Flutter iOS apps on macOS",
+  "group": "ci",
+  "language": "Dart",
+  "environment": "macos",
+  "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline"],
+  "icon": "lang-flutter.svg",
+  "template_path": "templates/flutter_macos.yml",
+  "workflow_tip": "other"
+}
