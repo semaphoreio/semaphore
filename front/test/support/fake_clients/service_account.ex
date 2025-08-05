@@ -53,7 +53,7 @@ defmodule Support.FakeClients.ServiceAccount do
         api_token = generate_token()
 
         Agent.update(__MODULE__, fn state ->
-          Support.Stubs.RBAC.add_service_account(org_id, service_account)
+          RBAC.add_service_account(org_id, service_account)
 
           state
           |> put_in([:service_accounts, service_account.id], service_account)
