@@ -7,8 +7,6 @@ defmodule Notifications.Api.InternalApi do
   use Sentry.Grpc, service: Api.NotificationsApi.Service
 
   def list(req, _call) do
-    IO.puts("LIST INTERNAL")
-    IO.inspect(req)
     Notifications.Api.InternalApi.List.run(req)
   end
 
