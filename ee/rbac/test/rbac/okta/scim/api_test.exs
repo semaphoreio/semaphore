@@ -46,7 +46,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
   end
 
   describe "authorization" do
-    test "unathorized okta calls return 401" do
+    test "unauthorized okta calls return 401" do
       base_path = "#{@host}/okta/scim/Users"
       headers = @headers
 
@@ -210,7 +210,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
       assert response["id"] != nil
     end
 
-    test "when user with that email already exists, just connecti it to the okta account", %{
+    test "when user with that email already exists, just connect it to the okta account", %{
       token: token
     } do
       alias Rbac.Events.UserJoinedOrganization
@@ -425,7 +425,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
       end
     end
 
-    test "re-eactivate a user", ctx do
+    test "reactivate a user", ctx do
       alias Rbac.Repo.OktaUser
       alias Rbac.Events.UserJoinedOrganization
 

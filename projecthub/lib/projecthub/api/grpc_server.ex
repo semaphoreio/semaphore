@@ -208,7 +208,7 @@ defmodule Projecthub.Api.GrpcServer do
                integration_type,
                true
              ) do
-        Logger.info("ForkAndCreate finished succesfully. Request: #{inspect(req)}")
+        Logger.info("ForkAndCreate finished successfully. Request: #{inspect(req)}")
 
         Watchman.increment({"repository.integration_type", ["#{integration_type}"]})
 
@@ -274,7 +274,7 @@ defmodule Projecthub.Api.GrpcServer do
                integration_type,
                req.skip_onboarding
              ) do
-        Logger.info("Create finished succesfully. Request: #{inspect(req)}")
+        Logger.info("Create finished successfully. Request: #{inspect(req)}")
 
         CreateResponse.new(
           metadata: status_ok(req),

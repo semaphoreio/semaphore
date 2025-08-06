@@ -193,7 +193,7 @@ To select the agent running your jobs in a pipeline:
 <Steps>
 
 1. Add the `agent` and `machine` keys
-2. Add the hardware `type`. The default is `s1-kubernetes`, which is the [self-hosted agent](./self-hosted) built-in in the Sempahore server
+2. Add the hardware `type`. The default is `s1-kubernetes`, which is the [self-hosted agent](./self-hosted) built-in in the Semaphore server
 3. Leave `os_image` empty
 4. Add the `containers` key, this contains a list with keys `name` and `image`. The first container must have `name = main` and the image is the Docker image where the jobs run
 

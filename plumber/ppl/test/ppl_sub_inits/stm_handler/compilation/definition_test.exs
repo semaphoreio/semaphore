@@ -132,7 +132,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     end
 
     test "and pre-flight checks are defined but both empty" <>
-           "then agent definiton and organization command set are used" do
+           "then agent definition and organization command set are used" do
       pre_flight_checks = %{
         "organization_pfc" => nil,
         "project_pfc" => nil
@@ -165,7 +165,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     end
 
     test "and only organization pre-flight checks are defined " <>
-           "then agent definiton and organization command set are used" do
+           "then agent definition and organization command set are used" do
       pre_flight_checks = %{
         "organization_pfc" => organization_pfc(),
         "project_pfc" => nil
@@ -306,7 +306,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition.Test do
     end
 
     test "and both organization and project pre-flight checks are defined " <>
-           "then agent definiton and both command sets are used" do
+           "then agent definition and both command sets are used" do
       pre_flight_checks = %{
         "organization_pfc" => organization_pfc(),
         "project_pfc" => project_pfc()

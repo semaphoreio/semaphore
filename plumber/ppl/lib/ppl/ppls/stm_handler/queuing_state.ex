@@ -1,6 +1,6 @@
 defmodule Ppl.Ppls.STMHandler.QueuingState do
   @moduledoc """
-  Handles pieplines in queing state and runs them once all older ones from same branch
+  Handles pipelines in queing state and runs them once all older ones from same branch
   are finished.
   """
 

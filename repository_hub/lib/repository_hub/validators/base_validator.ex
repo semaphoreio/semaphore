@@ -193,7 +193,7 @@ defmodule RepositoryHub.BaseValidator do
           e
           |> log(level: :error)
 
-          error("catastrophicaly did not pass the check")
+          error("catastrophically did not pass the check")
       end
     end
   end

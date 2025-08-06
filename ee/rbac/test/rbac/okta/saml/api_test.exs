@@ -108,7 +108,7 @@ defmodule Rbac.Okta.Saml.Api.Test do
 
       #
       # when a user logs out, the remember_created_at is set to NULL
-      # in order to succesfully log back in, the remember_created_at must be not NULL
+      # in order to successfully log back in, the remember_created_at must be not NULL
       # and the current time must be bigger than the timestampt
       #
       # Every Okta login should set this remember_created_at to a real value

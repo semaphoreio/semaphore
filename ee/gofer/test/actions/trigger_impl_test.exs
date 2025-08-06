@@ -202,7 +202,7 @@ defmodule Gofer.Actions.TriggerImplTest do
     }
 
     assert {:error, message} = Actions.trigger(request)
-    assert message == "Parameter 'Test' is not defined in promotion's yml definiton."
+    assert message == "Parameter 'Test' is not defined in promotion's yml definition."
   end
 
   test "trigger() returns error when value is not passed for required parameter env var", ctx do

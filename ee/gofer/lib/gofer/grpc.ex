@@ -1,6 +1,6 @@
 defmodule Gofer.Grpc do
   @moduledoc """
-  gRPC server supervisor definiton
+  gRPC server supervisor definition
   """
 
   use GRPC.Endpoint

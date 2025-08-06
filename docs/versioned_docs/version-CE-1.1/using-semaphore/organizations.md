@@ -35,7 +35,7 @@ To manage users in your Semaphore instance, open the server menu and select **Pe
 
 ### How to create users {#add-people}
 
-To create new accounts, go to the poeple option in the server menu and follow these steps:
+To create new accounts, go to the people option in the server menu and follow these steps:
 
 <Steps>
 
@@ -59,7 +59,7 @@ To create new accounts, go to the poeple option in the server menu and follow th
 
 ### How to change a user role {#role-change}
 
-To change user roles, go to the poeple option in the server menu and follow these steps:
+To change user roles, go to the people option in the server menu and follow these steps:
 
 <Steps>
 
@@ -76,7 +76,7 @@ To change user roles, go to the poeple option in the server menu and follow thes
 
 ### How to reset a user password {#reset-password}
 
-To reset a user password, go to the poeple option in the server menu and follow these steps:
+To reset a user password, go to the people option in the server menu and follow these steps:
 
 <Steps>
 

@@ -75,7 +75,7 @@ defmodule FrontWeb.AccountController do
           conn
           |> put_flash(
             :alert,
-            "An error occured while regenerating the API token. Please contact our support team."
+            "An error occurred while regenerating the API token. Please contact our support team."
           )
           |> render_show(user_id)
       end
@@ -98,7 +98,7 @@ defmodule FrontWeb.AccountController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while rotating the password. Please contact our support team."
+              "An error occurred while rotating the password. Please contact our support team."
             )
             |> redirect(to: account_path(conn, :show))
         end

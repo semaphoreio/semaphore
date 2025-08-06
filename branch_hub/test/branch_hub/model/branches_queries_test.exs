@@ -59,7 +59,7 @@ defmodule BranchHub.Model.BranchesQueries.Test do
     refute branch_1.used_at == branch_2.used_at
   end
 
-  test "insert new branch if diffrent name" do
+  test "insert new branch if different name" do
     params = [
       name: "rw/branch",
       display_name: "rw/branch",

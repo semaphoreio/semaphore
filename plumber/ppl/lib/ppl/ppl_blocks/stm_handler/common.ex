@@ -29,7 +29,7 @@ defmodule Ppl.PplBlocks.STMHandler.Common do
 
   @doc """
   Sends termination reguest based on given fast-failing strategy with "fast_failing"
-  as value of termination_request_desc field and returns function for transtion to
+  as value of termination_request_desc field and returns function for transition to
   given exit_state.
   """
   def do_fast_failing(ppl_blk, ff_strategy, exit_state) do

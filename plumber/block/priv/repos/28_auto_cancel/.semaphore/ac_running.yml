@@ -1,5 +1,5 @@
 version: "v1.0"
-name: Auto-cancel running pileines
+name: Auto-cancel running pipelines
 agent:
   machine:
     type: e1-standard-2

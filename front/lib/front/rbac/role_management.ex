@@ -200,7 +200,7 @@ defmodule Front.RBAC.RoleManagement do
         )
 
       case channel() |> RBAC.RBAC.Stub.assign_role(req, timeout: @extended_grpc_timeout) do
-        {:ok, _resp} -> {:ok, "Role succesfully assigned."}
+        {:ok, _resp} -> {:ok, "Role successfully assigned."}
         e -> e
       end
     end)

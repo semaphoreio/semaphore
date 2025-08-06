@@ -4,7 +4,7 @@ defmodule Support.Okta.Saml.PayloadBuilder do
   the API is able to consume them.
 
   We need to build this payload dynamically in order to inject
-  proper dates and succesfully digitally sign the payload.
+  proper dates and successfully digitally sign the payload.
 
   The payload is an XML document.
   See an example: test/support/okta/saml/payload_example.xml.

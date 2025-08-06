@@ -53,7 +53,7 @@ defmodule FrontWeb.GroupsController.Test do
       assert get_flash(conn, :alert) =~ "Group not found"
     end
 
-    test "succesfully modify group", ctx do
+    test "successfully modify group", ctx do
       members_to_add = [Ecto.UUID.generate(), Ecto.UUID.generate()]
       members_to_remove = [Ecto.UUID.generate()]
       group_id = Ecto.UUID.generate()
@@ -110,7 +110,7 @@ defmodule FrontWeb.GroupsController.Test do
           |> post("/groups")
 
         assert html_response(conn, 302) =~ "/people"
-        assert get_flash(conn, :alert) =~ "An error occured"
+        assert get_flash(conn, :alert) =~ "An error occurred"
       end
     end
 

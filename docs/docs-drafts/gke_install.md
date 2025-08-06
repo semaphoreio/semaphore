@@ -33,7 +33,7 @@ export CERTS_DIR=$HOME/mycerts
 
 You only need to create the SSL certificate for your domain.
 
-1. Execute the following command to create the certificates. Follow on-sreen instructions. You will be asked to create a DNS TXT record with a specific value. Press enter only after you have created the DNS Record.
+1. Execute the following command to create the certificates. Follow on-screen instructions. You will be asked to create a DNS TXT record with a specific value. Press enter only after you have created the DNS Record.
 
 ```shell
 source .env
@@ -178,7 +178,7 @@ kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext 
 
 ```shell
 =============================================================================================
-Congratulations, Semaphore has been installed succesfully!
+Congratulations, Semaphore has been installed successfully!
 
 To start using the app, go to https://id.<your-domain>/login
 

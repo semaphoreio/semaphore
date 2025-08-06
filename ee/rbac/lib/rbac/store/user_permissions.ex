@@ -52,7 +52,7 @@ defmodule Rbac.Store.UserPermissions do
     for that user/org/project into the cache
 
     Returns
-      :ok - if all key value pairs were succesfully written to the cache
+      :ok - if all key value pairs were successfully written to the cache
       :error - if permissions could not be calculated or at least one permission wasnt written to the cache
   """
   @spec add_permissions(RBI) :: :ok | :error
@@ -99,7 +99,7 @@ defmodule Rbac.Store.UserPermissions do
     are removed from the database, otherwise keys that were removed from db wont be deleted from the cache!
 
     Returns
-      :ok - if all key value pairs were succesfully written to the cache
+      :ok - if all key value pairs were successfully written to the cache
       :error - if permissions could not be calculated or at least one permission wasnt written to the cache
   """
   @spec remove_permissions(RBI) :: :ok | :error

@@ -55,6 +55,6 @@ defmodule DefinitionValidator.PplBlocksDependencies do
       fn dep, _ -> if dep in block_names, do: ok(definition), else: err(dep) end)
   end
 
-  defp ok(definiton), do: {:cont, {:ok, definiton}}
+  defp ok(definition), do: {:cont, {:ok, definition}}
   defp err(dep), do: {:halt, {:error, {:malformed, {:unknown_block_name, dep}}}}
 end

@@ -58,7 +58,7 @@ defmodule Block.BlockRequests.Model.BlockRequests do
     build_present? = Map.get(definition, "build", nil) != nil
     build_required_and_present?(v1?, build_present?)
   end
-  defp build_required_and_present?(true, false), do: [definition: "Definition must containt 'build' field when pipeline version is v1.0"]
+  defp build_required_and_present?(true, false), do: [definition: "Definition must contain 'build' field when pipeline version is v1.0"]
   defp build_required_and_present?(_, _), do: []
 
   defp validate_definition__includes_allowed?(changeset) do
@@ -72,7 +72,7 @@ defmodule Block.BlockRequests.Model.BlockRequests do
     includes_present? = Map.get(value, "includes", nil) != nil
     includes_forbidden_and_present?(v1?, includes_present?)
   end
-  defp includes_forbidden_and_present?(true, true), do: [definition: "Definition can not containt 'includes' field when pipeline version is v1.0"]
+  defp includes_forbidden_and_present?(true, true), do: [definition: "Definition can not contain 'includes' field when pipeline version is v1.0"]
   defp includes_forbidden_and_present?(_, _), do: []
 
   @doc ~S"""

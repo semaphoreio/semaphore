@@ -10,8 +10,8 @@ This page describes how to create a new version or release.
 We handle docs in two ways:
 
 - Cloud: the cloud edition is unversioned. The docs are located on `docs/`
-- Community Edition: the open-source edition is versined. The docs are located on `versioned_docs/version-CE/`
-- Enterprise Edition: the licensed on-premise is also versined. The docs are located on `versioned_docs/version-EE/`
+- Community Edition: the open-source edition is versioned. The docs are located on `versioned_docs/version-CE/`
+- Enterprise Edition: the licensed on-premise is also versioned. The docs are located on `versioned_docs/version-EE/`
 
 ## Naming conventions
 
@@ -147,7 +147,7 @@ npm run build
 npm run serve
 ```
 
-Open a browser and check that the drowpdown works and the new version is working.
+Open a browser and check that the dropdown works and the new version is working.
 
 ## How to remove versions
 
@@ -167,7 +167,7 @@ There are two options to deal with unavailable versions:
 1. Delete the content: delete the content from the version
 2. Mark it as unavailable: keep the title or subheader but clearly mark it as unavailable. Add links to other editions where the feature is available
 
-As a general rule, we shold make it clear when a feature is unavailable, especially for very prominent features such as Promotions, RBAC, or other enterprise-grade features.
+As a general rule, we should make it clear when a feature is unavailable, especially for very prominent features such as Promotions, RBAC, or other enterprise-grade features.
 
 ### How to manage pages missing in editions
 

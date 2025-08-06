@@ -1,6 +1,6 @@
 defmodule Ppl.DeleteRequests.STMHandler.PendingState do
   @moduledoc """
-  Handles initializing of piplines deletion
+  Handles initializing of pipelines deletion
   """
 
   alias Ppl.DeleteRequests.Model.DeleteRequests

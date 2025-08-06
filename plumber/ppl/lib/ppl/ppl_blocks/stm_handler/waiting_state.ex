@@ -1,6 +1,6 @@
 defmodule Ppl.PplBlocks.STMHandler.WaitingState do
   @moduledoc """
-  Handles running of piepline's blocks
+  Handles running of pipeline's blocks
   """
 
   @entry_metric_name "Ppl.block_init_overhead"

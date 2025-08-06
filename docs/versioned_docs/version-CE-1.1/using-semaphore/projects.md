@@ -212,7 +212,7 @@ To add or remove a user from a project, follow these steps:
 
 <Available plans={['Scaleup']}/>
 
-TODO: check if we can manually change members permissions in projects in Semaphore (or if it musst go through the Git repo)
+TODO: check if we can manually change members permissions in projects in Semaphore (or if it must go through the Git repo)
 
 Open your project and go to the **People** tab
 

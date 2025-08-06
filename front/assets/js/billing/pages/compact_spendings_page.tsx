@@ -143,7 +143,7 @@ const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
       case types.Spendings.PlanType.Flat:
         return `Unlimited minutes, fixed annual charge.`;
       case types.Spendings.PlanType.Grandfathered:
-        return `Fixed montly subscription from Semaphore Classic.`;
+        return `Fixed monthly subscription from Semaphore Classic.`;
     }
   };
 
