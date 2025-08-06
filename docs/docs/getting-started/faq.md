@@ -110,7 +110,7 @@ Not directly from the Semaphore website. After a subscription has been purchased
 
 If you wish to change the VAT number associated with your subscription, please get in touch with `support@semaphoreci.com` with the VAT number you want to add and we will gladly make it happen.
 
-For security reasons, these requests **must originate from an email** linked to a user with the [Owner role](../using-semaphore/rbac#org-owner), or from the current Billing contact associated with the organization’s FastSpring subscription. This ensuress that only authorized individuals can make changes to the billing information.
+For security reasons, these requests **must originate from an email** linked to a user with the [Owner role](../using-semaphore/rbac#org-owner), or from the current Billing contact associated with the organization’s FastSpring subscription. This ensures that only authorized individuals can make changes to the billing information.
 
 ### Will I get an invoice?
 

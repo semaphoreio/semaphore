@@ -24,9 +24,9 @@ type Job_Status_Result int32
 
 const (
 	Job_Status_NONE   Job_Status_Result = 0 // Job has not yet finished.
-	Job_Status_PASSED Job_Status_Result = 1 // Succesfully finished job.
+	Job_Status_PASSED Job_Status_Result = 1 // Successfully finished job.
 	Job_Status_FAILED Job_Status_Result = 2 // Job has failed, either because a command has failed,
-	// or because dependancies are not available (i.e. secrets).
+	// or because dependencies are not available (i.e. secrets).
 	Job_Status_STOPPED Job_Status_Result = 3 // Job was terminated before finishing.
 )
 
