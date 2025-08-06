@@ -1,7 +1,6 @@
 defmodule FrontWeb.ServiceAccountControllerTest do
   use FrontWeb.ConnCase
   import Mox
-  alias Front.Models.ServiceAccount
   alias Support.Stubs.DB
 
   setup :verify_on_exit!
@@ -11,12 +10,18 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     Support.Stubs.init()
     Support.Stubs.build_shared_factories()
 
+    original_client = Application.get_env(:front, :service_account_client)
+    Application.put_env(:front, :service_account_client, {ServiceAccountMock, []})
+
+    on_exit(fn ->
+      Application.put_env(:front, :service_account_client, original_client)
+    end)
+
     user_id = DB.first(:users) |> Map.get(:id)
     org_id = DB.first(:organizations) |> Map.get(:id)
 
     Support.Stubs.PermissionPatrol.remove_all_permissions()
 
-    # Set up base permissions
     Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
       "organization.view",
       "organization.service_accounts.view"
@@ -32,17 +37,56 @@ defmodule FrontWeb.ServiceAccountControllerTest do
 
   describe "GET /service_accounts" do
     test "lists service accounts successfully", %{conn: conn, org_id: org_id} do
-      service_account = %ServiceAccount{
+      GrpcMock.expect(RBACMock, :list_members, fn request, _stream ->
+        member = %InternalApi.RBAC.ListMembersResponse.Member{
+          subject: %InternalApi.RBAC.Subject{
+            subject_id: "sa_123",
+            subject_type: InternalApi.RBAC.SubjectType.value(:SERVICE_ACCOUNT),
+            display_name: ""
+          },
+          subject_role_bindings: [
+            %InternalApi.RBAC.SubjectRoleBinding{
+              role: %InternalApi.RBAC.Role{
+                id: "role_123",
+                name: "Admin",
+                org_id: org_id,
+                scope: InternalApi.RBAC.Scope.value(:SCOPE_ORG),
+                description: "",
+                permissions: [],
+                rbac_permissions: [],
+                readonly: false
+              },
+              source: InternalApi.RBAC.RoleBindingSource.value(:ROLE_BINDING_SOURCE_MANUALLY)
+            }
+          ]
+        }
+
+        assert request.org_id == org_id
+        assert request.page.page_no == 0
+        assert request.page.page_size == 20
+        assert request.member_type == InternalApi.RBAC.SubjectType.value(:SERVICE_ACCOUNT)
+
+        response = %InternalApi.RBAC.ListMembersResponse{
+          members: [member],
+          total_pages: 1
+        }
+
+        response
+      end)
+
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_123",
         name: "Test Service Account",
         description: "Test description",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-01 10:00:00Z],
+        org_id: org_id,
+        creator_id: "",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
         deactivated: false
       }
 
-      expect(ServiceAccountMock, :list, fn ^org_id, 20, nil ->
-        {:ok, {[service_account], "next_page_token"}}
+      expect(ServiceAccountMock, :describe_many, fn ["sa_123"] ->
+        {:ok, [service_account_proto]}
       end)
 
       conn = get(conn, "/service_accounts")
@@ -55,34 +99,57 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                    "description" => "Test description",
                    "created_at" => "2024-01-01T10:00:00Z",
                    "updated_at" => "2024-01-01T10:00:00Z",
-                   "deactivated" => false
+                   "deactivated" => false,
+                   "roles" => [
+                     %{
+                       "id" => "role_123",
+                       "name" => "Admin",
+                       "source" => "manual",
+                       "color" => "blue"
+                     }
+                   ]
                  }
-               ]
+               ],
+               "total_pages" => 1
              }
-
-      assert get_resp_header(conn, "x-next-page-token") == ["next_page_token"]
     end
 
     test "handles pagination parameters", %{conn: conn, org_id: org_id} do
-      expect(ServiceAccountMock, :list, fn ^org_id, 10, "page_token_123" ->
-        {:ok, {[], nil}}
+      GrpcMock.expect(RBACMock, :list_members, fn request, _stream ->
+        assert request.org_id == org_id
+        assert request.page.page_no == 1
+        assert request.page.page_size == 20
+        assert request.member_type == InternalApi.RBAC.SubjectType.value(:SERVICE_ACCOUNT)
+
+        response = %InternalApi.RBAC.ListMembersResponse{
+          members: [],
+          total_pages: 2
+        }
+
+        response
       end)
 
-      conn =
-        get(conn, "/service_accounts", %{"page_size" => "10", "page_token" => "page_token_123"})
+      expect(ServiceAccountMock, :describe_many, fn [] ->
+        {:ok, []}
+      end)
 
-      assert json_response(conn, 200) == %{"service_accounts" => []}
-      assert get_resp_header(conn, "x-next-page-token") == [""]
+      conn = get(conn, "/service_accounts", %{"page" => "2"})
+
+      assert json_response(conn, 200) == %{
+               "service_accounts" => [],
+               "total_pages" => 2
+             }
     end
 
-    test "handles backend errors", %{conn: conn, org_id: org_id} do
-      expect(ServiceAccountMock, :list, fn ^org_id, 20, nil ->
-        {:error, "Failed to list service accounts"}
+    test "handles backend errors", %{conn: conn} do
+      GrpcMock.expect(RBACMock, :list_members, fn _request, _stream ->
+        raise GRPC.RPCError, status: 2, message: "Internal Server Error"
       end)
 
       conn = get(conn, "/service_accounts")
 
-      assert json_response(conn, 422) == %{"error" => "Failed to list service accounts"}
+      assert json_response(conn, 422) ==
+               %{"error" => "Failed to list service accounts"}
     end
 
     test "requires service_accounts.view permission", %{
@@ -109,12 +176,14 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "creates service account successfully", %{conn: conn, org_id: org_id, user_id: user_id} do
-      service_account = %ServiceAccount{
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_new",
         name: "New Service Account",
         description: "New description",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-01 10:00:00Z],
+        org_id: org_id,
+        creator_id: user_id,
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
         deactivated: false
       }
 
@@ -122,13 +191,23 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                                              "New Service Account",
                                              "New description",
                                              ^user_id ->
-        {:ok, {service_account, "api_token_123"}}
+        {:ok, {service_account_proto, "api_token_123"}}
+      end)
+
+      GrpcMock.expect(RBACMock, :assign_role, fn request, _stream ->
+        assert request.role_assignment.subject.subject_id == "sa_new"
+        assert request.role_assignment.role_id == "role_123"
+        assert request.role_assignment.org_id == org_id
+        assert request.requester_id == user_id
+
+        %InternalApi.RBAC.AssignRoleResponse{}
       end)
 
       conn =
         post(conn, "/service_accounts", %{
           "name" => "New Service Account",
-          "description" => "New description"
+          "description" => "New description",
+          "role_id" => "role_123"
         })
 
       assert json_response(conn, 201) == %{
@@ -138,23 +217,26 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                "created_at" => "2024-01-01T10:00:00Z",
                "updated_at" => "2024-01-01T10:00:00Z",
                "deactivated" => false,
-               "api_token" => "api_token_123"
+               "api_token" => "api_token_123",
+               "roles" => []
              }
     end
 
     test "handles empty parameters", %{conn: conn, org_id: org_id, user_id: user_id} do
       expect(ServiceAccountMock, :create, fn ^org_id, "", "", ^user_id ->
-        {:error, "Name is required"}
+        {:error, "Service account name cannot be empty"}
       end)
 
       conn = post(conn, "/service_accounts", %{})
 
-      assert json_response(conn, 422) == %{"error" => "Name is required"}
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to create service account or assign role"
+             }
     end
 
     test "handles backend errors", %{conn: conn, org_id: org_id, user_id: user_id} do
       expect(ServiceAccountMock, :create, fn ^org_id, "Test", "Desc", ^user_id ->
-        {:error, "Failed to create service account"}
+        {:error, "Backend error"}
       end)
 
       conn =
@@ -163,7 +245,9 @@ defmodule FrontWeb.ServiceAccountControllerTest do
           "description" => "Desc"
         })
 
-      assert json_response(conn, 422) == %{"error" => "Failed to create service account"}
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to create service account or assign role"
+             }
     end
 
     test "requires service_accounts.manage permission", %{
@@ -184,44 +268,6 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
   end
 
-  describe "GET /service_accounts/:id" do
-    test "retrieves service account successfully", %{conn: conn} do
-      service_account = %ServiceAccount{
-        id: "sa_123",
-        name: "Test Service Account",
-        description: "Test description",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-01 10:00:00Z],
-        deactivated: false
-      }
-
-      expect(ServiceAccountMock, :describe, fn "sa_123" ->
-        {:ok, service_account}
-      end)
-
-      conn = get(conn, "/service_accounts/sa_123")
-
-      assert json_response(conn, 200) == %{
-               "id" => "sa_123",
-               "name" => "Test Service Account",
-               "description" => "Test description",
-               "created_at" => "2024-01-01T10:00:00Z",
-               "updated_at" => "2024-01-01T10:00:00Z",
-               "deactivated" => false
-             }
-    end
-
-    test "handles not found", %{conn: conn} do
-      expect(ServiceAccountMock, :describe, fn "sa_nonexistent" ->
-        {:error, "Service account not found"}
-      end)
-
-      conn = get(conn, "/service_accounts/sa_nonexistent")
-
-      assert json_response(conn, 422) == %{"error" => "Service account not found"}
-    end
-  end
-
   describe "PUT /service_accounts/:id" do
     setup %{org_id: org_id, user_id: user_id} do
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
@@ -231,24 +277,36 @@ defmodule FrontWeb.ServiceAccountControllerTest do
       :ok
     end
 
-    test "updates service account successfully", %{conn: conn} do
-      updated_account = %ServiceAccount{
+    test "updates service account successfully", %{conn: conn, user_id: user_id, org_id: org_id} do
+      updated_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_123",
         name: "Updated Name",
         description: "Updated description",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-02 10:00:00Z],
+        org_id: org_id,
+        creator_id: "some_creator",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_189_600},
         deactivated: false
       }
 
       expect(ServiceAccountMock, :update, fn "sa_123", "Updated Name", "Updated description" ->
-        {:ok, updated_account}
+        {:ok, updated_account_proto}
+      end)
+
+      GrpcMock.expect(RBACMock, :assign_role, fn request, _stream ->
+        assert request.role_assignment.subject.subject_id == "sa_123"
+        assert request.role_assignment.role_id == "role_456"
+        assert request.role_assignment.org_id == org_id
+        assert request.requester_id == user_id
+
+        %InternalApi.RBAC.AssignRoleResponse{}
       end)
 
       conn =
         put(conn, "/service_accounts/sa_123", %{
           "name" => "Updated Name",
-          "description" => "Updated description"
+          "description" => "Updated description",
+          "role_id" => "role_456"
         })
 
       assert json_response(conn, 200) == %{
@@ -257,18 +315,21 @@ defmodule FrontWeb.ServiceAccountControllerTest do
                "description" => "Updated description",
                "created_at" => "2024-01-01T10:00:00Z",
                "updated_at" => "2024-01-02T10:00:00Z",
-               "deactivated" => false
+               "deactivated" => false,
+               "roles" => []
              }
     end
 
     test "handles update errors", %{conn: conn} do
       expect(ServiceAccountMock, :update, fn "sa_123", "", "" ->
-        {:error, "Failed to update"}
+        {:error, "Service account name cannot be empty"}
       end)
 
       conn = put(conn, "/service_accounts/sa_123", %{})
 
-      assert json_response(conn, 422) == %{"error" => "Failed to update"}
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to update service account or assign role"
+             }
     end
   end
 
@@ -282,17 +343,19 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "deletes service account successfully", %{conn: conn} do
-      service_account = %ServiceAccount{
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_123",
         name: "To Delete",
         description: "Will be deleted",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-01 10:00:00Z],
+        org_id: "some_org_id",
+        creator_id: "some_creator",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
         deactivated: false
       }
 
       expect(ServiceAccountMock, :describe, fn "sa_123" ->
-        {:ok, service_account}
+        {:ok, service_account_proto}
       end)
 
       expect(ServiceAccountMock, :delete, fn "sa_123" ->
@@ -306,12 +369,12 @@ defmodule FrontWeb.ServiceAccountControllerTest do
 
     test "handles delete errors", %{conn: conn} do
       expect(ServiceAccountMock, :describe, fn "sa_123" ->
-        {:error, "Not found"}
+        {:error, "Service account not found"}
       end)
 
       conn = delete(conn, "/service_accounts/sa_123")
 
-      assert json_response(conn, 422) == %{"error" => "Not found"}
+      assert json_response(conn, 422) == %{"error" => "Failed to delete service account"}
     end
   end
 
@@ -325,17 +388,19 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
 
     test "regenerates token successfully", %{conn: conn} do
-      service_account = %ServiceAccount{
+      service_account_proto = %InternalApi.ServiceAccount.ServiceAccount{
         id: "sa_123",
         name: "Test Account",
         description: "Test",
-        created_at: ~U[2024-01-01 10:00:00Z],
-        updated_at: ~U[2024-01-01 10:00:00Z],
+        org_id: "some_org_id",
+        creator_id: "some_creator",
+        created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+        updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
         deactivated: false
       }
 
       expect(ServiceAccountMock, :describe, fn "sa_123" ->
-        {:ok, service_account}
+        {:ok, service_account_proto}
       end)
 
       expect(ServiceAccountMock, :regenerate_token, fn "sa_123" ->
@@ -349,12 +414,14 @@ defmodule FrontWeb.ServiceAccountControllerTest do
 
     test "handles regenerate errors", %{conn: conn} do
       expect(ServiceAccountMock, :describe, fn "sa_123" ->
-        {:error, "Not found"}
+        {:error, "Service account not found"}
       end)
 
       conn = post(conn, "/service_accounts/sa_123/regenerate_token")
 
-      assert json_response(conn, 422) == %{"error" => "Not found"}
+      assert json_response(conn, 422) == %{
+               "error" => "Failed to regenerate service account token"
+             }
     end
   end
 end
