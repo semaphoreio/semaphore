@@ -44,6 +44,7 @@ global_job_config:
 blocks:
   # ⚙️  Block 1: Install dependencies & compile – caches Hex/Rebar & JS assets
   - name: "⚙️ Install & Compile"
+    dependencies: []
     task:
       jobs:
         - name: "⚙️ Install & Compile"

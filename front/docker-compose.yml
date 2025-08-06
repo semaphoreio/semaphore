@@ -21,6 +21,7 @@ services:
       CACHE_HOST: "redis-cache"
       CACHE_PORT: "6379"
       CACHE_POOL_SIZE: "5"
+      BASE_DOMAIN: ${BASE_DOMAIN:-localhost}
       AMQP_URL: "amqp://rabbitmq:5672"
       SSH_AUTH_SOCK: /ssh-agent
       MIX_ENV: ${MIX_ENV:-dev}
@@ -32,6 +33,9 @@ services:
       SEED_PROJECTS: "initializing_failed,zebra,guard,errored,test_results,test_results_debug,after_pipeline,bitbucket,generic_git"
       SECRET_KEY_BASE: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
       SESSION_SIGNING_SALT: "keyboard-cat-please-use-this-only-for-dev-and-testing-it-is-insecure"
+
+    env_file:
+      - ./env/.env.internal-apis
 
     links:
       - redis-cache:redis-cache
