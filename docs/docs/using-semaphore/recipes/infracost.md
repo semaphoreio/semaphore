@@ -3,7 +3,7 @@ description: Implement FinOps in your pipeline with Infracost
 sidebar_position: 1
 ---
 
-# Infracost
+# Infracost FinOps
 
 The Infracost CLI tool parses Terraform files and estimates costs for your infrastructure.
 
