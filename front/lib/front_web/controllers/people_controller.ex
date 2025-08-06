@@ -657,6 +657,9 @@ defmodule FrontWeb.PeopleController do
       fetch_groups =
         Async.run(fn -> Members.list_project_members(org_id, project.id, member_type: "group") end)
 
+      fetch_service_accounts =
+        async_fetch_members(org_id, project.id, member_type: "service_account")
+
       fetch_is_project_starred? =
         Async.run(fn -> Models.User.has_favorite(user_id, org_id, project.id) end)
 
@@ -667,6 +670,7 @@ defmodule FrontWeb.PeopleController do
       {:ok, {:ok, {members, total_pages}}} = Async.await(fetch_members)
       {:ok, {:ok, {groups, _}}} = Async.await(fetch_groups)
       {:ok, is_project_starred?} = Async.await(fetch_is_project_starred?)
+      {:ok, {:ok, {service_accounts, _total_pages}}} = Async.await(fetch_service_accounts)
 
       assigns =
         %{
@@ -677,6 +681,7 @@ defmodule FrontWeb.PeopleController do
           permissions: conn.assigns.permissions,
           members: members,
           groups: groups,
+          service_accounts: service_accounts,
           project_id: project.id,
           title: "People・#{project.name}",
           org_scope?: false,
