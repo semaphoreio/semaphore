@@ -53,8 +53,12 @@ defmodule Front.Models.ServiceAccount do
          member_ids <- Enum.map(members, & &1.id),
          {:ok, service_accounts} <-
            Front.ServiceAccount.describe_many(member_ids),
-         service_accounts <- asssign_service_accounts_to_members(members, service_accounts) do
+         service_accounts <- assign_service_accounts_to_members(members, service_accounts) do
       {:ok, {service_accounts, total_pages}}
+    else
+      error ->
+        Logger.error("Failed to list service accounts: #{inspect(error)}")
+        {:error, "Failed to list service accounts"}
     end
   end
 
@@ -64,7 +68,8 @@ defmodule Front.Models.ServiceAccount do
          {:ok, _} <- assign_role(org_id, user_id, service_account, role_id) do
       {:ok, {from_proto(service_account), token}}
     else
-      _ ->
+      error ->
+        Logger.error("Failed to create service account or assign role: #{inspect(error)}")
         {:error, "Failed to create service account or assign role"}
     end
   end
@@ -81,7 +86,9 @@ defmodule Front.Models.ServiceAccount do
            ) do
       {:ok, from_proto(service_account)}
     else
-      _ -> {:error, "Failed to update service account or assign role"}
+      error ->
+        Logger.error("Failed to update service account or assign role: #{inspect(error)}")
+        {:error, "Failed to update service account or assign role"}
     end
   end
 
@@ -90,7 +97,9 @@ defmodule Front.Models.ServiceAccount do
          :ok <- Front.ServiceAccount.delete(service_account_id) do
       {:ok, from_proto(service_account)}
     else
-      _ -> {:error, "Failed to delete service account"}
+      error ->
+        Logger.error("Failed to delete service account: #{inspect(error)}")
+        {:error, "Failed to delete service account"}
     end
   end
 
@@ -99,7 +108,9 @@ defmodule Front.Models.ServiceAccount do
          {:ok, api_token} <- Front.ServiceAccount.regenerate_token(service_account_id) do
       {:ok, {from_proto(service_account), api_token}}
     else
-      _ -> {:error, "Failed to regenerate service account token"}
+      error ->
+        Logger.error("Failed to regenerate service account token: #{inspect(error)}")
+        {:error, "Failed to regenerate service account token"}
     end
   end
 
@@ -127,7 +138,7 @@ defmodule Front.Models.ServiceAccount do
 
   defp timestamp_to_datetime(_), do: DateTime.utc_now()
 
-  defp asssign_service_accounts_to_members(members, service_accounts) do
+  defp assign_service_accounts_to_members(members, service_accounts) do
     members
     |> Enum.map(fn member ->
       {member, Enum.find(service_accounts, &(&1.id == member.id))}
