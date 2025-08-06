@@ -1,4 +1,4 @@
-# ESlint will ingore files listed here
+# ESlint will ignore files listed here
 # This is a "temporary"(🙃) list of files that are skipped by the eslint linter.
 # When working on one of these files, you can remove it from this list, and fix the linting errors 🙏.
 js/workflow_view/trigger_event.js

@@ -17,7 +17,7 @@ This page contains Frequently Asked Questions.
 ### What's the difference between Semaphore Enterprise Edition (EE) and Semaphore Cloud?
 
 - **Semaphore Cloud**: is a cloud-based, fully-managed CI-as-a-Service platform. Meant for individuals and companies that don't wish to maintain a CI/CD system. Head to semaphoreci.com to access Semaphore Cloud
-- **Semaphore EE**: is a fully featured self-hostable version of Semaphore. Running Semaphore Entreprise Edition requires a [license](./license).
+- **Semaphore EE**: is a fully featured self-hostable version of Semaphore. Running Semaphore Enterprise Edition requires a [license](./license).
 
 ### Where can I run Semaphore EE?
 
