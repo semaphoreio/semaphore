@@ -47,7 +47,7 @@ defmodule Front.Browser.PeopleTest do
 
       session
       |> visit(ctx.path)
-      |> assert_number_of_role_labels(9)
+      |> assert_number_of_role_labels(12)
     end
 
     test "if there is only 1 page, do not show buttons", ctx do
