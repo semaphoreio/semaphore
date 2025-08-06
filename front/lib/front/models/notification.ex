@@ -58,7 +58,7 @@ defmodule Front.Models.Notification do
 
   def create(user_id, org_id, notification_data, _metadata \\ nil) do
     Watchman.benchmark("notifications.create_notification_request.duration", fn ->
-      notification = construct_notification(notification_data)
+      notification = construct_notification(notification_data, user_id)
 
       {:ok, channel} = GRPC.Stub.connect(api_endpoint())
 
@@ -90,7 +90,7 @@ defmodule Front.Models.Notification do
 
   def update(user_id, org_id, notification_data) do
     Watchman.benchmark("notifications.update_notification_request.duration", fn ->
-      notification = construct_notification(notification_data)
+      notification = construct_notification(notification_data, user_id)
 
       {:ok, channel} = GRPC.Stub.connect(api_endpoint())
 
@@ -110,13 +110,13 @@ defmodule Front.Models.Notification do
     end)
   end
 
-  def construct_notification(data) do
+  def construct_notification(data, creator_id) do
     rules =
       data.rules
       |> Enum.map(&construct_rule(&1))
 
     PublicApi.Notification.new(
-      metadata: PublicApi.Notification.Metadata.new(name: data.name),
+      metadata: PublicApi.Notification.Metadata.new(name: data.name, creator_id: creator_id),
       spec: PublicApi.Notification.Spec.new(rules: rules)
     )
   end

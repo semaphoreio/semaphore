@@ -2,6 +2,7 @@ defmodule Notifications.Api.InternalApi.ListTest do
   use Notifications.DataCase
 
   @org_id Ecto.UUID.generate()
+  @creator_id Ecto.UUID.generate()
 
   describe ".run" do
     test "it gets the resources" do
@@ -14,7 +15,7 @@ defmodule Notifications.Api.InternalApi.ListTest do
 
       Enum.each(1..5, fn index ->
         req = %CreateRequest{
-          metadata: %RequestMeta{org_id: @org_id},
+          metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
           notification: Support.Factories.Notification.internal_api_model("first-#{index}")
         }
 

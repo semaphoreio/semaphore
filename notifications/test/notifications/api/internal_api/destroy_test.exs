@@ -7,6 +7,7 @@ defmodule Notifications.Api.InternalApi.DestroyTest do
   alias InternalApi.Notifications.RequestMeta
 
   @org_id Ecto.UUID.generate()
+  @creator_id Ecto.UUID.generate()
 
   alias Notifications.Models
 
@@ -30,7 +31,7 @@ defmodule Notifications.Api.InternalApi.DestroyTest do
 
       {:ok, _} =
         Stub.create(channel, %CreateRequest{
-          metadata: %RequestMeta{org_id: @org_id},
+          metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
           notification: req
         })
 

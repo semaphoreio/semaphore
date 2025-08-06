@@ -12,9 +12,9 @@ defmodule Notifications.Api.PublicApi.Update do
     Logger.info("#{inspect(org_id)} #{inspect(user_id)} #{name_or_id}")
 
     with {:ok, :authorized} <- Auth.can_manage?(user_id, org_id),
-         {:ok, :valid} <- Validator.validate(req.notification),
+         {:ok, :valid} <- Validator.validate(req.notification, user_id),
          {:ok, n} <- Model.find_by_id_or_name(org_id, name_or_id),
-         {:ok, n} <- update_notification(n, req.notification) do
+         {:ok, n} <- update_notification(n, user_id, req.notification) do
       Serialization.serialize(n)
     else
       {:error, :permission_denied} ->
@@ -44,11 +44,12 @@ defmodule Notifications.Api.PublicApi.Update do
   # notification: existing row from database
   # apiresource: new notification from the API call that needs to be applied
   #
-  def update_notification(notification, apiresource) do
+  def update_notification(notification, creator_id, apiresource) do
     Repo.transaction(fn ->
       changes =
         Model.changeset(notification, %{
           name: apiresource.metadata.name,
+          creator_id: creator_id,
           spec: Notifications.Util.Transforms.encode_spec(apiresource.spec)
         })
 

@@ -13,9 +13,6 @@ config :logger, :console,
 
 import_config "_silent_lager.exs"
 
-config :notifications, rbac_endpoint: "localhost:50052"
-config :notifications, secrethub_endpoint: "localhost:50052" # sobelow_skip ["Config.Secrets"]
-
 config :notifications, ecto_repos: [Notifications.Repo]
 
 import_config "#{config_env()}.exs"
