@@ -45,7 +45,7 @@ defmodule Ppl.Ppls.Beholder.Test do
     Process.exit(pid, :normal)
   end
 
-  test "recovery counter is incremented when piepline is recovered from stuck" do
+  test "recovery counter is incremented when pipeline is recovered from stuck" do
     request = Test.Helpers.schedule_request_factory(:local)
     {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
 
