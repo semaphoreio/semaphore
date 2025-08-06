@@ -1,85 +1,118 @@
+# 📚 Semaphore docs:
+# - Pipeline YAML reference: https://docs.semaphoreci.com/reference/pipeline-yaml
+# - Job parallelism:        https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+# - Cache:                  https://docs.semaphoreci.com/using-semaphore/optimization/cache
+# - Test Reports:           https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+# - Artifacts:              https://docs.semaphoreci.com/using-semaphore/artifacts
+
 version: v1.0
-name: "🏗️ Flutter CI/CD Pipeline"
+name: "💙 Flutter • Web build"
 
 agent:
   machine:
-    type: {{ machine_type }}  # Specify machine type 
-    os_image: {{ os_image }}  # Specify OS image 
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
 
-# Configure early stopping and auto-cancel behavior
 fail_fast:
+  # 🔴 Stop all running jobs on failure (configurable):
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#fail_fast
   stop:
-    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
+    when: branch != 'main'
+
 auto_cancel:
+  # 🔁 Auto-cancel superseded pipelines on new pushes to the same branch:
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#auto_cancel
   running:
-    when: branch != 'main'  # Cancel running pipelines on non-main branches
+    when: branch != 'main'
   queued:
-    when: branch = 'main'   # Cancel queued pipelines on the main branch
+    when: branch != 'main'
 
 global_job_config:
+  env_vars:
+    - name: FLUTTER_HOME
+      value: $HOME/flutter
+    - name: PATH
+      value: '$HOME/.pub-cache/bin:$FLUTTER_HOME/bin:$PATH'
+    - name: JUNIT_FILE
+      value: test-results/junit.xml
   prologue:
     commands:
-      - checkout  # Fetch the latest code from the repository
-      - 'cache restore flutter-packages-$SEMAPHORE_GIT_BRANCH-$(checksum pubspec.yaml),flutter-packages-$(checksum pubspec.yaml),flutter-packages'  # Restore cached Flutter packages
-      - flutter pub get  # Fetch project dependencies
+      - checkout
+      # 💾 Restore dependency cache (keyed by pubspec.lock):
+      # https://docs.semaphoreci.com/using-semaphore/optimization/cache
+      - cache restore "pub-cache-$(checksum pubspec.lock)"
+      - 'git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$FLUTTER_HOME"'
+      - flutter --version
+      - flutter doctor -v
+      - flutter pub get
+      # 🧾 JUnit converter used by Test Reports:
+      # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+      - dart pub global activate junitreport
+  epilogue:
+    always:
+      commands:
+        # 📈 Publish job-level test results to Test Reports UI (safe if file missing):
+        # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+        - '[[ -f "$JUNIT_FILE" ]] && test-results publish "$JUNIT_FILE" || true'
 
 blocks:
-  - name: "📦 Install Dependencies"
+  - name: "🧹 Quality"
+    task:
+      jobs:
+        - name: "🧼 Format"
+          commands:
+            - flutter format --set-exit-if-changed .
+        - name: "🔎 Analyze"
+          commands:
+            - flutter analyze .
     dependencies: []
+
+  - name: "🧪 Tests (parallel)"
     task:
       jobs:
-        - name: "📂 Install and Cache Flutter"
+        - name: "🧪 Flutter tests (sharded)"
+          # ⚡️ Fan out a single job into N parallel jobs:
+          # https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+          parallelism: 4
           commands:
-            - 'cache store flutter-packages-$SEMAPHORE_GIT_BRANCH-$(checksum pubspec.yaml),flutter-packages-$(checksum pubspec.yaml),flutter-packages'  # Cache the Flutter dependencies
-
-  - name: "🔍 Lint"
+            - mkdir -p test-results
+            # Convert 1-based SEMAPHORE_JOB_INDEX -> 0-based shard index for Flutter/Dart
+            - export SHARD_INDEX=$((SEMAPHORE_JOB_INDEX - 1))
+            - echo "Shard $SHARD_INDEX of $SEMAPHORE_JOB_COUNT"
+            # 🧾 Produce JUnit via tojunit for Test Reports:
+            # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+            - flutter test --machine --total-shards $SEMAPHORE_JOB_COUNT --shard-index $SHARD_INDEX | tojunit --output $JUNIT_FILE
     dependencies:
-      - "📦 Install Dependencies"
+      - "🧹 Quality"
+
+  - name: "🛡️ Security (pub deps)"
     task:
       jobs:
-        - name: "🧹 Format Code"
+        - name: "🛡️ Pub outdated (informational)"
           commands:
-            - flutter format --set-exit-if-changed .  # Ensure code formatting matches the project's style
-        - name: "🔎 Analyze Code"
-          commands:
-            - flutter analyze .  # Run static code analysis
-
-  - name: "🧪 Unit and Widget Tests"
+            - dart pub outdated || true
     dependencies:
-      - "📦 Install Dependencies"
+      - "🧪 Tests (parallel)"
+
+  - name: "📦 Build Web (artifact)"
+    dependencies:
+      - "🧪 Tests (parallel)"
+    skip:
+      when: branch != 'main'
     task:
       jobs:
-        - name: "✅ Run Tests"
+        - name: "🌐 flutter build web"
           commands:
-            - flutter test test  # Run unit and widget tests
+            - flutter build web --release
+            # 📦 Store build output as an artifact:
+            # https://docs.semaphoreci.com/using-semaphore/artifacts
+            - artifact push job build/web
 
-  - name: "📱 Run UI Tests"
-    dependencies:
-      - "📦 Install Dependencies"
-    task:
-      prologue:
+after_pipeline:
+  task:
+    jobs:
+      - name: "📊 Merge test reports"
         commands:
-          - device_uuid=$(xcrun simctl create ios-simulator com.apple.CoreSimulator.SimDeviceType.iPhone-11-Pro com.apple.CoreSimulator.SimRuntime.iOS-14-5)  # Create an iOS simulator
-          - xcrun simctl boot $device_uuid  # Boot the iOS simulator
-      jobs:
-        - name: "➕ Add New Item"
-          commands:
-            - flutter test integration_test/add_new_todo_item_test.dart  # Run integration test for adding items
-        - name: "✏️ Edit Existing Item"
-          commands:
-            - flutter test integration_test/edit_existing_item_test.dart  # Run integration test for editing items
-        - name: "🗑️ Delete Item"
-          commands:
-            - flutter test integration_test/delete_existing_item_test.dart  # Run integration test for deleting items
-    run:
-      when: "change_in('/lib', {default_branch: 'main', pipeline_file: 'ignore'})"  # Trigger only when changes are made in the /lib directory
-
-  - name: "📦 Build Artifact"
-    dependencies:
-      - "📦 Install Dependencies"
-    task:
-      jobs:
-        - name: "📱 Generate IPA"
-          commands:
-            - flutter build ios --no-codesign  # Build iOS app without signing
-            - artifact push job build/ios/iphoneos/Runner.app  # Push the app artifact
+          # 🧩 Merge all job reports into a single pipeline report:
+          # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+          - test-results gen-pipeline-report

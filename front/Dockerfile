@@ -45,7 +45,7 @@ RUN mix sentry_recompile && mix compile --warnings-as-errors
 # -- elixir stage
 
 # -- node stage
-FROM node:16-alpine as node
+FROM node:16-alpine AS node
 WORKDIR /assets
 COPY front/assets/package.json front/assets/package-lock.json ./
 RUN npm set progress=false && npm install
@@ -56,7 +56,7 @@ COPY front/assets ./
 FROM elixir AS dev
 WORKDIR /app
 RUN apk update \
-    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg entr
+    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg
 
 COPY --from=elixir /elixir ./
 COPY --from=node /assets ./assets
@@ -64,7 +64,7 @@ WORKDIR /app/assets
 RUN node build.js
 WORKDIR /app
 
-CMD ["sh", "-c", "find lib config | entr -n -r mix phx.server"]
+CMD ["sh", "-c", "elixir --name front@127.0.0.1 --cookie mycookie -S mix phx.server"]
 # -- dev stage
 
 # -- builder stage - build artifacts are created here
