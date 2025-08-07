@@ -424,6 +424,18 @@ defmodule InternalApi.User.DescribeByEmailRequest do
   field(:email, 1, type: :string)
 end
 
+defmodule InternalApi.User.DescribeByEmailRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          email: String.t()
+        }
+  defstruct [:email]
+
+  field :email, 1, type: :string
+end
+
 defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -470,6 +482,26 @@ defmodule InternalApi.User.CreateRequest do
   field(:password, 3, type: :string)
   field(:repository_providers, 4, repeated: true, type: InternalApi.User.RepositoryProvider)
   field(:skip_password_change, 5, type: :bool)
+end
+
+defmodule InternalApi.User.CreateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          email: String.t(),
+          name: String.t(),
+          password: String.t(),
+          repository_providers: [InternalApi.User.RepositoryProvider.t()],
+          skip_password_change: boolean
+        }
+  defstruct [:email, :name, :password, :repository_providers, :skip_password_change]
+
+  field :email, 1, type: :string
+  field :name, 2, type: :string
+  field :password, 3, type: :string
+  field :repository_providers, 4, repeated: true, type: InternalApi.User.RepositoryProvider
+  field :skip_password_change, 5, type: :bool
 end
 
 defmodule InternalApi.User.User do

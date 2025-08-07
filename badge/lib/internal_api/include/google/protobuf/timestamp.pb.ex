@@ -6,6 +6,7 @@ defmodule Google.Protobuf.Timestamp do
           seconds: integer,
           nanos: integer
         }
+
   defstruct [:seconds, :nanos]
 
   field(:seconds, 1, type: :int64)

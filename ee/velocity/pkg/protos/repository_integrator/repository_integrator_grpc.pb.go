@@ -20,11 +20,12 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	RepositoryIntegratorService_GetToken_FullMethodName               = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetToken" // #nosec
-	RepositoryIntegratorService_CheckToken_FullMethodName             = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/CheckToken" // #nosec
+	RepositoryIntegratorService_GetToken_FullMethodName               = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetToken"
+	RepositoryIntegratorService_CheckToken_FullMethodName             = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/CheckToken"
 	RepositoryIntegratorService_PreheatFileCache_FullMethodName       = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/PreheatFileCache"
 	RepositoryIntegratorService_GetFile_FullMethodName                = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetFile"
 	RepositoryIntegratorService_GithubInstallationInfo_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GithubInstallationInfo"
+	RepositoryIntegratorService_InitGithubInstallation_FullMethodName = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/InitGithubInstallation"
 	RepositoryIntegratorService_GetRepositories_FullMethodName        = "/InternalApi.RepositoryIntegrator.RepositoryIntegratorService/GetRepositories"
 )
 
@@ -37,6 +38,7 @@ type RepositoryIntegratorServiceClient interface {
 	PreheatFileCache(ctx context.Context, in *PreheatFileCacheRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	GetFile(ctx context.Context, in *GetFileRequest, opts ...grpc.CallOption) (*GetFileResponse, error)
 	GithubInstallationInfo(ctx context.Context, in *GithubInstallationInfoRequest, opts ...grpc.CallOption) (*GithubInstallationInfoResponse, error)
+	InitGithubInstallation(ctx context.Context, in *InitGithubInstallationRequest, opts ...grpc.CallOption) (*InitGithubInstallationResponse, error)
 	GetRepositories(ctx context.Context, in *GetRepositoriesRequest, opts ...grpc.CallOption) (*GetRepositoriesResponse, error)
 }
 
@@ -93,6 +95,15 @@ func (c *repositoryIntegratorServiceClient) GithubInstallationInfo(ctx context.C
 	return out, nil
 }
 
+func (c *repositoryIntegratorServiceClient) InitGithubInstallation(ctx context.Context, in *InitGithubInstallationRequest, opts ...grpc.CallOption) (*InitGithubInstallationResponse, error) {
+	out := new(InitGithubInstallationResponse)
+	err := c.cc.Invoke(ctx, RepositoryIntegratorService_InitGithubInstallation_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *repositoryIntegratorServiceClient) GetRepositories(ctx context.Context, in *GetRepositoriesRequest, opts ...grpc.CallOption) (*GetRepositoriesResponse, error) {
 	out := new(GetRepositoriesResponse)
 	err := c.cc.Invoke(ctx, RepositoryIntegratorService_GetRepositories_FullMethodName, in, out, opts...)
@@ -111,6 +122,7 @@ type RepositoryIntegratorServiceServer interface {
 	PreheatFileCache(context.Context, *PreheatFileCacheRequest) (*empty.Empty, error)
 	GetFile(context.Context, *GetFileRequest) (*GetFileResponse, error)
 	GithubInstallationInfo(context.Context, *GithubInstallationInfoRequest) (*GithubInstallationInfoResponse, error)
+	InitGithubInstallation(context.Context, *InitGithubInstallationRequest) (*InitGithubInstallationResponse, error)
 	GetRepositories(context.Context, *GetRepositoriesRequest) (*GetRepositoriesResponse, error)
 }
 
@@ -132,6 +144,9 @@ func (UnimplementedRepositoryIntegratorServiceServer) GetFile(context.Context, *
 }
 func (UnimplementedRepositoryIntegratorServiceServer) GithubInstallationInfo(context.Context, *GithubInstallationInfoRequest) (*GithubInstallationInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GithubInstallationInfo not implemented")
+}
+func (UnimplementedRepositoryIntegratorServiceServer) InitGithubInstallation(context.Context, *InitGithubInstallationRequest) (*InitGithubInstallationResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitGithubInstallation not implemented")
 }
 func (UnimplementedRepositoryIntegratorServiceServer) GetRepositories(context.Context, *GetRepositoriesRequest) (*GetRepositoriesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetRepositories not implemented")
@@ -238,6 +253,24 @@ func _RepositoryIntegratorService_GithubInstallationInfo_Handler(srv interface{}
 	return interceptor(ctx, in, info, handler)
 }
 
+func _RepositoryIntegratorService_InitGithubInstallation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(InitGithubInstallationRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(RepositoryIntegratorServiceServer).InitGithubInstallation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: RepositoryIntegratorService_InitGithubInstallation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(RepositoryIntegratorServiceServer).InitGithubInstallation(ctx, req.(*InitGithubInstallationRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _RepositoryIntegratorService_GetRepositories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRepositoriesRequest)
 	if err := dec(in); err != nil {
@@ -282,6 +315,10 @@ var RepositoryIntegratorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GithubInstallationInfo",
 			Handler:    _RepositoryIntegratorService_GithubInstallationInfo_Handler,
+		},
+		{
+			MethodName: "InitGithubInstallation",
+			Handler:    _RepositoryIntegratorService_InitGithubInstallation_Handler,
 		},
 		{
 			MethodName: "GetRepositories",

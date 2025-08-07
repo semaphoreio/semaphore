@@ -105,6 +105,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
+      if workflow.payload.is_draft_pull_request? && !draft_pr_allowed?(workflow.project)
+        logger.info("skip-draft-prs")
+        workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+
+        return
+      end
+
       requestor = workflow.payload.pr_head_repo_owner
 
       # Check if this a member, and if the organization allows member workflows.
@@ -180,6 +187,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     if workflow.payload.pull_request?
       begin
+        if workflow.payload.is_draft_pull_request? && !draft_pr_allowed?(workflow.project)
+          logger.info("skip-draft-prs")
+          workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+
+          return
+        end
+
         state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
         case state
         when :not_found
@@ -293,6 +307,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
       project.allowed_contributors.split(",").include?(requestor) ||
         project_member?(project, requestor)
     end
+  end
+
+  def self.draft_pr_allowed?(project)
+    if project.build_draft_pr
+      return true
+    end
+
+    false
   end
 
   def self.project_member?(project, github_username)

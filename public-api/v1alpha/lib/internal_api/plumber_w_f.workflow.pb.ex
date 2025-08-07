@@ -608,32 +608,6 @@ defmodule InternalApi.PlumberWF.DescribeManyResponse do
   field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
 end
 
-defmodule InternalApi.PlumberWF.DescribeManyRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          wf_ids: [String.t()]
-        }
-  defstruct [:wf_ids]
-
-  field(:wf_ids, 1, repeated: true, type: :string)
-end
-
-defmodule InternalApi.PlumberWF.DescribeManyResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          status: InternalApi.Status.t(),
-          workflows: [InternalApi.PlumberWF.WorkflowDetails.t()]
-        }
-  defstruct [:status, :workflows]
-
-  field(:status, 1, type: InternalApi.Status)
-  field(:workflows, 2, repeated: true, type: InternalApi.PlumberWF.WorkflowDetails)
-end
-
 defmodule InternalApi.PlumberWF.TerminateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3

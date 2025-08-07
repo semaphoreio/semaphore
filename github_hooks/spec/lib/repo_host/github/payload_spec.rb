@@ -23,6 +23,9 @@ RSpec.describe RepoHost::Github::Payload, :vcr => vcr_options do
   let(:payload_for_opened_pull_request) do
     RepoHost::Github::Payload.new(RepoHost::Github::Responses::Payload.post_receive_hook_pull_request)
   end
+  let(:payload_for_opened_draft_pull_request) do
+    RepoHost::Github::Payload.new(RepoHost::Github::Responses::Payload.post_receive_draft_hook_pull_request)
+  end
   let(:payload_for_issue_comment) do
     RepoHost::Github::Payload.new(RepoHost::Github::Responses::Payload.post_receive_hook_issue_comment)
   end
@@ -109,6 +112,20 @@ RSpec.describe RepoHost::Github::Payload, :vcr => vcr_options do
     context "payload does not have pull request info" do
       it "returns false" do
         expect(payload.is_pull_request?).to be_falsey
+      end
+    end
+  end
+
+  describe ".is_draft_pull_request?" do
+    context "payload has draft pull request info" do
+      it "returns true" do
+        expect(payload_for_opened_draft_pull_request.is_pull_request?).to be_truthy
+      end
+    end
+
+    context "payload does not have draft pull request info" do
+      it "returns false" do
+        expect(payload.is_draft_pull_request?).to be_falsey
       end
     end
   end
