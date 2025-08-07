@@ -2795,6 +2795,8 @@ img { max-width: 100%; }
 .b--indigo { border-color: #1570ff; }
 .b--dark-indigo { border-color: #00359f; }
 .b--orange { border-color: #fd7e14; }
+.b--yellow { border-color: #FBC335; }
+.b--blue { border-color: #2196F3; }
 .b--purple { border-color: #8658d6; }
 .b--dark-purple { border-color: #5122a5; }
 .b--dark-brown { border-color: #974510; }
@@ -4585,6 +4587,7 @@ code, .code, pre {
 .bg-washed-purple {   background-color: #f3ecff; }
 /* Yellows */
 .yellow               { color: #FBC335; }
+.gold                 { color: #FBC335; }
 .lightest-yellow      { color: #fff3bf; }
 .washed-yellow        { color: #fffae4; }
 .bg-yellow            { background-color: #FBC335; }

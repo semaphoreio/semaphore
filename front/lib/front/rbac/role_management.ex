@@ -180,7 +180,7 @@ defmodule Front.RBAC.RoleManagement do
     If the 'project_id' parameter is not passed, it is interpreted as the role being assigned
     within the organization scope.
   """
-  @spec assign_role(id(), id(), id(), id(), id()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec assign_role(id(), id(), id(), id(), String.t()) :: {:ok, String.t()} | {:error, any}
   def assign_role(requester_id, org_id, subject_id, role_id, project_id \\ "") do
     Watchman.benchmark("assign_role.duration", fn ->
       Logger.info(
@@ -211,7 +211,7 @@ defmodule Front.RBAC.RoleManagement do
     Since only one role can be manually assigned, there is no need to specify which role is being
     retracted
   """
-  @spec retract_role(id(), id(), id(), id()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec retract_role(id(), id(), id(), String.t()) :: {:ok, String.t()} | {:error, any}
   def retract_role(requester_id, org_id, subject_id, project_id \\ "") do
     Watchman.benchmark("remove_member.duration", fn ->
       Logger.info(

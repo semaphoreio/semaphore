@@ -114,20 +114,36 @@ defmodule FrontWeb.GroupsController do
         )
       end)
 
+    fetch_org_service_accounts =
+      Async.run(fn ->
+        Members.list_org_members(org_id,
+          username: username,
+          page_size: @max_people_per_org,
+          member_type: "service_account"
+        )
+      end)
+
     if group_id != "nil" do
       fetch_group_members = Async.run(fn -> Groups.fetch_group_members(org_id, group_id) end)
 
       {:ok, {:ok, group_members}} = Async.await(fetch_group_members)
       {:ok, {:ok, {org_members, _total_pages}}} = Async.await(fetch_org_members)
 
+      {:ok, {:ok, {service_account_members, _total_pages}}} =
+        Async.await(fetch_org_service_accounts)
+
       non_members =
-        org_members
+        (org_members ++ service_account_members)
         |> Enum.filter(fn member -> member.id not in Enum.map(group_members, & &1.id) end)
 
       conn |> json(non_members |> Enum.take(@return_non_members))
     else
       {:ok, {:ok, {org_members, _total_pages}}} = Async.await(fetch_org_members)
-      conn |> json(org_members |> Enum.take(@return_non_members))
+
+      {:ok, {:ok, {service_account_members, _total_pages}}} =
+        Async.await(fetch_org_service_accounts)
+
+      conn |> json((org_members ++ service_account_members) |> Enum.take(@return_non_members))
     end
   end
 
