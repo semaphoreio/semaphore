@@ -70,8 +70,19 @@
         </div>
         <%= if @project.integration_type in [:GITHUB_APP, :GITHUB_OAUTH_TOKEN] do %>
           <div class="flex items-center">
-            <%= checkbox f, :build_prs, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= checkbox f, :build_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "draftPRSwitch"]  %>
             <%= label f, :build_prs, "Pull requests", class: "ml2" %>
+          </div>
+          <div id="draft-pull-request-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
+            <p class="f5 b mb1">Build draft pull requests?</p>
+            <div class="flex items-center">
+              <%= radio_button f, :build_draft_prs, true, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :build_draft_prs, "Yes", class: "ml2", for: "project_build_draft_prs_true" %>
+            </div>
+            <div class="flex items-center">
+              <%= radio_button f, :build_draft_prs, false, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :build_draft_prs, "No", class: "ml2", for: "project_build_draft_prs_false" %>
+            </div>
           </div>
           <div class="flex items-center">
             <%= checkbox f, :build_forked_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "forkedPRSwitch"] %>
