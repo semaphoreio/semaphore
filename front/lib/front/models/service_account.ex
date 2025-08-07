@@ -51,10 +51,10 @@ defmodule Front.Models.ServiceAccount do
              member_type: "service_account"
            ),
          member_ids <- Enum.map(members, & &1.id),
-         {:ok, response} <-
+         {:ok, service_accounts} <-
            Front.ServiceAccount.describe_many(member_ids),
          service_accounts <-
-           assign_service_accounts_to_members(members, response.service_accounts) do
+           assign_service_accounts_to_members(members, service_accounts) do
       {:ok, {service_accounts, total_pages}}
     else
       error ->
