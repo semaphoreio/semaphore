@@ -322,7 +322,8 @@ defmodule Support.Factories do
             owner: "ryanmcdermott",
             run_on: [
               InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:TAGS),
-              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS)
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS),
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:DRAFT_PULL_REQUESTS)
             ],
             forked_pull_requests:
               InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
