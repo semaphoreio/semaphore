@@ -58,8 +58,8 @@ defmodule Front.Clients.ServiceAccount do
     }
     |> grpc_call(:describe)
     |> case do
-      {:ok, service_account} ->
-        {:ok, service_account}
+      {:ok, response} ->
+        {:ok, response.service_account}
 
       err ->
         Logger.error("Error describing service account #{service_account_id}: #{inspect(err)}")
@@ -74,8 +74,8 @@ defmodule Front.Clients.ServiceAccount do
     }
     |> grpc_call(:describe_many)
     |> case do
-      {:ok, service_accounts} ->
-        {:ok, service_accounts}
+      {:ok, response} ->
+        {:ok, response.service_accounts}
 
       err ->
         Logger.error("Error describing multiple service accounts: #{inspect(err)}")
@@ -92,8 +92,8 @@ defmodule Front.Clients.ServiceAccount do
     }
     |> grpc_call(:update)
     |> case do
-      {:ok, service_account} ->
-        {:ok, service_account}
+      {:ok, response} ->
+        {:ok, response.service_account}
 
       err ->
         Logger.error("Error updating service account #{service_account_id}: #{inspect(err)}")
