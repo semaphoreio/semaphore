@@ -56,7 +56,7 @@ COPY front/assets ./
 FROM elixir AS dev
 WORKDIR /app
 RUN apk update \
-    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg entr
+    && apk add --no-cache chromium-chromedriver inotify-tools bash gnupg
 
 COPY --from=elixir /elixir ./
 COPY --from=node /assets ./assets
@@ -64,7 +64,7 @@ WORKDIR /app/assets
 RUN node build.js
 WORKDIR /app
 
-CMD ["sh", "-c", "find lib config | entr -n -r mix phx.server"]
+CMD ["sh", "-c", "elixir --name front@127.0.0.1 --cookie mycookie -S mix phx.server"]
 # -- dev stage
 
 # -- builder stage - build artifacts are created here

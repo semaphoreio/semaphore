@@ -26,6 +26,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field :ROLE_BINDING_SOURCE_GITLAB, 4
   field :ROLE_BINDING_SOURCE_SCIM, 5
   field :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6
+  field :ROLE_BINDING_SOURCE_SAML_JIT, 7
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do
@@ -216,6 +217,20 @@ defmodule InternalApi.RBAC.ListMembersResponse do
   field :total_pages, 2, type: :int32, json_name: "totalPages"
 end
 
+defmodule InternalApi.RBAC.CountMembersRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+end
+
+defmodule InternalApi.RBAC.CountMembersResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :members, 1, type: :int32
+end
+
 defmodule InternalApi.RBAC.SubjectRoleBinding do
   @moduledoc false
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
@@ -271,6 +286,18 @@ defmodule InternalApi.RBAC.Subject do
   field :subject_type, 1, type: InternalApi.RBAC.SubjectType, json_name: "subjectType", enum: true
   field :subject_id, 2, type: :string, json_name: "subjectId"
   field :display_name, 3, type: :string, json_name: "displayName"
+end
+
+defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
+
+  field :org_id, 1, type: :string, json_name: "orgId"
+end
+
+defmodule InternalApi.RBAC.RefreshCollaboratorsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.10.0"
 end
 
 defmodule InternalApi.RBAC.Role do
@@ -334,6 +361,8 @@ defmodule InternalApi.RBAC.RBAC.Service do
 
   rpc :ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse
 
+  rpc :CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse
+
   rpc :ListAccessibleOrgs,
       InternalApi.RBAC.ListAccessibleOrgsRequest,
       InternalApi.RBAC.ListAccessibleOrgsResponse
@@ -341,6 +370,10 @@ defmodule InternalApi.RBAC.RBAC.Service do
   rpc :ListAccessibleProjects,
       InternalApi.RBAC.ListAccessibleProjectsRequest,
       InternalApi.RBAC.ListAccessibleProjectsResponse
+
+  rpc :RefreshCollaborators,
+      InternalApi.RBAC.RefreshCollaboratorsRequest,
+      InternalApi.RBAC.RefreshCollaboratorsResponse
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do
