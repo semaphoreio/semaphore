@@ -1,7 +1,7 @@
 source "https://rubygems.org"
 git_source(:github) { |repo_name| "https://github.com/#{repo_name}.git" }
 
-gem "bundler", ">= 1.8.4"
+gem "bundler", ">= 1.8.5"
 
 gem "pg", "~> 1.1"
 gem "rails", "~> 8.0.0"
