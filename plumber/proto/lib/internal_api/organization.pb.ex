@@ -537,6 +537,18 @@ defmodule InternalApi.Organization.DestroyRequest do
   field :org_id, 1, type: :string
 end
 
+defmodule InternalApi.Organization.RestoreRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field :org_id, 1, type: :string
+end
+
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -1066,6 +1078,20 @@ defmodule InternalApi.Organization.OrganizationDailyUpdate do
   field :owner_email, 9, type: :string
   field :owner_owned_orgs_count, 10, type: :int32
   field :timestamp, 11, type: Google.Protobuf.Timestamp
+end
+
+defmodule InternalApi.Organization.OrganizationRestored do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          timestamp: Google.Protobuf.Timestamp.t()
+        }
+  defstruct [:org_id, :timestamp]
+
+  field :org_id, 1, type: :string
+  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Organization.OrganizationService.Service do
