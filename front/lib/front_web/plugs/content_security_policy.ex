@@ -27,6 +27,8 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
   end
 
   defp options do
+    base_domain = System.get_env("BASE_DOMAIN")
+
     [
       nonces_for: [:script_src],
       report_only: Application.get_env(:front, :environment) in [:dev, :test],
@@ -34,12 +36,15 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         base_uri: ~w('self'),
         connect_src: connect_src(),
         default_src: ~w('none'),
-        form_action: ~w('self' semaphoreci.zendesk.com),
+        form_action:
+          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com) ++
+            ["*.#{base_domain}"],
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
         font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
         img_src:
-          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com docs.semaphoreci.com),
+          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com) ++
+            ["docs.#{base_domain}"],
         script_src:
           ~w(https: 'self' 'strict-dynamic' *.userpilot.io static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net),
         style_src:
