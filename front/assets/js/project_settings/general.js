@@ -6,17 +6,18 @@ export var GeneralSettings = {
   init: function() {
     this.settings = $("#build-settings");
 
-    this.registerIntegrationTypeSwitchHandler()
-    this.registerBuildPauseHandler()
-    this.registerBranchSwitchHandler()
-    this.registerBranchWhitelistSwitchHandler()
-    this.registerTagSwitchHandler()
-    this.registerTagWhitelistSwitchHandler()
-    this.registerForkedPRSwitchHandler()
-    this.registerSecretsSwitchHandler()
-    this.registerContributorsSwitchHandler()
-    this.registerVisibilitySwitchHandler()
-    this.registerOwnerFilter()
+    this.registerIntegrationTypeSwitchHandler();
+    this.registerBuildPauseHandler();
+    this.registerBranchSwitchHandler();
+    this.registerBranchWhitelistSwitchHandler();
+    this.registerTagSwitchHandler();
+    this.registerTagWhitelistSwitchHandler();
+    this.registerForkedPRSwitchHandler();
+    this.registerDraftPRSwitchHandler();
+    this.registerSecretsSwitchHandler();
+    this.registerContributorsSwitchHandler();
+    this.registerVisibilitySwitchHandler();
+    this.registerOwnerFilter();
   },
 
   registerOwnerFilter() {
@@ -138,6 +139,22 @@ export var GeneralSettings = {
         $("#pull-request-options").show();
       } else {
         $("#pull-request-options").hide();
+      }
+    })
+  },
+
+  registerDraftPRSwitchHandler() {
+    if($('input[name="project[build_prs]"][checked]').length == 0) {
+      $("#draft-pull-request-options").hide();
+    } else {
+      $("#draft-pull-request-options").show();
+    }
+
+    this.settings.on("click", "[data-action=draftPRSwitch]", (e) => {
+      if($(e.currentTarget).prop("checked")) {
+        $("#draft-pull-request-options").show();
+      } else {
+        $("#draft-pull-request-options").hide();
       }
     })
   },

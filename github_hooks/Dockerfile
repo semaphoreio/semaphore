@@ -8,7 +8,7 @@ ENV RAILS_ENV=$BUILD_ENV
 ARG APP_NAME
 ENV APP_NAME=${APP_NAME}
 
-RUN echo "Build of $APP_NAME for $RAILS_ENV environment started"
+RUN echo "Build of $APP_NAME for $RAILS_ENV environment starteds"
 
 RUN apt-get update && apt-get install --no-install-recommends -y -qq \
   libpq-dev \
@@ -62,11 +62,11 @@ WORKDIR /app
 
 COPY Gemfile Gemfile.lock ./
 RUN bundle config set --local deployment true && \
-    bundle config set --local without 'development test' && \
-    bundle config set --local clean 'true' && \
-    bundle config set --local no-cache 'true' && \
-    bundle install --jobs=${BUNDLE_JOBS} && \
-    rm -rf $BUNDLE_PATH/ruby/3.0.0/cache/*
+  bundle config set --local without 'development test' && \
+  bundle config set --local clean 'true' && \
+  bundle config set --local no-cache 'true' && \
+  bundle install --jobs=${BUNDLE_JOBS} && \
+  rm -rf $BUNDLE_PATH/ruby/3.0.0/cache/*
 
 FROM base as runner
 
