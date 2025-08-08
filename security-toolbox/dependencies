@@ -29,6 +29,10 @@ OptionParser.new do |parser|
   parser.on("-d", "--dependencies", "Install dependencies") do
     args[:install_dependencies] = true
   end
+
+  parser.on("-o", "--output-dir OUTPUT_DIR", "Output directory for scan results") do |output_dir|
+    args[:output_dir] = output_dir
+  end
 end.parse!
 
 if !args[:language]
