@@ -468,7 +468,7 @@ DEPENDENCIES
   lograge
   net-http
   net-imap (~> 0.5.7)
-  nokogiri (~> 1.18.8)
+  nokogiri (~> 1.18.9)
   octokit
   pg (~> 1.1)
   pry-byebug (~> 3.10, >= 3.10.1)

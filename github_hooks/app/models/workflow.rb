@@ -9,6 +9,7 @@ class Workflow < ActiveRecord::Base
   STATE_DELETING_BRANCH = "deleting_branch"
   STATE_SKIP_PR = "skip_pr"
   STATE_SKIP_FORKED_PR = "skip_forked_pr"
+  STATE_SKIP_DRAFT_PR = "skip_draft_pr"
   STATE_SKIP_FILTERED_CONTRIBUTOR = "filtered_contributor"
   STATE_SKIP_TAG = "skip_tag"
   STATE_WHITELIST_TAG = "whitelist_tag"

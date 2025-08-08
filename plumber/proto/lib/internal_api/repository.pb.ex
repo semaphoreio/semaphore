@@ -902,6 +902,54 @@ defmodule InternalApi.Repository.VerifyWebhookSignatureResponse do
   field :valid, 1, type: :bool
 end
 
+defmodule InternalApi.Repository.ClearExternalDataRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository_id: String.t()
+        }
+  defstruct [:repository_id]
+
+  field :repository_id, 1, type: :string
+end
+
+defmodule InternalApi.Repository.ClearExternalDataResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository: InternalApi.Repository.Repository.t()
+        }
+  defstruct [:repository]
+
+  field :repository, 1, type: InternalApi.Repository.Repository
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          repository_id: String.t()
+        }
+  defstruct [:repository_id]
+
+  field :repository_id, 1, type: :string
+end
+
+defmodule InternalApi.Repository.RegenerateWebhookSecretResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          secret: String.t()
+        }
+  defstruct [:secret]
+
+  field :secret, 1, type: :string
+end
+
 defmodule InternalApi.Repository.RepositoryService.Service do
   @moduledoc false
   use GRPC.Service, name: "InternalApi.Repository.RepositoryService"
