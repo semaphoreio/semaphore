@@ -26,6 +26,7 @@ gem "retryable"
 gem "sidekiq", "< 8"
 gem "sidekiq-scheduler"
 gem "puma"
+gem "thor", ">= 1.4.0"
 gem "xmlrpc" # Prior to ruby 2.4 this was bundled with ruby. Required by active-support.
 gem "jwt"
 
