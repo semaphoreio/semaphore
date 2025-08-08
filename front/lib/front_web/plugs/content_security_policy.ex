@@ -37,7 +37,8 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         connect_src: connect_src(),
         default_src: ~w('none'),
         form_action:
-          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com) ++ ["id.#{base_domain}", "me.#{base_domain}"],
+          ~w('self' semaphoreci.zendesk.com bitbucket.org github.com gitlab.com) ++
+            ["*.#{base_domain}"],
         media_src: ~w(beacon-v2.helpscout.net),
         child_src: ~w('self'),
         font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
