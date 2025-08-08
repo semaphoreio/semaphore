@@ -15,6 +15,10 @@ module RepoHost::Git
     end
     alias is_pull_request? pull_request?
 
+    def is_draft_pull_request? # rubocop:disable Naming/PredicateName
+      false
+    end
+
     def pr_head_repo_name
       nil
     end
