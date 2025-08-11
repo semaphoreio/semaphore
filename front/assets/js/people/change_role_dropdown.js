@@ -67,7 +67,8 @@ export var ChangeRoleDropdown = {
     const body = {
       user_id: roleBtn.attributes.user_id.value,
       project_id: InjectedDataByBackend.ProjectId,
-      role_id: roleBtn.attributes.role_id.value
+      role_id: roleBtn.attributes.role_id.value,
+      member_type: roleBtn.attributes.member_type.value
     }
 
     toggleSpinner()
