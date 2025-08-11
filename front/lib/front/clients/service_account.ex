@@ -106,7 +106,7 @@ defmodule Front.Clients.ServiceAccount do
     %DestroyRequest{
       service_account_id: service_account_id
     }
-    |> grpc_call(:delete)
+    |> grpc_call(:destroy)
     |> case do
       {:ok, _result} ->
         :ok
