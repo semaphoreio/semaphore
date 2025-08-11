@@ -195,6 +195,13 @@ defmodule Front.Models.ServiceAccount do
   end
 
   defp assign_role(org_id, user_id, service_account, role_id) do
-    RoleManagement.assign_role(user_id, org_id, service_account.id, role_id)
+    RoleManagement.assign_role(
+      user_id,
+      org_id,
+      service_account.id,
+      role_id,
+      "",
+      "service_account"
+    )
   end
 end

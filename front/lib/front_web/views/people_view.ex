@@ -97,7 +97,7 @@ defmodule FrontWeb.PeopleView do
     |> Enum.filter(& &1)
   end
 
-  def edit_person_config(conn, member, roles, permissions) do
+  def edit_person_config(conn, member, member_type, roles, permissions) do
     filtered_roles =
       roles
       |> Enum.filter(fn
@@ -111,6 +111,7 @@ defmodule FrontWeb.PeopleView do
         avatar: member.avatar,
         name: member.name,
         email: member.email,
+        member_type: member_type,
         roles: build_roles(member, filtered_roles),
         reset_password_url:
           url(:post, people_path(conn, :reset_password, member.id, format: "json")),
@@ -276,7 +277,7 @@ defmodule FrontWeb.PeopleView do
     end)
   end
 
-  def construct_role_dropdown_option(role, member) do
+  def construct_role_dropdown_option(role, member, member_type) do
     role_selected? = role.name in Enum.map(member.subject_role_bindings, & &1.role.name)
 
     binding_source =
@@ -289,7 +290,7 @@ defmodule FrontWeb.PeopleView do
       end
 
     """
-    <div role_id="#{role.id}" user_id="#{member.id}" name="role_button" class="#{extrapolate_role_div_class(role_selected?, binding_source)}", style="#{extrapolate_role_div_style(binding_source)}">
+    <div role_id="#{role.id}" user_id="#{member.id}" member_type="#{member_type}" name="role_button" class="#{extrapolate_role_div_class(role_selected?, binding_source)}", style="#{extrapolate_role_div_style(binding_source)}">
       <div style="flex-direction: column; display: flex;">
         #{if role_selected?,
       do: '<span class="material-symbols-outlined mr1">done</span>#{git_icon(binding_source)}',

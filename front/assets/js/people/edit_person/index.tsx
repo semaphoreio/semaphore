@@ -87,7 +87,7 @@ export const Button = () => {
 
     return user.assignRoleUrl
       .call({
-        body: { user_id: user.id, role_id: selectedRole.id },
+        body: { user_id: user.id, role_id: selectedRole.id, member_type: user.memberType },
       })
       .then((resp) => {
         if (resp.error) {
@@ -413,6 +413,8 @@ class User {
   id: string;
   name: string;
   email: string;
+  memberType: string;
+
   roles: UserRole[] = [];
   changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string, }>;
   assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string, }>;
@@ -426,6 +428,7 @@ class User {
     user.id = json.id as string;
     user.name = json.name as string;
     user.email = json.email as string;
+    user.memberType = json.member_type as string;
     user.roles = json.roles.map((role: any) => {
       return new UserRole({
         id: role.id,
