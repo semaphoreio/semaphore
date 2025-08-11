@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.22
+ARG GO_VERSION=1.23
 ARG UBUNTU_VERSION=3.17.7
 ARG ALPINE_VERSION=3.20.3
 ARG BUILDER_IMAGE="golang:${GO_VERSION}"
@@ -12,7 +12,7 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME started"
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates unzip curl libc-bin libc6 \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /app
 COPY pkg pkg
