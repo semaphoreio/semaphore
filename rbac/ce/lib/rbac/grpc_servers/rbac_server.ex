@@ -56,10 +56,11 @@ defmodule Rbac.GrpcServers.RbacServer do
       role_id = role_assignment.role_id
       project_id = role_assignment.project_id
       subject_id = role_assignment.subject.subject_id
+      subject_type = role_assignment.subject.subject_type
 
       cond do
         valid_uuid?(role_id) ->
-          handle_role_assignment(org_id, subject_id, role_id)
+          handle_role_assignment(org_id, subject_id, role_id, subject_type)
 
         valid_uuid?(project_id) ->
           handle_project_assignment(subject_id, org_id, project_id)
@@ -467,14 +468,15 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
   end
 
-  defp handle_role_assignment(org_id, subject_id, role_id) do
+  defp handle_role_assignment(org_id, subject_id, role_id, subject_type) do
     role = Rbac.Roles.find_by_id(role_id)
 
     if is_nil(role) do
       grpc_error!(:not_found, "Role with id #{role_id} not found")
     end
 
-    RoleAssignment.create_or_update(%{org_id: org_id, user_id: subject_id, role_id: role_id})
+    subject_type_string = convert_subject_type_to_string(subject_type)
+    RoleAssignment.create_or_update(%{org_id: org_id, user_id: subject_id, role_id: role_id, subject_type: subject_type_string})
   end
 
   defp handle_delete_role_assignment(org_id, subject_id) do
@@ -520,5 +522,15 @@ defmodule Rbac.GrpcServers.RbacServer do
 
     validate_uuid!(role_assignment.org_id)
     validate_uuid!(role_assignment.subject.subject_id)
+  end
+
+  defp convert_subject_type_to_string(subject_type) do
+    case subject_type do
+      :USER -> "user"
+      :SERVICE_ACCOUNT -> "service_account"
+      :GROUP -> "group"
+      nil -> "user" # Default fallback
+      _ -> "user" # Default fallback for unknown values
+    end
   end
 end
