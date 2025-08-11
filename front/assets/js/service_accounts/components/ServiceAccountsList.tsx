@@ -42,7 +42,7 @@ export const ServiceAccountsList = ({
         <div className="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top">
           <div>
             <div className="flex items-center">
-              <span className="material-symbols-outlined pr2">key</span>
+              <span className="material-symbols-outlined pr2">smart_toy</span>
               <div className="b">Service Accounts</div>
             </div>
           </div>
@@ -164,7 +164,7 @@ export const ServiceAccountsList = ({
           >
             {loading ? (
               <span className="flex items-center">
-                <toolbox.Asset path="images/spinner.svg" className="w1 h1 mr2"/>
+                <toolbox.Asset path="images/spinner.svg" className="mr2"/>
                 Loading...
               </span>
             ) : (
