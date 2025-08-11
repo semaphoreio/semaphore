@@ -139,7 +139,7 @@ export const EditServiceAccount = ({
           >
             {loading ? (
               <span className="flex items-center">
-                <toolbox.Asset path="images/spinner.svg" className="w1 h1 mr2"/>
+                <toolbox.Asset path="images/spinner.svg" className="mr2"/>
                 Saving...
               </span>
             ) : (
