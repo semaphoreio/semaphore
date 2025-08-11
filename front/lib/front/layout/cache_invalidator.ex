@@ -314,7 +314,7 @@ defmodule Front.Layout.CacheInvalidator do
   end
 
   def invalidate_billing(org_id) do
-    if not Front.on_prem?() do
+    if Front.saas?() do
       Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: org_id})
       Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: org_id})
       Front.Clients.Billing.invalidate_cache(:credits_usage, %{org_id: org_id})

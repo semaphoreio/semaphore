@@ -28,7 +28,7 @@
     <%= render "members/members_list.html", org_id: @org_id, groups: @groups, members: @members, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
     <%= render "_pagination.html", pagination: @pagination%>
 
-    <%= if not Front.on_prem?() do %>
+    <%= if Front.saas?() do %>
     <div id="invitees">
       <%= @invitations |> Enum.map(fn (invitee) -> %>
         <%= render "members/_invitee.html", invitee: invitee, conn: @conn %>
