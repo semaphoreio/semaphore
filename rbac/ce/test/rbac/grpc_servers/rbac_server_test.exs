@@ -66,6 +66,93 @@ defmodule Rbac.GrpcServers.RbacServerTest do
       setup_assign_and_retract(channel)
     end
 
+    @tag :subject_type_test
+    test "Should assign a role to a USER subject and save correct subject_type", %{
+      channel: channel,
+      valid_requester: valid_requester,
+      non_member_user: non_member_user,
+      org_id: org_id
+    } do
+      request = %InternalApi.RBAC.AssignRoleRequest{
+        requester_id: valid_requester.user_id,
+        role_assignment: %InternalApi.RBAC.RoleAssignment{
+          org_id: org_id,
+          role_id: Rbac.Roles.Member.role().id,
+          subject: %InternalApi.RBAC.Subject{
+            subject_id: non_member_user.user_id,
+            subject_type: :USER
+          }
+        }
+      }
+
+      {:ok, response} = Stub.assign_role(channel, request)
+      assert response == %InternalApi.RBAC.AssignRoleResponse{}
+
+      role_assignment =
+        Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
+
+      assert role_assignment.role_id == Rbac.Roles.Member.role().id
+      assert role_assignment.subject_type == "user"
+    end
+
+    @tag :subject_type_test
+    test "Should assign a role to a SERVICE_ACCOUNT subject and save correct subject_type", %{
+      channel: channel,
+      valid_requester: valid_requester,
+      non_member_user: non_member_user,
+      org_id: org_id
+    } do
+      request = %InternalApi.RBAC.AssignRoleRequest{
+        requester_id: valid_requester.user_id,
+        role_assignment: %InternalApi.RBAC.RoleAssignment{
+          org_id: org_id,
+          role_id: Rbac.Roles.Admin.role().id,
+          subject: %InternalApi.RBAC.Subject{
+            subject_id: non_member_user.user_id,
+            subject_type: :SERVICE_ACCOUNT
+          }
+        }
+      }
+
+      {:ok, response} = Stub.assign_role(channel, request)
+      assert response == %InternalApi.RBAC.AssignRoleResponse{}
+
+      role_assignment =
+        Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
+
+      assert role_assignment.role_id == Rbac.Roles.Admin.role().id
+      assert role_assignment.subject_type == "service_account"
+    end
+
+    @tag :subject_type_test
+    test "Should default to 'user' subject_type when subject_type is not provided", %{
+      channel: channel,
+      valid_requester: valid_requester,
+      non_member_user: non_member_user,
+      org_id: org_id
+    } do
+      request = %InternalApi.RBAC.AssignRoleRequest{
+        requester_id: valid_requester.user_id,
+        role_assignment: %InternalApi.RBAC.RoleAssignment{
+          org_id: org_id,
+          role_id: Rbac.Roles.Owner.role().id,
+          subject: %InternalApi.RBAC.Subject{
+            subject_id: non_member_user.user_id
+            # subject_type not provided
+          }
+        }
+      }
+
+      {:ok, response} = Stub.assign_role(channel, request)
+      assert response == %InternalApi.RBAC.AssignRoleResponse{}
+
+      role_assignment =
+        Rbac.Models.RoleAssignment.get_by_user_and_org_id(non_member_user.user_id, org_id)
+
+      assert role_assignment.role_id == Rbac.Roles.Owner.role().id
+      assert role_assignment.subject_type == "user"
+    end
+
     test "A valid requester user should assign a member role to a subject", %{
       channel: channel,
       valid_requester: valid_requester,
