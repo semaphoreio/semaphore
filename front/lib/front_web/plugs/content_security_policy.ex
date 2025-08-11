@@ -43,7 +43,7 @@ defmodule FrontWeb.Plug.ContentSecurityPolicy do
         child_src: ~w('self'),
         font_src: ~w('self' beacon-v2.helpscout.net fonts.gstatic.com cdn.jsdelivr.net),
         img_src:
-          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com) ++
+          ~w(data: 'self' *.userpilot.io static.zdassets.com *.zendesk.com gravatar.com *.gravatar.com *.wp.com *.githubusercontent.com d12wqas9hcki3z.cloudfront.net bitbucket.org github.com gitlab.com beacon-v2.helpscout.net d33v4339jhl8k0.cloudfront.net chatapi-prod.s3.amazonaws.com/ bitbucket-assetroot.s3.amazonaws.com ui-avatars.com *.atl-paas.net *.sitesearch360.com storage.googleapis.com) ++
             ["docs.#{base_domain}"],
         script_src:
           ~w(https: 'self' 'strict-dynamic' *.userpilot.io static.zdassets.com beacon-v2.helpscout.net d12wqas9hcki3z.cloudfront.net d33v4339jhl8k0.cloudfront.net *.sitesearch360.com www.googletagmanager.com cdn.jsdeliver.net),
