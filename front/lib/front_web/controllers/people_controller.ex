@@ -139,6 +139,7 @@ defmodule FrontWeb.PeopleController do
       user_id = params["user_id"]
       role_id = params["role_id"]
       requester_id = conn.assigns.user_id
+      member_type = params["member_type"] || "user"
 
       conn =
         conn
@@ -148,7 +149,14 @@ defmodule FrontWeb.PeopleController do
       if conn.halted() do
         {:error, :render_404}
       else
-        case RoleManagement.assign_role(requester_id, org_id, user_id, role_id, project_id) do
+        case RoleManagement.assign_role(
+               requester_id,
+               org_id,
+               user_id,
+               role_id,
+               project_id,
+               member_type
+             ) do
           {:ok, _} ->
             log_assign_role(conn, user_id, org_id, role_id, project_id)
 
