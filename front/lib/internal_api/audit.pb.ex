@@ -415,6 +415,7 @@ defmodule InternalApi.Audit.Event.Resource do
   field(:Okta, 17)
   field(:FlakyTests, 18)
   field(:RBACRole, 19)
+  field(:ServiceAccount, 20)
 end
 
 defmodule InternalApi.Audit.Event.Operation do

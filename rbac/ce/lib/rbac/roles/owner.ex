@@ -27,6 +27,8 @@ defmodule Rbac.Roles.Owner do
         "organization.secrets.view",
         "organization.self_hosted_agents.manage",
         "organization.self_hosted_agents.view",
+        "organization.service_accounts.view",
+        "organization.service_accounts.manage",
         "organization.view",
         "project.access.manage",
         "project.access.view",

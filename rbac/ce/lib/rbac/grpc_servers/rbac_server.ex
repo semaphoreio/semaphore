@@ -298,6 +298,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   end
 
   defp build_search_params(request, page) do
+    Logger.info("build_search_params: #{inspect(request)}")
+
     params =
       request
       |> Map.from_struct()
@@ -342,6 +344,9 @@ defmodule Rbac.GrpcServers.RbacServer do
       :member_has_role ->
         if valid_uuid?(value), do: Keyword.put(acc, :role_id, value), else: acc
 
+      :member_type ->
+        Keyword.put(acc, :subject_type, value |> Atom.to_string() |> String.downcase())
+
       _ ->
         acc
     end
@@ -376,10 +381,14 @@ defmodule Rbac.GrpcServers.RbacServer do
 
   defp build_members_response(role_assignments, display_names_by_id) do
     Enum.map(role_assignments, fn assignment ->
+      # Determine subject type - for CE, we support USER and SERVICE_ACCOUNT
+      # We need to determine if this user_id is a service account
+      subject_type = assignment.subject_type |> String.upcase() |> String.to_existing_atom()
+
       %RBAC.ListMembersResponse.Member{
         subject: %RBAC.Subject{
           subject_id: assignment.user_id,
-          subject_type: :USER,
+          subject_type: subject_type,
           display_name: display_names_by_id[assignment.user_id] || ""
         },
         subject_role_bindings: [build_subject_role_binding(assignment)]

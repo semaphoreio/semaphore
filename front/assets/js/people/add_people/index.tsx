@@ -44,7 +44,7 @@ export const App = () => {
         <span className="material-symbols-outlined mr2">person_add</span>
         {`Add people`}
       </button>
-      <Modal isOpen={isOpen} close={() => close(false)} title="Add people">
+      <Modal isOpen={isOpen} close={() => close(false)} title="Add new people" width="w-70-m">
         <AddNewUsers close={close}/>
       </Modal>
     </Fragment>
@@ -85,7 +85,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
     const Link = (props: { icon: VNode, title: string, }) => {
       return (
         <ActiveShadowLink
-          className={`btn btn-secondary ${
+          className={`flex-grow-1 btn btn-secondary ${
             currentProvider === provider ? `active` : ``
           }`}
           disabled={loading}
@@ -134,16 +134,9 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
   };
 
   return (
-    <div
-      className="bg-white br3 shadow-1 w-90 w-70-m mw6 relative popup"
-      style={{ top: `200px`, transform: `translate(-50%, 0)` }}
-    >
-      <div className="flex items-center justify-between ph4 pt4 mb3">
-        <h2 className="f3 mb0">Add new people</h2>
-      </div>
-
+    <div className="pa4">
       {userProviders.length > 1 && (
-        <div className="mb3 button-group ph4 w-100 items-center justify-center">
+        <div className="mb3 button-group w-100 items-center">
           {userProviders.map(userProviderBox)}
         </div>
       )}
@@ -158,7 +151,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
           return (
             <Fragment key={idx}>
               {loading && (
-                <div className="ph4 pb4 tc">
+                <div className="pb4 tc">
                   <toolbox.Asset path="images/spinner.svg"/>
                 </div>
               )}
@@ -280,7 +273,7 @@ const ProvideVia = (props: ProvideViaProps) => {
     return (
       <Fragment>
         <div className="ph4 pb4">{message}</div>
-        <div className="flex justify-end items-center mt2 pb4 ph4">
+        <div className="flex justify-end items-center mt2">
           <button
             className="btn btn-primary ml3"
             onClick={() => props?.onCancel(anyInvites)}
@@ -294,11 +287,11 @@ const ProvideVia = (props: ProvideViaProps) => {
 
   return (
     <Fragment>
-      <div className="ph4">
+      <div className="">
         <label className="db mb2">Invite users to join your organization</label>
       </div>
       <div
-        className="ph4 pv1 w-100"
+        className="pv1 ph1 w-100"
         style={{ maxHeight: `400px`, overflow: `auto` }}
       >
         {!props.noManualInvite && (
@@ -370,7 +363,7 @@ const ProvideVia = (props: ProvideViaProps) => {
       </div>
 
       {collaborators.length != 0 && (
-        <div className="flex justify-end items-center mt2 pb4 ph4">
+        <div className="flex justify-end items-center mt2">
           <a
             className="gray underline pointer"
             onClick={() => setSelectedCollaborators(collaborators)}
@@ -513,7 +506,7 @@ const ProvideViaEmail = (props: ProvideViaEmailProps) => {
 
   return (
     <Fragment>
-      <div className="ph4" style={{ maxHeight: `400px`, overflow: `auto` }}>
+      <div className="ph1" style={{ maxHeight: `400px`, overflow: `auto` }}>
         {!arePeopleInvited && (
           <label className="db mb2">Email addresses and usernames</label>
         )}
@@ -593,7 +586,7 @@ const ProvideViaEmail = (props: ProvideViaEmailProps) => {
         ))}
       </div>
       {arePeopleInvited && (
-        <div className="flex justify-end pb4 ph4">
+        <div className="flex justify-end">
           <button
             className="btn btn-primary"
             onClick={() => props?.onCancel(true)}
@@ -603,7 +596,7 @@ const ProvideViaEmail = (props: ProvideViaEmailProps) => {
         </div>
       )}
       {!arePeopleInvited && (
-        <div className="flex justify-end pb4 ph4">
+        <div className="flex justify-end">
           <button
             className="btn btn-secondary mr3"
             onClick={() => props?.onCancel(false)}
