@@ -115,7 +115,7 @@ defmodule Auth do
       !org ->
         send_resp(conn, 401, "Unauthorized")
 
-      Auth.IpFilter.block?(conn, org) ->
+      Auth.IpFilter.block?(conn.remote_ip, org) ->
         send_resp(conn, 404, blocked_ip_response(conn))
 
       true ->
@@ -326,7 +326,7 @@ defmodule Auth do
       !org ->
         {:error, :missing_organization, conn}
 
-      Auth.IpFilter.block?(conn, org) ->
+      Auth.IpFilter.block?(conn.remote_ip, org) ->
         {:error, :unauthorized_ip, conn}
 
       true ->
@@ -387,7 +387,7 @@ defmodule Auth do
       !org ->
         {:error, :missing_organization, conn}
 
-      Auth.IpFilter.block?(conn, org) ->
+      Auth.IpFilter.block?(conn.remote_ip, org) ->
         {:error, :unauthorized_ip, conn}
 
       true ->
@@ -416,7 +416,7 @@ defmodule Auth do
       !org ->
         {:error, :missing_organization, conn}
 
-      Auth.IpFilter.block?(conn, org) ->
+      Auth.IpFilter.block?(conn.remote_ip, org) ->
         {:error, :unauthorized_ip, conn}
 
       true ->
@@ -680,7 +680,7 @@ defmodule Auth do
   end
 
   defp blocked_ip_response(conn) do
-    ip = Auth.IpFilter.client_ip(conn) |> Tuple.to_list() |> Enum.join(".")
+    ip = conn.remote_ip |> :inet.ntoa()
 
     """
       You cannot access this organization from your current IP address (#{ip}) due to the security settings enabled by the organization administrator.
