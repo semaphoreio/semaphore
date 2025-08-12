@@ -1,6 +1,8 @@
 defmodule Auth.RefuseXSemaphoreHeadersTest do
   use ExUnit.Case
-  use Plug.Test
+
+  import Plug.Test
+  import Plug.Conn
 
   test "the caller passed an x-semaphore-* header, we respond with 404" do
     assert {404, _, "Not Found"} = call_with_header("x-semaphore-user-id", "some-value")
