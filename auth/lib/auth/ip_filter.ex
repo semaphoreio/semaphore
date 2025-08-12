@@ -1,29 +1,12 @@
 defmodule Auth.IpFilter do
   require Logger
 
-  def block?(conn, org) do
+  def block?(client_ip, org) do
     if Enum.empty?(org.ip_allow_list) do
       false
     else
-      _block?(client_ip(conn), org.ip_allow_list)
+      _block?(client_ip, org.ip_allow_list)
     end
-  end
-
-  def client_ip(conn) do
-    Plug.Conn.get_req_header(conn, "x-forwarded-for")
-    |> List.last()
-    |> String.split(", ")
-    |> List.first()
-    |> InetCidr.parse_address!()
-  rescue
-    e ->
-      Watchman.increment("auth.ip_filter.error")
-      Logger.error("Error parsing client IP: #{inspect(e)}")
-      Logger.error("Headers: #{inspect(conn.req_headers)}")
-
-      # If something goes wrong here, it means Ingress/Ambassador are sending us
-      # a bad X-Forwarded-For header, which is very unlikely, so we fail open
-      nil
   end
 
   defp _block?(nil, _), do: false
