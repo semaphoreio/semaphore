@@ -1,6 +1,8 @@
 defmodule Auth.CliTest do
   use ExUnit.Case
-  use Plug.Test
+
+  import Plug.Test
+  import Plug.Conn
 
   describe ".is_call_from_deprecated_cli?" do
     test "no user agent => returns false" do
