@@ -476,7 +476,13 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
 
     subject_type_string = convert_subject_type_to_string(subject_type)
-    RoleAssignment.create_or_update(%{org_id: org_id, user_id: subject_id, role_id: role_id, subject_type: subject_type_string})
+
+    RoleAssignment.create_or_update(%{
+      org_id: org_id,
+      user_id: subject_id,
+      role_id: role_id,
+      subject_type: subject_type_string
+    })
   end
 
   defp handle_delete_role_assignment(org_id, subject_id) do
@@ -529,8 +535,8 @@ defmodule Rbac.GrpcServers.RbacServer do
       :USER -> "user"
       :SERVICE_ACCOUNT -> "service_account"
       :GROUP -> "group"
-      nil -> "user" # Default fallback
-      _ -> "user" # Default fallback for unknown values
+      # Default fallback for unknown values
+      _ -> "user"
     end
   end
 end
