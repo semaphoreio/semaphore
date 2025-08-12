@@ -42,4 +42,8 @@
       Ask any of the admins to give you access permission.</p>
     </div>
   <% end %>
+
+  <%= if FeatureProvider.feature_enabled?(:service_accounts, param: @org_id) and @permissions["organization.service_accounts.view"] do %>
+    <div id="service-accounts" data-config="<%= Poison.encode!(service_accounts_config(@conn)) %>"></div>
+  <% end %>
 </div>
