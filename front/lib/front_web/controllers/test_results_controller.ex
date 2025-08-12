@@ -140,8 +140,16 @@ defmodule FrontWeb.TestResultsController do
         selected_pipeline_id: pipeline_id
       }
 
-      case conn.assigns.authorization do
-        :member ->
+      resource_ownership_matches? =
+        organization_matches?(org_id, pipeline.organization_id) &&
+          workflow_matches?(workflow.id, pipeline.workflow_id)
+
+      case {resource_ownership_matches?, conn.assigns.authorization} do
+        {false, _} ->
+          conn
+          |> respond_with_error(:not_found)
+
+        {true, :member} ->
           assigns =
             assigns
             |> Map.put(:layout, {FrontWeb.LayoutView, "workflow.html"})
@@ -155,7 +163,7 @@ defmodule FrontWeb.TestResultsController do
             assigns
           )
 
-        :guest ->
+        {true, :guest} ->
           assigns =
             assigns
             |> put_layout_assigns(org, project, pipeline)
@@ -172,31 +180,41 @@ defmodule FrontWeb.TestResultsController do
 
   def details(conn, _params) do
     Watchman.benchmark("pipeline.test_results.details", fn ->
+      org_id = conn.assigns.organization_id
       workflow = conn.assigns.workflow
 
       pipeline_id = conn.params["pipeline_id"] || workflow.root_pipeline_id
       pipeline = Pipeline.find(pipeline_id)
 
-      fetch_junit_json_url =
-        Async.run(
-          fn ->
-            Artifacthub.signed_url(
-              pipeline.project_id,
-              "workflows",
-              pipeline.workflow_id,
-              "test-results/#{pipeline.id}.json"
-            )
-          end,
-          metric: "pipeline.test_results.signed_url"
-        )
+      resource_ownership_matches? =
+        organization_matches?(org_id, pipeline.organization_id) &&
+          workflow_matches?(workflow.id, pipeline.workflow_id)
 
-      {:ok, {:ok, junit_json_url}} = Async.await(fetch_junit_json_url)
+      if resource_ownership_matches? do
+        fetch_junit_json_url =
+          Async.run(
+            fn ->
+              Artifacthub.signed_url(
+                pipeline.project_id,
+                "workflows",
+                pipeline.workflow_id,
+                "test-results/#{pipeline.id}.json"
+              )
+            end,
+            metric: "pipeline.test_results.signed_url"
+          )
 
-      json(conn, %{
-        name: pipeline.name,
-        artifact_url: junit_json_url,
-        icon: FrontWeb.PipelineView.pipeline_status_large(pipeline)
-      })
+        {:ok, {:ok, junit_json_url}} = Async.await(fetch_junit_json_url)
+
+        json(conn, %{
+          name: pipeline.name,
+          artifact_url: junit_json_url,
+          icon: FrontWeb.PipelineView.pipeline_status_large(pipeline)
+        })
+      else
+        conn
+        |> respond_with_error(:not_found)
+      end
     end)
   end
 
@@ -236,5 +254,25 @@ defmodule FrontWeb.TestResultsController do
     |> Map.put(:project, project)
     |> Map.put(:showForkExplanation?, false)
     |> Map.put(:title, "Tests ・#{project.name}・#{org.name}")
+  end
+
+  defp organization_matches?(organization_id, pipeline_organization_id) do
+    organization_id == pipeline_organization_id
+  end
+
+  defp workflow_matches?(workflow_id, pipeline_workflow_id) do
+    workflow_id == pipeline_workflow_id
+  end
+
+  defp respond_with_error(conn, error = :not_found) do
+    error
+    |> case do
+      :not_found ->
+        conn
+        |> put_status(:not_found)
+        |> put_view(FrontWeb.ErrorView)
+        |> render("404.html")
+        |> halt
+    end
   end
 end
