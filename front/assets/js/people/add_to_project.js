@@ -119,7 +119,7 @@ export var AddToProject = {
     .catch(e =>{
       toggleSpinner()
       console.error("Error while adding members to the project: " + e)
-      Notice.error("An error occured while adding members to the project. Please check console for any logs and contact our support team.")
+      Notice.error("An error occurred while adding members to the project. Please check console for any logs and contact our support team.")
     })
   },
 

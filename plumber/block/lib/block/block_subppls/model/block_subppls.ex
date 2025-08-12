@@ -2,7 +2,7 @@ defmodule Block.BlockSubppls.Model.BlockSubppls do
   @moduledoc """
   Block Subppl type
   Block Subppl execution request transitions through multiple states.
-  Each transtion is represented with 'block subppl' object.
+  Each transition is represented with 'block subppl' object.
   """
 
   alias Block.BlockRequests.Model.BlockRequests
