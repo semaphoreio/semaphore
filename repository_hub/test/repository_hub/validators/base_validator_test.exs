@@ -280,7 +280,7 @@ defmodule RepositoryHub.BaseValidatorTest do
       is_url = select(:is_url)
       assert "abc" == is_url.("abc", [])
       assert "a/b/c/d/e" = is_url.("a/b/c/d/e", [])
-      assert {:error, _} = is_url.("no whitespaces plese", [])
+      assert {:error, _} = is_url.("no whitespaces please", [])
     end
 
     test ":is_file_path check if value is a valid file path" do
