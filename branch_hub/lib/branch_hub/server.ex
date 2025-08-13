@@ -116,8 +116,23 @@ defmodule BranchHub.Server do
     end)
   end
 
-  def archive(_, _) do
-    InternalApi.Branch.ArchiveResponse.new()
+  def archive(req, _) do
+    Metrics.benchmark("Branch.archive", fn ->
+      with {:ok, branch_id} <- non_empty_value_or_default(req, :branch_id, :skip),
+           branch_id when branch_id != :skip <- branch_id,
+           true <- valid_uuid?(branch_id, "Branch with id: '#{branch_id}' not found."),
+           {:ok, _branch} <- BranchesQueries.archive(branch_id) do
+        InternalApi.Branch.ArchiveResponse.new(status: ok_status())
+      else
+        :skip ->
+          InternalApi.Branch.ArchiveResponse.new(
+            status: error_status({:error, "Branch ID is required."})
+          )
+
+        e = {:error, _message} ->
+          InternalApi.Branch.ArchiveResponse.new(status: error_status(e))
+      end
+    end)
   end
 
   def filter(_, _) do
@@ -168,7 +183,7 @@ defmodule BranchHub.Server do
   defp parse_types(:TAG), do: "tag"
   defp parse_types(:BRANCH), do: "branch"
 
-  defp map_timestamp(nil), do: map_timestamp(0)
+  defp map_timestamp(nil), do: nil
 
   defp map_timestamp(seconds) when is_integer(seconds),
     do: Google.Protobuf.Timestamp.new(seconds: seconds)
