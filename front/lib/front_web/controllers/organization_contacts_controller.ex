@@ -52,6 +52,10 @@ defmodule FrontWeb.OrganizationContactsController do
 
   def modify(conn, %{"organization_contacts" => contact}) do
     Watchman.benchmark(watchman_name(:create, :duration), fn ->
+      org_id = conn.assigns.organization_id
+
+      contact = Map.put(contact, "org_id", org_id)
+
       case OrganizationContacts.modify(contact) do
         {:ok, _resp} ->
           conn
