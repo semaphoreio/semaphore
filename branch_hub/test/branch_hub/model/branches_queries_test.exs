@@ -247,6 +247,66 @@ defmodule BranchHub.Model.BranchesQueries.Test do
     assert_list_branches(params, expected_results)
   end
 
+  # Archive
+
+  test "archive existing branch" do
+    assert {:ok, branch} = insert_branch()
+    assert branch.archived_at == nil
+
+    assert {:ok, archived_branch} = BranchesQueries.archive(branch.id)
+    assert archived_branch.archived_at != nil
+    assert archived_branch.id == branch.id
+  end
+
+  test "archive non-existing branch returns error" do
+    branch_id = UUID.uuid4()
+    assert {:error, msg} = BranchesQueries.archive(branch_id)
+    assert msg == "Branch with id: '#{branch_id}' not found."
+  end
+
+  test "archive already archived branch updates archived_at" do
+    original_time = DateTime.utc_now() |> DateTime.add(-3600, :second)
+    assert {:ok, branch} = insert_branch(archived_at: original_time)
+    assert branch.archived_at != nil
+
+    :timer.sleep(1000)
+    assert {:ok, re_archived_branch} = BranchesQueries.archive(branch.id)
+    assert re_archived_branch.archived_at != nil
+    assert DateTime.compare(re_archived_branch.archived_at, original_time) == :gt
+  end
+
+  # Get or insert with archived_at behavior
+
+  test "get_or_insert sets archived_at to nil for new branches" do
+    params = %{
+      name: "new-branch",
+      display_name: "new-branch",
+      ref_type: "branch",
+      project_id: UUID.uuid4()
+    }
+
+    assert {:ok, branch} = BranchesQueries.get_or_insert(params)
+    assert branch.archived_at == nil
+  end
+
+  test "get_or_insert unarchives existing branch" do
+    # First create an archived branch
+    assert {:ok, archived_branch} = insert_branch(archived_at: DateTime.utc_now())
+    assert archived_branch.archived_at != nil
+
+    # Use get_or_insert with same name and project_id - should unarchive
+    params = %{
+      name: archived_branch.name,
+      display_name: archived_branch.display_name,
+      ref_type: archived_branch.ref_type,
+      project_id: archived_branch.project_id
+    }
+
+    assert {:ok, unarchived_branch} = BranchesQueries.get_or_insert(params)
+    assert unarchived_branch.archived_at == nil
+    assert unarchived_branch.id == archived_branch.id
+  end
+
   defp assert_list_branches(params, expected_results, page \\ 1, size \\ 10) do
     assert {:ok, results} = BranchesQueries.list(params, page, size)
     assert Enum.sort(results.entries) == Enum.sort(expected_results.entries)
