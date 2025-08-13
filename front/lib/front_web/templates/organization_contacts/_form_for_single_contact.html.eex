@@ -3,7 +3,6 @@
   <p class="mv2 measure"> <%= extract_contact_type_description(@contact_changeset) %></p>
 
   <%= form_for @contact_changeset, organization_contacts_path(@conn, :modify), [method: :post], fn f -> %>
-    <%= hidden_input f, :org_id, value: input_value(f, :org_id) %>
     <%= hidden_input f, :contact_type, value: input_value(f, :contact_type) %>
 
     <%= label f, :name, "Full Name", class: "db b mv2" %>
