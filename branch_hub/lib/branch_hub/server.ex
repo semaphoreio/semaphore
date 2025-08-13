@@ -116,8 +116,17 @@ defmodule BranchHub.Server do
     end)
   end
 
-  def archive(_, _) do
-    InternalApi.Branch.ArchiveResponse.new()
+  def archive(req, _) do
+    Metrics.benchmark("Branch.archive", fn ->
+      with {:ok, branch_id} <- non_empty_value_or_default(req, :branch_id, :skip),
+           true <- valid_uuid?(branch_id, "Branch with id: '#{branch_id}' not found."),
+           {:ok, branch} <- BranchesQueries.archive(branch_id) do
+        InternalApi.Branch.ArchiveResponse.new(status: ok_status())
+      else
+        e = {:error, _message} ->
+          %{status: error_status(e)} |> InternalApi.Branch.ArchiveResponse.new()
+      end
+    end)
   end
 
   def filter(_, _) do
