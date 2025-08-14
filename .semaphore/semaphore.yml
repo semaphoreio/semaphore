@@ -73,6 +73,7 @@ blocks:
       jobs:
         - name: "Build test image"
           commands:
+            - cache restore our-gems
             - make build
             - make push
   - name: "Audit: Provision Prod Image"
