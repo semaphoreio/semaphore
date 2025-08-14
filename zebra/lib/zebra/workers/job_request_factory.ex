@@ -63,17 +63,17 @@ defmodule Zebra.Workers.JobRequestFactory do
          {:ok, rsa} <- Task.await(gen_rsa),
          {:ok, project} <- Task.await(find_project),
          find_repository <- Task.async(fn -> Repository.find(project.repository_id) end),
-         find_cache <-
-           Task.async(fn ->
-             if Job.self_hosted?(job.machine_type),
-               do: {:ok, nil},
-               else: Cache.find(project.cache_id)
-           end),
          find_artifact_token <-
            Task.async(fn ->
              Artifacthub.generate_token(project.artifact_store_id, job.id, project.id, spec)
            end),
          {:ok, repo_proxy} <- Task.await(find_repo_proxy),
+         find_cache <-
+           Task.async(fn ->
+             if Job.self_hosted?(job.machine_type),
+               do: {:ok, nil},
+               else: Cache.find(project.cache_id, repo_proxy)
+           end),
          find_secrets <-
            Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy) end),
          {:ok, repository, private_git_key} <- Task.await(find_repository),
