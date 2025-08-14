@@ -22,7 +22,7 @@ defmodule HooksProcessor.Clients.UserClient do
 
   def describe(user_id) do
     "user_id: #{user_id}"
-    |> LT.info("Calling User API to find requester")
+    |> LT.debug("Calling User API to find requester")
 
     Metrics.benchmark("HooksProcessor.UserClient", ["describe"], fn ->
       %DescribeRequest{

@@ -94,7 +94,7 @@ defmodule FrontWeb.GroupsController do
         conn
         |> put_flash(
           :alert,
-          "An error occured while creating a group. Please contact our support team."
+          "An error occurred while creating a group. Please contact our support team."
         )
         |> redirect(to: people_path(conn, :organization))
     end

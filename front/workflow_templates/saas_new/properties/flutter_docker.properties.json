@@ -1,12 +1,13 @@
 {
-  "title": "Flutter",
-  "description": "Run tests and build your Flutter app in Docker with quality checks and dependency analysis. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-blue white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>pub</span></div>",
-  "short_description": "Run your Flutter suite",
+  "title": "Flutter – Docker CI Pipeline",
+  "description": "Run Flutter CI inside Docker, leveraging a Flutter/Android convenience image for faster toolchain startup. Includes dependency caching, code formatting and static analysis, parallelized tests via job parallelism, JUnit reports through junitreport/tojunit, and a release web build published as an artifact. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Flutter</span><span class='f6 normal mr1 ph1 br2 bg-green white'>Docker</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Web</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Cache</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Parallelism</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>JUnit</span><span class='f6 normal mr1 ph1 br2 bg-gray white'>Artifacts</span></div>",
+  "short_description": "Docker-based Flutter CI with parallel tests and web artifact",
   "group": "ci",
   "language": "Dart",
   "environment": "docker",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-flutter.svg",
-  "template_path": "templates/flutter_saas.yml",
+  "template_path": "templates/flutter_docker.yml",
   "workflow_tip": "other"
 }

@@ -322,7 +322,8 @@ defmodule Support.Factories do
             owner: "ryanmcdermott",
             run_on: [
               InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:TAGS),
-              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS)
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS),
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:DRAFT_PULL_REQUESTS)
             ],
             forked_pull_requests:
               InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
@@ -1366,7 +1367,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Receives Git Hooks on Sempahore 2.0 and Stores them in a Rabbit queue",
+        description: "Receives Git Hooks on Semaphore 2.0 and Stores them in a Rabbit queue",
         name: "git-hook-broker",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",
@@ -2598,7 +2599,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Redirection to sempahoreci.com",
+        description: "Redirection to semaphoreci.com",
         name: "semaphoreapp",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",

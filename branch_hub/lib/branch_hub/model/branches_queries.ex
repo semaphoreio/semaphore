@@ -28,7 +28,7 @@ defmodule BranchHub.Model.BranchesQueries do
   def get_or_insert(params) do
     on_conflict = {:replace_all_except, [:id, :inserted_at]}
     conflict_target = [:project_id, :name]
-    params = Map.merge(params, %{used_at: DateTime.utc_now()})
+    params = Map.merge(params, %{used_at: DateTime.utc_now(), archived_at: nil})
 
     %Branches{}
     |> Branches.changeset(params)
@@ -77,6 +77,21 @@ defmodule BranchHub.Model.BranchesQueries do
     |> order_by([b], desc_nulls_last: b.used_at)
     |> Repo.paginate(page: page, page_size: page_size)
     |> return_tuple("")
+  end
+
+  @doc """
+  Archives a branch by setting the archived_at timestamp
+  """
+  def archive(branch_id, archived_at \\ DateTime.utc_now()) do
+    Branches
+    |> where(id: ^branch_id)
+    |> Repo.update_all(set: [archived_at: archived_at])
+    |> case do
+      {1, _} -> get_by_id(branch_id)
+      {0, _} -> {:error, "Branch with id: '#{branch_id}' not found."}
+    end
+  rescue
+    e -> {:error, e}
   end
 
   # Utility

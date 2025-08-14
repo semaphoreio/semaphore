@@ -7,7 +7,8 @@ module InternalApi::RepoProxy
     def call(project, user)
       repo_host = ::RepoHost::Factory.create_from_project(project)
 
-      reference = repo_host.reference(project.repo_owner_and_name, ref.delete_prefix("refs/"))
+      encoded_ref = CGI.escape(ref.delete_prefix("refs/tags/"))
+      reference = repo_host.reference(project.repo_owner_and_name, "tags/#{encoded_ref}")
 
       tag_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(reference, repo_host, project))
 

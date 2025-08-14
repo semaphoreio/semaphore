@@ -1,89 +1,123 @@
-# This is a Semaphore configuration file for Flutter projects using Docker
-# For more information about Semaphore configuration visit:
-# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+# 📚 Semaphore docs:
+# - Pipeline YAML reference: https://docs.semaphoreci.com/reference/pipeline-yaml
+# - Job parallelism:        https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+# - Cache:                  https://docs.semaphoreci.com/using-semaphore/optimization/cache
+# - Test Reports:           https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+# - Artifacts:              https://docs.semaphoreci.com/using-semaphore/artifacts
 
-version: v1.0  # Semaphore configuration version
-name: "💙 Flutter CI Pipeline"  # Pipeline display name
+version: v1.0
+name: "🐳 Flutter (Docker) • Web build"
 
-# Define the machine type, OS image, and containers
 agent:
   machine:
     type: {{ machine_type }}
     os_image: {{ os_image }}
-
   containers:
     - name: main
-      image: 'registry.semaphoreci.com/flutter:3.16'  # Flutter 3.16 container
+      image: registry.semaphoreci.com/android:34-flutter
 
-# Configure when to stop the pipeline early
+
 fail_fast:
+  # 🔴 Stop all running jobs on failure (configurable):
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#fail_fast
   stop:
-    when: branch != 'main'  # Stop all blocks if a job fails on non-main branches
-auto_cancel:
-  running:
-    when: branch != 'main'  # Cancel running pipelines on non-main branches
-  queued:
-    when: branch = 'main'   # Cancel queued pipelines on main branch
+    when: branch != 'main'
 
-# Commands to run before each job
+auto_cancel:
+  # 🔁 Auto-cancel superseded pipelines on new pushes to the same branch:
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#auto_cancel
+  running:
+    when: branch != 'main'
+  queued:
+    when: branch != 'main'
+
 global_job_config:
+  env_vars:
+    - name: FLUTTER_HOME
+      value: $HOME/flutter
+    - name: PATH
+      value: '$HOME/.pub-cache/bin:$FLUTTER_HOME/bin:$PATH'
+    - name: JUNIT_FILE
+      value: test-results/junit.xml
   prologue:
     commands:
-      - checkout                    # Get the code from repository
-      - flutter pub get            # Install dependencies
-      - cache restore             # Restore cached dependencies
+      - checkout
+      # 💾 Restore dependency cache (keyed by pubspec.lock):
+      # https://docs.semaphoreci.com/using-semaphore/optimization/cache
+      - cache restore "pub-cache-$(checksum pubspec.lock)"
+      # If the container doesn't include Flutter, install it; otherwise, reuse preinstalled toolchain.
+      - 'command -v flutter >/dev/null 2>&1 || git clone --depth 1 -b stable https://github.com/flutter/flutter.git "$FLUTTER_HOME"'
+      - flutter --version
+      - flutter doctor -v
+      - flutter pub get
+      # 🧾 JUnit converter used by Test Reports:
+      # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+      - dart pub global activate junitreport
+  epilogue:
+    always:
+      commands:
+        # 📈 Publish job-level test results to Test Reports UI (safe if file missing):
+        # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+        - '[[ -f "$JUNIT_FILE" ]] && test-results publish "$JUNIT_FILE" || true'
 
-# Pipeline blocks represent groups of jobs that can run in parallel
 blocks:
-  # Block for setting up dependencies and caching
-  - name: "🛠 Setup and Cache"
+  - name: "🧹 Quality"
+    task:
+      jobs:
+        - name: "🧼 Format"
+          commands:
+            - flutter format --set-exit-if-changed .
+        - name: "🔎 Analyze"
+          commands:
+            - flutter analyze .
     dependencies: []
-    task:
-      jobs:
-        - name: Install Dependencies
-          commands:
-            - cache store  # Cache dependencies for future runs
 
-  # Block for code quality checks
-  - name: "🔍 Code Quality"
-    dependencies: ["🛠 Setup and Cache"]
+  - name: "🧪 Tests (parallel)"
     task:
       jobs:
-        - name: Analyze and Format
+        - name: "🧪 Flutter tests (sharded)"
+          # ⚡️ Fan out a single job into N parallel jobs:
+          # https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+          parallelism: 4
           commands:
-            - flutter analyze       # Static code analysis
-            - flutter format --set-exit-if-changed .  # Check code formatting
+            - mkdir -p test-results
+            # Convert 1-based SEMAPHORE_JOB_INDEX -> 0-based shard index for Flutter/Dart
+            - export SHARD_INDEX=$((SEMAPHORE_JOB_INDEX - 1))
+            - echo "Shard $SHARD_INDEX of $SEMAPHORE_JOB_COUNT"
+            # 🧾 Produce JUnit via tojunit for Test Reports:
+            # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+            - flutter test --machine --total-shards $SEMAPHORE_JOB_COUNT --shard-index $SHARD_INDEX | tojunit --output $JUNIT_FILE
+    dependencies:
+      - "🧹 Quality"
 
-  # Block for security checks
-  - name: "🔐 Security Checks"
-    dependencies: ["🛠 Setup and Cache"]
+  - name: "🛡️ Security (pub deps)"
     task:
       jobs:
-        - name: Security Scan
+        - name: "🛡️ Pub outdated (informational)"
           commands:
-            - flutter pub outdated  # Check for outdated dependencies
-            - flutter pub deps      # Display dependency tree
+            - dart pub outdated || true
+    dependencies:
+      - "🧪 Tests (parallel)"
 
-  # Block for running tests
-  - name: "🧪 Test Suite"
-    dependencies: ["🛠 Setup and Cache"]
+  - name: "📦 Build Web (artifact)"
+    dependencies:
+      - "🧪 Tests (parallel)"
+    skip:
+      when: branch != 'main'
     task:
       jobs:
-        - name: "🟢 Flutter Tests"
-          parallelism: 4  # Run tests in parallel
+        - name: "🌐 flutter build web"
           commands:
-            - flutter test --coverage  # Run tests with coverage
-            - flutter pub global activate remove_from_coverage
-            - flutter pub global run remove_from_coverage:remove_from_coverage -f coverage/lcov.info -r '.g.dart$' # Remove generated files from coverage
+            - flutter build web --release
+            # 📦 Store build output as an artifact:
+            # https://docs.semaphoreci.com/using-semaphore/artifacts
+            - artifact push job build/web
 
-  # Block for building the app
-  - name: "📦 Build"
-    dependencies: ["🧪 Test Suite"]
-    task:
-      jobs:
-        - name: Android Build
-          commands:
-            - flutter build apk --release  # Build Android APK
-        - name: iOS Build
-          commands:
-            - flutter build ios --release --no-codesign  # Build iOS without signing
+after_pipeline:
+  task:
+    jobs:
+      - name: "📊 Merge test reports"
+        commands:
+          # 🧩 Merge all job reports into a single pipeline report:
+          # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+          - test-results gen-pipeline-report

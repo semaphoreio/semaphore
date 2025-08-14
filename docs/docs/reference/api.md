@@ -580,6 +580,8 @@ curl -H "Authorization: Token {api_token}"  \
 
 ## Tasks {#tasks}
 
+### Trigger a taks
+
 [Tasks](../using-semaphore/tasks) can be triggered via the API.
 
 To trigger a task with its default parameters:
@@ -735,9 +737,9 @@ curl -H "Authorization: Token {api_token}" \
 
 
 
-### Self-hosted agent types
+## Self-hosted agent types
 
-#### Listing agent types
+### Listing agent types
 
 ```text
 GET <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types
@@ -800,7 +802,7 @@ curl -i \
 
 
 
-#### Create an agent type
+### Create an agent type
 
 ```text
 POST <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types
@@ -855,7 +857,7 @@ curl -i \
 
 
 
-#### Update an agent type
+### Update an agent type
 
 ```text
 PATCH <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -908,7 +910,7 @@ curl -X PATCH -i \
 ```
 
 
-#### Describe an agent type
+### Describe an agent type
 
 ```text
 GET <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -951,7 +953,7 @@ curl -i \
 
 
 
-#### Delete an agent type
+### Delete an agent type
 
 ```text
 DELETE <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/:agent_type_name
@@ -978,7 +980,7 @@ curl -i -X DELETE \
 
 
 
-#### Disable agents for an agent type
+### Disable agents for an agent type
 
 ```text
 POST <organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/:agent_type_name/disable_all
@@ -1005,9 +1007,9 @@ curl -i \
   "https://<organization-url>.semaphoreci.com/api/v1alpha/self_hosted_agent_types/s1-aws-small/disable_all"
 ```
 
-### Self-hosted agents
+## Self-hosted agents
 
-#### List agents for an agent type
+### List agents for an agent type
 
 ```text
 GET <organization-url>.semaphoreci.com/api/v1alpha/agents?agent_type=:agent_type&page_size=:page_size&cursor=:cursor

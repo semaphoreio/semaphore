@@ -17,7 +17,7 @@ defmodule Rbac.Workers.RefreshAllPermissionsTest do
       :ok
     end
 
-    test "When request is succesfully processed" do
+    test "When request is successfully processed" do
       org_ids = Enum.map(1..@number_of_orgs, fn _ -> Ecto.UUID.generate() end)
 
       with_mocks([
@@ -36,7 +36,7 @@ defmodule Rbac.Workers.RefreshAllPermissionsTest do
     end
 
     @max_retries 3
-    test "When request is not succesfully processed" do
+    test "When request is not successfully processed" do
       org_ids = Enum.map(1..@number_of_orgs, fn _ -> Ecto.UUID.generate() end)
 
       with_mocks([

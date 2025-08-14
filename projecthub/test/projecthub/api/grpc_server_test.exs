@@ -85,7 +85,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -196,7 +196,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -340,7 +340,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -526,7 +526,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(

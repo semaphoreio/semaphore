@@ -70,8 +70,19 @@
         </div>
         <%= if @project.integration_type in [:GITHUB_APP, :GITHUB_OAUTH_TOKEN] do %>
           <div class="flex items-center">
-            <%= checkbox f, :build_prs, disabled: !@permissions["project.general_settings.manage"] %>
+            <%= checkbox f, :build_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "draftPRSwitch"]  %>
             <%= label f, :build_prs, "Pull requests", class: "ml2" %>
+          </div>
+          <div id="draft-pull-request-options" class="ml3 mv2 pv2 ph3 ba b--lighter-gray bg-white br2">
+            <p class="f5 b mb1">Build draft pull requests?</p>
+            <div class="flex items-center">
+              <%= radio_button f, :build_draft_prs, true, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :build_draft_prs, "Yes", class: "ml2", for: "project_build_draft_prs_true" %>
+            </div>
+            <div class="flex items-center">
+              <%= radio_button f, :build_draft_prs, false, disabled: !@permissions["project.general_settings.manage"] %>
+              <%= label f, :build_draft_prs, "No", class: "ml2", for: "project_build_draft_prs_false" %>
+            </div>
           </div>
           <div class="flex items-center">
             <%= checkbox f, :build_forked_prs, disabled: !@permissions["project.general_settings.manage"], data: [action: "forkedPRSwitch"] %>
@@ -115,7 +126,7 @@
         <div class="mt3 pt3 bt b--lighter-gray">
           <div class="db f5 b mb1">Pipeline file location</div>
           <div>
-            <%= text_input f, :initial_pipeline_file, disabled: !@permissions["project.general_settings.manage"], class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }", placeholder: ".semaphore/sempahore.yml" %>
+            <%= text_input f, :initial_pipeline_file, disabled: !@permissions["project.general_settings.manage"], class: "form-control w-100 #{if f.errors[:name], do: "form-control-error" }", placeholder: ".semaphore/semaphore.yml" %>
             <%= if f.errors[:initial_pipeline_file] do %>
               <div class="f5 b mv1 red"><%= translate_error(f.errors[:initial_pipeline_file]) %></div>
             <% end %>
