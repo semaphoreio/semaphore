@@ -581,4 +581,26 @@ defmodule FrontWeb.SharedHelpers do
         "#{count} #{string}s"
     end
   end
+
+  @doc """
+  Formats file size in bytes to human-readable format
+  """
+  def format_file_size(size) when is_nil(size) or size == 0, do: "—"
+
+  def format_file_size(size) when size < 1024, do: "#{size} B"
+
+  def format_file_size(size) when size < 1024 * 1024 do
+    kb = Float.round(size / 1024, 1)
+    "#{kb} KB"
+  end
+
+  def format_file_size(size) when size < 1024 * 1024 * 1024 do
+    mb = Float.round(size / (1024 * 1024), 1)
+    "#{mb} MB"
+  end
+
+  def format_file_size(size) do
+    gb = Float.round(size / (1024 * 1024 * 1024), 1)
+    "#{gb} GB"
+  end
 end
