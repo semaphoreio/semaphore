@@ -1,6 +1,6 @@
 services:
   app:
-    container_name: audit
+    container_name: audit2
     build:
       context: ../..
       cache_from:
