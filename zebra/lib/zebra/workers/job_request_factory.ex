@@ -72,7 +72,7 @@ defmodule Zebra.Workers.JobRequestFactory do
            Task.async(fn ->
              if Job.self_hosted?(job.machine_type),
                do: {:ok, nil},
-               else: Cache.find(project.cache_id, repo_proxy)
+               else: Cache.find(project.cache_id, repo_proxy, org_id)
            end),
          find_secrets <-
            Task.async(fn -> Secrets.load(org_id, job.id, spec, project, repo_proxy) end),
