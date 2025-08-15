@@ -191,5 +191,11 @@ func (b *InMemoryBucket) SetCORS(ctx context.Context) error {
 }
 
 func (b *InMemoryBucket) CreateObject(ctx context.Context, name string, content []byte) error {
+	b.Objects = append(b.Objects, &PathItem{
+		Path:        name,
+		IsDirectory: false,
+		Age:         nil,
+		Size:        int64(len(content)),
+	})
 	return nil
 }
