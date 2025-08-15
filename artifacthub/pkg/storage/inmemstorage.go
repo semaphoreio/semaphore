@@ -60,7 +60,7 @@ func (b *InMemoryBucket) Size() int {
 
 func (b *InMemoryBucket) Add(path string, age time.Time) error {
 	newAge := time.Since(age)
-	b.Objects = append(b.Objects, &PathItem{Path: "artifacts" + path, Age: &newAge})
+	b.Objects = append(b.Objects, &PathItem{Path: "artifacts" + path, Age: &newAge, Size: 1024}) // Default size for testing
 
 	return nil
 }
