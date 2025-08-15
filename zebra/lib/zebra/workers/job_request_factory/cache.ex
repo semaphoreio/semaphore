@@ -25,7 +25,9 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
     Watchman.benchmark("external.cachehub.describe", fn ->
       req = Request.new(cache_id: cache_id)
 
-      with false <- forked_pr?(repo_proxy) and FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id),
+      with false <-
+             forked_pr?(repo_proxy) and
+               FeatureProvider.feature_enabled?(:disable_forked_pr_cache, param: org_id),
            {:ok, endpoint} <- Application.fetch_env(:zebra, :cachehub_api_endpoint),
            {:ok, channel} <- GRPC.Stub.connect(endpoint),
            {:ok, response} <- Stub.describe(channel, req, timeout: 30_000) do
@@ -40,7 +42,10 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
         end
       else
         true ->
-          Logger.info("Skipping fetching of the cache as the job is part of Forked PR build. Cache id #{inspect(cache_id)}")
+          Logger.info(
+            "Skipping fetching of the cache as the job is part of Forked PR build. Cache id #{inspect(cache_id)}"
+          )
+
           {:ok, nil}
 
         e ->
