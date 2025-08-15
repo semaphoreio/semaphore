@@ -50,7 +50,9 @@ defmodule Notifications.Workers.Coordinator do
           organization: organization
         }
 
-        rules |> Enum.each(fn rule -> process(request_id, rule, data) end)
+        rules
+        |> Enum.filter(&authorized?(&1.notification.creator_id, &1.org_id, project.metadata.id))
+        |> Enum.each(fn rule -> process(request_id, rule, data) end)
 
         Logger.info("#{request_id} #{event.pipeline_id}")
       end)
@@ -85,6 +87,15 @@ defmodule Notifications.Workers.Coordinator do
       end
 
       Logger.info("#{request_id} [done]")
+    end
+
+    defp authorized?(_creator_id = nil, _org_id, _project_id), do: true
+
+    defp authorized?(creator_id, org_id, project_id) do
+      case Notifications.Auth.can_view_project?(creator_id, org_id, project_id) do
+        {:ok, :authorized} -> true
+        _ -> false
+      end
     end
 
     defp map_result_to_string(enum), do: enum |> Atom.to_string() |> String.downcase()

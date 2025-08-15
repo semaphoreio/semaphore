@@ -12,8 +12,14 @@ defmodule Notifications.Auth do
     authorize(user_id, org_id, "organization.notifications.manage")
   end
 
-  defp authorize(user_id, org_id, permission) do
-    req = Request.new(user_id: user_id, org_id: org_id)
+  def can_view_project?(user_id, org_id, project_id) do
+    authorize(user_id, org_id, project_id, "project.view")
+  end
+
+  defp authorize(user_id, org_id, permission), do: authorize(user_id, org_id, "", permission)
+
+  defp authorize(user_id, org_id, project_id, permission) do
+    req = Request.new(user_id: user_id, org_id: org_id, project_id: project_id)
     endpoint = Application.fetch_env!(:notifications, :rbac_endpoint)
     {:ok, channel} = GRPC.Stub.connect(endpoint)
 

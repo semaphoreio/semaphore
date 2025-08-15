@@ -9,10 +9,11 @@ defmodule Notifications.Api.InternalApi.Update do
 
   def run(req) do
     org_id = req.metadata.org_id
+    updater_id = req.metadata.user_id
 
-    with {:ok, :valid} <- Validator.validate(req.notification),
+    with {:ok, :valid} <- Validator.validate(req.notification, updater_id),
          {:ok, n} <- find_by_id_or_name(org_id, req.id, req.name),
-         {:ok, n} <- update_notification(n, req.notification) do
+         {:ok, n} <- update_notification(n, updater_id, req.notification) do
       %UpdateResponse{notification: Serialization.serialize(n)}
     else
       {:error, :invalid_argument, message} ->
@@ -37,11 +38,12 @@ defmodule Notifications.Api.InternalApi.Update do
   # notification: existing row from database
   # apiresource: new notification from the API call that needs to be applied
   #
-  defp update_notification(notification, apiresource) do
+  defp update_notification(notification, updater_id, apiresource) do
     Repo.transaction(fn ->
       changes =
         Model.changeset(notification, %{
           name: apiresource.name,
+          creator_id: updater_id,
           spec: Notifications.Util.Transforms.encode_spec(%{rules: apiresource.rules})
         })
 

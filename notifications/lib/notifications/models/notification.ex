@@ -12,16 +12,18 @@ defmodule Notifications.Models.Notification do
     has_many(:rules, Notifications.Models.Rule, on_delete: :delete_all)
 
     field(:org_id, :binary_id)
+    field(:creator_id, :binary_id)
     field(:name, :string)
     field(:spec, :map)
 
     timestamps()
   end
 
-  def new(org_id, name, spec) do
+  def new(org_id, name, creator_id, spec) do
     %__MODULE__{}
     |> changeset(%{
       org_id: org_id,
+      creator_id: creator_id,
       name: name,
       spec: spec
     })
@@ -78,8 +80,8 @@ defmodule Notifications.Models.Notification do
 
   def changeset(notification, params \\ %{}) do
     notification
-    |> cast(params, [:org_id, :name, :spec])
-    |> validate_required([:org_id, :name, :spec])
+    |> cast(params, [:org_id, :creator_id, :name, :spec])
+    |> validate_required([:org_id, :creator_id, :name, :spec])
     |> valid_name_format(params)
     |> unique_constraint(
       :unique_names,
