@@ -303,8 +303,8 @@ func Test__ListPath(t *testing.T) {
 			response, err := server.ListPath(context.TODO(), request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*artifacthub.ListItem{
-				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false},
-				{Name: "artifacts/projects/first/dir/", IsDirectory: true},
+				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false, Size: 5},
+				{Name: "artifacts/projects/first/dir/", IsDirectory: true, Size: 0},
 			}, response.Items)
 		})
 
@@ -318,9 +318,9 @@ func Test__ListPath(t *testing.T) {
 			response, err := server.ListPath(context.TODO(), request)
 			assert.Nil(t, err)
 			assert.Equal(t, []*artifacthub.ListItem{
-				{Name: "artifacts/projects/first/dir/subfile1.txt", IsDirectory: false},
-				{Name: "artifacts/projects/first/dir/subfile2.txt", IsDirectory: false},
-				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false},
+				{Name: "artifacts/projects/first/dir/subfile1.txt", IsDirectory: false, Size: 5},
+				{Name: "artifacts/projects/first/dir/subfile2.txt", IsDirectory: false, Size: 5},
+				{Name: "artifacts/projects/first/file1.txt", IsDirectory: false, Size: 5},
 			}, response.Items)
 		})
 	})
