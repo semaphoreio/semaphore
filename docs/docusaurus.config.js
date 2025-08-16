@@ -142,24 +142,24 @@ const config = {
           srcDark: 'img/logo-white.svg'
         },
         items: [
-          {
-            type: 'docSidebar',
-            sidebarId: 'gettingStarted',
-            position: 'left',
-            label: 'Getting Started',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'usingSemaphore',
-            position: 'left',
-            label: 'Using Semaphore',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'reference',
-            position: 'left',
-            label: 'Reference',
-          },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'docs',
+          //   position: 'right',
+          //   label: 'Docs',
+          // },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'usingSemaphore',
+          //   position: 'right',
+          //   label: 'Using Semaphore',
+          // },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'reference',
+          //   position: 'right',
+          //   label: 'Reference',
+          // },
           // uncomment this when the new API is released
           // {
           //   type: 'docSidebar',
@@ -167,15 +167,15 @@ const config = {
           //   position: 'left',
           //   label: 'API Specification',
           // },
-          {
-            type: 'html',
-            position: 'right',
-            value: '<a href="/CE/getting-started/about-semaphore">Semaphore Editions →</a>'
-          },
+          // {
+          //   type: 'html',
+          //   position: 'right',
+          //   value: '<a href="/CE/getting-started/about-semaphore">Semaphore Editions →</a>'
+          // },
           /* version */
           {
             type: 'docsVersionDropdown',
-            position: 'right',
+            position: 'left',
             // dropdownItemsAfter: [{to: '/versions', label: 'All versions'}],
             dropdownActiveClassDisabled: true,
           },
