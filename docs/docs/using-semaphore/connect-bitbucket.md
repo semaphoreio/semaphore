@@ -28,7 +28,7 @@ Follow these steps to create a Semaphore account using BitBucket:
 <Steps>
 
 1. Log in to your BitBucket account
-2. Navigate to the [Semaphore login page](https://semaphoreci.com/login)
+2. Navigate to the [Semaphore login page](https://semaphore.io/login)
 3. Select **Log in with BitBucket**
 4. Grant access to the Semaphore [OAuth App](https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/) in BitBucket
 5. Finish the Semaphore setup

@@ -80,7 +80,7 @@ Please provide as much information as possible, including:
 Stay informed about security updates:
 
 - Follow our security announcements on [discord](https://discord.com/channels/1097422014735732746/1097434200438755369)
-- Follow the announcements on our [website](https://semaphoreci.com/category/semaphore-news)
+- Follow the announcements on our [website](https://semaphore.io/category/semaphore-news)
 
 ## Attribution
 
