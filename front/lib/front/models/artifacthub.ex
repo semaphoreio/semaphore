@@ -1,5 +1,5 @@
 defmodule Front.Models.Artifacthub do
-  defstruct [:is_directory, :resource_name, :path]
+  defstruct [:is_directory, :resource_name, :path, :size]
   require Logger
 
   alias InternalApi.Artifacthub.ArtifactService.Stub
@@ -173,7 +173,8 @@ defmodule Front.Models.Artifacthub do
     %__MODULE__{
       is_directory: artifact_item.is_directory,
       resource_name: Resource.get_name(artifact_item, source_kind, source_id),
-      path: Resource.get_relative_path(artifact_item.name, source_kind, source_id)
+      path: Resource.get_relative_path(artifact_item.name, source_kind, source_id),
+      size: artifact_item.size
     }
   end
 

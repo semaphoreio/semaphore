@@ -121,7 +121,7 @@ func ListTransferPath(ctx context.Context, client storage.Client, artifact *mode
 				return err
 			}
 
-			result = append(result, &artifacthub.ListItem{Name: item.Path, IsDirectory: item.IsDirectory})
+			result = append(result, &artifacthub.ListItem{Name: item.Path, IsDirectory: item.IsDirectory, Size: item.Size})
 		}
 
 		return nil

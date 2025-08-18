@@ -55,6 +55,7 @@ type PathItem struct {
 	Path        string
 	IsDirectory bool
 	Age         *time.Duration
+	Size        int64
 }
 
 type PathIterator interface {

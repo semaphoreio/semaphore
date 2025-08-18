@@ -207,7 +207,7 @@ func (b *GcsBucket) DeleteObjects(paths []string) error {
 
 func (b *GcsBucket) ListPath(options ListOptions) (PathIterator, error) {
 	query := gcsstorage.Query{Prefix: pathutil.EndsInSlash(options.Path)}
-	err := query.SetAttrSelection([]string{"Name", "Created"})
+	err := query.SetAttrSelection([]string{"Name", "Created", "Size"})
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +226,7 @@ func (b *GcsBucket) ListPath(options ListOptions) (PathIterator, error) {
 
 func (b *GcsBucket) ListObjectsWithPagination(options ListOptions) (ObjectPager, error) {
 	query := gcsstorage.Query{Prefix: pathutil.EndsInSlash(options.Path)}
-	err := query.SetAttrSelection([]string{"Name", "Created"})
+	err := query.SetAttrSelection([]string{"Name", "Created", "Size"})
 	if err != nil {
 		return nil, err
 	}

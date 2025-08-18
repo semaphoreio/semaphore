@@ -82,6 +82,7 @@ func (i *S3PathIterator) nextAndIncrement() *PathItem {
 			Path:        i.removePathPrefix(*next.Key),
 			IsDirectory: false,
 			Age:         &age,
+			Size:        *next.Size,
 		}
 	}
 
@@ -92,6 +93,7 @@ func (i *S3PathIterator) nextAndIncrement() *PathItem {
 		Path:        i.removePathPrefix(*nextPrefix.Prefix),
 		IsDirectory: true,
 		Age:         nil,
+		Size:        0, // Directories don't have a size
 	}
 }
 

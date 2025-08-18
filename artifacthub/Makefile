@@ -4,7 +4,7 @@ include ../Makefile
 
 APP_NAME=artifacthub
 APP_ENV=prod
-INTERNAL_API_BRANCH=master
+INTERNAL_API_BRANCH?=master
 
 pb.gen:
 	rm -rf tmp && mkdir -p tmp

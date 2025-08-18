@@ -60,7 +60,7 @@ func (b *InMemoryBucket) Size() int {
 
 func (b *InMemoryBucket) Add(path string, age time.Time) error {
 	newAge := time.Since(age)
-	b.Objects = append(b.Objects, &PathItem{Path: "artifacts" + path, Age: &newAge})
+	b.Objects = append(b.Objects, &PathItem{Path: "artifacts" + path, Age: &newAge, Size: 1024}) // Default size for testing
 
 	return nil
 }
@@ -191,5 +191,11 @@ func (b *InMemoryBucket) SetCORS(ctx context.Context) error {
 }
 
 func (b *InMemoryBucket) CreateObject(ctx context.Context, name string, content []byte) error {
+	b.Objects = append(b.Objects, &PathItem{
+		Path:        name,
+		IsDirectory: false,
+		Age:         nil,
+		Size:        int64(len(content)),
+	})
 	return nil
 }
