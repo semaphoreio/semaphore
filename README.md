@@ -60,7 +60,7 @@ Free and open source under [Apache 2.0 license](LICENSE). This is what you'll fi
 Our enhanced version with extra features for larger organizations, available under a commercial license. You'll find this code in the `ee/` directory. Comes with professional support to keep your CI/CD running smoothly.
 
 ### ☁️ Semaphore Cloud
-Don't want to manage your own infrastructure? Our hosted version at [semaphoreci.com](https://semaphoreci.com) gives you all the power of Semaphore without the setup. From free plans for small projects to enterprise-scale solutions.
+Don't want to manage your own infrastructure? Our hosted version at [semaphore.io](https://semaphore.io) gives you all the power of Semaphore without the setup. From free plans for small projects to enterprise-scale solutions.
 
 ___
 

@@ -20,11 +20,11 @@ Yes. The list of the platform IPs used by Semaphore is [publicly available](http
 
 ### Can I use my own machines to run workflows?
 
-Yes. With the Semaphore [Hybrid Plan](https://semaphoreci.com/pricing) you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted). You can use a mix of Semaphore Cloud and your own machines for your workflows.
+Yes. With the Semaphore [Hybrid Plan](https://semaphore.io/pricing) you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted). You can use a mix of Semaphore Cloud and your own machines for your workflows.
 
 ### Can I run Semaphore On-Premise?
 
-Yes. The Semaphore [On-Premise Plan](https://semaphoreci.com/pricing) allows you to host a separate installation of Semaphore behind your firewall, allowing you to run CI/CD completely on your own infrastructure.
+Yes. The Semaphore [On-Premise Plan](https://semaphore.io/pricing) allows you to host a separate installation of Semaphore behind your firewall, allowing you to run CI/CD completely on your own infrastructure.
 
 ### Can I use self-signed certificates with private Docker registries?
 

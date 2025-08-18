@@ -37,7 +37,7 @@ Here is the recommended plan to migrate from any CI provider to Semaphore.
     - Nice to have
     - Optional
 
-    Compare the list against [Semaphore Features](https://semaphoreci.com/pricing). Some of the requirements can be implemented in several ways by combining several features.
+    Compare the list against [Semaphore Features](https://semaphore.io/pricing). Some of the requirements can be implemented in several ways by combining several features.
 
 3. Create a proof of concept in Semaphore
 

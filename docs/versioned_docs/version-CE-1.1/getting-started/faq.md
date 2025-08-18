@@ -16,7 +16,7 @@ This page contains Frequently Asked Questions.
 
 ### What's the difference between Semaphore Community Edition (CE) and Semaphore Cloud?
 
-- **Semaphore Cloud**: is a cloud-based, fully-managed CI-as-a-Service platform. Meant for individuals and companies that don't wish to maintain a CI/CD system. Head to semaphoreci.com to access Semaphore Cloud
+- **Semaphore Cloud**: is a cloud-based, fully-managed CI-as-a-Service platform. Meant for individuals and companies that don't wish to maintain a CI/CD system. Head to semaphore.io to access Semaphore Cloud
 - **Semaphore CE**: is the free and open-source Community Edition of Semaphore. Meant for anyone that wishes to host and manage their own CI/CD architecture.
 
 ### Where can I run Semaphore CE?

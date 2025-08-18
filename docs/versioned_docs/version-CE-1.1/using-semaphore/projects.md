@@ -10,7 +10,7 @@ import Available from '@site/src/components/Available';
 import VideoTutorial from '@site/src/components/VideoTutorial';
 import Steps from '@site/src/components/Steps';
 
-Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphoreci.com/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
+Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphore.io/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 
 This page explains how to set up projects and what settings are available. Before you can create a project you must connect Semaphore to [GitHub](./connect-github) or [BitBucket](./connect-bitbucket).
 

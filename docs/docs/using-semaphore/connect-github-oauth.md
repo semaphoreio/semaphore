@@ -41,7 +41,7 @@ Follow these steps to create a Semaphore account using GitHub:
 <Steps>
 
 1. Log in to your GitHub account
-2. Navigate to the [Semaphore login page](https://semaphoreci.com/login)
+2. Navigate to the [Semaphore login page](https://semaphore.io/login)
 3. Select **Log in with GitHub**
 4. Grant access to the Semaphore [OAuth App](https://github.com/settings/connections/applications/328c742132e5407abd7d) in GitHub
 5. Finish the Semaphore setup
