@@ -12,6 +12,12 @@
     <div class="b">
       Files<%= Enum.map(@artifact_navbar_components, fn c -> " / #{c.name}" end) %>
     </div>
+    <div class="flex items-center">
+      <span class="f6 gray mr3 b">Size</span>
+      <%= if @permissions["project.artifacts.delete"] do %>
+        <span class="f6 gray b">Actions</span>
+      <% end %>
+    </div>
   </div>
 
   <%= if Enum.any?(@artifact_navbar_components) do %>
@@ -42,7 +48,14 @@
                 target: "_blank" %>
           <% end %>
         </div>
-        <div>
+        <div class="flex items-center">
+          <span class="f6 gray mr3">
+            <%= if artifact.is_directory do %>
+              —
+            <% else %>
+              <%= format_file_size(artifact.size) %>
+            <% end %>
+          </span>
           <%= if @permissions["project.artifacts.delete"] do %>
             <%= link to: artifacts_path(@conn, :"#{@source_kind}_destroy", @source_id, artifact.path),
                 method: :delete,
