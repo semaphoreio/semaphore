@@ -3,12 +3,14 @@ defmodule BranchHub.Server.Test do
 
   alias BranchHub.Repo
   alias BranchHub.Server
+  alias BranchHub.Model.BranchesQueries
 
   alias InternalApi.Branch.{
     Branch,
     DescribeRequest,
     ListRequest,
-    FindOrCreateRequest
+    FindOrCreateRequest,
+    ArchiveRequest
   }
 
   setup do
@@ -208,6 +210,103 @@ defmodule BranchHub.Server.Test do
 
       assert_create_status(params, :ok)
     end
+
+    test "sets archived_at to nil when creating or updating branch" do
+      # First, create an archived branch
+      assert {:ok, branch} = insert_branch(archived_at: DateTime.utc_now())
+      assert branch.archived_at != nil
+
+      # Use find_or_create to "update" the branch - should unarchive it
+      params = %{
+        project_id: branch.project_id,
+        repository_id: UUID.uuid4(),
+        name: branch.name,
+        display_name: branch.display_name,
+        ref_type: Branch.Type.value(:BRANCH)
+      }
+
+      response =
+        params
+        |> FindOrCreateRequest.new()
+        |> find_or_create_branch(:ok)
+
+      assert response.archived_at == nil
+    end
+  end
+
+  describe ".archive" do
+    test "return error when branch_id is missing" do
+      params = %{}
+      assert_archive_status(params, :error)
+    end
+
+    test "return error when branch_id is invalid UUID" do
+      params = %{branch_id: "invalid-uuid"}
+      assert_archive_status(params, :error)
+    end
+
+    test "return error when branch doesn't exist" do
+      params = %{branch_id: UUID.uuid4()}
+      assert_archive_status(params, :error)
+    end
+
+    test "return ok and set archived_at when branch exists" do
+      assert {:ok, branch} = insert_branch()
+      assert branch.archived_at == nil
+
+      params = %{branch_id: branch.id}
+      assert_archive_status(params, :ok)
+
+      # Verify the branch was actually archived by checking the database
+      assert {:ok, archived_branch} = BranchesQueries.get_by_id(branch.id)
+      assert archived_branch.archived_at != nil
+      assert archived_branch.id == branch.id
+    end
+
+    test "describe shows archived_at timestamp after archiving" do
+      assert {:ok, branch} = insert_branch()
+
+      # Archive the branch
+      params = %{branch_id: branch.id}
+      assert_archive_status(params, :ok)
+
+      # Verify describe shows the archived_at timestamp
+      response =
+        %{branch_id: branch.id}
+        |> DescribeRequest.new()
+        |> describe_branch(:ok)
+
+      assert response.archived_at != nil
+      assert response.archived_at.seconds > 0
+    end
+
+    test "list excludes archived branches by default" do
+      project_id = UUID.uuid4()
+
+      # Create two branches in the same project
+      assert {:ok, active_branch} = insert_branch(project_id: project_id, display_name: "active")
+
+      assert {:ok, branch_to_archive} =
+               insert_branch(project_id: project_id, display_name: "to_archive")
+
+      # Archive one branch
+      params = %{branch_id: branch_to_archive.id}
+      assert_archive_status(params, :ok)
+
+      # List should only show the active branch
+      list_params = %{project_id: project_id}
+      assert_list_values(list_params, [active_branch])
+
+      # List with archived=true should show both
+      list_params_with_archived = %{project_id: project_id, with_archived: true}
+
+      results_with_archived =
+        list_params_with_archived
+        |> ListRequest.new()
+        |> list_branches(:ok)
+
+      assert length(results_with_archived) == 2
+    end
   end
 
   defp assert_create_status(params, expected_status) do
@@ -226,6 +325,23 @@ defmodule BranchHub.Server.Test do
 
     assert code(expected_status) == status_code
     branch
+  end
+
+  defp assert_archive_status(params, expected_status) do
+    params
+    |> ArchiveRequest.new()
+    |> archive_branch(expected_status)
+  end
+
+  defp archive_branch(request, expected_status) when is_map(request) do
+    response = Server.archive(request, nil)
+
+    assert %{
+             status: %{code: status_code}
+           } = response
+
+    assert code(expected_status) == status_code
+    response
   end
 
   defp insert_branch(params \\ []) do
