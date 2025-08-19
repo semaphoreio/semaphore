@@ -421,10 +421,7 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
   field(:switch_id, 9, type: :string)
   field(:target_name, 10, type: :string)
 
-  field(:env_vars, 11,
-    repeated: true,
-    type: InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar
-  )
+  field(:env_vars, 11, repeated: true, type: InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar)
 
   field(:can_requester_rerun, 12, type: :bool)
 end

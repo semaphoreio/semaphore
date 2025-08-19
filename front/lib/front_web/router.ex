@@ -170,6 +170,15 @@ defmodule FrontWeb.Router do
       get("/offboarding/:user_id", OffboardingController, :show)
     end
 
+    scope "/service_accounts" do
+      get("/", ServiceAccountController, :index)
+      post("/", ServiceAccountController, :create)
+      get("/:id", ServiceAccountController, :show)
+      put("/:id", ServiceAccountController, :update)
+      delete("/:id", ServiceAccountController, :delete)
+      post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
+    end
+
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)
     delete("/project/:name_or_id/offboarding", OffboardingController, :remove)
 
