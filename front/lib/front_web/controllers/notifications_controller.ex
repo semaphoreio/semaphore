@@ -21,16 +21,7 @@ defmodule FrontWeb.NotificationsController do
 
       {:ok, organization} = Async.await(fetch_organization)
       {:ok, notifications} = Async.await(fetch_notifications)
-      notifications = add_creator_data(notifications)
-
-      creators =
-        notifications
-        |> Enum.map(& &1.metadata.creator_id)
-        |> Enum.reject(&(&1 == ""))
-        |> Enum.uniq()
-        |> User.find_many()
-
-      notification |> Enum.map(&nil)
+      notifications = add_user_data_to_notifications(notifications)
 
       render(
         conn,
