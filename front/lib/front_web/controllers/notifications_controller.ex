@@ -4,11 +4,7 @@ defmodule FrontWeb.NotificationsController do
 
   alias Front.Async
   alias Front.Audit
-
-  alias Front.Models.{
-    Notification,
-    Organization
-  }
+  alias Front.Models.{Notification, Organization, User}
 
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
   plug(FrontWeb.Plugs.PageAccess, permissions: "organization.view")
@@ -25,6 +21,16 @@ defmodule FrontWeb.NotificationsController do
 
       {:ok, organization} = Async.await(fetch_organization)
       {:ok, notifications} = Async.await(fetch_notifications)
+      notifications = add_creator_data(notifications)
+
+      creators =
+        notifications
+        |> Enum.map(& &1.metadata.creator_id)
+        |> Enum.reject(&(&1 == ""))
+        |> Enum.uniq()
+        |> User.find_many()
+
+      notification |> Enum.map(&nil)
 
       render(
         conn,
@@ -296,6 +302,26 @@ defmodule FrontWeb.NotificationsController do
     |> put_layout(false)
     |> put_view(FrontWeb.ErrorView)
     |> render("404.html")
+  end
+
+  defp add_user_data_to_notifications(notifications) when is_list(notifications) do
+    import Enum
+
+    creators =
+      notifications
+      |> map(& &1.metadata.creator_id)
+      |> reject(&(&1 == ""))
+      |> uniq()
+      |> User.find_many()
+
+    map(notifications, fn n ->
+      if n.metadata.creator_id != "" do
+        creator = find(creators, &(&1.id == n.metadata.creator_id)) || %{name: "deleted_user"}
+        %{n | metadata: Map.put(n.metadata, :creator, creator)}
+      else
+        n
+      end
+    end)
   end
 
   def get_rule_identifiers(params) do
