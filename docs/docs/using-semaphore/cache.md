@@ -32,6 +32,12 @@ Users running Semaphore On-Premise or [self-hosted agents](./self-hosted) need t
 
 :::
 
+:::note
+
+For security reasons, the cache is not accessible from workflows started by Forked Pull Requests.
+
+:::
+
 ## Language support {#languages}
 
 The cache tool can recognize the structure for various popular languages and frameworks and automatically figure out what files to store and retrieve.

@@ -3155,6 +3155,7 @@ defmodule Support.Factories do
       MANUAL_PROMOTION: fn ->
         pipeline(
           triggerer: [
+            wf_triggered_by: WfTriggeredBy.value(:MANUAL_RUN),
             ppl_triggered_by: PplTriggeredBy.value(:PROMOTION)
           ]
         )
