@@ -55,6 +55,14 @@ module InternalApi
         project = ::Project.find(req.project_id)
         user    = ::User.find(req.requester_id)
 
+        # Log service account usage for debugging
+        if user.service_account?
+          logger.info("Service account workflow creation", 
+            service_account_id: user.id, 
+            project_id: project.id,
+            reference: req.git.reference)
+        end
+
         payload_builder = InternalApi::RepoProxy::PayloadFactory.create(req.git.reference, req.git.commit_sha)
         payload = payload_builder.call(project, user)
 
@@ -127,6 +135,14 @@ module InternalApi
       def create_for_github_project(req, logger)
         project = ::Project.find(req.project_id)
         user    = ::User.find(req.requester_id)
+
+        # Log service account usage for debugging
+        if user.service_account?
+          logger.info("Service account workflow creation (create)", 
+            service_account_id: user.id, 
+            project_id: project.id,
+            reference: req.git.reference)
+        end
 
         payload_builder = InternalApi::RepoProxy::PayloadFactory.create(req.git.reference, req.git.commit_sha)
         payload = payload_builder.call(project, user)

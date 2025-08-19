@@ -16,9 +16,12 @@ module InternalApi::RepoProxy
       branch_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(sha, reference))
 
       repo_url = branch_commit[:html_url].split("/").first(5).join("/")
-      author_name  = user.github_repo_host_account.name
+      
+      # Use project-aware method to get proper credentials for service accounts
+      repo_host_account = user.github_repo_host_account_for_project(project)
+      author_name  = repo_host_account&.name || "Unknown User"
       author_email = user.email
-      github_uid = user.github_repo_host_account.github_uid
+      github_uid = repo_host_account&.github_uid || 0
       avatar = ::Avatar.avatar_url(github_uid)
 
       commit = {
