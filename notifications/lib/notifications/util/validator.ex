@@ -1,13 +1,21 @@
 defmodule Notifications.Util.Validator do
   alias Notifications.Models.Pattern
 
-  def validate(notification) do
+  def validate(notification, user_id) do
     with {:ok, :valid} <- validate_regex_patterns(notification),
          {:ok, :valid} <- validate_result_patterns(notification),
-         {:ok, :valid} <- validate_notification_targets(notification) do
+         {:ok, :valid} <- validate_notification_targets(notification),
+         {:ok, :valid} <- validate_user_id(user_id) do
       {:ok, :valid}
     else
       e -> e
+    end
+  end
+
+  defp validate_user_id(user_id) do
+    case Ecto.UUID.cast(user_id) do
+      {:ok, _} -> {:ok, :valid}
+      :error -> {:error, :invalid_argument, "Invalid user_id: expected a valid UUID"}
     end
   end
 

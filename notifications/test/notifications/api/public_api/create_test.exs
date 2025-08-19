@@ -40,6 +40,7 @@ defmodule Notifications.Api.PublicApi.CreateTest do
       n = Repo.preload(n, :rules)
 
       assert n.name == "first-notification"
+      assert n.creator_id == @user_id
       assert length(n.rules) == 1
 
       rule = hd(n.rules)

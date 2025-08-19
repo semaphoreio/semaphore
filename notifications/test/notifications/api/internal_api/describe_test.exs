@@ -2,6 +2,7 @@ defmodule Notifications.Api.InternalApi.DescribeTest do
   use Notifications.DataCase
 
   @org_id Ecto.UUID.generate()
+  @creator_id Ecto.UUID.generate()
 
   alias InternalApi.Notifications.NotificationsApi.Stub
   alias InternalApi.Notifications.DescribeRequest
@@ -29,7 +30,7 @@ defmodule Notifications.Api.InternalApi.DescribeTest do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       req1 = %CreateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         notification: Support.Factories.Notification.internal_api_model("first")
       }
 

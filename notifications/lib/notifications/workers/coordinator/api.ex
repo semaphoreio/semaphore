@@ -4,7 +4,6 @@ defmodule Notifications.Workers.Coordinator.Api do
     alias InternalApi.RepoProxy.DescribeRequest
 
     req = DescribeRequest.new(hook_id: hook_id)
-
     endpoint = Application.fetch_env!(:notifications, :repo_proxy_endpoint)
     {:ok, channel} = GRPC.Stub.connect(endpoint)
 
@@ -39,7 +38,6 @@ defmodule Notifications.Workers.Coordinator.Api do
     alias InternalApi.Plumber.PipelineService.Stub
 
     req = InternalApi.Plumber.DescribeRequest.new(ppl_id: pipeline_id, detailed: true)
-
     endpoint = Application.get_env(:notifications, :pipeline_endpoint)
     {:ok, channel} = GRPC.Stub.connect(endpoint)
 

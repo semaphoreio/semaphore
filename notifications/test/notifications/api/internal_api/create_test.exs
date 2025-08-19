@@ -4,6 +4,7 @@ defmodule Notifications.Api.InternalApi.CreateTest do
   alias InternalApi.Notifications.RequestMeta
 
   @org_id Ecto.UUID.generate()
+  @creator_id Ecto.UUID.generate()
 
   describe ".run" do
     test "it creates DB resources" do
@@ -13,7 +14,7 @@ defmodule Notifications.Api.InternalApi.CreateTest do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       req = %CreateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         notification: Support.Factories.Notification.internal_api_model("first-notification")
       }
 
@@ -103,7 +104,7 @@ defmodule Notifications.Api.InternalApi.CreateTest do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       req = %CreateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         notification: Support.Factories.Notification.internal_api_model("first-notification")
       }
 
@@ -150,7 +151,7 @@ defmodule Notifications.Api.InternalApi.CreateTest do
         )
 
       req = %CreateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         notification: notification
       }
 
@@ -167,7 +168,7 @@ defmodule Notifications.Api.InternalApi.CreateTest do
       {:ok, channel} = GRPC.Stub.connect("localhost:50051")
 
       req = %CreateRequest{
-        metadata: %RequestMeta{org_id: @org_id},
+        metadata: %RequestMeta{org_id: @org_id, user_id: @creator_id},
         notification: Support.Factories.Notification.internal_api_model("first-notification")
       }
 

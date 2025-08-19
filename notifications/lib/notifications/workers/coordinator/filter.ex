@@ -10,6 +10,7 @@ defmodule Notifications.Workers.Coordinator.Filter do
     |> with_pattern([branch, pr_branch], "branch")
     |> with_pattern(pipeline, "pipeline")
     |> with_pattern(result, "result")
+    |> preload(:notification)
     |> Repo.all()
   end
 

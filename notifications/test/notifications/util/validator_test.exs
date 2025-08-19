@@ -6,6 +6,8 @@ defmodule Notifications.Util.ValidatorTest do
   alias Notification.{Metadata, Spec}
   alias Spec.Rule
 
+  @user_id Ecto.UUID.generate()
+
   describe ".validate" do
     test "everything is valid" do
       n =
@@ -35,7 +37,39 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
+    end
+
+    test "user_id is empty" do
+      n =
+        Notification.new(
+          metadata: Metadata.new(name: "A"),
+          spec:
+            Spec.new(
+              rules: [
+                Rule.new(
+                  name: "Example Rule",
+                  filter:
+                    Rule.Filter.new(
+                      projects: [
+                        "/.*/"
+                      ]
+                    ),
+                  notify:
+                    Rule.Notify.new(
+                      slack:
+                        Rule.Notify.Slack.new(
+                          endpoint: "https://whatever.com",
+                          channels: ["#testing-hq"]
+                        )
+                    )
+                )
+              ]
+            )
+        )
+
+      assert Validator.validate(n, "") ==
+               {:error, :invalid_argument, "Invalid user_id: expected a valid UUID"}
     end
 
     test "reports broken regexes" do
@@ -66,7 +100,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument, "Pattern /*/ is not a valid regex statement"}
     end
 
@@ -101,7 +135,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument,
                 "Patterns [/*/, /+dasdas/] are not valid regex statements"}
     end
@@ -134,7 +168,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument,
                 "Value pass is not a valid result entry. Valid values are: passed, failed, canceled, stopped."}
     end
@@ -170,7 +204,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
     end
 
     test "regex is valid result entry" do
@@ -201,7 +235,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
     end
 
     test "no notify target specified => not valid" do
@@ -225,7 +259,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument,
                 "A notification rule must have at least one notification target configured."}
     end
@@ -250,7 +284,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument, "A notification rule must have a notify field."}
     end
 
@@ -282,7 +316,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
     end
 
     test "only valid webhook target => valid" do
@@ -309,7 +343,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
     end
 
     test "only valid email target => valid" do
@@ -334,7 +368,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) == {:ok, :valid}
+      assert Validator.validate(n, @user_id) == {:ok, :valid}
     end
 
     test "valid + invalid rule => fails" do
@@ -374,7 +408,7 @@ defmodule Notifications.Util.ValidatorTest do
             )
         )
 
-      assert Validator.validate(n) ==
+      assert Validator.validate(n, @user_id) ==
                {:error, :invalid_argument, "A notification rule must have a notify field."}
     end
   end
