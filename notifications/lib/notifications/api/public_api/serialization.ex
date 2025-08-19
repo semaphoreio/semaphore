@@ -15,6 +15,7 @@ defmodule Notifications.Api.PublicApi.Serialization do
     Notification.Metadata.new(
       name: notification.name,
       id: notification.id,
+      creator_id: notification.creator_id,
       create_time: unix_timestamp(notification.inserted_at),
       update_time: unix_timestamp(notification.updated_at)
     )
