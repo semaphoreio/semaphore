@@ -95,8 +95,8 @@ defmodule Zebra.Workers.TaskFinisher do
   def calculate_task_result(job_results, task) do
     cond do
       # If fail_fast:stop is active and there's a failure, show as failed
-      task.fail_fast_strategy == "stop" && 
-      Enum.any?(job_results, fn r -> r == Job.result_failed() end) ->
+      task.fail_fast_strategy == "stop" &&
+          Enum.any?(job_results, fn r -> r == Job.result_failed() end) ->
         {:ok, "failed"}
 
       Enum.any?(job_results, fn r -> r == Job.result_stopped() end) ->
