@@ -1745,7 +1745,7 @@ defmodule Plumber.WorkflowAPI.Server.Test do
       branch_name: "main",
       commit_sha: UUID.uuid4()
     }
-    |> InternalApi.PlumberWF.CreateRequest.Repo.new()
+    |> ScheduleRequest.Repo.new()
 
     %{
       service: 3,
