@@ -40,11 +40,9 @@ defmodule Projecthub.HttpApi do
 
   get "/api/#{@version}/projects" do
     case list_projects(conn) do
-      {:ok, {projects, page, page_size, total, has_more}} ->
+      {:ok, {projects, page, has_more}} ->
         conn
         |> put_resp_header("x-page", Integer.to_string(page))
-        |> put_resp_header("x-page-size", Integer.to_string(page_size))
-        |> put_resp_header("x-total-count", Integer.to_string(total))
         |> put_resp_header("x-has-more", to_string(has_more))
         |> send_resp(200, Poison.encode!(projects))
 
@@ -694,23 +692,22 @@ defmodule Projecthub.HttpApi do
     org_id = conn.assigns.org_id
     restricted = Organization.restricted?(org_id)
 
-    with {:ok, page} <- parse_int(conn.params, "page", 1, 1_000_000, 1),
-         {:ok, page_size} <- parse_int(conn.params, "page_size", 1, 500, 500) do
-      do_list_projects(conn, org_id, restricted, page, page_size)
-    else
-      {:error, reason} ->
-        {:error, reason}
+    case parse_int(conn.params, "page", 1, 100, 1) do
+      {:ok, page} -> do_list_projects(conn, org_id, restricted, page)
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp do_list_projects(conn, org_id, restricted, page, page_size) do
+  defp page_size, do: Application.get_env(:projecthub, :projects_page_size, 500)
+
+  defp do_list_projects(conn, org_id, restricted, page) do
     req =
       InternalApi.Projecthub.ListRequest.new(
         metadata: Utils.construct_req_meta(conn),
         pagination:
           InternalApi.Projecthub.PaginationRequest.new(
             page: page,
-            page_size: page_size
+            page_size: page_size()
           )
       )
 
@@ -728,8 +725,13 @@ defmodule Projecthub.HttpApi do
           |> Enum.map(&Map.merge(&1, %{"apiVersion" => @version, "kind" => "Project"}))
 
         total = Map.get(res.pagination || %{}, :total_entries, 0)
-        has_more = (page - 1) * page_size + length(projects) < total
-        {:ok, {projects, page, page_size, total, has_more}}
+        has_more = (page - 1) * page_size() + length(res.projects) < total
+
+        if total < (page - 1) * page_size() do
+          {:ok, {[], page, false}}
+        else
+          {:ok, {projects, page, has_more}}
+        end
 
       :NOT_FOUND ->
         {:error, :not_found}

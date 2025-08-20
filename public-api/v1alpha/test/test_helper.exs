@@ -19,23 +19,6 @@ ExUnit.configure(
 
 ExUnit.start(trace: true, capture_log: true)
 
-defmodule Test.GitHub.Credentials do
-  @moduledoc """
-  User credentials for GH repo access
-  (only for public repos)
-  """
-
-  def string_keys, do: atom_keys() |> Poison.encode!() |> Poison.decode!()
-
-  def atom_keys do
-    %{
-      client_id: "328c742132e5407abd7d",
-      client_secret: "1d5559c02a2a20d8c3343967c331d93401959d9e",
-      access_token: "7e12be7748ab2e7ac9c4b1ecc3fcb19741fc28ec"
-    }
-  end
-end
-
 defmodule Test.PipelinesClient do
   use ExUnit.Case
 
@@ -95,7 +78,6 @@ defmodule Test.PipelinesClient do
   def describe_ppl_with_id(id, decode? \\ true, detailed \\ false, headers \\ headers()) do
     {:ok, response} = get_ppl_description(id, Atom.to_string(detailed), headers)
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
 
     body =
       case decode? do
@@ -109,7 +91,6 @@ defmodule Test.PipelinesClient do
   def describe_wf(wf_id, decode? \\ true, headers \\ headers()) do
     {:ok, response} = get_wf_description(wf_id, headers)
     %{:body => body, :status_code => status_code} = response
-    if(status_code != 200, do: IO.puts("Response body: #{inspect(body)}"))
 
     body =
       case decode? do

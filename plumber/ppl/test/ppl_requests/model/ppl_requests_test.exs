@@ -415,27 +415,6 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
                  true
                )
     end
-
-    test "scheduler_task_id is required when workflow originates from task" do
-      assert %Ecto.Changeset{
-               valid?: false,
-               errors: [request_args: {"Missing field 'scheduler_task_id'", _}]
-             } =
-               PplRequests.changeset_request(
-                 %PplRequests{},
-                 %{
-                   request_args: %{"service" => "local"},
-                   request_token: "asdfgh2345678xcvb",
-                   prev_ppl_artefact_ids: [],
-                   top_level: false,
-                   initial_request: false,
-                   id: UUID.uuid4(),
-                   ppl_artefact_id: UUID.uuid4(),
-                   wf_id: UUID.uuid4()
-                 },
-                 true
-               )
-    end
   end
 
   test "changeset_conception updates request_args with missing information" do
@@ -587,7 +566,7 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
   defp changeset_request_valid?(params, task_workflow? \\ false),
     do: PplRequests.changeset_request(%PplRequests{}, params, task_workflow?) |> Map.get(:valid?)
 
-  test "valid pipline request is stored in DB and can be fetched by id", ctx do
+  test "valid pipeline request is stored in DB and can be fetched by id", ctx do
     {:ok, request} = Map.fetch(ctx, :request)
     {:ok, definition} = Map.fetch(ctx, :definition)
     assert {:ok, ppl_req} = PplRequestsQueries.insert_request(request)
@@ -601,7 +580,7 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
     assert response.block_count == 2
   end
 
-  test "pipline request without 'blocks' is invalid", ctx do
+  test "pipeline request without 'blocks' is invalid", ctx do
     {:ok, request} = Map.fetch(ctx, :request)
     {:ok, definition} = Map.fetch(ctx, :definition)
     definition = Map.delete(definition, "blocks")
@@ -610,7 +589,7 @@ defmodule Ppl.PplRequests.Model.PplRequests.Test do
     assert {:error, _message} = PplRequestsQueries.insert_definition(ppl_req, definition)
   end
 
-  test "pipline request with empty 'blocks' list is invalid", ctx do
+  test "pipeline request with empty 'blocks' list is invalid", ctx do
     {:ok, request} = Map.fetch(ctx, :request)
     {:ok, definition} = Map.fetch(ctx, :definition)
     definition = %{definition | "blocks" => []}

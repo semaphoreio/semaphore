@@ -34,15 +34,17 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Metadata do
           name: String.t(),
           id: String.t(),
           create_time: integer,
-          update_time: integer
+          update_time: integer,
+          creator_id: String.t()
         }
 
-  defstruct [:name, :id, :create_time, :update_time]
+  defstruct [:name, :id, :create_time, :update_time, :creator_id]
 
   field(:name, 1, type: :string)
   field(:id, 2, type: :string)
   field(:create_time, 3, type: :int64)
   field(:update_time, 4, type: :int64)
+  field(:creator_id, 5, type: :string)
 end
 
 defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter do

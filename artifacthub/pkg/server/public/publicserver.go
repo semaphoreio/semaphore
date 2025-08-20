@@ -78,8 +78,6 @@ func getAuthTokenFromContext(ctx context.Context) (string, error) {
 // artifact storage, and deleting as well.
 func (s *Server) GenerateSignedURLs(ctx context.Context,
 	q *artifacts.GenerateSignedURLsRequest) (*artifacts.GenerateSignedURLsResponse, error) {
-	log.Info("[GenerateSignedURLs] Received", zap.Reflect("request", q))
-
 	response := &artifacts.GenerateSignedURLsResponse{}
 	token, err := getAuthTokenFromContext(ctx)
 	if err != nil {
@@ -93,11 +91,21 @@ func (s *Server) GenerateSignedURLs(ctx context.Context,
 		return response, nil
 	}
 
-	artifact, err := s.authenticate(token, q.Paths)
+	artifact, claims, err := s.authenticateAndGetClaims(token, q.Paths)
 	if err != nil {
 		log.Error("Error authenticating request", zap.Error(err))
 		return nil, err
 	}
+
+	log.Info("[GenerateSignedURLs] Authenticated request",
+		zap.String("type", q.Type.String()),
+		zap.Int("paths_count", len(q.Paths)),
+		zap.Strings("paths", q.Paths),
+		zap.String("artifact", claims.ArtifactID),
+		zap.String("project", claims.Project),
+		zap.String("job", claims.Job),
+		zap.String("workflow", claims.Workflow),
+	)
 
 	var us []*artifacts.SignedURL
 	switch q.Type {
@@ -177,26 +185,23 @@ func getMaxReceiveMessageSize() int {
 	return maxReceiveMsgSize
 }
 
-func (s *Server) authenticate(token string, paths []string) (*models.Artifact, error) {
+func (s *Server) authenticateAndGetClaims(token string, paths []string) (*models.Artifact, *jwt.Claims, error) {
 	resourceType, resourceID, err := s.findAndValidateResource(paths)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	claims, err := s.validateJWT(resourceType, resourceID, token)
 	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, err.Error())
+		return nil, nil, status.Error(codes.PermissionDenied, err.Error())
 	}
 
-	log.Info(
-		"Granted access to artifact storage through JWT",
-		zap.String("artifact", claims.ArtifactID),
-		zap.String("project", claims.Project),
-		zap.String("job", claims.Job),
-		zap.String("workflow", claims.Workflow),
-	)
+	artifacts, err := models.FindArtifactByID(claims.ArtifactID)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	return models.FindArtifactByID(claims.ArtifactID)
+	return artifacts, claims, nil
 }
 
 func (s *Server) validateJWT(resourceType, resourceID, token string) (*jwt.Claims, error) {

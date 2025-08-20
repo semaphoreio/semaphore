@@ -1,0 +1,109 @@
+# 📚 Semaphore docs:
+# - Pipeline YAML reference: https://docs.semaphoreci.com/reference/pipeline-yaml
+# - Apple macOS images:      https://docs.semaphoreci.com/reference/os-apple
+# - Job parallelism:         https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+# - Test Reports:            https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+# - Artifacts:               https://docs.semaphoreci.com/using-semaphore/artifacts
+
+version: v1.0
+name: "🍏 Flutter iOS • Build & Test (macOS)"
+
+agent:
+  machine:
+    type: {{ machine_type }}
+    os_image: {{ os_image }}
+
+fail_fast:
+  # 🔴 Stop all running jobs on failure (configurable):
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#fail_fast
+  stop:
+    when: branch != 'main'
+
+auto_cancel:
+  # 🔁 Auto-cancel superseded pipelines on new pushes to the same branch:
+  # https://docs.semaphoreci.com/reference/pipeline-yaml/#auto_cancel
+  running:
+    when: branch != 'main'
+  queued:
+    when: branch != 'main'
+
+global_job_config:
+  env_vars:
+    - name: JUNIT_FILE
+      value: test-results/junit.xml
+    - name: PATH
+      value: "$HOME/.pub-cache/bin:$PATH"
+  prologue:
+    commands:
+      - checkout
+      # 💾 Restore dependency cache (keyed by pubspec.lock):
+      # https://docs.semaphoreci.com/using-semaphore/optimization/cache
+      - cache restore "pub-cache-$(checksum pubspec.lock)"
+      - flutter --version
+      - flutter doctor -v
+      - flutter pub get
+      # 🧾 JUnit converter used by Test Reports:
+      # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+      - dart pub global activate junitreport
+  epilogue:
+    always:
+      commands:
+        # 📈 Publish job-level test results to Test Reports UI (safe if file missing):
+        # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+        - '[[ -f "$JUNIT_FILE" ]] && test-results publish "$JUNIT_FILE" || true'
+
+blocks:
+  - name: "🧹 Quality"
+    task:
+      jobs:
+        - name: "🧼 Format"
+          commands:
+            - flutter format --set-exit-if-changed .
+        - name: "🔎 Analyze"
+          commands:
+            - flutter analyze .
+    dependencies: []
+
+  - name: "🧪 Tests (parallel)"
+    task:
+      jobs:
+        - name: "🧪 Flutter tests (sharded)"
+          # ⚡️ Fan out a single job into N parallel jobs:
+          # https://docs.semaphoreci.com/using-semaphore/jobs/#job-parallelism
+          parallelism: 4
+          commands:
+            - mkdir -p test-results
+            # Convert 1-based SEMAPHORE_JOB_INDEX -> 0-based shard index for Flutter/Dart
+            - export SHARD_INDEX=$((SEMAPHORE_JOB_INDEX - 1))
+            - echo "Shard $SHARD_INDEX of $SEMAPHORE_JOB_COUNT"
+            # 🧾 Produce JUnit via tojunit for Test Reports:
+            # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+            - flutter test --machine --total-shards $SEMAPHORE_JOB_COUNT --shard-index $SHARD_INDEX | tojunit --output $JUNIT_FILE
+    dependencies:
+      - "🧹 Quality"
+
+  - name: "📦 Build iOS (artifact)"
+    dependencies:
+      - "🧪 Tests (parallel)"
+    skip:
+      when: branch != 'main'
+    task:
+      jobs:
+        - name: "📦 flutter build ios (no codesign)"
+          commands:
+            # Builds an unsigned iOS app bundle; suitable for local install/signing later
+            - flutter build ios --release --no-codesign
+            # 📦 Store build output as an artifact (Runner.app and products):
+            # https://docs.semaphoreci.com/using-semaphore/artifacts
+            - artifact push job build/ios
+            # Optionally cache pub again (if dependencies changed in this job)
+            - cache store "pub-cache-$(checksum pubspec.lock)" "$HOME/.pub-cache"
+
+after_pipeline:
+  task:
+    jobs:
+      - name: "📊 Merge test reports"
+        commands:
+          # 🧩 Merge all job reports into a single pipeline report:
+          # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+          - test-results gen-pipeline-report

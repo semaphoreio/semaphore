@@ -349,8 +349,9 @@ defmodule RepositoryHub.GitlabClient do
   def get_branch(params, opts \\ []) do
     token = fetch_token(opts)
     project_id = project_identifier(params)
+    encoded_branch_name = URI.encode(params.branch_name, &URI.char_unreserved?/1)
 
-    "#{@api_url}/projects/#{project_id}/repository/branches/#{params.branch_name}"
+    "#{@api_url}/projects/#{project_id}/repository/branches/#{encoded_branch_name}"
     |> http_get(token, %{})
     |> process_response
     |> unwrap(fn response ->
@@ -369,8 +370,9 @@ defmodule RepositoryHub.GitlabClient do
   def get_tag(params, opts \\ []) do
     token = fetch_token(opts)
     project_id = project_identifier(params)
+    encoded_tag_name = URI.encode(params.tag_name, &URI.char_unreserved?/1)
 
-    "#{@api_url}/projects/#{project_id}/repository/tags/#{params.tag_name}"
+    "#{@api_url}/projects/#{project_id}/repository/tags/#{encoded_tag_name}"
     |> http_get(token, %{})
     |> process_response
     |> unwrap(fn response ->

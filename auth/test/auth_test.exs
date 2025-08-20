@@ -1,6 +1,9 @@
 defmodule AuthTest do
   use ExUnit.Case
-  use Plug.Test
+
+  import Plug.Test
+  import Plug.Conn
+
   doctest Auth
 
   alias InternalApi.Auth.AuthenticateResponse

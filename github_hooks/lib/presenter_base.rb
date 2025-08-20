@@ -18,9 +18,7 @@ class PresenterBase
 
   alias_method :r, :routes
 
-  def helpers
-    ApplicationController.helpers
-  end
+  delegate :helpers, to: ApplicationController
 
   alias_method :h, :helpers
 

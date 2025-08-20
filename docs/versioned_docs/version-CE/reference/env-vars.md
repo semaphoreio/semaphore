@@ -88,7 +88,7 @@ A string with a user-supplied name for the job.
 - **Environment variable**: `SEMAPHORE_JOB_COUNT`
 - **Example**: 4
 
-Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism. 
+Only available when [job parallelism](../using-semaphore/jobs#job-parallelism) is enabled. This variable holds the total number of jobs configured in job parallelism.
 
 It can be used to configure a test partitioning strategy using a 3rd party test runner.
 
@@ -204,7 +204,6 @@ Holds `true` if the workflow was triggered using the [Semaphore API](../referenc
 
 <!-- new api: [Semaphore API](../openapi-spec/workflows-schedule) -->
 
-
 The variable is `false` if the workflow is triggered by a Git push, pull request, or via [Tasks](../using-semaphore/tasks).
 
 ### Workflow is triggered by hook {#workflow-triggered-by-hook}
@@ -299,7 +298,6 @@ Used only when running [`checkout --use-cache`](./toolbox#cache-full-clone). It 
 - **Environment variable**: `SEMAPHORE_GIT_CACHE_KEEP`
 - **Example**: `1`
 
-
 Used only when running [`checkout --use-cache`](./toolbox#cache-full-clone). It how many copies of the repository should be maintained in the Semaphore Git Cache. Older copies are automatically deleted.
 
 The default value is 0, which means that Semaphore maintains only 1 copy of the repository. If you set it to 1, Semaphore will maintain 2 copies of the repository.
@@ -379,7 +377,6 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=pull-request`
 
 The number of the Pull Request.
 
-
 :::note
 
 Present only for builds where `SEMAPHORE_GIT_REF_TYPE=pull-request`
@@ -420,7 +417,6 @@ Present only for builds where `SEMAPHORE_GIT_REF_TYPE=pull-request`
 - **Example**: `src`
 
 The name of the directory that contains the files of the repository linked to the current Semaphore project.
-
 
 ### Repository name {#git-repo-name}
 
@@ -486,7 +482,7 @@ The time that the pipeline spent in the queue is expressed in seconds.
 - **Environment variable**: `SEMAPHORE_PIPELINE_RESULT`
 - **Example**: `failed`, `passed`, `canceled`, `stopped`
 
-Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped` 
+Contains the result of the pipeline. Possible values are: `failed`, `passed`, `canceled`, `stopped`
 
 ### Pipeline result reason {#pipeline-result-reason}
 
@@ -518,7 +514,7 @@ The total duration of the pipeline including queuing time expressed in seconds.
 
 ## Cache variables {#cache-variables}
 
-These variables are used to access the [cache](../using-semaphore/optimization/cache).
+These variables are used to access the [cache](../using-semaphore/cache).
 
 ### Cache URL {#cache-url}
 
@@ -543,7 +539,7 @@ The path in the server to the SSH key file to access the cache server.
 
 ## Semaphore Docker registry variables {#registry-variables}
 
-These variables can be used to access the [Semaphore Docker registry](../using-semaphore/optimization/docker).
+These variables can be used to access the [Semaphore Docker registry](../using-semaphore/containers/docker).
 
 ### Username {#registry-username}
 
@@ -590,7 +586,7 @@ The path to the log file during the initialization job.
 
 ## See also
 
-- [Docker optimization](../using-semaphore/optimization/docker)
+- [Docker optimization](../using-semaphore/containers/docker)
 - [How to configure jobs](../using-semaphore/jobs)
 - [Semaphore pipelines](../using-semaphore/pipelines)
 - [Pipeline YAML reference](./pipeline-yaml)

@@ -99,7 +99,7 @@ export const InteractivePipelineTree = (props: Props) => {
         <div className="inline-flex items-center">
           <div className="flex-auto" dangerouslySetInnerHTML={{ __html: pipelineStatus }}>
           </div>
-          <span className="b" dangerouslySetInnerHTML={{ __html: pipelineName }}></span>
+          <span className="b">{pipelineName}</span>
         </div>
         <img className="ml1" src="/projects/assets/images/icn-arrow-down.svg"/>
       </div>
