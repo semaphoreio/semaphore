@@ -811,32 +811,6 @@ defmodule InternalApi.Projecthub.RestoreResponse do
   field(:metadata, 1, type: InternalApi.Projecthub.ResponseMeta)
 end
 
-defmodule InternalApi.Projecthub.RestoreRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.RequestMeta.t(),
-          id: String.t()
-        }
-  defstruct [:metadata, :id]
-
-  field :metadata, 1, type: InternalApi.Projecthub.RequestMeta
-  field :id, 2, type: :string
-end
-
-defmodule InternalApi.Projecthub.RestoreResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.ResponseMeta.t()
-        }
-  defstruct [:metadata]
-
-  field :metadata, 1, type: InternalApi.Projecthub.ResponseMeta
-end
-
 defmodule InternalApi.Projecthub.UsersRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -1161,60 +1135,6 @@ defmodule InternalApi.Projecthub.RegenerateWebhookSecretResponse do
   field(:secret, 2, type: :string)
 end
 
-defmodule InternalApi.Projecthub.FinishOnboardingRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.RequestMeta.t(),
-          id: String.t()
-        }
-  defstruct [:metadata, :id]
-
-  field :metadata, 1, type: InternalApi.Projecthub.RequestMeta
-  field :id, 2, type: :string
-end
-
-defmodule InternalApi.Projecthub.FinishOnboardingResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.ResponseMeta.t()
-        }
-  defstruct [:metadata]
-
-  field :metadata, 1, type: InternalApi.Projecthub.ResponseMeta
-end
-
-defmodule InternalApi.Projecthub.RegenerateWebhookSecretRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.RequestMeta.t(),
-          id: String.t()
-        }
-  defstruct [:metadata, :id]
-
-  field :metadata, 1, type: InternalApi.Projecthub.RequestMeta
-  field :id, 2, type: :string
-end
-
-defmodule InternalApi.Projecthub.RegenerateWebhookSecretResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          metadata: InternalApi.Projecthub.ResponseMeta.t(),
-          secret: String.t()
-        }
-  defstruct [:metadata, :secret]
-
-  field :metadata, 1, type: InternalApi.Projecthub.ResponseMeta
-  field :secret, 2, type: :string
-end
-
 defmodule InternalApi.Projecthub.ProjectCreated do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -1261,22 +1181,6 @@ defmodule InternalApi.Projecthub.ProjectRestored do
   field(:project_id, 1, type: :string)
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
   field(:org_id, 3, type: :string)
-end
-
-defmodule InternalApi.Projecthub.ProjectRestored do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          project_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t(),
-          org_id: String.t()
-        }
-  defstruct [:project_id, :timestamp, :org_id]
-
-  field :project_id, 1, type: :string
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
-  field :org_id, 3, type: :string
 end
 
 defmodule InternalApi.Projecthub.ProjectUpdated do
