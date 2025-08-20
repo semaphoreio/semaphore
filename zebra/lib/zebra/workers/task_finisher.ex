@@ -61,7 +61,7 @@ defmodule Zebra.Workers.TaskFinisher do
       log(task.id, "Processing task, results #{inspect(results)}, states #{inspect(states)}")
 
       if Enum.all?(states, fn s -> s == Job.state_finished() end) do
-        case calculate_task_result(results) do
+        case calculate_task_result(results, task) do
           {:ok, result} ->
             finish(task, jobs, result)
             publish(task)
@@ -92,8 +92,13 @@ defmodule Zebra.Workers.TaskFinisher do
     log(task.id, "marked as finished")
   end
 
-  def calculate_task_result(job_results) do
+  def calculate_task_result(job_results, task) do
     cond do
+      # If fail_fast:stop is active and there's a failure, show as failed
+      task.fail_fast_strategy == "stop" &&
+          Enum.any?(job_results, fn r -> r == Job.result_failed() end) ->
+        {:ok, "failed"}
+
       Enum.any?(job_results, fn r -> r == Job.result_stopped() end) ->
         {:ok, "stopped"}
 
