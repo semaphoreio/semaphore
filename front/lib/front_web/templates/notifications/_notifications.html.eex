@@ -1,6 +1,11 @@
 <%= Enum.map(@notifications, fn notification -> %>
   <div class="bg-white shadow-1 br3 pa3 mv3">
-        <div class="f4 f3-m b mb2"><%= notification.metadata.name %></div>
+        <div class="flex items-center justify-between mb2">
+            <div class="f4 f3-m b"><%= notification.metadata.name %></div>
+            <%= if Map.has_key?(notification.metadata, :creator) && Map.has_key?(notification.metadata.creator, :name) do %>
+              <div class="f6 black-50 tr">last modified by <%= notification.metadata.creator.name %></div>
+            <% end %>
+        </div>
 
         <div class="overflow-auto nowrap">
           <%= Enum.map(notification.spec.rules, fn rule -> %>
