@@ -1739,21 +1739,12 @@ defmodule Plumber.WorkflowAPI.Server.Test do
   # Create
 
   test "gRPC create() - create workflow" do
-    repo = %{
-      owner: UUID.uuid4(),
-      repo_name: "test-repo",
-      branch_name: "main",
-      commit_sha: UUID.uuid4()
-    }
-    |> InternalApi.PlumberWF.CreateRequest.Repo.new()
-
     %{
       service: 3,
       project_id: UUID.uuid4(),
       request_token: UUID.uuid4(),
       label: "some_label",
-      organization_id: UUID.uuid4(),
-      repo: repo
+      organization_id: UUID.uuid4()
     }
     |> InternalApi.PlumberWF.CreateRequest.new()
     |> create_wf()
