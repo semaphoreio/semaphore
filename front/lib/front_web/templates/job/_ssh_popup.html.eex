@@ -10,7 +10,7 @@
           />
       </div>
       <div>
-        Paste this to your terminal to access the job via SSH. Read more at: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/article/75-debugging-with-ssh-access" target="_blank" rel="noopener">Docs: Debugging with SSH</a>
+        Paste this to your terminal to access the job via SSH. Read more at: <a href="https://<%= Application.fetch_env!(:front, :docs_domain) %>/getting-started/tour/continuous-integration#ssh" target="_blank" rel="noopener">Docs: Debugging with SSH</a>
       </div>
 
       <%= render FrontWeb.SharedView, "_connect_cli_instructions.html", organization: @organization, user: @user %>
