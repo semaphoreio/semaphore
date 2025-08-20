@@ -66,6 +66,7 @@ import { default as Agents} from "./agents";
 import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
+import { default as ServiceAccounts } from "./service_accounts";
 import { default as Report } from "./report";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
@@ -294,12 +295,23 @@ export var App = {
     GroupManagement.init();
     new Star();
 
-    const addPeopleAppRoot = document.getElementById("add-people");
-    if (addPeopleAppRoot) {
-      AddPeople({
-        dom: addPeopleAppRoot,
-        config: addPeopleAppRoot.dataset,
-      });
+
+    // Initialize Preact apps
+    const serviceAccountsEl = document.getElementById("service-accounts");
+    if (serviceAccountsEl) {
+      const config = JSON.parse(serviceAccountsEl.dataset.config);
+      ServiceAccounts({ dom: serviceAccountsEl, config });
+    }
+
+    const addPeopleEl = document.getElementById("add-people");
+    if (addPeopleEl) {
+      AddPeople({ dom: addPeopleEl, config: addPeopleEl.dataset });
+    }
+
+    const syncPeopleEl = document.querySelector(".app-sync-people");
+    if (syncPeopleEl) {
+      const config = JSON.parse(syncPeopleEl.dataset.config);
+      SyncPeople({ dom: syncPeopleEl, config });
     }
 
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
@@ -515,6 +527,7 @@ export var App = {
     Tippy.colorDropdown('.js-dropdown-color-trigger');
 
     window.Notice.init();
+
 
     $(document).on("click", ".x-select-on-click", function (event) {
       event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);

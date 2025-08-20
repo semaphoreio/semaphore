@@ -1361,4 +1361,192 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert {:error, %GRPC.RPCError{status: ^grpc_error}} = ch |> Stub.create(request)
     end
   end
+
+  describe "describe service accounts" do
+    test "should describe service account successfully", %{grpc_channel: channel} do
+      # Create a service account using the factory
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert()
+
+      request = User.DescribeRequest.new(user_id: user.id)
+
+      {:ok, response} = channel |> Stub.describe(request)
+
+      assert %User.DescribeResponse{
+               email: user_email,
+               user_id: user_id,
+               name: user_name,
+               repository_providers: [],
+               repository_scopes: %User.RepositoryScopes{
+                 github: nil,
+                 bitbucket: nil
+               }
+             } = response
+
+      assert user_id == user.id
+      assert user_email == user.email
+      assert user_name == user.name
+      assert String.contains?(user_email, "@service_accounts.")
+      assert String.contains?(user_email, ".#{Application.fetch_env!(:guard, :base_domain)}")
+    end
+
+    test "should describe service account with correct user metadata", %{grpc_channel: channel} do
+      # Create service account with specific details
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert(
+          name: "Test Service Account",
+          description: "Test Description"
+        )
+
+      request = User.DescribeRequest.new(user_id: user.id)
+
+      {:ok, response} = channel |> Stub.describe(request)
+
+      assert %User.DescribeResponse{
+               user: %User.User{
+                 id: user_id,
+                 name: user_name,
+                 email: user_email,
+                 repository_providers: [],
+                 creation_source: creation_source
+               }
+             } = response
+
+      assert user_id == user.id
+      assert user_name == "Test Service Account"
+      assert user_email == user.email
+      assert user.creation_source == :service_account
+      # Verify that SERVICE_ACCOUNT enum value (2) is returned
+      assert creation_source == InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+      assert creation_source == 2
+    end
+
+    test "should not return repository providers for service accounts", %{grpc_channel: channel} do
+      # Service accounts should not have repository providers
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert()
+
+      request = User.DescribeRequest.new(user_id: user.id)
+
+      {:ok, response} = channel |> Stub.describe(request)
+
+      assert %User.DescribeResponse{
+               repository_providers: [],
+               repository_scopes: %User.RepositoryScopes{
+                 github: nil,
+                 bitbucket: nil
+               },
+               github_token: "",
+               github_uid: "",
+               github_login: ""
+             } = response
+    end
+
+    test "should handle service account not found", %{grpc_channel: channel} do
+      non_existent_id = Ecto.UUID.generate()
+      request = User.DescribeRequest.new(user_id: non_existent_id)
+
+      {:error, grpc_error} = channel |> Stub.describe(request)
+
+      not_found_grpc_error = GRPC.Status.not_found()
+
+      assert %GRPC.RPCError{
+               status: ^not_found_grpc_error,
+               message: error_message
+             } = grpc_error
+
+      assert error_message == "User with id #{non_existent_id} not found"
+    end
+
+    test "should describe service account by email", %{grpc_channel: channel} do
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert()
+
+      request = User.DescribeByEmailRequest.new(email: user.email)
+
+      {:ok, response} = channel |> Stub.describe_by_email(request)
+
+      assert %User.User{
+               id: user_id,
+               email: user_email,
+               name: user_name,
+               repository_providers: []
+             } = response
+
+      assert user_id == user.id
+      assert user_email == user.email
+      assert user_name == user.name
+    end
+
+    test "should include service accounts in search results", %{grpc_channel: channel} do
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert(name: "SearchableServiceAccount")
+
+      request =
+        User.SearchUsersRequest.new(
+          query: "SearchableServiceAccount",
+          limit: 10
+        )
+
+      {:ok, response} = channel |> Stub.search_users(request)
+
+      assert %User.SearchUsersResponse{users: users} = response
+      assert length(users) >= 1
+
+      service_account_user = Enum.find(users, fn u -> u.id == user.id end)
+      assert service_account_user != nil
+      assert service_account_user.name == "SearchableServiceAccount"
+      assert service_account_user.repository_providers == []
+    end
+
+    test "should include service accounts in describe_many results", %{grpc_channel: channel} do
+      {:ok, %{service_account: _sa1, user: user1}} =
+        Support.Factories.ServiceAccountFactory.insert(name: "SA1")
+
+      {:ok, %{service_account: _sa2, user: user2}} =
+        Support.Factories.ServiceAccountFactory.insert(name: "SA2")
+
+      request = User.DescribeManyRequest.new(user_ids: [user1.id, user2.id])
+
+      {:ok, response} = channel |> Stub.describe_many(request)
+
+      assert %User.DescribeManyResponse{users: users} = response
+      assert length(users) == 2
+
+      user_ids = Enum.map(users, & &1.id) |> Enum.sort()
+      expected_ids = [user1.id, user2.id] |> Enum.sort()
+      assert user_ids == expected_ids
+
+      # All should be service accounts with no repository providers
+      Enum.each(users, fn user ->
+        assert user.repository_providers == []
+        # Verify creation_source is SERVICE_ACCOUNT (2)
+        assert user.creation_source ==
+                 InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+
+        assert user.creation_source == 2
+      end)
+    end
+
+    test "should return creation_source as SERVICE_ACCOUNT for service accounts", %{
+      grpc_channel: channel
+    } do
+      {:ok, %{service_account: _service_account, user: user}} =
+        Support.Factories.ServiceAccountFactory.insert()
+
+      request = User.DescribeRequest.new(user_id: user.id)
+
+      {:ok, response} = channel |> Stub.describe(request)
+
+      assert %User.DescribeResponse{
+               user: %User.User{
+                 creation_source: creation_source
+               }
+             } = response
+
+      # Verify creation_source is exactly SERVICE_ACCOUNT (enum value 2)
+      assert creation_source == InternalApi.User.User.CreationSource.value(:SERVICE_ACCOUNT)
+      assert creation_source == 2
+    end
+  end
 end
