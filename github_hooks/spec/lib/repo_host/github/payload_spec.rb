@@ -102,30 +102,30 @@ RSpec.describe RepoHost::Github::Payload, :vcr => vcr_options do
     end
   end
 
-  describe ".is_pull_request?" do
+  describe ".pull_request?" do
     context "payload has pull request info" do
       it "returns true" do
-        expect(payload_for_opened_pull_request.is_pull_request?).to be_truthy
+        expect(payload_for_opened_pull_request.pull_request?).to be_truthy
       end
     end
 
     context "payload does not have pull request info" do
       it "returns false" do
-        expect(payload.is_pull_request?).to be_falsey
+        expect(payload.pull_request?).to be_falsey
       end
     end
   end
 
-  describe ".is_draft_pull_request?" do
+  describe ".draft_pull_request?" do
     context "payload has draft pull request info" do
       it "returns true" do
-        expect(payload_for_opened_draft_pull_request.is_pull_request?).to be_truthy
+        expect(payload_for_opened_draft_pull_request.pull_request?).to be_truthy
       end
     end
 
     context "payload does not have draft pull request info" do
       it "returns false" do
-        expect(payload.is_draft_pull_request?).to be_falsey
+        expect(payload.draft_pull_request?).to be_falsey
       end
     end
   end

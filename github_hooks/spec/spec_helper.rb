@@ -63,8 +63,8 @@ end
 begin
 #  ActiveRecord::Migration.maintain_test_schema!
 rescue ActiveRecord::PendingMigrationError => e
-  puts e.to_s.strip
-  exit 1
+  Rails.logger.error e.to_s.strip
+  raise e
 end
 
 ActiveRecord::Base.logger = Logger.new STDOUT if ENV["VERBOSE_LOGS"]

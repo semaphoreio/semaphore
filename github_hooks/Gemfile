@@ -4,7 +4,7 @@ git_source(:github) { |repo_name| "https://github.com/#{repo_name}.git" }
 gem "bundler", ">= 1.8.4"
 
 gem "pg", "~> 1.1"
-gem "rails", "~> 8.0.0"
+gem "rails", ">= 8.0.2.1", "< 8.1"
 gem "sprockets-rails"
 
 gem "excon", "~> 0.81.0"

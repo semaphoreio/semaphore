@@ -540,7 +540,12 @@ RSpec/ExpectInHook:
 # Offense count: 2
 # Configuration parameters: Include, CustomTransform, IgnoreMethods, SpecSuffixOnly.
 # Include: **/*_spec*rb*, **/spec/**/*
-RSpec/FilePath:
+RSpec/SpecFilePathFormat:
+  Exclude:
+    - 'spec/lib/repo_host/repository/hook_spec.rb'
+    - 'spec/lib/repo_host/repository_spec.rb'
+
+RSpec/SpecFilePathSuffix:
   Exclude:
     - 'spec/lib/repo_host/repository/hook_spec.rb'
     - 'spec/lib/repo_host/repository_spec.rb'

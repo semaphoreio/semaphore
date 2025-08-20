@@ -105,7 +105,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
-      if workflow.payload.is_draft_pull_request? && !draft_pr_allowed?(workflow.project)
+      if workflow.payload.draft_pull_request? && !draft_pr_allowed?(workflow.project)
         logger.info("skip-draft-prs")
         workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
 
@@ -187,7 +187,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     if workflow.payload.pull_request?
       begin
-        if workflow.payload.is_draft_pull_request? && !draft_pr_allowed?(workflow.project)
+        if workflow.payload.draft_pull_request? && !draft_pr_allowed?(workflow.project)
           logger.info("skip-draft-prs")
           workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
 
@@ -301,12 +301,9 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.forked_pr_allowed?(requestor, project)
-    if project.allowed_contributors.blank?
-      true
-    else
+    project.allowed_contributors.blank? ||
       project.allowed_contributors.split(",").include?(requestor) ||
-        project_member?(project, requestor)
-    end
+      project_member?(project, requestor)
   end
 
   def self.draft_pr_allowed?(project)
@@ -465,7 +462,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.label(workflow)
-    if workflow.payload.is_pull_request?
+    if workflow.payload.pull_request?
       workflow.pull_request_number.to_s
     elsif workflow.payload.tag?
       workflow.payload.tag_name

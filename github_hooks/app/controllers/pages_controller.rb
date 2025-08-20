@@ -1,6 +1,6 @@
 class PagesController < ApplicationController
 
-  def is_alive # rubocop:disable Naming/PredicateName
+  def alive?
     render :plain => "yes"
   end
 

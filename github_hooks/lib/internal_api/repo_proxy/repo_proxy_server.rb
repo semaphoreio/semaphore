@@ -152,7 +152,7 @@ module InternalApi
         end
 
         label =
-          if workflow.payload.is_pull_request?
+          if workflow.payload.pull_request?
             workflow.pull_request_number.to_s
           elsif workflow.payload.tag_created?
             workflow.payload.tag_name
@@ -309,7 +309,7 @@ module InternalApi
       end
 
       def branch_name(hook)
-        if hook.payload.is_pull_request?
+        if hook.payload.pull_request?
           hook.payload.pr_base_branch_name.to_s
         else
           hook.branch_name.to_s
@@ -317,7 +317,7 @@ module InternalApi
       end
 
       def type(hook)
-        if hook.payload.is_pull_request?
+        if hook.payload.pull_request?
           InternalApi::RepoProxy::Hook::Type::PR
         elsif hook.payload.tag?
           InternalApi::RepoProxy::Hook::Type::TAG

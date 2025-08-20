@@ -55,7 +55,7 @@ Rails.application.configure do
   config.log_level = ENV.fetch("LOG_LEVEL", "info")
 
   config.lograge.enabled = true
-  config.lograge.ignore_actions = ["PagesController#is_alive"]
+  config.lograge.ignore_actions = ["PagesController#alive?"]
 
   config.lograge.custom_options = lambda do |event|
     { :time => event.time }
