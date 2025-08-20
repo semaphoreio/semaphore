@@ -307,7 +307,8 @@ defmodule FrontWeb.NotificationsController do
 
     map(notifications, fn n ->
       if n.metadata.creator_id != "" do
-        creator = find(creators, &(&1.id == n.metadata.creator_id)) || %{name: "deleted_user"}
+        default_username = Application.get_env(:front, :default_user_name)
+        creator = find(creators, &(&1.id == n.metadata.creator_id)) || %{name: default_username}
         %{n | metadata: Map.put(n.metadata, :creator, creator)}
       else
         n
