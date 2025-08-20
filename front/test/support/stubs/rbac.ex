@@ -46,7 +46,9 @@ defmodule Support.Stubs.RBAC do
     "organization.plans_and_billing.manage",
     "organization.repo_to_role_mappers.manage",
     "organization.dashboards.view",
-    "organization.dashboards.manage"
+    "organization.dashboards.manage",
+    "organization.service_accounts.view",
+    "organization.service_accounts.manage"
   ]
 
   @project_permissions [
@@ -223,6 +225,24 @@ defmodule Support.Stubs.RBAC do
       add_member(@default_org_id, u.id, nil)
     end
 
+    service_accounts = [
+      "Robot #1",
+      "Robot #2",
+      "Robot #3"
+    ]
+
+    for service_account_name <- service_accounts do
+      {:ok, {service_account, _}} =
+        Front.ServiceAccount.create(
+          @default_org_id,
+          service_account_name,
+          "Service account for testing",
+          ""
+        )
+
+      add_service_account(@default_org_id, service_account)
+    end
+
     # Enable okta (includes rbac as well) for rtx
     Feature.enable_feature(@default_org_id, "rbac__saml")
   end
@@ -334,6 +354,22 @@ defmodule Support.Stubs.RBAC do
     })
   end
 
+  def add_service_account(org_id, service_account) do
+    DB.insert(:subjects, %{
+      id: service_account.id,
+      name: service_account.name,
+      type: "service_account"
+    })
+
+    DB.insert(:subject_role_bindings, %{
+      id: UUID.gen(),
+      org_id: org_id,
+      subject_id: service_account.id,
+      role_id: member_role_id(),
+      project_id: nil
+    })
+  end
+
   def member_role_id do
     DB.find_all_by(:rbac_roles, :name, "Member") |> List.first() |> Map.get(:id)
   end
@@ -441,58 +477,58 @@ defmodule Support.Stubs.RBAC do
         DB.find_all_by(:subject_role_bindings, :org_id, org_id)
         |> Enum.filter(fn binding -> binding.project_id == project_id end)
 
-      user_grouped_role_bindings = Enum.group_by(all_org_subject_role_bindings, & &1.subject_id)
-
-      paginated_bindings =
-        user_grouped_role_bindings
-        |> Enum.drop(page.page_no * page_size)
-        |> Enum.take(page.page_no * page_size + page_size)
+      subject_grouped_role_bindings =
+        Enum.group_by(all_org_subject_role_bindings, & &1.subject_id)
 
       string_member_type =
         RBAC.SubjectType.key(member_type) |> Atom.to_string() |> String.downcase()
 
+      members =
+        Enum.map(subject_grouped_role_bindings, fn {subject_id, bindings} ->
+          user =
+            DB.filter(:subjects, &(&1.id == subject_id and &1.type == string_member_type))
+            |> List.first()
+
+          if !is_nil(user) and
+               (member_name_contains == "" ||
+                  String.downcase(user.name) =~ String.downcase(member_name_contains)) do
+            RBAC.ListMembersResponse.Member.new(
+              subject:
+                RBAC.Subject.new(
+                  subject_type: member_type,
+                  subject_id: user.id,
+                  display_name: user.name
+                ),
+              subject_role_bindings:
+                Enum.map(bindings, fn binding ->
+                  role = DB.find_by(:rbac_roles, :id, binding.role_id)
+
+                  RBAC.SubjectRoleBinding.new(
+                    role:
+                      RBAC.Role.new(
+                        id: role.id,
+                        name: role.name
+                      ),
+                    source: RBAC.RoleBindingSource.value(:ROLE_BINDING_SOURCE_MANUALLY)
+                  )
+                end)
+            )
+          else
+            nil
+          end
+        end)
+        |> Enum.filter(& &1)
+
+      paginated_members =
+        members
+        |> Enum.sort_by(& &1.subject.display_name)
+        |> Enum.chunk_every(page_size)
+        |> Enum.at(page.page_no, [])
+
       RBAC.ListMembersResponse.new(
-        members:
-          Enum.map(paginated_bindings, fn {subject_id, bindings} ->
-            filter_f = fn entity ->
-              entity.id == subject_id && entity.type == string_member_type
-            end
-
-            user =
-              DB.filter(:subjects, filter_f)
-              |> List.first()
-
-            if !is_nil(user) and
-                 (member_name_contains == "" ||
-                    String.downcase(user.name) =~ String.downcase(member_name_contains)) do
-              RBAC.ListMembersResponse.Member.new(
-                subject:
-                  RBAC.Subject.new(
-                    subject_type: member_type,
-                    subject_id: user.id,
-                    display_name: user.name
-                  ),
-                subject_role_bindings:
-                  Enum.map(bindings, fn binding ->
-                    role = DB.find_by(:rbac_roles, :id, binding.role_id)
-
-                    RBAC.SubjectRoleBinding.new(
-                      role:
-                        RBAC.Role.new(
-                          id: role.id,
-                          name: role.name
-                        ),
-                      source: RBAC.RoleBindingSource.value(:ROLE_BINDING_SOURCE_MANUALLY)
-                    )
-                  end)
-              )
-            else
-              nil
-            end
-          end)
-          |> Enum.filter(fn user -> user != nil end),
+        members: paginated_members,
         total_pages:
-          ((user_grouped_role_bindings |> map_size()) / page_size)
+          (length(members) / page_size)
           |> Float.ceil()
           |> round()
       )
@@ -603,17 +639,15 @@ defmodule Support.Stubs.RBAC do
             req.role_assignment.project_id
           end
 
-        # If role is already assigned, remove id
-        srb =
-          DB.filter(:subject_role_bindings, fn entity ->
-            entity.subject_id == req.role_assignment.subject.subject_id and
-              entity.org_id == req.role_assignment.org_id and
-              (project_id == nil or entity.project_id == project_id)
-          end)
-
-        if srb != [] do
-          DB.delete(:subject_role_bindings, hd(srb).id)
-        end
+        # If role is already assigned, remove it
+        DB.filter(:subject_role_bindings, fn entity ->
+          entity.subject_id == req.role_assignment.subject.subject_id and
+            entity.org_id == req.role_assignment.org_id and
+            (project_id == nil or entity.project_id == project_id)
+        end)
+        |> Enum.each(fn srb ->
+          DB.delete(:subject_role_bindings, srb.id)
+        end)
 
         DB.insert(:subject_role_bindings, %{
           id: UUID.gen(),
