@@ -4028,7 +4028,7 @@ A new set of improvements focused on monorepo support were shipped:
 - **Clearer error messages** - Improved error messages for the most common misconfiguration issues.
 - **Improved stability** - All compilation errors arising from edge cases have been eliminated, making these features more reliable.
 
-You can read more about this feature in this [blog post](https://semaphoreci.com/blog/monorepo-support-available).
+You can read more about this feature in this [blog post](https://semaphore.io/blog/monorepo-support-available).
 
 Additional related reading:
 
@@ -4332,7 +4332,7 @@ The new UI is available to all users. Minor performance updates and fixes have b
 - **(Fixed)** fixed the issue with job logs auto-scrolling to top of the failed command output, instead of to the bottom.
 - **(Fixed)** fixed the issue with manual promotions being triggered based on promotion name.
 
-You can read more about the new UI in this [blog post](https://semaphoreci.com/blog/refreshed-new-ui-for-a-greater-experience).
+You can read more about the new UI in this [blog post](https://semaphore.io/blog/refreshed-new-ui-for-a-greater-experience).
 We appreciate your feedback and encourage you to send any suggestions to [our feedback inbox](mailto:feedback@semaphoreci.com?subject=Beta%20Feedback).
 
 **(Improved) macOS Xcode 12 image update**  
@@ -4548,7 +4548,7 @@ The new UI brings several improvements:
 - Improved job logs with collapsable command lines and a dark theme.
 - Activity Monitor page that provides a handy overview of running pipelines and quota limits.
 
-You can read more about the new UI in this [blog post](https://semaphoreci.com/blog/refreshed-new-ui-for-a-greater-experience).  
+You can read more about the new UI in this [blog post](https://semaphore.io/blog/refreshed-new-ui-for-a-greater-experience).  
 If you want to try out the new UI, but it hasn't yet rolled out to your organization, please reach out to [our support team](mailto:support@semaphoreci.com).
 
 **(Improved) macOS Xcode11 image update**  
@@ -4988,7 +4988,7 @@ A detailed list can be found in the [Docker images changelog](https://github.com
 
 ## Week of December 2, 2019
 
-- New: [Open source organizations are available](https://semaphoreci.com/blog/free-open-source-cicd).  Each open source organization receives unlimited CI/CD minutes for building public repositories, including Linux, Docker, and macOS-based environments.
+- New: [Open source organizations are available](https://semaphore.io/blog/free-open-source-cicd).  Each open source organization receives unlimited CI/CD minutes for building public repositories, including Linux, Docker, and macOS-based environments.
 - New: [Status badges](../using-semaphore/projects#badges).
 - Updates to the Ubuntu1804 image
   - Git-lfs 2.9.0  -> 2.9.1
@@ -5172,7 +5172,7 @@ A detailed list can be found in the [Docker images changelog](https://github.com
 
 ## Week of July 22, 2019
 
-- New feature: model complex workflows with pipeline dependencies. Learn more in this [blog post](https://semaphoreci.com/blog/introducing-cicd-pipeline-dependencies).
+- New feature: model complex workflows with pipeline dependencies. Learn more in this [blog post](https://semaphore.io/blog/introducing-cicd-pipeline-dependencies).
 - New feature: [fail-fast on the first failure](../using-semaphore/pipelines#fail-fast).  Now you can stop everything in your pipeline as soon as a failure is detected, or stops only the jobs and blocks in your pipeline that haven't yet started.
 - A new global sidebar that uses less screen real estate, and lets you star projects and dashboards so they appear on top of the list. Also, it loads really fast.
 - A new version of CLI v0.14.1 has been released.
@@ -5241,7 +5241,7 @@ curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash
 
 ## Week of May 13, 2019
 
-- [iOS support is in GA](https://semaphoreci.com/blog/introducing-ios-cicd): Semaphore now supports building, testing, and deploying applications for any Apple device.
+- [iOS support is in GA](https://semaphore.io/blog/introducing-ios-cicd): Semaphore now supports building, testing, and deploying applications for any Apple device.
 - macOS platform:
   - Xcode upgraded to 10.2.1
 - New feature: [schedule CI/CD workflows](../using-semaphore/tasks) using standard Cron syntax.
@@ -5317,7 +5317,7 @@ curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash
   widget shows CLI commands that you can run to perform the same actions that
   you see in the UI.
 - Slack notifications can be [filtered by pipeline result](../using-semaphore/notifications).
-- macOS Mojave image introduced, with iOS/macOS support in [closed beta](https://semaphoreci.com/product/ios).
+- macOS Mojave image introduced, with iOS/macOS support in [closed beta](https://semaphore.io/product/ios).
 - Syntax highlighting in docs.
 
 ## Week of Feb 11, 2019

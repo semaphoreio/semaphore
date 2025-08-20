@@ -358,7 +358,7 @@ Artifacts on Semaphore Cloud are charged based on:
 - **Storage**: the amount of data stored, charged on a GB-per-month basis
 - **Traffic**: download network traffic in jobs or from the website, charged by the total GB of data per month
 
-For more information, see [Plans and Pricing](https://semaphoreci.com/pricing)
+For more information, see [Plans and Pricing](https://semaphore.io/pricing)
 
 :::note
 
