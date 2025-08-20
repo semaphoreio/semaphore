@@ -31,7 +31,7 @@ module RepoHost
       end
       alias is_pull_request? pull_request?
 
-      def is_draft_pull_request? # rubocop:disable Naming/PredicateName
+      def draft_pull_request?
         pull_request? && data.dig("object_attributes", "draft")
       end
 
