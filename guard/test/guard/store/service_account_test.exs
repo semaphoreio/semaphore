@@ -222,7 +222,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
         assert String.contains?(
                  result.service_account.email,
-                 "@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end
@@ -263,7 +263,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
         # Should sanitize both name and org username
         assert result.service_account.email ==
-                 "my-service-account-@sa.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "my-service-account-@service_accounts.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
       end
     end
 
@@ -280,7 +280,7 @@ defmodule Guard.Store.ServiceAccountTest do
         # Should use fallback email
         assert String.contains?(
                  result.service_account.email,
-                 "@sa.unknown.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service_accounts.unknown.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end
@@ -337,7 +337,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
         assert String.contains?(
                  updated_sa.user.email,
-                 "new-name@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "new-name@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end

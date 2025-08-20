@@ -251,6 +251,9 @@ defmodule Guard.FrontRepo.User do
   This validates the specific requirements for service account users.
   """
   def service_account_changeset(user, params) do
+    base_domain = Application.fetch_env!(:guard, :base_domain)
+    escaped_domain = Regex.escape(base_domain)
+
     user
     |> cast(params, [
       :email,
@@ -267,9 +270,9 @@ defmodule Guard.FrontRepo.User do
     |> validate_length(:name, max: 255, message: "Name cannot exceed 255 characters")
     |> validate_inclusion(:creation_source, [:service_account])
     |> put_change(:single_org_user, true)
-    |> validate_format(:email, ~r/^[\w\-\.]+@sa\.[\w\-\.]+\.semaphoreci\.com$/i,
+    |> validate_format(:email, ~r/^[\w\-\.]+@service_accounts\.[\w\-\.]+\.#{escaped_domain}$/i,
       message:
-        "Service account email must follow the format: name@sa.organization.semaphoreci.com"
+        "Service account email must follow the format: name@service_accounts.organization.#{base_domain}"
     )
     |> unique_constraint(:email, name: :index_users_on_email)
     |> unique_constraint(:authentication_token, name: :index_users_on_authentication_token)
@@ -283,8 +286,9 @@ defmodule Guard.FrontRepo.User do
     # Sanitize names to ensure valid email format
     sanitized_sa_name = sanitize_email_part(service_account_name)
     sanitized_org_name = sanitize_email_part(organization_name)
+    base_domain = Application.fetch_env!(:guard, :base_domain)
 
-    "#{sanitized_sa_name}@sa.#{sanitized_org_name}.semaphoreci.com"
+    "#{sanitized_sa_name}@service_accounts.#{sanitized_org_name}.#{base_domain}"
   end
 
   defp sanitize_email_part(name) do

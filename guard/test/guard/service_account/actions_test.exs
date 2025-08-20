@@ -92,7 +92,8 @@ defmodule Guard.ServiceAccount.ActionsTest do
                   org_id: "org-id",
                   creator_id: "creator-id",
                   deactivated: false,
-                  email: "test@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                  email:
+                    "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                 },
                 api_token: "test-token"
               }}
@@ -102,7 +103,10 @@ defmodule Guard.ServiceAccount.ActionsTest do
          [
            create: fn user_id, email, name, "service_account" ->
              assert user_id == "user-id"
-             assert email == "test@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+
+             assert email ==
+                      "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+
              assert name == "Test SA"
              :ok
            end,
@@ -120,7 +124,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
         assert_called(
           Guard.Store.RbacUser.create(
             "user-id",
-            "test@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}",
+            "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}",
             "Test SA",
             "service_account"
           )
@@ -394,7 +398,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
         assert String.contains?(
                  service_account.email,
-                 "@sa.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
 
         # Verify event was published
