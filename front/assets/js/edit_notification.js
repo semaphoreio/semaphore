@@ -29,6 +29,9 @@ export var EditNotification = {
                      class="form-control w-100"
                      placeholder="e.g. my-project, /hotfix-*/, /.*/" >
               <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+              <p class="f6 mt2 pa2 bg-washed-yellow ba b--yellow br2">
+                  <strong>Note:</strong> Regardless of the regex patterns specified, notifications will only be sent for projects to which the creator of this notification has access.
+              </p>
             </div>
 
             <div class="pl4 mb3">
