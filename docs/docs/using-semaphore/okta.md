@@ -247,7 +247,7 @@ Once enforced, Okta is the **only login method allowed** for all users in the or
 
 Semaphore tries to match new users provisioned via SCIM to existing Semaphore users by email address. If the email address associated with the SCIM request matches the email address of existing Semaphore users, the two accounts will be connected, and no new account will be provisioned. Email associated with Semaphore is the primary email from GitHub or BitBucket.
 
-If you are not sure how many organization members have corporate email accounts, or have any other question, feel free to contact our support team at `support@semaphoreci.com` and we will help you update user emails and smoothly integrate our app with your SCIM/SAML provider.
+If you are not sure how many organization members have corporate email accounts, or have any other question, feel free to contact our support team at `support@semaphore.io` and we will help you update user emails and smoothly integrate our app with your SCIM/SAML provider.
 
 ## See also
 
