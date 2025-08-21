@@ -22,7 +22,7 @@ If you have any questions or issues during installation contact us:
 
 ## Overview
 
-A Semaphore CI/CD platform consists of two components:
+A Semaphore installation consists of two components:
 
 - **Control plane**: the control plane orchestrates jobs, serves the web application and public API, handles logging, manages permissions, and connects with your repositories. The control plane requires a Kubernetes cluster or a server running [k3s](https://k3s.io/).
 - **Agents**: the only purpose of an agent is to run jobs. The default Semaphore installation includes one agent that runs on the same cluster as the control plane. Agents connect to the control plane, waiting for jobs to be scheduled. See [self-hosted agents](../using-semaphore/self-hosted) to learn how to scale your Semaphore setup.

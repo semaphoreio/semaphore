@@ -33,6 +33,7 @@
             "description": "Choose your installation platform"
           },
           "items": [
+            "getting-started/install-local",
             "getting-started/install-ubuntu",
             "getting-started/install-gcompute",
             "getting-started/install-aws-ec2",

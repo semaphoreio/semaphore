@@ -207,7 +207,7 @@ This time the Release pipeline should automatically start as soon as all jobs in
 
 ## What's next?
 
-That's all for the guided tour. What you've learned here will serve you well to build complex workflows for a lot of scenarios.
+That's all for the Quickstart. What you've learned here will serve you well to build complex workflows for a lot of scenarios.
 
 There is, of course, a lot more to learn. Semaphore is packed with features that do more with less work and optimizations to greatly speed up your workflows.
 
