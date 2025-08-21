@@ -9,6 +9,7 @@ class User < ActiveRecord::Base
     account = repo_host_account(::Repository::GITHUB_PROVIDER)
     return account if account.present?
     return synthetic_repo_host_account if service_account?
+
     nil
   end
 
@@ -21,7 +22,7 @@ class User < ActiveRecord::Base
   end
 
   def service_account?
-    creation_source == 'service_account'
+    creation_source == "service_account"
   end
 
   private
@@ -38,7 +39,7 @@ class User < ActiveRecord::Base
     end
 
     def name
-      user.name || user.username || 'Service Account'
+      user.name || "Service Account"
     end
 
     def github_uid
@@ -46,7 +47,7 @@ class User < ActiveRecord::Base
     end
 
     def login
-      user.username || 'service-account'
+      "service-account"
     end
 
     def repo_host

@@ -5,7 +5,7 @@ RSpec.describe User, :type => :model do
 
   describe "#service_account?" do
     context "when creation_source is 'service_account'" do
-      let(:user) { FactoryBot.build(:user, creation_source: 'service_account') }
+      let(:user) { FactoryBot.build(:user, creation_source: "service_account") }
 
       it "returns true" do
         expect(user.service_account?).to be_truthy
@@ -13,7 +13,7 @@ RSpec.describe User, :type => :model do
     end
 
     context "when creation_source is not 'service_account'" do
-      let(:user) { FactoryBot.build(:user, creation_source: 'github') }
+      let(:user) { FactoryBot.build(:user, creation_source: "github") }
 
       it "returns false" do
         expect(user.service_account?).to be_falsey
@@ -49,7 +49,7 @@ RSpec.describe User, :type => :model do
     end
 
     context "when user is a service account" do
-      let(:user) { FactoryBot.create(:user, creation_source: 'service_account', name: 'Test Service Account', username: 'test-service') }
+      let(:user) { FactoryBot.create(:user, creation_source: "service_account", name: "Test Service Account") }
 
       it "returns a synthetic account object" do
         account = user.github_repo_host_account
@@ -58,19 +58,13 @@ RSpec.describe User, :type => :model do
 
       it "provides expected name from user.name" do
         account = user.github_repo_host_account
-        expect(account.name).to eq('Test Service Account')
+        expect(account.name).to eq("Test Service Account")
       end
 
-      it "provides username fallback when name is nil" do
+      it "provides 'Service Account' fallback when name is nil" do
         user.update!(name: nil)
         account = user.github_repo_host_account
-        expect(account.name).to eq('test-service')
-      end
-
-      it "provides 'Service Account' fallback when both name and username are nil" do
-        user.update!(name: nil, username: nil)
-        account = user.github_repo_host_account
-        expect(account.name).to eq('Service Account')
+        expect(account.name).to eq("Service Account")
       end
 
       it "provides a deterministic github_uid based on user id" do
@@ -79,15 +73,9 @@ RSpec.describe User, :type => :model do
         expect(account.github_uid).to eq(expected_uid)
       end
 
-      it "provides login based on username" do
+      it "provides 'service-account' login" do
         account = user.github_repo_host_account
-        expect(account.login).to eq('test-service')
-      end
-
-      it "provides 'service-account' login fallback when username is nil" do
-        user.update!(username: nil)
-        account = user.github_repo_host_account
-        expect(account.login).to eq('service-account')
+        expect(account.login).to eq("service-account")
       end
 
       it "provides correct repo_host" do
