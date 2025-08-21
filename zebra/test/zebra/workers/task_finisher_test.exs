@@ -60,20 +60,45 @@ defmodule Zebra.Workers.TaskFinisherTest do
   describe ".calculate_task_result" do
     test "when any of the jobs are stopped => result is stopped" do
       results = ["passed", "failed", "stopped"]
+      {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "stopped"} = W.calculate_task_result(results)
+      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
     end
 
     test "when any of the jobs are failed => result is failed" do
       results = ["passed", "failed", "passed"]
+      {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "failed"} = W.calculate_task_result(results)
+      assert {:ok, "failed"} = W.calculate_task_result(results, task)
     end
 
     test "when all of the jobs are passed => result is passed" do
-      results = ["passed", "failed", "passed"]
+      results = ["passed", "passed", "passed"]
+      {:ok, task} = Support.Factories.Task.create()
 
-      assert {:ok, "failed"} = W.calculate_task_result(results)
+      assert {:ok, "passed"} = W.calculate_task_result(results, task)
+    end
+
+    test "when fail_fast:stop is active and jobs are stopped due to failure => result is failed" do
+      results = ["passed", "failed", "stopped", "stopped"]
+      {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "stop"})
+
+      assert {:ok, "failed"} = W.calculate_task_result(results, task)
+    end
+
+    test "when fail_fast:stop is active but no jobs failed => result is stopped" do
+      results = ["passed", "stopped", "stopped"]
+      {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "stop"})
+
+      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
+    end
+
+    test "when fail_fast:cancel is active and jobs are stopped due to failure => result is stopped" do
+      results = ["passed", "failed", "stopped"]
+      {:ok, task} = Support.Factories.Task.create(%{fail_fast_strategy: "cancel"})
+
+      # With cancel strategy, we don't override the normal logic
+      assert {:ok, "stopped"} = W.calculate_task_result(results, task)
     end
   end
 
