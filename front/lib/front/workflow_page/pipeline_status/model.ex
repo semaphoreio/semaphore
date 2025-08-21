@@ -11,8 +11,8 @@ defmodule Front.WorkflowPage.PipelineStatus.Model do
   def load(pipeline_id) do
     Cacheman.fetch(:front, cache_key(pipeline_id), fn ->
       pipeline_status = load_pipeline_status_from_api(pipeline_id)
-      cache_opts = get_cache_opts_for_status(pipeline_status)
-      Cacheman.put(:front, cache_key(pipeline_id), pipeline_status, cache_opts)
+      ttl = get_ttl_for_status(pipeline_status)
+      Cacheman.put(:front, cache_key(pipeline_id), pipeline_status, ttl: ttl)
       {:ok, pipeline_status}
     end)
   end
@@ -39,12 +39,9 @@ defmodule Front.WorkflowPage.PipelineStatus.Model do
   defp pipeline_favicon_status(_, _), do: "pending"
 
   # Running pipelines should be cached for a limited time
-  defp get_cache_opts_for_status(status) when status in ["running", "stopping", "pending"] do
-    [ttl: :timer.minutes(15)]
-  end
+  defp get_ttl_for_status(status) when status in ["running", "stopping", "pending"],
+    do: :timer.minutes(15)
 
   # Use default - infinite cache for completed pipelines
-  defp get_cache_opts_for_status(_status) do
-    [ttl: :infinity]
-  end
+  defp get_ttl_for_status(_status), do: :infinity
 end
