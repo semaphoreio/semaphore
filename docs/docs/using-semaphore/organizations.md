@@ -395,7 +395,7 @@ Updating the ownership of an organization doesn't automatically transfer the pro
 
 ### How to remove an owner {#remove-owner}
 
-If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphoreci.com from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
+If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphore.io from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
 
 ## How to delete an organization {#deleting-an-organization}
 

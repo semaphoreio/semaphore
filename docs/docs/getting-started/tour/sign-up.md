@@ -35,7 +35,7 @@ Before you can start using Semaphore, you need to create an account:
 
 <Steps>
 
-1. Go to [semaphoreci.com](https://semaphoreci.com)
+1. Go to [semaphore.io](https://semaphore.io)
 2. Press **Start Building for Free**
 3. Select one of the options: **Signup with GitHub** or **Signup with BitBucket**
 

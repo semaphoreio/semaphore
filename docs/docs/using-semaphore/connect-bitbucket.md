@@ -28,7 +28,7 @@ Follow these steps to create a Semaphore account using BitBucket:
 <Steps>
 
 1. Log in to your BitBucket account
-2. Navigate to the [Semaphore login page](https://semaphoreci.com/login)
+2. Navigate to the [Semaphore login page](https://semaphore.io/login)
 3. Select **Log in with BitBucket**
 4. Grant access to the Semaphore [OAuth App](https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/) in BitBucket
 5. Finish the Semaphore setup
@@ -42,7 +42,7 @@ If you already have a Semaphore account, you can connect it with your BitBucket 
 <Steps>
 
 1. Log in to your existing Semaphore account
-2. Go to your [Semaphore account page](https://me.semaphoreci.com/account)
+2. Go to your [Semaphore account page](https://me.semaphore.io/account)
 3. Under the **Repository**, click on the Grant access link next to Bitbucket.
     ![Grant access to BitBucket](./img/grant-bb.jpg)
 4. Grant access to the Semaphore OAuth App
@@ -70,7 +70,7 @@ If your repositories aren't showing in Semaphore or changes are not triggering n
 
 <Steps>
 
-1. Navigate to your [Semaphore account](https://me.semaphoreci.com/account)
+1. Navigate to your [Semaphore account](https://me.semaphore.io/account)
 2. Read the status next to BitBucket
     ![Connection status green](./img/account-gh-bb-access.jpg)
 3. If the status is disconnected, click on **Grant**
