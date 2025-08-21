@@ -1,6 +1,6 @@
 ---
 description: OIDC secures access to cloud providers
-displayed_sidebar: usingSemaphore
+displayed_sidebar: docs
 ---
 
 # OpenID Connect

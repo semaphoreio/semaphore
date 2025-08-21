@@ -16,7 +16,7 @@ OAuth is the legacy method to access your GitHub repositories. This feature migh
 
 Semaphore supports two types of ways to access your GitHub repositories:
 
-- [OAuth App](https://github.com/settings/connections/applications/328c742132e5407abd7d): this connection is provides Single-Sign On (SSO) access to your Semaphore account. It is established during the Semaphore [account creation process](../getting-started/guided-tour).
+- [OAuth App](https://github.com/settings/connections/applications/328c742132e5407abd7d): this connection is provides Single-Sign On (SSO) access to your Semaphore account. It is established during the Semaphore [account creation process](../getting-started/quickstart).
 - [GitHub App](https://github.com/apps/semaphore-ci-cd): an optional type of connection providing additional features such as fine-grained control and per-repository permissions.
 
 You can create and revoke access to both types of connections at any time.
@@ -92,6 +92,6 @@ If you have given full access to Semaphore but only see your personal repositori
 
 - [Projects](./projects)
 - [Connecting to GitHub using GitHub App](./connect-github)
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Managing Semaphore servers](./organizations)
 - [How to connect with BitBucket](./connect-bitbucket)

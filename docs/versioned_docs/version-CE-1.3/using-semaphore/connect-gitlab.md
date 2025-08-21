@@ -128,7 +128,7 @@ After changing the URL, double-check the status of the [deploy key](#deploy-key)
 ## See also
 
 - [Projects](./projects)
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Managing Semaphore servers](./organizations)
 - [How to connect with GitHub](./connect-github)
 

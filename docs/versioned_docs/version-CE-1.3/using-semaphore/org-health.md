@@ -1,6 +1,6 @@
 ---
 description: Overview of all your projects
-displayed_sidebar: usingSemaphore
+displayed_sidebar: docs
 ---
 
 # Organization Health
