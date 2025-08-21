@@ -29,6 +29,12 @@ Always use [Incoming Webhooks app](https://semaphore.slack.com/apps/A0F7XDUAZ-in
 
 To create a notification, navigate to **Notifications** and press **New Notification**
 
+:::note
+
+Notifications are only be sent to people with access to the project. If you are not receiving notifications, check if you have [access to the project](./rbac).
+
+:::
+
 <Steps>
 
 1. Type the name of the notification
@@ -102,6 +108,12 @@ At this point, you can create additional rules or save the changes by pressing *
 
 </TabItem>
 <TabItem value="cli" label="CLI">
+
+:::note
+
+Notifications are only be sent to people with access to the project. If you are not receiving notifications, check if you have at least [member access to the project](./rbac).
+
+:::
 
 To create a Slack notification, install and connect the [Semaphore command line](../reference/semaphore-cli) and execute:
 

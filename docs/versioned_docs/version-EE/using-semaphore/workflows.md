@@ -108,7 +108,10 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 :::
 
-- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
+- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository. You can opt to disable triggering workflows on **draft pull requests**
+
+![Control how pull requests and draft pull requests are handled](./img/trigger-draft-pull-request.jpg)
+
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket usernames that can trigger workflows in this way
   
 ![Pull request triggers](./img/project-general-settings-3.jpg)
