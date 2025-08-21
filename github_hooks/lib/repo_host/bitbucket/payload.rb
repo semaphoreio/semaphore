@@ -55,7 +55,7 @@ module RepoHost::Bitbucket
 
     # ❌
     def branch_created?
-      if is_pull_request?
+      if pull_request?
         pull_request_opened?
       else
         @data["created"] && @data["ref"].starts_with?("refs/heads/")
@@ -69,7 +69,7 @@ module RepoHost::Bitbucket
 
     # ✔️
     def branch_deleted?
-      if is_pull_request?
+      if pull_request?
         pull_request_closed?
       else
         first_push_change["closed"]
@@ -83,7 +83,7 @@ module RepoHost::Bitbucket
 
     # ✔️
     def includes_ci_skip?
-      return false if is_pull_request? || head_commit_message.nil?
+      return false if pull_request? || head_commit_message.nil?
 
       ::Semaphore::SkipCi.new.call(head_commit_message)
     end
@@ -136,7 +136,7 @@ module RepoHost::Bitbucket
     end
 
     # ✔️
-    def is_pull_request? # rubocop:disable Naming/PredicateName
+    def pull_request?
       @data["pullrequest"].present?
     end
 
@@ -145,11 +145,9 @@ module RepoHost::Bitbucket
       @data.dig("repository", "links", "html", "href")
     end
 
-    def is_draft_pull_request? # rubocop:disable Naming/PredicateName
+    def draft_pull_request?
       false
     end
-
-    alias_method :pull_request?, :is_pull_request?
 
     # ❌
     def pull_request_within_repo?
@@ -316,13 +314,13 @@ module RepoHost::Bitbucket
     end
 
     def extract_action
-      if is_pull_request?
+      if pull_request?
         "undefined"
       end
     end
 
     def extract_branch
-      if is_pull_request?
+      if pull_request?
         pull_request_branch_name
       elsif pr_comment?
         "pull-request-#{issue_number}"
@@ -338,7 +336,7 @@ module RepoHost::Bitbucket
 
     # ✔️
     def extract_commits
-      unless is_pull_request?
+      unless pull_request?
         extract_commits_from_push
       end
     end
@@ -355,7 +353,7 @@ module RepoHost::Bitbucket
     end
 
     def extract_head
-      if is_pull_request?
+      if pull_request?
         pr_head_sha
       elsif @data["head_commit"]
         # If head commit exists, use that one to extract the commit.
@@ -372,7 +370,7 @@ module RepoHost::Bitbucket
     end
 
     def extract_prev_head
-      if is_pull_request?
+      if pull_request?
         "0000000000000000000000000000000000000000"
       else
         first_push_change.dig("old", "target", "hash")
