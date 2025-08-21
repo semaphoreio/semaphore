@@ -139,6 +139,15 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 ![Example init job log](./img/init-log-example.jpg)
 
+## Pipeline rebuild {#rebuild}
+
+When a job in the pipeline fails, the default behavior is to stop the pipeline. You can attempt to re-run the pipeline in two ways:
+
+- Pressing **Rerun** restarts the whole pipeline from the beginning
+- Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
+
+![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
+
 ## Pipeline settings {#settings}
 
 Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML.
