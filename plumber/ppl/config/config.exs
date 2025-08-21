@@ -53,6 +53,7 @@ config :ppl, general_looper_cooling_time_sec: 1
 # Specific cooling time values for each looper, uncomment to override general one
 config :ppl, ppl_initializing_ct: 0
 config :ppl, ppl_pending_ct: 0
+config :ppl, ppl_init_stopping_ct: 0
 # config :ppl, ppl_queuing_ct: 1
 # config :ppl, ppl_running_ct: 1
 # config :ppl, ppl_stopping_ct: 1
@@ -75,6 +76,7 @@ config :ppl, general_sleeping_period_ms: 1000
 # Specific Time period values for each looper, uncomment to override general one
 # config :ppl, ppl_initializing_sp: 1000
 # config :ppl, ppl_pending_sp: 1000
+config :ppl, ppl_init_stopping_sp: 500
 # config :ppl, ppl_queuing_sp: 1000
 # config :ppl, ppl_running_sp: 1000
 # config :ppl, ppl_stopping_sp: 1000

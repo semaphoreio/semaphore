@@ -15,7 +15,7 @@ defmodule Ppl.Ppls.STMHandler.InitializingState do
     repo: Ppl.EctoRepo,
     schema: Ppl.Ppls.Model.Ppls,
     observed_state: "initializing",
-    allowed_states: ~w(initializing pending done),
+    allowed_states: ~w(initializing pending done init-stopping),
     cooling_time_sec: Util.Config.get_cooling_time(:ppl, :ppl_initializing_ct),
     columns_to_log: [:state, :result, :recovery_count, :ppl_id],
     publisher_cb: fn params -> Common.publisher_callback(params) end
@@ -28,7 +28,7 @@ defmodule Ppl.Ppls.STMHandler.InitializingState do
     with {:ok, psi} <- PplSubInitsQueries.get_by_id(ppl.ppl_id),
          {:ok,  _}  <- PplSubInitsQueries.terminate(psi, "stop", ppl.terminate_request_desc)
     do
-      Common.terminate_pipeline(ppl, "done")
+      {:ok, fn _, _ -> {:ok, %{state: "init-stopping"}} end}
     else
       error -> {:ok, fn _, _ -> {:error, %{error_description: "Error: #{inspect error}"}} end}
     end

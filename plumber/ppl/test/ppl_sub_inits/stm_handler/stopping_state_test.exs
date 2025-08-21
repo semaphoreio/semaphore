@@ -29,6 +29,7 @@ defmodule Ppl.PplSubInits.STMHandler.StoppingState.Test do
       []
       |> Enum.concat([Task.Supervisor.start_link(name: PplsTaskSupervisor)])
       |> Enum.concat([Ppl.Ppls.STMHandler.InitializingState.start_link()])
+      |> Enum.concat([Ppl.Ppls.STMHandler.InitStoppingState.start_link()])
       |> Enum.concat([Ppl.Ppls.STMHandler.PendingState.start_link()])
       |> Enum.concat([Ppl.PplSubInits.STMHandler.CreatedState.start_link()])
       |> Enum.concat([Ppl.PplSubInits.STMHandler.FetchingState.start_link()])

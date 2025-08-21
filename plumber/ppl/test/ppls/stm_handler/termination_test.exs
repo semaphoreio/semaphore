@@ -30,7 +30,7 @@ defmodule Ppl.Ppls.Termination.Test do
 
     t_params = %{request: "stop", desc: "API call" }
     handler = Ppl.Ppls.STMHandler.InitializingState
-    desired_result = {"done", "canceled", "user"}
+    desired_result = {"init-stopping", nil, nil}
 
     assert_terminated(ppl, t_params, handler, desired_result, 5_000)
 
@@ -41,7 +41,6 @@ defmodule Ppl.Ppls.Termination.Test do
     assert ppl_trace.queuing_at |> is_nil()
     assert ppl_trace.running_at |> is_nil()
     assert ppl_trace.stopping_at |> is_nil()
-    assert DateTime.compare(ppl_trace.created_at, ppl_trace.done_at) == :lt
   end
 
   test "cancel pipeline in initializing state", ctx do
@@ -49,8 +48,9 @@ defmodule Ppl.Ppls.Termination.Test do
     assert ppl.state == "initializing"
 
     t_params = %{request: "cancel", desc: "API call" }
+
     handler = Ppl.Ppls.STMHandler.InitializingState
-    desired_result = {"done", "canceled", "user"}
+    desired_result = {"init-stopping", nil, nil}
 
     assert_terminated(ppl, t_params, handler, desired_result, 5_000)
 
@@ -61,7 +61,68 @@ defmodule Ppl.Ppls.Termination.Test do
     assert ppl_trace.queuing_at |> is_nil()
     assert ppl_trace.running_at |> is_nil()
     assert ppl_trace.stopping_at |> is_nil()
+  end
+
+  test "stop pipeline in initializing stop state", ctx do
+    ppl = Map.get(ctx, :ppl)
+    assert ppl.state == "initializing"
+
+    t_params = %{request: "stop", desc: "API call" }
+
+    subinit_loopers = start_all_subinit_loopers()
+
+    init_handler = Ppl.Ppls.STMHandler.InitializingState
+    desired_result = {"init-stopping", nil, nil}
+
+    assert_terminated(ppl, t_params, init_handler, desired_result, 5_000)
+
+    {:ok, init_stopping_pid} = Ppl.Ppls.STMHandler.InitStoppingState.start_link()
+    desired_result = {"done", "canceled", "user"}
+
+    updated_ppl = Repo.get(Ppls, ppl.id)
+    args =[updated_ppl, desired_result, [init_stopping_pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 5_000)
+
+    assert {:ok, ppl_trace} = PplTracesQueries.get_by_id(ppl.ppl_id)
+    assert NaiveDateTime.compare(ppl_trace.created_at |> DateTime.to_naive(),
+                                ppl.inserted_at) == :eq
+    assert ppl_trace.pending_at |> is_nil()
+    assert ppl_trace.queuing_at |> is_nil()
+    assert ppl_trace.running_at |> is_nil()
+    assert ppl_trace.stopping_at |> is_nil()
     assert DateTime.compare(ppl_trace.created_at, ppl_trace.done_at) == :lt
+
+    Enum.each(subinit_loopers, fn {_, pid} -> GenServer.stop(pid) end)
+  end
+
+  test "cancel pipeline in initializing stopping state", ctx do
+    ppl = Map.get(ctx, :ppl)
+    assert ppl.state == "initializing"
+
+    subinit_loopers = start_all_subinit_loopers()
+
+    t_params = %{request: "cancel", desc: "API call"}
+
+    handler = Ppl.Ppls.STMHandler.InitializingState
+    desired_result = {"init-stopping", nil, nil}
+
+    assert_terminated(ppl, t_params, handler, desired_result, 5_000)
+
+    {:ok, init_stopping_pid} = Ppl.Ppls.STMHandler.InitStoppingState.start_link()
+    desired_result = {"done", "canceled", "user"}
+    updated_ppl = Repo.get(Ppls, ppl.id)
+    args =[updated_ppl, desired_result, [init_stopping_pid]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, args, 5_000)
+
+    assert {:ok, ppl_trace} = PplTracesQueries.get_by_id(ppl.ppl_id)
+    assert NaiveDateTime.compare(ppl_trace.created_at |> DateTime.to_naive(),
+                                ppl.inserted_at) == :eq
+    assert ppl_trace.pending_at |> is_nil()
+    assert ppl_trace.queuing_at |> is_nil()
+    assert ppl_trace.running_at |> is_nil()
+    assert ppl_trace.stopping_at |> is_nil()
+
+    Enum.each(subinit_loopers, fn {_, pid} -> GenServer.stop(pid) end)
   end
 
   @tag :integration
@@ -79,7 +140,7 @@ defmodule Ppl.Ppls.Termination.Test do
 
     t_params = %{request: "stop", desc: "API call" }
     handler = Ppl.Ppls.STMHandler.InitializingState
-    desired_result = {"done", "canceled", "user"}
+    desired_result = {"init-stopping", nil, nil}
 
     assert_terminated(ppl, t_params, handler, desired_result, 5_000)
 
@@ -90,10 +151,76 @@ defmodule Ppl.Ppls.Termination.Test do
     assert ppl_trace.queuing_at |> is_nil()
     assert ppl_trace.running_at |> is_nil()
     assert ppl_trace.stopping_at |> is_nil()
+  end
+
+  @tag :integration
+  test "pipeline is terminated properly when blocks are created after termination signal", ctx do
+    ppl = Map.get(ctx, :ppl)
+    ppl_id = ppl.ppl_id
+    assert ppl.state == "initializing"
+    psi = Map.get(ctx, :psi)
+    assert psi.state == "created"
+
+    subinit_loopers = start_all_subinit_loopers()
+
+    args =[psi, {"done", "passed", nil}, [subinit_loopers[:subinit_created], subinit_loopers[:subinit_fetching], subinit_loopers[:subinit_compilation], subinit_loopers[:subinit_regular_init]]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :subinit_in_state?, args, 5_000)
+
+    loopers = start_all_loopers()
+
+    {:ok, terminated_ppl} = terminate_ppl(ppl, "stop", "API call")
+    assert terminated_ppl.terminate_request == "stop"
+
+    init_stopping_args = [terminated_ppl, {"init-stopping", nil, nil}, [loopers[:initializing_state]]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, init_stopping_args, 5_000)
+
+    {:ok, updated_ppl} = PplsQueries.get_by_id(ppl_id)
+    assert updated_ppl.state == "init-stopping"
+
+    done_args = [updated_ppl, {"done", "canceled", "user"}, [loopers[:init_stopping_state]]]
+    Helpers.assert_finished_for_less_than(__MODULE__, :check_state?, done_args, 5_000)
+
+    assert_blocks_termination_initiated(updated_ppl)
+
+    {:ok, final_ppl} = PplsQueries.get_by_id(ppl_id)
+    assert final_ppl.state == "done"
+    assert final_ppl.result == "canceled"
+
+    assert {:ok, ppl_trace} = PplTracesQueries.get_by_id(ppl_id)
+    assert ppl_trace.created_at != nil
+    assert ppl_trace.done_at != nil
     assert DateTime.compare(ppl_trace.created_at, ppl_trace.done_at) == :lt
 
-    ppl = Repo.get(Ppls, ppl.id)
-    assert_blocks_termination_initiated(ppl)
+    Enum.each(loopers, fn {_, pid} ->
+      if Process.alive?(pid) do
+        GenServer.stop(pid)
+      end
+    end)
+  end
+
+  # Start all necessary pipeline STM handlers
+  defp start_all_loopers() do
+    %{
+      initializing_state: start_process(Ppl.Ppls.STMHandler.InitializingState),
+      init_stopping_state: start_process(Ppl.Ppls.STMHandler.InitStoppingState)
+    }
+  end
+
+  # Start all necessary pipeline subinit STM handlers
+  defp start_all_subinit_loopers() do
+    %{
+      subinit_created: start_process(Ppl.PplSubInits.STMHandler.CreatedState),
+      subinit_fetching: start_process(Ppl.PplSubInits.STMHandler.FetchingState),
+      subinit_compilation: start_process(Ppl.PplSubInits.STMHandler.CompilationState),
+      subinit_regular_init: start_process(Ppl.PplSubInits.STMHandler.RegularInitState)
+    }
+  end
+
+  defp start_process(module) do
+    Process.whereis(module) || (fn ->
+      {:ok, pid} = module.start_link()
+      pid
+    end.())
   end
 
 
