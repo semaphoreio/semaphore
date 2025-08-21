@@ -352,7 +352,8 @@ defmodule Front.Models.Workflow do
       requester_id: workflow.requester_id,
       created_at: DateTime.from_unix!(workflow.created_at.seconds),
       triggered_by: TriggeredBy.key(workflow.triggered_by),
-      rerun_of: workflow.rerun_of
+      rerun_of: workflow.rerun_of,
+      pipelines: []
     }
     |> then(fn
       workflow when preload? ->
