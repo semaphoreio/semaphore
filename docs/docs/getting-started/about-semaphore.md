@@ -32,10 +32,7 @@ Continuous Delivery and Continuous Deployment extend this process by providing a
 
 ## Where to go next?
 
-If you want to give Semaphore a go, head to the [Guided Tour](./guided-tour). You can try Semaphore for free, with no strings attached.
-
-You can find the complete Semaphore handbook in the [Using Semaphore](../using-semaphore/jobs) section.
-
-And if you want to dive deep into Semaphore's inner workings check out the [Reference pages](../reference/semaphore-cli) and the [Semaphore API reference](../reference/api).
+- Read the [quickstart](./quickstart) to learn the basics
+- Head to [installation guide](./install) if you want to self-host your Semaphore server
 
 <!-- new api: [API documentation](../openapi-spec/semaphore-public-api.info.mdx) --->

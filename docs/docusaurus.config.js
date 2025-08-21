@@ -26,14 +26,14 @@ const config = {
   },
 
   // Production url of your site here
-  url: 'https://docs.semaphoreci.com',
+  url: 'https://docs.semaphore.io',
 
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: process.env.BASE_URL ? process.env.BASE_URL : '/',
 
   // GitHub org and project. Needed for Github Pages.
-  organizationName: 'semaphoreci',
+  organizationName: 'semaphoreio',
   projectName: 'semaphore',
 
   onBrokenLinks: 'throw',
@@ -106,9 +106,9 @@ const config = {
           docsPluginId: "classic", // configured for preset-classic
           config: {
             semaphoreAPI: {
-              specPath: "https://docs.semaphoreci.com/v2/api-spec/openapi.yaml",
+              specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
               outputDir: "docs/openapi-spec",
-              downloadUrl: "https://docs.semaphoreci.com/v2/api-spec/openapi.json",
+              downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
               sidebarOptions: {
                 categoryLinkSource: "tag",
                 groupPathsBy: "tag",

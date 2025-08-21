@@ -18,7 +18,7 @@ Semaphore has three self-hostable editions. See the [feature comparison](./featu
           For small teams
     </CardBody>
     <CardFooter>
-      <a href="/CE/getting-started/install">
+      <a href="/CE/getting-started/install-overview">
         <button className='button button--secondary button--block'>Install Semaphore CE</button>
       </a>
     </CardFooter>
@@ -52,7 +52,7 @@ Semaphore has three self-hostable editions. See the [feature comparison](./featu
           For big teams and companies
     </CardBody>
     <CardFooter>
-      <a href="/EE/getting-started/install">
+      <a href="/EE/getting-started/install-overview">
         <button className='button button--secondary button--block'>Install Semaphore EE</button>
       </a>
     </CardFooter>

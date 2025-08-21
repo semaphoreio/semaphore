@@ -134,7 +134,7 @@ Execute this workflow and see the output of the jobs. Both jobs should show the 
 
 Do not put sensitive data such as passwords or API tokens in environment variables. Environment variables are not secure. They are stored in plain text in the pipeline file. So, anyone with read permissions in the repository can view your environment variables.
 
-Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the guided tour [Continuous Delivery](./continuous-delivery)
+Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the guided tour [build your project](./build-project.md)
 
 :::
 

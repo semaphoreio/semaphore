@@ -2,7 +2,7 @@
 description: Move on to more complex projects
 ---
 
-# Continuous Integration
+# Build Project
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
