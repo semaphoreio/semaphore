@@ -16,14 +16,21 @@ defmodule Front.Application do
       {&:logger_filters.domain/2, {:stop, :equal, [:progress]}}
     )
 
+    base_children = [
+      {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
+      FrontWeb.Endpoint,
+      {Task.Supervisor, [name: Front.TaskSupervisor]},
+      Front.Tracing.Store,
+      Front.FeatureProviderInvalidatorWorker
+    ]
+
     children =
-      [
-        {Phoenix.PubSub, [name: Front.PubSub, adapter: Phoenix.PubSub.PG2]},
-        FrontWeb.Endpoint,
-        {Task.Supervisor, [name: Front.TaskSupervisor]},
-        Front.Tracing.Store,
-        Front.FeatureProviderInvalidatorWorker
-      ] ++ reactor() ++ cache() ++ telemetry() ++ feature_provider(provider)
+      base_children ++
+        reactor() ++
+        cache() ++
+        telemetry() ++
+        feature_provider(provider) ++
+        clients()
 
     opts = [strategy: :one_for_one, name: Front.Supervisor]
 
@@ -90,6 +97,17 @@ defmodule Front.Application do
       [provider]
     else
       []
+    end
+  end
+
+  def clients do
+    Application.get_env(:front, :service_account_client)
+    |> case do
+      {client_mod, _} = client when client_mod in [Support.FakeClients.ServiceAccount] ->
+        [client]
+
+      _ ->
+        []
     end
   end
 

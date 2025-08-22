@@ -10,7 +10,7 @@
   <div id="role_selector_<%= @member.id %>" class="dn">
     <%= for role <- @roles do %>
       <%= if role.name != "Owner" || @permissions["organization.change_owner"] do %>
-        <%= construct_role_dropdown_option(role, @member) %>
+        <%= construct_role_dropdown_option(role, @member, @member_type) %>
       <% end %>
     <% end %>
   </div>

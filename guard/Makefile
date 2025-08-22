@@ -35,6 +35,7 @@ START_GPRC_GUARD_API?="true"
 START_GRPC_AUTH_API?="true"
 START_GRPC_USER_API?="true"
 START_GRPC_ORGANIZATION_API?="true"
+START_GRPC_SERVICE_ACCOUNT_API?="true"
 START_INSTANCE_CONFIG?="true"
 INSTANCE_CONFIG_API?="true"
 START_GRPC_INSTANCE_CONFIG_API="true"
@@ -66,6 +67,7 @@ CONTAINER_ENV_VARS= \
   -e START_GRPC_AUTH_API=$(START_GRPC_AUTH_API) \
   -e START_GRPC_USER_API=$(START_GRPC_USER_API) \
   -e START_GRPC_ORGANIZATION_API=$(START_GRPC_ORGANIZATION_API) \
+  -e START_GRPC_SERVICE_ACCOUNT_API=$(START_GRPC_SERVICE_ACCOUNT_API) \
   -e START_INSTANCE_CONFIG=$(START_INSTANCE_CONFIG) \
   -e INSTANCE_CONFIG_API=$(INSTANCE_CONFIG_API) \
   -e START_GRPC_INSTANCE_CONFIG_API=$(START_GRPC_INSTANCE_CONFIG_API) \
@@ -141,4 +143,6 @@ endif
 		/home/protoc/source/encryptor.proto
 	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_INTERNAL_REPO_DIR):/home/protoc/source renderedtext/protoc:$(RT_PROTOC_IMG_VSN) protoc -I /home/protoc/source -I /home/protoc/source/include --elixir_out=plugins=grpc:$(RELATIVE_INTERNAL_PB_OUTPUT_DIR) --plugin=/root/.mix/escripts/protoc-gen-elixir \
 		/home/protoc/source/instance_config.proto
+	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_INTERNAL_REPO_DIR):/home/protoc/source renderedtext/protoc:$(RT_PROTOC_IMG_VSN) protoc -I /home/protoc/source -I /home/protoc/source/include --elixir_out=plugins=grpc:$(RELATIVE_INTERNAL_PB_OUTPUT_DIR) --plugin=/root/.mix/escripts/protoc-gen-elixir \
+		/home/protoc/source/service_account.proto
 	rm -rf $(TMP_INTERNAL_REPO_DIR)

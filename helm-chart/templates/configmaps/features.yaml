@@ -112,6 +112,8 @@ data:
       enabled: true
     wf_editor_via_jobs:
       enabled: true
+    service_accounts:
+      enabled: true
 {{- else }}
   features.yml: |-
     activity_monitor:
@@ -215,5 +217,7 @@ data:
     ui_reports:
       enabled: true
     new_project_onboarding:
+      enabled: true
+    service_accounts:
       enabled: true
 {{- end }}

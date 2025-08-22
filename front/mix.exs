@@ -57,6 +57,7 @@ defmodule Front.Mixfile do
       {:yaml_elixir, "~> 2.4"},
       {:junit_formatter, "~> 3.3", only: [:test]},
       {:mock, "~> 0.3.8", only: :test},
+      {:mox, "~> 1.0", only: :test},
       {:util, github: "renderedtext/elixir-util"},
       {:typed_struct, "~> 0.1.4"},
       {:amqp_client, "~> 3.9.27"},

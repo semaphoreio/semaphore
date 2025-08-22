@@ -61,3 +61,4 @@ Error after running `make unit-test` for the first time:
 ```
 
 Run the command with root for the first time: `make unit-test USER=root`.
+

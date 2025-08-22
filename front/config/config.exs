@@ -32,6 +32,7 @@ config :front, default_user_name: "Semaphore User"
 config :feature_provider, provider: {Front.FeatureHubProvider, []}
 config :front, :superjerry_client, {Support.FakeClients.Superjerry, []}
 config :front, :scouter_client, {Front.Clients.Scouter, []}
+config :front, :service_account_client, {Support.FakeClients.ServiceAccount, []}
 
 config :money,
   default_currency: :USD,

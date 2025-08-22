@@ -112,7 +112,13 @@ defmodule Front.RBAC.Members do
     alias InternalApi.RBAC.SubjectType, as: Type
 
     member_type =
-      if opts[:member_type] == "group", do: Type.value(:GROUP), else: Type.value(:USER)
+      opts[:member_type]
+      |> case do
+        "group" -> Type.value(:GROUP)
+        "service_account" -> Type.value(:SERVICE_ACCOUNT)
+        # assume user if not specified
+        _ -> Type.value(:USER)
+      end
 
     req =
       build_list_members_request(org_id, project_id,

@@ -159,6 +159,16 @@ defmodule Rbac.Permissions do
         description: "Manage the instance Git integration settings."
       },
       %{
+        id: "c530356b-c90e-473f-97b5-ea4538f95365",
+        name: "organization.service_accounts.view",
+        description: "View service accounts within the organization."
+      },
+      %{
+        id: "c530356b-c90e-473f-97b5-ea4538f95366",
+        name: "organization.service_accounts.manage",
+        description: "Manage service accounts within the organization."
+      },
+      %{
         id: "bcaf879d-987f-42d7-9c89-f10911db6041",
         name: "project.view",
         description:

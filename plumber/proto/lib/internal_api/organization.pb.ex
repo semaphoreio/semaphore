@@ -530,18 +530,6 @@ defmodule InternalApi.Organization.RestoreRequest do
   field(:org_id, 1, type: :string)
 end
 
-defmodule InternalApi.Organization.RestoreRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t()
-        }
-  defstruct [:org_id]
-
-  field :org_id, 1, type: :string
-end
-
 defmodule InternalApi.Organization.Organization do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -1004,20 +992,6 @@ defmodule InternalApi.Organization.OrganizationRestored do
 
   field(:org_id, 1, type: :string)
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.Organization.OrganizationRestored do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          org_id: String.t(),
-          timestamp: Google.Protobuf.Timestamp.t()
-        }
-  defstruct [:org_id, :timestamp]
-
-  field :org_id, 1, type: :string
-  field :timestamp, 2, type: Google.Protobuf.Timestamp
 end
 
 defmodule InternalApi.Organization.OrganizationService.Service do

@@ -6,14 +6,17 @@
       <div>
         <div class="flex items-center">
           <span class="ml1 b">
-            <%= if !@is_group? do %>
-              <%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %>
-            <% else %>
-              <%= if @permissions["organization.people.manage"] do %>
-                <span class="black pointer" style="cursor: pointer;" name="modify-group-btn" group_id="<%= @member.id %>"><%= @member.name %></span>
-              <% else %>
+            <%= cond do %>
+              <% @member_type == :service_account -> %>
                 <span class="black"><%= @member.name %></span>
-              <% end %>
+              <% @member_type == :group -> %>
+                <%= if @permissions["organization.people.manage"] do %>
+                  <span class="black pointer" style="cursor: pointer;" name="modify-group-btn" group_id="<%= @member.id %>"><%= @member.name %></span>
+                <% else %>
+                  <span class="black"><%= @member.name %></span>
+                <% end %>
+              <% true -> %>
+                <%= link @member.name, to: people_path(@conn, :show, @member.id), class: "link black" %>
             <% end %>
           </span>
           <%= render "members/__role_labels.html", role_bindings: @member.subject_role_bindings %>
@@ -29,18 +32,23 @@
         <div class="button-group">
           <%= unless !@org_scope? && Front.ce_roles?() do %>
             <%= if Front.ce_roles?() do %>
-              <div class="app-edit-person" data-config="<%= Poison.encode!(edit_person_config(@conn, @member, @roles, @permissions)) %>"></div>
+              <div class="app-edit-person" data-config="<%= Poison.encode!(edit_person_config(@conn, @member, @member_type, @roles, @permissions)) %>"></div>
             <% else %>
-              <%= render "members/__change_role_btn.html", member: @member, roles: @roles, permissions: @permissions %>
+              <%= render "members/__change_role_btn.html", member: @member, member_type: @member_type, roles: @roles, permissions: @permissions %>
             <% end %>
           <% end %>
-          <%= if @is_group? and @org_scope? do %>
-            <%= render "members/__modify_group_button.html", group: @member, permissions: @permissions %>
-            <%= render "members/__delete_group_button.html", group: @member, conn: @conn, permissions: @permissions %>
-          <% else %>
-            <%= if @org_scope? || !Front.ce_roles?() || "Member" in member_role_names do %>
-              <%= render "members/__remove_member_btn.html", member: @member %>
-            <% end %>
+          <%= cond do %>
+            <% @member_type == :group and @org_scope? -> %>
+              <%= render "members/__modify_group_button.html", group: @member, permissions: @permissions %>
+              <%= render "members/__delete_group_button.html", group: @member, conn: @conn, permissions: @permissions %>
+            <% @member_type == :service_account -> %>
+              <%= if @org_scope? || !Front.ce_roles?() || "Member" in member_role_names do %>
+                <%= render "members/__remove_member_btn.html", member: @member %>
+              <% end %>
+            <% true -> %>
+              <%= if @org_scope? || !Front.ce_roles?() || "Member" in member_role_names do %>
+                <%= render "members/__remove_member_btn.html", member: @member %>
+              <% end %>
           <% end %>
 
         </div>

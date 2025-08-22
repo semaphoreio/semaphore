@@ -1,12 +1,15 @@
 defmodule FrontWeb.Plugs.FeatureEnabled do
+  @behaviour Plug
   alias Front.Auth
 
-  @type feature_name :: [String.t() | :atom]
+  @type feature_name :: atom()
 
   @nil_uuid "00000000-0000-0000-0000-000000000000"
 
+  @impl true
   def init(features), do: features
 
+  @impl true
   def call(conn, features) do
     enabled = feature_enabled?(conn, features) or is_insider?(conn)
 

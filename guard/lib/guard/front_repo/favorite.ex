@@ -27,7 +27,9 @@ defmodule Guard.FrontRepo.Favorite do
     favorite
     |> cast(attrs, [:user_id, :favorite_id, :kind, :organization_id])
     |> validate_required([:user_id, :favorite_id, :kind, :organization_id])
-    |> unique_constraint([:user_id, :organization_id, :favorite_id, :kind], name: :favorites_index)
+    |> unique_constraint([:user_id, :organization_id, :favorite_id, :kind],
+      name: :favorites_index
+    )
   end
 
   @spec create_favorite(map()) :: {:ok, t()} | {:error, Ecto.Changeset.t()}

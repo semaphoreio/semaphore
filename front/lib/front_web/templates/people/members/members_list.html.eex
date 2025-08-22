@@ -18,7 +18,7 @@
 
       <div id="groups">
         <%= @groups |> Enum.map(fn (group) -> %>
-          <%= render "members/_member.html", is_group?: true, member: group, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
+          <%= render "members/_member.html", member_type: :group, member: group, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
         <% end) %>
       </div>
     </div>
@@ -39,8 +39,40 @@
 
     <div id="members">
       <%= @members |> Enum.map(fn (member) -> %>
-        <%= render "members/_member.html", is_group?: false, member: member, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
+        <%= render "members/_member.html", member_type: :user, member: member, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
       <% end) %>
     </div>
   </div>
+
+  <%= if FeatureProvider.feature_enabled?(:service_accounts, param: @conn.assigns[:organization_id]) &&
+         Map.has_key?(assigns, :service_accounts) do %>
+    <div class="bb b--black-075 w-100-l mt4 br3 shadow-3 bg-white">
+      <div class="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top ">
+        <div>
+          <div class="flex items-center">
+            <span class="material-symbols-outlined pr2">smart_toy</span>
+            <div class="b">Service Accounts</div>
+          </div>
+        </div>
+        <%= if !@org_scope? && show_people_management_buttons?(@conn, @org_scope?, @permissions) do %>
+          <%= render "members/_add_service_account_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
+        <% end %>
+      </div>
+
+      <div id="service_accounts">
+        <%= @service_accounts |> Enum.map(fn (service_account) -> %>
+          <%= render "members/_member.html", member_type: :service_account, member: service_account, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
+        <% end) %>
+        <%= if Enum.empty?(@service_accounts) do %>
+          <div class="pv5 tc">
+            <img src="<%= image_source("ill-girl-showing-continue.svg") %>" alt="girl pointing to the left" class="mb3">
+            <h3 class="f4 mb2">No service accounts yet</h3>
+            <p class="f6 gray mb0">
+              Create your first service account to get started with API access.
+            </p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
 <% end %>

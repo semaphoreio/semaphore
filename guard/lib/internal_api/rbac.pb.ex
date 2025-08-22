@@ -516,6 +516,8 @@ defmodule InternalApi.RBAC.SubjectType do
   field(:USER, 0)
 
   field(:GROUP, 1)
+
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.RBAC.Scope do

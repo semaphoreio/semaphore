@@ -46,14 +46,28 @@ async function apiRequest<T>(
       transformFun = options.transform;
     }
 
-    const json = await response.json();
-
-    const data = transformFun(json);
+    // Check if response has content
+    const contentLength = response.headers.get(`content-length`);
+    const hasContent = contentLength !== `0` && response.status !== 204;
+    
+    let json: any = null;
+    let data: T | null = null;
+    
+    if (hasContent) {
+      try {
+        json = await response.json();
+        data = transformFun(json);
+      } catch (e) {
+        // If JSON parsing fails, treat as empty response
+        json = null;
+        data = null;
+      }
+    }
 
     if (!response.ok) {
       return {
         data: data,
-        error: json.message || `Something went wrong`,
+        error: json?.message || `Something went wrong`,
         status: response.status,
       };
     }
