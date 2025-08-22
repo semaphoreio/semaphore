@@ -32,6 +32,6 @@ Once access is granted, you can connect Semaphore to your GitHub Enterprise repo
 ## See also
 
 - [Connecting to GitHub using GitHub App](./connect-github)
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Using OAuth with GitHub](./connect-github-oauth)
 - [Semaphore Organizations](./organizations)

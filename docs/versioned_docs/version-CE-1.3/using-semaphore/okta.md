@@ -1,6 +1,6 @@
 ---
 description: SSO and user management automation
-displayed_sidebar: usingSemaphore
+displayed_sidebar: docs
 ---
 
 # Okta Integration

@@ -228,6 +228,6 @@ If you click "Request Access" in step 5, the admin of the organization will rece
 
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Using OAuth with GitHub](./connect-github-oauth)
 - [How to connect with BitBucket](./connect-bitbucket)

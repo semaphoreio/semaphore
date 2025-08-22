@@ -28,27 +28,18 @@ function HomepageHeader() {
           <div className={styles.buttonContainer}>
             <Link
               className="button button--primary button--lg"
-              to="/CE/getting-started/install"
+              to="/getting-started/install"
             >
-              Community Edition
+              Install Semaphore
             </Link>
           </div>
 
           <div className={styles.buttonContainer}>
             <Link
               className="button button--secondary button--lg"
-              to="/EE/getting-started/install"
+              to="/getting-started/about-semaphore"
             >
-              Enterprise Edition
-            </Link>
-          </div>
-
-          <div className={styles.buttonContainer}>
-            <Link
-              className="button button--outline button--secondary button--lg"
-              to="/getting-started/guided-tour"
-            >
-              Guided Tour
+              Read the docs
             </Link>
           </div>
 
