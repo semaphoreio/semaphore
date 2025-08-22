@@ -5,7 +5,7 @@ module Semaphore::RepoHost::Github
     MEMBER_GITHUB_WEBHOOK_EVENT = ["member", "membership", "team"]
     GITHUB_APP_WEBHOOK_EVENTS = ["installation", "installation_repositories"]
     SUPPORTED_GITHUB_WEBHOOK_EVENTS = ["push", "pull_request", "member", "issue_comment", "installation", "installation_repositories", "team", "membership", "repository"]
-    SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened"]
+    SUPPORTED_GITHUB_PULL_REQUEST_ACTIONS = ["opened", "synchronize", "closed", "reopened", "ready_for_review"]
     SUPPORTED_PR_COMMANDS = ["/sem-approve"]
 
     def initialize(request, payload)
