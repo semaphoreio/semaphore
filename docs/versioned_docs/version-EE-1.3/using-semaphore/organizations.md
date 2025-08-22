@@ -16,7 +16,7 @@ This page explains how to set up [notifications](./notifications), manage users,
 
 In order to access any non-public resources on Semaphore you must be invited to the Semaphore instance.
 
-If you are trying out Semaphore for the first time, we suggest the [Guided Tour](../getting-started/guided-tour), where we show how to get started quickly.
+If you are trying out Semaphore for the first time, we suggest the [Quickstart](../getting-started/quickstart), where we show how to get started quickly.
 
 A Semaphore instance has:
 
