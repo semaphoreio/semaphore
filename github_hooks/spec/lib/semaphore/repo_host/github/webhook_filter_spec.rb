@@ -173,6 +173,31 @@ RSpec.describe Semaphore::RepoHost::Github::WebhookFilter do
 
       end
 
+      context "ready_for_review" do
+
+        let(:payload) do
+          <<-PAYLOAD
+              {
+                "action": "ready_for_review",
+                "pull_request":{
+                  "draft": false,
+                  "head":{
+                    "label": "owner_1:branch"
+                  },
+                  "base":{
+                    "label": "owner_2:branch"
+                  }
+                }
+              }
+          PAYLOAD
+        end
+
+        it "returns false" do
+          expect(filter.unsupported_webhook?).to eql(false)
+        end
+
+      end
+
       context "other" do
 
         let(:payload) do
