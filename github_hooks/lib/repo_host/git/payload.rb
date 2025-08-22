@@ -19,6 +19,10 @@ module RepoHost::Git
       false
     end
 
+    def pull_request_ready_for_review?
+      false
+    end
+
     def pr_head_repo_name
       nil
     end
