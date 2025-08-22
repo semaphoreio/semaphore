@@ -127,6 +127,26 @@ defmodule Front.RBAC.Groups do
         }
       )
 
-    group |> Map.put(:members, members)
+    member_user_ids = members |> Enum.map(& &1.id)
+    non_member_ids = group.member_ids -- member_user_ids
+
+    service_accounts =
+      Front.ServiceAccount.describe_many(non_member_ids)
+      |> case do
+        {:ok, service_accounts} ->
+          service_accounts
+
+        _ ->
+          []
+      end
+      |> Enum.map(
+        &%{
+          id: &1.id,
+          name: &1.name,
+          avatar: ""
+        }
+      )
+
+    group |> Map.put(:members, members ++ service_accounts)
   end
 end

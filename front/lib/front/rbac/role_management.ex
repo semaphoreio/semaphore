@@ -180,12 +180,39 @@ defmodule Front.RBAC.RoleManagement do
     If the 'project_id' parameter is not passed, it is interpreted as the role being assigned
     within the organization scope.
   """
-  @spec assign_role(id(), id(), id(), id(), id()) :: {:ok, String.t()} | {:error, String.t()}
-  def assign_role(requester_id, org_id, subject_id, role_id, project_id \\ "") do
+  @spec assign_role(id(), id(), id(), id(), String.t(), String.t()) ::
+          {:ok, String.t()} | {:error, any}
+  def assign_role(
+        requester_id,
+        org_id,
+        subject_id,
+        role_id,
+        project_id \\ "",
+        subject_type \\ "user"
+      ) do
     Watchman.benchmark("assign_role.duration", fn ->
       Logger.info(
-        "Assigning role: subject_id: #{subject_id}, org_id: #{org_id}, role_id: #{role_id}, project_id: #{project_id}"
+        "Assigning role: subject_id: #{subject_id}, org_id: #{org_id}, role_id: #{role_id}, project_id: #{project_id}, subject_type: #{subject_type}"
       )
+
+      subject_type =
+        case subject_type do
+          "service_account" ->
+            InternalApi.RBAC.SubjectType.value(:SERVICE_ACCOUNT)
+
+          "group" ->
+            InternalApi.RBAC.SubjectType.value(:GROUP)
+
+          # Defaults to user
+          "user" ->
+            InternalApi.RBAC.SubjectType.value(:USER)
+
+          _ ->
+            Logger.warn("Unrecognized subject type: #{subject_type}, defaulting to user")
+            InternalApi.RBAC.SubjectType.value(:USER)
+        end
+
+      subject = RBAC.Subject.new(subject_id: subject_id, type: subject_type)
 
       req =
         RBAC.AssignRoleRequest.new(
@@ -194,7 +221,7 @@ defmodule Front.RBAC.RoleManagement do
               role_id: role_id,
               org_id: org_id,
               project_id: project_id,
-              subject: RBAC.Subject.new(subject_id: subject_id)
+              subject: subject
             ),
           requester_id: requester_id
         )
@@ -211,7 +238,7 @@ defmodule Front.RBAC.RoleManagement do
     Since only one role can be manually assigned, there is no need to specify which role is being
     retracted
   """
-  @spec retract_role(id(), id(), id(), id()) :: {:ok, String.t()} | {:error, String.t()}
+  @spec retract_role(id(), id(), id(), String.t()) :: {:ok, String.t()} | {:error, any}
   def retract_role(requester_id, org_id, subject_id, project_id \\ "") do
     Watchman.benchmark("remove_member.duration", fn ->
       Logger.info(

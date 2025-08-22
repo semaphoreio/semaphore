@@ -30,7 +30,7 @@
         <%= render "_role_filter.html", conn: @conn, roles: @roles%>
       <% end %>
     </div>
-    <%= render "members/members_list.html", org_id: @org_id, groups: @groups, members: @members, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
+    <%= render "members/members_list.html", org_id: @org_id, groups: @groups, members: @members, service_accounts: @service_accounts, roles: @roles, org_scope?: @org_scope?, conn: @conn, permissions: @permissions %>
     <%= render "_pagination.html", pagination: @pagination%>
   <% else %>
     <div class="pv6 tc">
