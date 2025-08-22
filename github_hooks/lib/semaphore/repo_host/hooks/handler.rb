@@ -194,6 +194,14 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
           return
         end
 
+        # Skip ready_for_review events when build_draft_pr is enabled
+        # (the PR was already building as a draft)
+        if draft_pr_allowed?(workflow.project) && workflow.payload.pull_request_ready_for_review?
+          logger.info("skip-ready-for-review-when-building-drafts")
+          workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+          return
+        end
+
         state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
         case state
         when :not_found

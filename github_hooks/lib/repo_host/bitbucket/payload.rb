@@ -149,6 +149,10 @@ module RepoHost::Bitbucket
       false
     end
 
+    def pull_request_ready_for_review?
+      false
+    end
+
     # ❌
     def pull_request_within_repo?
       return false unless pull_request?

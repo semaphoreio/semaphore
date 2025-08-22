@@ -9,6 +9,7 @@ module RepoHost::Github
     PULL_REQUEST_REOPENED = "reopened"
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
+    PULL_REQUEST_READY_FOR_REVIEW = "ready_for_review"
 
     def initialize(payload)
       @data = JSON.parse(payload)
@@ -182,6 +183,10 @@ module RepoHost::Github
 
     def pull_request_commit?
       @action == PULL_REQUEST_COMMIT
+    end
+
+    def pull_request_ready_for_review?
+      @action == PULL_REQUEST_READY_FOR_REVIEW
     end
 
     def pull_request_number

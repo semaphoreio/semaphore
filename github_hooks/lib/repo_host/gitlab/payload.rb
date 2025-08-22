@@ -35,6 +35,15 @@ module RepoHost
         pull_request? && data.dig("object_attributes", "draft")
       end
 
+      def pull_request_ready_for_review?
+        return false unless pull_request?
+        return false unless data.dig("object_attributes", "action") == "update"
+
+        # Check if it was previously draft and is now not draft
+        data.dig("changes", "draft", "previous") == true &&
+          data.dig("changes", "draft", "current") == false
+      end
+
       def pr_head_repo_name
         data.dig("object_attributes", "repository", "name")
       end
