@@ -30,7 +30,7 @@ This page is updated on a weekly basis.
 - Xcode 16.2
 - iOS simulator 18.2
 
-To learn more about this image, check our [macOS Xcode 16](https://docs.semaphoreci.com/reference/os-apple#mac-16)
+To learn more about this image, check our [macOS Xcode 16](https://docs.semaphore.io/reference/os-apple#mac-16)
 
 **(Improved) Ubuntu 20.04, 22.04, 24.04 image update**
 
@@ -77,7 +77,7 @@ To learn more about this image, check our [macOS Xcode 16](https://docs.semaphor
 - Simulator visionOS 2.2 -> 2.4
 - Xcode 16.2 -> 16.3
 
-To learn more about this image, check our [macOS Xcode 16](https://docs.semaphoreci.com/reference/os-apple#mac-16)
+To learn more about this image, check our [macOS Xcode 16](https://docs.semaphore.io/reference/os-apple#mac-16)
 
 **(Improved) Ubuntu 20.04 image update**
 
@@ -126,7 +126,7 @@ To learn more about this image, check our [macOS Xcode 16](https://docs.semaphor
 - Sbt: 1.10.6 -> 1.10.11
 - Yq: 4.44.6 -> 4.45.1
 
-To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2004-image/).
+To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semaphore.io/reference/os-ubuntu-images/ubuntu-2004-image/).
 
 **(Improved) Ubuntu 22.04 image update**
 
@@ -176,7 +176,7 @@ To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semap
 - Yq: 4.44.6 -> 4.45.1
 - Rust: 1.83.0 -> 1.85.1
 
-To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2204-image/).
+To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphore.io/reference/os-ubuntu-images/ubuntu-2204-image/).
 
 **(Improved) Ubuntu 24.04 image update**
 
@@ -227,7 +227,7 @@ To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semap
 - Yq: 4.44.6 -> 4.45.1
 - Rust: 1.83.0 -> 1.85.1
 
-To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphore.io/reference/os-ubuntu-images/ubuntu-2404-image/).
 
 ### Week of December 23 2024
 
@@ -285,7 +285,7 @@ To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semap
 - Sbt: 1.10.1 -> 1.10.6
 - Yq: 4.44.3 -> 4.44.6
 
-To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2004-image/).
+To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semaphore.io/reference/os-ubuntu-images/ubuntu-2004-image/).
 
 **(Improved) Ubuntu 22.04 image update**
 
@@ -339,7 +339,7 @@ To learn more about this image, check our [Ubuntu 20.04 page](https://docs.semap
 - Yq: 4.44.3 -> 4.44.6
 - Rust: 1.80.1 -> 1.83.0
 
-To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2204-image/).
+To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphore.io/reference/os-ubuntu-images/ubuntu-2204-image/).
 
 ## Week of December 16, 2024
 
@@ -3738,7 +3738,7 @@ With parameterized promotions, you can re-use a single promotion pipeline and us
 - Assign parameter values when manually promoting.
 - Use parameter values in promoted pipeline names, secret names, pipeline queues, or as environment variables.
 
-This feature is in **private beta**. If you would like to try it out, please [reach out to us](mailto:feedback@semaphoreci.com?subject=Parameterized%20promotions%20-%20beta%20request&body=I%20would%20like%20to%20join%20the%20private%20beta%20for%20parameterized%20promotions%20feature...).
+This feature is in **private beta**. If you would like to try it out, please [reach out to us](mailto:feedback@semaphore.io?subject=Parameterized%20promotions%20-%20beta%20request&body=I%20would%20like%20to%20join%20the%20private%20beta%20for%20parameterized%20promotions%20feature...).
 
 ## Week of Jun 28, 2021
 
@@ -3824,7 +3824,7 @@ The Ubuntu 18.04 image has been deprecated.
 ## Week of May 31, 2021
 
 **(New) Granular repository access via GitHub App**  
-Semaphore [GitHub App](https://docs.semaphoreci.com/account-management/connecting-github-and-semaphore/#connecting-a-repository-via-github-app) has been introduced as a new way of connecting GitHub repositories with Semaphore.  
+Semaphore [GitHub App](https://docs.semaphore.io/account-management/connecting-github-and-semaphore/#connecting-a-repository-via-github-app) has been introduced as a new way of connecting GitHub repositories with Semaphore.  
 
 Users can now connect Semaphore through the GitHub App instead of via personal access token, and choose which repositories they want to grant access to.
 
@@ -4028,7 +4028,7 @@ A new set of improvements focused on monorepo support were shipped:
 - **Clearer error messages** - Improved error messages for the most common misconfiguration issues.
 - **Improved stability** - All compilation errors arising from edge cases have been eliminated, making these features more reliable.
 
-You can read more about this feature in this [blog post](https://semaphoreci.com/blog/monorepo-support-available).
+You can read more about this feature in this [blog post](https://semaphore.io/blog/monorepo-support-available).
 
 Additional related reading:
 
@@ -4085,7 +4085,7 @@ Here are some of the changes that have been introduced:
 - Several new visual queues have been introduced to draw attention to active elements.
 - Updated fonts and icons make it easier to find key information on the page.
 
-If you have any suggestions for further improvements to our UI, we encourage you to send them to [our feedback inbox](mailto:feedback@semaphoreci.com?subject=UI%20Feedback).
+If you have any suggestions for further improvements to our UI, we encourage you to send them to [our feedback inbox](mailto:feedback@semaphore.io?subject=UI%20Feedback).
 
 ## Week of March 08, 2021
 
@@ -4332,8 +4332,8 @@ The new UI is available to all users. Minor performance updates and fixes have b
 - **(Fixed)** fixed the issue with job logs auto-scrolling to top of the failed command output, instead of to the bottom.
 - **(Fixed)** fixed the issue with manual promotions being triggered based on promotion name.
 
-You can read more about the new UI in this [blog post](https://semaphoreci.com/blog/refreshed-new-ui-for-a-greater-experience).
-We appreciate your feedback and encourage you to send any suggestions to [our feedback inbox](mailto:feedback@semaphoreci.com?subject=Beta%20Feedback).
+You can read more about the new UI in this [blog post](https://semaphore.io/blog/refreshed-new-ui-for-a-greater-experience).
+We appreciate your feedback and encourage you to send any suggestions to [our feedback inbox](mailto:feedback@semaphore.io?subject=Beta%20Feedback).
 
 **(Improved) macOS Xcode 12 image update**  
 **(Updated)** Xcode 12.2 installed, to switch version simply use `xcversion select 12.2`  
@@ -4357,7 +4357,7 @@ The UI was updated to address the most common feedback in the beta phase. Some o
 - Added icons to make it easier to differentiate Branch/PR/Tag triggers in the workflow list.
 - Nicer UI for manual promotions.
 
-We appreciate your feedback and encourage you to send any suggestions to [our feedback inbox](mailto:feedback@semaphoreci.com?subject=Beta%20Feedback).
+We appreciate your feedback and encourage you to send any suggestions to [our feedback inbox](mailto:feedback@semaphore.io?subject=Beta%20Feedback).
 
 **(New) Semaphore Container Registry**  
 For your convenience, we have introduced the Semaphore Container Registry. Inside the Semaphore environment, you can pull these Docker images without any restrictions or limitations.
@@ -4501,7 +4501,7 @@ The Ubuntu 18.04 image has been deprecated.
 **(Fixed)** Fixed the issue where the `exit_code` of the last executed command in the job log was missing.  
 **(Fixed)** Fixed several performance and stability issues that were causing 500s on multiple pages.  
 
-If you want to try out the new UI, but it hasn't yet rolled out to your organization, please reach out to [our support team](mailto:support@semaphoreci.com).
+If you want to try out the new UI, but it hasn't yet rolled out to your organization, please reach out to [our support team](mailto:support@semaphore.io).
 
 **(Improved) macOS Xcode11 image update**  
 **(Updated)** Xcode 11.7 installed. To switch version simply use `xcversion select 11.7`  
@@ -4548,8 +4548,8 @@ The new UI brings several improvements:
 - Improved job logs with collapsable command lines and a dark theme.
 - Activity Monitor page that provides a handy overview of running pipelines and quota limits.
 
-You can read more about the new UI in this [blog post](https://semaphoreci.com/blog/refreshed-new-ui-for-a-greater-experience).  
-If you want to try out the new UI, but it hasn't yet rolled out to your organization, please reach out to [our support team](mailto:support@semaphoreci.com).
+You can read more about the new UI in this [blog post](https://semaphore.io/blog/refreshed-new-ui-for-a-greater-experience).  
+If you want to try out the new UI, but it hasn't yet rolled out to your organization, please reach out to [our support team](mailto:support@semaphore.io).
 
 **(Improved) macOS Xcode11 image update**  
 **(Updated)** Xcode 11.6 installed. To switch version simply use `xcversion select 11.6`.
@@ -4601,7 +4601,7 @@ To learn more about this image, check our macOS Xcode 11 page.
 "Toolbox" command line tools have been extended to include the `install-package` utility.  
 The `install-package` command can help with package installations by automatically caching the desired packages and their dependencies.  
 
-To find out more, please check the [install-package](https://docs.semaphoreci.com/reference/toolbox-reference/#install-package) documentation page.
+To find out more, please check the [install-package](https://docs.semaphore.io/reference/toolbox-reference/#install-package) documentation page.
 
 ## Week of August 10, 2020
 
@@ -4988,7 +4988,7 @@ A detailed list can be found in the [Docker images changelog](https://github.com
 
 ## Week of December 2, 2019
 
-- New: [Open source organizations are available](https://semaphoreci.com/blog/free-open-source-cicd).  Each open source organization receives unlimited CI/CD minutes for building public repositories, including Linux, Docker, and macOS-based environments.
+- New: [Open source organizations are available](https://semaphore.io/blog/free-open-source-cicd).  Each open source organization receives unlimited CI/CD minutes for building public repositories, including Linux, Docker, and macOS-based environments.
 - New: [Status badges](../using-semaphore/projects#badges).
 - Updates to the Ubuntu1804 image
   - Git-lfs 2.9.0  -> 2.9.1
@@ -5172,7 +5172,7 @@ A detailed list can be found in the [Docker images changelog](https://github.com
 
 ## Week of July 22, 2019
 
-- New feature: model complex workflows with pipeline dependencies. Learn more in this [blog post](https://semaphoreci.com/blog/introducing-cicd-pipeline-dependencies).
+- New feature: model complex workflows with pipeline dependencies. Learn more in this [blog post](https://semaphore.io/blog/introducing-cicd-pipeline-dependencies).
 - New feature: [fail-fast on the first failure](../using-semaphore/pipelines#fail-fast).  Now you can stop everything in your pipeline as soon as a failure is detected, or stops only the jobs and blocks in your pipeline that haven't yet started.
 - A new global sidebar that uses less screen real estate, and lets you star projects and dashboards so they appear on top of the list. Also, it loads really fast.
 - A new version of CLI v0.14.1 has been released.
@@ -5209,7 +5209,7 @@ A detailed list can be found in the [Docker images changelog](https://github.com
 
 ## Week of May 27, 2019
 
-- [Custom Docker-based CI/CD environments are in GA](../using-semaphore/pipelines#docker-environments) Semaphore now supports custom CI/CD environments based on Docker containers.  Get started with [Custom CI/CD environment with Docker](https://docs.semaphoreci.com/ci-cd-environment/custom-ci-cd-environment-with-docker/).
+- [Custom Docker-based CI/CD environments are in GA](../using-semaphore/pipelines#docker-environments) Semaphore now supports custom CI/CD environments based on Docker containers.  Get started with [Custom CI/CD environment with Docker](https://docs.semaphore.io/ci-cd-environment/custom-ci-cd-environment-with-docker/).
 - Launched support for skipping blocks based on conditions, e.g. `branch != 'master'`. Read more about [skipping blocks](../using-semaphore/jobs#skip-run) and the introduction of the [Conditions domain specific language](../reference/conditions-dsl) that allows the expression of complex conditional rules in your pipelines.
 - Owners and admins can now set [Budget Alerts](./faq#budget-alerts).
 - New Semaphore approved convenience Docker images have been released:
@@ -5241,7 +5241,7 @@ curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash
 
 ## Week of May 13, 2019
 
-- [iOS support is in GA](https://semaphoreci.com/blog/introducing-ios-cicd): Semaphore now supports building, testing, and deploying applications for any Apple device.
+- [iOS support is in GA](https://semaphore.io/blog/introducing-ios-cicd): Semaphore now supports building, testing, and deploying applications for any Apple device.
 - macOS platform:
   - Xcode upgraded to 10.2.1
 - New feature: [schedule CI/CD workflows](../using-semaphore/tasks) using standard Cron syntax.
@@ -5317,7 +5317,7 @@ curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash
   widget shows CLI commands that you can run to perform the same actions that
   you see in the UI.
 - Slack notifications can be [filtered by pipeline result](../using-semaphore/notifications).
-- macOS Mojave image introduced, with iOS/macOS support in [closed beta](https://semaphoreci.com/product/ios).
+- macOS Mojave image introduced, with iOS/macOS support in [closed beta](https://semaphore.io/product/ios).
 - Syntax highlighting in docs.
 
 ## Week of Feb 11, 2019

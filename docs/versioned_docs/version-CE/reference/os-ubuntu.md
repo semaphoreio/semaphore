@@ -1,6 +1,6 @@
 ---
 description: Ubuntu Image Reference
-display_sidebar: reference
+display_sidebar: docs
 ---
 
 # Linux Ubuntu Images

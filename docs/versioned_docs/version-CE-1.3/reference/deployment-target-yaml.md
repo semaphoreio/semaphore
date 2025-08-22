@@ -1,6 +1,6 @@
 ---
 description: Deployment Targets YAML reference
-displayed_sidebar: reference
+displayed_sidebar: docs
 ---
 
 # Deployment Targets YAML
@@ -13,4 +13,3 @@ import Steps from '@site/src/components/Steps';
 import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 
 <FeatureNotAvailable/>
-

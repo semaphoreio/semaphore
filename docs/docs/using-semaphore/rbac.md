@@ -88,7 +88,7 @@ The owner of the organization is the person that created it. An organization can
 
 For the full list of owner permissions, see [organization roles](./organizations#org-roles).
 
-To remove an owner, see [how to remove an owner](https://docs.semaphoreci.com/using-semaphore/organizations#remove-owner).
+To remove an owner, see [how to remove an owner](https://docs.semaphore.io/using-semaphore/organizations#remove-owner).
 
 ### Organization groups {#org-groups}
 
