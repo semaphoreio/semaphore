@@ -80,12 +80,10 @@ defmodule FrontWeb.PeopleView do
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
-      {"email",
-       FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce_roles?()},
-      {"github", !Front.ce_roles?()},
-      {"gitlab", FeatureProvider.feature_enabled?(:gitlab, param: org_id) && !Front.ce_roles?()},
-      {"bitbucket",
-       FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce_roles?()}
+      {"email", FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce?()},
+      {"github", !Front.ce?()},
+      {"gitlab", FeatureProvider.feature_enabled?(:gitlab, param: org_id) && !Front.ce?()},
+      {"bitbucket", FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce?()}
     ]
     |> Enum.map(fn
       {name, true} ->
@@ -168,13 +166,13 @@ defmodule FrontWeb.PeopleView do
 
     feature_enabled? =
       org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, param: org_id) ||
-        Front.ce_roles?()
+        Front.ce?()
 
     user_has_permissions? and feature_enabled?
   end
 
   def roles_action_message do
-    if Front.ce_roles?(), do: "View", else: "Manage"
+    if Front.ce?(), do: "View", else: "Manage"
   end
 
   def construct_role_label(role_binding) do
