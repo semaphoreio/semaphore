@@ -9,10 +9,10 @@ defmodule Front.Browser.PeopleTest do
   @change_role_btn Query.css(".change_role_btn", count: :any, at: 0)
 
   setup do
-    ce_roles = Application.get_env(:front, :ce_roles)
-    Application.put_env(:front, :ce_roles, false)
+    edition = Application.get_env(:front, :edition)
+    Application.put_env(:front, :edition, "")
 
-    on_exit(fn -> Application.put_env(:front, :ce_roles, ce_roles) end)
+    on_exit(fn -> Application.put_env(:front, :edition, edition) end)
     :ok
   end
 

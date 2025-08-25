@@ -58,8 +58,6 @@ config :front,
   branch_api_grpc_endpoint: System.get_env("BRANCH_GRPC_URL") || "127.0.0.1:50052",
   use_rbac_api: if(System.get_env("USE_RBAC_API") == "true", do: true, else: false)
 
-on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
-
 if config_env() == :prod do
   config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
   config :front, docs_domain: System.get_env("DOCS_DOMAIN", "docs.semaphoreci.com")
@@ -129,11 +127,8 @@ config :front,
   zendesk_snippet_id: System.get_env("ZENDESK_SNIPPET_ID"),
   google_gtag: System.get_env("GOOGLE_GTAG")
 
-config :front, :on_prem?, on_prem?
-
-
 edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
-is_saas? = !(on_prem? or edition in ["ce", "ee"])
+is_saas? = !(edition in ["ce", "ee"])
 
 if is_saas? do
   config :front,
@@ -167,8 +162,6 @@ if System.get_env("AMQP_URL") != nil do
 end
 
 config :front, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
-
-config :front, :ce_roles, System.get_env("CE_ROLES") == "true"
 
 config :front,
        :hide_promotions,

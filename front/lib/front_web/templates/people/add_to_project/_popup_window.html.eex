@@ -102,7 +102,7 @@
           <input type="hidden">
           <input
             type="text"
-            placeholder="<%= if Front.ce_roles?(), do: "Search users to add to project", else: "Search users and groups to add to project" %>"
+            placeholder="<%= if Front.ce?(), do: "Search users to add to project", else: "Search users and groups to add to project" %>"
             class="form-control w-100 mr2" >
           <div class="jumpto-results"></div>
         </div>
@@ -112,7 +112,7 @@
       <%# This div is managed by the add_to_project.js %>
     </div>
 
-    <%= if !Front.ce_roles?() do %>
+    <%= if !Front.ce?() do %>
       <%= render "add_to_project/__select_role.html", conn: @conn, roles: @roles%>
     <% end %>
 
