@@ -94,6 +94,8 @@ defmodule Guard.FrontRepo.User do
                u.authentication_token == ^token and is_nil(u.blocked_at) and
                  (is_nil(u.deactivated) or u.deactivated == false)
            )
+           # Preload service account to avoid N+1 queries when checking if user is a service account
+           |> preload(:service_account)
          ) do
       nil -> {:error, :not_found}
       user -> {:ok, user}
