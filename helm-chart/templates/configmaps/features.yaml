@@ -44,7 +44,7 @@ data:
       enabled: true
     max_paralellism_in_org:
       quantity: 500
-    max_people_in_organization:
+    max_people_in_org:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
