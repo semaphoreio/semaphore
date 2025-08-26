@@ -1,6 +1,8 @@
 defmodule Guard.GrpcServers.AuthServerTest do
   use Guard.RepoCase, async: false
 
+  import Mock
+
   alias InternalApi.Auth
   alias InternalApi.Auth.Authentication.Stub
   alias InternalApi.Auth.AuthenticateRequest
@@ -189,6 +191,64 @@ defmodule Guard.GrpcServers.AuthServerTest do
       {:ok, response} = channel |> Stub.authenticate(request)
 
       assert_response(response, user)
+    end
+
+    test "logs service account access metric for service account authentication" do
+      org_id = Ecto.UUID.generate()
+
+      {:ok, %{user: sa_user}} = Support.Factories.ServiceAccountFactory.insert(org_id: org_id)
+
+      token = Guard.AuthenticationToken.new()
+      token_hash = Guard.AuthenticationToken.hash_token(token)
+
+      sa_user
+      |> Ecto.Changeset.change(authentication_token: token_hash)
+      |> Guard.FrontRepo.update()
+
+      # Mock Watchman to capture the metric
+      with_mock Watchman, [:passthrough],
+        increment: fn
+          {"service_account.access", [^org_id]} ->
+            send(self(), :service_account_metric_logged)
+
+          _ ->
+            :ok
+        end do
+        # Authenticate with service account token
+        request = AuthenticateRequest.new(token: token)
+        {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        {:ok, response} = channel |> Stub.authenticate(request)
+
+        assert response.authenticated == true
+        assert response.user_id == sa_user.id
+
+        # Verify service account access metric was logged
+        assert_receive :service_account_metric_logged, 1000
+      end
+    end
+
+    test "does not log service account metric for regular users", %{token: token, user: user} do
+      # Mock Watchman to ensure no service account metric is logged
+      with_mock Watchman, [:passthrough],
+        increment: fn
+          {"service_account.access", _} ->
+            send(self(), :unexpected_service_account_metric)
+
+          _ ->
+            :ok
+        end do
+        # Authenticate with regular user token
+        request = AuthenticateRequest.new(token: token)
+        {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        {:ok, response} = channel |> Stub.authenticate(request)
+
+        # Verify authentication succeeded
+        assert response.authenticated == true
+        assert response.user_id == user.id
+
+        # Verify no service account metric was logged
+        refute_receive :unexpected_service_account_metric, 500
+      end
     end
   end
 
