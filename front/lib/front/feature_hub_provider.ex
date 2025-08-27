@@ -25,7 +25,7 @@ defmodule Front.FeatureHubProvider do
     end)
   end
 
-  def provide_features(org_id, _opts \\ []) do
+  def provide_features(org_id, _opts) do
     FeatureClient.list_organization_features(%{org_id: org_id})
     |> unwrap(fn response ->
       features =
