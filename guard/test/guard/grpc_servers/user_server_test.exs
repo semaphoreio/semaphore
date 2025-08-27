@@ -1386,7 +1386,7 @@ defmodule Guard.GrpcServers.UserServerTest do
       assert user_id == user.id
       assert user_email == user.email
       assert user_name == user.name
-      assert String.contains?(user_email, "@service_accounts.")
+      assert String.contains?(user_email, "@service-accounts.")
       assert String.contains?(user_email, ".#{Application.fetch_env!(:guard, :base_domain)}")
     end
 
