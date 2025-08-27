@@ -12,6 +12,19 @@ defmodule Front.FeatureHubProvider do
   import Front.Utils
 
   @impl FeatureProvider.Provider
+  def provide_features(nil, _opts \\ []) do
+    %InternalApi.Feature.ListFeaturesRequest{}
+    |> FeatureClient.list_features()
+    |> unwrap(fn response ->
+      features =
+        response.features
+        |> Enum.map(&feature_from_grpc/1)
+        |> Enum.filter(&FeatureProvider.Feature.visible?/1)
+
+      ok(features)
+    end)
+  end
+
   def provide_features(org_id, _opts \\ []) do
     FeatureClient.list_organization_features(%{org_id: org_id})
     |> unwrap(fn response ->

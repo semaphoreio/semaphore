@@ -9,7 +9,7 @@ defmodule FrontWeb.Plugs.OnPremBlocker do
   def init(default), do: default
 
   def call(conn, _opts) do
-    if Front.on_prem?() do
+    if Front.os?() do
       Logger.info("Blocking access to #{conn.request_path} because of on-premises")
 
       conn
