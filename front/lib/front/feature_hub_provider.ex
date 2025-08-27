@@ -12,7 +12,8 @@ defmodule Front.FeatureHubProvider do
   import Front.Utils
 
   @impl FeatureProvider.Provider
-  def provide_features(nil, _opts \\ []) do
+  def provide_features(nil, opts \\ [])
+  def provide_features(nil, _opts) do
     %InternalApi.Feature.ListFeaturesRequest{}
     |> FeatureClient.list_features()
     |> unwrap(fn response ->
@@ -25,7 +26,7 @@ defmodule Front.FeatureHubProvider do
     end)
   end
 
-  def provide_features(org_id, _opts \\ []) do
+  def provide_features(org_id, _opts) do
     FeatureClient.list_organization_features(%{org_id: org_id})
     |> unwrap(fn response ->
       features =
