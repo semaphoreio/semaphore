@@ -36,6 +36,8 @@ data:
       enabled: false
     bitbucket_user_provider:
       enabled: false
+    user_repos_access:
+      enabled: true
     deployment_targets:
       enabled: false
     expose_cloud_agent_types:
@@ -152,6 +154,8 @@ data:
       enabled: false
     bitbucket_user_provider:
       enabled: false
+    user_repos_access:
+      enabled: true
     deployment_targets:
       enabled: true
     expose_cloud_agent_types:
