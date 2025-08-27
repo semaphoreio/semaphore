@@ -178,14 +178,6 @@ config :front,
        System.fetch_env!("WORKFLOW_TEMPLATES_YAMLS_PATH") <> "_new"
 
 config :front,
-       :hide_bitbucket_me_page,
-       System.get_env("HIDE_BITBUCKET_ME_PAGE") == "true"
-
-config :front,
-       :hide_gitlab_me_page,
-       System.get_env("HIDE_GITLAB_ME_PAGE") == "true"
-
-config :front,
        :single_tenant,
        System.get_env("SINGLE_TENANT") == "true"
 
