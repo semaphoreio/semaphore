@@ -6,6 +6,7 @@ defmodule Front.FeatureHubProvider do
     Availability,
     Machine,
     OrganizationFeature,
+    Feature,
     OrganizationMachine
   }
 
@@ -51,6 +52,21 @@ defmodule Front.FeatureHubProvider do
 
       ok(machines)
     end)
+  end
+
+  defp feature_from_grpc(%Feature{
+         availability: availability,
+         name: name,
+         type: type,
+         description: description
+       }) do
+    %FeatureProvider.Feature{
+      name: name,
+      type: type,
+      description: description,
+      quantity: quantity_from_availability(availability),
+      state: state_from_availability(availability)
+    }
   end
 
   defp feature_from_grpc(%OrganizationFeature{feature: feature, availability: availability}) do
