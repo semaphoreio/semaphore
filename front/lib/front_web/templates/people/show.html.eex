@@ -41,7 +41,7 @@
       <div class="mt3 pv3 bt b--lighter-gray">
         <div class="f4 b mb3">Repository access</div>
         <div class="dib ba b--lighter-gray br2 w-100">
-          <%= if not Front.on_prem?() do %>
+          <%= if Front.saas?() do %>
           <div class="pa2 bb b--lighter-gray">
           <% else %>
           <div class="pa2">
@@ -51,28 +51,28 @@
               <% {:NONE, nil} -> %>
                 <span class="red">Not Connected</span>
                 <%= if @owned do %>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
-                </div>
-                <% else %>
-                <div>
-                  <%= link "Connect…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :email]), method: :post %>
-                </div>
-                <% end %>
+                  <%= if Front.saas?() do %>
+                    <div>
+                    <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
+                    </div>
+                  <% else %>
+                    <div>
+                      <%= link "Connect…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :email]), method: :post %>
+                    </div>
+                  <% end %>
                 <% end %>
               <% {:NONE, _} -> %>
                 <span class="red">Not Connected</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
                 <%= if @owned do %>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
-                </div>
-                <% end %>
+                  <%= if Front.saas?() do %>
+                    <div>
+                    <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
+                    </div>
+                  <% end %>
                 <% end %>
               <% {:EMAIL, _} -> %>
                 <span class="green">Connected</span>
@@ -81,12 +81,12 @@
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
                 <%= if @owned do %>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
-                </div>
-                <% end %>
+                  <%= if Front.saas?() do %>
+                    <div>
+                    <%= link "Grant public access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
+                    </div>
+                  <% end %>
                 <% end %>
               <% {:PUBLIC, _} -> %>
                 <span class="green">Connected</span>
@@ -95,11 +95,11 @@
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
                 <%= if @owned do %>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
-                </div>
-                <% end %>
+                  <%= if Front.saas?() do %>
+                    <div>
+                    <%= link "Grant private access…", to: people_path(@conn, :update_repo_scope, @user.id, "github", [access_level: :private]), method: :post %>
+                    </div>
+                  <% end %>
                 <% end %>
               <% {:PRIVATE, _} -> %>
                 <span class="green">Connected</span>
@@ -135,31 +135,31 @@
           </div>
           <% end %>
           <%= if FeatureProvider.feature_enabled?(:gitlab, param: @conn.assigns[:organization_id]) do %>
-          <div class="pa2 bt b--lighter-gray">
-            <span class="b">GitLab</span> ·
-            <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
-              <% {:NONE, nil} -> %>
-                <span class="red">Not Connected</span>
-                <%= if @owned do %>
-                <div>
-                  <%= link "Grant access…", to: people_path(@conn, :update_repo_scope, @user.id, "gitlab"), method: :post %>
-                </div>
-                <% end %>
-              <% {:NONE, _} -> %>
-                <span class="red">Not Connected</span>
-                ·
-                <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
-                <%= if @owned do %>
-                <div>
-                  <%= link "Grant access…", to: people_path(@conn, :update_repo_scope, @user.id, "gitlab"), method: :post %>
-                </div>
-                <% end %>
-              <% {:PRIVATE, _} -> %>
-                <span class="green">Connected</span>
-                ·
-                <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
-            <% end %>
-          </div>
+            <div class="pa2 bt b--lighter-gray">
+              <span class="b">GitLab</span> ·
+              <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
+                <% {:NONE, nil} -> %>
+                  <span class="red">Not Connected</span>
+                  <%= if @owned do %>
+                  <div>
+                    <%= link "Grant access…", to: people_path(@conn, :update_repo_scope, @user.id, "gitlab"), method: :post %>
+                  </div>
+                  <% end %>
+                <% {:NONE, _} -> %>
+                  <span class="red">Not Connected</span>
+                  ·
+                  <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
+                  <%= if @owned do %>
+                  <div>
+                    <%= link "Grant access…", to: people_path(@conn, :update_repo_scope, @user.id, "gitlab"), method: :post %>
+                  </div>
+                  <% end %>
+                <% {:PRIVATE, _} -> %>
+                  <span class="green">Connected</span>
+                  ·
+                  <span><a href="https://gitlab.com/<%= @user.gitlab_login %>" target="_blank">@<%= @user.gitlab_login %></a></span>
+              <% end %>
+            </div>
           <% end %>
         </div>
       </div>
