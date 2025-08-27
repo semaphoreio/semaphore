@@ -34,10 +34,9 @@ defmodule FrontWeb.AccountControllerTest do
     end
 
     test "when bitbucket feature is disabled => do not show bitbucket scope", %{
-      conn: conn,
-      org_id: org_id
+      conn: conn
     } do
-      Support.Stubs.Feature.disable_feature(org_id, "bitbucket")
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :HIDDEN, quantity: 0)
 
       conn =
         conn
@@ -45,6 +44,8 @@ defmodule FrontWeb.AccountControllerTest do
 
       refute html_response(conn, 200) =~ "Bitbucket"
       assert html_response(conn, 200) =~ "GitHub"
+
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
     end
   end
 
