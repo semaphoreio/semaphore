@@ -81,9 +81,14 @@ defmodule FrontWeb.PeopleView do
   defp available_user_providers(org_id) do
     [
       {"email", FeatureProvider.feature_enabled?(:email_members, param: org_id)},
-      {"github", Front.saas?() || FeatureProvider.feature_enabled?(:github_user_provider, param: org_id)},
-      {"gitlab", (FeatureProvider.feature_enabled?(:gitlab, param: org_id) && Front.saas?()) || FeatureProvider.feature_enabled?(:gitlab_user_provider, param: org_id)},
-      {"bitbucket", (FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && Front.saas?) || FeatureProvider.feature_enabled?(:bitbucket_user_provider, param: org_id)}
+      {"github",
+       Front.saas?() || FeatureProvider.feature_enabled?(:github_user_provider, param: org_id)},
+      {"gitlab",
+       (FeatureProvider.feature_enabled?(:gitlab, param: org_id) && Front.saas?()) ||
+         FeatureProvider.feature_enabled?(:gitlab_user_provider, param: org_id)},
+      {"bitbucket",
+       (FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && Front.saas?()) ||
+         FeatureProvider.feature_enabled?(:bitbucket_user_provider, param: org_id)}
     ]
     |> Enum.map(fn
       {name, true} ->
