@@ -18,7 +18,7 @@
       <div class="mt4 pv3 bt b--lighter-gray">
         <div class="f4 b mb3">Repository access</div>
         <div class="dib ba b--lighter-gray br2 w-100">
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if not FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bb b--lighter-gray">
           <% else %>
           <div class="pa2">
