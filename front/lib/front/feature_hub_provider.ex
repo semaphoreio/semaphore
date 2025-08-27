@@ -13,6 +13,7 @@ defmodule Front.FeatureHubProvider do
 
   @impl FeatureProvider.Provider
   def provide_features(org_id, opts \\ [])
+
   def provide_features(nil, _opts) do
     %InternalApi.Feature.ListFeaturesRequest{}
     |> FeatureClient.list_features()

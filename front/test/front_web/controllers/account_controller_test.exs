@@ -33,7 +33,10 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "/account/update_repo_scope/github"
     end
 
-    test "when bitbucket feature is disabled => do not show bitbucket scope", %{conn: conn, org_id: org_id} do
+    test "when bitbucket feature is disabled => do not show bitbucket scope", %{
+      conn: conn,
+      org_id: org_id
+    } do
       Support.Stubs.Feature.disable_feature(org_id, "bitbucket")
 
       conn =
