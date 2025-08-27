@@ -18,7 +18,7 @@
       <div class="mt4 pv3 bt b--lighter-gray">
         <div class="f4 b mb3">Repository access</div>
         <div class="dib ba b--lighter-gray br2 w-100">
-          <%= if not FeatureProvider.feature_enabled?(:bitbucket) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bb b--lighter-gray">
           <% else %>
           <div class="pa2">
@@ -76,7 +76,7 @@
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
             <% end %>
           </div>
-          <%= if not FeatureProvider.feature_enabled?(:bitbucket) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
@@ -98,7 +98,7 @@
                 <span><a href="https://bitbucket.org/<%= @user.bitbucket_login %>" target="_blank">@<%= @user.bitbucket_login %></a></span>
             <% end %>
           </div>
-          <%= if not FeatureProvider.feature_enabled?(:gitlab) do %>
+          <%= if FeatureProvider.feature_enabled?(:gitlab) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">GitLab</span> ·
             <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
