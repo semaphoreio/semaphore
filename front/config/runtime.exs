@@ -57,8 +57,6 @@ config :front,
   cookie_name: System.get_env("COOKIE_NAME"),
   use_rbac_api: if(System.get_env("USE_RBAC_API") == "true", do: true, else: false)
 
-on_prem? = if(System.get_env("ON_PREM") == "true", do: true, else: false)
-
 # Internal API endpoints - always read from environment variables for all environments
 # Test environment will need these env vars set, or use stubs in test setup
 config :front,
@@ -131,16 +129,10 @@ config :front,
   zendesk_snippet_id: System.get_env("ZENDESK_SNIPPET_ID"),
   google_gtag: System.get_env("GOOGLE_GTAG")
 
-config :front, :on_prem?, on_prem?
+edition = System.get_env("EDITION", "") |> String.trim() |> String.downcase()
+is_saas? = !(edition in ["ce", "ee"])
 
-if on_prem? do
-  config :front,
-    feature_provider:
-      {FeatureProvider.YamlProvider,
-       [yaml_path: System.get_env("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
-
-  config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
-else
+if is_saas? do
   config :front,
     feature_provider:
       {Front.FeatureHubProvider,
@@ -149,6 +141,13 @@ else
            {FeatureProvider.CachexCache,
             name: :feature_provider_cache, ttl_ms: :timer.minutes(10)}
        ]}
+else
+  config :front,
+    feature_provider:
+      {FeatureProvider.YamlProvider,
+       [yaml_path: System.get_env("FEATURE_YAML_PATH"), agent_name: :feature_provider_agent]}
+
+  config :front, JobPage.Api.Loghub, timeout: :timer.minutes(2)
 end
 
 if System.get_env("AMQP_URL") != nil do
@@ -166,8 +165,6 @@ end
 
 config :front, :audit_logging, System.get_env("AUDIT_LOGGING") == "true"
 
-config :front, :ce_roles, System.get_env("CE_ROLES") == "true"
-
 config :front,
        :hide_promotions,
        System.get_env("HIDE_PROMOTIONS") == "true"
@@ -181,17 +178,7 @@ config :front,
        System.fetch_env!("WORKFLOW_TEMPLATES_YAMLS_PATH") <> "_new"
 
 config :front,
-       :hide_bitbucket_me_page,
-       System.get_env("HIDE_BITBUCKET_ME_PAGE") == "true"
-
-config :front,
-       :hide_gitlab_me_page,
-       System.get_env("HIDE_GITLAB_ME_PAGE") == "true"
-
-config :front,
        :single_tenant,
        System.get_env("SINGLE_TENANT") == "true"
 
-config :front,
-       :edition,
-       System.get_env("EDITION", "") |> String.trim() |> String.downcase()
+config :front, :edition, edition
