@@ -314,26 +314,26 @@ defmodule Front.Clients.Billing do
 
   defp call_grpc(error = {:error, err}, _, _, _, _, _) do
     Logger.error("""
-    Unexpected error when connecting to Velocity: #{inspect(err)}
+    Unexpected error when connecting to Billing: #{inspect(err)}
     """)
 
     error
   end
 
   defp call_grpc({:ok, channel}, module, function_name, request, metadata, timeout) do
-    if Front.on_prem?() do
-      {:error, "Billing service is not running on on-prem instance"}
-    else
+    if Front.saas?() do
       apply(module, function_name, [channel, request, [metadata: metadata, timeout: timeout]])
+    else
+      {:error, "Billing service is running only on saas instance"}
     end
   end
 
   defp channel do
-    if Front.on_prem?() do
-      {:error, "Billing service is not running on on-prem instance"}
-    else
+    if Front.saas?() do
       Application.fetch_env!(:front, :billing_api_grpc_endpoint)
       |> GRPC.Stub.connect()
+    else
+      {:error, "Billing service is running only on saas instance"}
     end
   end
 
