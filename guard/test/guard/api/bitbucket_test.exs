@@ -1,5 +1,5 @@
 defmodule Guard.Api.BitbucketTest do
-  use Guard.RepoCase
+  use Guard.RepoCase, async: false
 
   alias Guard.Api.Bitbucket
 

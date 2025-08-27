@@ -11,7 +11,9 @@ defmodule Guard.GrpcServers.AuthServer do
     observe("grpc.authentication.authenticate", fn ->
       case find_user_by_token(token) do
         {:ok, user} ->
-          respond_with_user(user, "API_TOKEN", "", "")
+          user
+          |> tap(&log_service_account_access(&1))
+          |> respond_with_user("API_TOKEN", "", "")
 
         {:error, :user, :not_found} ->
           respond_false()
@@ -216,5 +218,12 @@ defmodule Guard.GrpcServers.AuthServer do
           reraise e, __STACKTRACE__
       end
     end)
+  end
+
+  defp log_service_account_access(%{service_account: nil} = _user), do: :ok
+
+  defp log_service_account_access(%{service_account: _} = user) do
+    Watchman.increment({"service_account.access", [user.org_id]})
+    :ok
   end
 end
