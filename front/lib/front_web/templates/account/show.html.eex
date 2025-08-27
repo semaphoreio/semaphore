@@ -27,7 +27,7 @@
             <%= case {@user.github_scope, @user.github_login} do %>
               <% {:NONE, nil} -> %>
                 <span class="red">Not Connected</span>
-                <%= if Front.saas?() do %>
+                <%= if FeatureProvider.feature_enabled?(:user_repos_access) do %>
                   <div>
                     <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
@@ -41,7 +41,7 @@
                 <span class="red">Not Connected</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= if Front.saas?() do %>
+                <%= if FeatureProvider.feature_enabled?(:user_repos_access) do %>
                   <div>
                     <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
@@ -53,7 +53,7 @@
                 <span class="gray">email only</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= if Front.saas?() do %>
+                <%= if FeatureProvider.feature_enabled?(:user_repos_access) do %>
                   <div>
                     <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
@@ -65,7 +65,7 @@
                 <span class="gray">public repositories</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= if Front.saas?() do %>
+                <%= if FeatureProvider.feature_enabled?(:user_repos_access) do %>
                   <div>
                     <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
                   </div>
@@ -76,7 +76,7 @@
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
             <% end %>
           </div>
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if not FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
@@ -98,7 +98,7 @@
                 <span><a href="https://bitbucket.org/<%= @user.bitbucket_login %>" target="_blank">@<%= @user.bitbucket_login %></a></span>
             <% end %>
           </div>
-          <%= if not Application.get_env(:front, :hide_gitlab_me_page) do %>
+          <%= if not FeatureProvider.feature_enabled?(:gitlab) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">GitLab</span> ·
             <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
