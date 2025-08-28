@@ -205,7 +205,8 @@ defmodule Guard.Store.ServiceAccountTest do
   describe "create/1" do
     test "creates service account successfully" do
       with_mocks([
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
@@ -222,14 +223,15 @@ defmodule Guard.Store.ServiceAccountTest do
 
         assert String.contains?(
                  result.service_account.email,
-                 "@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end
 
     test "creates user with correct service account fields" do
       with_mocks([
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
@@ -253,7 +255,8 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "generates synthetic email correctly" do
       with_mocks([
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "MyOrg-123"} end]},
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "MyOrg-123"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
@@ -261,9 +264,9 @@ defmodule Guard.Store.ServiceAccountTest do
 
         {:ok, result} = ServiceAccount.create(params)
 
-        # Should sanitize both name and org username
+        # Should sanitize both name and org org_username
         assert result.service_account.email ==
-                 "my-service-account-@service_accounts.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "my-service-account-@service-accounts.myorg-123.#{Application.fetch_env!(:guard, :base_domain)}"
       end
     end
 
@@ -280,7 +283,7 @@ defmodule Guard.Store.ServiceAccountTest do
         # Should use fallback email
         assert String.contains?(
                  result.service_account.email,
-                 "@service_accounts.unknown.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service-accounts.unknown.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end
@@ -298,7 +301,8 @@ defmodule Guard.Store.ServiceAccountTest do
 
     test "handles user creation validation errors" do
       with_mocks([
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "plain-token"} end]}
       ]) do
@@ -326,7 +330,8 @@ defmodule Guard.Store.ServiceAccountTest do
     end
 
     test "updates synthetic email when name changes" do
-      with_mock Guard.Api.Organization, [:passthrough], fetch: fn _ -> %{username: "test-org"} end do
+      with_mock Guard.Api.Organization, [:passthrough],
+        fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end do
         {:ok, %{service_account: sa}} = ServiceAccountFactory.insert()
 
         update_params = %{name: "New Name"}
@@ -337,7 +342,7 @@ defmodule Guard.Store.ServiceAccountTest do
 
         assert String.contains?(
                  updated_sa.user.email,
-                 "new-name@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "new-name@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
       end
     end

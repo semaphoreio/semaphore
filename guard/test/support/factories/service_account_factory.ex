@@ -109,7 +109,7 @@ defmodule Support.Factories.ServiceAccountFactory do
 
   defp generate_synthetic_email(name, _org_id) do
     sanitized_name = String.downcase(name) |> String.replace(~r/[^a-z0-9\-]/, "-")
-    "#{sanitized_name}@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+    "#{sanitized_name}@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
   end
 
   defp get_role_id(nil), do: UUID.generate()

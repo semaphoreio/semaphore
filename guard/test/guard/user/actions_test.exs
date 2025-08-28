@@ -134,7 +134,7 @@ defmodule Guard.User.ActionsTest do
     test "should not allow creating regular user with service account email pattern" do
       with_mock Guard.Events.UserCreated, publish: fn _, _ -> :ok end do
         base_domain = Application.fetch_env!(:guard, :base_domain)
-        service_email = "test@service_accounts.org.#{base_domain}"
+        service_email = "test@service-accounts.org.#{base_domain}"
 
         user_params = %{
           email: service_email,
@@ -164,7 +164,7 @@ defmodule Guard.User.ActionsTest do
         assert updated_user.name == "Updated SA Name"
         assert updated_user.creation_source == :service_account
         assert updated_user.single_org_user == true
-        assert String.contains?(updated_user.email, "@service_accounts.")
+        assert String.contains?(updated_user.email, "@service-accounts.")
       end
     end
 
