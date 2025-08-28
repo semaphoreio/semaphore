@@ -11,7 +11,7 @@
 
       <div class="">
         <div class="dib ba b--lighter-gray br2 w-100">
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bb b--lighter-gray">
           <% else %>
           <div class="pa2">
@@ -55,7 +55,7 @@
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
             <% end %>
           </div>
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
@@ -78,7 +78,7 @@
             <% end %>
           </div>
           <% end %>
-          <%= if not Application.get_env(:front, :hide_gitlab_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:gitlab) do %>
           <div class="pa2">
             <span class="b">GitLab</span> ·
             <%= case {@user.gitlab_scope, @user.gitlab_login} do %>
