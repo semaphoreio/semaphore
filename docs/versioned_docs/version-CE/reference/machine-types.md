@@ -1,6 +1,6 @@
 ---
 description: Semaphore Cloud Machines Specifications
-display_sidebar: reference
+display_sidebar: docs
 ---
 
 # Machine Types
@@ -13,4 +13,3 @@ import Steps from '@site/src/components/Steps';
 import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 
 <FeatureNotAvailable/>
-

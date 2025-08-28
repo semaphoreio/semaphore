@@ -2,7 +2,7 @@
 description: Move on to more complex projects
 ---
 
-# Continuous Integration
+# Build Project
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
@@ -28,7 +28,7 @@ For this part of the tutorial you will need:
 
 ## Something to build {#demo}
 
-In most cases, the first step in CI is building the application. This proves that the main trunk is not broken and usually gives us a target to test. 
+In most cases, the first step in CI is building the application. This proves that the main trunk is not broken and usually gives us a target to test.
 
 So, our first task is to have something to build. In this case, we'll build a "Hello, World!" HTTP server in Go.
 
@@ -41,6 +41,7 @@ So, our first task is to have something to build. In this case, we'll build a "H
     git fetch origin setup-semaphore
     git checkout setup-semaphore
     ```
+
 3. Execute `go mod init hello-go` to initialize the Go module
 4. Create `main.go` with the following contents. This provides an HTTP endpoint that returns "Hello Go!" in the body
 
@@ -100,7 +101,6 @@ So, our first task is to have something to build. In this case, we'll build a "H
     ```
 
 </Steps>
-
 
 ## The build job {#build}
 
@@ -200,7 +200,7 @@ Before you can perform SSH debugging, you need to set the Semaphore Command Line
 <Steps>
 
 1. Go to your account menu and select **Profile Settings**
-2. Press the **Regenerate API Token** button 
+2. Press the **Regenerate API Token** button
 
     ![Regenerate Token](./img/regen-api-token.jpg)
 
@@ -211,11 +211,12 @@ Before you can perform SSH debugging, you need to set the Semaphore Command Line
     curl https://storage.googleapis.com/sem-cli-releases/get.sh | bash
     ```
 
-5. Connect the tool to your organization, use the API key shown in step 2
+5. Connect the tool to your Semaphore instance, use the API key shown in step 2
 
-    ```shell title="Connecting to your organization"
-    sem connect <your-organization-url>.semaphoreci.com <YOUR_API_TOKEN>
+    ```shell title="Connecting to your server"
+    sem connect semaphore.<your-domain> <YOUR_API_TOKEN>
     ```
+
 6. You're ready to do SSH debugging
 
 </Steps>
@@ -244,7 +245,3 @@ The next time you encounter a failing job, follow these steps:
 - We learned how to use dependencies to run jobs sequentially
 - We used artifacts
 - We explored how to debug jobs using SSH
-
-## What's next?
-
-In the next and last section, we'll move to the Continuous Delivery territory by automating the release of our little Go program.

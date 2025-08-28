@@ -1,7 +1,7 @@
 ---
 description: Run custom commands before pipelines start
 title: Preflight Checks
-displayed_sidebar: usingSemaphore
+displayed_sidebar: docs
 ---
 
 # Preflight Checks for Organizations
@@ -14,4 +14,3 @@ import Steps from '@site/src/components/Steps';
 import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 
 <FeatureNotAvailable/>
-

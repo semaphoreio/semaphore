@@ -74,7 +74,7 @@ const Features = [
       </span>
     ),
     image: require('@site/static/home/migration-guides.png'),
-    url: 'getting-started/migration/overview',
+    url: 'getting-started/migration-overview',
     description: (
       <Translate id="features.migration.description">
         Check out the migration guides if you are using other CI provider like as Jenkins or CircleCI.
