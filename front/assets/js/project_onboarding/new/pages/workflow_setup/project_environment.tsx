@@ -5,10 +5,8 @@ import * as stores from "../../stores";
 import { useContext, useCallback, useEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 import Tippy from "@tippyjs/react";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { Notice } from "js/notice";
 import { useSteps } from "../../stores/create/steps";
+import { handleSkipOnboarding } from "../../utils/skip_onboarding";
 
 interface AgentCardProps {
   agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType;
@@ -95,6 +93,14 @@ export const Projectenvironment = () => {
     } catch (error) {
       Notice.error(`Failed to update pipeline file. Please try again.`);
     }
+  };
+
+  const onSkipOnboarding = () => {
+    void handleSkipOnboarding({
+      skipOnboardingUrl: configState.skipOnboardingUrl,
+      csrfToken: configState.csrfToken,
+      projectUrl: configState.projectUrl
+    });
   };
 
   return (
@@ -206,7 +212,17 @@ export const Projectenvironment = () => {
             </div>
             <div className="mt3">
               <div className="flex justify-between items-center">
-                <p className="f6 gray mb0">Next, we&apos;ll define your build steps and workflow.</p>
+                <div className="flex items-center">
+                  <p className="f6 gray mb0 mr1">Next, we&apos;ll define your build steps and workflow. or you can </p>
+                  <a
+                    href="#"
+                    onClick={(e) => { e.preventDefault(); onSkipOnboarding(); }}
+                    className="f6 link dim gray underline"
+                    title="Skip the onboarding process and go directly to the project"
+                  >
+                    skip onboarding
+                  </a>
+                </div>
                 <Tippy
                   placement="top"
                   content="Select an agent type to continue"
