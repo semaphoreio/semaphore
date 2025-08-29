@@ -157,10 +157,15 @@ defmodule Rbac.Okta.Saml.Api do
   end
 
   defp inject_session_cookie(conn, user) do
+    Logger.debug("User which was found: #{inspect(user)}")
+
     secret_key_base = Application.get_env(:rbac, :session_secret_key_base)
     conn = put_in(conn.secret_key_base, secret_key_base)
 
     {key, content} = Rbac.Session.serialize_into_session(user)
+
+    Logger.debug("Session key #{inspect(key)}")
+    Logger.debug("Session content #{inspect(content)}")
 
     conn |> fetch_session() |> put_session(key, content) |> put_session("id_provider", "OKTA")
   end
