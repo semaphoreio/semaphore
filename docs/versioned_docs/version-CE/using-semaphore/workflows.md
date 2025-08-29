@@ -4,12 +4,6 @@ description: Where everything begins
 
 # Workflows
 
-
-
-
-
-
-
 A *workflow* is a series of steps to build, test, release, or deploy your application. This page explains workflows, how they are triggered, and their settings.
 
 :::tip
@@ -38,6 +32,8 @@ The [project page](./projects#view-projects) shows all the recent workflows for 
 ![Types of workflows](./img/workflow-types.jpg)
 
 ## Visual workflow editor {#workflow-editor}
+
+<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/dg2jDQmYJ_4" />
 
 You can define most aspects of your workflows using the visual editor. 
 

@@ -11,7 +11,7 @@ sidebar_position: 2
 
 
 
-<VideoTutorial title="How to set up test reports" src="https://www.youtube.com/embed/9L0Z9xcKiYU?si=IdSsYfGLU7btYVwq" />
+<VideoTutorial title="How to set up test reports" src="https://www.youtube.com/embed/-vsrkJfB6HU" />
 
 Test reports show a unified view of all your tests in a [pipeline](../pipelines). This page explains how to configure test reports and interpret the test dashboard.
 

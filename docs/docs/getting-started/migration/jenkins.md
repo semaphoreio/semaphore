@@ -5,6 +5,8 @@ sidebar_position: 2
 
 # Jenkins
 
+<VideoTutorial title="Semaphore vs Jenkins" src="https://www.youtube.com/embed/8WgzwkNwIXs" />
+
 This page explains the core concepts and feature mapping you need to migrate from Jenkins to Semaphore.
 
 ## Overview

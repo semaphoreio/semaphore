@@ -5,11 +5,7 @@ sidebar_position: 2
 
 # Jenkins
 
-
-
-
-
-
+<VideoTutorial title="Semaphore vs Jenkins" src="https://www.youtube.com/embed/8WgzwkNwIXs" />
 
 ## Overview
 

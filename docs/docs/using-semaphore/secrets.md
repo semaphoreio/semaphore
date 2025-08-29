@@ -4,7 +4,7 @@ description: Store and use sensitive data
 
 # Secrets
 
-<VideoTutorial title="How to use secrets" src="https://www.youtube.com/embed/rAJIRX81DeA"/>
+<VideoTutorial title="How to use secrets" src="https://www.youtube.com/embed/gB1Oat4HwTo"/>
 
 Secrets store sensitive data like API keys, passwords, and SSH keys. This page explains the types of secrets, their scopes, and how to create and secure them.
 

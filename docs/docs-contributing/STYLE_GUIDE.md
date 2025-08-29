@@ -328,7 +328,7 @@ To get the embeddable URL:
 1. Go to the YouTube video
 2. Press the **Share** button
 3. Select embed
-4. Copy the SRC part of the code, e.g. "<https://www.youtube.com/embed/xId2H2wlKx4?si=0IXKyNNUVVjDDvHz>"
+4. Copy the SRC part of the code, e.g. "<https://www.youtube.com/embed/6YCMY1cPrU8>"
 
 ### Railroad diagrams
 

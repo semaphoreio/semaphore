@@ -5,11 +5,7 @@ sidebar_position: 5
 
 # BitBucket Pipelines
 
-
-
-
-
-
+<VideoTutorial title="Semaphore vs BitBucket Pipelines" src="https://www.youtube.com/embed/8ucFLwuH2UA" />
 
 ## Overview
 

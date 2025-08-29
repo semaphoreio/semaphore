@@ -5,11 +5,7 @@ sidebar_position: 3
 
 # GitHub Actions
 
-
-
-
-
-
+<VideoTutorial title="Semaphore vs GitHub Actions" src="https://www.youtube.com/embed/GcTu9fmIGHQ" />
 
 This page explains the core concepts and feature mapping you need to migrate from GitHub Actions to Semaphore.
 

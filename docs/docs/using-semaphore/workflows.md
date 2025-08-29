@@ -33,7 +33,7 @@ The [project page](./projects#view-projects) shows all the recent workflows for 
 
 ## Visual workflow editor {#workflow-editor}
 
-<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/vrv3jI-85L0?si=JLRw6FDTEF7KtPx_" />
+<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/dg2jDQmYJ_4" />
 
 You can define most aspects of your workflows using the visual editor. 
 

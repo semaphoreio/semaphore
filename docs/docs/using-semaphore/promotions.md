@@ -4,7 +4,7 @@ description: Connect pipelines to create workflows
 
 # Promotions
 
-<VideoTutorial title="How to use promotions" src="https://www.youtube.com/embed/rbf2jb3Uh-E?si=UH-_74icf4KdGYCf" />
+<VideoTutorial title="How to use promotions" src="https://www.youtube.com/embed/jfOx24zsBh8" />
 
 Promotions connect [pipelines](./pipelines) to implement continuous delivery and deployment, or other types of automation, such as [blue-green](https://semaphore.io/blog/blue-green-deployment) deployments and [canary](https://semaphore.io/blog/what-is-canary-deployment) deployments. 
 
@@ -487,7 +487,7 @@ after_pipeline:
 
 ## Deployment targets {#deployment-targets}
 
-<VideoTutorial title="How to Use Deployment Targets" src="https://www.youtube.com/embed/xId2H2wlKx4?si=0IXKyNNUVVjDDvHz" />
+<VideoTutorial title="How to Use Deployment Targets" src="https://www.youtube.com/embed/6YCMY1cPrU8" />
 
 Deployment targets (also known as Environments) provide additional controls over [pipelines](./pipelines). You can limit who can trigger a pipeline and under which circumstances, or define fine-grained secrets and environment variables.
 

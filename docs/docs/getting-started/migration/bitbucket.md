@@ -5,6 +5,8 @@ sidebar_position: 5
 
 # BitBucket Pipelines
 
+<VideoTutorial title="Semaphore vs BitBucket Pipelines" src="https://www.youtube.com/embed/8ucFLwuH2UA" />
+
 ## Overview
 
 BitBucket Pipelines uses a YAML-based syntax to define pipelines and actions. In Semaphore, you can use the [visual workflow editor](../../using-semaphore/workflows#workflow-editor) to more easily configure and preview pipelines.

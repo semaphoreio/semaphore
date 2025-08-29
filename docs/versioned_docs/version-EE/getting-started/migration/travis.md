@@ -5,11 +5,7 @@ sidebar_position: 4
 
 # Travis CI
 
-
-
-
-
-
+<VideoTutorial title="Semaphore vs Travis CI" src="https://www.youtube.com/embed/QVGLTm1RhXM" />
 
 This page explains the core concepts and feature mapping you need to migrate from Travis CI to Semaphore.
 

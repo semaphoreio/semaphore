@@ -4,7 +4,7 @@ description: Persist and move data between jobs
 
 # Artifacts
 
-<VideoTutorial title="How to use artifacts" src="https://www.youtube.com/embed/yHzZOKwyaAA?si=7qVathl09Cd3d-Gq"/>
+<VideoTutorial title="How to use artifacts" src="https://www.youtube.com/embed/Ipw0u9yZPUs"/>
 
 Artifacts provide persistent storage for files and folders. This page explains how to store, retrieve, and view artifacts, and how to manage retention policies.
 
