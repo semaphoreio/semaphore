@@ -4,12 +4,6 @@ description: Jobs and blocks are the basic unit of work
 
 # Jobs
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Jobs get stuff done. This page explains to create and configure jobs.
 
 ## Job lifecycle {#job-lifecycle}

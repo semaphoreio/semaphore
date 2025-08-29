@@ -4,12 +4,6 @@ description: Persist and move data between jobs
 
 # Artifacts
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to use artifacts" src="https://www.youtube.com/embed/yHzZOKwyaAA?si=7qVathl09Cd3d-Gq"/>
 
 Artifacts provide persistent storage for files and folders. This page explains how to store, retrieve, and view artifacts, and how to manage retention policies.

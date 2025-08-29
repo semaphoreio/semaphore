@@ -4,12 +4,6 @@ description: Create your first organization
 
 # Sign Up 
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 You will need a Semaphore account to follow this Quickstart. Don't worry, the only thing you will need is an account on GitHub or BitBucket.
 
 In this section we'll learn about:

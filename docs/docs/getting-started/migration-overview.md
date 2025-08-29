@@ -4,12 +4,6 @@ description: Migrate to Semaphore
 
 # Migration Overview
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Migrating a Continuous Integration and Delivery (CI/CD) platform can be straightforward or challenging. Every project, every team is a world; for some, it is trivial while for others, it is a big effort. In any case, it is our dearest hope that the effort benefits you and your team.
 
 These guides will help you migrate from other CI systems to Semaphore. In this page, we'll review the basis for the migration process, as several migration steps are common for all CI systems.
