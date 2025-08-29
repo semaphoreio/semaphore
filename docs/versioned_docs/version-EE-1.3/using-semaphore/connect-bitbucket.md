@@ -4,11 +4,11 @@ description: Access your BitBucket repositories
 
 # Connect Bitbucket
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 BitBucket users need to provide access to Semaphore so it can read their repositories.
 

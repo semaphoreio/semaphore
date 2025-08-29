@@ -4,11 +4,11 @@ description: Access your GitHub repositories
 
 # Connect GitHub
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 GitHub users need to provide access to Semaphore so it can read their repositories.
 

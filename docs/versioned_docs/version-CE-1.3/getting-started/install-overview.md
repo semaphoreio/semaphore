@@ -4,12 +4,12 @@ description: Semaphore installation overview for Semaphore CE
 
 # Install Overview
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
 import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
 

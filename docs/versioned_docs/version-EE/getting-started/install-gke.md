@@ -4,12 +4,12 @@ description: Install Semaphore on Google Kubernetes Engine (GKE)
 
 # Google Cloud Kubernetes (GKE)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to create a Kubernetes cluster using [Google Cloud Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine) and install Semaphore Community Edition.
 

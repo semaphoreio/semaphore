@@ -28,6 +28,9 @@ import VideoTutorial from '@site/src/components/VideoTutorial';
 // Steps component: for long step-by-step list of steps
 import Steps from '@site/src/components/Steps';
 
+// FeatureNotAvailable component: to mark pages where the whole feature is not available in the current edition
+import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
 export default {
   // Re-use the default mapping
   ...MDXComponents,
@@ -43,5 +46,6 @@ export default {
   TabItem,
   Available,
   VideoTutorial,
-  Steps
+  Steps,
+  FeatureNotAvailable
 };

@@ -4,11 +4,11 @@ description: Finish up with automated continuous delivery
 
 # Deploy Project
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 We succeeded into having a program built and tested using Continuous Integration. It's time to release it automatically using Continuous Delivery.
 
