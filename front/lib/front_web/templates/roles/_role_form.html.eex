@@ -50,7 +50,7 @@
   <% end %>
 </div>
 
-<%= if to_string(@form.data.scope) == "organization" && !Front.ce_roles?() do %>
+<%= if to_string(@form.data.scope) == "organization" && !Front.ce?() do %>
     <div class="ml2 mv4">
         <%= label @form, :role_mapping, class: "db b" do %>
             Project access

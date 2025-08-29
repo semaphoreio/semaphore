@@ -139,8 +139,6 @@ spec:
 {{- end }}
             - name: METRICS_SERVICE
               value: "front"
-            - name: ON_PREM
-              value: "true"
             - name: START_TELEMETRY
               value: {{ .Values.global.telemetry.enabled | quote }}
             - name: TELEMETRY_CRON
@@ -153,8 +151,6 @@ spec:
               value: {{ .Values.workflowTemplates.mountPath | quote }}
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
-              value: "true"
-            - name: "CE_ROLES"
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
