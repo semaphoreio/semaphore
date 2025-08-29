@@ -1,9 +1,9 @@
 ---
 description: OpenID Connect (OIDC) token reference
-display_sidebar: reference
+display_sidebar: docs
 ---
 
-# OIDC Tokens 
+# OIDC Tokens
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';

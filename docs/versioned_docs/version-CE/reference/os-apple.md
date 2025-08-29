@@ -1,6 +1,6 @@
 ---
 description: Apple macOS Image Reference
-display_sidebar: reference
+display_sidebar: docs
 ---
 
 # Apple macOS Images
@@ -13,4 +13,3 @@ import Steps from '@site/src/components/Steps';
 import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 
 <FeatureNotAvailable/>
-
