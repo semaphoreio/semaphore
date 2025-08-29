@@ -4,11 +4,11 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available. In this page, the terms organization, server, and instance are used interchangeably.
 

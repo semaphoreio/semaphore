@@ -4,10 +4,10 @@ description: Agent Types YAML reference
 
 # Agent Types YAML
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 This page explains the YAML syntax for agent types required to configure [self-hosted agent types](../using-semaphore/self-hosted).
 

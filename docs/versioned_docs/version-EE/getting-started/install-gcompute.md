@@ -4,18 +4,18 @@ description: Install Semaphore on Google Cloud Compute (VM)
 
 # Google Cloud Compute (VM)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to install Semaphore Community Edition on a [Google Cloud Compute Engine (VMs)](https://cloud.google.com/products/compute).
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/quickstart.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -39,8 +39,7 @@ You may skip this step if you already have an SSH key pair.
 
 :::
 
-To generate your SSH keys, run the following command. Follow the on-screen instructions. 
-
+To generate your SSH keys, run the following command. Follow the on-screen instructions.
 
 ```shell
 ssh-keygen -t rsa
@@ -56,7 +55,6 @@ The generated keys should be located in the `$HOME/.ssh` folder. The exact names
 We recommend creating a separate [Google Cloud Project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for your Semaphore installation. Once you have created your project, take note of the **Google Project ID**.
 
 Create a config file to store your Google Cloud parameters. We'll call it `google-config`. Adjust the values to match your Project ID and which zone the compute instance should run on. Ensure you the paths for the [SSH keypairs generated earlier](#ssh) are correct (warning: never switch the public with the private keys).
-
 
 ```shell title="contents of google-config"
 export GOOGLE_CLOUD_PROJECT_ID="<your-project-id>"
@@ -219,7 +217,6 @@ export IP_ADDRESS=1.2.3.4
 ```
 
 :::
-
 
 ## Step 9 - Create TLS certificates {#certs}
 
@@ -391,7 +388,7 @@ You should be greeted with the onboarding guide.
 Once you have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
@@ -407,6 +404,7 @@ Follow these steps if you need to upgrade Semaphore, install a new [license](./l
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     kubectl get nodes
     ```
+
 3. Load the configuration file and ensure the certificates are located on the correct folders. See [Step 9](#certs) if you need to regenerate the certificates.
 
     ```shell
@@ -492,7 +490,6 @@ gcloud compute instances delete ${GOOGLE_INSTANCE_NAME} \
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

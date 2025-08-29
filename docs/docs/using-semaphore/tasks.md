@@ -4,12 +4,6 @@ description: Schedule pipelines
 
 # Tasks
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to set up Tasks" src="https://www.youtube.com/embed/zu1WORQUJAM?si=hR_FwyMe4Yd2Lf-H" />
 
 Task allow you to trigger specific [pipelines](./pipelines) on a schedule or manually. This page explains how to create and run tasks, and what settings are available.
