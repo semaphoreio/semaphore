@@ -113,8 +113,6 @@ spec:
 {{- end }}
             - name: METRICS_SERVICE
               value: "front"
-            - name: ON_PREM
-              value: "true"
             - name: FEATURE_YAML_PATH
               value: {{ .Values.featureFlags.mountPath | quote }}
             - name: GETTING_STARTED_YAML_PATH
@@ -123,8 +121,6 @@ spec:
               value: {{ .Values.workflowTemplates.mountPath | quote }}
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
-              value: "true"
-            - name: "CE_ROLES"
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"

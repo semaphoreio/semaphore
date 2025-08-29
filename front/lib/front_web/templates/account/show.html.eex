@@ -18,7 +18,7 @@
       <div class="mt4 pv3 bt b--lighter-gray">
         <div class="f4 b mb3">Repository access</div>
         <div class="dib ba b--lighter-gray br2 w-100">
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bb b--lighter-gray">
           <% else %>
           <div class="pa2">
@@ -27,25 +27,25 @@
             <%= case {@user.github_scope, @user.github_login} do %>
               <% {:NONE, nil} -> %>
                 <span class="red">Not Connected</span>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
                 <% else %>
-                <div>
-                  <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
-                </div>
+                  <div>
+                    <%= link "Connect…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :email]), method: :post %>
+                  </div>
                 <% end %>
               <% {:NONE, _} -> %>
                 <span class="red">Not Connected</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
                 <% end %>
               <% {:EMAIL, _} -> %>
                 <span class="green">Connected</span>
@@ -53,11 +53,11 @@
                 <span class="gray">email only</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant public access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :public]), method: :post %>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
                   <% end %>
               <% {:PUBLIC, _} -> %>
                 <span class="green">Connected</span>
@@ -65,10 +65,10 @@
                 <span class="gray">public repositories</span>
                   ·
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
-                <%= unless Front.on_prem?() do %>
-                <div>
-                <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
-                </div>
+                <%= unless FeatureProvider.feature_enabled?(:restrict_user_repos_access) do %>
+                  <div>
+                    <%= link "Grant private access…", to: account_path(@conn, :update_repo_scope, "github", [access_level: :private]), method: :post %>
+                  </div>
                 <% end %>
               <% {:PRIVATE, _} -> %>
                 <span class="green">Connected</span>
@@ -76,7 +76,7 @@
                 <span><a href="https://github.com/<%= @user.github_login %>" target="_blank">@<%= @user.github_login %></a></span>
             <% end %>
           </div>
-          <%= if not Application.get_env(:front, :hide_bitbucket_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:bitbucket) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">Bitbucket</span> ·
             <%= case {@user.bitbucket_scope, @user.bitbucket_login} do %>
@@ -98,7 +98,7 @@
                 <span><a href="https://bitbucket.org/<%= @user.bitbucket_login %>" target="_blank">@<%= @user.bitbucket_login %></a></span>
             <% end %>
           </div>
-          <%= if not Application.get_env(:front, :hide_gitlab_me_page) do %>
+          <%= if FeatureProvider.feature_enabled?(:gitlab) do %>
           <div class="pa2 bt b--lighter-gray">
             <span class="b">GitLab</span> ·
             <%= case {@user.gitlab_scope, @user.gitlab_login} do %>

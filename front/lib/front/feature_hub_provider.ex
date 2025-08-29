@@ -6,13 +6,29 @@ defmodule Front.FeatureHubProvider do
     Availability,
     Machine,
     OrganizationFeature,
+    Feature,
     OrganizationMachine
   }
 
   import Front.Utils
 
   @impl FeatureProvider.Provider
-  def provide_features(org_id, _opts \\ []) do
+  def provide_features(org_id, opts \\ [])
+
+  def provide_features(nil, _opts) do
+    %InternalApi.Feature.ListFeaturesRequest{}
+    |> FeatureClient.list_features()
+    |> unwrap(fn response ->
+      features =
+        response.features
+        |> Enum.map(&feature_from_grpc/1)
+        |> Enum.filter(&FeatureProvider.Feature.visible?/1)
+
+      ok(features)
+    end)
+  end
+
+  def provide_features(org_id, _opts) do
     FeatureClient.list_organization_features(%{org_id: org_id})
     |> unwrap(fn response ->
       features =
@@ -36,6 +52,21 @@ defmodule Front.FeatureHubProvider do
 
       ok(machines)
     end)
+  end
+
+  defp feature_from_grpc(%Feature{
+         availability: availability,
+         name: name,
+         type: type,
+         description: description
+       }) do
+    %FeatureProvider.Feature{
+      name: name,
+      type: type,
+      description: description,
+      quantity: quantity_from_availability(availability),
+      state: state_from_availability(availability)
+    }
   end
 
   defp feature_from_grpc(%OrganizationFeature{feature: feature, availability: availability}) do

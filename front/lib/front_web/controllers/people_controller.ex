@@ -284,7 +284,7 @@ defmodule FrontWeb.PeopleController do
     user_type = params["type"] || ""
 
     member_role_id =
-      if Front.ce_roles?() do
+      if Front.ce?() do
         {:ok, roles} = RoleManagement.list_possible_roles(org_id, "org_scope")
 
         member_role = Enum.find(roles, fn role -> role.name == "Member" end)
@@ -501,7 +501,7 @@ defmodule FrontWeb.PeopleController do
 
   defp create_email_member(conn, params) do
     Watchman.benchmark("people.create_member", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         user_id = conn.assigns.user_id
         org_id = conn.assigns.organization_id
 
@@ -800,7 +800,7 @@ defmodule FrontWeb.PeopleController do
 
   defp change_user_email(conn, user_id, email) do
     Watchman.benchmark("people.change_email", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         conn
         |> Audit.new(:User, :Modified)
         |> Audit.add(description: "Change Email")
@@ -867,7 +867,7 @@ defmodule FrontWeb.PeopleController do
 
   defp reset_user_password(conn, user_id) do
     Watchman.benchmark("people.reset_password", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         conn
         |> Audit.new(:User, :Modified)
         |> Audit.add(description: "Reset Password")

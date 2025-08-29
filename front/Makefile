@@ -52,7 +52,7 @@ CONTAINER_ENV_VARS = \
 
 
 CONTAINER_CE_ENV_VARS =\
-	 -e CE_ROLES=true \
+     -e EDITION=ce \
 	 -e SEED_CLOUD_MACHINES=false \
 	 -e SEED_SELF_HOSTED_AGENTS=true \
 	 -e SEED_CE_FEATURES=true \

@@ -50,7 +50,7 @@
               <%= link "Okta Integration", to: organization_okta_path(@conn, :show), class: "link db pv1 ph3 br3 dark-gray hover-bg-lightest-gray" %>
             <% end %>
           <% end %>
-        <%= if not Front.on_prem?() do %>
+        <%= if Front.saas?() do %>
           <%= if @conn.request_path =~ organization_contacts_path(@conn, :show) do %>
             <%= link "Contacts", to: organization_contacts_path(@conn, :show), class: "link db pv1 ph3 br3 bg-green white" %>
           <% else %>

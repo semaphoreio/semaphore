@@ -4,9 +4,9 @@ defmodule FrontWeb.RolesView do
 
   @default_permissions ~w(organization.view project.view)
 
-  def allow_role_creation?, do: !Front.ce_roles?()
+  def allow_role_creation?, do: !Front.ce?()
 
-  def allow_project_roles?, do: !Front.ce_roles?()
+  def allow_project_roles?, do: !Front.ce?()
 
   def page_description do
     if allow_role_creation?() do

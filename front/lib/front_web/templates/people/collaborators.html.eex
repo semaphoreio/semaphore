@@ -7,7 +7,7 @@
 
 
   <div class="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
-    <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) || Front.ce_roles?() do %>
+    <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) || Front.ce?() do %>
       <div class="mb2 bb b--lighter-gray">
         <div class="mb3 mb0-m">
           <p class="measure mb2">Add member to Organization</p>
@@ -29,7 +29,7 @@
       </div>
     <% end %>
 
-    <%= if !Front.ce_roles?() do %>
+    <%= if !Front.ce?() do %>
       <%= if FeatureProvider.feature_enabled?(:gitlab, param: @conn.assigns[:organization_id]) do %>
       <div class="flex-m justify-between mb0 bb b--lighter-gray">
         <div class="mb3 mb0-m">

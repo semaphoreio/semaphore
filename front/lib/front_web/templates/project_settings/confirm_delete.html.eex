@@ -13,7 +13,7 @@
 <div class="mw6">
   <div class="mt3">
     <%= form_for @conn, project_settings_path(@conn, :submit_delete, @project.id), [method: :post], fn f -> %>
-      <%= unless Front.on_prem?() do %>
+      <%= if Front.saas?() do %>
       <div class="mv3">
         <%= label f, :reason, "Reason for deleting", class: "db b mb1" %>
         <%= select f, :reason,

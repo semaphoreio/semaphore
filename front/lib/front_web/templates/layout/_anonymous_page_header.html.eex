@@ -8,7 +8,7 @@
     <div class="flex items-center flex-shrink-0">
       <p class="f6 mb0">Blazing-fast build and deploy!</p>
       <a href="<%= login_url(@conn) %>" class="btn btn-secondary btn-small ml3">Log in</a>
-    <%= if not Front.on_prem?() do %>
+    <%= if Front.saas?() do %>
       <a href="<%= signup_url(@conn) %>" class="btn btn-secondary btn-small ml3">Sign up</a>
     <% end %>
     </div>

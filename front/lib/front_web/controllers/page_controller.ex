@@ -18,7 +18,7 @@ defmodule FrontWeb.PageController do
   def status404(conn, _params) do
     # On onprem, if user isn't logged in, we want to redirect user to okta login
     # right away, without showing the 404 page
-    if anonymous?(conn) == true and Front.on_prem?() do
+    if anonymous?(conn) == true and Front.os?() do
       conn
       |> put_resp_header("location", login_url(conn))
       |> send_resp(302, "")

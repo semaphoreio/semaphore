@@ -33,8 +33,10 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "/account/update_repo_scope/github"
     end
 
-    test "when bitbucket feature is disabled => do not show bitbucket scope", %{conn: conn} do
-      Application.put_env(:front, :hide_bitbucket_me_page, true)
+    test "when bitbucket feature is disabled => do not show bitbucket scope", %{
+      conn: conn
+    } do
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :HIDDEN, quantity: 0)
 
       conn =
         conn
@@ -43,7 +45,7 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "Bitbucket"
       assert html_response(conn, 200) =~ "GitHub"
 
-      Application.put_env(:front, :hide_bitbucket_me_page, false)
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
     end
   end
 
