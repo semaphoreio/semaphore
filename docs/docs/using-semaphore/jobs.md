@@ -518,7 +518,7 @@ Semaphore CI Debug Session.
  - Run your CI commands with `source ~/commands.sh`
  - Leave the session with `exit`
 
-Documentation: https://docs.semaphoreci.com/essentials/debugging-with-ssh-access/.
+Documentation: https://docs.semaphore.io/essentials/debugging-with-ssh-access/.
 
 semaphore@semaphore-vm:~$
 ```
@@ -1362,13 +1362,13 @@ See [pipeline global time limit](./pipelines#max-job-duration) to change the max
 
 A pipeline can have up to *100 blocks*. This limit is not configurable.
 
-If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+If you have a use case in which this limit is too constraining, please contact us at support@semaphore.io and we will try to work out a solution.
 
 ### Max jobs per block {#max-jobs}
 
 A block can have up to *50 jobs*. This limit is not configurable.
 
-If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+If you have a use case in which this limit is too constraining, please contact us at support@semaphore.io and we will try to work out a solution.
 
 
 ### Max job log size {#max-log-size}

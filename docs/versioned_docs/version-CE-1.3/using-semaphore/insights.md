@@ -1,6 +1,6 @@
 ---
 description: View your pipeline productivity
-displayed_sidebar: usingSemaphore
+displayed_sidebar: docs
 ---
 
 # Project Insights
