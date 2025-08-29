@@ -193,7 +193,7 @@ This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from t
 
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [How to connect with GitHub App](./connect-github)
 - [How to connect with BitBucket](./connect-bitbucket)
 - [How to connect with GitLab](./connect-gitlab)

@@ -4,12 +4,6 @@ description: Persist and move data between jobs
 
 # Artifacts
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to use artifacts" src="https://www.youtube.com/embed/yHzZOKwyaAA?si=7qVathl09Cd3d-Gq"/>
 
 Artifacts provide persistent storage for files and folders. This page explains how to store, retrieve, and view artifacts, and how to manage retention policies.
@@ -358,7 +352,7 @@ Artifacts on Semaphore Cloud are charged based on:
 - **Storage**: the amount of data stored, charged on a GB-per-month basis
 - **Traffic**: download network traffic in jobs or from the website, charged by the total GB of data per month
 
-For more information, see [Plans and Pricing](https://semaphoreci.com/pricing)
+For more information, see [Plans and Pricing](https://semaphore.io/pricing)
 
 :::note
 

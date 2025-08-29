@@ -5,11 +5,7 @@ sidebar_position: 2
 
 # Jenkins
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+This page explains the core concepts and feature mapping you need to migrate from Jenkins to Semaphore.
 
 ## Overview
 

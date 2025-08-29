@@ -14,7 +14,7 @@ A *workflow* is a series of steps to build, test, release, or deploy your applic
 
 :::tip
 
-If this is your first time using Semaphore, check out [Guided Tour](../getting-started/guided-tour).
+If this is your first time using Semaphore, check out [Quickstart](../getting-started/quickstart).
 
 :::
 
