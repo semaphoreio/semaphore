@@ -19,7 +19,7 @@ defmodule HooksProcessor.Hooks.Payload.Bitbucket do
   end
 
   @doc """
-  Used for concluding whether branch was created, updated or deleted via given push
+  Used for concluding whether branch or tag was created, updated or deleted via given push
   """
   def branch_action(payload) do
     change = payload |> get_in(["push", "changes"]) |> Enum.at(0)
@@ -47,41 +47,29 @@ defmodule HooksProcessor.Hooks.Payload.Bitbucket do
   """
   def extract_data(payload, hook_type, action_type)
 
+  def extract_data(payload, "tag", "deleted") do
+    change = payload |> get_in(["push", "changes"]) |> Enum.at(0) |> Map.get("old")
+    extract_tag_data_(payload, change)
+  end
+
   def extract_data(payload, "tag", _action_type) do
     change = payload |> get_in(["push", "changes"]) |> Enum.at(0) |> Map.get("new")
-    tag_name = Map.get(change, "name")
-    target = Map.get(change, "target")
-    repo_name = payload |> Map.get("repository") |> Map.get("name")
-    owner = payload |> get_in(["repository", "workspace", "slug"])
-    author = get_in(target, ["author", "user", "nickname"])
-
-    %{
-      branch_name: "refs/tags/" <> tag_name,
-      git_ref: "refs/tags/" <> tag_name,
-      display_name: tag_name,
-      owner: owner,
-      repo_name: repo_name,
-      commit_sha: Map.get(target, "hash"),
-      commit_message: Map.get(target, "message"),
-      commit_author: author,
-      pr_name: "",
-      pr_number: 0
-    }
+    extract_tag_data_(payload, change)
   end
 
   def extract_data(payload, "branch", "deleted") do
     change = payload |> get_in(["push", "changes"]) |> Enum.at(0) |> Map.get("old")
 
-    extract_data_(payload, change)
+    extract_branch_data_(payload, change)
   end
 
   def extract_data(payload, "branch", _action_type) do
     change = payload |> get_in(["push", "changes"]) |> Enum.at(0) |> Map.get("new")
 
-    extract_data_(payload, change)
+    extract_branch_data_(payload, change)
   end
 
-  defp extract_data_(payload, change) do
+  defp extract_branch_data_(payload, change) do
     branch_name = Map.get(change, "name")
     target = Map.get(change, "target")
     repo_name = payload |> Map.get("repository") |> Map.get("name")
@@ -95,6 +83,30 @@ defmodule HooksProcessor.Hooks.Payload.Bitbucket do
       branch_name: branch_name,
       git_ref: "refs/heads/" <> branch_name,
       display_name: branch_name,
+      owner: owner,
+      repo_name: repo_name,
+      commit_sha: Map.get(target, "hash"),
+      commit_message: Map.get(target, "message"),
+      commit_author: author,
+      pr_name: "",
+      pr_number: 0
+    }
+  end
+
+  defp extract_tag_data_(payload, change) do
+    tag_name = Map.get(change, "name")
+    target = Map.get(change, "target")
+    repo_name = payload |> Map.get("repository") |> Map.get("name")
+    owner = payload |> get_in(["repository", "workspace", "slug"])
+
+    author =
+      get_in(target, ["author", "user", "nickname"]) ||
+        get_in(payload, ["actor", "nickname"])
+
+    %{
+      branch_name: "refs/tags/" <> tag_name,
+      git_ref: "refs/tags/" <> tag_name,
+      display_name: tag_name,
       owner: owner,
       repo_name: repo_name,
       commit_sha: Map.get(target, "hash"),
