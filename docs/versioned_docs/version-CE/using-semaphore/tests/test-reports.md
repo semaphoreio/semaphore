@@ -5,11 +5,11 @@ sidebar_position: 2
 
 # Tests Reports
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 <VideoTutorial title="How to set up test reports" src="https://www.youtube.com/embed/9L0Z9xcKiYU?si=IdSsYfGLU7btYVwq" />
 

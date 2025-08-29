@@ -4,12 +4,6 @@ description: AWS Autoscaler for self-hosted reference
 
 # AWS Autoscaler Settings
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
 
 This page describes all the settings available to configure [AWS Autoscaler Stack](../using-semaphore/self-hosted-aws).

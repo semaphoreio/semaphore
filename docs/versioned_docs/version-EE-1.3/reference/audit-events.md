@@ -4,10 +4,10 @@ description: Audit log events reference
 
 # Audit Log Events Reference
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 Each audit log entry shows applicable information about an event, such as:
 

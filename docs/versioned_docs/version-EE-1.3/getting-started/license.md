@@ -4,12 +4,12 @@ description: Semaphore License
 
 # Get a License
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
 import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
 
@@ -30,7 +30,7 @@ A free Enterprise Edition server license includes every feature in the paid lice
 
 ## Get a quote {#quote}
 
-If you do not qualify for a [free Enterprise Edition license](#free) or require SLA and advanced support, please contact Semaphore support at: `support@semaphore.io` to obtain a quote for your installation. 
+If you do not qualify for a [free Enterprise Edition license](#free) or require SLA and advanced support, please contact Semaphore support at: `support@semaphore.io` to obtain a quote for your installation.
 
 ## Obtain a license {#obtain}
 
@@ -49,6 +49,5 @@ To obtain or renew a license, follow these steps:
 ## See also
 
 - [Installation guide](./install)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Getting started guide](./quickstart)
+- [Migration guide](./migration-overview)

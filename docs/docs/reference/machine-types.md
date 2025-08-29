@@ -4,11 +4,6 @@ description: Semaphore Cloud Machines Specifications
 
 # Machine Types
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 This page gives technical specifications for the machines available on Semaphore Cloud.
 
 ## Overview
