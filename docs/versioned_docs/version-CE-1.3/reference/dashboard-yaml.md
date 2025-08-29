@@ -1,6 +1,6 @@
 ---
 description: Dashboards YAML reference
-displayed_sidebar: reference
+displayed_sidebar: docs
 ---
 
 # Dashboards YAML

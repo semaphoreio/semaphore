@@ -170,6 +170,6 @@ This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from t
 
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Using OAuth with GitHub](./connect-github-oauth)
 - [How to connect with BitBucket](./connect-bitbucket)

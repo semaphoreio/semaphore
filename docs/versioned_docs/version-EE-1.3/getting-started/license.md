@@ -30,7 +30,7 @@ A free Enterprise Edition server license includes every feature in the paid lice
 
 ## Get a quote {#quote}
 
-If you do not qualify for a [free Enterprise Edition license](#free) or require SLA and advanced support, please contact Semaphore support at: `support@semaphore.io` to obtain a quote for your installation. 
+If you do not qualify for a [free Enterprise Edition license](#free) or require SLA and advanced support, please contact Semaphore support at: `support@semaphore.io` to obtain a quote for your installation.
 
 ## Obtain a license {#obtain}
 
@@ -49,6 +49,5 @@ To obtain or renew a license, follow these steps:
 ## See also
 
 - [Installation guide](./install)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Getting started guide](./quickstart)
+- [Migration guide](./migration-overview)
