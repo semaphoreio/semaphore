@@ -72,13 +72,14 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
   end
 
   defp process_webhook("tag", webhook, repository, requester_id) do
-    with parsed_data <- BBPayload.extract_data(webhook.request, "tag", "push"),
+    with action_type <- BBPayload.branch_action(webhook.request),
+         parsed_data <- BBPayload.extract_data(webhook.request, "tag", action_type),
          parsed_data <- Map.put(parsed_data, :yml_file, repository.pipeline_file),
          parsed_data <- Map.put(parsed_data, :requester_id, requester_id),
          parsed_data <- Map.put(parsed_data, :provider, "bitbucket"),
          {:skip_ci, false} <- BBPayload.skip_ci_flag?(parsed_data),
          {:build, true} <- should_build?(repository, parsed_data, :TAGS) do
-      perform_actions(webhook, parsed_data, "tag", "new")
+      perform_actions(webhook, parsed_data, "tag", action_type)
     else
       {:skip_ci, true, parsed_data} ->
         HooksQueries.update_webhook(webhook, parsed_data, "skip_ci")
@@ -108,7 +109,7 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
     schedule_workflow(webhook, parsed_data)
   end
 
-  defp perform_actions(webhook, parsed_data, "branch", "deleted") do
+  defp perform_actions(webhook, parsed_data, hook_type, "deleted") when hook_type in ["branch", "tag"] do
     update_to_deleting_branch(webhook, parsed_data)
   end
 

@@ -24,7 +24,8 @@ defmodule HooksProcessor.Hooks.Payload.BitbucketTest do
 
     tag_hooks = [
       BitbucketHooks.push_annoted_tag(),
-      BitbucketHooks.push_lightweight_tag()
+      BitbucketHooks.push_lightweight_tag(),
+      BitbucketHooks.tag_deletion()
     ]
 
     tag_hooks
@@ -48,7 +49,9 @@ defmodule HooksProcessor.Hooks.Payload.BitbucketTest do
   test "branch_action() returns proper action type for all types of hooks" do
     branch_hooks = [
       BitbucketHooks.push_new_branch_with_commits(),
-      BitbucketHooks.push_new_branch_no_commits()
+      BitbucketHooks.push_new_branch_no_commits(),
+      BitbucketHooks.push_annoted_tag(),
+      BitbucketHooks.push_lightweight_tag()
     ]
 
     branch_hooks
@@ -66,7 +69,15 @@ defmodule HooksProcessor.Hooks.Payload.BitbucketTest do
       assert BBPayload.branch_action(hook) == "push"
     end)
 
-    assert BitbucketHooks.branch_deletion() |> BBPayload.branch_action() == "deleted"
+    branch_hooks = [
+      BitbucketHooks.branch_deletion(),
+      BitbucketHooks.tag_deletion()
+    ]
+
+    branch_hooks
+    |> Enum.each(fn hook ->
+      assert BBPayload.branch_action(hook) == "deleted"
+    end)
   end
 
   test "extract_data() returns valid data set for each type of the hook" do
@@ -93,6 +104,18 @@ defmodule HooksProcessor.Hooks.Payload.BitbucketTest do
     assert data.commit_sha == "daf07dd85350b95d05a7fe898e07022c5dcd95b9"
     assert data.commit_message == "Push commit\n"
     assert data.commit_author == "milana_stojadinov"
+    assert data.pr_name == ""
+    assert data.pr_number == 0
+
+    data = BitbucketHooks.tag_deletion() |> BBPayload.extract_data("tag", "deleted")
+    assert data.branch_name == "refs/tags/v1.0-alpha"
+    assert data.git_ref == "refs/tags/v1.0-alpha"
+    assert data.display_name == "v1.0-alpha"
+    assert data.owner == "fake-test-user-1234"
+    assert data.repo_name == "fake-test-repo-2025"
+    assert data.commit_sha == "86efd1e2f788d237a9b8d6da5c04683d289ad805"
+    assert data.commit_message == "README.md created online with Bitbucket"
+    assert data.commit_author == "fake-test-user-1234"
     assert data.pr_name == ""
     assert data.pr_number == 0
 
@@ -193,6 +216,8 @@ defmodule HooksProcessor.Hooks.Payload.BitbucketTest do
 
     assert BBPayload.extract_actor_id(BitbucketHooks.push_lightweight_tag()) ==
              "{53c5afd4-936e-4ded-9b8a-398f527a33c9}"
+
+    assert BBPayload.extract_actor_id(BitbucketHooks.tag_deletion()) == "{00000000-6000-4000-9000-000000000012}"
 
     assert BBPayload.extract_actor_id(BitbucketHooks.pull_request_open()) == "{53c5afd4-936e-4ded-9b8a-398f527a33c9}"
     assert BBPayload.extract_actor_id(BitbucketHooks.pull_request_closed()) == "{53c5afd4-936e-4ded-9b8a-398f527a33c9}"

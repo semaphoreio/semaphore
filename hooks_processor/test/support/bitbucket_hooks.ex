@@ -10,6 +10,7 @@ defmodule Support.BitbucketHooks do
   - push_commit
   - push_commit_force
   - branch_deletion
+  - tag_deletion
   - push_annoted_tag
   - push_lightweight_tag
   - pull_request_open
@@ -2416,6 +2417,179 @@ defmodule Support.BitbucketHooks do
           "type" => "workspace",
           "uuid" => "{53c5afd4-936e-4ded-9b8a-398f527a33c9}"
         }
+      }
+    }
+  end
+
+  def tag_deletion do
+    %{
+      "id" => "00000000-4000-4000-b000-000000000011",
+      "push" => %{
+        "changes" => [
+          %{
+            "new" => nil,
+            "old" => %{
+              "date" => "2025-08-27T11:17:57+00:00",
+              "name" => "v1.0-alpha",
+              "type" => "tag",
+              "links" => %{
+                "html" => %{
+                  "href" => "https://bitbucket.org/fake-test-user-1234/fake-test-repo-2025/commits/tag/v1.0-alpha"
+                },
+                "self" => %{
+                  "href" =>
+                    "https://api.bitbucket.org/2.0/repositories/fake-test-user-1234/fake-test-repo-2025/refs/tags/v1.0-alpha"
+                },
+                "commits" => %{
+                  "href" =>
+                    "https://api.bitbucket.org/2.0/repositories/fake-test-user-1234/fake-test-repo-2025/commits/v1.0-alpha"
+                }
+              },
+              "tagger" => %{},
+              "target" => %{
+                "date" => "2025-07-11T16:40:54+00:00",
+                "hash" => "86efd1e2f788d237a9b8d6da5c04683d289ad805",
+                "type" => "commit",
+                "links" => %{
+                  "html" => %{
+                    "href" =>
+                      "https://bitbucket.org/fake-test-user-1234/fake-test-repo-2025/commits/86efd1e2f788d237a9b8d6da5c04683d289ad805"
+                  },
+                  "self" => %{
+                    "href" =>
+                      "https://api.bitbucket.org/2.0/repositories/fake-test-user-1234/fake-test-repo-2025/commit/86efd1e2f788d237a9b8d6da5c04683d289ad805"
+                  }
+                },
+                "author" => %{
+                  "raw" => "fake-test-user-1234 <fake-test-user-1234@gmail.com>",
+                  "type" => "author",
+                  "user" => %{
+                    "type" => "user",
+                    "uuid" => "{10000000-5000-4000-9000-000000000012}",
+                    "links" => %{
+                      "html" => %{
+                        "href" => "https://bitbucket.org/%7B10000000-5000-4000-9000-000000000012%7D/"
+                      },
+                      "self" => %{
+                        "href" => "https://api.bitbucket.org/2.0/users/%7B10000000-5000-4000-9000-000000000012%7D"
+                      },
+                      "avatar" => %{
+                        "href" =>
+                          "https://secure.gravatar.com/avatar/77922059a60e9df4e4896620745be781?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FO-3.png"
+                      }
+                    },
+                    "nickname" => "fake-test-user-1234",
+                    "account_id" => "123456:90000000-e000-4000-b000-000000000012",
+                    "display_name" => "fake-test-user-1234"
+                  }
+                },
+                "message" => "README.md created online with Bitbucket",
+                "parents" => [],
+                "summary" => %{
+                  "raw" => "README.md created online with Bitbucket",
+                  "html" => "<p>README.md created online with Bitbucket</p>",
+                  "type" => "rendered",
+                  "markup" => "markdown"
+                },
+                "rendered" => %{},
+                "committer" => %{},
+                "properties" => %{}
+              },
+              "message" => "test tag description v1.0-alpha"
+            },
+            "closed" => true,
+            "forced" => false,
+            "created" => false,
+            "truncated" => false
+          }
+        ]
+      },
+      "actor" => %{
+        "kind" => "repository_access_token",
+        "type" => "app_user",
+        "uuid" => "{00000000-6000-4000-9000-000000000012}",
+        "links" => %{
+          "avatar" => %{
+            "href" =>
+              "https://avatar-management--avatars.us-west-2.prod.public.atl-paas.net/123123:00000000-1000-4000-9000-000000000012/00000000-b000-4000-8000-000000000012/128"
+          }
+        },
+        "account_id" => "123123:00000000-1000-4000-9000-000000000012",
+        "created_on" => "2025-08-27T11:39:07.919487+00:00",
+        "display_name" => "test-onprem-27082025",
+        "account_status" => "active"
+      },
+      "repository" => %{
+        "scm" => "git",
+        "name" => "fake-test-repo-2025",
+        "type" => "repository",
+        "uuid" => "{00000000-1000-4000-9000-000000000012}",
+        "links" => %{
+          "html" => %{
+            "href" => "https://bitbucket.org/fake-test-user-1234/fake-test-repo-2025"
+          },
+          "self" => %{
+            "href" => "https://api.bitbucket.org/2.0/repositories/fake-test-user-1234/fake-test-repo-2025"
+          },
+          "avatar" => %{
+            "href" => "https://bytebucket.org/ravatar/%7B00000000-1000-4000-9000-000000000012%7D?ts=default"
+          }
+        },
+        "owner" => %{
+          "type" => "team",
+          "uuid" => "{00000000-e000-4000-8000-000000000012}",
+          "links" => %{
+            "html" => %{
+              "href" => "https://bitbucket.org/%7B00000000-e000-4000-8000-000000000012%7D/"
+            },
+            "self" => %{
+              "href" => "https://api.bitbucket.org/2.0/workspaces/%7B00000000-e000-4000-8000-000000000012%7D"
+            },
+            "avatar" => %{
+              "href" => "https://bitbucket.org/account/fake-test-user-1234/avatar/"
+            }
+          },
+          "username" => "fake-test-user-1234",
+          "display_name" => "fake-test-user-1234"
+        },
+        "parent" => nil,
+        "project" => %{
+          "key" => "ON",
+          "name" => "fake-test-repo-2025",
+          "type" => "project",
+          "uuid" => "{63b82869-0d52-4840-a528-4dc1ed07c496}",
+          "links" => %{
+            "html" => %{
+              "href" => "https://bitbucket.org/fake-test-user-1234/workspace/projects/ON"
+            },
+            "self" => %{
+              "href" => "https://api.bitbucket.org/2.0/workspaces/fake-test-user-1234/projects/ON"
+            },
+            "avatar" => %{
+              "href" => "https://bitbucket.org/fake-test-user-1234/workspace/projects/ON/avatar/32?ts=1752251119"
+            }
+          }
+        },
+        "website" => nil,
+        "full_name" => "fake-test-user-1234/fake-test-repo-2025",
+        "workspace" => %{
+          "name" => "fake-test-user-1234",
+          "slug" => "fake-test-user-1234",
+          "type" => "workspace",
+          "uuid" => "{00000000-e000-4000-8000-000000000012}",
+          "links" => %{
+            "html" => %{
+              "href" => "https://bitbucket.org/fake-test-user-1234/"
+            },
+            "self" => %{
+              "href" => "https://api.bitbucket.org/2.0/workspaces/fake-test-user-1234"
+            },
+            "avatar" => %{
+              "href" => "https://bitbucket.org/workspaces/fake-test-user-1234/avatar/?ts=1752251089"
+            }
+          }
+        },
+        "is_private" => true
       }
     }
   end
