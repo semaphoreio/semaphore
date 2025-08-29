@@ -5,10 +5,8 @@ import * as components from "../../components";
 import { useContext, useLayoutEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { Notice } from "js/notice";
 import { useSteps } from "../../stores/create/steps";
+import { handleSkipOnboarding } from "../../utils/skip_onboarding";
 
 export const ExistingConfiguration = () => {
   const { state: configState } = useContext(stores.WorkflowSetup.Config.Context);
@@ -19,33 +17,12 @@ export const ExistingConfiguration = () => {
     dispatch([`SET_CURRENT`, `setup-workflow`]);
   }, []);
 
-  const handleUseExisting = async () => {
-    try {
-      const response = await fetch(configState.skipOnboardingUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': `application/json`,
-          'X-CSRF-Token': configState.csrfToken,
-        },
-        credentials: 'same-origin'
-      });
-
-      const data = await response.json();
-
-      if (data.redirect_to) {
-        window.location.href = data.redirect_to;
-      } else {
-        Notice.error('Error during skip onboarding: Invalid response from server');
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Unknown error occurred';
-
-      Notice.error('Error during skip onboarding: ' + errorMessage);
-      // Fallback to project URL in case of error
-      window.location.href = configState.projectUrl;
-    }
+  const handleUseExisting = () => {
+    void handleSkipOnboarding({
+      skipOnboardingUrl: configState.skipOnboardingUrl,
+      csrfToken: configState.csrfToken,
+      projectUrl: configState.projectUrl
+    });
   };
 
   const handleCreateNew = () => {
@@ -75,7 +52,7 @@ export const ExistingConfiguration = () => {
                 <div className="mv3">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); void handleUseExisting(); }}
+                    onClick={(e) => { e.preventDefault(); handleUseExisting(); }}
                     className="db f4 mb1"
                   >
             I will use the existing configuration
