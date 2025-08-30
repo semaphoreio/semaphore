@@ -39,6 +39,7 @@ data:
   INTERNAL_API_URL_TASK: zebra-task-api:50051
   INTERNAL_API_URL_USER: guard-user-api:50051
   INTERNAL_API_URL_VELOCITY: velocity-hub:50051
+  INTERNAL_API_URL_SERVICE_ACCOUNT: guard-service-account-api:50051
 {{- if eq .Values.global.edition "ce" }}
   INTERNAL_API_URL_RBAC: rbac:50051
   INTERNAL_API_URL_OKTA: guard-okta-internal-api:50051
