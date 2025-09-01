@@ -16,6 +16,8 @@ class ProjectsController < ApplicationController
       hook_params = Semaphore::RepoHost::Hooks::Request.normalize_params(repo_host_request_params)
       webhook_filter = Semaphore::RepoHost::WebhookFilter.create_webhook_filter(new_request, hook_params[:payload])
 
+      logger.inf("Webhook Event: #{webhook_filter.webhook_event}")
+
       if webhook_filter.unsupported_webhook?
         Watchman.increment("repo_host_post_commit_hooks.controller.unsupported_webhook")
         logger.info("Unsupported Webhook")
