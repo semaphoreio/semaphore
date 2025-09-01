@@ -78,6 +78,20 @@ class ProjectsController < ApplicationController
           next
         end
 
+        workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
+        signature = repo_host_request.headers["X-Hub-Signature-256"]
+
+        unless signature
+          Watchman.increment("hooks.processing.missing_signature", tags: [project.id, project.organization.id])
+        end
+
+        if webhook_filter.repository_webhook? || (webhook_filter.member_webhook? && !webhook_filter.github_app_webhook)
+          unless Semaphore::RepoHost::Hooks::Handler.webhook_signature_valid?(logger, workflow.project.organization_id, workflow.project.repository.id, repo_host_request.raw_post, signature)
+            logger.error("Webhook validation for repository changed and repoitory member events failed")
+            next
+          end
+        end
+
         if webhook_filter.member_webhook?
           Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
           logger.info("Member Webhook")
@@ -102,10 +116,7 @@ class ProjectsController < ApplicationController
           next
         end
 
-        workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
-
         logger.add(:post_commit_request_id => workflow.id)
-
         logger.info("Saved Request")
 
         if webhook_filter.unavailable_payload?
@@ -121,12 +132,6 @@ class ProjectsController < ApplicationController
         workflow.update_attribute(:result, Workflow::RESULT_OK)
 
         Watchman.increment("IncommingHooks.processed", { external: true })
-
-        signature = repo_host_request.headers["X-Hub-Signature-256"]
-
-        unless signature
-          Watchman.increment("hooks.processing.missing_signature", tags: [project.id, project.organization.id])
-        end
 
         sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_async(workflow.id, repo_host_request.raw_post, signature, 0)
 
