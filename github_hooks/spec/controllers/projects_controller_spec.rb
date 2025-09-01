@@ -306,8 +306,9 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double("Repository", :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner_and_name => "foo/bar")
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
 
           expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
@@ -373,9 +374,18 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double(Repository, :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner => "foo")
+                                    :repo_owner => "foo", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
+
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).with(
+            anything,
+            project.organization.id,
+            project.repository.id,
+            anything,
+            anything
+          ).and_return(true)
 
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
 
@@ -406,11 +416,32 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double(Repository, :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner_and_name => "foo/bar")
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
 
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).with(
+            anything,
+            project.organization.id,
+            project.repository.id,
+            anything,
+            anything
+          ).and_return(true)
+
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
+
+          post_payload(payload)
+        end
+
+        it "does not publish event when signature is invalid" do
+          repository = double("Repository", :id => "repo-123")
+          project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
+          expect(Project).to receive(:find_by).and_return(project)
+
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).and_return(false)
+          expect(Semaphore::Events::RemoteRepositoryChanged).not_to receive(:emit)
 
           post_payload(payload)
         end
