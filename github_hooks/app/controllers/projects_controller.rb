@@ -78,7 +78,6 @@ class ProjectsController < ApplicationController
           next
         end
 
-        workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
         signature = repo_host_request.headers["X-Hub-Signature-256"]
 
         unless signature
@@ -86,7 +85,7 @@ class ProjectsController < ApplicationController
         end
 
         if webhook_filter.repository_webhook? || (webhook_filter.member_webhook? && !webhook_filter.github_app_webhook)
-          unless Semaphore::RepoHost::Hooks::Handler.webhook_signature_valid?(logger, workflow.project.organization_id, workflow.project.repository.id, repo_host_request.raw_post, signature)
+          unless Semaphore::RepoHost::Hooks::Handler.webhook_signature_valid?(logger, project.organization_id, project.repository.id, repo_host_request.raw_post, signature)
             logger.error("Webhook validation for repository changed and repoitory member events failed")
             next
           end
@@ -116,6 +115,7 @@ class ProjectsController < ApplicationController
           next
         end
 
+        workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
         logger.add(:post_commit_request_id => workflow.id)
         logger.info("Saved Request")
 
