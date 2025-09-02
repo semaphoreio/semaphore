@@ -94,6 +94,7 @@ defmodule Zebra.Workers.JobRequestFactory.Cache do
   end
 
   defp forked_pr?(_repo = %{pr_slug: ""}), do: false
+  defp forked_pr?(nil), do: false
 
   defp forked_pr?(repo) do
     [pr_repo | _rest] = repo.pr_slug |> String.split("/")
