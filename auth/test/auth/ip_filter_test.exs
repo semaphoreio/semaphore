@@ -44,11 +44,35 @@ defmodule Auth.IpFilterTest do
              })
     end
 
-    test "single bad CIDR => returns false" do
-      refute Auth.IpFilter.block?({172, 14, 101, 99}, %{
+    test "single bad CIDR => returns true" do
+      assert Auth.IpFilter.block?({172, 14, 101, 99}, %{
                id: @org_id,
                name: "semaphore",
                ip_allow_list: ["32.109.221.12/999"]
+             })
+    end
+
+    test "single bad CIDR but allow list is empty => returns false" do
+      refute Auth.IpFilter.block?({172, 14, 101, 99}, %{
+               id: @org_id,
+               name: "semaphore",
+               ip_allow_list: []
+             })
+    end
+
+    test "nil value instead of CIDR => returns true" do
+      assert Auth.IpFilter.block?(nil, %{
+               id: @org_id,
+               name: "semaphore",
+               ip_allow_list: ["32.109.221.12/999"]
+             })
+    end
+
+    test "nil value instead of CIDR but allow list is empty => returns false" do
+      refute Auth.IpFilter.block?(nil, %{
+               id: @org_id,
+               name: "semaphore",
+               ip_allow_list: []
              })
     end
 
