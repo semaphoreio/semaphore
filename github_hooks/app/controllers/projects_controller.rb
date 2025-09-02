@@ -80,10 +80,6 @@ class ProjectsController < ApplicationController
 
         signature = repo_host_request.headers["X-Hub-Signature-256"]
 
-        unless signature
-          Watchman.increment("hooks.processing.missing_signature", tags: [project.id, project.organization.id])
-        end
-
         # Rubocop insisted on making this a one big if, istead of 2 nested if statements
         # We are validating a signature from each webhook coming from github app above
         # in this function, (currently line 29), and we are validating signatures for every webhook
@@ -93,7 +89,7 @@ class ProjectsController < ApplicationController
         # a workflow (for example new member added to repo, or repository metadata changed). That will be covered
         # in the following if block.
         if (webhook_filter.repository_webhook? || (webhook_filter.member_webhook? && !webhook_filter.github_app_webhook?)) && !Semaphore::RepoHost::Hooks::Handler.webhook_signature_valid?(logger, project.organization.id, project.repository.id, repo_host_request.raw_post, signature)
-          logger.error("Webhook validation for repository changed and repoitory member events failed")
+          logger.error("Webhook validation for repository changed and repository member events failed")
           next
         end
 
