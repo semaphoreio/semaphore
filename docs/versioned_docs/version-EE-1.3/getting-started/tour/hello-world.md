@@ -4,11 +4,11 @@ description: Create your first job
 
 # Hello, World
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 Projects allow Semaphore to perform user-defined actions every time there is a change in your Git repository. Projects can build and test your code, and release and deploy your applications.
 
@@ -134,7 +134,7 @@ Execute this workflow and see the output of the jobs. Both jobs should show the 
 
 Do not put sensitive data such as passwords or API tokens in environment variables. Environment variables are not secure. They are stored in plain text in the pipeline file. So, anyone with read permissions in the repository can view your environment variables.
 
-Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the guided tour [Continuous Delivery](./continuous-delivery)
+Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the Quickstart [build your project](./build-project.md)
 
 :::
 

@@ -5,11 +5,11 @@ sidebar_position: 1
 
 # Cache
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 <VideoTutorial title="Build optimization with caching" src="https://www.youtube.com/embed/jo4RfgN9sBg?si=ajDtPml-joj1ghfn" />
 

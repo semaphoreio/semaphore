@@ -4,10 +4,10 @@ description: Secrets YAML reference
 
 # Secrets YAML 
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 This document is the reference for the YAML syntax used for creating Semaphore secrets.
 
