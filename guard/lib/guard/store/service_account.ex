@@ -510,20 +510,20 @@ defmodule Guard.Store.ServiceAccount do
     base_domain = Application.fetch_env!(:guard, :base_domain)
 
     case Guard.Api.Organization.fetch(org_id) do
-      %{username: org_username} ->
+      %{org_username: org_username} ->
         # Sanitize names for email compatibility
         sanitized_name =
           String.downcase(service_account_name) |> String.replace(~r/[^a-z0-9\-]/, "-")
 
         sanitized_org = String.downcase(org_username) |> String.replace(~r/[^a-z0-9\-]/, "-")
-        "#{sanitized_name}@service_accounts.#{sanitized_org}.#{base_domain}"
+        "#{sanitized_name}@service-accounts.#{sanitized_org}.#{base_domain}"
 
       _ ->
         # Fallback if org not found (shouldn't happen in normal flow)
         sanitized_name =
           String.downcase(service_account_name) |> String.replace(~r/[^a-z0-9\-]/, "-")
 
-        "#{sanitized_name}@service_accounts.unknown.#{base_domain}"
+        "#{sanitized_name}@service-accounts.unknown.#{base_domain}"
     end
   end
 
