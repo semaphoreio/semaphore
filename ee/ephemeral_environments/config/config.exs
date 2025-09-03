@@ -14,6 +14,6 @@ config :ephemeral_environments, EphemeralEnvironments.Repo,
 config :watchman,
   host: "0.0.0.0",
   port: 8125,
-  prefix: "ephemeral_environments.#{System.get_env("METRICS_NAMESPACE") || "dev"}"
+  prefix: "ephemeral_environments.#{System.fetch_env!("METRICS_NAMESPACE")}"
 
 import_config "#{config_env()}.exs"
