@@ -4,11 +4,11 @@ description: Ubuntu 20.04 Image Reference
 
 # Ubuntu 20.04 (x86_64)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This is a customized x86_64 image based on [Ubuntu 20.04](https://wiki.ubuntu.com/FocalFossa/ReleaseNotes) (Focal Fossa LTS).
 

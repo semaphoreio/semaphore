@@ -4,10 +4,10 @@ description: Notifications YAML reference
 
 # Notifications YAML
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 This page specifies the YAML syntax and rules for notifications on Semaphore.
 
