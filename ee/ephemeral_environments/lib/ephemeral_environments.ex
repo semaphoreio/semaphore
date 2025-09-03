@@ -1,0 +1,2 @@
+defmodule EphemeralEnvironments do
+end
