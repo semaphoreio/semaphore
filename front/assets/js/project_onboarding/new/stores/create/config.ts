@@ -13,6 +13,8 @@ export interface State {
   userProfileUrl?: string;
   setupIntegrationUrl: string;
   csrfToken: string;
+  skipOnboardingUrl?: string;
+  projectUrl?: string;
   scopeUrls?: {
     github_oauth_token?: Array<{
       url: string;
