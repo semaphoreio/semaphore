@@ -200,9 +200,11 @@ Next, we need to map fields from the Semaphore OIDC provider to Google Cloud att
 
 2. Use the following template to grant Google Cloud access to the identity pool created in Step 1. 
 
- Replace:
+    **Note**: Google Cloud has a 127-byte limit for mapped attributes. Semaphore's JWT subject can exceed this limit, so we'll use shorter JWT claims for the mapping.
+
+    Replace:
     - `<REPOSITORY>` with your repository name, e.g. `web`
-    - `<BRANCH>` with the branch that can access the cloud resources, e.g. `refs/heads/main`
+    - `<BRANCH>` with the branch that can access the cloud resources, e.g. `main`
     - `<PROJECT_NAME>` with your project name on Semaphore
 
     ```shell title="Grant access to the identity pool"
@@ -211,9 +213,15 @@ Next, we need to map fields from the Semaphore OIDC provider to Google Cloud att
     --workload-identity-pool=$POOL_ID \
     --issuer-uri="$ISSUER_URI" \
     --allowed-audiences="$ISSUER_URI" \
-    --attribute-mapping="google.subject="semaphore::<REPOSITORY>::<BRANCH>" \
-    --attribute-condition="'semaphore::<PROJECT_NAME>::<BRANCH>' == google.subject"
+    --attribute-mapping="google.subject=assertion.repo,google.branch=assertion.branch" \
+    --attribute-condition="assertion.repo == '<REPOSITORY>' && assertion.branch == '<BRANCH>' && assertion.prj == '<PROJECT_NAME>'"
     ```
+
+    This configuration:
+    - Maps the repository name from the JWT to `google.subject` 
+    - Maps the branch name from the JWT to `google.branch`
+    - Uses attribute conditions to verify the specific repository, branch, and project from the JWT claims
+    - Avoids the 127-byte limit by using shorter JWT claims instead of the full subject
 
 </Steps>
 
@@ -232,10 +240,10 @@ Connecting to the pool allows Semaphore to impersonate your Google Cloud service
 
 1. Define environment variables:
     - `<REPOSITORY>` is the repository name, e.g. `web`
-    - `<BRANCH>` is the branch, e.g. `refs/heads/main`
+    - `<BRANCH>` is the branch, e.g. `main`
 
     ```shell
-    export SUBJECT="semaphore::<REPOSITORY>::<BRANCH"
+    export SUBJECT="<REPOSITORY>"
     export PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value core/project) --format=value\(projectNumber\))
     export MEMBER_ID="principal://iam.googleapis.com/projects/$PROJECT_NUMBER/locations/global/workloadIdentityPools/$POOL_ID/subject/$SUBJECT"
     ```
