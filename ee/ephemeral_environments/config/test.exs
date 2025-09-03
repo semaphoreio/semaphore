@@ -1,6 +1,6 @@
 import Config
 
-# config :ephemeral_environments, EphemeralEnvironments.Repo, pool: Ecto.Adapters.SQL.Sandbox
+config :ephemeral_environments, EphemeralEnvironments.Repo, pool: Ecto.Adapters.SQL.Sandbox
 
 config :junit_formatter,
   automatic_create_dir?: true,
