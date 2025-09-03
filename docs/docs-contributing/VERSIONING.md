@@ -187,7 +187,7 @@ For features that have a whole page dedicated, e.g. Promotions, do the following
 2. Add the `FeatureNotAvailable` Component. This will add a banner on the top of the page that marks the feature as not available and link to other editions.
 
     ```md
-    import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+    
     <FeatureNotAvailable/>
     ```
 

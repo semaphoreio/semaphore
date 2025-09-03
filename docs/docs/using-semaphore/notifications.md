@@ -4,12 +4,6 @@ description: Keep your team in the loop with Slack notifications
 
 # Notifications
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Get notified via Slack or any other webhook-based service when important things happen.
 
 ## Slack and webhook notifications {#slack-notifications}

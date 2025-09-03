@@ -4,12 +4,6 @@ description: Frequently Asked Questions
 
 # FAQ
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 This page contains Frequently Asked Questions.
 
 ## Architecture
@@ -20,11 +14,11 @@ Yes. The list of the platform IPs used by Semaphore is [publicly available](http
 
 ### Can I use my own machines to run workflows?
 
-Yes. With the Semaphore [Hybrid Plan](https://semaphoreci.com/pricing) you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted). You can use a mix of Semaphore Cloud and your own machines for your workflows.
+Yes. With the Semaphore [Hybrid Plan](https://semaphore.io/pricing) you can add your own machines as [self-hosted agents](../using-semaphore/self-hosted). You can use a mix of Semaphore Cloud and your own machines for your workflows.
 
 ### Can I run Semaphore On-Premise?
 
-Yes. The Semaphore [On-Premise Plan](https://semaphoreci.com/pricing) allows you to host a separate installation of Semaphore behind your firewall, allowing you to run CI/CD completely on your own infrastructure.
+Yes. The Semaphore [On-Premise Plan](https://semaphore.io/pricing) allows you to host a separate installation of Semaphore behind your firewall, allowing you to run CI/CD completely on your own infrastructure.
 
 ### Can I use self-signed certificates with private Docker registries?
 
@@ -96,7 +90,7 @@ In order to change your credit card or PayPal information, follow these steps:
 
 ### Can I change my billing information?
 
-Yes. If you want to change the recipient name, company name, address, phone number, billing email, VAT ID, or country on the invoice, please get in touch with us at: `support@semaphoreci.com`
+Yes. If you want to change the recipient name, company name, address, phone number, billing email, VAT ID, or country on the invoice, please get in touch with us at: `support@semaphore.io`
 
 :::note
 
@@ -108,7 +102,7 @@ Billing change requests must originate from a user with Admin or Owner permissio
 
 Not directly from the Semaphore website. After a subscription has been purchased, users can't add or change a VAT number (VAT ID) from the UI.
 
-If you wish to change the VAT number associated with your subscription, please get in touch with `support@semaphoreci.com` with the VAT number you want to add and we will gladly make it happen.
+If you wish to change the VAT number associated with your subscription, please get in touch with `support@semaphore.io` with the VAT number you want to add and we will gladly make it happen.
 
 For security reasons, these requests **must originate from an email** linked to a user with the [Owner role](../using-semaphore/rbac#org-owner), or from the current Billing contact associated with the organization’s FastSpring subscription. This ensures that only authorized individuals can make changes to the billing information.
 
@@ -122,7 +116,7 @@ You can also find your invoices at the bottom of the **Plans & Billing** in your
 
 Apart from cases of extended downtime (multiple hours in a day, or multiple days in a month), we do not offer refunds.
 
-We will, however, consider requests for refunds in extenuating circumstances. If you would like to request a refund, please email us at `billing@semaphoreci.com` and our team will do what we can to work out a solution.
+We will, however, consider requests for refunds in extenuating circumstances. If you would like to request a refund, please email us at `billing@semaphore.io` and our team will do what we can to work out a solution.
 
 Please include the affected Workflow ID when contacting our Billing team regarding refunds.
 
@@ -335,7 +329,7 @@ The following recipe provides an altered version of the container to sem-service
 
 ### What tools can I use to split a test suite for parallel jobs?
 
-We recommend using [semaphore_test_boosters gem](https://docs.semaphoreci.com/programming-languages/ruby/#running-rspec-and-cucumber-in-parallel). This gem spreads tests across parallel jobs based on a configuration file or uniform file distribution.
+We recommend using [semaphore_test_boosters gem](https://docs.semaphore.io/programming-languages/ruby/#running-rspec-and-cucumber-in-parallel). This gem spreads tests across parallel jobs based on a configuration file or uniform file distribution.
 
 Other options are also supported, e.g. [Knapsack](https://knapsackpro.com/) (both free and pro versions).
 
@@ -440,7 +434,7 @@ To change the project ownership:
 
 After project ownership has been transferred, you need to push a new commit. Old workflows cannot be re-run after transferring ownership.
 
-If you come across any issues, please reach out to `support@semaphoreci.com` and include the name of the project and the GitHub/Bitbucket/GitLab username of the new owner in your message.
+If you come across any issues, please reach out to `support@semaphore.io` and include the name of the project and the GitHub/Bitbucket/GitLab username of the new owner in your message.
 
 ### Can I rename a project?
 

@@ -2,13 +2,13 @@
 description: Move on to more complex projects
 ---
 
-# Continuous Integration
+# Build Project
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 With the basics covered, we're ready to tackle more CI on a more complete project.
 
