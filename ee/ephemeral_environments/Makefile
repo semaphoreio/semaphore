@@ -9,8 +9,9 @@ TMP_REPO_DIR?=/tmp/internal_api
 
 CONTAINER_ENV_VARS = $(shell [ -f .env ] && sed 's/^/-e /' .env | tr '\n' ' ')
 
-POSTGRES_VARS := POSTGRES_DB_NAME POSTGRES_DB_USER POSTGRES_DB_PASSWORD POSTGRES_DB_HOST POSTGRES_DB_POOL_SIZE MIX_ENV
-CONTAINER_ENV_VARS = $(foreach var,$(POSTGRES_VARS),-e $(var)=$($(var)))
+POSTGRES_DB_NAME = $(shell [ -f .env ] && grep '^POSTGRES_DB_NAME=' .env | cut -d'=' -f2)
+POSTGRES_DB_USER = $(shell [ -f .env ] && grep '^POSTGRES_DB_USER=' .env | cut -d'=' -f2)
+POSTGRES_DB_PASSWORD = $(shell [ -f .env ] && grep '^POSTGRES_DB_PASSWORD=' .env | cut -d'=' -f2)
 
 test.ex.setup: export MIX_ENV=test
 test.ex.setup:
