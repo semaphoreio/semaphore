@@ -2,13 +2,7 @@
 description: Move on to more complex projects
 ---
 
-# Continuous Integration
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+# Building your project
 
 With the basics covered, we're ready to tackle more CI on a more complete project.
 
@@ -28,7 +22,7 @@ For this part of the tutorial you will need:
 
 ## Something to build {#demo}
 
-In most cases, the first step in CI is building the application. This proves that the main trunk is not broken and usually gives us a target to test. 
+In most cases, the first step in CI is building the application. This proves that the main trunk is not broken and usually gives us a target to test.
 
 So, our first task is to have something to build. In this case, we'll build a "Hello, World!" HTTP server in Go.
 
@@ -41,6 +35,7 @@ So, our first task is to have something to build. In this case, we'll build a "H
     git fetch origin setup-semaphore
     git checkout setup-semaphore
     ```
+
 3. Execute `go mod init hello-go` to initialize the Go module
 4. Create `main.go` with the following contents. This provides an HTTP endpoint that returns "Hello Go!" in the body
 
@@ -100,7 +95,6 @@ So, our first task is to have something to build. In this case, we'll build a "H
     ```
 
 </Steps>
-
 
 ## The build job {#build}
 
@@ -200,7 +194,7 @@ Before you can perform SSH debugging, you need to set the Semaphore Command Line
 <Steps>
 
 1. Go to your account menu and select **Profile Settings**
-2. Press the **Regenerate API Token** button 
+2. Press the **Regenerate API Token** button
 
     ![Regenerate Token](./img/regen-api-token.jpg)
 
@@ -216,6 +210,7 @@ Before you can perform SSH debugging, you need to set the Semaphore Command Line
     ```shell title="Connecting to your organization"
     sem connect <your-organization-url>.semaphoreci.com <YOUR_API_TOKEN>
     ```
+
 6. You're ready to do SSH debugging
 
 </Steps>

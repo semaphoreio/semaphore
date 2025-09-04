@@ -4,13 +4,6 @@ description: Feature comparison between Semaphore editions
 
 # Feature Comparison
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
-
 This page compares the features available across all [Semaphore editions](./about-semaphore).
 
 ## CI/CD Workflows
@@ -35,7 +28,6 @@ This page compares the features available across all [Semaphore editions](./abou
 | Pre-flight checks | Yes | No | Yes |
 | sem-service & sem-version | Yes | No | No |
 
-
 ## Dashboards
 
 | Feature | Semaphore Cloud | Semaphore CE | Semaphore EE |
@@ -48,7 +40,6 @@ This page compares the features available across all [Semaphore editions](./abou
 | Project insights | Yes | No | Yes |
 | Organization health | Yes | No | Yes |
 
-
 ## Security and compliance
 
 | Feature | Semaphore Cloud | Semaphore CE | Semaphore EE |
@@ -58,8 +49,7 @@ This page compares the features available across all [Semaphore editions](./abou
 | Policies for accessing secrets | Yes | No | Yes |
 | Audit logs | Yes | No | Yes |
 
-
-## User and permissions management 
+## User and permissions management
 
 | Feature | Semaphore Cloud | Semaphore CE | Semaphore EE |
 |--|--|--|--|
@@ -72,7 +62,7 @@ This page compares the features available across all [Semaphore editions](./abou
 
 (*) Project roles exist but cannot be manually assigned to individual users. The role is assigned based on project membership and server roles.
 
-## Integrations 
+## Integrations
 
 | Feature | Semaphore Cloud | Semaphore CE | Semaphore EE |
 |--|--|--|--|
@@ -87,6 +77,5 @@ This page compares the features available across all [Semaphore editions](./abou
 
 ## See also
 
-- [Guided tour](./guided-tour)
-- [Migration guides](./migration/overview)
-
+- [Quickstart](./quickstart)
+- [Migration guides](./migration-overview)
