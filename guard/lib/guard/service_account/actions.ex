@@ -112,9 +112,47 @@ defmodule Guard.ServiceAccount.Actions do
   """
   @spec destroy(String.t()) :: {:ok, :destroyed} | {:error, atom()}
   def destroy(service_account_id) do
-    case ServiceAccount.destroy(service_account_id) do
-      {:ok, :destroyed} ->
-        {:ok, :destroyed}
+    # Get service account info before deletion to extract org_id for role retraction
+    case ServiceAccount.find(service_account_id) do
+      {:ok, service_account} ->
+        # Step 1: Retract all roles for the service account
+        case retract_service_account_roles(service_account_id, service_account.org_id) do
+          :ok ->
+            # Step 2: Delete RBAC user record 
+            case delete_rbac_user(service_account_id) do
+              :ok ->
+                # Step 3: Proceed with service account deletion from FrontRepo
+                case ServiceAccount.destroy(service_account_id) do
+                  {:ok, :destroyed} ->
+                    Logger.info("Successfully destroyed service account #{service_account_id}")
+                    {:ok, :destroyed}
+
+                  {:error, error} ->
+                    Logger.error(
+                      "Failed to destroy service account #{service_account_id} from FrontRepo: #{inspect(error)}"
+                    )
+
+                    {:error, error}
+                end
+
+              :error ->
+                Logger.error(
+                  "Failed to delete RBAC user for service account #{service_account_id}, aborting destruction"
+                )
+
+                {:error, :rbac_user_deletion_failed}
+            end
+
+          {:error, reason} ->
+            Logger.error(
+              "Failed to retract roles for service account #{service_account_id}, aborting destruction: #{inspect(reason)}"
+            )
+
+            {:error, :role_retraction_failed}
+        end
+
+      {:error, :not_found} ->
+        {:error, :not_found}
 
       {:error, error} ->
         {:error, error}
@@ -188,6 +226,35 @@ defmodule Guard.ServiceAccount.Actions do
 
       :error ->
         {:error, :rbac_user_creation_failed}
+    end
+  end
+
+  defp retract_service_account_roles(service_account_id, org_id) do
+    # Retract all roles assigned to the service account via RBAC API
+    case Guard.Api.Rbac.retract_all_service_account_roles(service_account_id, org_id) do
+      :ok ->
+        Logger.info("Successfully retracted roles for service account #{service_account_id}")
+        :ok
+
+      {:error, reason} ->
+        Logger.error(
+          "Failed to retract roles for service account #{service_account_id}: #{inspect(reason)}"
+        )
+
+        {:error, reason}
+    end
+  end
+
+  defp delete_rbac_user(service_account_id) do
+    # RBAC operations use Guard.Repo (different database from FrontRepo)  
+    case Guard.Store.RbacUser.delete(service_account_id) do
+      :ok ->
+        Logger.info("Successfully deleted RBAC user for service account #{service_account_id}")
+        :ok
+
+      :error ->
+        Logger.error("Failed to delete RBAC user for service account #{service_account_id}")
+        :error
     end
   end
 end

@@ -259,20 +259,127 @@ defmodule Guard.ServiceAccount.ActionsTest do
   describe "destroy/1" do
     test "destroys service account successfully" do
       service_account_id = "sa-id"
+      org_id = "test-org-id"
 
-      with_mock ServiceAccount, [:passthrough],
-        destroy: fn id ->
-          assert id == service_account_id
-          {:ok, :destroyed}
-        end do
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           find: fn id ->
+             assert id == service_account_id
+             {:ok, %{id: service_account_id, org_id: org_id}}
+           end,
+           destroy: fn id ->
+             assert id == service_account_id
+             {:ok, :destroyed}
+           end
+         ]},
+        {Guard.Api.Rbac, [:passthrough],
+         [
+           retract_all_service_account_roles: fn sa_id, o_id ->
+             assert sa_id == service_account_id
+             assert o_id == org_id
+             :ok
+           end
+         ]},
+        {Guard.Store.RbacUser, [:passthrough],
+         [
+           delete: fn id ->
+             assert id == service_account_id
+             :ok
+           end
+         ]}
+      ] do
         {:ok, :destroyed} = Actions.destroy(service_account_id)
       end
     end
 
-    test "handles destroy failure" do
+    test "handles destroy failure when service account not found" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough], destroy: fn _ -> {:error, :destroy_failed} end do
+      with_mock ServiceAccount, [:passthrough], find: fn _ -> {:error, :not_found} end do
+        {:error, :not_found} = Actions.destroy(service_account_id)
+      end
+    end
+
+    test "handles failure during role retraction - aborts destruction" do
+      service_account_id = "sa-id"
+      org_id = "test-org-id"
+
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           find: fn id ->
+             assert id == service_account_id
+             {:ok, %{id: service_account_id, org_id: org_id}}
+           end
+         ]},
+        {Guard.Api.Rbac, [:passthrough],
+         [
+           retract_all_service_account_roles: fn sa_id, o_id ->
+             assert sa_id == service_account_id
+             assert o_id == org_id
+             {:error, :retraction_failed}
+           end
+         ]}
+      ] do
+        {:error, :role_retraction_failed} = Actions.destroy(service_account_id)
+      end
+    end
+
+    test "handles failure during RBAC user deletion - aborts destruction" do
+      service_account_id = "sa-id"
+      org_id = "test-org-id"
+
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           find: fn id ->
+             assert id == service_account_id
+             {:ok, %{id: service_account_id, org_id: org_id}}
+           end
+         ]},
+        {Guard.Api.Rbac, [:passthrough],
+         [
+           retract_all_service_account_roles: fn sa_id, o_id ->
+             assert sa_id == service_account_id
+             assert o_id == org_id
+             :ok
+           end
+         ]},
+        {Guard.Store.RbacUser, [:passthrough],
+         [
+           delete: fn id ->
+             assert id == service_account_id
+             :error
+           end
+         ]}
+      ] do
+        {:error, :rbac_user_deletion_failed} = Actions.destroy(service_account_id)
+      end
+    end
+
+    test "handles destroy failure during final destruction step" do
+      service_account_id = "sa-id"
+      org_id = "test-org-id"
+
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           find: fn id ->
+             assert id == service_account_id
+             {:ok, %{id: service_account_id, org_id: org_id}}
+           end,
+           destroy: fn _ -> {:error, :destroy_failed} end
+         ]},
+        {Guard.Api.Rbac, [:passthrough],
+         [
+           retract_all_service_account_roles: fn _, _ -> :ok end
+         ]},
+        {Guard.Store.RbacUser, [:passthrough],
+         [
+           delete: fn _ -> :ok end
+         ]}
+      ] do
         {:error, :destroy_failed} = Actions.destroy(service_account_id)
       end
     end
