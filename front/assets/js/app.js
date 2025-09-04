@@ -587,10 +587,10 @@ function enableMagicBreadcrumbs() {
 function maybeEnablePosthog() {
   if (window.InjectedDataByBackend.Posthog.apiKey) {
     let { apiKey, apiHost, userId, organizationId, organizationCreatedAt, userCreatedAt } = window.InjectedDataByBackend.Posthog
-    
+
     posthog.init(apiKey, {
       api_host: apiHost,
-      capture_pageview: 'history_change', // Automatically track SPA navigation
+      capture_pageview: true,
       capture_pageleave: true,
       loaded: function(posthog) {
         if (userId) {
