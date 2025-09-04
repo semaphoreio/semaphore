@@ -2,7 +2,7 @@ import "phoenix_html";
 
 import $ from "jquery";
 import { install } from '@github/hotkey';
-import { Userpilot } from "userpilot"
+import posthog from "posthog-js"
 
 import { defineTimeAgoElement } from "./time_ago";
 import { Tippy } from "./tippy";
@@ -512,7 +512,7 @@ export var App = {
     defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
-    maybeEnableUserpilot()
+    maybeEnablePosthog()
 
 
     if (InjectedDataByBackend.JumpTo !== undefined) {
@@ -584,21 +584,24 @@ function enableMagicBreadcrumbs() {
   })
 }
 
-function maybeEnableUserpilot() {
-  if (window.InjectedDataByBackend.Userpilot.token) {
-    let { userCreatedAt, userId, organizationId, organizationCreatedAt, token } = window.InjectedDataByBackend.Userpilot
-    let companyData = {}
-    if (organizationId) {
-      companyData = {
-        created_at: userCreatedAt,
-        company: {
-          id: organizationId,
-          created_at: organizationCreatedAt
+function maybeEnablePosthog() {
+  if (window.InjectedDataByBackend.Posthog.apiKey) {
+    let { apiKey, apiHost, userId, organizationId, organizationCreatedAt, userCreatedAt } = window.InjectedDataByBackend.Posthog
+
+    posthog.init(apiKey, {
+      api_host: apiHost,
+      capture_pageview: true,
+      capture_pageleave: true,
+      loaded: function(posthog) {
+        if (userId) {
+          posthog.identify(userId, {
+            organization_id: organizationId,
+            organization_created_at: organizationCreatedAt,
+            user_created_at: userCreatedAt
+          });
         }
       }
-    }
-    Userpilot.initialize(token);
-    Userpilot.identify(userId, companyData);
+    });
   }
 }
 
