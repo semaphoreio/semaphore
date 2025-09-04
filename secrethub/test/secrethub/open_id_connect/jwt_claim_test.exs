@@ -62,7 +62,7 @@ defmodule Secrethub.OpenIDConnect.JWTClaimTest do
       claims = JWTClaim.optional_claims()
 
       # Check for presence of some workflow-specific claims
-      workflow_claims = ~w(prj_id wf_id ppl_id job_id repo branch)
+      workflow_claims = ~w(prj_id wf_id ppl_id job_id repo branch sub sub2)
 
       for claim <- workflow_claims do
         assert Map.has_key?(claims, claim)
@@ -70,6 +70,20 @@ defmodule Secrethub.OpenIDConnect.JWTClaimTest do
         refute claim_struct.is_mandatory
         assert claim_struct.is_system_claim
       end
+    end
+
+    test "optional_claims includes sub2 compact subject claim" do
+      claims = JWTClaim.optional_claims()
+
+      assert Map.has_key?(claims, "sub2")
+      sub2_claim = Map.get(claims, "sub2")
+      
+      assert sub2_claim.name == "sub2"
+      assert String.contains?(sub2_claim.description, "comma-separated")
+      refute sub2_claim.is_mandatory
+      assert sub2_claim.is_system_claim
+      refute sub2_claim.is_aws_tag
+      assert sub2_claim.is_active
     end
 
     test "optional_claims includes AWS tag claims" do
