@@ -100,6 +100,14 @@ const config = {
   plugins: [
       '@docusaurus/plugin-ideal-image',
       [
+        "posthog-docusaurus",
+        {
+          apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
+          appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
+          enableInDevelopment: false, // optional
+        },
+      ],
+      [
         'docusaurus-plugin-openapi-docs',
         {
           id: "api", // plugin id
