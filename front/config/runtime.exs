@@ -109,7 +109,8 @@ if config_env() == :prod do
   config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
   config :front, docs_domain: System.get_env("DOCS_DOMAIN", "docs.semaphoreci.com")
   config :front, domain: System.get_env("BASE_DOMAIN")
-  config :front, :userpilot_token, System.get_env("USERPILOT_TOKEN")
+  config :front, :posthog_api_key, System.get_env("POSTHOG_API_KEY")
+  config :front, :posthog_host, System.get_env("POSTHOG_HOST") || "https://app.posthog.com"
   config :front, :get_started_path, System.get_env("GETTING_STARTED_YAML_PATH")
 
   config :front,
