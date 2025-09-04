@@ -4,18 +4,18 @@ description: Install Semaphore on Google Kubernetes Engine (GKE)
 
 # Google Cloud Kubernetes (GKE)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to create a Kubernetes cluster using [Google Cloud Kubernetes Engine (GKE)](https://cloud.google.com/kubernetes-engine) and install Semaphore Community Edition.
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](/getting-started/quickstart) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -180,7 +180,6 @@ Check the existence of the certificate files on the following paths. You will re
 - **Private key certificate**: `./certs/live/$DOMAIN/privkey.pem`
 
 You may delete the TXT record from your domain at this point. It's no longer needed.
-
 
 ## Step 5 - Install TLS certificates
 
@@ -374,7 +373,7 @@ Once your have Semaphore up and running, check out the following pages to finish
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
 ## How to Upgrade Semaphore {#upgrade}
@@ -389,6 +388,7 @@ To upgrade Semaphore, follow these steps:
     ```shell
     kubectl get nodes
     ```
+
 3. Load the configuration file and ensure the certificates are in the correct folder. See [Step 4](#certs) if you need to recreate the certificates.
 
     ```shell
@@ -399,6 +399,7 @@ To upgrade Semaphore, follow these steps:
     echo "GOOGLE_STATIC_IP_NAME=${GOOGLE_STATIC_IP_NAME}"
     ls certs/live/${DOMAIN}/privkey.pem certs/live/${DOMAIN}/fullchain.pem
     ```
+
 4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
 
     ```shell
@@ -470,7 +471,6 @@ gcloud container clusters delete --zone "${GOOGLE_CLOUD_ZONE}" "${GOOGLE_CLOUD_C
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

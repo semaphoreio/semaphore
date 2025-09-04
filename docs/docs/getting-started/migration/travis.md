@@ -5,11 +5,7 @@ sidebar_position: 4
 
 # Travis CI
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+<VideoTutorial title="Semaphore vs Travis CI" src="https://www.youtube.com/embed/QVGLTm1RhXM" />
 
 This page explains the core concepts and feature mapping you need to migrate from Travis CI to Semaphore.
 

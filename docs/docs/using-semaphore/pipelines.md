@@ -4,12 +4,6 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available.
 
 ## Overview {#overview}
@@ -158,7 +152,6 @@ When a job in the pipeline fails, the default behavior is to stop the pipeline. 
 - Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
 
 ![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
-
 
 ## Connecting pipelines with promotions {#connecting-pipelines}
 
@@ -1095,13 +1088,13 @@ See [job time limit](./jobs#job-duration) to change the maximum duration for a s
 
 You can workaround the queue limit by assigning pipelines to [named queues](#named-queues).
 
-If you have a use case in which this limit is too constraining, please contact us at `support@semaphoreci.com` and we will try to work out a solution.
+If you have a use case in which this limit is too constraining, please contact us at `support@semaphore.io` and we will try to work out a solution.
 
 ### Max blocks per pipeline {#max-blocks}
 
 There is a hard limit of a 100 blocks per pipeline.
 
-This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at `support@semaphoreci.com` and we will try to work out a solution.
+This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at `support@semaphore.io` and we will try to work out a solution.
 
 ## See also
 

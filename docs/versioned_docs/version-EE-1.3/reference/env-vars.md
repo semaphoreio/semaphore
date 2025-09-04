@@ -4,10 +4,10 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 ## Semaphore variables {#semaphore-variables}
 

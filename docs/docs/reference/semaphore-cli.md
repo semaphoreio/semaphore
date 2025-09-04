@@ -4,12 +4,6 @@ description: Semaphore command line reference
 
 # Semaphore Command Line
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="Overview of Semaphore CLI" src="https://www.youtube.com/embed/3bG6mZOh73o?si=vsMShj8HUz5RhqgZ" />
 
 You can interact with most aspects of your jobs, pipelines, projects, and organizations using only the command line. This page explains how to use the Semaphore CLI tool.

@@ -4,11 +4,6 @@ description: OpenID Connect (OIDC) token reference
 
 # OIDC Tokens
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 This page describes how [OpenID Connect (OIDC)](../using-semaphore/openid) tokens are generated.
 
 <Available plans={['Scaleup']}/>

@@ -5,10 +5,10 @@ sidebar_position: 6
 
 # Semaphore Container Registry
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 Semaphore provides an public Docker Container Registry to pull popular images faster into your jobs.
 

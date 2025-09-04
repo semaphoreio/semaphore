@@ -4,11 +4,7 @@ description: Manage organization plans and billing
 
 # Plans and Billing
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+<VideoTutorial title="How to view billing and spending" src="https://www.youtube.com/embed/hf_3tTHSRiM" />
 
 Semaphore Cloud offers [several plans](https://semaphore.io/pricing) for your organization. This page explains how you can view your current plan and how billing is calculated.
 
