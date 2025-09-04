@@ -12,6 +12,9 @@ defmodule Guard.ServiceAccount.Actions do
   alias Guard.FrontRepo
   alias Guard.Store.ServiceAccount
 
+  @user_exchange "user_exchange"
+  @deleted_routing_key "deleted"
+
   @type service_account_params :: %{
           org_id: String.t(),
           name: String.t(),
@@ -114,9 +117,13 @@ defmodule Guard.ServiceAccount.Actions do
   def destroy(service_account_id) do
     case ServiceAccount.destroy(service_account_id) do
       {:ok, :destroyed} ->
+        # Publish deletion event - let event handlers clean up RBAC roles and associated data
+        Guard.Events.UserDeleted.publish(service_account_id, @user_exchange, @deleted_routing_key)
+        Logger.info("Successfully destroyed service account #{service_account_id}")
         {:ok, :destroyed}
 
       {:error, error} ->
+        Logger.error("Failed to destroy service account #{service_account_id}: #{inspect(error)}")
         {:error, error}
     end
   end
