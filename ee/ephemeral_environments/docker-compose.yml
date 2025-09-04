@@ -12,23 +12,32 @@ services:
         - MIX_ENV=dev
     ports:
       - "50051"
-    links:
-      - db:db
     env_file:
       - .env
     volumes:
       - .:/app
+    depends_on:
+      - db
+      - pgweb
 
   db:
     image: postgres:17.4
-    ports:
-      - "5432:5432"
     expose:
       - "5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+  pgweb:
+    image: sosedoff/pgweb
+    ports:
+      - "8081:8081"
+    environment:
+      - PGWEB_DATABASE_URL=postgres://postgres:the-cake-is-a-lie@db:5432/postgres?sslmode=disable
+    depends_on:
+      - db
+    restart: unless-stopped
 
 volumes:
   postgres-data:
