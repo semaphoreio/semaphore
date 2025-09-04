@@ -257,23 +257,39 @@ defmodule Guard.ServiceAccount.ActionsTest do
   end
 
   describe "destroy/1" do
-    test "destroys service account successfully" do
+    test "destroys service account successfully and publishes deletion event" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough],
-        destroy: fn id ->
-          assert id == service_account_id
-          {:ok, :destroyed}
-        end do
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           destroy: fn id ->
+             assert id == service_account_id
+             {:ok, :destroyed}
+           end
+         ]},
+        {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
+      ] do
         {:ok, :destroyed} = Actions.destroy(service_account_id)
+
+        # Verify deletion event was published
+        assert_called(
+          Guard.Events.UserDeleted.publish(service_account_id, "user_exchange", "deleted")
+        )
       end
     end
 
-    test "handles destroy failure" do
+    test "handles destroy failure and does not publish event" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough], destroy: fn _ -> {:error, :destroy_failed} end do
+      with_mocks [
+        {ServiceAccount, [:passthrough], [destroy: fn _ -> {:error, :destroy_failed} end]},
+        {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
+      ] do
         {:error, :destroy_failed} = Actions.destroy(service_account_id)
+
+        # Verify deletion event was NOT published on failure
+        refute called(Guard.Events.UserDeleted.publish(:_, :_, :_))
       end
     end
   end
