@@ -81,6 +81,28 @@ defmodule Guard.Store.RbacUser do
     |> handle_transaction(user_id, "update_rbac_user")
   end
 
+  @spec delete(Ecto.UUID.t()) :: :ok | :error
+  def delete(user_id) do
+    # Validate UUID format
+    case Ecto.UUID.cast(user_id) do
+      {:ok, _} ->
+        case Subject |> where([s], s.id == ^user_id) |> Guard.Repo.one() do
+          nil ->
+            Logger.info(fn -> "Subject with id #{user_id} not found for deletion" end)
+            :ok
+
+          subject ->
+            Multi.new()
+            |> Multi.delete(:subject, subject)
+            |> handle_transaction(user_id, "delete_rbac_user")
+        end
+
+      _ ->
+        Logger.warn(fn -> "Invalid UUID format for user_id: #{user_id}" end)
+        :error
+    end
+  end
+
   # Helper functions
   defp handle_transaction(transaction, user_id, action_name) do
     case Guard.Repo.transaction(transaction, timeout: 60_000) do
