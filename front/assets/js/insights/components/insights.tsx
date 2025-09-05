@@ -4,7 +4,6 @@ import {
   Route,
   Navigate,
   useNavigate,
-  useLocation,
 } from "react-router-dom";
 import {
   useContext,
@@ -23,7 +22,6 @@ import { CreateDashboard } from "../types/json_interface";
 // @ts-ignore
 import { Notice } from "../../notice";
 import { MetricsDateRange } from "../types/metric_date_range";
-import { Userpilot } from "userpilot";
 
 export const Insights = () => {
   const appConfig = useContext(Config);
@@ -41,11 +39,6 @@ export const Insights = () => {
     stores.MetricDateRange.EmptyState
   );
 
-  const loc = useLocation();
-
-  useEffect(() => {
-    Userpilot.reload();
-  }, [loc]);
 
   const fetchSummary = (url: string) => {
     return fetch(url)
