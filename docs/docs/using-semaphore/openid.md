@@ -4,7 +4,7 @@ description: OIDC secures access to cloud providers
 
 # OpenID Connect
 
-OpenID Connect (OICD) allows you to establish a more secure trust relationship between Semaphore and cloud providers such as AWS or Google Cloud.
+OpenID Connect (OIDC) allows you to establish a more secure trust relationship between Semaphore and cloud providers such as AWS or Google Cloud.
 
 ## Overview
 
@@ -122,10 +122,10 @@ The next example shows how to grant permissions to:
 </details>
 
 <details>
-<summary>Step 3: Use OICD in your Semaphore pipelines</summary>
+<summary>Step 3: Use OIDC in your Semaphore pipelines</summary>
 <div>
 
-You can now use OICD to access your AWS resources from any of your pipelines.  
+You can now use OIDC to access your AWS resources from any of your pipelines.  
 
 In order authenticate with AWS add these commands to the Semaphore [job](./jobs) that needs access.
 
