@@ -590,15 +590,18 @@ function maybeEnablePosthog() {
 
     posthog.init(apiKey, {
       api_host: apiHost,
-      capture_pageview: true,
-      capture_pageleave: true,
+      autocapture: false,
       loaded: function(posthog) {
         if (userId) {
           posthog.identify(userId, {
-            organization_id: organizationId,
-            organization_created_at: organizationCreatedAt,
             user_created_at: userCreatedAt
           });
+
+          if (organizationId) {
+            posthog.group('organization', organizationId, {
+              organization_created_at: organizationCreatedAt
+            });
+          }
         }
       }
     });
