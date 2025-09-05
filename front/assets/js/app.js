@@ -586,19 +586,23 @@ function enableMagicBreadcrumbs() {
 
 function maybeEnablePosthog() {
   if (window.InjectedDataByBackend.Posthog.apiKey) {
-    let { apiKey, apiHost, userId, organizationId, organizationCreatedAt, userCreatedAt } = window.InjectedDataByBackend.Posthog
+    let { apiKey, apiHost, userId, organizationId, organizationName, organizationCreatedAt, userCreatedAt } = window.InjectedDataByBackend.Posthog
 
     posthog.init(apiKey, {
       api_host: apiHost,
-      capture_pageview: true,
-      capture_pageleave: true,
+      autocapture: false,
       loaded: function(posthog) {
         if (userId) {
           posthog.identify(userId, {
-            organization_id: organizationId,
-            organization_created_at: organizationCreatedAt,
             user_created_at: userCreatedAt
           });
+
+          if (organizationId) {
+            posthog.group('organization', organizationId, {
+              organization_name: organizationName,
+              organization_created_at: organizationCreatedAt
+            });
+          }
         }
       }
     });

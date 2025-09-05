@@ -302,6 +302,7 @@ defmodule FrontWeb.LayoutView do
     api_key = Application.get_env(:front, :posthog_api_key)
     api_host = Application.get_env(:front, :posthog_host)
     organization_id = Map.get(conn.assigns, :organization_id)
+    organization_name = Map.get(conn.assigns, :organization_username)
     user_id = Map.get(conn.assigns, :user_id)
     user_created_at = Map.get(conn.assigns, :user_created_at) |> to_iso8601()
     org_created_at = Map.get(conn.assigns, :organization_created_at) |> to_iso8601()
@@ -326,6 +327,7 @@ defmodule FrontWeb.LayoutView do
         apiKey: api_key,
         apiHost: api_host,
         organizationId: organization_id,
+        organizationName: organization_name,
         organizationCreatedAt: org_created_at,
         userId: user_id,
         userCreatedAt: user_created_at
