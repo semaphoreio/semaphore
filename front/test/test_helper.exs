@@ -16,6 +16,7 @@ Application.put_env(:wallaby, :js_logger, file)
 Support.Stubs.init()
 
 Mox.defmock(ServiceAccountMock, for: Front.ServiceAccount.Behaviour)
+Mox.defmock(EphemeralEnvironmentMock, for: Front.EphemeralEnvironments.Behaviour)
 
 ExUnit.configure(formatters: [JUnitFormatter, ExUnit.CLIFormatter])
 ExUnit.start(trace: false, capture_log: true)
