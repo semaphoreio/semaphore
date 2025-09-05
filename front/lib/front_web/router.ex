@@ -179,6 +179,14 @@ defmodule FrontWeb.Router do
       post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
     end
 
+    scope "/ephemeral_environments" do
+      get("/", EphemeralEnvironmentController, :index)
+      post("/", EphemeralEnvironmentController, :create)
+      put("/:id", EphemeralEnvironmentController, :update)
+      delete("/:id", EphemeralEnvironmentController, :delete)
+      post("/:id/cordon", EphemeralEnvironmentController, :cordon)
+    end
+
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)
     delete("/project/:name_or_id/offboarding", OffboardingController, :remove)
 
