@@ -835,6 +835,11 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+      
+      # Verify sub2 is present and formatted correctly (compact format with comma-separated values)
+      expected_sub2 = "testera,#{req.project_id},,,"  # org_username, project_id, empty repo, empty ref_type, empty ref
+      assert Map.get(jwt.fields, "sub2") == expected_sub2
+      
       assert Map.get(jwt.fields, "prj") == req.project_name
       assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
@@ -908,6 +913,10 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+      
+      # Verify sub2 is present and formatted correctly for AWS tags test
+      expected_sub2 = "testera,#{req.project_id},my-repo,branch,"  # org, project_id, repo, ref_type, empty ref
+      assert Map.get(jwt.fields, "sub2") == expected_sub2
     end
 
     test "it returns a signed token with filtered claims in on_prem mode" do

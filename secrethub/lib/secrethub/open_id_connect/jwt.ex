@@ -8,6 +8,8 @@ defmodule Secrethub.OpenIDConnect.JWT do
     "jti",
     # Subject of the JWT
     "sub",
+    # Compact subject format with comma-separated values only
+    "sub2",
     # Recipient for which the JWT is intended
     "aud",
     # Issuer of the JWT
@@ -114,6 +116,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
       "branch" => req.git_branch_name,
       "pr" => req.git_pull_request_number,
       "sub" => req.subject,
+      "sub2" => build_compact_subject(req),
       "iss" => "https://#{req.org_username}.#{domain}",
       "aud" => "https://#{req.org_username}.#{domain}",
       "job_type" => req.job_type,
@@ -153,4 +156,20 @@ defmodule Secrethub.OpenIDConnect.JWT do
 
     Secrethub.OpenIDConnect.JWTFilter.filter_claims(claims, req.org_id, req.project_id)
   end
+
+  defp build_compact_subject(req) do
+    [
+      req.org_username,
+      req.project_id,
+      req.repository_name,
+      req.git_ref_type,
+      req.git_ref
+    ]
+    |> Enum.map(&safe_string/1)
+    |> Enum.join(",")
+  end
+
+  defp safe_string(nil), do: ""
+  defp safe_string(value) when is_binary(value), do: value
+  defp safe_string(value), do: to_string(value)
 end
