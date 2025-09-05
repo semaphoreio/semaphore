@@ -1,16 +1,8 @@
 import * as pages from "./pages";
 
-import { useEffect } from "preact/hooks";
-import { Routes, Route, useLocation } from "react-router-dom";
-import { Userpilot } from "userpilot";
+import { Routes, Route } from "react-router-dom";
 
 export const App = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    Userpilot.reload();
-  }, [location]);
-
   return (
     <Routes>
       <Route path="" element={<pages.FlakyTestsPage/>}/>
