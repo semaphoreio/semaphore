@@ -591,6 +591,8 @@ function maybeEnablePosthog() {
     posthog.init(apiKey, {
       api_host: apiHost,
       autocapture: false,
+      capture_pageview: true,
+      capture_pageleave: false,
       loaded: function(posthog) {
         if (userId) {
           posthog.identify(userId, {
