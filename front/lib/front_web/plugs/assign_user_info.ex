@@ -10,7 +10,7 @@ defmodule FrontWeb.Plug.AssignUserInfo do
       |> get_req_header("x-semaphore-user-id")
       |> List.first()
 
-    # fetch user data to set user_created_at assign for userpilot
+    # fetch user data to set user_created_at assign for posthog
     user_created_at = fetch_user_created_at(user_id)
 
     anonymous =

@@ -296,11 +296,13 @@ defmodule FrontWeb.LayoutView do
   def safe_string(var) when is_bitstring(var), do: var
   def safe_string(_var), do: ""
 
-  @spec userpilot_config_json(Plug.Conn.t()) :: binary()
+  @spec posthog_config_json(Plug.Conn.t()) :: binary()
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def userpilot_config_json(conn) do
-    token = Application.get_env(:front, :userpilot_token)
+  def posthog_config_json(conn) do
+    api_key = Application.get_env(:front, :posthog_api_key)
+    api_host = Application.get_env(:front, :posthog_host)
     organization_id = Map.get(conn.assigns, :organization_id)
+    organization_name = Map.get(conn.assigns, :organization_username)
     user_id = Map.get(conn.assigns, :user_id)
     user_created_at = Map.get(conn.assigns, :user_created_at) |> to_iso8601()
     org_created_at = Map.get(conn.assigns, :organization_created_at) |> to_iso8601()
@@ -309,21 +311,23 @@ defmodule FrontWeb.LayoutView do
       organization_id
       |> case do
         nil ->
-          # On /me page we don't have an organization_id. We still want to enable Userpilot there.
+          # On /me page we don't have an organization_id. We still want to enable PostHog there.
           true
 
         _ ->
-          FeatureProvider.feature_enabled?(:experimental_userpilot, param: organization_id)
+          FeatureProvider.feature_enabled?(:experimental_posthog, param: organization_id)
       end
 
-    token_present? = token != "" and token != nil
+    api_key_present? = api_key != "" and api_key != nil
 
     user_data_present? = user_id != "" and user_id != nil
 
-    if feature_enabled? and token_present? and user_data_present? do
+    if feature_enabled? and api_key_present? and user_data_present? do
       %{
-        token: token,
+        apiKey: api_key,
+        apiHost: api_host,
         organizationId: organization_id,
+        organizationName: organization_name,
         organizationCreatedAt: org_created_at,
         userId: user_id,
         userCreatedAt: user_created_at
