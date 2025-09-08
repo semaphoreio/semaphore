@@ -182,7 +182,7 @@ export const ProjectStatus = ({
             {(skipOnboardingUrl || state.skipOnboardingUrl) && (projectUrl || state.createdProjectName) && (
               <a
                 href="#"
-                onClick={(e) => onSkipOnboarding}}
+                onClick={onSkipOnboarding}
                 className="f6 link dim gray underline"
                 title="Skip the onboarding process and go directly to the project (for advanced users)"
               >
