@@ -798,6 +798,43 @@ defmodule FrontWeb.PeopleController do
     end
   end
 
+  def change_email(conn, %{"user_id" => user_id, "email" => email}) do
+    Watchman.benchmark("people.change_email.form", fn ->
+      email = String.trim(email)
+
+      # Basic validation
+      cond do
+        email == "" ->
+          conn
+          |> put_flash(:alert, "Email address cannot be empty.")
+          |> redirect(to: people_path(conn, :show, user_id))
+
+        not valid_email_format?(email) ->
+          conn
+          |> put_flash(:alert, "Please enter a valid email address.")
+          |> redirect(to: people_path(conn, :show, user_id))
+
+        true ->
+          change_user_email(conn, user_id, email)
+          |> case do
+            {:ok, %{message: message}} ->
+              conn
+              |> put_flash(:notice, message)
+              |> redirect(to: people_path(conn, :show, user_id))
+
+            {:error, :render_404} ->
+              conn
+              |> render_404()
+
+            {:error, error_msg} ->
+              conn
+              |> put_flash(:alert, "Failed to update email: #{error_msg}")
+              |> redirect(to: people_path(conn, :show, user_id))
+          end
+      end
+    end)
+  end
+
   defp change_user_email(conn, user_id, email) do
     Watchman.benchmark("people.change_email", fn ->
       if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
@@ -1152,4 +1189,9 @@ defmodule FrontWeb.PeopleController do
   @spec email_members_supported?(organization_id :: String.t()) :: bool
   defp email_members_supported?(organization_id),
     do: FeatureProvider.feature_enabled?(:email_members, param: organization_id)
+
+  defp valid_email_format?(email) do
+    email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    Regex.match?(email_regex, email)
+  end
 end

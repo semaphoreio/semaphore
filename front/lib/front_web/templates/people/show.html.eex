@@ -35,6 +35,27 @@
         </div>
 
       </div>
+
+      <!-- Email Management Section -->
+      <%= if @owned do %>
+      <div class="mt3 pv3 bt b--lighter-gray">
+        <h2 class="f4 mb2">Email Address</h2>
+
+        <div class="mb3">
+          <div class="f5 mb2 gray">Current Email</div>
+          <div class="f4 mb3"><%= @user.email %></div>
+        </div>
+
+          <%= form_for @conn, people_path(@conn, :change_email, @user.id), [class: "mw6", id: "email-form"], fn f -> %>
+            <div class="mb3">
+              <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
+              <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
+            </div>
+            <%= submit "Update Email", class: "btn btn-primary pointer",
+                data: [confirm: "Are you sure you want to change this user's email address? They may need to re-verify access to some integrations."] %>
+          <% end %>
+      </div>
+      <% end %>
       <% end %>
       <% end %>
 

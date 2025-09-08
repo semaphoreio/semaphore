@@ -136,6 +136,75 @@ defmodule FrontWeb.AccountController do
     end)
   end
 
+  def change_my_email(conn, %{"email" => email}) do
+    Watchman.benchmark("account.change_my_email.duration", fn ->
+      user_id = conn.assigns.user_id
+      email = String.trim(email)
+
+      # Basic validation
+      cond do
+        email == "" ->
+          conn
+          |> put_flash(:alert, "Email address cannot be empty.")
+          |> redirect(to: account_path(conn, :show))
+
+        not valid_email_format?(email) ->
+          conn
+          |> put_flash(:alert, "Please enter a valid email address.")
+          |> redirect(to: account_path(conn, :show))
+
+        true ->
+          # Check if feature is enabled
+          if FeatureProvider.feature_enabled?(:email_members,
+               param: conn.assigns[:organization_id]
+             ) or Front.ce?() do
+            case Models.Member.change_email(user_id, user_id, email) do
+              {:ok, %{msg: msg}} ->
+                conn
+                |> put_flash(:notice, msg)
+                |> redirect(to: account_path(conn, :show))
+
+              {:error, error_msg} ->
+                conn
+                |> put_flash(:alert, "Failed to update email: #{error_msg}")
+                |> redirect(to: account_path(conn, :show))
+            end
+          else
+            conn
+            |> put_flash(:alert, "Email changes are not enabled for your organization.")
+            |> redirect(to: account_path(conn, :show))
+          end
+      end
+    end)
+  end
+
+  def reset_my_password(conn, _params) do
+    Watchman.benchmark("account.reset_my_password.duration", fn ->
+      user_id = conn.assigns.user_id
+
+      # Check if feature is enabled
+      if FeatureProvider.feature_enabled?(:email_members, param: conn.assigns[:organization_id]) or
+           Front.ce?() do
+        case Models.Member.reset_password(user_id, user_id) do
+          {:ok, %{msg: msg, password: new_password}} ->
+            conn
+            |> put_flash(:notice, msg)
+            |> assign(:new_password, new_password)
+            |> render_show(user_id)
+
+          {:error, error_msg} ->
+            conn
+            |> put_flash(:alert, "Failed to reset password: #{error_msg}")
+            |> render_show(user_id)
+        end
+      else
+        conn
+        |> put_flash(:alert, "Password changes are not enabled for your organization.")
+        |> render_show(user_id)
+      end
+    end)
+  end
+
   defp render_show(conn, user_id, errors \\ nil)
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
@@ -154,5 +223,10 @@ defmodule FrontWeb.AccountController do
       errors: errors,
       title: "Semaphore - Account"
     )
+  end
+
+  defp valid_email_format?(email) do
+    email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    Regex.match?(email_regex, email)
   end
 end
