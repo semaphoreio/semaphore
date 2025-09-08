@@ -167,8 +167,7 @@ const TicketDetail = (props: TicketDetailProps) => {
         `ul`, `ol`, `li`,
         `blockquote`, `code`, `pre`
       ],
-      ALLOWED_ATTR: [`title`],
-      ALLOWED_SCHEMES: [`http`, `https`, `mailto`]
+      ALLOWED_ATTR: [`title`]
     });
   };
 

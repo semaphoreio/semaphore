@@ -3,17 +3,15 @@ import * as pages from "./pages";
 import * as components from "./components";
 import * as stores from "./stores";
 import * as types from "./types";
-import { Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Spendings } from "./types";
 import {
   useReducer,
   useLayoutEffect,
   useState,
   useContext,
-  useEffect,
 } from "preact/hooks";
 import { URLState } from "js/toolbox";
-import { Userpilot } from "userpilot";
 
 interface Props {
   config: stores.Config.State;
@@ -85,13 +83,9 @@ const ClassicLayout = () => {
 };
 
 const RegularLayout = () => {
-  const location = useLocation();
   const config = useContext(stores.Config.Context);
 
   const hasPlans = config.availablePlans.length > 1;
-  useEffect(() => {
-    Userpilot.reload();
-  }, [location]);
 
   return (
     <Fragment>
