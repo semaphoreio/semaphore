@@ -52,7 +52,8 @@ if System.get_env("AMQP_URL") != nil do
     ]
 end
 
-config :front, :userpilot_token, ""
+config :front, :posthog_api_key, ""
+config :front, :posthog_host, "https://app.posthog.com"
 
 config :front, :get_started_path, "priv/onboarding/getting_started.yaml"
 config :front, :workflow_templates_path, "workflow_templates/saas"
