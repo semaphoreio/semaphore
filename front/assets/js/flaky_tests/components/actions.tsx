@@ -165,15 +165,10 @@ const TicketDetail = (props: TicketDetailProps) => {
         `h1`, `h2`, `h3`, `h4`, `h5`, `h6`,
         `p`, `br`, `strong`, `em`, `u`, `strike`,
         `ul`, `ol`, `li`,
-        `blockquote`, `code`, `pre`,
-        `a`
+        `blockquote`, `code`, `pre`
       ],
-      ALLOWED_ATTR: [
-        `href`, `title`
-      ],
-      ALLOWED_SCHEMES: [`http`, `https`, `mailto`],
-      FORBID_TAGS: [`script`, `object`, `embed`, `iframe`, `form`, `input`],
-      FORBID_ATTR: [`onclick`, `onload`, `onerror`, `onmouseover`, `style`]
+      ALLOWED_ATTR: [`title`],
+      ALLOWED_SCHEMES: [`http`, `https`, `mailto`]
     });
   };
 
