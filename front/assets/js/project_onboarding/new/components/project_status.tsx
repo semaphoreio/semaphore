@@ -76,7 +76,8 @@ export const ProjectStatus = ({
   const [connectionData, setConnectionData] = useState<ConnectionData | null>(null);
   const { state } = useContext(stores.Create.Repository.Context);
 
-  const onSkipOnboarding = () => {
+  const onSkipOnboarding = (e: Event) => {
+    e.preventDefault();
     // Use props first, then fallback to context state
     const skipUrl = skipOnboardingUrl || state.skipOnboardingUrl;
     const projUrl = projectUrl || (state.createdProjectName ? `/projects/${state.createdProjectName}` : undefined);
@@ -181,7 +182,7 @@ export const ProjectStatus = ({
             {(skipOnboardingUrl || state.skipOnboardingUrl) && (projectUrl || state.createdProjectName) && (
               <a
                 href="#"
-                onClick={(e) => { e.preventDefault(); onSkipOnboarding(); }}
+                onClick={(e) => onSkipOnboarding}}
                 className="f6 link dim gray underline"
                 title="Skip the onboarding process and go directly to the project (for advanced users)"
               >

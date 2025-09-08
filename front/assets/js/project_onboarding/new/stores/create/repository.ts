@@ -59,7 +59,7 @@ type RepositoryAction =
   | { type: `SET_PROJECT_CHECK_URL`, payload: string, }
   | { type: `SET_REPO_CONNECTION_URL`, payload: string, }
   | { type: `SET_CREATED_PROJECT_NAME`, payload: string, }
-  | { type: `SET_SKIP_ONBOARDING`, payload: string, }
+  | { type: `SET_SKIP_ONBOARDING_URL`, payload: string, }
   | {
     type: `UPDATE_PROJECT_STATUS`; payload: {
       steps: Array<{ id: string, label: string, completed: boolean, }>;
@@ -169,7 +169,7 @@ function repositoryReducer(state: RepositoryState, action: RepositoryAction): Re
         ...state,
         createdProjectName: action.payload
       };
-    case `SET_SKIP_ONBOARDING`:
+    case `SET_SKIP_ONBOARDING_URL`:
       return {
         ...state,
         skipOnboardingUrl: action.payload
@@ -364,7 +364,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
         }
         if (data.project_name) {
           dispatch({ type: `SET_CREATED_PROJECT_NAME`, payload: data.project_name });
-          dispatch({ type: `SET_SKIP_ONBOARDING`, payload: data.skip_project_onboarding });
+          dispatch({ type: `SET_SKIP_ONBOARDING_URL`, payload: data.skip_project_onboarding_url });
         }
         void checkProjectStatus(data.check_url as string);
       }

@@ -17,7 +17,8 @@ export const ExistingConfiguration = () => {
     dispatch([`SET_CURRENT`, `setup-workflow`]);
   }, []);
 
-  const handleUseExisting = () => {
+  const onHandleUseExisting = (e: Event) => {
+    e.preventDefault();
     void handleSkipOnboarding({
       skipOnboardingUrl: configState.skipOnboardingUrl,
       csrfToken: configState.csrfToken,
@@ -25,7 +26,8 @@ export const ExistingConfiguration = () => {
     });
   };
 
-  const handleCreateNew = () => {
+  const onHandleCreateNew = (e: Event) => {
+    e.preventDefault();
     navigate(`/environment`);
   };
 
@@ -52,7 +54,7 @@ export const ExistingConfiguration = () => {
                 <div className="mv3">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); handleUseExisting(); }}
+                    onClick={onHandleUseExisting}
                     className="db f4 mb1"
                   >
             I will use the existing configuration
@@ -69,7 +71,7 @@ export const ExistingConfiguration = () => {
                 <div className="mv3">
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); handleCreateNew(); }}
+                    onClick={onHandleCreateNew}
                     className="db f4 mb1"
                   >
             I want to configure this project from scratch

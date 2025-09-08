@@ -351,7 +351,7 @@ defmodule FrontWeb.ProjectOnboardingController do
             repo_connection_url:
               project_onboarding_path(conn, :project_repository_status, project.name),
             project_name: project.name,
-            skip_project_onboarding: project_onboarding_path(conn, :skip_onboarding, project.name)
+            skip_project_onboarding_url: project_onboarding_path(conn, :skip_onboarding, project.name)
           })
         else
           conn
