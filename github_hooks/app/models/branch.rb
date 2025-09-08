@@ -16,7 +16,7 @@ class Branch < ActiveRecord::Base
   def self.find_or_create_for_workflow(workflow)
     branch = workflow.project.branches.find_or_create_by(:name => workflow.payload.branch)
 
-    if workflow.payload.is_pull_request?
+    if workflow.payload.pull_request?
       options = {
         :pull_request_number => workflow.payload.pull_request_number,
         :pull_request_name => workflow.payload.pull_request_name,

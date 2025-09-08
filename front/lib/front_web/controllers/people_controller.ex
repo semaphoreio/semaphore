@@ -139,6 +139,7 @@ defmodule FrontWeb.PeopleController do
       user_id = params["user_id"]
       role_id = params["role_id"]
       requester_id = conn.assigns.user_id
+      member_type = params["member_type"] || "user"
 
       conn =
         conn
@@ -148,7 +149,14 @@ defmodule FrontWeb.PeopleController do
       if conn.halted() do
         {:error, :render_404}
       else
-        case RoleManagement.assign_role(requester_id, org_id, user_id, role_id, project_id) do
+        case RoleManagement.assign_role(
+               requester_id,
+               org_id,
+               user_id,
+               role_id,
+               project_id,
+               member_type
+             ) do
           {:ok, _} ->
             log_assign_role(conn, user_id, org_id, role_id, project_id)
 
@@ -157,7 +165,7 @@ defmodule FrontWeb.PeopleController do
           {:error, error} ->
             Logger.error("[PeopleController] Error in assign_role function: #{inspect(error)}")
 
-            {:error, "Error occured while assigning the role. Please contact our support team."}
+            {:error, "error occurred while assigning the role. Please contact our support team."}
         end
       end
     end)
@@ -233,7 +241,7 @@ defmodule FrontWeb.PeopleController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while removing member, please contact our support team."
+              "An error occurred while removing member, please contact our support team."
             )
             |> redirect_to.()
         end
@@ -276,7 +284,7 @@ defmodule FrontWeb.PeopleController do
     user_type = params["type"] || ""
 
     member_role_id =
-      if Front.ce_roles?() do
+      if Front.ce?() do
         {:ok, roles} = RoleManagement.list_possible_roles(org_id, "org_scope")
 
         member_role = Enum.find(roles, fn role -> role.name == "Member" end)
@@ -493,7 +501,7 @@ defmodule FrontWeb.PeopleController do
 
   defp create_email_member(conn, params) do
     Watchman.benchmark("people.create_member", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         user_id = conn.assigns.user_id
         org_id = conn.assigns.organization_id
 
@@ -657,6 +665,9 @@ defmodule FrontWeb.PeopleController do
       fetch_groups =
         Async.run(fn -> Members.list_project_members(org_id, project.id, member_type: "group") end)
 
+      fetch_service_accounts =
+        async_fetch_members(org_id, project.id, member_type: "service_account")
+
       fetch_is_project_starred? =
         Async.run(fn -> Models.User.has_favorite(user_id, org_id, project.id) end)
 
@@ -667,6 +678,7 @@ defmodule FrontWeb.PeopleController do
       {:ok, {:ok, {members, total_pages}}} = Async.await(fetch_members)
       {:ok, {:ok, {groups, _}}} = Async.await(fetch_groups)
       {:ok, is_project_starred?} = Async.await(fetch_is_project_starred?)
+      {:ok, {:ok, {service_accounts, _total_pages}}} = Async.await(fetch_service_accounts)
 
       assigns =
         %{
@@ -677,6 +689,7 @@ defmodule FrontWeb.PeopleController do
           permissions: conn.assigns.permissions,
           members: members,
           groups: groups,
+          service_accounts: service_accounts,
           project_id: project.id,
           title: "People・#{project.name}",
           org_scope?: false,
@@ -759,7 +772,7 @@ defmodule FrontWeb.PeopleController do
           conn
           |> put_flash(
             :alert,
-            "An error occured while rotating the API token. Please contact our support team."
+            "An error occurred while rotating the API token. Please contact our support team."
           )
           |> redirect(to: people_path(conn, :show, user_id))
       end
@@ -787,7 +800,7 @@ defmodule FrontWeb.PeopleController do
 
   defp change_user_email(conn, user_id, email) do
     Watchman.benchmark("people.change_email", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         conn
         |> Audit.new(:User, :Modified)
         |> Audit.add(description: "Change Email")
@@ -854,7 +867,7 @@ defmodule FrontWeb.PeopleController do
 
   defp reset_user_password(conn, user_id) do
     Watchman.benchmark("people.reset_password", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         conn
         |> Audit.new(:User, :Modified)
         |> Audit.add(description: "Reset Password")
@@ -874,7 +887,7 @@ defmodule FrontWeb.PeopleController do
             Logger.error("Error during password reset #{user_id}: #{inspect(error)}")
 
             {:error,
-             "An error occured while rotating the password. Please contact our support team."}
+             "An error occurred while rotating the password. Please contact our support team."}
         end
       else
         {:error, :render_404}
@@ -1015,7 +1028,7 @@ defmodule FrontWeb.PeopleController do
         _ ->
           conn
           |> put_status(500)
-          |> json(%{message: "Internal error occured"})
+          |> json(%{message: "Internal error occurred"})
       end
     end)
   end

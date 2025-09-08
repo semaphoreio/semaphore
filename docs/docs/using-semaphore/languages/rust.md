@@ -5,11 +5,11 @@ sidebar_position: 11
 
 # Rust
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This guide provides tips and hints for building Rust projects.
 
@@ -19,7 +19,7 @@ Rust is not preinstalled on Linux Semaphore environments. You must use [Docker E
 
 ## How to compile Rust code {#compile}
 
-You may use one of the pre-built [Rust images](../../using-semaphore/optimization/container-registry#rust) to run the jobs in a Docker-based environment.
+You may use one of the pre-built [Rust images](../../using-semaphore/containers/container-registry#rust) to run the jobs in a Docker-based environment.
 
 <Steps>
 
@@ -27,7 +27,7 @@ You may use one of the pre-built [Rust images](../../using-semaphore/optimizatio
 2. Select the pipeline
 3. Select **Docker Containers** in the **Environment Type**
 4. Select one of the available machines
-5. Type the name of a [Rust image](../../using-semaphore/optimization/container-registry#rust), e.g. `semaphoreci/rust:1.75`
+5. Type the name of a [Rust image](../../using-semaphore/containers/container-registry#rust), e.g. `semaphoreci/rust:1.75`
 
     ![Selecting a rust image](./img/rust-images.jpg)
 

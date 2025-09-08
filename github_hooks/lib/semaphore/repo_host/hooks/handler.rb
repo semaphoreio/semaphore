@@ -105,6 +105,13 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
         return
       end
 
+      if workflow.payload.draft_pull_request? && !draft_pr_allowed?(workflow.project)
+        logger.info("skip-draft-prs")
+        workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+
+        return
+      end
+
       requestor = workflow.payload.pr_head_repo_owner
 
       # Check if this a member, and if the organization allows member workflows.
@@ -180,6 +187,21 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
 
     if workflow.payload.pull_request?
       begin
+        if workflow.payload.draft_pull_request? && !draft_pr_allowed?(workflow.project)
+          logger.info("skip-draft-prs")
+          workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+
+          return
+        end
+
+        # Skip ready_for_review events when build_draft_pr is enabled
+        # (the PR was already building as a draft)
+        if draft_pr_allowed?(workflow.project) && workflow.payload.pull_request_ready_for_review?
+          logger.info("skip-ready-for-review-when-building-drafts")
+          workflow.update(:state => Workflow::STATE_SKIP_DRAFT_PR)
+          return
+        end
+
         state, meta, msg = update_pr_data(workflow.project, workflow.pull_request_number, workflow.commit_sha)
         case state
         when :not_found
@@ -287,12 +309,17 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.forked_pr_allowed?(requestor, project)
-    if project.allowed_contributors.blank?
-      true
-    else
+    project.allowed_contributors.blank? ||
       project.allowed_contributors.split(",").include?(requestor) ||
-        project_member?(project, requestor)
+      project_member?(project, requestor)
+  end
+
+  def self.draft_pr_allowed?(project)
+    if project.build_draft_pr
+      return true
     end
+
+    false
   end
 
   def self.project_member?(project, github_username)
@@ -443,7 +470,7 @@ class Semaphore::RepoHost::Hooks::Handler # rubocop:disable Metrics/ClassLength
   end
 
   def self.label(workflow)
-    if workflow.payload.is_pull_request?
+    if workflow.payload.pull_request?
       workflow.pull_request_number.to_s
     elsif workflow.payload.tag?
       workflow.payload.tag_name

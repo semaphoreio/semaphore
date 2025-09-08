@@ -33,6 +33,7 @@ func (i *GcsPathIterator) Next() (*PathItem, error) {
 			Path:        attrs.Prefix,
 			IsDirectory: true,
 			Age:         nil,
+			Size:        0, // Directories don't have a size
 		}, nil
 	}
 
@@ -41,6 +42,7 @@ func (i *GcsPathIterator) Next() (*PathItem, error) {
 		Path:        attrs.Name,
 		IsDirectory: false,
 		Age:         &age,
+		Size:        attrs.Size,
 	}, nil
 }
 

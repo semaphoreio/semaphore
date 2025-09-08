@@ -1,5 +1,5 @@
 defmodule Guard.Api.GithubTest do
-  use Guard.RepoCase
+  use Guard.RepoCase, async: false
 
   alias Guard.Api.Github
 

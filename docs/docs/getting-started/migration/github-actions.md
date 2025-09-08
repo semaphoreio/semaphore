@@ -5,11 +5,7 @@ sidebar_position: 3
 
 # GitHub Actions
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+<VideoTutorial title="Semaphore vs GitHub Actions" src="https://www.youtube.com/embed/GcTu9fmIGHQ" />
 
 This page explains the core concepts and feature mapping you need to migrate from GitHub Actions to Semaphore.
 
@@ -74,15 +70,14 @@ global_job_config:
 </TabItem>
 </Tabs>
 
-
 ### Language versions
 
-Both Github Actions and Semaphore allow you to use specific language versions. 
+Both Github Actions and Semaphore allow you to use specific language versions.
 
 <Tabs groupId="migration">
 <TabItem value="ga" label="GitHub Actions">
 
-GitHub Actions uses a language-specific setup action. 
+GitHub Actions uses a language-specific setup action.
 
 The following example sets the Ruby version to `3.3.4`
 
@@ -94,10 +89,11 @@ jobs:
         with:
           ruby-version: '3.3.4'
 ```
+
 </TabItem>
 <TabItem value="semaphore" label="Semaphore YAML">
 
-Semaphore uses [sem-version](../../reference/toolbox#sem-version) to activate or switch language versions in the CI environment. 
+Semaphore uses [sem-version](../../reference/toolbox#sem-version) to activate or switch language versions in the CI environment.
 
 The following example activates Ruby v3.3.4, any commands after the example run on this Ruby version.
 
@@ -115,7 +111,6 @@ jobs:
 
 </TabItem>
 </Tabs>
-
 
 ### Caching
 
@@ -150,7 +145,7 @@ The following commands, when added to a job downloads, cache, and install Gems i
     - cache store 
 ```
 
-See [caching](../../using-semaphore/optimization/cache) for more details.
+See [caching](../../using-semaphore/cache) for more details.
 
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
@@ -159,7 +154,6 @@ See [caching](../../using-semaphore/optimization/cache) for more details.
 
 </TabItem>
 </Tabs>
-
 
 ### Database and services
 
@@ -199,7 +193,7 @@ jobs:
       - sem-service start postgres
       - sem-service start redis
 ```
-    
+
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
 
@@ -310,12 +304,11 @@ global_job_config:
 </TabItem>
 <TabItem value="ui" label="Semaphore Editor">
 
-On Semaphore, we create the [secret](../../using-semaphore/secrets) at the organization or project level and activate it on a block. 
+On Semaphore, we create the [secret](../../using-semaphore/secrets) at the organization or project level and activate it on a block.
 
 The secret's contents are automatically injected as environment variables in all jobs in that block.
 
 ![Using secrets on Semaphore](./img/secrets.jpg)
-
 
 </TabItem>
 </Tabs>
@@ -478,7 +471,6 @@ blocks:
 
 </TabItem>
 </Tabs>
-
 
 ## See also
 

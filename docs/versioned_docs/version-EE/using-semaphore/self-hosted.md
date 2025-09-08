@@ -4,11 +4,11 @@ description: Run jobs on your hardware
 
 # Self-hosted Agents
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 You need self-hosted agents to run jobs in Semaphore. This page explains what self-hosted agents are and how to install them on several platforms.
 
@@ -58,7 +58,6 @@ Self-hosted agents use one-way communication to connect with Semaphore. Requests
 ### Registration request {#registration}
 
 When the agent boots up it sends a register request using a registration token. If the registration succeeds, the agent receives an access token to be used in all future communications and enters the *waiting for job* state.
-
 
 ```mermaid
 sequenceDiagram
@@ -130,7 +129,7 @@ Not all of the [Semaphore toolbox](../reference/toolbox) commands are available 
 
 | Feature                                     | Available | Notes                                           |
 |---------------------------------------------|-----------|-------------------------------------------------|
-| Using the [cache](../reference/toolbox#cache)                                   | Optional | Using [S3](./optimization/cache#aws), [GCP](./optimization/cache#gcp), or [SFTP](./optimization/cache#sftp) as a storage backend |
+| Using the [cache](../reference/toolbox#cache)                                   | Optional | Using [S3](./cache#aws), [GCP](./cache#gcp), or [SFTP](./cache#sftp) as a storage backend |
 | [Artifact](./artifacts) storage                                                 | Yes |                                           |
 | [Test results](./tests/test-reports) | Yes |                                           |
 | Checking code with [checkout](../reference/toolbox#checkout)                    | Yes |                                           |
@@ -223,4 +222,3 @@ Keep in mind that:
 - [How to configure self-hosted agents](./self-hosted-configure)
 - [How to run an autoscaling fleet of agents in AWS](./self-hosted-aws)
 - [Self-hosted agents configuration reference](../reference/self-hosted-config)
-

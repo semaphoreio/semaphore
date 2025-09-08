@@ -50,7 +50,7 @@
 
                 <label class="db b mb0">Access Credentials</label>
                 <p class="mb3">Semaphore needs credentials with write acess to upload the logs</p>
-                <%= if Front.on_prem?() do %>
+                <%= if Front.os?() do %>
                  <div class="ml1 mv2">
                     <div class="flex items-center mt2">
                         <%= checkbox(f, :instance_role) %>

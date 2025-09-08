@@ -5,11 +5,7 @@ sidebar_position: 4
 
 # Travis CI
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+<VideoTutorial title="Semaphore vs Travis CI" src="https://www.youtube.com/embed/QVGLTm1RhXM" />
 
 This page explains the core concepts and feature mapping you need to migrate from Travis CI to Semaphore.
 
@@ -36,7 +32,6 @@ Checkout is implicit in all Travis CI workflows by default.
 <TabItem value="new" label="Semaphore">
 
 Semaphore does not clone the repository by default. This is because there are certain scenarios in which you don't need the code or you want to customize the cloning process.
-
 
 To clone the repository in Semaphore we only need to execute [`checkout`](../../reference/toolbox#checkout).
 
@@ -68,7 +63,7 @@ addons:
     paths:
     - $HOME/project/test.log
 # highlight-end
-```    
+```
 
 </TabItem>
 <TabItem value="semaphore" label="Semaphore">
@@ -122,19 +117,19 @@ bundle install
 cache store
 ```
 
-See [caching](../../using-semaphore/optimization/cache) for more details.
+See [caching](../../using-semaphore/cache) for more details.
 
 </TabItem>
 </Tabs>
 
 ### Language versions
 
-Both Travis CI and Semaphore allow you to use specific language versions. 
+Both Travis CI and Semaphore allow you to use specific language versions.
 
 <Tabs groupId="editor-yaml">
 <TabItem value="ga" label="Travis CI">
 
-Travis CI uses a language-specific setup keyword. 
+Travis CI uses a language-specific setup keyword.
 
 The following example sets the Ruby version to `3.3.4`
 
@@ -170,7 +165,7 @@ services:
 <TabItem value="semaphore" label="Semaphore">
 
 Semaphore provides the [Docker environments](../../using-semaphore/pipelines#docker-environments) to run your jobs in environments with all your build tools. You can connect multiple Docker images to provide database services for your end-to-end or smoke tests.
-    
+
 </TabItem>
 </Tabs>
 
@@ -198,7 +193,7 @@ Using encrypted files uses a different system that's a bit more convoluted.
 
 In Semaphore, secrets are stored on the Semaphore server or project. Encryption and decryption is automatically handled for environment variables and files.
 
-First, we create a [secret](../../using-semaphore/secrets) at the server or project level and activate it on a block. 
+First, we create a [secret](../../using-semaphore/secrets) at the server or project level and activate it on a block.
 
 The secret contents are automatically injected as environment variables in all jobs contained on that block.
 
