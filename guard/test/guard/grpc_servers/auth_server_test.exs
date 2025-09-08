@@ -1,6 +1,8 @@
 defmodule Guard.GrpcServers.AuthServerTest do
   use Guard.RepoCase, async: false
 
+  import Mock
+
   alias InternalApi.Auth
   alias InternalApi.Auth.Authentication.Stub
   alias InternalApi.Auth.AuthenticateRequest
@@ -190,6 +192,47 @@ defmodule Guard.GrpcServers.AuthServerTest do
 
       assert_response(response, user)
     end
+
+    test "logs service account access metric for service account authentication" do
+      org_id = Ecto.UUID.generate()
+
+      {:ok, %{user: sa_user}} = Support.Factories.ServiceAccountFactory.insert(org_id: org_id)
+
+      token = Guard.AuthenticationToken.new()
+      token_hash = Guard.AuthenticationToken.hash_token(token)
+
+      sa_user
+      |> Ecto.Changeset.change(authentication_token: token_hash)
+      |> Guard.FrontRepo.update()
+
+      with_mock Watchman, [:passthrough], increment: fn _ -> :ok end do
+        # Authenticate with service account token
+        request = AuthenticateRequest.new(token: token)
+        {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        {:ok, response} = channel |> Stub.authenticate(request)
+
+        assert response.authenticated == true
+        assert response.user_id == sa_user.id
+
+        # Verify service account access metric was logged
+        assert called(Watchman.increment({"service_account.access", [org_id]}))
+      end
+    end
+
+    test "does not log service account metric for regular users", %{token: token, user: user} do
+      with_mock Watchman, [:passthrough], increment: fn _ -> :ok end do
+        # Authenticate with regular user token
+        request = AuthenticateRequest.new(token: token)
+        {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+        {:ok, response} = channel |> Stub.authenticate(request)
+
+        assert response.authenticated == true
+        assert response.user_id == user.id
+
+        # Verify no service account metric was logged
+        assert_not_called(Watchman.increment({"service_account.access", :_}))
+      end
+    end
   end
 
   describe "authenticate_with_cookie" do
@@ -329,7 +372,7 @@ defmodule Guard.GrpcServers.AuthServerTest do
       assert_response(response, user, "OIDC")
     end
 
-    test "return false for valid oidc cookie when session expire but refresh token is for diffrenet user",
+    test "return false for valid oidc cookie when session expire but refresh token is for different user",
          %{
            bypass: bypass,
            client_id: client_id,

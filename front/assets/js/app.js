@@ -1,9 +1,8 @@
 import "phoenix_html";
-import "../css/app.css";
 
 import $ from "jquery";
 import { install } from '@github/hotkey';
-import { Userpilot } from "userpilot"
+import posthog from "posthog-js"
 
 import { defineTimeAgoElement } from "./time_ago";
 import { Tippy } from "./tippy";
@@ -67,6 +66,7 @@ import { default as Agents} from "./agents";
 import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
+import { default as ServiceAccounts } from "./service_accounts";
 import { default as Report } from "./report";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
@@ -295,12 +295,23 @@ export var App = {
     GroupManagement.init();
     new Star();
 
-    const addPeopleAppRoot = document.getElementById("add-people");
-    if (addPeopleAppRoot) {
-      AddPeople({
-        dom: addPeopleAppRoot,
-        config: addPeopleAppRoot.dataset,
-      });
+
+    // Initialize Preact apps
+    const serviceAccountsEl = document.getElementById("service-accounts");
+    if (serviceAccountsEl) {
+      const config = JSON.parse(serviceAccountsEl.dataset.config);
+      ServiceAccounts({ dom: serviceAccountsEl, config });
+    }
+
+    const addPeopleEl = document.getElementById("add-people");
+    if (addPeopleEl) {
+      AddPeople({ dom: addPeopleEl, config: addPeopleEl.dataset });
+    }
+
+    const syncPeopleEl = document.querySelector(".app-sync-people");
+    if (syncPeopleEl) {
+      const config = JSON.parse(syncPeopleEl.dataset.config);
+      SyncPeople({ dom: syncPeopleEl, config });
     }
 
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
@@ -501,7 +512,7 @@ export var App = {
     defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
-    maybeEnableUserpilot()
+    maybeEnablePosthog()
 
 
     if (InjectedDataByBackend.JumpTo !== undefined) {
@@ -516,6 +527,7 @@ export var App = {
     Tippy.colorDropdown('.js-dropdown-color-trigger');
 
     window.Notice.init();
+
 
     $(document).on("click", ".x-select-on-click", function (event) {
       event.currentTarget.setSelectionRange(0, event.currentTarget.value.length);
@@ -572,21 +584,44 @@ function enableMagicBreadcrumbs() {
   })
 }
 
-function maybeEnableUserpilot() {
-  if (window.InjectedDataByBackend.Userpilot.token) {
-    let { userCreatedAt, userId, organizationId, organizationCreatedAt, token } = window.InjectedDataByBackend.Userpilot
-    let companyData = {}
-    if (organizationId) {
-      companyData = {
-        created_at: userCreatedAt,
-        company: {
-          id: organizationId,
-          created_at: organizationCreatedAt
+function maybeEnablePosthog() {
+  if (window.InjectedDataByBackend.Posthog.apiKey) {
+    let { apiKey, apiHost, userId, userCreatedAt, organizationId, organizationCreatedAt, } = window.InjectedDataByBackend.Posthog
+
+    if(userId) {
+      posthog.init(apiKey, {
+        api_host: apiHost,
+        autocapture: false,
+        capture_pageview: true,
+        capture_pageleave: false,
+        capture_performance: false,
+        boostrap: {
+          distinctID: userId,
+          isIdentifiedID: true,
+        },
+        loaded: function(posthog) {
+          // Identify user and set properties only once
+          const userPropsKey = `posthog_props_set_${userId}`;
+          if (!localStorage.getItem(userPropsKey)) {
+            if (userCreatedAt) {
+              posthog.people.set_once({ created_at: userCreatedAt });
+              localStorage.setItem(userPropsKey, 'true');
+            }
+          }
+
+          // Identify organization and set properties only once
+          if (organizationId) {
+            const orgPropsKey = `posthog_org_props_set_${userId}_${organizationId}`;
+            if (!localStorage.getItem(orgPropsKey)) {
+              posthog.group('organization', organizationId, {
+                created_at: organizationCreatedAt
+              });
+              localStorage.setItem(orgPropsKey, 'true');
+            }
+          }
         }
-      }
+      });
     }
-    Userpilot.initialize(token);
-    Userpilot.identify(userId, companyData);
   }
 }
 

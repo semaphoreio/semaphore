@@ -18,15 +18,21 @@ defmodule FrontWeb.Router do
         subdomains: true,
         preload: true
       )
+
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin",
+        "cross-origin-embedder-policy" => "credentialless"
+      })
+    else
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin"
+        # Omit COEP in dev to allow Phoenix LiveReload iframe
+      })
     end
 
     plug(:protect_from_forgery)
-
-    plug(:put_secure_browser_headers, %{
-      "cross-origin-resource-policy" => "same-site",
-      "cross-origin-opener-policy" => "same-origin",
-      "cross-origin-embedder-policy" => "credentialless"
-    })
 
     plug(FrontWeb.Plug.ContentSecurityPolicy)
 
@@ -162,6 +168,15 @@ defmodule FrontWeb.Router do
       post("/:user_id/update_repo_scope/:provider", PeopleController, :update_repo_scope)
 
       get("/offboarding/:user_id", OffboardingController, :show)
+    end
+
+    scope "/service_accounts" do
+      get("/", ServiceAccountController, :index)
+      post("/", ServiceAccountController, :create)
+      get("/:id", ServiceAccountController, :show)
+      put("/:id", ServiceAccountController, :update)
+      delete("/:id", ServiceAccountController, :delete)
+      post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
     end
 
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)

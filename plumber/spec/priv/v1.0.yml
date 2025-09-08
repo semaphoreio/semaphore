@@ -211,6 +211,7 @@ definitions:
         oneOf:
           - type: integer
             minimum: 1
+            maximum: 50
           - type: string
       matrix:
         type: array
@@ -262,6 +263,7 @@ definitions:
     required: [name]
   env_vars:
     type: array
+    maxItems: 10000
     items:
       type: object
       $ref: "#/definitions/env_var"

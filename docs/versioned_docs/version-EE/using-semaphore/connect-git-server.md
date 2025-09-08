@@ -4,11 +4,11 @@ description: Access repositories on any Git server via SSH
 
 # Connect Any Git Server
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This page explains how to add a project hosted on a private Git server. 
 
@@ -91,7 +91,7 @@ To connect with this method, press the **Create new** button.
 
 5. SSH into the Git server add the SSH key copied in the previous step to `$HOME/.ssh/authorized_keys` (relative to the user that runs the Git service) and press **Continue**
 
-6. Back in Sempahore, press the **Generate Script** button
+6. Back in Semaphore, press the **Generate Script** button
 
     <details>
     <summary>Show me</summary>
@@ -193,7 +193,7 @@ This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from t
 
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [How to connect with GitHub App](./connect-github)
 - [How to connect with BitBucket](./connect-bitbucket)
 - [How to connect with GitLab](./connect-gitlab)

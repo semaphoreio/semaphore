@@ -4,17 +4,11 @@ description: Where everything begins
 
 # Workflows
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 A *workflow* is a series of steps to build, test, release, or deploy your application. This page explains workflows, how they are triggered, and their settings.
 
 :::tip
 
-If this is your first time using Semaphore, check out [Guided Tour](../getting-started/guided-tour).
+If this is your first time using Semaphore, check out [Quickstart](../getting-started/quickstart).
 
 :::
 
@@ -38,6 +32,8 @@ The [project page](./projects#view-projects) shows all the recent workflows for 
 ![Types of workflows](./img/workflow-types.jpg)
 
 ## Visual workflow editor {#workflow-editor}
+
+<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/dg2jDQmYJ_4" />
 
 You can define most aspects of your workflows using the visual editor. 
 
@@ -108,7 +104,10 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 :::
 
-- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
+- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository. You can opt to disable triggering workflows on **draft pull requests**
+
+![Control how pull requests and draft pull requests are handled](./img/trigger-draft-pull-request.jpg)
+
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket usernames that can trigger workflows in this way
   
 ![Pull request triggers](./img/project-general-settings-3.jpg)

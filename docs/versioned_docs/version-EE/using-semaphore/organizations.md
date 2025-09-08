@@ -4,19 +4,13 @@ description: Manage people, permissions, and costs
 
 # Managing Semaphore
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 This page explains how to set up [notifications](./notifications), manage users, and what settings are available in your Semaphore instance. On Semaphore Enterprise Edition, we use the terms server, instance, and organization interchangeably.
 
 ## Overview {#overview}
 
 In order to access any non-public resources on Semaphore you must be invited to the Semaphore instance.
 
-If you are trying out Semaphore for the first time, we suggest the [Guided Tour](../getting-started/guided-tour), where we show how to get started quickly.
+If you are trying out Semaphore for the first time, we suggest the [Quickstart](../getting-started/quickstart), where we show how to get started quickly.
 
 A Semaphore instance has:
 
@@ -99,7 +93,7 @@ To change user roles, go to the people option in the server menu and follow thes
 
 ### How to reset a user password {#reset-password}
 
-To reset a user password, go to the poeple option in the server menu and follow these steps:
+To reset a user password, go to the people option in the server menu and follow these steps:
 
 <Steps>
 
@@ -279,6 +273,8 @@ Integration with Okta allows you to automate user management within your Semapho
 For more information, see the [Okta integration page](./okta.md)
 
 ## Audit logs {#audit-log}
+
+<VideoTutorial title="How to view audit logs" src="https://www.youtube.com/embed/o5yXSvjcz7s"/>
 
 To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your server, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
 

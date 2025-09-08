@@ -4,18 +4,18 @@ description: Install Semaphore on Ubuntu
 
 # Ubuntu Machine
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to install Semaphore Community Edition on a Linux Ubuntu machine.
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](/getting-started/quickstart) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams that are familiar with Semaphore.
 
@@ -59,7 +59,6 @@ Configure your DNS by creating two A records that point to the reserved IP:
 ## Step 2 - Install tools {#install-tools}
 
 Open a terminal into your Linux machine, e.g. using SSH:
-
 
 ```shell title="Connect to your machine"
 ssh <user>@<public-IP-address-of-machine>
@@ -198,8 +197,8 @@ Finally, install Semaphore with Helm:
 ```shell title="remote shell - install Semaphore"
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.3.0 \
-  --timeout 20m \
+  --version v1.4.0 \
+  --timeout 30m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
   --set ingress.enabled=true \
@@ -262,10 +261,9 @@ You should be greeted with the onboarding guide.
 Once you have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
-
 
 ## How to Upgrade Semaphore {#upgrade}
 
@@ -314,7 +312,6 @@ To upgrade Semaphore, follow these steps:
 
 </Steps>
 
-
 ## How to Uninstall Semaphore
 
 If you want to completely uninstall Semaphore, follow these steps.
@@ -347,6 +344,6 @@ kubectl delete pvc \
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

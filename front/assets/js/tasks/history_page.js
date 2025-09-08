@@ -2,7 +2,6 @@ import { QueryList } from "../query_list"
 import { Props } from "../props"
 import _ from "lodash"
 
-import 'pikaday/css/pikaday.css';
 import pikaday from 'pikaday';
 
 export default class HistoryPage {

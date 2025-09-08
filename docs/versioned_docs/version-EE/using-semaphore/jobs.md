@@ -4,11 +4,11 @@ description: Jobs and blocks are the basic unit of work
 
 # Jobs
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 Jobs get stuff done. This page explains to create and configure jobs.
 
@@ -1074,7 +1074,7 @@ To use a job matrix, follow these steps:
 
 </Steps>
 
-The following example runs a 2 x 3 matrix with variables `NODE_VER` and `PKG_MNGR`. Semaphore expands the job into 6 parametererized jobs:
+The following example runs a 2 x 3 matrix with variables `NODE_VER` and `PKG_MNGR`. Semaphore expands the job into 6 parameterized jobs:
 
 ```yaml
 version: v1.0

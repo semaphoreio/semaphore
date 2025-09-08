@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion7
 const (
 	UserService_Describe_FullMethodName                     = "/InternalApi.User.UserService/Describe"
 	UserService_DescribeByRepositoryProvider_FullMethodName = "/InternalApi.User.UserService/DescribeByRepositoryProvider"
+	UserService_DescribeByEmail_FullMethodName              = "/InternalApi.User.UserService/DescribeByEmail"
 	UserService_SearchUsers_FullMethodName                  = "/InternalApi.User.UserService/SearchUsers"
 	UserService_DescribeMany_FullMethodName                 = "/InternalApi.User.UserService/DescribeMany"
 	UserService_Update_FullMethodName                       = "/InternalApi.User.UserService/Update"
@@ -29,12 +30,12 @@ const (
 	UserService_ListFavorites_FullMethodName                = "/InternalApi.User.UserService/ListFavorites"
 	UserService_CreateFavorite_FullMethodName               = "/InternalApi.User.UserService/CreateFavorite"
 	UserService_DeleteFavorite_FullMethodName               = "/InternalApi.User.UserService/DeleteFavorite"
-	UserService_Referer_FullMethodName                      = "/InternalApi.User.UserService/Referer"
 	UserService_CheckGithubToken_FullMethodName             = "/InternalApi.User.UserService/CheckGithubToken"
 	UserService_BlockAccount_FullMethodName                 = "/InternalApi.User.UserService/BlockAccount"
 	UserService_UnblockAccount_FullMethodName               = "/InternalApi.User.UserService/UnblockAccount"
 	UserService_GetRepositoryToken_FullMethodName           = "/InternalApi.User.UserService/GetRepositoryToken"
 	UserService_RefreshRepositoryProvider_FullMethodName    = "/InternalApi.User.UserService/RefreshRepositoryProvider"
+	UserService_Create_FullMethodName                       = "/InternalApi.User.UserService/Create"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -47,6 +48,9 @@ type UserServiceClient interface {
 	// Operation is called to find and describe an existing user based on repository provider id
 	// Operation is synchronous.
 	DescribeByRepositoryProvider(ctx context.Context, in *DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*User, error)
+	// Operation is called to find and describe an existing user based on email address
+	// Operation is synchronous.
+	DescribeByEmail(ctx context.Context, in *DescribeByEmailRequest, opts ...grpc.CallOption) (*User, error)
 	// Operation is called to search for users
 	// Operation is synchronous.
 	SearchUsers(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
@@ -71,9 +75,6 @@ type UserServiceClient interface {
 	// Operation is called to delete the favorite record.
 	// Operation is synchronous.
 	DeleteFavorite(ctx context.Context, in *Favorite, opts ...grpc.CallOption) (*Favorite, error)
-	// Operation is called to describe an refere data for a user.
-	// Operation is synchronous.
-	Referer(ctx context.Context, in *RefererRequest, opts ...grpc.CallOption) (*RefererResponse, error)
 	// Operation is called to check the status of an github token.
 	// Operation is synchronous.
 	CheckGithubToken(ctx context.Context, in *CheckGithubTokenRequest, opts ...grpc.CallOption) (*CheckGithubTokenResponse, error)
@@ -90,6 +91,9 @@ type UserServiceClient interface {
 	// for a given user and provider type
 	// Operation is synchronous.
 	RefreshRepositoryProvider(ctx context.Context, in *RefreshRepositoryProviderRequest, opts ...grpc.CallOption) (*RefreshRepositoryProviderResponse, error)
+	// Operation is called create a new user, passing username and name.
+	// Operation is synchronous.
+	Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*User, error)
 }
 
 type userServiceClient struct {
@@ -112,6 +116,15 @@ func (c *userServiceClient) Describe(ctx context.Context, in *DescribeRequest, o
 func (c *userServiceClient) DescribeByRepositoryProvider(ctx context.Context, in *DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*User, error) {
 	out := new(User)
 	err := c.cc.Invoke(ctx, UserService_DescribeByRepositoryProvider_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DescribeByEmail(ctx context.Context, in *DescribeByEmailRequest, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, UserService_DescribeByEmail_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -190,15 +203,6 @@ func (c *userServiceClient) DeleteFavorite(ctx context.Context, in *Favorite, op
 	return out, nil
 }
 
-func (c *userServiceClient) Referer(ctx context.Context, in *RefererRequest, opts ...grpc.CallOption) (*RefererResponse, error) {
-	out := new(RefererResponse)
-	err := c.cc.Invoke(ctx, UserService_Referer_FullMethodName, in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *userServiceClient) CheckGithubToken(ctx context.Context, in *CheckGithubTokenRequest, opts ...grpc.CallOption) (*CheckGithubTokenResponse, error) {
 	out := new(CheckGithubTokenResponse)
 	err := c.cc.Invoke(ctx, UserService_CheckGithubToken_FullMethodName, in, out, opts...)
@@ -244,6 +248,15 @@ func (c *userServiceClient) RefreshRepositoryProvider(ctx context.Context, in *R
 	return out, nil
 }
 
+func (c *userServiceClient) Create(ctx context.Context, in *CreateRequest, opts ...grpc.CallOption) (*User, error) {
+	out := new(User)
+	err := c.cc.Invoke(ctx, UserService_Create_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations should embed UnimplementedUserServiceServer
 // for forward compatibility
@@ -254,6 +267,9 @@ type UserServiceServer interface {
 	// Operation is called to find and describe an existing user based on repository provider id
 	// Operation is synchronous.
 	DescribeByRepositoryProvider(context.Context, *DescribeByRepositoryProviderRequest) (*User, error)
+	// Operation is called to find and describe an existing user based on email address
+	// Operation is synchronous.
+	DescribeByEmail(context.Context, *DescribeByEmailRequest) (*User, error)
 	// Operation is called to search for users
 	// Operation is synchronous.
 	SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
@@ -278,9 +294,6 @@ type UserServiceServer interface {
 	// Operation is called to delete the favorite record.
 	// Operation is synchronous.
 	DeleteFavorite(context.Context, *Favorite) (*Favorite, error)
-	// Operation is called to describe an refere data for a user.
-	// Operation is synchronous.
-	Referer(context.Context, *RefererRequest) (*RefererResponse, error)
 	// Operation is called to check the status of an github token.
 	// Operation is synchronous.
 	CheckGithubToken(context.Context, *CheckGithubTokenRequest) (*CheckGithubTokenResponse, error)
@@ -297,6 +310,9 @@ type UserServiceServer interface {
 	// for a given user and provider type
 	// Operation is synchronous.
 	RefreshRepositoryProvider(context.Context, *RefreshRepositoryProviderRequest) (*RefreshRepositoryProviderResponse, error)
+	// Operation is called create a new user, passing username and name.
+	// Operation is synchronous.
+	Create(context.Context, *CreateRequest) (*User, error)
 }
 
 // UnimplementedUserServiceServer should be embedded to have forward compatible implementations.
@@ -308,6 +324,9 @@ func (UnimplementedUserServiceServer) Describe(context.Context, *DescribeRequest
 }
 func (UnimplementedUserServiceServer) DescribeByRepositoryProvider(context.Context, *DescribeByRepositoryProviderRequest) (*User, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DescribeByRepositoryProvider not implemented")
+}
+func (UnimplementedUserServiceServer) DescribeByEmail(context.Context, *DescribeByEmailRequest) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DescribeByEmail not implemented")
 }
 func (UnimplementedUserServiceServer) SearchUsers(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SearchUsers not implemented")
@@ -333,9 +352,6 @@ func (UnimplementedUserServiceServer) CreateFavorite(context.Context, *Favorite)
 func (UnimplementedUserServiceServer) DeleteFavorite(context.Context, *Favorite) (*Favorite, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteFavorite not implemented")
 }
-func (UnimplementedUserServiceServer) Referer(context.Context, *RefererRequest) (*RefererResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Referer not implemented")
-}
 func (UnimplementedUserServiceServer) CheckGithubToken(context.Context, *CheckGithubTokenRequest) (*CheckGithubTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CheckGithubToken not implemented")
 }
@@ -350,6 +366,9 @@ func (UnimplementedUserServiceServer) GetRepositoryToken(context.Context, *GetRe
 }
 func (UnimplementedUserServiceServer) RefreshRepositoryProvider(context.Context, *RefreshRepositoryProviderRequest) (*RefreshRepositoryProviderResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RefreshRepositoryProvider not implemented")
+}
+func (UnimplementedUserServiceServer) Create(context.Context, *CreateRequest) (*User, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
 
 // UnsafeUserServiceServer may be embedded to opt out of forward compatibility for this service.
@@ -395,6 +414,24 @@ func _UserService_DescribeByRepositoryProvider_Handler(srv interface{}, ctx cont
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).DescribeByRepositoryProvider(ctx, req.(*DescribeByRepositoryProviderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DescribeByEmail_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DescribeByEmailRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DescribeByEmail(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DescribeByEmail_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DescribeByEmail(ctx, req.(*DescribeByEmailRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -543,24 +580,6 @@ func _UserService_DeleteFavorite_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _UserService_Referer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RefererRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).Referer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_Referer_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).Referer(ctx, req.(*RefererRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _UserService_CheckGithubToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CheckGithubTokenRequest)
 	if err := dec(in); err != nil {
@@ -651,6 +670,24 @@ func _UserService_RefreshRepositoryProvider_Handler(srv interface{}, ctx context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).Create(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_Create_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).Create(ctx, req.(*CreateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -665,6 +702,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DescribeByRepositoryProvider",
 			Handler:    _UserService_DescribeByRepositoryProvider_Handler,
+		},
+		{
+			MethodName: "DescribeByEmail",
+			Handler:    _UserService_DescribeByEmail_Handler,
 		},
 		{
 			MethodName: "SearchUsers",
@@ -699,10 +740,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _UserService_DeleteFavorite_Handler,
 		},
 		{
-			MethodName: "Referer",
-			Handler:    _UserService_Referer_Handler,
-		},
-		{
 			MethodName: "CheckGithubToken",
 			Handler:    _UserService_CheckGithubToken_Handler,
 		},
@@ -721,6 +758,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RefreshRepositoryProvider",
 			Handler:    _UserService_RefreshRepositoryProvider_Handler,
+		},
+		{
+			MethodName: "Create",
+			Handler:    _UserService_Create_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

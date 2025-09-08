@@ -4,18 +4,18 @@ description: Install Semaphore on AWS EC2 Instance (VM)
 
 # AWS Compute Instance (EC2)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to install Semaphore Community Edition on a [AWS Elastic Compute Cloud (EC2)](https://aws.amazon.com/ec2/).
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/quickstart.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -104,7 +104,6 @@ chmod 600 $AWS_SSH_KEY.pem
 
 You may skip this step if you already have a subnet configured for your EC2 instance. In that case, ensure the `aws-config` file is exporting the variable `SUBNET_ID`.
 
-
 First, check what subnets you have configured:
 
 ```shell
@@ -113,14 +112,12 @@ aws ec2 describe-subnets
 
 If required, create a subnet. The following example creates a subnet on the default CIDR block. Replace `vpc-8eb123f4` with your VPC ID, adjust the `--cidr-block as needed`, and choose an appropriate `--availability-zone` for your region.
 
-
 ```shell
 aws ec2 create-subnet \
   --vpc-id vpc-8eb123f4 \
   --cidr-block 172.31.1.0/24 \
   --availability-zone us-east-1a
 ```
-
 
 ## Step 4 - Create EC2 instance {#instance}
 
@@ -236,7 +233,6 @@ You may skip this section if you already have wildcard certificates, e.g. `*.sem
 
 We can use [certbot](https://certbot.eff.org/) to create a free wildcard TLS certificate. Install certbot with the following command:
 
-
 ```shell title="remote shell - install tools"
 sudo apt-get update
 sudo apt-get -y install certbot
@@ -309,7 +305,6 @@ export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 ## Step 10 - Install Semaphore {#install}
 
-
 We recommend running the following sanity checks to confirm you're ready for installation. The commands should not fail and return valid values.
 
 ```shell title="remote shell - check if ready to install"
@@ -332,8 +327,8 @@ Finally, install Semaphore with Helm. This step assumes that you have copied you
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.3.0 \
-  --timeout 20m \
+  --version v1.4.0 \
+  --timeout 30m \
   --set global.edition=ee \
   --set global.license=$(cat path/to/license-file.txt) \
   --set global.domain.ip=${IP_ADDRESS} \
@@ -397,7 +392,7 @@ You should be greeted with the onboarding guide.
 Once your have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
@@ -414,6 +409,7 @@ Follow these steps if you need to upgrade Semaphore, install a new [license](./l
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     kubectl get nodes
     ```
+
 3. Load you configuration file and ensure the certificates are located in the right folder. See [Step 8](#certs) if you need to regenerate the certificates.
 
     ```shell
@@ -497,7 +493,6 @@ aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

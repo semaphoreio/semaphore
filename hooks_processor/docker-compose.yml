@@ -39,6 +39,9 @@ services:
 
     volumes:
       - .:/app
+      - elixir_deps:/app/deps
+      - elixir_build:/app/_build
+
 
   db:
     image: postgres:9.6
@@ -66,4 +69,8 @@ services:
 
 volumes:
   postgres-data:
+    driver: local
+  elixir_deps:
+    driver: local
+  elixir_build:
     driver: local

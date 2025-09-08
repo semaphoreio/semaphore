@@ -4,11 +4,11 @@ description: Deploy an autoscaling fleet of self-hosted agents in AWS
 
 # Autoscaling with AWS
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 Semaphore provides the open-source [AWS agent stack](https://github.com/renderedtext/agent-aws-stack) to help you deploy an autoscaling fleet of self-hosted agents in AWS.
 
@@ -275,7 +275,7 @@ See the [AWS stack parameters reference](../reference/agent-aws-stack) for all t
 
 ### Cache
 
-See [setting up S3 cache](./optimization/cache#aws) to learn how to configure cache with AWS S3 buckets.
+See [setting up S3 cache](./cache#aws) to learn how to configure cache with AWS S3 buckets.
 
 ### Autoscaling {#scale}
 
