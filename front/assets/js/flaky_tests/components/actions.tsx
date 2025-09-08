@@ -10,6 +10,7 @@ import * as types from "../types";
 import { auto } from "@popperjs/core";
 import { Headers } from "../network/request";
 import * as marked from "marked";
+import DOMPurify from 'dompurify';
 
 export const Actions = ({ item }: { item: FlakyTestItem, }) => {
   const config = useContext(stores.Config.Context);
@@ -157,7 +158,23 @@ const TicketDetail = (props: TicketDetailProps) => {
     **Commit**: ${props.item.latestDisruptionSha()}
 
     **File**: ${props.item.testFile}`;
-    return marked.parse(markdown);
+
+    const rawHtml = marked.parse(markdown);
+    return DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: [
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'p', 'br', 'strong', 'em', 'u', 'strike',
+        'ul', 'ol', 'li',
+        'blockquote', 'code', 'pre',
+        'a'
+      ],
+      ALLOWED_ATTR: [
+        'href', 'title'
+      ],
+      ALLOWED_SCHEMES: ['http', 'https', 'mailto'],
+      FORBID_TAGS: ['script', 'object', 'embed', 'iframe', 'form', 'input'],
+      FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'style']
+    });
   };
 
 
