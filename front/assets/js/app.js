@@ -600,8 +600,24 @@ function maybeEnablePosthog() {
           isIdentifiedID: true,
         },
         loaded: function(posthog) {
-          if (userCreatedAt) {
-            posthog.people.set_once({ created_at: userCreatedAt });
+          // Identify user and set properties only once
+          const userPropsKey = `posthog_props_set_${userId}`;
+          if (!localStorage.getItem(userPropsKey)) {
+            if (userCreatedAt) {
+              posthog.people.set_once({ created_at: userCreatedAt });
+              localStorage.setItem(userPropsKey, 'true');
+            }
+          }
+
+          // Identify organization and set properties only once
+          if (organizationId) {
+            const orgPropsKey = `posthog_org_props_set_${userId}_${organizationId}`;
+            if (!localStorage.getItem(orgPropsKey)) {
+              posthog.group('organization', organizationId, {
+                created_at: organizationCreatedAt
+              });
+              localStorage.setItem(orgPropsKey, 'true');
+            }
           }
         }
       });
