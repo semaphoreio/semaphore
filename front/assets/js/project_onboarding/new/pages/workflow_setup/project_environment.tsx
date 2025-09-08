@@ -96,7 +96,9 @@ export const Projectenvironment = () => {
     }
   };
 
-  const onSkipOnboarding = () => {
+  const onSkipOnboarding = (e: Event) => {
+    e.preventDefault();
+    
     void handleSkipOnboarding({
       skipOnboardingUrl: configState.skipOnboardingUrl,
       csrfToken: configState.csrfToken,
@@ -217,7 +219,7 @@ export const Projectenvironment = () => {
                   <p className="f6 gray mb0 mr1">Next, we&apos;ll define your build steps and workflow. or you can </p>
                   <a
                     href="#"
-                    onClick={(e) => { e.preventDefault(); onSkipOnboarding(); }}
+                    onClick={onSkipOnboarding}
                     className="f6 link dim gray underline"
                     title="Skip the onboarding process and go directly to the project"
                   >
