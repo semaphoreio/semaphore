@@ -3,10 +3,10 @@
 ## Steps
 
 
-import Steps from '@site/src/components/Steps';
+
 
 ```js
-import Steps from '@site/src/components/Steps';
+
 ```
 
 <Steps>
@@ -15,7 +15,7 @@ import Steps from '@site/src/components/Steps';
 1. Import the component into your MDX file:
 
    ```js
-   import Steps from '@site/src/components/Steps';
+   
    ```
 2. Step 2
 

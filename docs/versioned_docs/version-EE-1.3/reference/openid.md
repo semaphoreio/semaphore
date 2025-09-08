@@ -4,12 +4,14 @@ description: OpenID Connect (OIDC) token reference
 
 # OIDC Tokens
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 This page describes how [OpenID Connect (OIDC)](../using-semaphore/openid) tokens are generated.
+
+<Available plans={['Scaleup']}/>
 
 ## Reference
 
@@ -23,7 +25,7 @@ Sure, here is the reordered list presented in a table with three columns: Claim,
 |-------------|-----------------------------------------------------------|--------------------------------------|
 | iss         | The issuer of the token. The full URL of the organization | `https://<org-name>.semaphoreci.com` |
 | aud         | The intended audience of the token. The full URL of the organization | `https://<org-name>.semaphoreci.com` |
-| sub         | The subject of the token. A combination of org, project, repository, and git reference for which this token was issued<br/>Template:<br/> `org:<org-name>:`<br/>`project:{project-id}:`<br/>`repo:{repo-name}:`<br/>`ref_type:{branch or pr or tag}:`<br/>`ref:{git_reference}` | `org:{org-name}:`<br/>`project:936a5312-a3b8-4921-8b3f-2cec8baac574:`<br/>`repo:web:`<br/>`ref_type:branch:`<br/>`ref:refs/heads/main` |
+| sub         | The subject of the token. A combination of org, project, repository, and git reference for which this token was issued<br/>Template:<br/> `org:<org-name>:`<br/>`project:{project-id}:`<br/>`repo:{repo-name}:`<br/>`ref_type:{branch or pr or tag}:`<br/>`ref:{git_reference}`<br/><br/>**Note**: This field often exceeds Google Cloud's 127-byte limit for attribute mapping. For Google Cloud integration, use individual claims like `repo`, `branch`, or `prj` instead. | `org:{org-name}:`<br/>`project:936a5312-a3b8-4921-8b3f-2cec8baac574:`<br/>`repo:web:`<br/>`ref_type:branch:`<br/>`ref:refs/heads/main` |
 | exp         | The UNIX timestamp when the token expires  | `1660317851` |
 | iat         | The UNIX timestamp when the token was issued | `1660317851` |
 | nbf         | The UNIX timestamp before which the token is not valid | `1660317851` |

@@ -4,10 +4,10 @@ description: Jobs YAML reference
 
 # Jobs YAML
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 This page describes the YAML syntax to create and manage Semaphore jobs.
 

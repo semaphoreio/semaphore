@@ -9,7 +9,12 @@ defmodule Auth.IpFilter do
     end
   end
 
-  defp _block?(nil, _), do: false
+  defp _block?(nil, _) do
+    Watchman.increment("auth.ip_filter.empty_ip")
+    log_error("Empty IP")
+
+    true
+  end
 
   defp _block?(client_ip, ip_allow_list) do
     !Enum.any?(ip_allow_list, fn i -> allow?(i, client_ip) end)
@@ -24,14 +29,18 @@ defmodule Auth.IpFilter do
   rescue
     e ->
       Watchman.increment("auth.ip_filter.error")
-      Logger.error("Error parsing '#{inspect(cidr_or_ip)}': #{inspect(e)}")
+      log_error("Error parsing '#{inspect(cidr_or_ip)}': #{inspect(e)}")
 
       # If something goes wrong here, it means the validation for an organization
       # IPs/CIDRs is not working properly, which is very unlikely, so we fail open
-      true
+      false
   end
 
   defp is_cidr?(cidr_or_ip) do
     String.contains?(cidr_or_ip, "/")
+  end
+
+  defp log_error(message) do
+    Logger.error("[IpFilter] #{message}")
   end
 end

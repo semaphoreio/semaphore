@@ -5,11 +5,11 @@ sidebar_position: 5
 
 # Building Docker Images
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 Use Semaphore to build, test, store, and deploy Docker images to production. This page explains how to use Docker inside Semaphore.
 

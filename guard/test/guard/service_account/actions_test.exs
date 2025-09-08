@@ -93,7 +93,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
                   creator_id: "creator-id",
                   deactivated: false,
                   email:
-                    "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                    "test@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                 },
                 api_token: "test-token"
               }}
@@ -105,7 +105,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
              assert user_id == "user-id"
 
              assert email ==
-                      "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                      "test@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
 
              assert name == "Test SA"
              :ok
@@ -124,7 +124,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
         assert_called(
           Guard.Store.RbacUser.create(
             "user-id",
-            "test@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}",
+            "test@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}",
             "Test SA",
             "service_account"
           )
@@ -257,23 +257,39 @@ defmodule Guard.ServiceAccount.ActionsTest do
   end
 
   describe "destroy/1" do
-    test "destroys service account successfully" do
+    test "destroys service account successfully and publishes deletion event" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough],
-        destroy: fn id ->
-          assert id == service_account_id
-          {:ok, :destroyed}
-        end do
+      with_mocks [
+        {ServiceAccount, [:passthrough],
+         [
+           destroy: fn id ->
+             assert id == service_account_id
+             {:ok, :destroyed}
+           end
+         ]},
+        {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
+      ] do
         {:ok, :destroyed} = Actions.destroy(service_account_id)
+
+        # Verify deletion event was published
+        assert_called(
+          Guard.Events.UserDeleted.publish(service_account_id, "user_exchange", "deleted")
+        )
       end
     end
 
-    test "handles destroy failure" do
+    test "handles destroy failure and does not publish event" do
       service_account_id = "sa-id"
 
-      with_mock ServiceAccount, [:passthrough], destroy: fn _ -> {:error, :destroy_failed} end do
+      with_mocks [
+        {ServiceAccount, [:passthrough], [destroy: fn _ -> {:error, :destroy_failed} end]},
+        {Guard.Events.UserDeleted, [:passthrough], [publish: fn _, _, _ -> :ok end]}
+      ] do
         {:error, :destroy_failed} = Actions.destroy(service_account_id)
+
+        # Verify deletion event was NOT published on failure
+        refute called(Guard.Events.UserDeleted.publish(:_, :_, :_))
       end
     end
   end
@@ -366,7 +382,8 @@ defmodule Guard.ServiceAccount.ActionsTest do
   describe "integration tests" do
     defp setup_integration_mocks do
       [
-        {Guard.Api.Organization, [:passthrough], [fetch: fn _ -> %{username: "test-org"} end]},
+        {Guard.Api.Organization, [:passthrough],
+         [fetch: fn _ -> %InternalApi.Organization.Organization{org_username: "test-org"} end]},
         {Guard.FrontRepo.User, [:passthrough],
          [reset_auth_token: fn _ -> {:ok, "test-token"} end]},
         {Guard.Store.RbacUser, [:passthrough],
@@ -398,7 +415,7 @@ defmodule Guard.ServiceAccount.ActionsTest do
 
         assert String.contains?(
                  service_account.email,
-                 "@service_accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
+                 "@service-accounts.test-org.#{Application.fetch_env!(:guard, :base_domain)}"
                )
 
         # Verify event was published

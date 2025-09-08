@@ -4,10 +4,10 @@ description: Conditions syntax
 
 # Conditions Syntax DSL
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
+
+
+
+
 
 The conditions syntax allows the use of regular expressions to match different conditions and take actions.
 

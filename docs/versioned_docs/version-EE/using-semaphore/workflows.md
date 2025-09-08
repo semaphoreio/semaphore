@@ -4,17 +4,11 @@ description: Where everything begins
 
 # Workflows
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 A *workflow* is a series of steps to build, test, release, or deploy your application. This page explains workflows, how they are triggered, and their settings.
 
 :::tip
 
-If this is your first time using Semaphore, check out [Guided Tour](../getting-started/guided-tour).
+If this is your first time using Semaphore, check out [Quickstart](../getting-started/quickstart).
 
 :::
 
@@ -38,6 +32,8 @@ The [project page](./projects#view-projects) shows all the recent workflows for 
 ![Types of workflows](./img/workflow-types.jpg)
 
 ## Visual workflow editor {#workflow-editor}
+
+<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/dg2jDQmYJ_4" />
 
 You can define most aspects of your workflows using the visual editor. 
 

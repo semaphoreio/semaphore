@@ -372,6 +372,84 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorkerTest do
     GrpcMock.verify!(WorkflowServiceMock)
   end
 
+  test "valid tag-deleted hook => tag is archived" do
+    params = %{
+      received_at: DateTime.utc_now(),
+      webhook: BitbucketHooks.tag_deletion(),
+      repository_id: UUID.uuid4(),
+      project_id: UUID.uuid4(),
+      organization_id: UUID.uuid4(),
+      provider: "bitbucket"
+    }
+
+    assert {:ok, webhook} = HooksQueries.insert(params)
+
+    # setup mocks
+
+    ProjectHubServiceMock
+    |> GrpcMock.expect(:describe, fn req, _ ->
+      assert req.id == webhook.project_id
+
+      %Projecthub.DescribeResponse{
+        project: %{
+          metadata: %{
+            id: req.id,
+            org_id: UUID.uuid4()
+          },
+          spec: %{
+            repository: %{
+              pipeline_file: ".semaphore/semaphore.yml",
+              run_on: [:BRANCHES, :TAGS],
+              whitelist: %{tags: ["/v1.*/", "/release-.*/"]}
+            }
+          }
+        },
+        metadata: %{status: %{code: :OK}}
+      }
+    end)
+
+    AdminServiceMock
+    |> GrpcMock.expect(:terminate_all, fn req, _ ->
+      assert req.project_id == webhook.project_id
+      assert req.branch_name == "refs/tags/v1.0-alpha"
+      assert req.reason == :BRANCH_DELETION
+
+      %TerminateAllResponse{response_status: %{code: :OK}}
+    end)
+
+    BranchServiceMock
+    |> GrpcMock.expect(:describe, fn req, _ ->
+      assert req.project_id == webhook.project_id
+      assert req.branch_name == "refs/tags/v1.0-alpha"
+
+      %DescribeResponse{branch: %{id: webhook.id, name: "refs/tags/v1.0-alpha"}, status: %{code: :OK}}
+    end)
+    |> GrpcMock.expect(:archive, fn req, _ ->
+      assert req.branch_id == webhook.id
+
+      %ArchiveResponse{status: %{code: :OK, message: "Success"}}
+    end)
+
+    # wait for worker to finish and check results
+
+    assert {:ok, pid} = WorkersSupervisor.start_worker_for_webhook(webhook.id)
+
+    Test.Helpers.wait_for_worker_to_finish(pid, 15_000)
+
+    assert {:ok, webhook} = HooksQueries.get_by_id(webhook.id)
+    assert webhook.state == "deleting_branch"
+    assert webhook.result == "OK"
+    assert webhook.wf_id == nil
+    assert webhook.ppl_id == nil
+    assert webhook.branch_id == webhook.id
+    assert webhook.commit_sha == "86efd1e2f788d237a9b8d6da5c04683d289ad805"
+    assert webhook.commit_author == "fake-test-user-1234"
+    assert webhook.git_ref == "refs/tags/v1.0-alpha"
+
+    GrpcMock.verify!(ProjectHubServiceMock)
+    GrpcMock.verify!(BranchServiceMock)
+  end
+
   test "[skip ci] flag in branch-push hook => hook in skip_ci state" do
     params = %{
       received_at: DateTime.utc_now(),
