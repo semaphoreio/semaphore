@@ -586,27 +586,26 @@ function enableMagicBreadcrumbs() {
 
 function maybeEnablePosthog() {
   if (window.InjectedDataByBackend.Posthog.apiKey) {
-    let { apiKey, apiHost, userId, organizationId, organizationCreatedAt, userCreatedAt } = window.InjectedDataByBackend.Posthog
+    let { apiKey, apiHost, userId, userCreatedAt, organizationId, organizationCreatedAt, } = window.InjectedDataByBackend.Posthog
 
-    posthog.init(apiKey, {
-      api_host: apiHost,
-      autocapture: false,
-      capture_pageview: true,
-      capture_pageleave: false,
-      loaded: function(posthog) {
-        if (userId) {
-          posthog.identify(userId, {
-            user_created_at: userCreatedAt
-          });
-
-          if (organizationId) {
-            posthog.group('organization', organizationId, {
-              organization_created_at: organizationCreatedAt
-            });
+    if(userId) {
+      posthog.init(apiKey, {
+        api_host: apiHost,
+        autocapture: false,
+        capture_pageview: true,
+        capture_pageleave: false,
+        capture_performance: false,
+        boostrap: {
+          distinctID: userId,
+          isIdentifiedID: true,
+        },
+        loaded: function(posthog) {
+          if (userCreatedAt) {
+            posthog.people.set_once({ created_at: userCreatedAt });
           }
         }
-      }
-    });
+      });
+    }
   }
 }
 
