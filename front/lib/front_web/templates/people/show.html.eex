@@ -7,56 +7,54 @@
   <div class="pt4">
     <div class="bg-white mw6 center shadow-1 pa3 pa4-l mb4-l br3">
       <%= if @owned do %>
-      <%= form_for @conn, people_path(@conn, :update, @user.id), [class: "mw6"], fn f -> %>
-        <div class="mb3">
-          <%= label f, :name , "Screen name", class: "f4 db b mb2" %>
-          <%= text_input f, :name, class: "form-control w-100", placeholder: @user.name, required: true %>
-          <%= manage_error_message(:account_settings, @errors, :name) %>
+        <%= form_for @conn, people_path(@conn, :update, @user.id), [class: "mw6"], fn f -> %>
+          <div class="mb3">
+            <%= label f, :name , "Screen name", class: "f4 db b mb2" %>
+            <%= text_input f, :name, class: "form-control w-100", placeholder: @user.name, required: true %>
+            <%= manage_error_message(:account_settings, @errors, :name) %>
+          </div>
+          <%= submit "Save changes", class: "btn btn-primary pointer" %>
+        <% end %>
+
+        <!-- Email Management Section -->
+        <div class="mt3 pv3 bt b--lighter-gray">
+          <h2 class="f4 mb2">Email Address</h2>
+
+          <div class="mb3">
+            <div class="f5 mb2 gray">Current Email</div>
+            <div class="f4 mb3"><%= @user.email %></div>
+          </div>
+
+            <%= form_for @conn, people_path(@conn, :change_email, @user.id), [class: "mw6", id: "email-form"], fn f -> %>
+              <div class="mb3">
+                <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
+                <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
+              </div>
+              <%= submit "Update Email", class: "btn btn-primary pointer",
+                  data: [confirm: "Are you sure you want to change this user's email address? They may need to re-verify access to some integrations."] %>
+            <% end %>
         </div>
-        <%= submit "Save changes", class: "btn btn-primary pointer" %>
-      <% end %>
       <% end %>
 
       <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) do %>
-      <%= if @permissions["organization.people.manage"] do %>
-      <div class="mt3 pv3 bt b--lighter-gray">
-        <h2 class="f4 mb2">Password</h2>
+        <%= if @permissions["organization.people.manage"] do %>
+        <div class="mt3 pv3 bt b--lighter-gray">
+          <h2 class="f4 mb2">Password</h2>
 
-        <%= if @conn.assigns[:password] do %>
-          <div class="ph3-l mb4">
-            <p class="mb3"><span class="serif">⚠️</span> For security reasons, we’ll show you the password only once.</p>
-            <pre class="people-password f6 bg-washed-yellow pa3 ba b--black-075" style="display: none"><%= @conn.assigns[:password] %></pre>
-            <p class="m0"><button class="people-password-reveal btn btn-small btn-secondary">Reveal</button></p>
-          </div>
-        <% end %>
-
-        <div>
-          <%= link "Reset Password…", to: people_path(@conn, :reset_password, @user.id), method: :post, class: "btn btn-primary", data: [confirm: "This will generate a password for this account. Continue?"] %>
-        </div>
-
-      </div>
-
-      <!-- Email Management Section -->
-      <%= if @owned do %>
-      <div class="mt3 pv3 bt b--lighter-gray">
-        <h2 class="f4 mb2">Email Address</h2>
-
-        <div class="mb3">
-          <div class="f5 mb2 gray">Current Email</div>
-          <div class="f4 mb3"><%= @user.email %></div>
-        </div>
-
-          <%= form_for @conn, people_path(@conn, :change_email, @user.id), [class: "mw6", id: "email-form"], fn f -> %>
-            <div class="mb3">
-              <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
-              <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
+          <%= if @conn.assigns[:password] do %>
+            <div class="ph3-l mb4">
+              <p class="mb3"><span class="serif">⚠️</span> For security reasons, we’ll show you the password only once.</p>
+              <pre class="people-password f6 bg-washed-yellow pa3 ba b--black-075" style="display: none"><%= @conn.assigns[:password] %></pre>
+              <p class="m0"><button class="people-password-reveal btn btn-small btn-secondary">Reveal</button></p>
             </div>
-            <%= submit "Update Email", class: "btn btn-primary pointer",
-                data: [confirm: "Are you sure you want to change this user's email address? They may need to re-verify access to some integrations."] %>
           <% end %>
-      </div>
-      <% end %>
-      <% end %>
+
+          <div>
+            <%= link "Reset Password…", to: people_path(@conn, :reset_password, @user.id), method: :post, class: "btn btn-primary", data: [confirm: "This will generate a password for this account. Continue?"] %>
+          </div>
+
+        </div>
+        <% end %>
       <% end %>
 
       <div class="mt3 pv3 bt b--lighter-gray">

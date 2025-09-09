@@ -134,17 +134,13 @@
           <div class="f4 mb3"><%= @user.email %></div>
         </div>
 
-        <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) or Front.ce?() do %>
-          <%= form_for @conn, account_path(@conn, :change_my_email), [class: "mw6", id: "email-form"], fn f -> %>
-            <div class="mb3">
-              <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
-              <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
-            </div>
-            <%= submit "Update Email", class: "btn btn-primary pointer",
-                data: [confirm: "Are you sure you want to change your email address? You may need to re-verify access to some integrations."] %>
-          <% end %>
-        <% else %>
-          <div class="f6 gray">Email changes are managed by your organization administrator.</div>
+        <%= form_for @conn, account_path(@conn, :change_my_email), [class: "mw6", id: "email-form"], fn f -> %>
+          <div class="mb3">
+            <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
+            <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
+          </div>
+          <%= submit "Update Email", class: "btn btn-primary pointer",
+              data: [confirm: "Are you sure you want to change your email address? You may need to re-verify access to some integrations."] %>
         <% end %>
       </div>
 
@@ -169,8 +165,6 @@
                   data: [confirm: "This will generate a new temporary password and send instructions to your email. Continue?"] %>
             <% end %>
           </div>
-        <% else %>
-          <div class="f6 gray">Password changes are managed by your organization administrator.</div>
         <% end %>
       </div>
 
