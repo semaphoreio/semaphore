@@ -154,25 +154,16 @@ defmodule FrontWeb.AccountController do
           |> redirect(to: account_path(conn, :show))
 
         true ->
-          # Check if feature is enabled
-          if FeatureProvider.feature_enabled?(:email_members,
-               param: conn.assigns[:organization_id]
-             ) or Front.ce?() do
-            case Models.Member.change_email(user_id, user_id, email) do
-              {:ok, %{msg: msg}} ->
-                conn
-                |> put_flash(:notice, msg)
-                |> redirect(to: account_path(conn, :show))
+          case Models.Member.change_email(user_id, user_id, email) do
+            {:ok, %{msg: msg}} ->
+              conn
+              |> put_flash(:notice, msg)
+              |> redirect(to: account_path(conn, :show))
 
-              {:error, error_msg} ->
-                conn
-                |> put_flash(:alert, "Failed to update email: #{error_msg}")
-                |> redirect(to: account_path(conn, :show))
-            end
-          else
-            conn
-            |> put_flash(:alert, "Email changes are not enabled for your organization.")
-            |> redirect(to: account_path(conn, :show))
+            {:error, error_msg} ->
+              conn
+              |> put_flash(:alert, "Failed to update email: #{error_msg}")
+              |> redirect(to: account_path(conn, :show))
           end
       end
     end)
@@ -183,8 +174,7 @@ defmodule FrontWeb.AccountController do
       user_id = conn.assigns.user_id
 
       # Check if feature is enabled
-      if FeatureProvider.feature_enabled?(:email_members, param: conn.assigns[:organization_id]) or
-           Front.ce?() do
+      if FeatureProvider.feature_enabled?(:email_members) or Front.ce?() do
         case Models.Member.reset_password(user_id, user_id) do
           {:ok, %{msg: msg, password: new_password}} ->
             conn

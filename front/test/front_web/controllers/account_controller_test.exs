@@ -77,15 +77,6 @@ defmodule FrontWeb.AccountControllerTest do
       assert get_flash(conn, :alert) == "Email address cannot be empty."
     end
 
-    test "prevents email change when feature disabled", %{conn: conn} do
-      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
-
-      conn = post(conn, "/account/change_email", %{"email" => "new@example.com"})
-
-      assert redirected_to(conn, 302) == "/account"
-      assert get_flash(conn, :alert) == "Email changes are not enabled for your organization."
-    end
-
     test "handles backend error gracefully", %{conn: conn} do
       Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
 
@@ -133,7 +124,6 @@ defmodule FrontWeb.AccountControllerTest do
 
       conn =
         conn
-        |> put_req_header("x-semaphore-user-id", "fail")
         |> post("/account/reset_my_password")
 
       assert html_response(conn, 200)

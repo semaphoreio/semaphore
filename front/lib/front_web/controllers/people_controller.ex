@@ -780,11 +780,15 @@ defmodule FrontWeb.PeopleController do
   end
 
   def change_email(conn, params = %{"user_id" => user_id, "format" => "json"}) do
-    change_user_email(conn, user_id, params["email"])
-    |> case do
-      {:ok, %{message: message}} ->
+    with true <- email_members_supported?(conn.assigns.organization_id) || Front.ce?(),
+         {:ok, %{message: message}} <- change_user_email(conn, user_id, params["email"]) do
+      conn
+      |> json(%{message: message})
+    else
+      false ->
         conn
-        |> json(%{message: message})
+        |> put_status(404)
+        |> json(%{message: "not found"})
 
       {:error, :render_404} ->
         conn
@@ -802,58 +806,56 @@ defmodule FrontWeb.PeopleController do
     Watchman.benchmark("people.change_email.form", fn ->
       email = String.trim(email)
 
-      # Basic validation
-      cond do
-        email == "" ->
+      with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
+           :ok <- validate_email_not_empty(email),
+           :ok <- validate_email_format(email),
+           {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
+        conn
+        |> put_flash(:notice, message)
+        |> redirect(to: people_path(conn, :show, user_id))
+      else
+        {:error, :empty_email} ->
           conn
           |> put_flash(:alert, "Email address cannot be empty.")
           |> redirect(to: people_path(conn, :show, user_id))
 
-        not valid_email_format?(email) ->
+        {:error, :invalid_email} ->
           conn
           |> put_flash(:alert, "Please enter a valid email address.")
           |> redirect(to: people_path(conn, :show, user_id))
 
-        true ->
-          change_user_email(conn, user_id, email)
-          |> case do
-            {:ok, %{message: message}} ->
-              conn
-              |> put_flash(:notice, message)
-              |> redirect(to: people_path(conn, :show, user_id))
+        {:error, :unauthorized} ->
+          conn
+          |> put_flash(:error, "You can not update this user's email.")
+          |> redirect(to: people_path(conn, :show, user_id))
 
-            {:error, :render_404} ->
-              conn
-              |> render_404()
+        {:error, :render_404} ->
+          conn
+          |> render_404()
 
-            {:error, error_msg} ->
-              conn
-              |> put_flash(:alert, "Failed to update email: #{error_msg}")
-              |> redirect(to: people_path(conn, :show, user_id))
-          end
+        {:error, error_msg} ->
+          conn
+          |> put_flash(:alert, "Failed to update email: #{error_msg}")
+          |> redirect(to: people_path(conn, :show, user_id))
       end
     end)
   end
 
   defp change_user_email(conn, user_id, email) do
     Watchman.benchmark("people.change_email", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
-        conn
-        |> Audit.new(:User, :Modified)
-        |> Audit.add(description: "Change Email")
-        |> Audit.add(resource_id: user_id)
-        |> Audit.log()
+      conn
+      |> Audit.new(:User, :Modified)
+      |> Audit.add(description: "Change Email")
+      |> Audit.add(resource_id: user_id)
+      |> Audit.log()
 
-        Models.Member.change_email(conn.assigns.user_id, user_id, email)
-        |> case do
-          {:ok, %{msg: msg}} ->
-            {:ok, %{message: msg}}
+      Models.Member.change_email(conn.assigns.user_id, user_id, email)
+      |> case do
+        {:ok, %{msg: msg}} ->
+          {:ok, %{message: msg}}
 
-          {:error, error_msg} ->
-            {:error, error_msg}
-        end
-      else
-        {:error, :render_404}
+        {:error, error_msg} ->
+          {:error, error_msg}
       end
     end)
   end
@@ -1196,6 +1198,16 @@ defmodule FrontWeb.PeopleController do
   @spec email_members_supported?(organization_id :: String.t()) :: bool
   defp email_members_supported?(organization_id),
     do: FeatureProvider.feature_enabled?(:email_members, param: organization_id)
+
+  defp validate_email_not_empty(""), do: {:error, :empty_email}
+  defp validate_email_not_empty(_email), do: :ok
+
+  defp validate_email_format(email) do
+    if valid_email_format?(email), do: :ok, else: {:error, :invalid_email}
+  end
+
+  defp validate_user_ownership(user_id, user_id), do: :ok
+  defp validate_user_ownership(_, _), do: {:error, :unauthorized}
 
   defp valid_email_format?(email) do
     email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
