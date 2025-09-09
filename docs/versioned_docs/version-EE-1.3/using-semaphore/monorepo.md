@@ -5,11 +5,11 @@ sidebar_position: 4
 
 # Monorepos
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 <VideoTutorial title="How to use monorepos on Semaphore" src="https://www.youtube.com/embed/DPsQg215Efo?si=UheVJSwMZvuOn7O7" />
 

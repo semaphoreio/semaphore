@@ -34,6 +34,8 @@ config :front, :superjerry_client, {Support.FakeClients.Superjerry, []}
 config :front, :scouter_client, {Front.Clients.Scouter, []}
 config :front, :service_account_client, {Support.FakeClients.ServiceAccount, []}
 
+config :front, :ephemeral_environments_client, {Support.FakeClients.EphemeralEnvironments, []}
+
 config :money,
   default_currency: :USD,
   separator: ",",
@@ -52,7 +54,8 @@ if System.get_env("AMQP_URL") != nil do
     ]
 end
 
-config :front, :userpilot_token, ""
+config :front, :posthog_api_key, ""
+config :front, :posthog_host, "https://app.posthog.com"
 
 config :front, :get_started_path, "priv/onboarding/getting_started.yaml"
 config :front, :workflow_templates_path, "workflow_templates/saas"

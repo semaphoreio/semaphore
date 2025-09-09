@@ -17,7 +17,8 @@ defmodule Front.Decorators.Header.Organization do
       "projects",
       "settings",
       "billing",
-      "self_hosted_agents"
+      "self_hosted_agents",
+      "ephemeral_environments"
     ]
     |> Enum.any?(fn page ->
       is_tab_active?(conn, tab_path, page)

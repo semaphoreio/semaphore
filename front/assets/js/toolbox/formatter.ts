@@ -112,3 +112,8 @@ export const formatTestDuration = (value: number): string => {
     return `${minutes}:${seconds.toString().padStart(2, `0`)}min`;
   }
 };
+
+export const formatTimeAgo = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return moment(date).fromNow();
+};

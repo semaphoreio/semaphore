@@ -78,6 +78,21 @@ class ProjectsController < ApplicationController
           next
         end
 
+        signature = repo_host_request.headers["X-Hub-Signature-256"]
+
+        # Rubocop insisted on making this a one big if, istead of 2 nested if statements
+        # We are validating a signature from each webhook coming from github app above
+        # in this function, (currently line 29), and we are validating signatures for every webhook
+        # coming from a repository within the hook handler.
+
+        # Only exception to the signature verification checks are repository level webhooks that do not generate
+        # a workflow (for example new member added to repo, or repository metadata changed). That will be covered
+        # in the following if block.
+        if (webhook_filter.repository_webhook? || (webhook_filter.member_webhook? && !webhook_filter.github_app_webhook?)) && !Semaphore::RepoHost::Hooks::Handler.webhook_signature_valid?(logger, project.organization.id, project.repository.id, repo_host_request.raw_post, signature)
+          logger.error("Webhook validation for repository changed and repository member events failed")
+          next
+        end
+
         if webhook_filter.member_webhook?
           Watchman.increment("repo_host_post_commit_hooks.controller.member_webhook")
           logger.info("Member Webhook")
@@ -103,9 +118,7 @@ class ProjectsController < ApplicationController
         end
 
         workflow = Semaphore::RepoHost::Hooks::Recorder.record_hook(hook_params, project)
-
         logger.add(:post_commit_request_id => workflow.id)
-
         logger.info("Saved Request")
 
         if webhook_filter.unavailable_payload?
@@ -121,12 +134,6 @@ class ProjectsController < ApplicationController
         workflow.update_attribute(:result, Workflow::RESULT_OK)
 
         Watchman.increment("IncommingHooks.processed", { external: true })
-
-        signature = repo_host_request.headers["X-Hub-Signature-256"]
-
-        unless signature
-          Watchman.increment("hooks.processing.missing_signature", tags: [project.id, project.organization.id])
-        end
 
         sidekiq_job_id = Semaphore::RepoHost::Hooks::Handler::Worker.perform_async(workflow.id, repo_host_request.raw_post, signature, 0)
 

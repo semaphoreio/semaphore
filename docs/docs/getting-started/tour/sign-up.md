@@ -4,13 +4,7 @@ description: Create your first organization
 
 # Sign Up 
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
-You will need a Semaphore account to follow this guided tour. Don't worry, the only thing you will need is an account on GitHub or BitBucket.
+You will need a Semaphore account to follow this Quickstart. Don't worry, the only thing you will need is an account on GitHub or BitBucket.
 
 In this section we'll learn about:
 
@@ -35,7 +29,7 @@ Before you can start using Semaphore, you need to create an account:
 
 <Steps>
 
-1. Go to [semaphoreci.com](https://semaphoreci.com)
+1. Go to [semaphore.io](https://semaphore.io)
 2. Press **Start Building for Free**
 3. Select one of the options: **Signup with GitHub** or **Signup with BitBucket**
 

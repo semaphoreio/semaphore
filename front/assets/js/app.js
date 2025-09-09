@@ -2,7 +2,7 @@ import "phoenix_html";
 
 import $ from "jquery";
 import { install } from '@github/hotkey';
-import { Userpilot } from "userpilot"
+import posthog from "posthog-js"
 
 import { defineTimeAgoElement } from "./time_ago";
 import { Tippy } from "./tippy";
@@ -67,6 +67,7 @@ import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
 import { default as ServiceAccounts } from "./service_accounts";
+import { default as EphemeralEnvironments } from "./ephemeral_environments";
 import { default as Report } from "./report";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
@@ -286,6 +287,13 @@ export var App = {
       })
     });
     new Star();
+  },
+  ephemeral_environments_page: function () {
+    const ephemeralEnvironmentsEl = document.getElementById("ephemeral-environments");
+    if (ephemeralEnvironmentsEl) {
+      const config = JSON.parse(ephemeralEnvironmentsEl.dataset.config);
+      EphemeralEnvironments({ dom: ephemeralEnvironmentsEl, config });
+    }
   },
   people_page: function () {
     ListPeople.init();
@@ -512,7 +520,7 @@ export var App = {
     defineTimeAgoElement()
     managePageHeaderShaddows()
     enableMagicBreadcrumbs()
-    maybeEnableUserpilot()
+    maybeEnablePosthog()
 
 
     if (InjectedDataByBackend.JumpTo !== undefined) {
@@ -584,21 +592,44 @@ function enableMagicBreadcrumbs() {
   })
 }
 
-function maybeEnableUserpilot() {
-  if (window.InjectedDataByBackend.Userpilot.token) {
-    let { userCreatedAt, userId, organizationId, organizationCreatedAt, token } = window.InjectedDataByBackend.Userpilot
-    let companyData = {}
-    if (organizationId) {
-      companyData = {
-        created_at: userCreatedAt,
-        company: {
-          id: organizationId,
-          created_at: organizationCreatedAt
+function maybeEnablePosthog() {
+  if (window.InjectedDataByBackend.Posthog.apiKey) {
+    let { apiKey, apiHost, userId, userCreatedAt, organizationId, organizationCreatedAt, } = window.InjectedDataByBackend.Posthog
+
+    if(userId) {
+      posthog.init(apiKey, {
+        api_host: apiHost,
+        autocapture: false,
+        capture_pageview: true,
+        capture_pageleave: false,
+        capture_performance: false,
+        boostrap: {
+          distinctID: userId,
+          isIdentifiedID: true,
+        },
+        loaded: function(posthog) {
+          // Identify user and set properties only once
+          const userPropsKey = `posthog_props_set_${userId}`;
+          if (!localStorage.getItem(userPropsKey)) {
+            if (userCreatedAt) {
+              posthog.people.set_once({ created_at: userCreatedAt });
+              localStorage.setItem(userPropsKey, 'true');
+            }
+          }
+
+          // Identify organization and set properties only once
+          if (organizationId) {
+            const orgPropsKey = `posthog_org_props_set_${userId}_${organizationId}`;
+            if (!localStorage.getItem(orgPropsKey)) {
+              posthog.group('organization', organizationId, {
+                created_at: organizationCreatedAt
+              });
+              localStorage.setItem(orgPropsKey, 'true');
+            }
+          }
         }
-      }
+      });
     }
-    Userpilot.initialize(token);
-    Userpilot.identify(userId, companyData);
   }
 }
 

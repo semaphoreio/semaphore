@@ -97,6 +97,8 @@ config :front,
   workflow_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),
   jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB"),
   service_account_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SERVICE_ACCOUNT"),
+  ephemeral_environments_grpc_endpoint:
+    System.get_env("INTERNAL_API_URL_EPHEMERAL_ENVIRONMENTS", "ephemeral-environments:10042"),
   permission_patrol_grpc_endpoint: "127.0.0.1:50052"
 
 config :front,
@@ -109,7 +111,8 @@ if config_env() == :prod do
   config :logger, level: (System.get_env("LOG_LEVEL") || "info") |> String.to_atom()
   config :front, docs_domain: System.get_env("DOCS_DOMAIN", "docs.semaphoreci.com")
   config :front, domain: System.get_env("BASE_DOMAIN")
-  config :front, :userpilot_token, System.get_env("USERPILOT_TOKEN")
+  config :front, :posthog_api_key, System.get_env("POSTHOG_API_KEY")
+  config :front, :posthog_host, System.get_env("POSTHOG_HOST") || "https://app.posthog.com"
   config :front, :get_started_path, System.get_env("GETTING_STARTED_YAML_PATH")
 
   config :front,

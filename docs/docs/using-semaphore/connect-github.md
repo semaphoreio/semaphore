@@ -4,12 +4,6 @@ description: Access your GitHub repositories
 
 # Connect GitHub
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 GitHub users need to provide access to Semaphore so it can read their repositories.
 
 ## Overview
@@ -228,6 +222,6 @@ If you click "Request Access" in step 5, the admin of the organization will rece
 
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Using OAuth with GitHub](./connect-github-oauth)
 - [How to connect with BitBucket](./connect-bitbucket)

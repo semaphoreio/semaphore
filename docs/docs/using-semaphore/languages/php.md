@@ -5,11 +5,11 @@ sidebar_position: 7
 
 # PHP
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This guide will help build PHP projects on Semaphore.
 
@@ -73,7 +73,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 2. Create an [after_pipeline job](../../using-semaphore/pipelines#after-pipeline-job) with the following command:
 
     ```shell
-    test-results publish junit.xml
+    test-results publish --parser phpunit junit.xml
     ```
 
 </Steps>
