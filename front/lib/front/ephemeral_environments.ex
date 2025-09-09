@@ -7,6 +7,11 @@ defmodule Front.EphemeralEnvironments do
                 project_id :: String.t()
               ) :: {:ok, [EphemeralEnvironmentType.t()]} | {:error, any}
 
+    @callback describe(
+                id :: String.t(),
+                org_id :: String.t()
+              ) :: {:ok, EphemeralEnvironmentType.t()} | {:error, any}
+
     @callback create(environment_type :: EphemeralEnvironmentType.t()) ::
                 {:ok, EphemeralEnvironmentType.t()} | {:error, any}
 
@@ -26,6 +31,9 @@ defmodule Front.EphemeralEnvironments do
 
   def list(org_id, project_id),
     do: ephemeral_environments_impl().list(org_id, project_id)
+
+  def describe(id, org_id),
+    do: ephemeral_environments_impl().describe(id, org_id)
 
   def create(environment_type),
     do: ephemeral_environments_impl().create(environment_type)

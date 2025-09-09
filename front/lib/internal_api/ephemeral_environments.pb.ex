@@ -27,6 +27,38 @@ defmodule InternalApi.EphemeralEnvironments.ListResponse do
   )
 end
 
+defmodule InternalApi.EphemeralEnvironments.DescribeRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          id: String.t(),
+          org_id: String.t()
+        }
+  defstruct [:id, :org_id]
+
+  field(:id, 1, type: :string)
+  field(:org_id, 2, type: :string)
+end
+
+defmodule InternalApi.EphemeralEnvironments.DescribeResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          environment_type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType.t(),
+          instances: [InternalApi.EphemeralEnvironments.EphemeralEnvironmentInstance.t()]
+        }
+  defstruct [:environment_type, :instances]
+
+  field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
+
+  field(:instances, 2,
+    repeated: true,
+    type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentInstance
+  )
+end
+
 defmodule InternalApi.EphemeralEnvironments.CreateRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -371,6 +403,12 @@ defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironments.Service do
     :List,
     InternalApi.EphemeralEnvironments.ListRequest,
     InternalApi.EphemeralEnvironments.ListResponse
+  )
+
+  rpc(
+    :Describe,
+    InternalApi.EphemeralEnvironments.DescribeRequest,
+    InternalApi.EphemeralEnvironments.DescribeResponse
   )
 
   rpc(
