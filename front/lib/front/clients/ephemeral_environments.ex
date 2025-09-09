@@ -2,6 +2,7 @@ defmodule Front.Clients.EphemeralEnvironments do
   require Logger
 
   alias InternalApi.EphemeralEnvironments.{
+    DescribeRequest,
     ListRequest,
     CreateRequest,
     UpdateRequest,
@@ -25,6 +26,26 @@ defmodule Front.Clients.EphemeralEnvironments do
       err ->
         Logger.error(
           "Error listing ephemeral environments for org #{org_id}, project #{project_id}: #{inspect(err)}"
+        )
+
+        handle_error(err)
+    end
+  end
+
+  @impl Front.EphemeralEnvironments.Behaviour
+  def describe(id, org_id) do
+    %DescribeRequest{
+      id: id,
+      org_id: org_id,
+    }
+    |> grpc_call(:describe)
+    |> case do
+      {:ok, result} ->
+        {:ok, result.environment_type}
+
+      err ->
+        Logger.error(
+          "Error describing ephemeral environment for org #{org_id}, id #{id}: #{inspect(err)}"
         )
 
         handle_error(err)
