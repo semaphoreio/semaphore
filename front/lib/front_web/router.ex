@@ -68,6 +68,8 @@ defmodule FrontWeb.Router do
     post("/account", AccountController, :update)
     post("/account/reset_token", AccountController, :reset_token)
     post("/account/reset_password", AccountController, :reset_password)
+    post("/account/change_email", AccountController, :change_my_email)
+    post("/account/reset_my_password", AccountController, :reset_my_password)
     post("/account/update_repo_scope/:provider", AccountController, :update_repo_scope)
 
     get("/sso/zendesk", SSOController, :zendesk)
