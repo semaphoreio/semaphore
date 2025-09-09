@@ -835,12 +835,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-
-      # Verify sub2 is present and formatted correctly (compact format with comma-separated values)
-      # org_username, project_id, empty repo, empty ref_type, empty ref
-      expected_sub2 = "testera,#{req.project_id},,,"
-      assert Map.get(jwt.fields, "sub2") == expected_sub2
-
+      assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:::"
       assert Map.get(jwt.fields, "prj") == req.project_name
       assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
@@ -914,11 +909,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-
-      # Verify sub2 is present and formatted correctly for AWS tags test
-      # org, project_id, repo, ref_type, empty ref
-      expected_sub2 = "testera,#{req.project_id},my-repo,branch,"
-      assert Map.get(jwt.fields, "sub2") == expected_sub2
+      assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:my-repo:branch:"
     end
 
     test "it returns a signed token with filtered claims in on_prem mode" do
@@ -953,6 +944,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
 
         # Essential claims should be present
         assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
+        assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:my-repo:branch:"
         assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
         assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
         assert_in_delta Map.get(jwt.fields, "exp") + req.expires_in, now, 5
@@ -1033,11 +1025,10 @@ defmodule Secrethub.InternalGrpcApi.Test do
     } do
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description:
-            "Compact subject (check sub) format with comma-separated values only (org,project_id,repo,ref_type,ref)",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
-          is_mandatory: false,
+          is_mandatory: true,
           is_aws_tag: false,
           is_system_claim: true
         )
@@ -1058,11 +1049,10 @@ defmodule Secrethub.InternalGrpcApi.Test do
     test "with empty org_id returns error", %{project_id: project_id, channel: channel} do
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description:
-            "Compact subject (check sub) format with comma-separated values only (org,project_id,repo,ref_type,ref)",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
-          is_mandatory: false,
+          is_mandatory: true,
           is_aws_tag: false,
           is_system_claim: true
         )
@@ -1157,7 +1147,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
                  description: "Test claim",
                  is_active: true,
                  # can't update for non system claims
-                 is_mandatory: true,
+                 is_mandatory: false,
                  is_aws_tag: false,
                  is_system_claim: false
                }
@@ -1174,11 +1164,10 @@ defmodule Secrethub.InternalGrpcApi.Test do
       # Set up initial JWT configuration
       claim_config =
         ClaimConfig.new(
-          name: "sub2",
-          description:
-            "Compact subject (check sub) format with comma-separated values only (org,project_id,repo,ref_type,ref)",
+          name: "custom_claim",
+          description: "Test custom claim",
           is_active: true,
-          is_mandatory: false,
+          is_mandatory: true,
           is_aws_tag: false,
           is_system_claim: true
         )
@@ -1220,7 +1209,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
                  description: expected_claim.description,
                  is_active: expected_claim.is_active,
                  # can't update for non system claims
-                 is_mandatory: true,
+                 is_mandatory: false,
                  is_aws_tag: false,
                  is_system_claim: false
                }
@@ -1235,9 +1224,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
           project_id: "",
           claims: [
             ClaimConfig.new(
-              name: "sub2",
-              description:
-                "Compact subject (check sub) format with comma-separated values only (org,project_id,repo,ref_type,ref)",
+              name: "custom_claim",
+              description: "Test custom claim",
               is_active: true,
               is_mandatory: true,
               is_aws_tag: false,
@@ -1264,8 +1252,8 @@ defmodule Secrethub.InternalGrpcApi.Test do
       refute is_nil(response.project_id), "Expected project_id not to be nil"
 
       expected_claim = %{
-        name: "sub2",
-        description: "Compact subject (check sub) format with comma-separated values only (org,project_id,repo,ref_type,ref)",
+        name: "custom_claim",
+        description: "Test custom claim",
         is_active: true,
         is_mandatory: false,
         is_aws_tag: false,
