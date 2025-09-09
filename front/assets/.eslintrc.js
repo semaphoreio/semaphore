@@ -26,7 +26,7 @@ module.exports = {
   },
   ignorePatterns: ["*.js", "*.json"],
   rules: {},
- overrides: [
+  overrides: [
     {
       files: ["js/**/*.spec.js"],
       env: {
@@ -86,7 +86,7 @@ module.exports = {
             },
           },
         ],
-        "no-console": 1,
+        "no-console": ["error", { allow: ["warn", "error"] }],
         "no-multi-spaces": "error",
         "@typescript-eslint/member-delimiter-style": [
           "warn",
@@ -114,6 +114,12 @@ module.exports = {
             beforeClosing: "never",
           },
         ],
+        "@typescript-eslint/no-misused-promises": [
+          "error",
+          {
+            "checksVoidReturn": false
+          }
+        ]
       },
     },
   ],
