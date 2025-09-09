@@ -56,7 +56,7 @@ defmodule FrontWeb.AccountControllerTest do
       conn = post(conn, "/account/change_email", %{"email" => "new@example.com"})
 
       assert redirected_to(conn, 302) == "/account"
-      assert get_flash(conn, :notice) == "Email change processed"
+      assert get_flash(conn, :notice) == "Updated email"
     end
 
     test "handles invalid email format", %{conn: conn} do
@@ -111,7 +111,7 @@ defmodule FrontWeb.AccountControllerTest do
       conn = post(conn, "/account/reset_my_password")
 
       assert html_response(conn, 200) =~ "New Temporary Password"
-      assert get_flash(conn, :notice) == "Password reset processed"
+      assert get_flash(conn, :notice) == "Password reset"
     end
 
     test "prevents password reset when feature disabled", %{conn: conn} do

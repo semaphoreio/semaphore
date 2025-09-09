@@ -372,6 +372,150 @@ defmodule FrontWeb.PeopleControllerTest do
     end
   end
 
+  describe "POST change_email" do
+    test "when the user can't access the org => returns 404", %{
+      conn: conn,
+      organization: organization,
+      other_user: other_user
+    } do
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.add_permissions(organization.id, other_user.id, ["organization.view"])
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "when the user is a member, but can't manage people => returns 404", %{
+      conn: conn,
+      organization: organization,
+      user: user,
+      other_user: other_user
+    } do
+      PermissionPatrol.remove_all_permissions()
+      PermissionPatrol.add_permissions(organization.id, other_user.id, ["organization.view"])
+
+      PermissionPatrol.allow_everything_except(
+        organization.id,
+        user.id,
+        "organization.people.manage"
+      )
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "user with manage people permission => successfully changes email", %{
+      conn: conn,
+      other_user: other_user
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{other_user.id}"
+      assert get_flash(conn, :notice) == "Email change processed"
+    end
+
+    test "user with manage people permission but feature is disabled => returns 404", %{
+      conn: conn,
+      organization: organization,
+      other_user: other_user
+    } do
+      Support.Stubs.Feature.disable_feature(organization.id, :email_members)
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+
+      Support.Stubs.Feature.enable_feature(organization.id, :email_members)
+    end
+
+    test "user on their own page => allow email change", %{
+      conn: conn,
+      user: user
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{user.id}"
+      assert get_flash(conn, :notice) == "Email change processed"
+    end
+
+    test "handles invalid email format", %{
+      conn: conn,
+      other_user: other_user
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "invalid-email"})
+
+      assert redirected_to(conn, 302) == "/people/#{other_user.id}"
+      assert get_flash(conn, :alert) == "Please enter a valid email address."
+    end
+
+    test "handles empty email", %{
+      conn: conn,
+      other_user: other_user
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => ""})
+
+      assert redirected_to(conn, 302) == "/people/#{other_user.id}"
+      assert get_flash(conn, :alert) == "Email address cannot be empty."
+    end
+
+    test "handles backend error gracefully", %{
+      conn: conn,
+      other_user: other_user
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      # Setup stub to return error
+      GrpcMock.stub(GuardMock, :change_email, fn %{user_id: "fail"}, _ ->
+        {:error, %GRPC.RPCError{message: "Email change failed"}}
+      end)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-id", "fail")
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{other_user.id}"
+      assert get_flash(conn, :alert) =~ "Failed to update email:"
+    end
+
+    test "user with manage people permission updating non member => returns 404", %{
+      conn: conn,
+      non_member: non_member
+    } do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn =
+        conn
+        |> post("/people/#{non_member.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
+  end
+
   describe "POST update_repo_scope" do
     test "when the user can't access the org => returns 404", %{
       conn: conn,

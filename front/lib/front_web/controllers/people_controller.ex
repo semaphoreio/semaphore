@@ -972,9 +972,16 @@ defmodule FrontWeb.PeopleController do
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
     fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
-    {:ok, user} = Async.await(fetch_user)
 
-    render_show(conn, user, errors)
+    case Async.await(fetch_user) do
+      {:ok, user} ->
+        render_show(conn, user, errors)
+
+      _ ->
+        conn
+        |> put_flash(:alert, "User not found.")
+        |> redirect(to: "/")
+    end
   end
 
   defp render_show(conn, user, errors) do
