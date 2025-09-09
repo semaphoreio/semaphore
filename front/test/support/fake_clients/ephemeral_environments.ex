@@ -33,10 +33,23 @@ defmodule Support.FakeClients.EphemeralEnvironments do
         state.environment_types
         |> Map.values()
         |> Enum.filter(&(&1.org_id == org_id))
-        |> Enum.sort_by(& &1.created_at, {:desc, DateTime})
       end)
 
     {:ok, environment_types}
+  end
+
+  @impl Front.EphemeralEnvironments.Behaviour
+  def describe(id, _org_id) do
+    Agent.get(__MODULE__, fn state ->
+      get_in(state, [:environment_types, id])
+    end)
+    |> case do
+      nil ->
+        {:error, "Environment type not found"}
+
+      environment_type ->
+        {:ok, environment_type}
+    end
   end
 
   @impl Front.EphemeralEnvironments.Behaviour
@@ -109,9 +122,9 @@ defmodule Support.FakeClients.EphemeralEnvironments do
           if environment_type.org_id != org_id do
             {{:error, "Environment type does not belong to this organization"}, state}
           else
-            # Mark as deleted instead of removing from storage
-            deleted_type = %{environment_type | state: TypeState.value(:TYPE_STATE_DELETED)}
-            new_state = put_in(state, [:environment_types, id], deleted_type)
+            # Remove from the storage
+            envs = Map.delete(state.environment_types, id)
+            new_state = %{state | environment_types: envs}
             {:ok, new_state}
           end
       end

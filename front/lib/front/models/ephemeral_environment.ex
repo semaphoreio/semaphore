@@ -36,8 +36,8 @@ defmodule Front.Models.EphemeralEnvironment do
   ]
 
   def list(org_id, project_id) do
-    with {:ok, environment_types} <- Front.EphemeralEnvironments.list(org_id, project_id) do
-      environments = Enum.map(environment_types, &from_proto/1)
+    with {:ok, environment_types} <- Front.EphemeralEnvironments.list(org_id, project_id),
+         environments <- Enum.map(environment_types, &from_proto/1) do
       {:ok, environments}
     else
       error ->
@@ -46,6 +46,19 @@ defmodule Front.Models.EphemeralEnvironment do
     end
   end
 
+  def get(environment_id, org_id) do
+    with {:ok, environment_type} <- Front.EphemeralEnvironments.describe(environment_id, org_id),
+         environment <- from_proto(environment_type) do
+      {:ok, environment}
+    else
+      error ->
+        Logger.error("Failed to get ephemeral environment: #{inspect(error)}")
+        {:error, "Failed to get ephemeral environment"}
+    end
+  end
+
+  @spec create(any(), any(), any(), any(), any()) ::
+          {:error, <<_::304>>} | {:ok, Front.Models.EphemeralEnvironment.t()}
   def create(org_id, name, description, user_id, max_instances) do
     environment_type = %EphemeralEnvironmentType{
       id: Ecto.UUID.generate(),
@@ -60,8 +73,9 @@ defmodule Front.Models.EphemeralEnvironment do
       max_number_of_instances: max_instances
     }
 
-    with {:ok, created_type} <- Front.EphemeralEnvironments.create(environment_type) do
-      {:ok, from_proto(created_type)}
+    with {:ok, created_type} <- Front.EphemeralEnvironments.create(environment_type),
+         environment <- from_proto(created_type) do
+      {:ok, environment}
     else
       error ->
         Logger.error("Failed to create ephemeral environment: #{inspect(error)}")
@@ -81,8 +95,9 @@ defmodule Front.Models.EphemeralEnvironment do
       max_number_of_instances: max_instances
     }
 
-    with {:ok, updated_type} <- Front.EphemeralEnvironments.update(environment_type) do
-      {:ok, from_proto(updated_type)}
+    with {:ok, updated_type} <- Front.EphemeralEnvironments.update(environment_type),
+         environment <- from_proto(updated_type) do
+      {:ok, environment}
     else
       error ->
         Logger.error("Failed to update ephemeral environment: #{inspect(error)}")
@@ -91,9 +106,11 @@ defmodule Front.Models.EphemeralEnvironment do
   end
 
   def delete(id, org_id) do
-    with :ok <- Front.EphemeralEnvironments.delete(id, org_id) do
-      :ok
-    else
+    Front.EphemeralEnvironments.delete(id, org_id)
+    |> case do
+      :ok ->
+        :ok
+
       error ->
         Logger.error("Failed to delete ephemeral environment: #{inspect(error)}")
         {:error, "Failed to delete ephemeral environment"}
@@ -101,8 +118,9 @@ defmodule Front.Models.EphemeralEnvironment do
   end
 
   def cordon(id, org_id) do
-    with {:ok, cordoned_type} <- Front.EphemeralEnvironments.cordon(id, org_id) do
-      {:ok, from_proto(cordoned_type)}
+    with {:ok, cordoned_type} <- Front.EphemeralEnvironments.cordon(id, org_id),
+         environment <- from_proto(cordoned_type) do
+      {:ok, environment}
     else
       error ->
         Logger.error("Failed to cordon ephemeral environment: #{inspect(error)}")
