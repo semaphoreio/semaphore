@@ -5,6 +5,7 @@ import * as stores from "../stores";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
+import { handleSkipOnboarding } from "../utils/skip_onboarding";
 
 interface ProjectStatusProps {
   isCreatingProject: boolean;
@@ -21,6 +22,8 @@ interface ProjectStatusProps {
   nextScreenUrl?: string;
   repoConnectionUrl?: string;
   csrfToken: string;
+  skipOnboardingUrl?: string;
+  projectUrl?: string;
 }
 
 interface ConnectionData {
@@ -67,9 +70,26 @@ export const ProjectStatus = ({
   nextScreenUrl,
   repoConnectionUrl,
   csrfToken,
+  skipOnboardingUrl,
+  projectUrl,
 }: ProjectStatusProps) => {
   const [connectionData, setConnectionData] = useState<ConnectionData | null>(null);
   const { state } = useContext(stores.Create.Repository.Context);
+
+  const onSkipOnboarding = (e: Event) => {
+    e.preventDefault();
+    // Use props first, then fallback to context state
+    const skipUrl = skipOnboardingUrl || state.skipOnboardingUrl;
+    const projUrl = projectUrl || (state.createdProjectName ? `/projects/${state.createdProjectName}` : undefined);
+    
+    if (skipUrl && projUrl) {
+      void handleSkipOnboarding({
+        skipOnboardingUrl: skipUrl,
+        csrfToken,
+        projectUrl: projUrl
+      });
+    }
+  };
 
   const fetchConnectionData = async () => {
     if (isComplete && repoConnectionUrl) {
@@ -157,7 +177,19 @@ export const ProjectStatus = ({
       )}
       {isComplete && nextScreenUrl && (
         <div className="flex justify-between items-center mt4">
-          <p className="f6 gray mb0">Next, we&apos;ll configure your build environment settings.</p>
+          <div className="flex items-center">
+            <p className="f6 gray mb0 mr3">Next, we&apos;ll configure your build environment settings.</p>
+            {(skipOnboardingUrl || state.skipOnboardingUrl) && (projectUrl || state.createdProjectName) && (
+              <a
+                href="#"
+                onClick={onSkipOnboarding}
+                className="f6 link dim gray underline"
+                title="Skip the onboarding process and go directly to the project (for advanced users)"
+              >
+                Skip onboarding
+              </a>
+            )}
+          </div>
           <a href={nextScreenUrl} className="btn btn-primary">Continue</a>
         </div>
       )}
