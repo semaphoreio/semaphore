@@ -125,6 +125,49 @@
         </div>
       </div>
 
+      <!-- Email Management Section -->
+      <div class="mt4 pv3 bt b--lighter-gray">
+        <h2 class="f4 mb3">Email Address</h2>
+
+        <div class="mb3">
+          <div class="f5 mb2 gray">Current Email</div>
+          <div class="f4 mb3"><%= @user.email %></div>
+        </div>
+
+        <%= form_for @conn, account_path(@conn, :change_my_email), [class: "mw6", id: "email-form"], fn f -> %>
+          <div class="mb3">
+            <%= label f, :email, "New Email Address", class: "f5 db b mb2" %>
+            <%= email_input f, :email, class: "form-control w-100", placeholder: @user.email, required: true %>
+          </div>
+          <%= submit "Update Email", class: "btn btn-primary pointer",
+              data: [confirm: "Are you sure you want to change your email address? You may need to re-verify access to some integrations."] %>
+        <% end %>
+      </div>
+
+      <!-- Password Management Section -->
+      <div class="mt4 pv3 bt b--lighter-gray">
+        <h2 class="f4 mb3">Password</h2>
+
+        <%= if FeatureProvider.feature_enabled?(:email_members, param: @conn.assigns[:organization_id]) or Front.ce?() do %>
+          <div class="mb3">
+            <p class="f6 gray mb3">Reset your password to receive a new temporary password via email.</p>
+
+            <%= if @conn.assigns[:new_password] do %>
+              <div class="ba b--green br2 pa3 mb3 bg-light-green">
+                <div class="f5 b mb2 green">New Temporary Password</div>
+                <input readonly type="text" class="x-select-on-click form-control w-100 mb2" value="<%= @new_password %>">
+                <div class="f6 gray">Please save this password and change it after logging in.</div>
+              </div>
+            <% end %>
+
+            <%= form_for @conn, account_path(@conn, :reset_my_password), [method: :post], fn _f -> %>
+              <%= submit "Reset Password", class: "btn btn-secondary pointer",
+                  data: [confirm: "This will generate a new temporary password and send instructions to your email. Continue?"] %>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+
       <div class="mt3 pv3 bt b--lighter-gray">
         <h2 class="f4 mb2">API Token</h2>
 

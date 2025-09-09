@@ -372,6 +372,84 @@ defmodule FrontWeb.PeopleControllerTest do
     end
   end
 
+  describe "POST change_email" do
+    test "user trying to change another user's email => returns error", %{
+      conn: conn,
+      other_user: other_user
+    } do
+      conn =
+        conn
+        |> post("/people/#{other_user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{other_user.id}"
+      assert get_flash(conn, :error) == "You can not update this user's email."
+    end
+
+    test "user on their own page => successfully changes email", %{
+      conn: conn,
+      user: user
+    } do
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{user.id}"
+      assert get_flash(conn, :notice) == "Updated email"
+    end
+
+    test "user on their own page with invalid email format", %{
+      conn: conn,
+      user: user
+    } do
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "invalid-email"})
+
+      assert redirected_to(conn, 302) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) == "Please enter a valid email address."
+    end
+
+    test "user on their own page with empty email", %{
+      conn: conn,
+      user: user
+    } do
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => ""})
+
+      assert redirected_to(conn, 302) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) == "Email address cannot be empty."
+    end
+
+    test "user on their own page with backend error", %{
+      conn: conn,
+      user: user
+    } do
+      # Setup stub to return error
+      GrpcMock.stub(GuardMock, :change_email, fn %{user_id: "fail"}, _ ->
+        {:error, %GRPC.RPCError{message: "Email change failed"}}
+      end)
+
+      conn =
+        conn
+        |> post("/people/#{user.id}/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/people/#{user.id}"
+      assert get_flash(conn, :alert) =~ "Failed to update email:"
+    end
+
+    test "user trying to change non-member email => returns 404", %{
+      conn: conn,
+      non_member: non_member
+    } do
+      conn =
+        conn
+        |> post("/people/#{non_member.id}/change_email", %{"email" => "new@example.com"})
+
+      assert html_response(conn, 404) =~ "404"
+    end
+  end
+
   describe "POST update_repo_scope" do
     test "when the user can't access the org => returns 404", %{
       conn: conn,
