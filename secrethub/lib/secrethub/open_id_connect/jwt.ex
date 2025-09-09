@@ -165,8 +165,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
       req.git_ref_type,
       req.git_ref
     ]
-    |> Enum.map(&safe_string/1)
-    |> Enum.join(",")
+    |> Enum.map_join(":", &safe_string/1)
   end
 
   defp safe_string(nil), do: ""
