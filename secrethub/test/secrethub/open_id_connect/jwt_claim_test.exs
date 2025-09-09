@@ -77,7 +77,7 @@ defmodule Secrethub.OpenIDConnect.JWTClaimTest do
 
       assert Map.has_key?(claims, "sub2")
       sub2_claim = Map.get(claims, "sub2")
-      
+
       assert sub2_claim.name == "sub2"
       assert String.contains?(sub2_claim.description, "comma-separated")
       refute sub2_claim.is_mandatory
