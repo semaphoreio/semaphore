@@ -17,6 +17,15 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
   field(:PAUSED, 2)
 end
 
+defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+end
+
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.CursorType do
   @moduledoc false
 
@@ -118,6 +127,19 @@ defmodule InternalApi.PeriodicScheduler.UnpauseResponse do
   field(:status, 1, type: InternalApi.Status)
 end
 
+defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:type, 1,
+    type: InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType,
+    enum: true
+  )
+
+  field(:name, 2, type: :string)
+end
+
 defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   @moduledoc false
 
@@ -125,14 +147,15 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
-  field(:branch, 3, type: :string)
-  field(:pipeline_file, 4, type: :string, json_name: "pipelineFile")
+  field(:pipeline_file, 3, type: :string, json_name: "pipelineFile")
 
-  field(:parameter_values, 5,
+  field(:parameter_values, 4,
     repeated: true,
     type: InternalApi.PeriodicScheduler.ParameterValue,
     json_name: "parameterValues"
   )
+
+  field(:reference, 5, type: InternalApi.PeriodicScheduler.RunNowRequest.Reference)
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do

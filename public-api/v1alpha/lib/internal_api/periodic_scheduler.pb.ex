@@ -160,17 +160,43 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   @type t :: %__MODULE__{
           id: String.t(),
           requester: String.t(),
-          branch: String.t(),
           pipeline_file: String.t(),
-          parameter_values: [InternalApi.PeriodicScheduler.ParameterValue.t()]
+          parameter_values: [InternalApi.PeriodicScheduler.ParameterValue.t()],
+          reference: InternalApi.PeriodicScheduler.RunNowRequest.Reference.t()
         }
-  defstruct [:id, :requester, :branch, :pipeline_file, :parameter_values]
+  defstruct [:id, :requester, :pipeline_file, :parameter_values, :reference]
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
-  field(:branch, 3, type: :string)
-  field(:pipeline_file, 4, type: :string)
-  field(:parameter_values, 5, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
+  field(:pipeline_file, 3, type: :string)
+  field(:parameter_values, 4, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
+  field(:reference, 5, type: InternalApi.PeriodicScheduler.RunNowRequest.Reference)
+end
+
+defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: integer,
+          name: String.t()
+        }
+  defstruct [:type, :name]
+
+  field(:type, 1,
+    type: InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType,
+    enum: true
+  )
+
+  field(:name, 2, type: :string)
+end
+
+defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:BRANCH, 0)
+  field(:TAG, 1)
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do
