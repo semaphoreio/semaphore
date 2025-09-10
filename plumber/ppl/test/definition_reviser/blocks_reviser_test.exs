@@ -27,7 +27,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
 
     agent = %{"machine" => %{"type" => "e1-standard-2", "os_image" => "ubuntu1804"}}
     blocks = [%{"build" => %{}, "name" => "blk 0"}, %{"build" => %{}, "name" => "blk 1"}]
-    ppl_def = %{"agent" => agent, "blocks" => blocks}
+    ppl_def = %{"agent" => agent, "blocks" => blocks, "name" => "Test Pipeline"}
     args = %{"service" => "local", "repo_name" => "4_cmd_file", "branch_name" => "master",
             "commit_sha" => "sha_1", "working_dir" => ".semaphore", "file_name" => "semaphore.yml"}
     source_args = %{"repo_host_username" => "gh_username_1", "commit_author" => "gh_username_2"}
@@ -37,6 +37,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
   end
 
   @ppl_id_env_var_name "SEMAPHORE_PIPELINE_ID"
+  @ppl_name_env_var_name "SEMAPHORE_PIPELINE_NAME"
   @artefact_id_env_var_name "SEMAPHORE_PIPELINE_ARTEFACT_ID"
   @block_name "SEMAPHORE_BLOCK_NAME"
   @pipeline_rerun "SEMAPHORE_PIPELINE_RERUN"
@@ -88,6 +89,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @ppl_name_env_var_name, "value" => ctx.ppl_def["name"]},
         %{"name" => @block_name, "value" => block["name"]},
         %{"name" => @pipeline_rerun, "value" => "false"},
         %{"name" => @pipeline_promotion, "value" => "false"},
@@ -121,6 +123,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @ppl_name_env_var_name, "value" => ctx.ppl_def["name"]},
         %{"name" => @block_name, "value" => block["name"]},
         %{"name" => @pipeline_rerun, "value" => "false"},
         %{"name" => @pipeline_promotion, "value" => "false"},
@@ -152,6 +155,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @ppl_name_env_var_name, "value" => ctx.ppl_def["name"]},
         %{"name" => @block_name, "value" => block["name"]},
         %{"name" => @pipeline_rerun, "value" => "false"},
         %{"name" => @pipeline_promotion, "value" => "false"},
@@ -215,6 +219,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser.Test do
         %{"name" => @workflow_triggered_by_manual_run, "value" => "false"},
         %{"name" => @artefact_id_env_var_name, "value" => "A1"},
         %{"name" => @ppl_id_env_var_name, "value" => ctx.ppl_req.id},
+        %{"name" => @ppl_name_env_var_name, "value" => ctx.ppl_def["name"]},
         %{"name" => @block_name, "value" => block["name"]},
         %{"name" => @pipeline_rerun, "value" => "false"},
         %{"name" => @pipeline_promotion, "value" => "false"},
