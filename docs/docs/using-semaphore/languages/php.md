@@ -73,7 +73,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 2. Create an [after_pipeline job](../../using-semaphore/pipelines#after-pipeline-job) with the following command:
 
     ```shell
-    test-results publish junit.xml
+    test-results publish --parser phpunit junit.xml
     ```
 
 </Steps>
