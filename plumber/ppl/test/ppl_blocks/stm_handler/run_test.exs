@@ -27,7 +27,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
     jobs_list = [job_1, job_2]
     task = %{"jobs" => jobs_list}
     agent = %{"machine" => %{"type" => "foo", "os_image" => "bar"}}
-    definition = %{"version" => "v1.0", "agent" => agent,
+    definition = %{"version" => "v1.0", "agent" => agent, "name" => "Test Pipeline",
       "blocks" => [%{"name" => "blk 0", "task" => task},
         %{"name" => "blk 1", "task" => task}]}
 
@@ -135,6 +135,7 @@ defmodule Ppl.PplBlocks.STMHandler.WaitingState.Test do
                     %{"name" => "SEMAPHORE_WORKFLOW_TRIGGERED_BY_MANUAL_RUN", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_ARTEFACT_ID", "value" => "#{id}"},
                     %{"name" => "SEMAPHORE_PIPELINE_ID", "value" => "#{id}"},
+                    %{"name" => "SEMAPHORE_PIPELINE_NAME", "value" => "Test Pipeline"},
                     %{"name" => "SEMAPHORE_BLOCK_NAME", "value" => blk_name},
                     %{"name" => "SEMAPHORE_PIPELINE_RERUN", "value" => "false"},
                     %{"name" => "SEMAPHORE_PIPELINE_PROMOTION", "value" => "false"},
