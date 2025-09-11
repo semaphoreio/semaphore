@@ -35,12 +35,20 @@ defmodule Scheduler.Application do
   def children(_), do: Enum.concat(children(:test), children_())
 
   def children_() do
-    [
+    migration_worker_enabled? = System.get_env("ENABLE_REFERENCE_MIGRATION", "false") == "true"
+    
+    base_children = [
       Scheduler.Workers.QuantumScheduler,
       Scheduler.Workers.Initializer,
       {Scheduler.EventsConsumers.OrgBlocked, []},
       {Scheduler.EventsConsumers.OrgUnblocked, []}
     ]
+    
+    if migration_worker_enabled? do
+      [Scheduler.Workers.ReferenceMigrationWorker | base_children]
+    else
+      base_children
+    end
   end
 
   def feature_provider do

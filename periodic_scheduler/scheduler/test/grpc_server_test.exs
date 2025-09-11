@@ -1380,9 +1380,10 @@ defmodule Scheduler.GrpcServer.Test do
       :description,
       :inserted_at,
       :updated_at,
-      :organization_id,
       :pause_toggled_at,
-      :__meta__
+      :__meta__,
+      :reference_type,
+      :reference_value
     ]
 
     assert periodic_desc
@@ -1406,7 +1407,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert DateTime.compare(trigger.scheduled_at, ts_before) == :gt
 
     tr_keys = ~w(inserted_at updated_at __meta__ id scheduled_at triggered_at recurring attempts
-                 periodic_id periodics error_description __struct__ __unknown_fields__)a
+                 periodic_id periodics error_description __struct__ __unknown_fields__ reference_type reference_value)a
 
     assert trigger_desc |> Map.drop(tr_keys) ==
              trigger |> Map.from_struct() |> Map.drop(tr_keys)
@@ -1446,9 +1447,10 @@ defmodule Scheduler.GrpcServer.Test do
       :description,
       :inserted_at,
       :updated_at,
-      :organization_id,
       :pause_toggled_at,
-      :__meta__
+      :__meta__,
+      :reference_type,
+      :reference_value
     ]
 
     assert periodic_desc
@@ -1473,7 +1475,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert DateTime.compare(trigger.scheduled_at, ts_before) == :gt
 
     tr_keys = ~w(inserted_at updated_at __meta__ id scheduled_at triggered_at recurring attempts
-                 periodic_id periodics error_description __struct__ __unknown_fields__)a
+                 periodic_id periodics error_description __struct__ __unknown_fields__ reference_type reference_value)a
 
     assert trigger_desc |> Map.drop(tr_keys) ==
              trigger |> Map.from_struct() |> Map.drop(tr_keys)
@@ -1529,9 +1531,10 @@ defmodule Scheduler.GrpcServer.Test do
       :description,
       :inserted_at,
       :updated_at,
-      :organization_id,
       :pause_toggled_at,
-      :__meta__
+      :__meta__,
+      :reference_type,
+      :reference_value
     ]
 
     assert periodic_desc
@@ -1602,9 +1605,10 @@ defmodule Scheduler.GrpcServer.Test do
       :description,
       :inserted_at,
       :updated_at,
-      :organization_id,
       :pause_toggled_at,
-      :__meta__
+      :__meta__,
+      :reference_type,
+      :reference_value
     ]
 
     assert periodic_desc

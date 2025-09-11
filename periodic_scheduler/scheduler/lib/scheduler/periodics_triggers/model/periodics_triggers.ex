@@ -19,6 +19,8 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
     field :triggered_at, :utc_datetime_usec
     field :project_id, :string
     field :branch, :string
+    field :reference_type, :string, default: "branch"
+    field :reference_value, :string
     field :pipeline_file, :string
     field :scheduling_status, :string
     field :recurring, :boolean
@@ -32,12 +34,12 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
     timestamps()
   end
 
-  @required_fields_insert ~w(periodic_id triggered_at project_id branch
+  @required_fields_insert ~w(periodic_id triggered_at project_id
                              pipeline_file scheduling_status recurring)a
-  @optional_fields_insert ~w(run_now_requester_id)a
+  @optional_fields_insert ~w(branch reference_type reference_value run_now_requester_id)a
 
   @required_fields_update ~w(scheduling_status scheduled_at)a
-  @optional_fields_update ~w(scheduled_workflow_id error_description attempts)a
+  @optional_fields_update ~w(scheduled_workflow_id error_description attempts reference_type reference_value)a
 
   @valid_statuses ~w(running passed failed)
 
@@ -83,4 +85,59 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
     |> validate_required(@required_fields_update)
     |> validate_inclusion(:scheduling_status, @valid_statuses)
   end
+
+  @doc """
+  Returns the Git reference string for this trigger.
+  
+  ## Examples
+  
+      iex> alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+      iex> trigger = %PeriodicsTriggers{reference_type: "branch", reference_value: "main"}
+      iex> PeriodicsTriggers.git_reference(trigger)
+      "refs/heads/main"
+      
+      iex> alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+      iex> trigger = %PeriodicsTriggers{reference_type: "tag", reference_value: "v1.0.0"}
+      iex> PeriodicsTriggers.git_reference(trigger)
+      "refs/tags/v1.0.0"
+  """
+  def git_reference(%__MODULE__{reference_type: "branch", reference_value: reference_value}),
+    do: "refs/heads/#{reference_value}"
+
+  def git_reference(%__MODULE__{reference_type: "tag", reference_value: reference_value}),
+    do: "refs/tags/#{reference_value}"
+
+  # Handle maps (for backward compatibility when struct is converted to map)
+  def git_reference(%{reference_type: "branch", reference_value: reference_value}),
+    do: "refs/heads/#{reference_value}"
+
+  def git_reference(%{reference_type: "tag", reference_value: reference_value}),
+    do: "refs/tags/#{reference_value}"
+
+  @doc """
+  Backward compatibility getter for branch field.
+  Returns reference_value when reference_type is :branch, otherwise nil.
+  
+  ## Examples
+  
+      iex> alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+      iex> trigger = %PeriodicsTriggers{reference_type: "branch", reference_value: "main"}
+      iex> PeriodicsTriggers.branch_name(trigger)
+      "main"
+      
+      iex> alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+      iex> trigger = %PeriodicsTriggers{reference_type: "tag", reference_value: "v1.0.0"}
+      iex> PeriodicsTriggers.branch_name(trigger)
+      nil
+  """
+  def branch_name(%__MODULE__{reference_type: "branch", reference_value: reference_value}),
+    do: reference_value
+
+  def branch_name(%__MODULE__{}), do: nil
+
+  # Handle maps (for backward compatibility when struct is converted to map)
+  def branch_name(%{reference_type: "branch", reference_value: reference_value}),
+    do: reference_value
+
+  def branch_name(%{}), do: nil
 end

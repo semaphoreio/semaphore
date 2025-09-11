@@ -2,6 +2,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage.Test do
   use ExUnit.Case, async: true
 
   alias Scheduler.PeriodicsTriggers.Model.HistoryPage
+  alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
 
   setup [:truncate_database, :setup_periodic]
 
@@ -422,7 +423,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage.Test do
                  branch_name: "develop"
                )
 
-      assert Enum.all?(results, &(&1.branch == "develop"))
+      assert Enum.all?(results, &(PeriodicsTriggers.branch_name(&1) == "develop"))
       assert Enum.count(results) == 7
     end
 

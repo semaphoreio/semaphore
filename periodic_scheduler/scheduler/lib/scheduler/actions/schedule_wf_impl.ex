@@ -5,7 +5,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
   """
 
   alias Scheduler.Periodics.Model.PeriodicsQueries
-  alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries
+  alias Scheduler.PeriodicsTriggers.Model.{PeriodicsTriggersQueries, PeriodicsTriggers}
   alias Scheduler.FrontDB.Model.FrontDBQueries
   alias Scheduler.Clients.{WorkflowClient, RepoProxyClient, ProjecthubClient, RepositoryClient}
   alias Scheduler.Workers.ScheduleTaskManager
@@ -119,16 +119,16 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
 
     %{
       service: schedule_workflow_service_type(repository.integration_type),
-      repo: %{branch_name: trigger.branch},
+      repo: %{branch_name: PeriodicsTriggers.branch_name(trigger) || trigger.reference_value},
       request_token: trigger.periodic_id <> "-#{trigger.id}",
       project_id: trigger.project_id,
       requester_id: requester_id,
       definition_file: trigger.pipeline_file,
       organization_id: periodic.organization_id,
-      label: trigger.branch,
+      label: PeriodicsTriggers.branch_name(trigger) || trigger.reference_value,
       scheduler_task_id: periodic.id,
       git: %{
-        reference: "refs/heads/" <> trigger.branch,
+        reference: PeriodicsTriggers.git_reference(trigger),
         commit_sha: ""
       },
       triggered_by: triggered_by,
@@ -195,7 +195,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
       requester_id: periodic.requester_id,
       definition_file: trigger.pipeline_file,
       git: %{
-        reference: "refs/heads/" <> trigger.branch,
+        reference: PeriodicsTriggers.git_reference(trigger),
         commit_sha: ""
       },
       triggered_by: :SCHEDULE

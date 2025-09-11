@@ -277,6 +277,16 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
   end
 
   defp insert_periodics(ids, extra \\ %{}) do
+    # Handle reference fields - use branch for backward compatibility or reference fields directly
+    {reference_type, reference_value} = cond do
+      extra[:reference_type] && extra[:reference_value] ->
+        {extra[:reference_type], extra[:reference_value]}
+      extra[:branch] ->
+        {"branch", extra[:branch]}
+      true ->
+        {"branch", "master"}
+    end
+    
     %{
       requester_id: ids.usr_id,
       organization_id: ids.org_id,
@@ -284,7 +294,8 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
       project_name: "Project_1",
       recurring: if(is_nil(extra[:recurring]), do: true, else: extra[:recurring]),
       project_id: ids.pr_id,
-      branch: extra[:branch] || "master",
+      reference_type: reference_type,
+      reference_value: reference_value,
       at: extra[:at] || "* * * * *",
       pipeline_file: extra[:pipeline_file] || "deploy.yml",
       parameters: extra[:parameters] || []

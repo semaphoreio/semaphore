@@ -20,6 +20,8 @@ defmodule Scheduler.Periodics.Model.Periodics do
     field :project_name, :string
     field :project_id, :string
     field :branch, :string
+    field :reference_type, :string, default: "branch"
+    field :reference_value, :string
     field :at, :string
     field :pipeline_file, :string
     field :recurring, :boolean, read_after_writes: true, default: true
@@ -42,11 +44,11 @@ defmodule Scheduler.Periodics.Model.Periodics do
                                  suspended paused pause_toggled_by pause_toggled_at)a
 
   @required_fields ~w(id requester_id organization_id name project_name
-                      project_id recurring branch pipeline_file)a
-  @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at)a
+                      project_id recurring pipeline_file)a
+  @optional_fields ~w(description at branch reference_type reference_value paused pause_toggled_by pause_toggled_at)a
 
   @required_fields_update ~w(requester_id organization_id)a
-  @optional_fields_update ~w(name project_name project_id branch at pipeline_file recurring
+  @optional_fields_update ~w(name project_name project_id branch reference_type reference_value at pipeline_file recurring
                              description suspended paused pause_toggled_by pause_toggled_at)a
 
   @doc """
@@ -139,6 +141,7 @@ defmodule Scheduler.Periodics.Model.Periodics do
   defp do_changeset(periodic, params, api_version, required_fields, optional_fields) do
     periodic
     |> cast(params, required_fields ++ optional_fields)
+    |> handle_backward_compatibility_for_branch()
     |> maybe_cast_parameters(api_version)
     |> validate_required(required_fields)
     |> validate_recurring(api_version)
@@ -159,8 +162,58 @@ defmodule Scheduler.Periodics.Model.Periodics do
   defp validate_recurring(changeset, "v1.1"),
     do: validate_recurring(changeset, "v1.1", get_field(changeset, :recurring))
 
-  defp validate_recurring(changeset, "v1.1", true), do: validate_required(changeset, [:at])
+  defp validate_recurring(changeset, "v1.1", true) do
+    changeset
+    |> validate_required([:at, :pipeline_file])
+    |> validate_reference_fields()
+  end
+
+  defp validate_reference_fields(changeset) do
+    branch_value = get_change(changeset, :branch) || get_field(changeset, :branch)
+    reference_type = get_change(changeset, :reference_type) || get_field(changeset, :reference_type)
+    reference_value = get_change(changeset, :reference_value) || get_field(changeset, :reference_value)
+
+    case {branch_value, reference_type, reference_value} do
+      {branch, _, _} when is_binary(branch) and branch != "" ->
+        changeset
+      {_, type, value} when is_binary(type) and is_binary(value) and type != "" and value != "" ->
+        changeset
+      _ ->
+        add_error(changeset, :branch, "can't be blank")
+    end
+  end
+  
   defp validate_recurring(changeset, "v1.1", false), do: changeset
+
+  defp handle_backward_compatibility_for_branch(changeset) do
+    branch_value = get_change(changeset, :branch)
+    reference_type = get_change(changeset, :reference_type) || get_field(changeset, :reference_type)
+    reference_value = get_change(changeset, :reference_value)
+
+    case {branch_value, reference_type, reference_value} do
+      # If branch is provided but reference fields are not, migrate branch to reference fields
+      {branch, nil, nil} when is_binary(branch) ->
+        changeset
+        |> put_change(:reference_type, "branch")
+        |> put_change(:reference_value, branch)
+        
+      {branch, "branch", nil} when is_binary(branch) ->
+        changeset
+        |> put_change(:reference_value, branch)
+
+      # If both branch and reference_value are provided, prefer reference_value
+      {_branch, _type, reference} when is_binary(reference) ->
+        changeset
+
+      # If we have reference fields, ensure they're valid
+      {_branch, type, value} when is_binary(type) and is_binary(value) ->
+        changeset
+
+      # Default case - no changes needed
+      _ ->
+        changeset
+    end
+  end
 
   defp validate_cron(_field_name, cron_expression) do
     case Crontab.CronExpression.Parser.parse(cron_expression) do
@@ -168,4 +221,59 @@ defmodule Scheduler.Periodics.Model.Periodics do
       {:error, _message} -> [at: "is not a valid cron expression"]
     end
   end
+
+  @doc """
+  Returns the Git reference string for this periodic.
+  
+  ## Examples
+  
+      iex> alias Scheduler.Periodics.Model.Periodics
+      iex> periodic = %Periodics{reference_type: "branch", reference_value: "main"}
+      iex> Periodics.git_reference(periodic)
+      "refs/heads/main"
+      
+      iex> alias Scheduler.Periodics.Model.Periodics
+      iex> periodic = %Periodics{reference_type: "tag", reference_value: "v1.0.0"}
+      iex> Periodics.git_reference(periodic)
+      "refs/tags/v1.0.0"
+  """
+  def git_reference(%__MODULE__{reference_type: "branch", reference_value: reference_value}),
+    do: "refs/heads/#{reference_value}"
+
+  def git_reference(%__MODULE__{reference_type: "tag", reference_value: reference_value}),
+    do: "refs/tags/#{reference_value}"
+
+  # Handle maps (for backward compatibility when struct is converted to map)
+  def git_reference(%{reference_type: "branch", reference_value: reference_value}),
+    do: "refs/heads/#{reference_value}"
+
+  def git_reference(%{reference_type: "tag", reference_value: reference_value}),
+    do: "refs/tags/#{reference_value}"
+
+  @doc """
+  Backward compatibility getter for branch field.
+  Returns reference_value when reference_type is :branch, otherwise nil.
+  
+  ## Examples
+  
+      iex> alias Scheduler.Periodics.Model.Periodics
+      iex> periodic = %Periodics{reference_type: "branch", reference_value: "main"}
+      iex> Periodics.branch_name(periodic)
+      "main"
+      
+      iex> alias Scheduler.Periodics.Model.Periodics
+      iex> periodic = %Periodics{reference_type: "tag", reference_value: "v1.0.0"}
+      iex> Periodics.branch_name(periodic)
+      nil
+  """
+  def branch_name(%__MODULE__{reference_type: "branch", reference_value: reference_value}),
+    do: reference_value
+
+  def branch_name(%__MODULE__{}), do: nil
+
+  # Handle maps (for backward compatibility when struct is converted to map)
+  def branch_name(%{reference_type: "branch", reference_value: reference_value}),
+    do: reference_value
+
+  def branch_name(%{}), do: nil
 end

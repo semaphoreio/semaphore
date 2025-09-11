@@ -73,11 +73,24 @@ defmodule Scheduler.Actions.ApplyImpl do
       {:hook, {:ok, true}}
     else
       recurring = definition |> Map.get("spec", %{}) |> Map.get("recurring", true)
-      branch = definition |> Map.get("spec", %{}) |> Map.get("branch", "")
+      reference_type = definition |> Map.get("spec", %{}) |> Map.get("reference_type", "branch")
+      reference_value = definition |> Map.get("spec", %{}) |> Map.get("reference_value") || 
+                        definition |> Map.get("spec", %{}) |> Map.get("branch", "")
 
-      if recurring,
-        do: {:hook, FrontDBQueries.hook_exists?(project_id, branch)},
-        else: {:hook, {:ok, true}}
+      cond do
+        not recurring ->
+          {:hook, {:ok, true}}
+        
+        reference_type == "tag" ->
+          # Tags are immutable, so we don't need to check for hook existence
+          {:hook, {:ok, true}}
+          
+        reference_type == "branch" ->
+          {:hook, FrontDBQueries.hook_exists?(project_id, reference_value)}
+          
+        true ->
+          {:hook, FrontDBQueries.hook_exists?(project_id, reference_value)}
+      end
     end
   end
 
