@@ -1,0 +1,35 @@
+version: '3.6'
+
+services:
+  app:
+    container_name: ephemeral_environments
+    image: ${IMAGE:-ephemeral_environments}:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: dev
+      args:
+        - MIX_ENV=dev
+    ports:
+      - "50051"
+    links:
+      - db:db
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+
+  db:
+    image: postgres:17.4
+    ports:
+      - "5432:5432"
+    expose:
+      - "5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_PASSWORD: "the-cake-is-a-lie"
+
+volumes:
+  postgres-data:
+    driver: local
