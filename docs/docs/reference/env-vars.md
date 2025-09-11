@@ -146,6 +146,13 @@ The URL for the organization that owns the project running the current job.
 
 The unique identifier for the current workflow. All jobs that belong to the same pipeline share the same ID.
 
+### Pipeline name {#pipeline-name}
+
+- **Environment variable**: `SEMAPHORE_PIPELINE_NAME`
+- **Example**: `my-pipeline`
+
+The name of the pipeline.
+
 ### Pipeline is promotion {#pipeline-promotion}
 
 - **Environment variable**: `SEMAPHORE_PIPELINE_PROMOTION`

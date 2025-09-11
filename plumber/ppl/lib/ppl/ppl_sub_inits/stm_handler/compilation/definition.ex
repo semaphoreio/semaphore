@@ -160,7 +160,7 @@ defmodule Ppl.PplSubInits.STMHandler.Compilation.Definition do
 
   defp ppl_env_vars(ppl_req) do
     %{"build" => %{}}
-    |> BlocksReviser.set_ppl_env_vars(ppl_req)
+    |> BlocksReviser.set_ppl_env_vars(%{"name" => ""}, ppl_req)
     |> extract_ppl_env_vars()
   end
 
