@@ -41,7 +41,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
           organization_id: String.t(),
           project_name: String.t(),
           requester_id: String.t(),
-          branch: String.t(),
+          reference: InternalApi.PeriodicScheduler.Reference.t(),
           pipeline_file: String.t(),
           at: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
@@ -56,7 +56,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :organization_id,
     :project_name,
     :requester_id,
-    :branch,
+    :reference,
     :pipeline_file,
     :at,
     :parameters,
@@ -71,7 +71,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:organization_id, 6, type: :string)
   field(:project_name, 7, type: :string)
   field(:requester_id, 8, type: :string)
-  field(:branch, 9, type: :string)
+  field(:reference, 9, type: InternalApi.PeriodicScheduler.Reference)
   field(:pipeline_file, 10, type: :string)
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
@@ -162,7 +162,7 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
           requester: String.t(),
           pipeline_file: String.t(),
           parameter_values: [InternalApi.PeriodicScheduler.ParameterValue.t()],
-          reference: InternalApi.PeriodicScheduler.RunNowRequest.Reference.t()
+          reference: InternalApi.PeriodicScheduler.Reference.t()
         }
   defstruct [:id, :requester, :pipeline_file, :parameter_values, :reference]
 
@@ -170,33 +170,7 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   field(:requester, 2, type: :string)
   field(:pipeline_file, 3, type: :string)
   field(:parameter_values, 4, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
-  field(:reference, 5, type: InternalApi.PeriodicScheduler.RunNowRequest.Reference)
-end
-
-defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          type: integer,
-          name: String.t()
-        }
-  defstruct [:type, :name]
-
-  field(:type, 1,
-    type: InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType,
-    enum: true
-  )
-
-  field(:name, 2, type: :string)
-end
-
-defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType do
-  @moduledoc false
-  use Protobuf, enum: true, syntax: :proto3
-
-  field(:BRANCH, 0)
-  field(:TAG, 1)
+  field(:reference, 5, type: InternalApi.PeriodicScheduler.Reference)
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do
@@ -334,7 +308,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
   @type t :: %__MODULE__{
           triggered_at: Google.Protobuf.Timestamp.t(),
           project_id: String.t(),
-          branch: String.t(),
+          reference: InternalApi.PeriodicScheduler.Reference.t(),
           pipeline_file: String.t(),
           scheduling_status: String.t(),
           scheduled_workflow_id: String.t(),
@@ -347,7 +321,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
   defstruct [
     :triggered_at,
     :project_id,
-    :branch,
+    :reference,
     :pipeline_file,
     :scheduling_status,
     :scheduled_workflow_id,
@@ -360,7 +334,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
 
   field(:triggered_at, 1, type: Google.Protobuf.Timestamp)
   field(:project_id, 2, type: :string)
-  field(:branch, 3, type: :string)
+  field(:reference, 3, type: InternalApi.PeriodicScheduler.Reference)
   field(:pipeline_file, 4, type: :string)
   field(:scheduling_status, 5, type: :string)
   field(:scheduled_workflow_id, 6, type: :string)
@@ -369,6 +343,29 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
   field(:run_now_requester_id, 9, type: :string)
   field(:periodic_id, 10, type: :string)
   field(:parameter_values, 11, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
+end
+
+defmodule InternalApi.PeriodicScheduler.Reference do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: integer,
+          name: String.t()
+        }
+  defstruct [:type, :name]
+
+  field(:type, 1, type: InternalApi.PeriodicScheduler.Reference.GitRefType, enum: true)
+  field(:name, 2, type: :string)
+end
+
+defmodule InternalApi.PeriodicScheduler.Reference.GitRefType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:BRANCH, 0)
+  field(:TAG, 1)
+  field(:PR, 2)
 end
 
 defmodule InternalApi.PeriodicScheduler.ParameterValue do
