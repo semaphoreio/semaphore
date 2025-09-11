@@ -17,13 +17,14 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest.ScheduleState do
   field(:PAUSED, 2)
 end
 
-defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType do
+defmodule InternalApi.PeriodicScheduler.Reference.GitRefType do
   @moduledoc false
 
   use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
 
   field(:BRANCH, 0)
   field(:TAG, 1)
+  field(:PR, 2)
 end
 
 defmodule InternalApi.PeriodicScheduler.HistoryRequest.CursorType do
@@ -77,7 +78,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:organization_id, 6, type: :string, json_name: "organizationId")
   field(:project_name, 7, type: :string, json_name: "projectName")
   field(:requester_id, 8, type: :string, json_name: "requesterId")
-  field(:branch, 9, type: :string)
+  field(:reference, 9, type: InternalApi.PeriodicScheduler.Reference)
   field(:pipeline_file, 10, type: :string, json_name: "pipelineFile")
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
@@ -127,19 +128,6 @@ defmodule InternalApi.PeriodicScheduler.UnpauseResponse do
   field(:status, 1, type: InternalApi.Status)
 end
 
-defmodule InternalApi.PeriodicScheduler.RunNowRequest.Reference do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:type, 1,
-    type: InternalApi.PeriodicScheduler.RunNowRequest.Reference.GitRefType,
-    enum: true
-  )
-
-  field(:name, 2, type: :string)
-end
-
 defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   @moduledoc false
 
@@ -155,7 +143,7 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
     json_name: "parameterValues"
   )
 
-  field(:reference, 5, type: InternalApi.PeriodicScheduler.RunNowRequest.Reference)
+  field(:reference, 5, type: InternalApi.PeriodicScheduler.Reference)
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do
@@ -230,7 +218,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
 
   field(:triggered_at, 1, type: Google.Protobuf.Timestamp, json_name: "triggeredAt")
   field(:project_id, 2, type: :string, json_name: "projectId")
-  field(:branch, 3, type: :string)
+  field(:reference, 3, type: InternalApi.PeriodicScheduler.Reference)
   field(:pipeline_file, 4, type: :string, json_name: "pipelineFile")
   field(:scheduling_status, 5, type: :string, json_name: "schedulingStatus")
   field(:scheduled_workflow_id, 6, type: :string, json_name: "scheduledWorkflowId")
@@ -244,6 +232,15 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
     type: InternalApi.PeriodicScheduler.ParameterValue,
     json_name: "parameterValues"
   )
+end
+
+defmodule InternalApi.PeriodicScheduler.Reference do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:type, 1, type: InternalApi.PeriodicScheduler.Reference.GitRefType, enum: true)
+  field(:name, 2, type: :string)
 end
 
 defmodule InternalApi.PeriodicScheduler.ParameterValue do
