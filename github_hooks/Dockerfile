@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=ruby:3.3.6-slim-bookworm
-
+ARG BASE_IMAGE=ruby:3.3.6-alpine
 FROM ${BASE_IMAGE} as base
 
 ARG BUILD_ENV=production
@@ -8,12 +7,14 @@ ENV RAILS_ENV=$BUILD_ENV
 ARG APP_NAME
 ENV APP_NAME=${APP_NAME}
 
-RUN echo "Build of $APP_NAME for $RAILS_ENV environment started"
+RUN echo "Build of $APP_NAME for $RAILS_ENV environment on Alpine started"
 
-RUN apt-get update && apt-get install --no-install-recommends -y -qq \
-  libpq-dev \
-  libjemalloc2 \
-  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+# Install runtime dependencies, including gcompat and timezone data
+RUN apk add --no-cache \
+  postgresql-libs \
+  jemalloc \
+  gcompat \
+  tzdata
 
 ENV LANG=C.UTF-8 \
   BUNDLE_APP_CONFIG=/app/vendor/bundle \
@@ -25,17 +26,17 @@ RUN gem install bundler -v '2.5.23' --no-document
 
 FROM base AS builder
 
-# Install necessary packages
-RUN apt-get update && apt-get install --no-install-recommends -y --allow-downgrades -qq \
-  build-essential \
+# Install build tools and development headers
+RUN apk add --no-cache \
+  build-base \
   curl \
   wget \
   git \
-  locales \
-  linux-libc-dev \
-  zlib1g-dev \
-  libyaml-dev \
-  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  linux-headers \
+  zlib-dev \
+  yaml-dev \
+  postgresql-dev \
+  jemalloc-dev
 
 ENV BUNDLE_JOBS=4 \
   BUNDLE_RETRY=3
@@ -49,12 +50,10 @@ RUN bundle install --jobs=${BUNDLE_JOBS}
 
 COPY . .
 
-ARG TARGETPLATFORM
-RUN export JEMALLOC_PATH=$(if [ "$TARGETPLATFORM" = "linux/arm64" ]; then echo "/usr/lib/aarch64-linux-gnu/libjemalloc.so.2"; else echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so.2"; fi)
-ENV LD_PRELOAD=$JEMALLOC_PATH
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 
 EXPOSE 3000
-CMD ["/usr/bin/bash"]
+CMD ["/bin/sh"]
 
 FROM builder as production-builder
 
@@ -68,6 +67,8 @@ RUN bundle config set --local deployment true && \
     bundle install --jobs=${BUNDLE_JOBS} && \
     rm -rf $BUNDLE_PATH/ruby/3.0.0/cache/*
 
+# --- Final Runner Stage ---
+# This is the final, minimal image for production
 FROM base as runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
@@ -77,7 +78,7 @@ WORKDIR /app
 
 HEALTHCHECK NONE
 
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2
+ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 
 COPY --chown=nobody:root app app
 COPY --chown=nobody:root script script
