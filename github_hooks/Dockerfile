@@ -22,7 +22,7 @@ ENV LANG=C.UTF-8 \
   GEM_HOME=/app/vendor/bundle
 
 RUN gem update --system 3.5.23
-RUN gem install bundler -v '2.5.23' --no-document
+RUN gem install bundler -v '2.6.9' --no-document
 
 FROM base AS builder
 
@@ -36,7 +36,8 @@ RUN apk add --no-cache \
   zlib-dev \
   yaml-dev \
   postgresql-dev \
-  jemalloc-dev
+  jemalloc-dev \
+  protobuf-dev
 
 ENV BUNDLE_JOBS=4 \
   BUNDLE_RETRY=3
@@ -64,11 +65,11 @@ RUN bundle config set --local deployment true && \
     bundle config set --local without 'development test' && \
     bundle config set --local clean 'true' && \
     bundle config set --local no-cache 'true' && \
+    bundle config set --local force_ruby_platform.grpc true && \
+    bundle config set --local force_ruby_platform.google-protobuf true && \
     bundle install --jobs=${BUNDLE_JOBS} && \
     rm -rf $BUNDLE_PATH/ruby/3.0.0/cache/*
 
-# --- Final Runner Stage ---
-# This is the final, minimal image for production
 FROM base as runner
 
 # This is needed to connect the GitHub Container Registry package with our repository.
