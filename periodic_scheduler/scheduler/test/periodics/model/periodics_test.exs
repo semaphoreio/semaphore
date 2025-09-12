@@ -27,7 +27,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
       assert %Ecto.Changeset{valid?: false, errors: errors} =
                Periodics.changeset(%Periodics{}, "v1.1", partial_params)
 
-      assert [:branch, :at, :pipeline_file] = errors |> Keyword.keys()
+      assert [:at, :branch, :pipeline_file] = errors |> Keyword.keys()
 
       assert ["can't be blank"] =
                errors |> Keyword.values() |> Enum.map(&elem(&1, 0)) |> Enum.uniq()

@@ -5,7 +5,7 @@ defmodule Scheduler.Actions.HistoryImpl do
 
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.Periodics.Model.Periodics
-  alias Scheduler.PeriodicsTriggers.Model.{HistoryPage, PeriodicsTriggers}
+  alias Scheduler.PeriodicsTriggers.Model.HistoryPage
 
   def history(params) do
     {:ok, handle_history(params)}
@@ -58,10 +58,6 @@ defmodule Scheduler.Actions.HistoryImpl do
 
   defp from_model(periodics_trigger) do
     parameter_values = Enum.into(periodics_trigger.parameter_values, [], &Map.from_struct/1)
-    
-    periodics_trigger 
-    |> Map.from_struct() 
-    |> Map.put(:parameter_values, parameter_values)
-    |> Map.put(:branch, PeriodicsTriggers.branch_name(periodics_trigger))
+    periodics_trigger |> Map.from_struct() |> Map.put(:parameter_values, parameter_values)
   end
 end

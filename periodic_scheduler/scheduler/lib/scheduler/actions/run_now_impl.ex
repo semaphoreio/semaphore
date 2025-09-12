@@ -25,7 +25,7 @@ defmodule Scheduler.Actions.RunNowImpl do
     end
   end
 
-  defp validate_params(%Periodics{branch: nil, reference_value: nil}, %{branch: ""}),
+  defp validate_params(%Periodics{branch: nil}, %{branch: ""}),
     do: "You have to provide branch for this task" |> ToTuple.error(:INVALID_ARGUMENT)
 
   defp validate_params(%Periodics{pipeline_file: nil}, %{pipeline_file: ""}),
@@ -36,12 +36,12 @@ defmodule Scheduler.Actions.RunNowImpl do
          params = %{parameter_values: values}
        ) do
     branch =
-      if Map.has_key?(params, :branch) && String.length(params.branch) > 1,
+      if String.length(params.branch) > 1,
         do: params.branch,
-        else: Periodics.branch_name(periodics) || periodics.reference_value
+        else: periodics.branch
 
     pipeline_file =
-      if Map.has_key?(params, :pipeline_file) && String.length(params.pipeline_file) > 1,
+      if String.length(params.pipeline_file) > 1,
         do: params.pipeline_file,
         else: periodics.pipeline_file
 
@@ -101,8 +101,6 @@ defmodule Scheduler.Actions.RunNowImpl do
     do: "The 'requester' parameter can not be empty string." |> ToTuple.error(:INVALID_ARGUMENT)
 
   defp verify_revision_exists(periodic, params) do
-    # For run_now, we always treat the provided branch as a branch reference
-    # even if the periodic is configured for tags
     revision_args = [reference: "refs/heads/" <> params.branch, commit_sha: ""]
 
     with {:ok, repository_id} <- fetch_project_repository_id(periodic.project_id),

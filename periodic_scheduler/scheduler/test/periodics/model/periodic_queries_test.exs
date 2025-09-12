@@ -264,8 +264,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     assert periodic.name == params.name
     assert periodic.project_name == params.project_name
     assert periodic.project_id == params.project_id
-    assert periodic.reference_type == params.reference_type
-    assert periodic.reference_value == params.reference_value
+    assert periodic.branch == params.branch
     assert periodic.pipeline_file == params.pipeline_file
     refute periodic.at
 
@@ -303,8 +302,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
       project_name: "Project_1",
       project_id: "pr1",
       recurring: false,
-      reference_type: "branch",
-      reference_value: "master",
+      branch: "master",
       at: "",
       pipeline_file: "deploy.yml",
       parameters: [
@@ -334,7 +332,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
   test "can insert periodic without at" do
     params = insert_params("v1.1")
 
-    ~w(requester_id organization_id name project_name project_id pipeline_file)a
+    ~w(requester_id organization_id name project_name project_id branch pipeline_file)a
     |> Enum.map(fn field_name ->
       params_ = params |> Map.delete(field_name)
 
@@ -373,11 +371,11 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     params_2 = params |> Map.merge(%{branch: "dev", at: "@yearly"})
     assert {:ok, periodic_2} = PeriodicsQueries.update(periodic_1, params_2, "v1.0")
 
-    assert periodic_2.reference_value == "dev"
+    assert periodic_2.branch == "dev"
     assert periodic_2.at == "@yearly"
 
-    assert periodic_1 |> Map.drop([:updated_at, :reference_value, :at, :branch]) ==
-             periodic_2 |> Map.drop([:updated_at, :reference_value, :at, :branch])
+    assert periodic_1 |> Map.drop([:updated_at, :branch, :at]) ==
+             periodic_2 |> Map.drop([:updated_at, :branch, :at])
   end
 
   test "cannot update periodics to the existing name for same project" do
