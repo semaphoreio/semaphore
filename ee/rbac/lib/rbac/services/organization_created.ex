@@ -19,6 +19,8 @@ defmodule Rbac.Services.OrganizationCreated do
 
           Rbac.Store.RbacRole.create_default_roles_for_organization(event.org_id)
           Rbac.TempSync.assign_org_owner_role(event.org_id)
+          owner_id = Rbac.TempSync.get_org_creator_id(event.org_id)
+          Rbac.Events.Authorization.publish("role_assigned", owner_id, event.org_id)
         end,
         retries: 10,
         delay: 1000
