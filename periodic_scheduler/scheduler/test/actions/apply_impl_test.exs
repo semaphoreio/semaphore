@@ -154,6 +154,76 @@ defmodule Test.Actions.ApplyImpl.Test do
     refute periodic_id |> String.to_atom() |> QuantumScheduler.find_job()
   end
 
+  test "apply v1.2 doesn't start quantum job when periodic is non-recurring", ctx do
+    yml_definition = """
+    apiVersion: v1.2
+    kind: Schedule
+    metadata:
+      name: test periodic v1.2
+    spec:
+      project: Project 1
+      recurring: false
+      reference:
+        type: BRANCH
+        name: master
+      at: ""
+      pipeline_file: .semaphore/cron.yml
+      parameters:
+        - name: example
+          description: Exemplary parameter
+          required: true
+          default_value: option1
+          options:
+            - option1
+            - option2
+            - option3
+    """
+
+    assert {:ok, periodic_id} =
+             ApplyImpl.apply(%{
+               organization_id: ctx.org_id,
+               requester_id: ctx.usr_id,
+               yml_definition: yml_definition
+             })
+
+    refute periodic_id |> String.to_atom() |> QuantumScheduler.find_job()
+  end
+
+  test "apply v1.2 does start quantum job when periodic is recurring", ctx do
+    yml_definition = """
+    apiVersion: v1.2
+    kind: Schedule
+    metadata:
+      name: test periodic v1.2
+    spec:
+      project: Project 1
+      recurring: true
+      reference:
+        type: BRANCH
+        name: master
+      at: "0 0 * * *"
+      pipeline_file: .semaphore/cron.yml
+      parameters:
+        - name: example
+          description: Exemplary parameter
+          required: true
+          default_value: option1
+          options:
+            - option1
+            - option2
+            - option3
+    """
+
+    assert {:ok, periodic_id} =
+             ApplyImpl.apply(%{
+               organization_id: ctx.org_id,
+               requester_id: ctx.usr_id,
+               yml_definition: yml_definition
+             })
+
+    assert periodic_id |> String.to_atom() |> QuantumScheduler.find_job()
+  end
+
   defp insert_periodics(ids, extra \\ %{}) do
     %{
       requester_id: ids.usr_id,
@@ -162,7 +232,7 @@ defmodule Test.Actions.ApplyImpl.Test do
       project_name: "Project_1",
       recurring: if(is_nil(extra[:recurring]), do: true, else: extra[:recurring]),
       project_id: ids.pr_id,
-      branch: extra[:branch] || "master",
+      reference: extra[:reference] || "master",
       at: extra[:at] || "0 0 * * *",
       paused: if(is_nil(extra[:paused]), do: false, else: extra[:paused]),
       pipeline_file: extra[:pipeline_file] || "deploy.yml",
