@@ -29,7 +29,7 @@ defmodule Support.Stubs.Scheduler do
       name: "Scheduler",
       project_id: project.id,
       recurring: true,
-      branch: "master",
+      reference: "master",
       at: "10 17 * * 1-5",
       pipeline_file: ".semaphore/semaphore.yml",
       requester_id: user.id,
@@ -63,7 +63,7 @@ defmodule Support.Stubs.Scheduler do
     defaults = [
       triggered_at: Time.now(),
       project_id: periodic.project_id,
-      branch: periodic.branch,
+      reference: periodic.reference,
       pipeline_file: periodic.pipeline_file,
       scheduling_status: "passed",
       scheduled_workflow_id: workflow.wf_id,
@@ -165,13 +165,32 @@ defmodule Support.Stubs.Scheduler do
       wf_id = DB.first(:workflows) |> Map.get(:id)
       workflow = %{wf_id: wf_id}
 
+      # Extract branch/tag name from the reference string
+      reference_name =
+        cond do
+          req.reference && String.starts_with?(req.reference, "refs/heads/") ->
+            String.replace_prefix(req.reference, "refs/heads/", "")
+
+          req.reference && String.starts_with?(req.reference, "refs/tags/") ->
+            String.replace_prefix(req.reference, "refs/tags/", "")
+
+          req.reference && String.starts_with?(req.reference, "refs/pull/") ->
+            # For PR, extract the number
+            req.reference
+            |> String.replace_prefix("refs/pull/", "")
+            |> String.replace_suffix("/head", "")
+            |> then(fn pr_num -> "PR ##{pr_num}" end)
+
+          req.reference && req.reference != "" ->
+            req.reference
+
+          true ->
+            scheduler.api_model.reference
+        end
+
       trigger =
         Support.Stubs.Scheduler.create_trigger(scheduler.api_model, workflow, user,
-          branch:
-            if(req.branch == "",
-              do: scheduler.api_model.branch,
-              else: req.branch
-            ),
+          reference: reference_name,
           pipeline_file:
             if(req.pipeline_file == "",
               do: scheduler.api_model.pipeline_file,
@@ -188,7 +207,7 @@ defmodule Support.Stubs.Scheduler do
         RunNowResponse.new(status: status(:NOT_FOUND))
     end
 
-    @modifiable_fields ~w(name description recurring branch pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
 
     def persist(req, _) do
       model_from_req = periodic_from_req(req)
@@ -325,7 +344,7 @@ defmodule Support.Stubs.Scheduler do
         description: req.description,
         recurring: req.recurring,
         requester_id: req.requester_id,
-        branch: req.branch,
+        reference: req.reference,
         pipeline_file: req.pipeline_file,
         at: req.at,
         parameters: req.parameters
