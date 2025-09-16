@@ -415,14 +415,26 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage.Test do
     end
 
     test "filters for particular branch", ctx do
-      insert_triggers_for_past(ctx, 15..22, :days, branch: "develop")
+      insert_triggers_for_past(ctx, 15..22, :days, reference: "develop")
 
       assert %HistoryPage{results: results} =
                load_page_with_cursor(ctx, {:BEFORE, cursor_ago(ctx, 2, :days)},
                  branch_name: "develop"
                )
 
-      assert Enum.all?(results, &(&1.branch == "develop"))
+      assert Enum.all?(results, &(&1.reference == "develop"))
+      assert Enum.count(results) == 7
+    end
+
+    test "filters for particular branch with new reference format", ctx do
+      insert_triggers_for_past(ctx, 15..22, :days, reference: "refs/heads/develop")
+
+      assert %HistoryPage{results: results} =
+               load_page_with_cursor(ctx, {:BEFORE, cursor_ago(ctx, 2, :days)},
+                 branch_name: "develop"
+               )
+
+      assert Enum.all?(results, &(&1.reference == "develop"))
       assert Enum.count(results) == 7
     end
 

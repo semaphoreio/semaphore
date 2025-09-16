@@ -56,7 +56,7 @@ defmodule InternalClients.Schedulers.RequestFormatter do
        state: state_from_params(params),
        organization_id: from_params(params, :organization_id),
        project_id: from_params(params, :project_id),
-       branch: from_params!(params, :branch),
+       reference: build_persist_reference(params),
        pipeline_file: from_params!(params, :pipeline_file),
        requester_id: from_params!(params, :requester_id),
        at: from_params(params, :cron_schedule, ""),
@@ -79,11 +79,13 @@ defmodule InternalClients.Schedulers.RequestFormatter do
   end
 
   def form_request({API.RunNowRequest, params}) do
+    reference = build_reference(params)
+
     {:ok,
      %API.RunNowRequest{
        id: from_params!(params, :task_id),
        requester: from_params!(params, :requester_id),
-       branch: from_params(params, :branch),
+       reference: reference,
        pipeline_file: from_params(params, :pipeline_file),
        parameter_values: from_params(params, :parameters)
      }}
@@ -106,6 +108,41 @@ defmodule InternalClients.Schedulers.RequestFormatter do
       "PREV" -> :PREV
       "PREVIOUS" -> :PREV
       _ -> :NEXT
+    end
+  end
+
+  defp build_reference(params) do
+    case from_params(params, :reference) do
+      reference_map when is_map(reference_map) ->
+        reference_type = Map.get(reference_map, :type) || Map.get(reference_map, "type", "branch")
+        reference_name = Map.get(reference_map, :name) || Map.get(reference_map, "name", "")
+
+        case reference_type do
+          "tag" -> "refs/tags/#{reference_name}"
+          _ -> "refs/heads/#{reference_name}"
+        end
+
+      _ ->
+        # Default to empty branch name if reference is not provided
+        "refs/heads/"
+    end
+  end
+
+  defp build_persist_reference(params) do
+    case from_params(params, :reference) do
+      reference_map when is_map(reference_map) ->
+        reference_type = Map.get(reference_map, :type) || Map.get(reference_map, "type", "branch")
+        reference_name = Map.get(reference_map, :name) || Map.get(reference_map, "name", "")
+
+        case reference_type do
+          "tag" -> "refs/tags/#{reference_name}"
+          _ -> "refs/heads/#{reference_name}"
+        end
+
+      _ ->
+        # Default to empty branch name if reference is not provided
+        # This will fail validation in the service since reference is required
+        "refs/heads/"
     end
   end
 
