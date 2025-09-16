@@ -98,10 +98,13 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
   # RunNow
 
   def form_run_now_request(params, conn) when is_map(params) do
+    reference = build_reference(params)
+
+    req =
     %{
       id: params |> Map.get("periodic_id", ""),
       requester: Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, ""),
-      branch: params |> Map.get("branch", ""),
+      reference: reference,
       pipeline_file: params |> Map.get("pipeline_file", ""),
       parameter_values: params |> Map.get("parameters", %{}) |> to_param_values()
     }
@@ -119,6 +122,30 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
     "Invalid value of '#{field}' param: #{inspect(val)} - needs to be integer."
     |> ToTuple.user_error()
     |> throw()
+  end
+
+  defp build_reference(params) do
+    # Support new structured reference format with fallback to legacy branch parameter
+    case params |> Map.get("reference") do
+      reference_map when is_map(reference_map) ->
+        reference_type = Map.get(reference_map, "type", "BRANCH")
+        reference_name = Map.get(reference_map, "name", "")
+
+        # Return appropriate format based on type
+        case String.upcase(reference_type) do
+          # Just tag name for tags
+          "TAG" -> reference_name
+          # Full ref for PRs
+          "PR" -> "refs/pull/#{reference_name}/head"
+          # Full ref for branches
+          _ -> "refs/heads/#{reference_name}"
+        end
+
+      _ ->
+        # Fall back to legacy branch parameter for backward compatibility
+        branch_name = params |> Map.get("branch", "")
+        "refs/heads/#{branch_name}"
+    end
   end
 
   defp to_param_values(parameters) do
