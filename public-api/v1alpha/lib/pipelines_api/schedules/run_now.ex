@@ -95,7 +95,7 @@ defmodule PipelinesAPI.Schedules.RunNow do
     end
   end
 
-  defp validate_reference_params(%{"reference" => reference} = params) do
+  defp validate_reference_params(params = %{"reference" => reference}) do
     case reference do
       %{"type" => type, "name" => name} when type in ["BRANCH", "TAG"] and is_binary(name) ->
         if String.trim(name) != "" do

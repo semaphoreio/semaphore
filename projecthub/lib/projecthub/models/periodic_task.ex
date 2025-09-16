@@ -136,12 +136,10 @@ defmodule Projecthub.Models.PeriodicTask do
   # "refs/tags/v1.0" -> "refs/tags/v1.0"
   # "main" -> "main" (fallback for plain strings)
   defp extract_branch_name(reference) when is_binary(reference) do
-    cond do
-      String.starts_with?(reference, "refs/heads/") ->
-        String.replace_prefix(reference, "refs/heads/", "")
-
-      true ->
-        reference
+    if String.starts_with?(reference, "refs/heads/") do
+      String.replace_prefix(reference, "refs/heads/", "")
+    else
+      reference
     end
   end
 

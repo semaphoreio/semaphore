@@ -133,12 +133,10 @@ defmodule Projecthub.Models.Scheduler do
   # "refs/tags/v1.0" -> "refs/tags/v1.0"
   # "main" -> "main" (fallback for plain strings)
   defp extract_branch_name(reference) when is_binary(reference) do
-    cond do
-      String.starts_with?(reference, "refs/heads/") ->
-        String.replace_prefix(reference, "refs/heads/", "")
-
-      true ->
-        reference
+    if String.starts_with?(reference, "refs/heads/") do
+      String.replace_prefix(reference, "refs/heads/", "")
+    else
+      reference
     end
   end
 
@@ -147,8 +145,8 @@ defmodule Projecthub.Models.Scheduler do
   # Helper function to format branch name as Git reference
   # "main" -> "refs/heads/main"
   # "refs/tags/v1.0" -> "refs/tags/v1.0" (default to branch format)
-  defp format_branch_as_reference(tag = "refs/tags/" <> _), do: tag
-  defp format_branch_as_reference(pr = "refs/pull/" <> _), do: pr
+  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
+  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
 
   defp format_branch_as_reference(branch_name) when is_binary(branch_name) do
     "refs/heads/#{branch_name}"

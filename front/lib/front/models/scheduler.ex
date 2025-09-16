@@ -666,14 +666,4 @@ defmodule Front.Models.Scheduler do
         {"branch", reference}
     end
   end
-
-  defp extract_reference_name(scheduler) do
-    {_type, name} = parse_git_reference(scheduler.reference)
-    name
-  end
-
-  defp extract_reference_type(scheduler) do
-    {type, _name} = parse_git_reference(scheduler.reference)
-    type
-  end
 end

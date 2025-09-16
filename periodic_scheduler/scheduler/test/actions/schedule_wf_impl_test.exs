@@ -2,7 +2,6 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
   use ExUnit.Case
 
   alias Scheduler.Actions.ScheduleWfImpl
-  alias Scheduler.Workers.ScheduleTask
   alias Scheduler.Workers.ScheduleTaskManager
   alias Scheduler.Periodics.Model.Periodics
   alias Scheduler.Periodics.Model.PeriodicsQueries
@@ -600,16 +599,6 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
 
   def mock_workflow_service_response(value),
     do: Application.put_env(:scheduler, :mock_workflow_service_response, value)
-
-  defp use_mock_repo_proxy_service(project_id) do
-    Application.put_env(
-      :scheduler,
-      :repo_proxy_api_grpc_endpoint,
-      "localhost:#{inspect(@grpc_port)}"
-    )
-
-    Application.put_env(:scheduler, :repo_proxy_service, {Test.MockRepoProxy, project_id})
-  end
 
   defp reset_mock_feature_service() do
     Cachex.clear(Elixir.Scheduler.FeatureHubProvider)

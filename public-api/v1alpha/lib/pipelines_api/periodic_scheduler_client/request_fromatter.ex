@@ -101,15 +101,15 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
     reference = build_reference(params)
 
     req =
-    %{
-      id: params |> Map.get("periodic_id", ""),
-      requester: Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, ""),
-      reference: reference,
-      pipeline_file: params |> Map.get("pipeline_file", ""),
-      parameter_values: params |> Map.get("parameters", %{}) |> to_param_values()
-    }
-    |> RunNowRequest.new()
-    |> ToTuple.ok()
+      %{
+        id: params |> Map.get("periodic_id", ""),
+        requester: Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, ""),
+        reference: reference,
+        pipeline_file: params |> Map.get("pipeline_file", ""),
+        parameter_values: params |> Map.get("parameters", %{}) |> to_param_values()
+      }
+      |> RunNowRequest.new()
+      |> ToTuple.ok()
   catch
     error -> error
   end
