@@ -85,6 +85,7 @@ defmodule PublicAPI.Handlers.Tasks.Trigger do
 
   def trigger(conn, _opts) do
     conn.body_params[:spec]
+    |> Map.from_struct()
     |> Map.put(:requester_id, conn.assigns[:user_id])
     |> Map.put(:task_id, conn.params[:task_id])
     |> Client.run_now()
