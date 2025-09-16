@@ -679,7 +679,7 @@ defmodule FrontWeb.SchedulersController do
   defp validate_run_now_parameters(scheduler, parameters) do
     errors =
       []
-      |> validate_run_now_field(parameters, :branch)
+      |> validate_run_now_field(parameters, :reference_name)
       |> validate_run_now_field(parameters, :pipeline_file)
       |> validate_run_now_parameter_values(parameters)
 
@@ -691,7 +691,8 @@ defmodule FrontWeb.SchedulersController do
          errors: [],
          scheduler: scheduler,
          parameters: %{
-           branch: parameters.branch,
+           reference_type: parameters.reference_type,
+           reference_name: parameters.reference_name,
            pipeline_file: parameters.pipeline_file,
            parameter_values: parameter_values
          }
@@ -746,15 +747,57 @@ defmodule FrontWeb.SchedulersController do
   defp parse_form_input(params) do
     recurring? = params["recurring"] != "false"
 
+    # Build the reference from either new reference_type/reference_name or legacy branch
+    reference =
+      case {params["reference_type"], params["reference_name"]} do
+        {type, name} when is_binary(type) and is_binary(name) and type != "" and name != "" ->
+          build_reference_from_type_and_name(type, name)
+
+        _ ->
+          # Fallback to branch parameter for backward compatibility
+          branch_name = String.trim(params["branch"] || "")
+          if branch_name != "", do: "refs/heads/#{branch_name}", else: ""
+      end
+
     %{
       at: if(recurring?, do: String.trim(params["at"]), else: ""),
-      branch: params["branch"],
+      reference: reference,
+      # For backward compatibility in audit logs
+      branch: extract_name_from_reference(reference),
       name: params["name"],
       description: params["description"] || "",
       pipeline_file: params["pipeline_file"],
       recurring: recurring?,
       parameters: parse_form_parameters(params["parameters"] || %{})
     }
+  end
+
+  defp build_reference_from_type_and_name(type, name) do
+    case String.downcase(type) do
+      "tag" -> "refs/tags/#{String.trim(name)}"
+      "pr" -> "refs/pull/#{String.trim(name)}/head"
+      "pull_request" -> "refs/pull/#{String.trim(name)}/head"
+      _ -> "refs/heads/#{String.trim(name)}"
+    end
+  end
+
+  defp extract_name_from_reference(reference) do
+    cond do
+      String.starts_with?(reference, "refs/heads/") ->
+        String.replace_prefix(reference, "refs/heads/", "")
+
+      String.starts_with?(reference, "refs/tags/") ->
+        String.replace_prefix(reference, "refs/tags/", "")
+
+      String.starts_with?(reference, "refs/pull/") ->
+        reference
+        |> String.replace_prefix("refs/pull/", "")
+        |> String.replace_suffix("/head", "")
+        |> then(fn pr_num -> "PR ##{pr_num}" end)
+
+      true ->
+        reference
+    end
   end
 
   defp parse_form_parameters(parameters) do
@@ -772,23 +815,43 @@ defmodule FrontWeb.SchedulersController do
   end
 
   defp parse_just_run_form_params(params, scheduler) do
-    branch = params["branch"] || scheduler.branch
+    reference_type = params["reference_type"] || "branch"
+
+    reference_name =
+      String.trim(params["reference_name"] || params["branch"] || scheduler.branch || "")
+
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
     parameter_values = params["parameters"] || %{}
 
     parameters = merge_form_values_with_default_values(scheduler, parameter_values)
-    %{branch: branch, pipeline_file: pipeline_file, parameters: parameters}
+
+    %{
+      reference_type: reference_type,
+      reference_name: reference_name,
+      pipeline_file: pipeline_file,
+      parameters: parameters
+    }
   end
 
   defp parse_just_run_trigger_params(params, scheduler) do
-    branch = params["branch"] || scheduler.branch
+    reference_type = params["reference_type"] || "branch"
+
+    reference_name =
+      String.trim(params["reference_name"] || params["branch"] || scheduler.branch || "")
+
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
 
     parameter_values =
       (params["parameters"] || %{}) |> Map.values() |> Enum.into(%{}, &{&1["name"], &1["value"]})
 
     parameters = merge_form_values_with_default_values(scheduler, parameter_values)
-    %{branch: branch, pipeline_file: pipeline_file, parameters: parameters}
+
+    %{
+      reference_type: reference_type,
+      reference_name: reference_name,
+      pipeline_file: pipeline_file,
+      parameters: parameters
+    }
   end
 
   defp merge_form_values_with_default_values(scheduler, values) do

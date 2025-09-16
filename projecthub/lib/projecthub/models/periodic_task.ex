@@ -15,12 +15,16 @@ defmodule Projecthub.Models.PeriodicTask do
     parameters = Enum.into(periodic_or_task.parameters, [], &construct_parameter/1)
     status = construct_status(periodic_or_task)
 
+    # Handle reference-to-branch mapping for gRPC responses
+    branch = extract_branch_from_reference_or_branch(periodic_or_task)
+
     params =
       periodic_or_task
       |> Map.take(@fields)
       |> Map.put(:project_name, project_name)
       |> Map.put(:status, status)
       |> Map.put(:parameters, parameters)
+      |> Map.put(:branch, branch)
       |> Map.merge(Map.new())
 
     struct!(__MODULE__, params)
@@ -114,4 +118,32 @@ defmodule Projecthub.Models.PeriodicTask do
       end
     end)
   end
+
+  # Helper function to extract branch name from reference or fall back to branch field
+  # This handles the transition from gRPC "branch" field to "reference" field
+  defp extract_branch_from_reference_or_branch(%{reference: reference}) when is_binary(reference) do
+    extract_branch_name(reference)
+  end
+
+  defp extract_branch_from_reference_or_branch(%{branch: branch}) when is_binary(branch) do
+    branch
+  end
+
+  defp extract_branch_from_reference_or_branch(_), do: nil
+
+  # Helper function to extract branch name from Git reference format
+  # "refs/heads/main" -> "main"
+  # "refs/tags/v1.0" -> "refs/tags/v1.0"
+  # "main" -> "main" (fallback for plain strings)
+  defp extract_branch_name(reference) when is_binary(reference) do
+    cond do
+      String.starts_with?(reference, "refs/heads/") ->
+        String.replace_prefix(reference, "refs/heads/", "")
+
+      true ->
+        reference
+    end
+  end
+
+  defp extract_branch_name(_), do: nil
 end
