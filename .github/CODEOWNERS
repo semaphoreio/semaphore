@@ -11,6 +11,7 @@
 /ee/pre_flight_checks/ @DamjanBecirovic @VeljkoMaksimovic @skipi
 /ee/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
 /ee/velocity/ @skipi @dexyk @lucaspin
+/ee/ephemeral_environments/ @skipi @VeljkoMaksimovic @DamjanBecirovic
 /encryptor/ @VeljkoMaksimovic @lucaspin @forestileao
 /ephemeral_environment/ @VeljkoMaksimovic @lucaspin @hamir-suspect
 /feature_provider/ @skipi @hamir-suspect @dexyk
