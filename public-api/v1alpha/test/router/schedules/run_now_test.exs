@@ -67,7 +67,7 @@ defmodule PipelinesAPI.Schedules.RunNow.Test do
              post_run_now(params, scheduler.id, 400, false)
   end
 
-  test "POST /schedules/:id/run_now - success when running a schedule and PeriodicSch returns :OK" do
+  test "POST /schedules/:id/run_now - success with legacy branch parameter" do
     org = Support.Stubs.Organization.create_default()
     user = Support.Stubs.User.create_default()
     project = Support.Stubs.Project.create(org, user)
@@ -86,6 +86,98 @@ defmodule PipelinesAPI.Schedules.RunNow.Test do
     assert {:ok, _} = UUID.info(workflow_id)
 
     assert Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id) |> Enum.count() > 0
+  end
+
+  test "POST /schedules/:id/run_now - success with new reference format - BRANCH" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    scheduler = Support.Stubs.Scheduler.create(project.id, user.id)
+
+    params = %{
+      "reference" => %{
+        "type" => "BRANCH",
+        "name" => "feature/deployment"
+      },
+      "pipeline_file" => ".semaphore/deploy.yml",
+      "parameters" => %{
+        "ENV" => "staging"
+      }
+    }
+
+    assert %{"workflow_id" => workflow_id} = post_run_now(params, scheduler.id, 200)
+    assert {:ok, _} = UUID.info(workflow_id)
+
+    assert Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id) |> Enum.count() > 0
+  end
+
+  test "POST /schedules/:id/run_now - success with new reference format - TAG" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    scheduler = Support.Stubs.Scheduler.create(project.id, user.id)
+
+    params = %{
+      "reference" => %{
+        "type" => "TAG",
+        "name" => "v2.1.0"
+      },
+      "pipeline_file" => ".semaphore/release.yml"
+    }
+
+    assert %{"workflow_id" => workflow_id} = post_run_now(params, scheduler.id, 200)
+    assert {:ok, _} = UUID.info(workflow_id)
+
+    assert Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id) |> Enum.count() > 0
+  end
+
+  test "POST /schedules/:id/run_now - fails with invalid reference type" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    scheduler = Support.Stubs.Scheduler.create(project.id, user.id)
+
+    params = %{
+      "reference" => %{
+        "type" => "INVALID",
+        "name" => "main"
+      },
+      "pipeline_file" => ".semaphore/semaphore.yml"
+    }
+
+    assert "\"Reference type must be 'BRANCH' or 'TAG'\"" =
+             post_run_now(params, scheduler.id, 400, false)
+  end
+
+  test "POST /schedules/:id/run_now - fails when both reference and branch are missing" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    scheduler = Support.Stubs.Scheduler.create(project.id, user.id)
+
+    params = %{
+      "pipeline_file" => ".semaphore/semaphore.yml"
+    }
+
+    assert "\"Either 'reference' or 'branch' parameter is required\"" =
+             post_run_now(params, scheduler.id, 400, false)
+  end
+
+  test "POST /schedules/:id/run_now - fails with empty reference name" do
+    org = Support.Stubs.Organization.create_default()
+    user = Support.Stubs.User.create_default()
+    project = Support.Stubs.Project.create(org, user)
+    scheduler = Support.Stubs.Scheduler.create(project.id, user.id)
+
+    params = %{
+      "reference" => %{
+        "type" => "BRANCH",
+        "name" => "   "
+      },
+      "pipeline_file" => ".semaphore/semaphore.yml"
+    }
+
+    assert "\"Reference name cannot be empty\"" = post_run_now(params, scheduler.id, 400, false)
   end
 
   def post_run_now(args, id, expected_status_code, decode \\ true)

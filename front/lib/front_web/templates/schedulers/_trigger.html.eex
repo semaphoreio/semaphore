@@ -2,6 +2,12 @@
   <%= render FrontWeb.SchedulersView, "_workflow.html",
         conn: @conn, workflow: @trigger.workflow %>
   <div class="flex items-center">
+    <%= if @trigger.reference_type && @trigger.reference_name do %>
+      <div class="flex items-center mr2 f6 gray">
+        <span class="material-symbols-outlined f6 mr1"><%= git_ref_icon(@trigger.reference_type) %></span>
+        <span><%= @trigger.reference_name %></span>
+      </div>
+    <% end %>
     <div class="ml2 ml3-m ml0-l mr3-l tr-l f6">
       <%= time_ago(@trigger.triggered_at) %>
       <br>

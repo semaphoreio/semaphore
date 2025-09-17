@@ -25,8 +25,8 @@ services:
     stdin_open: true
     tty: true
     volumes:
-      - .:/app:delegated
-    working_dir: "/app"
+      - ../:/app:delegated
+    working_dir: "/app/scheduler"
 
   ciapp:
     container_name: ciapp
@@ -74,6 +74,16 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
+  
+  pgweb:
+    image: sosedoff/pgweb
+    ports:
+      - 8081:8081
+    profiles: ["dev", "ci"]
+    environment:
+      - PGWEB_DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
+    depends_on:
+      - postgres
 
   rabbitmq:
     container_name: rabbitmq

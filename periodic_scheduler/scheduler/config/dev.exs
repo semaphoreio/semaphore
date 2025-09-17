@@ -21,3 +21,6 @@ config :watchman,
   host: "localhost",
   port: 8125,
   prefix: "periodic-sch.dev"
+
+config :scheduler,
+  feature_provider: {Scheduler.FeatureHubProvider, []}
