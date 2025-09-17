@@ -41,7 +41,8 @@ instance_config
 usage
 scouter
 license
-service_account'
+service_account
+ephemeral_environments'
 
 for element in $list;do
   echo "$element"

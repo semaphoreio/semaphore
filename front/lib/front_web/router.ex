@@ -179,6 +179,21 @@ defmodule FrontWeb.Router do
       post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
     end
 
+    scope "/ephemeral_environments" do
+      get("/", EphemeralEnvironmentController, :index)
+      get("/new*path", EphemeralEnvironmentController, :index)
+      # API endpoint
+      get("/list", EphemeralEnvironmentController, :list)
+      post("/", EphemeralEnvironmentController, :create)
+      get("/:id", EphemeralEnvironmentController, :show)
+      put("/:id", EphemeralEnvironmentController, :update)
+      delete("/:id", EphemeralEnvironmentController, :delete)
+      post("/:id/cordon", EphemeralEnvironmentController, :cordon)
+
+      # React router wildcard - must be last
+      get("/*path", EphemeralEnvironmentController, :index)
+    end
+
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)
     delete("/project/:name_or_id/offboarding", OffboardingController, :remove)
 
