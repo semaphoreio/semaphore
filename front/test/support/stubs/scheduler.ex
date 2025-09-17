@@ -165,37 +165,12 @@ defmodule Support.Stubs.Scheduler do
       wf_id = DB.first(:workflows) |> Map.get(:id)
       workflow = %{wf_id: wf_id}
 
-      # Extract branch/tag name from the reference string
-      reference_name =
-        cond do
-          req.reference && String.starts_with?(req.reference, "refs/heads/") ->
-            String.replace_prefix(req.reference, "refs/heads/", "")
-
-          req.reference && String.starts_with?(req.reference, "refs/tags/") ->
-            String.replace_prefix(req.reference, "refs/tags/", "")
-
-          req.reference && String.starts_with?(req.reference, "refs/pull/") ->
-            # For PR, extract the number
-            req.reference
-            |> String.replace_prefix("refs/pull/", "")
-            |> String.replace_suffix("/head", "")
-            |> then(fn pr_num -> "PR ##{pr_num}" end)
-
-          req.reference && req.reference != "" ->
-            req.reference
-
-          true ->
-            scheduler.api_model.reference
-        end
+      pipeline_file = get_pipeline_file(req.pipeline_file, scheduler.api_model.pipeline_file)
 
       trigger =
         Support.Stubs.Scheduler.create_trigger(scheduler.api_model, workflow, user,
-          reference: reference_name,
-          pipeline_file:
-            if(req.pipeline_file == "",
-              do: scheduler.api_model.pipeline_file,
-              else: req.pipeline_file
-            ),
+          reference: req.reference,
+          pipeline_file: pipeline_file,
           parameter_values: req.parameter_values || []
         )
 
@@ -210,6 +185,8 @@ defmodule Support.Stubs.Scheduler do
     @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
 
     def persist(req, _) do
+      require Logger
+      Logger.info("persisting scheduler: #{inspect(req)}")
       model_from_req = periodic_from_req(req)
 
       if req.id != nil && req.id != "" do
@@ -350,5 +327,8 @@ defmodule Support.Stubs.Scheduler do
         parameters: req.parameters
       )
     end
+
+    defp get_pipeline_file("", default_file), do: default_file
+    defp get_pipeline_file(file, _default), do: file
   end
 end

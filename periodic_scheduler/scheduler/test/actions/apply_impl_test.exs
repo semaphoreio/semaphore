@@ -11,6 +11,9 @@ defmodule Test.Actions.ApplyImpl.Test do
 
     start_supervised!(QuantumScheduler)
 
+    # Ensure v1.2 schema is cached for tests that use it
+    GenServer.call(DefinitionValidator.YamlMapValidator.Server, {:cache_schema, "v1.2"})
+
     {:ok, params}
   end
 

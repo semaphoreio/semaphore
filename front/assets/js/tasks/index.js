@@ -58,7 +58,6 @@ export class Tasks {
     return JustRunForm.init({
       referenceType: window.InjectedDataByBackend.Tasks.ReferenceType,
       referenceName: window.InjectedDataByBackend.Tasks.ReferenceName,
-      branch: window.InjectedDataByBackend.Tasks.Branch, // For backward compatibility
       pipelineFile: window.InjectedDataByBackend.Tasks.PipelineFile,
       parameters: window.InjectedDataByBackend.Tasks.Parameters,
     })
