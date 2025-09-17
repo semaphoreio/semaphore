@@ -75,20 +75,15 @@ func startInternalAPI() {
 	internalapi.RunServer(50051, quotaClient)
 }
 
-func startAgentCleaners() {
-	publisher := createPublisher()
-	go startAgentCleaner(publisher)
-	go startDisconnectedAgentCleaner(publisher)
-}
-
-func startAgentCleaner(publisher *amqp.Publisher) {
+func startAgentCleaner() {
 	log.Println("Starting Agent Cleaner")
+	publisher := createPublisher()
 	agentcleaner.Start(publisher)
 }
 
-func startDisconnectedAgentCleaner(publisher *amqp.Publisher) {
+func startDisconnectedAgentCleaner() {
 	log.Println("Starting Disconnected Agent Cleaner")
-	disconnected_cleaner.Start(publisher)
+	disconnected_cleaner.Start()
 }
 
 func startMetricsCollector() {
@@ -174,7 +169,8 @@ func main() {
 	}
 
 	if os.Getenv("START_AGENT_CLEANER") == "yes" {
-		startAgentCleaners()
+		go startAgentCleaner()
+		go startDisconnectedAgentCleaner()
 	}
 
 	if os.Getenv("START_METRICS_COLLECTOR") == "yes" {

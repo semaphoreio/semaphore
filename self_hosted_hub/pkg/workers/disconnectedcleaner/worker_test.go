@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
 	"github.com/stretchr/testify/require"
@@ -14,7 +13,6 @@ import (
 
 var orgID = database.UUID()
 var requesterID = database.UUID()
-var publisher, _ = amqp.NewPublisher("amqp://guest:guest@rabbitmq:5672")
 
 func Test__DeletingDisconnectedAgents(t *testing.T) {
 	database.TruncateTables()
@@ -27,7 +25,7 @@ func Test__DeletingDisconnectedAgents(t *testing.T) {
 
 	t.Run("it doesn't delete agents that didn't disconnect", func(t *testing.T) {
 		agent := createAgent(t, at.Name)
-		Tick(publisher)
+		Tick()
 		assertAgentExists(t, agent.ID.String())
 	})
 
@@ -35,7 +33,7 @@ func Test__DeletingDisconnectedAgents(t *testing.T) {
 		agent1 := createAgent(t, at.Name)
 		agent2 := createAgent(t, at.Name)
 		agent3 := createAgent(t, at.Name)
-		Tick(publisher)
+		Tick()
 
 		// agent 2 and 3 disconnects
 		agent2.Disconnect()
@@ -47,7 +45,7 @@ func Test__DeletingDisconnectedAgents(t *testing.T) {
 		// force 2 minutes to pass for agent 3
 		twoMinsAgo := time.Now().Add(-2 * time.Minute)
 		require.NoError(t, database.Conn().Model(&agent3).Update("disconnected_at", &twoMinsAgo).Error)
-		Tick(publisher)
+		Tick()
 
 		assertAgentExists(t, agent1.ID.String())
 		assertAgentExists(t, agent2.ID.String())
