@@ -419,7 +419,11 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage.Test do
 
       assert %HistoryPage{results: results} =
                load_page_with_cursor(ctx, {:BEFORE, cursor_ago(ctx, 2, :days)},
-                 branch_name: "develop"
+                 reference: %{
+                   normalized: "refs/heads/develop",
+                   short: "develop",
+                   original: "develop"
+                 }
                )
 
       assert Enum.all?(results, &(&1.reference == "develop"))
@@ -431,10 +435,14 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage.Test do
 
       assert %HistoryPage{results: results} =
                load_page_with_cursor(ctx, {:BEFORE, cursor_ago(ctx, 2, :days)},
-                 branch_name: "develop"
+                 reference: %{
+                   normalized: "refs/heads/develop",
+                   short: "develop",
+                   original: "develop"
+                 }
                )
 
-      assert Enum.all?(results, &(&1.reference == "develop"))
+      assert Enum.all?(results, &(&1.reference == "refs/heads/develop"))
       assert Enum.count(results) == 7
     end
 
