@@ -11,7 +11,7 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME started"
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates unzip curl libc-bin libc6 \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /app
 COPY pkg pkg
@@ -32,7 +32,7 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
 WORKDIR /app
 RUN go install github.com/mgechev/revive@v1.7.0
 RUN go install gotest.tools/gotestsum@v1.12.1
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.7
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 
@@ -48,7 +48,7 @@ LABEL org.opencontainers.image.source https://github.com/semaphoreio/semaphore
 # postgresql-client needs to be installed here too,
 # otherwise the createdb command won't work.
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # We don't need Docker health checks, since these containers
 # are intended to run in Kubernetes pods, which have probes.
