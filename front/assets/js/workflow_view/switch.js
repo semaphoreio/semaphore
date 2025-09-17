@@ -33,7 +33,7 @@ export var Switch = {
     $("body").on("click", "[promote-button]", function(event) {
       Pollman.stop();
 
-      TargetParams.init();
+      TargetParams.init('[data-promotion-param-name]');
       let button = $(event.currentTarget);
       let switchId = Switch.parentSwitch(button);
       let promotionTarget = Switch.parentPromotionTarget(button);
