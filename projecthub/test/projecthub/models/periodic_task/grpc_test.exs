@@ -79,7 +79,7 @@ defmodule Projecthub.Models.PeriodicTask.GrpcTest do
       name: "cron",
       recurring: true,
       project_id: "project_id",
-      branch: "master",
+      reference: "refs/heads/master",
       at: "0 0 * * *",
       pipeline_file: ".semaphore/cron.yml",
       parameters: [
@@ -96,7 +96,7 @@ defmodule Projecthub.Models.PeriodicTask.GrpcTest do
 
   defp yml_definition do
     """
-    apiVersion: v1.1
+    apiVersion: v1.2
     kind: Schedule
     metadata:
       name: \"cron\"
@@ -105,7 +105,9 @@ defmodule Projecthub.Models.PeriodicTask.GrpcTest do
       project: \"project_name\"
       recurring: true
       at: \"0 0 * * *\"
-      branch: \"master\"
+      reference:
+        type: BRANCH
+        name: \"master\"
       pipeline_file: \".semaphore/cron.yml\"
       parameters:
       - name: \"foo\"
