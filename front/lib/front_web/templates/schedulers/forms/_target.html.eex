@@ -1,9 +1,7 @@
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
     window.InjectedDataByBackend.Tasks.Target = {
-        branch: "<%= @scheduler.branch %>",
-        reference: "<%= @scheduler.reference %>",
         reference_type: "<%= @scheduler.reference_type || 'branch' %>",
-        reference_name: "<%= @scheduler.reference_name || @scheduler.branch %>",
+        reference_name: "<%= @scheduler.reference_name %>",
         pipeline_file: "<%= @scheduler.pipeline_file %>"
     };
 </script>
@@ -28,19 +26,12 @@
                       'data-validation-input': "referenceType" %>
                 <span class="f6">Branch</span>
             </label>
-            <label class="flex items-center mr4">
+            <label class="flex items-center">
                 <%= radio_button @form, :reference_type, "tag",
                       checked: @scheduler.reference_type == "tag",
                       class: "mr2",
                       'data-validation-input': "referenceType" %>
                 <span class="f6">Tag</span>
-            </label>
-            <label class="flex items-center">
-                <%= radio_button @form, :reference_type, "pr",
-                      checked: @scheduler.reference_type == "pr",
-                      class: "mr2",
-                      'data-validation-input': "referenceType" %>
-                <span class="f6">Pull Request</span>
             </label>
         </div>
     </div>
@@ -52,10 +43,9 @@
         <%= hidden_input @form, :unique_token %>
         <% placeholder_text = cond do
             @scheduler.reference_type == "tag" -> "e.g. v1.0.0"
-            @scheduler.reference_type == "pr" -> "e.g. 123"
             true -> "e.g. master"
         end %>
-        <%= text_input @form, :reference_name, name: "reference_name", value: @scheduler.reference_name || @scheduler.branch,
+        <%= text_input @form, :reference_name, name: "reference_name", value: @scheduler.reference_name,
             class: "form-control w-100 w-50-m", "data-validation-input": "branch",
             placeholder: placeholder_text %>
         <p class="f6 mt1 mb0 nb1">Please ensure that selected <span data-reference-type-text>branch</span> exists in the repository.</p>

@@ -26,7 +26,7 @@ defmodule Front.Models.Scheduler do
   alias InternalApi.Status, as: Status
   require Logger
 
-  @required_fields [:name, :reference, :pipeline_file, :recurring]
+  @required_fields [:name, :reference_name, :pipeline_file, :recurring]
   @default_page_args [page: 1, page_size: 10, page_query: ""]
   embedded_schema do
     field(:name, :string)
@@ -37,7 +37,6 @@ defmodule Front.Models.Scheduler do
     field(:reference, :string)
     field(:reference_type, :string, virtual: true)
     field(:reference_name, :string, virtual: true)
-    field(:branch, :string, virtual: true)
     field(:at, :string)
     field(:parameters, :map)
     field(:pipeline_file, :string)
@@ -149,7 +148,6 @@ defmodule Front.Models.Scheduler do
       field(:reference, :string)
       field(:reference_type, :string)
       field(:reference_name, :string)
-      field(:branch, :string)
       field(:pipeline_file, :string)
       field(:workflow_id, :string)
       field(:status, :string)
@@ -172,7 +170,6 @@ defmodule Front.Models.Scheduler do
         reference: trigger.reference,
         reference_type: reference_type,
         reference_name: reference_name,
-        branch: reference_name,
         pipeline_file: trigger.pipeline_file,
         workflow_id: trigger.scheduled_workflow_id,
         status: trigger.scheduling_status,
@@ -323,6 +320,8 @@ defmodule Front.Models.Scheduler do
 
     with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
          request <- Util.Proto.deep_new!(RunNowRequest, run_now_params),
+         :ok <-
+           Logger.info("run_now_params: #{inspect(run_now_params)}, request: #{inspect(request)}"),
          {:ok, response = %RunNowResponse{status: %Status{code: 0}}} <-
            Stub.run_now(channel, request, options(metadata)),
          triggers <- response.triggers ++ [empty_trigger()] do
@@ -434,9 +433,13 @@ defmodule Front.Models.Scheduler do
     all_data = Map.merge(form_data, context_data)
     scheduler_id = context_data[:id] || ""
 
+    # Build the reference field from reference_type and reference_name for gRPC service
+    reference = build_reference(all_data)
+    grpc_data = Map.put(all_data, :reference, reference)
+
     with true <- changeset.valid?,
          {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
-         {:ok, request} <- Util.Proto.deep_new(PersistRequest, all_data),
+         {:ok, request} <- Util.Proto.deep_new(PersistRequest, grpc_data),
          {:ok, %PersistResponse{status: %Status{code: 0}, periodic: periodic}} <-
            Stub.persist(channel, request, options(metadata)) do
       {:ok, periodic.id}
@@ -544,7 +547,6 @@ defmodule Front.Models.Scheduler do
       reference: raw_scheduler.reference,
       reference_type: reference_type,
       reference_name: reference_name,
-      branch: reference_name,
       at: raw_scheduler.at,
       parameters: construct_parameters(raw_scheduler.parameters),
       pipeline_file: raw_scheduler.pipeline_file,

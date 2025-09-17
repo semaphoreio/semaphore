@@ -8,8 +8,7 @@ export default class JustRunForm {
   }
 
   constructor(params) {
-    // Handle both legacy branch parameter and new reference parameters
-    const referenceName = params.referenceName || params.branch || '';
+    const referenceName = params.referenceName || 'Enter a branch or tag name…';
     const referenceType = params.referenceType || 'branch';
 
     this.referenceNameValidator = new Validator('referenceName', referenceName, [

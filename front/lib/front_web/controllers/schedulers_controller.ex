@@ -170,7 +170,8 @@ defmodule FrontWeb.SchedulersController do
         |> Audit.add(description: "Added a periodic scheduler")
         |> Audit.add(resource_name: scheduler_input.name)
         |> Audit.metadata(
-          branch: scheduler_input.branch,
+          reference_name: scheduler_input.reference_name,
+          reference_type: scheduler_input.reference_type,
           project_name: context.project_name,
           pipeline_file: scheduler_input.pipeline_file
         )
@@ -310,7 +311,8 @@ defmodule FrontWeb.SchedulersController do
         |> Audit.add(resource_name: scheduler_input.name)
         |> Audit.add(resource_id: scheduler_id)
         |> Audit.metadata(
-          branch: scheduler_input.branch,
+          reference_name: scheduler_input.reference_name,
+          reference_type: scheduler_input.reference_type,
           project_name: context.project_name,
           pipeline_file: scheduler_input.pipeline_file
         )
@@ -746,24 +748,13 @@ defmodule FrontWeb.SchedulersController do
 
   defp parse_form_input(params) do
     recurring? = params["recurring"] != "false"
-
-    # Build the reference from either new reference_type/reference_name or legacy branch
-    reference =
-      case {params["reference_type"], params["reference_name"]} do
-        {type, name} when is_binary(type) and is_binary(name) and type != "" and name != "" ->
-          build_reference_from_type_and_name(type, name)
-
-        _ ->
-          # Fallback to branch parameter for backward compatibility
-          branch_name = String.trim(params["branch"] || "")
-          if branch_name != "", do: "refs/heads/#{branch_name}", else: ""
-      end
+    reference_type = params["reference_type"] || "branch"
+    reference_name = String.trim(params["reference_name"] || "")
 
     %{
-      at: if(recurring?, do: String.trim(params["at"]), else: ""),
-      reference: reference,
-      # For backward compatibility in audit logs
-      branch: extract_name_from_reference(reference),
+      at: get_at_value(params, recurring?),
+      reference_type: reference_type,
+      reference_name: reference_name,
       name: params["name"],
       description: params["description"] || "",
       pipeline_file: params["pipeline_file"],
@@ -772,33 +763,8 @@ defmodule FrontWeb.SchedulersController do
     }
   end
 
-  defp build_reference_from_type_and_name(type, name) do
-    case String.downcase(type) do
-      "tag" -> "refs/tags/#{String.trim(name)}"
-      "pr" -> "refs/pull/#{String.trim(name)}/head"
-      "pull_request" -> "refs/pull/#{String.trim(name)}/head"
-      _ -> "refs/heads/#{String.trim(name)}"
-    end
-  end
-
-  defp extract_name_from_reference(reference) do
-    cond do
-      String.starts_with?(reference, "refs/heads/") ->
-        String.replace_prefix(reference, "refs/heads/", "")
-
-      String.starts_with?(reference, "refs/tags/") ->
-        String.replace_prefix(reference, "refs/tags/", "")
-
-      String.starts_with?(reference, "refs/pull/") ->
-        reference
-        |> String.replace_prefix("refs/pull/", "")
-        |> String.replace_suffix("/head", "")
-        |> then(fn pr_num -> "PR ##{pr_num}" end)
-
-      true ->
-        reference
-    end
-  end
+  defp get_at_value(params, true), do: String.trim(params["at"] || "")
+  defp get_at_value(_params, false), do: ""
 
   defp parse_form_parameters(parameters) do
     parameters |> Map.values() |> Enum.map(&parse_form_input_parameter/1)
@@ -818,7 +784,7 @@ defmodule FrontWeb.SchedulersController do
     reference_type = params["reference_type"] || "branch"
 
     reference_name =
-      String.trim(params["reference_name"] || params["branch"] || scheduler.branch || "")
+      String.trim(params["reference_name"] || params["branch"] || scheduler.reference_name || "")
 
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
     parameter_values = params["parameters"] || %{}
@@ -836,8 +802,7 @@ defmodule FrontWeb.SchedulersController do
   defp parse_just_run_trigger_params(params, scheduler) do
     reference_type = params["reference_type"] || "branch"
 
-    reference_name =
-      String.trim(params["reference_name"] || params["branch"] || scheduler.branch || "")
+    reference_name = String.trim(params["reference_name"] || scheduler.reference_name || "")
 
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
 
@@ -953,6 +918,7 @@ defmodule FrontWeb.SchedulersController do
       _ ->
         # Periodic Scheduler returned expected validation error
         # this error is communicated within the form
+        Logger.error("Failed to #{action} the scheduler: #{inspect(message)}")
 
         "Failed to #{action} the scheduler."
     end
@@ -961,7 +927,8 @@ defmodule FrontWeb.SchedulersController do
   defp compose_default_form_values(project_name) do
     %{
       at: "0 0 * * *",
-      branch: "master",
+      reference_type: "branch",
+      reference_name: "master",
       name: "",
       description: "",
       recurring: true,

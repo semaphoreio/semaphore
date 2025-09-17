@@ -4,7 +4,7 @@
   window.InjectedDataByBackend.Tasks.CanLoad = <%= @permissions["project.scheduler.view"] %>
 
   window.InjectedDataByBackend.Tasks.ReferenceType = "<%= @form_params.reference_type || "branch" %>";
-  window.InjectedDataByBackend.Tasks.ReferenceName = "<%= @form_params.reference_name || @form_params.branch %>";
+  window.InjectedDataByBackend.Tasks.ReferenceName = "<%= @form_params.reference_name %>";
   window.InjectedDataByBackend.Tasks.PipelineFile = "<%= @form_params.pipeline_file %>";
   window.InjectedDataByBackend.Tasks.Parameters = <%= raw injectable(@form_params.parameters) %>;
 </script>
@@ -41,31 +41,33 @@
                 <div class="flex mb3">
                   <label class="flex items-center mr4">
                     <%= radio_button f, :reference_type, "branch",
-                          checked: (@form_params.reference_type || "branch") == "branch",
+                          checked: (@form_params.reference_type) == "branch",
                           class: "mr2",
-                          'data-validation-input': "referenceType" %>
+                          name: "reference_type",
+                          "data-validation-input": "referenceType" %>
                     <span class="f6">Branch</span>
                   </label>
-                  <label class="flex items-center">
+                  <label class="flex items-center mr4">
                     <%= radio_button f, :reference_type, "tag",
                           checked: @form_params.reference_type == "tag",
                           class: "mr2",
-                          'data-validation-input': "referenceType" %>
+                          name: "reference_type",
+                          "data-validation-input": "referenceType" %>
                     <span class="f6">Tag</span>
                   </label>
                 </div>
                 <div class="mb1"><%= label f, :reference_name, class: "f6 gray" do %><span data-reference-label>Branch</span> Name<% end %></div>
                 <div class="flex flex-column" data-validation="referenceName">
-                  <%= text_input f, :reference_name, name: "reference_name", value: @form_params.reference_name || @form_params.branch,
+                  <%= text_input f, :reference_name, name: "reference_name", value: @form_params.reference_name,
                         class: "form-control w-100 #{error_css_class(@validation_errors, :reference_name)}", autocomplete: "off",
-                        'data-validation-input': "referenceName", placeholder: "Enter a branch or tag name…" %>
+                        "data-validation-input": "referenceName", placeholder: "Enter a branch or tag name…" %>
                   <div class="f5 b mv1 red" data-validation-message="referenceName"></div>
                 </div>
                 <div class="mb1 mt3"><%= label f, :pipeline_file, class: "f6 gray" do %>Pipeline<% end %></div>
                 <div class="flex flex-column" data-validation="pipelineFile">
                   <%= text_input f, :pipeline_file, name: "pipeline_file", value: @form_params.pipeline_file,
                         class: "form-control w-100 #{error_css_class(@validation_errors, :pipeline_file)}",
-                        'data-validation-input': "pipelineFile", placeholder: "e.g. .semaphore/semaphore.yml" %>
+                        "data-validation-input": "pipelineFile", placeholder: "e.g. .semaphore/semaphore.yml" %>
                   <div class="f5 b mv1 red" data-validation-message="pipelineFile"></div>
                 </div>
               </div>
