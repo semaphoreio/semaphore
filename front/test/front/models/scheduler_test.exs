@@ -4,6 +4,7 @@ defmodule Front.Models.SchedulerTest do
   import Mock
 
   alias Front.Models.Scheduler, as: Subject
+  alias Front.Clients
   alias Google.Protobuf.Timestamp
 
   alias InternalApi.PeriodicScheduler.{
@@ -150,9 +151,27 @@ defmodule Front.Models.SchedulerTest do
           ]
         )
 
-      with_mock Stub,
-        list: fn _c, _r, _o -> {:ok, response_scheduler} end,
-        latest_triggers: fn _c, _r, _o -> {:ok, response_triggers} end do
+      workflow_response =
+        InternalApi.PlumberWF.DescribeManyResponse.new(
+          status:
+            InternalApi.Status.new(
+              code: Google.Rpc.Code.value(:OK),
+              message: ""
+            ),
+          workflows: []
+        )
+
+      with_mocks([
+        {Stub, [],
+         [
+           list: fn _c, _r, _o -> {:ok, response_scheduler} end,
+           latest_triggers: fn _c, _r, _o -> {:ok, response_triggers} end
+         ]},
+        {Clients.Workflow, [],
+         [
+           describe_many: fn _r -> {:ok, workflow_response} end
+         ]}
+      ]) do
         assert {:ok, list} = Subject.list(@project_id)
 
         assert list.entries == [
