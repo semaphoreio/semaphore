@@ -31,11 +31,6 @@ func startPublicAPI() {
 		panic("Public API port can't be empty")
 	}
 
-	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		panic("Public API needs RABBITMQ_URL")
-	}
-
 	provider, err := configureFeatureProvider()
 	if err != nil {
 		panic(err)
@@ -52,10 +47,7 @@ func startPublicAPI() {
 		log.Fatalf("Error creating agent counter: %v", err)
 	}
 
-	publisher, err := amqp.NewPublisher(rabbitURL)
-	if err != nil {
-		log.Fatalf("Error creating AMQP publisher: %v", err)
-	}
+	publisher := createPublisher()
 
 	server, err := publicapi.NewServer(quotaClient, agentCounter, publisher)
 	if err != nil {
@@ -83,14 +75,20 @@ func startInternalAPI() {
 	internalapi.RunServer(50051, quotaClient)
 }
 
-func startAgentCleaner() {
-	log.Println("Starting Agent Cleaner")
-	agentcleaner.Start()
+func startAgentCleaners() {
+	publisher := createPublisher()
+	go startAgentCleaner(publisher)
+	go startDisconnectedAgentCleaner(publisher)
 }
 
-func startDisconnectedAgentCleaner() {
+func startAgentCleaner(publisher *amqp.Publisher) {
+	log.Println("Starting Agent Cleaner")
+	agentcleaner.Start(publisher)
+}
+
+func startDisconnectedAgentCleaner(publisher *amqp.Publisher) {
 	log.Println("Starting Disconnected Agent Cleaner")
-	disconnected_cleaner.Start()
+	disconnected_cleaner.Start(publisher)
 }
 
 func startMetricsCollector() {
@@ -176,8 +174,7 @@ func main() {
 	}
 
 	if os.Getenv("START_AGENT_CLEANER") == "yes" {
-		go startAgentCleaner()
-		go startDisconnectedAgentCleaner()
+		startAgentCleaners()
 	}
 
 	if os.Getenv("START_METRICS_COLLECTOR") == "yes" {
@@ -187,4 +184,19 @@ func main() {
 	log.Println("Self Hosted Hub is UP.")
 
 	select {}
+}
+
+// Creates a publisher for AMQP
+// Panics if RABBITMQ_URL is not set or if there is an error creating the publisher
+func createPublisher() *amqp.Publisher {
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		panic("RABBITMQ_URL is required to run the service")
+	}
+
+	publisher, err := amqp.NewPublisher(rabbitURL)
+	if err != nil {
+		log.Fatalf("Error creating AMQP publisher: %v", err)
+	}
+	return publisher
 }
