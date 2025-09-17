@@ -135,6 +135,133 @@ input[type="radio"][disabled] {
     opacity: 1;
     color: #96A0A6;
 }
+/* TomSelect styling to match form-control exactly */
+.ts-control {
+  -moz-appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+  font-size: 16px;
+  font-size: 1rem;
+  line-height: 1.5;
+  padding: 4px 10px;
+  padding-right: 24px;
+  border: 0;
+  border-radius: 6px;
+  color: #202b30;
+  background-color: #fff;
+  font-family: "Fakt Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  transition: background 0.1s ease, border-color 0.1s ease;
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2), inset 0 -1px 1px 0 #e5e8ea;
+  background-position: right 8px center;
+  background-repeat: no-repeat;
+  background-image: url('data:image/svg+xml;utf8,<svg width="6px" height="11px" viewBox="0 0 6 11" xmlns="http://www.w3.org/2000/svg"><path d="M3 0l3 4H0l3-4zm0 11L0 7h6l-3 4z" fill="%233B4148" fill-rule="evenodd"/></svg>');
+}
+
+.ts-control:focus,
+.ts-control.focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #00359f !important;
+  z-index: 4;
+}
+
+.ts-control .ts-placeholder {
+  opacity: 1;
+  color: #96a0a6;
+}
+
+/* Match disabled state */
+.ts-control.disabled,
+.ts-control[disabled] {
+  color: #96a0a6;
+  background-color: #f7fafb;
+  cursor: not-allowed;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+
+/* Hide TomSelect's default dropdown arrow since we're using the background image */
+.ts-control .ts-dropdown-trigger {
+  display: none;
+}
+
+/* Ensure TomSelect dropdown matches form styling */
+.ts-dropdown {
+  border-radius: 6px;
+  border: 0;
+  box-shadow: rgba(0, 0, 0, 0.35) 0px 6px 30px 3px,
+    rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+  font-family: "Fakt Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Style TomSelect options to match */
+.ts-dropdown .ts-option {
+  padding: 4px 10px;
+  font-size: 16px;
+  font-size: 1rem;
+}
+
+.ts-dropdown .ts-option.selected {
+  background-color: #00359f;
+  color: white;
+}
+
+.ts-dropdown .ts-option.active {
+  background-color: #cedcff;
+  color: #00359f;
+}
+
+/* Ensure single value display matches */
+.ts-control.single .ts-control-input {
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  font-size: 16px;
+  font-size: 1rem;
+  color: #202b30;
+  font-family: "Fakt Pro", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+
+/* Ensure input in editing mode maintains proper styling */
+.ts-control.single .ts-control-input input {
+  border: 1px solid #E5E8EA !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: none !important;
+  font-size: 16px;
+  font-size: 1rem;
+  color: #202B30;
+  font-family: 'Fakt Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* When TomSelect wrapper is in active states, ensure the .ts-control maintains its border */
+.ts-wrapper.dropdown-active .ts-control,
+.ts-wrapper.input-active .ts-control,
+.ts-wrapper.focus .ts-control {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), inset 0 -1px 1px 0 #E5E8EA !important;
+  border: 0 !important;
+  background-color: #FFF !important;
+  border-radius: 6px !important;
+}
+
+/* Override focus state when dropdown is active to maintain blue focus border */
+.ts-wrapper.focus .ts-control {
+  box-shadow: 0 0 0 2px #00359f !important;
+}
+
+/* Ensure TomSelect control always maintains form-control styling in all states */
+.ts-control,
+.ts-wrapper.dropdown-active .ts-control,
+.ts-wrapper.input-active .ts-control {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .2), inset 0 -1px 1px 0 #E5E8EA !important;
+  background-color: #FFF !important;
+  border: 0 !important;
+  border-radius: 6px !important;
+}
 textarea {
     display: block;
     min-height: 50px;

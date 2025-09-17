@@ -37,7 +37,8 @@ defmodule Front.Models.SchedulerTest do
     name: "sch-name",
     recurring: true,
     at: "addme",
-    branch: "master",
+    reference_type: "branch",
+    reference_name: "master",
     pipeline_file: "addme",
     project_name: "test-project",
     parameters: [
@@ -123,7 +124,7 @@ defmodule Front.Models.SchedulerTest do
             scheduler_desc(1,
               recurring: false,
               at: "",
-              branch: "",
+              reference: "",
               pipeline_file: "",
               parameters: [
                 %{
@@ -158,7 +159,9 @@ defmodule Front.Models.SchedulerTest do
                  scheduler_model(1,
                    recurring: false,
                    at: "",
-                   branch: "",
+                   reference: "",
+                   reference_type: "branch",
+                   reference_name: "",
                    pipeline_file: "",
                    parameters: [
                      %{
@@ -200,7 +203,9 @@ defmodule Front.Models.SchedulerTest do
       at: "* * * * *",
       recurring: true,
       blocked: suspended(ind),
-      branch: "master",
+      reference: "refs/heads/master",
+      reference_type: "branch",
+      reference_name: "master",
       created_at: "",
       id: "id-#{ind}",
       inactive: paused(ind),
@@ -231,7 +236,9 @@ defmodule Front.Models.SchedulerTest do
             status: status(ind),
             workflow_id: wf_id(ind),
             pipeline_file: "tests.yaml",
-            branch: "master"
+            reference: "refs/heads/master",
+            reference_type: "branch",
+            reference_name: "master"
           }
         )
     ]
@@ -243,7 +250,7 @@ defmodule Front.Models.SchedulerTest do
     Trigger.new(
       triggered_at: Timestamp.new(seconds: 0),
       project_id: "Test",
-      branch: "master",
+      reference: "refs/heads/master",
       pipeline_file: "tests.yaml",
       scheduling_status: status(ind),
       periodic_id: "id-#{ind}",
@@ -278,7 +285,7 @@ defmodule Front.Models.SchedulerTest do
       paused: paused(ind),
       pause_toggled_by: ptb(ind),
       pause_toggled_at: Timestamp.new(seconds: 0) |> Map.take([:seconds, :nanos]),
-      branch: "master",
+      reference: "refs/heads/master",
       updated_at: Timestamp.new(seconds: 0) |> Map.take([:seconds, :nanos]),
       inserted_at: Timestamp.new(seconds: 0) |> Map.take([:seconds, :nanos]),
       parameters: []
@@ -327,7 +334,7 @@ defmodule Front.Models.SchedulerTest do
             scheduler_desc(1,
               recurring: false,
               at: "",
-              branch: "",
+              reference: "refs/heads/master",
               pipeline_file: "",
               parameters: [
                 %{
@@ -348,7 +355,9 @@ defmodule Front.Models.SchedulerTest do
                  scheduler_model(1,
                    recurring: false,
                    at: "",
-                   branch: "",
+                   reference: "refs/heads/master",
+                   reference_type: "branch",
+                   reference_name: "master",
                    pipeline_file: "",
                    parameters: [
                      %{
@@ -622,7 +631,7 @@ defmodule Front.Models.SchedulerTest do
                  {:error,
                   %{
                     errors: %{
-                      branch:
+                      other:
                         "At least one regular workflow run on targeted branch is needed before periodic can be created."
                     }
                   }}
@@ -714,7 +723,8 @@ defmodule Front.Models.SchedulerTest do
 
       assert Enum.all?(page.triggers, &match?(%Trigger{}, &1))
       assert Enum.all?(page.triggers, &UUID.info!(&1.workflow_id))
-      assert Enum.all?(page.triggers, &(&1.branch == "master"))
+      assert Enum.all?(page.triggers, &(&1.reference_name == "master"))
+      assert Enum.all?(page.triggers, &(&1.reference_type == "branch"))
       assert Enum.all?(page.triggers, &(&1.pipeline_file == ".semaphore/semaphore.yml"))
       assert Enum.all?(page.triggers, &is_nil(&1.triggerer))
       assert Enum.all?(page.triggers, &is_nil(&1.workflow))
@@ -738,6 +748,150 @@ defmodule Front.Models.SchedulerTest do
       assert Enum.all?(page.triggers, &match?(%Trigger{}, &1))
       assert Enum.all?(page.triggers, &(&1.triggerer_name == "Jane"))
       assert Enum.all?(page.triggers, &(&1.triggerer_avatar_url == avatar_url))
+    end
+  end
+
+  describe "reference building" do
+    test "persist/3 builds Git reference from reference_type and reference_name for branches" do
+      form_data = %{
+        name: "test-scheduler",
+        recurring: true,
+        reference_type: "branch",
+        reference_name: "develop",
+        pipeline_file: ".semaphore/semaphore.yml"
+      }
+
+      context_data = %{
+        organization_id: @org_id,
+        requester_id: @user_id,
+        project_name: "test-project",
+        project_id: @project_id
+      }
+
+      with_mock Stub, [:passthrough],
+        persist: fn _channel, request, _options ->
+          # Verify that the request contains the properly built Git reference
+          assert request.reference == "refs/heads/develop"
+          assert request.name == "test-scheduler"
+          assert request.pipeline_file == ".semaphore/semaphore.yml"
+
+          {:ok,
+           %PersistResponse{
+             status: %InternalApi.Status{code: 0},
+             periodic: %Periodic{id: "new-scheduler-id"}
+           }}
+        end do
+        assert {:ok, "new-scheduler-id"} = Subject.persist(form_data, context_data)
+      end
+    end
+
+    test "persist/3 builds Git reference from reference_type and reference_name for tags" do
+      form_data = %{
+        name: "test-scheduler",
+        recurring: true,
+        reference_type: "tag",
+        reference_name: "v1.0.0",
+        pipeline_file: ".semaphore/semaphore.yml"
+      }
+
+      context_data = %{
+        organization_id: @org_id,
+        requester_id: @user_id,
+        project_name: "test-project",
+        project_id: @project_id
+      }
+
+      with_mock Stub, [:passthrough],
+        persist: fn _channel, request, _options ->
+          # Verify that the request contains the properly built Git reference
+          assert request.reference == "refs/tags/v1.0.0"
+          assert request.name == "test-scheduler"
+
+          {:ok,
+           %PersistResponse{
+             status: %InternalApi.Status{code: 0},
+             periodic: %Periodic{id: "new-scheduler-id"}
+           }}
+        end do
+        assert {:ok, "new-scheduler-id"} = Subject.persist(form_data, context_data)
+      end
+    end
+
+    test "persist/3 defaults to branch when reference_type is missing" do
+      form_data = %{
+        name: "test-scheduler",
+        recurring: true,
+        reference_name: "main",
+        pipeline_file: ".semaphore/semaphore.yml"
+      }
+
+      context_data = %{
+        organization_id: @org_id,
+        requester_id: @user_id,
+        project_name: "test-project",
+        project_id: @project_id
+      }
+
+      with_mock Stub, [:passthrough],
+        persist: fn _channel, request, _options ->
+          # Should default to branch reference format
+          assert request.reference == "refs/heads/main"
+
+          {:ok,
+           %PersistResponse{
+             status: %InternalApi.Status{code: 0},
+             periodic: %Periodic{id: "new-scheduler-id"}
+           }}
+        end do
+        assert {:ok, "new-scheduler-id"} = Subject.persist(form_data, context_data)
+      end
+    end
+
+    test "run_now/4 builds Git reference from reference_type and reference_name" do
+      just_run_params = %{
+        reference_type: "tag",
+        reference_name: "v2.1.0",
+        pipeline_file: ".semaphore/custom.yml"
+      }
+
+      with_mock Stub, [:passthrough],
+        run_now: fn _channel, request, _options ->
+          # Verify that run_now builds the reference and removes the separate fields
+          assert request.reference == "refs/tags/v2.1.0"
+          assert request.pipeline_file == ".semaphore/custom.yml"
+          assert request.id == @scheduler_id
+          assert request.requester == @user_id
+
+          # Should not include the separate reference fields
+          refute Map.has_key?(request, :reference_type)
+          refute Map.has_key?(request, :reference_name)
+
+          {:ok,
+           %RunNowResponse{
+             status: %InternalApi.Status{code: 0},
+             periodic: %Periodic{
+               id: @scheduler_id,
+               name: "test-scheduler",
+               description: "",
+               project_id: @project_id,
+               recurring: true,
+               reference: "refs/tags/v2.1.0",
+               pipeline_file: ".semaphore/custom.yml",
+               at: "",
+               parameters: [],
+               requester_id: @user_id,
+               updated_at: %Timestamp{seconds: 1_640_995_200},
+               inserted_at: %Timestamp{seconds: 1_640_995_200},
+               pause_toggled_at: nil,
+               pause_toggled_by: "",
+               paused: false,
+               suspended: false
+             },
+             triggers: []
+           }}
+        end do
+        assert {:ok, _scheduler} = Subject.run_now(@scheduler_id, @user_id, just_run_params)
+      end
     end
   end
 end
