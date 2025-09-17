@@ -28,10 +28,8 @@ defmodule Scheduler.Utils.GitReference do
   """
   def normalize(reference) when is_binary(reference) do
     if String.starts_with?(reference, "refs/") do
-      # Already a full reference
       reference
     else
-      # Assume it's a branch name and add refs/heads/ prefix
       "refs/heads/" <> reference
     end
   end
@@ -67,7 +65,6 @@ defmodule Scheduler.Utils.GitReference do
         String.replace_prefix(reference, "refs/pull/", "")
 
       true ->
-        # Not a full reference, return as-is
         reference
     end
   end

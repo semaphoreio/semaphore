@@ -46,7 +46,6 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries do
 
     merged_params = default_params |> Map.merge(params)
 
-    # Normalize reference field to ensure consistent format
     normalized_params =
       case merged_params.reference do
         ref when is_binary(ref) ->

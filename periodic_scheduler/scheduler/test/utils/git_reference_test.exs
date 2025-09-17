@@ -73,7 +73,6 @@ defmodule Scheduler.Utils.GitReference.Test do
     test "identifies branch references" do
       assert GitReference.get_type("refs/heads/master") == :branch
       assert GitReference.get_type("refs/heads/develop") == :branch
-      # short names assumed to be branches
       assert GitReference.get_type("master") == :branch
     end
 

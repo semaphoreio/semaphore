@@ -102,7 +102,6 @@ defmodule Scheduler.Actions.RunNowImpl do
     do: "The 'requester' parameter can not be empty string." |> ToTuple.error(:INVALID_ARGUMENT)
 
   defp verify_revision_exists(periodic, params) do
-    # Handle backwards compatibility: normalize reference to full format
     git_reference = GitReference.normalize(params.reference)
 
     revision_args = [reference: git_reference, commit_sha: ""]

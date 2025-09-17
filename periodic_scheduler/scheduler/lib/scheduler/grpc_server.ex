@@ -161,7 +161,6 @@ defmodule Scheduler.Grpc.Server do
     Metrics.benchmark("PeriodicSch.history", __MODULE__, fn ->
       filters = Map.take(request.filters || %{}, ~w(branch_name pipeline_file triggered_by)a)
 
-      # Map branch_name to reference for backwards compatibility
       filters =
         case Map.get(filters, :branch_name) do
           nil ->
