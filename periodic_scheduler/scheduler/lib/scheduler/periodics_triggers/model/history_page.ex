@@ -49,7 +49,8 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage do
   defp load_page(page = %__MODULE__{}) do
     {triggers, is_last?} = {list_page_triggers(page), is_last_page?(page)}
     {results, {prev, next}} = form_page_result(page, triggers, is_last?)
-    %__MODULE__{page | cursor_before: prev, cursor_after: next, results: results}
+    normalized_results = Enum.map(results, &normalize_reference/1)
+    %__MODULE__{page | cursor_before: prev, cursor_after: next, results: normalized_results}
   end
 
   # constructing page
@@ -190,9 +191,22 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage do
   defp apply_filter(query, {:triggered_by, triggered_by}),
     do: Ecto.Query.where(query, [dt, s], dt.run_now_requester_id == ^triggered_by)
 
-  defp apply_filter(query, {:branch_name, branch_name}),
-    do: Ecto.Query.where(query, [dt, s], dt.branch == ^branch_name)
+  defp apply_filter(query, {:branch_name, branch_name}) do
+    # Handle both formats: "refs/heads/branch" and "branch"
+    full_ref = "refs/heads/" <> branch_name
+    Ecto.Query.where(query, [dt, s], dt.reference == ^branch_name or dt.reference == ^full_ref)
+  end
+
+  defp apply_filter(query, {:reference, reference}),
+    do: Ecto.Query.where(query, [dt, s], dt.reference == ^reference)
 
   defp apply_filter(query, {:pipeline_file, pipeline_file}),
     do: Ecto.Query.where(query, [dt, s], dt.pipeline_file == ^pipeline_file)
+
+  # Normalize reference field by stripping "refs/heads/" prefix if present
+  defp normalize_reference(trigger = %Trigger{reference: "refs/heads/" <> branch_name}) do
+    %{trigger | reference: branch_name}
+  end
+
+  defp normalize_reference(trigger), do: trigger
 end
