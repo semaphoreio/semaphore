@@ -257,12 +257,7 @@ func handleFinishedJobState(ctx context.Context, publisher *amqp.Publisher, agen
 	 * it means the agent was using callbacks, so we don't send them again here.
 	 */
 	if result != "" {
-		err = publisher.PublishFinishedCallback(ctx, jobID, string(result))
-		if err != nil {
-			return nil, err
-		}
-
-		err = publisher.PublishTeardownFinishedCallback(ctx, jobID)
+		err = publisher.HandleJobFinished(ctx, jobID, string(result))
 		if err != nil {
 			return nil, err
 		}
