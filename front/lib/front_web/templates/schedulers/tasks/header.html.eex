@@ -8,7 +8,7 @@
 </div>
 <div class="flex items-center justify-between ">
   <div class="flex items-center mr3">
-    <span class="material-symbols-outlined f6">fork_right</span>
+    <span class="material-symbols-outlined f6"><%= git_ref_icon(@scheduler.reference_type || "branch") %></span>
     <%= target_link(@project, @scheduler) %>
   </div>
   <div class="button-group">

@@ -60,19 +60,21 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
 
       assert {:ok, %{trigger: trigger}} = RunNowImpl.run_now(run_now_params(periodics))
 
-      assert %{branch: "master", pipeline_file: "deploy.yml", parameter_values: []} = trigger
+      assert %{reference: "refs/heads/master", pipeline_file: "deploy.yml", parameter_values: []} =
+               trigger
     end
 
     test "when periodic has default branch and pipeline file then these are overriden", ctx do
       assert {:ok, periodics} =
-               insert_periodics(ctx.ids, %{branch: "develop", pipeline_file: "test.yml"})
+               insert_periodics(ctx.ids, %{reference: "develop", pipeline_file: "test.yml"})
 
       assert {:ok, %{trigger: trigger}} =
                RunNowImpl.run_now(
-                 run_now_params(periodics, %{branch: "master", pipeline_file: "deploy.yml"})
+                 run_now_params(periodics, %{reference: "master", pipeline_file: "deploy.yml"})
                )
 
-      assert %{branch: "master", pipeline_file: "deploy.yml", parameter_values: []} = trigger
+      assert %{reference: "refs/heads/master", pipeline_file: "deploy.yml", parameter_values: []} =
+               trigger
     end
 
     test "when periodic has required parameters without defaults and value is not provided then returns error",
@@ -284,7 +286,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
       project_name: "Project_1",
       recurring: if(is_nil(extra[:recurring]), do: true, else: extra[:recurring]),
       project_id: ids.pr_id,
-      branch: extra[:branch] || "master",
+      reference: extra[:reference] || "master",
       at: extra[:at] || "* * * * *",
       pipeline_file: extra[:pipeline_file] || "deploy.yml",
       parameters: extra[:parameters] || []
@@ -296,7 +298,7 @@ defmodule Scheduler.Actions.RunNowImpl.Test do
     %{
       id: periodic.id,
       requester: extra[:requester_id] || periodic.requester_id,
-      branch: extra[:branch] || "",
+      reference: extra[:reference] || "",
       pipeline_file: extra[:pipeline_file] || "",
       parameter_values: extra[:parameter_values] || []
     }

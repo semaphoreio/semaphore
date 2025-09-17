@@ -18,7 +18,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
     belongs_to :periodics, Periodics, type: Ecto.UUID, foreign_key: :periodic_id
     field :triggered_at, :utc_datetime_usec
     field :project_id, :string
-    field :branch, :string
+    field :reference, :string
     field :pipeline_file, :string
     field :scheduling_status, :string
     field :recurring, :boolean
@@ -32,7 +32,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
     timestamps()
   end
 
-  @required_fields_insert ~w(periodic_id triggered_at project_id branch
+  @required_fields_insert ~w(periodic_id triggered_at project_id reference
                              pipeline_file scheduling_status recurring)a
   @optional_fields_insert ~w(run_now_requester_id)a
 
@@ -50,7 +50,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers do
 
       iex> alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
       iex> params = %{periodic_id: UUID.uuid1(), triggered_at: DateTime.utc_now(),
-      ...>            branch: "master", project_id: "p1", pipeline_file: "deploy.yml",
+      ...>            reference: "master", project_id: "p1", pipeline_file: "deploy.yml",
       ...>            scheduling_status: "running", recurring: true,
       ...>            parameter_values: [%{name: "p1", value: "v1"}]}
       iex> PeriodicsTriggers.changeset_insert(%PeriodicsTriggers{}, params) |> Map.get(:valid?)

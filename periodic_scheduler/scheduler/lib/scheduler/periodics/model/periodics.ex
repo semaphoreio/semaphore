@@ -19,7 +19,7 @@ defmodule Scheduler.Periodics.Model.Periodics do
     field :description, :string
     field :project_name, :string
     field :project_id, :string
-    field :branch, :string
+    field :reference, :string
     field :at, :string
     field :pipeline_file, :string
     field :recurring, :boolean, read_after_writes: true, default: true
@@ -34,19 +34,19 @@ defmodule Scheduler.Periodics.Model.Periodics do
   end
 
   @required_fields_v1_0 ~w(id requester_id organization_id name project_name
-                          project_id branch at pipeline_file)a
+                          project_id reference at pipeline_file)a
   @optional_fields_v1_0 ~w(paused pause_toggled_by pause_toggled_at)a
 
   @required_fields_update_v1_0 ~w(requester_id organization_id)a
-  @optional_fields_update_v1_0 ~w(name project_name project_id branch at pipeline_file
+  @optional_fields_update_v1_0 ~w(name project_name project_id reference at pipeline_file
                                  suspended paused pause_toggled_by pause_toggled_at)a
 
   @required_fields ~w(id requester_id organization_id name project_name
-                      project_id recurring branch pipeline_file)a
+                      project_id recurring reference pipeline_file)a
   @optional_fields ~w(description at paused pause_toggled_by pause_toggled_at)a
 
   @required_fields_update ~w(requester_id organization_id)a
-  @optional_fields_update ~w(name project_name project_id branch at pipeline_file recurring
+  @optional_fields_update ~w(name project_name project_id reference at pipeline_file recurring
                              description suspended paused pause_toggled_by pause_toggled_at)a
 
   @doc """
@@ -79,7 +79,7 @@ defmodule Scheduler.Periodics.Model.Periodics do
 
       iex> alias Scheduler.Periodics.Model.Periodics
       iex> params = %{requester_id: UUID.uuid1(), organization_id: UUID.uuid1(),
-      ...>           name: "P1", project_name: "Pr1", branch: "master", project_id: "p1",
+      ...>           name: "P1", project_name: "Pr1", reference: "master", project_id: "p1",
       ...>           at: "* * * * *", id: UUID.uuid1(), pipeline_file: "deploy.yml"}
       iex> Periodics.changeset(%Periodics{}, "v1.0", params) |> Map.get(:valid?)
       true
@@ -87,7 +87,7 @@ defmodule Scheduler.Periodics.Model.Periodics do
       iex> alias Scheduler.Periodics.Model.Periodics
       iex> params = %{requester_id: UUID.uuid1(), organization_id: UUID.uuid1(), id: UUID.uuid1(),
       ...>           name: "P1", project_name: "Pr1", project_id: "p1",
-      ...>           branch: "master", pipeline_file: "deploy.yml", recurring: false,
+      ...>           reference: "master", pipeline_file: "deploy.yml", recurring: false,
       ...>           parameters: [%{name: "foo", required: true, default_value: "bar"}]}
       iex> Periodics.changeset(%Periodics{}, "v1.1", params) |> Map.get(:valid?)
       true
@@ -102,6 +102,10 @@ defmodule Scheduler.Periodics.Model.Periodics do
     do_changeset(periodic, params, api_version, @required_fields, @optional_fields)
   end
 
+  def changeset(periodic, api_version = "v1.2", params) do
+    do_changeset(periodic, params, api_version, @required_fields, @optional_fields)
+  end
+
   @doc ~S"""
   ## Examples:
 
@@ -111,7 +115,7 @@ defmodule Scheduler.Periodics.Model.Periodics do
 
       iex> alias Scheduler.Periodics.Model.Periodics
       iex> params = %{requester_id: UUID.uuid1(), organization_id: UUID.uuid1(), at: "* * * * *",
-      ...>           name: "P1",  branch: "master", pipeline_file: "deploy.yml"}
+      ...>           name: "P1",  reference: "master", pipeline_file: "deploy.yml"}
       iex> Periodics.changeset_update(%Periodics{}, "v1.0", params) |> Map.get(:valid?)
       true
 
@@ -136,6 +140,10 @@ defmodule Scheduler.Periodics.Model.Periodics do
     do_changeset(periodic, params, api_version, @required_fields_update, @optional_fields_update)
   end
 
+  def changeset_update(periodic, api_version = "v1.2", params) do
+    do_changeset(periodic, params, api_version, @required_fields_update, @optional_fields_update)
+  end
+
   defp do_changeset(periodic, params, api_version, required_fields, optional_fields) do
     periodic
     |> cast(params, required_fields ++ optional_fields)
@@ -148,19 +156,26 @@ defmodule Scheduler.Periodics.Model.Periodics do
 
   defp maybe_cast_parameters(changeset, "v1.0"), do: changeset
   defp maybe_cast_parameters(changeset, "v1.1"), do: cast_embed(changeset, :parameters)
+  defp maybe_cast_parameters(changeset, "v1.2"), do: cast_embed(changeset, :parameters)
 
   defp validate_recurring(changeset, "v1.0") do
     changeset
     |> put_change(:recurring, true)
     |> validate_inclusion(:recurring, [true])
-    |> validate_required(~w(at branch pipeline_file)a)
+    |> validate_required(~w(at reference pipeline_file)a)
   end
 
   defp validate_recurring(changeset, "v1.1"),
     do: validate_recurring(changeset, "v1.1", get_field(changeset, :recurring))
 
+  defp validate_recurring(changeset, "v1.2"),
+    do: validate_recurring(changeset, "v1.2", get_field(changeset, :recurring))
+
   defp validate_recurring(changeset, "v1.1", true), do: validate_required(changeset, [:at])
   defp validate_recurring(changeset, "v1.1", false), do: changeset
+
+  defp validate_recurring(changeset, "v1.2", true), do: validate_required(changeset, [:at])
+  defp validate_recurring(changeset, "v1.2", false), do: changeset
 
   defp validate_cron(_field_name, cron_expression) do
     case Crontab.CronExpression.Parser.parse(cron_expression) do

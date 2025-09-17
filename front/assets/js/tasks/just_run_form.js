@@ -1,5 +1,6 @@
 
 import { Validator, Rule } from "./components/validation"
+import { TargetParams } from '../workflow_view/target_params'
 
 export default class JustRunForm {
   static init(params) {
@@ -7,7 +8,10 @@ export default class JustRunForm {
   }
 
   constructor(params) {
-    this.branchValidator = new Validator('branch', params.branch, [
+    const referenceName = params.referenceName || 'Enter a branch or tag name…';
+    const referenceType = params.referenceType || 'branch';
+
+    this.referenceNameValidator = new Validator('referenceName', referenceName, [
       new Rule((v) => v.length < 1, 'cannot be empty')
     ])
     this.pipelineFileValidator = new Validator('pipelineFile', params.pipelineFile, [
@@ -17,30 +21,55 @@ export default class JustRunForm {
       new Rule((v) => parameter.required && (!v || v.length < 1), 'cannot be empty')
     ])]))
 
-    this.handleBranchChange()
+    this.currentReferenceType = referenceType
+    this.handleReferenceTypeChange()
+    this.handleReferenceNameChange()
     this.handlePipelineFileChange()
     this.handleParameterChanges()
     this.handleSubmitButton()
+    this.updateReferenceLabel()
+    this.initializeParameterSelects()
   }
 
   renderAll() {
-    this.branchValidator.render()
+    this.referenceNameValidator.render()
     this.pipelineFileValidator.render()
     this.parameterValidators.forEach(
       pV => pV.render()
     )
   }
 
-  handleBranchChange() {
-    const inputField = document.querySelector('[data-validation-input="branch"]')
-    if (inputField) {
-      inputField.addEventListener('input', (event) => { this.changeBranchValue(event.target.value) })
+  handleReferenceTypeChange() {
+    const referenceTypeInputs = document.querySelectorAll('[data-validation-input="referenceType"]')
+    referenceTypeInputs.forEach(input => {
+      input.addEventListener('change', (event) => {
+        this.changeReferenceType(event.target.value)
+      })
+    })
+  }
+
+  changeReferenceType(referenceType) {
+    this.currentReferenceType = referenceType
+    this.updateReferenceLabel()
+  }
+
+  updateReferenceLabel() {
+    const labelElement = document.querySelector('[data-reference-label]')
+    if (labelElement) {
+      labelElement.textContent = this.currentReferenceType === 'tag' ? 'Tag' : 'Branch'
     }
   }
 
-  changeBranchValue(branchValue) {
-    this.branchValidator.setValue(branchValue)
-    this.branchValidator.render()
+  handleReferenceNameChange() {
+    const inputField = document.querySelector('[data-validation-input="referenceName"]')
+    if (inputField) {
+      inputField.addEventListener('input', (event) => { this.changeReferenceNameValue(event.target.value) })
+    }
+  }
+
+  changeReferenceNameValue(referenceNameValue) {
+    this.referenceNameValidator.setValue(referenceNameValue)
+    this.referenceNameValidator.render()
   }
 
   handlePipelineFileChange() {
@@ -75,7 +104,7 @@ export default class JustRunForm {
   validateForm() {
     const parameterValidators = Array.from(this.parameterValidators.values())
 
-    return this.branchValidator.isValid() &&
+    return this.referenceNameValidator.isValid() &&
       this.pipelineFileValidator.isValid() &&
       parameterValidators.every(parameterValidator => parameterValidator.isValid())
   }
@@ -84,12 +113,16 @@ export default class JustRunForm {
     const submitButton = document.querySelector('[data-action="submit-form"]')
     if (!submitButton) { return; }
 
-    submitButton.addEventListener('click', (event) => {
+    submitButton.addEventListener('click', () => {
       if (this.validateForm()) {
         document.forms[0].submit()
       } else {
         this.renderAll()
       }
     })
+  }
+
+  initializeParameterSelects() {
+    TargetParams.init('[data-parameter-select]')
   }
 }
