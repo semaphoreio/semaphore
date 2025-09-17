@@ -289,6 +289,7 @@ defmodule InternalApi.Artifacthub.ListItem do
 
   field(:name, 1, type: :string)
   field(:is_directory, 2, type: :bool, json_name: "isDirectory")
+  field(:size, 3, type: :int64)
 end
 
 defmodule InternalApi.Artifacthub.Artifact do

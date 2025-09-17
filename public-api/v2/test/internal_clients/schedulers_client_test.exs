@@ -185,18 +185,11 @@ defmodule InternalClients.SchedulersClientTest do
       assert {:error, {:user, "missing :name"}} = Client.persist(%{})
     end
 
-    test "fails without branch" do
-      assert {:error, {:user, "missing :branch"}} =
-               Client.persist(%{
-                 name: "Scheduler"
-               })
-    end
-
     test "fails without pipeline_file" do
       assert {:error, {:user, "missing :pipeline_file"}} =
                Client.persist(%{
                  name: "Scheduler",
-                 branch: "master"
+                 reference: %{type: "branch", name: "master"}
                })
     end
 
@@ -220,7 +213,7 @@ defmodule InternalClients.SchedulersClientTest do
                })
 
       assert response.spec.name == "Scheduler"
-      assert response.spec.branch == "master"
+      assert response.spec.reference == %{"name" => "", "type" => "branch"}
       assert response.spec.pipeline_file == "pipeline.yml"
       assert response.metadata.updated_by.id == "user-1"
     end
@@ -245,7 +238,7 @@ defmodule InternalClients.SchedulersClientTest do
                })
 
       assert response.spec.name == "Scheduler"
-      assert response.spec.branch == "master"
+      assert response.spec.reference == %{"name" => "", "type" => "branch"}
       assert response.spec.pipeline_file == "pipeline.yml"
       assert parameter = List.first(response.spec.parameters)
 
@@ -362,7 +355,7 @@ defmodule InternalClients.SchedulersClientTest do
       assert {:ok, response} = Client.run_now(%{task_id: scheduler.id, requester_id: "user-1"})
       assert {:ok, _} = UUID.info(response.metadata.workflow_id)
       assert response.metadata.status == "PASSED"
-      assert response.spec.branch == scheduler.branch
+      assert response.spec.reference == %{"name" => "", "type" => "branch"}
       assert response.spec.pipeline_file == scheduler.pipeline_file
       assert response.metadata.triggered_by.id == "user-1"
     end
@@ -386,13 +379,49 @@ defmodule InternalClients.SchedulersClientTest do
 
       assert {:ok, _} = UUID.info(response.metadata.workflow_id)
       assert response.metadata.status == "PASSED"
-      assert response.spec.branch == "develop"
+      assert response.spec.reference == %{"name" => "", "type" => "branch"}
       assert response.spec.pipeline_file == "semaphore.yml"
       assert response.metadata.triggered_by.id == "user-1"
 
       assert [parameter_value] = response.spec.parameters
       assert parameter_value.name == "param1"
       assert parameter_value.value == "value1"
+    end
+
+    test "runs existing task with new reference structure for branch" do
+      scheduler = Support.Stubs.Scheduler.create(UUID.uuid4(), UUID.uuid4(), name: "Scheduler")
+
+      assert {:ok, response} =
+               Client.run_now(%{
+                 task_id: scheduler.id,
+                 requester_id: "user-1",
+                 reference: %{"type" => "branch", "name" => "feature-branch"},
+                 pipeline_file: "semaphore.yml"
+               })
+
+      assert {:ok, _} = UUID.info(response.metadata.workflow_id)
+      assert response.metadata.status == "PASSED"
+      assert response.spec.reference == %{"name" => "feature-branch", "type" => "branch"}
+      assert response.spec.pipeline_file == "semaphore.yml"
+      assert response.metadata.triggered_by.id == "user-1"
+    end
+
+    test "runs existing task with new reference structure for tag" do
+      scheduler = Support.Stubs.Scheduler.create(UUID.uuid4(), UUID.uuid4(), name: "Scheduler")
+
+      assert {:ok, response} =
+               Client.run_now(%{
+                 task_id: scheduler.id,
+                 requester_id: "user-1",
+                 reference: %{"type" => "tag", "name" => "v1.0.0"},
+                 pipeline_file: "semaphore.yml"
+               })
+
+      assert {:ok, _} = UUID.info(response.metadata.workflow_id)
+      assert response.metadata.status == "PASSED"
+      assert response.spec.reference == %{"name" => "v1.0.0", "type" => "tag"}
+      assert response.spec.pipeline_file == "semaphore.yml"
+      assert response.metadata.triggered_by.id == "user-1"
     end
   end
 end
