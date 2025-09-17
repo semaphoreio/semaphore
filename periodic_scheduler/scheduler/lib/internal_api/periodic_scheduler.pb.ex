@@ -112,14 +112,13 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
 
   field :id, 1, type: :string
   field :requester, 2, type: :string
-  field :pipeline_file, 3, type: :string, json_name: "pipelineFile"
+  field :reference, 3, type: :string
+  field :pipeline_file, 4, type: :string, json_name: "pipelineFile"
 
-  field :parameter_values, 4,
+  field :parameter_values, 5,
     repeated: true,
     type: InternalApi.PeriodicScheduler.ParameterValue,
     json_name: "parameterValues"
-
-  field :reference, 5, type: :string
 end
 
 defmodule InternalApi.PeriodicScheduler.RunNowResponse do

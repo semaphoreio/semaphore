@@ -74,16 +74,6 @@ services:
       interval: 3s
       timeout: 3s
       retries: 5
-  
-  pgweb:
-    image: sosedoff/pgweb
-    ports:
-      - 8081:8081
-    profiles: ["dev", "ci"]
-    environment:
-      - PGWEB_DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres?sslmode=disable
-    depends_on:
-      - postgres
 
   rabbitmq:
     container_name: rabbitmq
