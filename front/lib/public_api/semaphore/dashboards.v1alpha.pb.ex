@@ -8,8 +8,8 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard do
         }
   defstruct [:metadata, :spec]
 
-  field :metadata, 1, type: Semaphore.Dashboards.V1alpha.Dashboard.Metadata
-  field :spec, 2, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec
+  field(:metadata, 1, type: Semaphore.Dashboards.V1alpha.Dashboard.Metadata)
+  field(:spec, 2, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Metadata do
@@ -25,11 +25,11 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard.Metadata do
         }
   defstruct [:name, :id, :title, :create_time, :update_time]
 
-  field :name, 1, type: :string
-  field :id, 2, type: :string
-  field :title, 3, type: :string
-  field :create_time, 4, type: :int64
-  field :update_time, 5, type: :int64
+  field(:name, 1, type: :string)
+  field(:id, 2, type: :string)
+  field(:title, 3, type: :string)
+  field(:create_time, 4, type: :int64)
+  field(:update_time, 5, type: :int64)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec do
@@ -41,7 +41,7 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec do
         }
   defstruct [:widgets]
 
-  field :widgets, 2, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget
+  field(:widgets, 2, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget do
@@ -55,13 +55,14 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget do
         }
   defstruct [:name, :type, :filters]
 
-  field :name, 1, type: :string
-  field :type, 2, type: :string
+  field(:name, 1, type: :string)
+  field(:type, 2, type: :string)
 
-  field :filters, 3,
+  field(:filters, 3,
     repeated: true,
     type: Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.FiltersEntry,
     map: true
+  )
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.FiltersEntry do
@@ -74,8 +75,8 @@ defmodule Semaphore.Dashboards.V1alpha.Dashboard.Spec.Widget.FiltersEntry do
         }
   defstruct [:key, :value]
 
-  field :key, 1, type: :string
-  field :value, 2, type: :string
+  field(:key, 1, type: :string)
+  field(:value, 2, type: :string)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.ListDashboardsRequest do
@@ -88,8 +89,8 @@ defmodule Semaphore.Dashboards.V1alpha.ListDashboardsRequest do
         }
   defstruct [:page_size, :page_token]
 
-  field :page_size, 1, type: :int32
-  field :page_token, 2, type: :string
+  field(:page_size, 1, type: :int32)
+  field(:page_token, 2, type: :string)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.ListDashboardsResponse do
@@ -103,9 +104,9 @@ defmodule Semaphore.Dashboards.V1alpha.ListDashboardsResponse do
         }
   defstruct [:dashboards, :next_page_token, :total_size]
 
-  field :dashboards, 1, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard
-  field :next_page_token, 2, type: :string
-  field :total_size, 3, type: :int32
+  field(:dashboards, 1, repeated: true, type: Semaphore.Dashboards.V1alpha.Dashboard)
+  field(:next_page_token, 2, type: :string)
+  field(:total_size, 3, type: :int32)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.GetDashboardRequest do
@@ -117,7 +118,7 @@ defmodule Semaphore.Dashboards.V1alpha.GetDashboardRequest do
         }
   defstruct [:id_or_name]
 
-  field :id_or_name, 1, type: :string
+  field(:id_or_name, 1, type: :string)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.UpdateDashboardRequest do
@@ -130,8 +131,8 @@ defmodule Semaphore.Dashboards.V1alpha.UpdateDashboardRequest do
         }
   defstruct [:id_or_name, :dashboard]
 
-  field :id_or_name, 1, type: :string
-  field :dashboard, 2, type: Semaphore.Dashboards.V1alpha.Dashboard
+  field(:id_or_name, 1, type: :string)
+  field(:dashboard, 2, type: Semaphore.Dashboards.V1alpha.Dashboard)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.DeleteDashboardRequest do
@@ -143,7 +144,7 @@ defmodule Semaphore.Dashboards.V1alpha.DeleteDashboardRequest do
         }
   defstruct [:id_or_name]
 
-  field :id_or_name, 1, type: :string
+  field(:id_or_name, 1, type: :string)
 end
 
 defmodule Semaphore.Dashboards.V1alpha.Empty do
@@ -157,25 +158,35 @@ defmodule Semaphore.Dashboards.V1alpha.DashboardsApi.Service do
   @moduledoc false
   use GRPC.Service, name: "semaphore.dashboards.v1alpha.DashboardsApi"
 
-  rpc :ListDashboards,
-      Semaphore.Dashboards.V1alpha.ListDashboardsRequest,
-      Semaphore.Dashboards.V1alpha.ListDashboardsResponse
+  rpc(
+    :ListDashboards,
+    Semaphore.Dashboards.V1alpha.ListDashboardsRequest,
+    Semaphore.Dashboards.V1alpha.ListDashboardsResponse
+  )
 
-  rpc :GetDashboard,
-      Semaphore.Dashboards.V1alpha.GetDashboardRequest,
-      Semaphore.Dashboards.V1alpha.Dashboard
+  rpc(
+    :GetDashboard,
+    Semaphore.Dashboards.V1alpha.GetDashboardRequest,
+    Semaphore.Dashboards.V1alpha.Dashboard
+  )
 
-  rpc :CreateDashboard,
-      Semaphore.Dashboards.V1alpha.Dashboard,
-      Semaphore.Dashboards.V1alpha.Dashboard
+  rpc(
+    :CreateDashboard,
+    Semaphore.Dashboards.V1alpha.Dashboard,
+    Semaphore.Dashboards.V1alpha.Dashboard
+  )
 
-  rpc :UpdateDashboard,
-      Semaphore.Dashboards.V1alpha.UpdateDashboardRequest,
-      Semaphore.Dashboards.V1alpha.Dashboard
+  rpc(
+    :UpdateDashboard,
+    Semaphore.Dashboards.V1alpha.UpdateDashboardRequest,
+    Semaphore.Dashboards.V1alpha.Dashboard
+  )
 
-  rpc :DeleteDashboard,
-      Semaphore.Dashboards.V1alpha.DeleteDashboardRequest,
-      Semaphore.Dashboards.V1alpha.Empty
+  rpc(
+    :DeleteDashboard,
+    Semaphore.Dashboards.V1alpha.DeleteDashboardRequest,
+    Semaphore.Dashboards.V1alpha.Empty
+  )
 end
 
 defmodule Semaphore.Dashboards.V1alpha.DashboardsApi.Stub do
