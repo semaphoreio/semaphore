@@ -65,10 +65,11 @@ defmodule InternalApi.Notifications.Notification.Rule.Filter do
           pipelines: [String.t()],
           blocks: [String.t()],
           states: [[InternalApi.Notifications.Notification.Rule.Filter.State.t()]],
-          results: [[InternalApi.Notifications.Notification.Rule.Filter.Results.t()]]
+          results: [[InternalApi.Notifications.Notification.Rule.Filter.Results.t()]],
+          tags: [String.t()]
         }
 
-  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results]
+  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results, :tags]
 
   field(:projects, 1, repeated: true, type: :string)
   field(:branches, 2, repeated: true, type: :string)
@@ -86,6 +87,8 @@ defmodule InternalApi.Notifications.Notification.Rule.Filter do
     type: InternalApi.Notifications.Notification.Rule.Filter.Results,
     enum: true
   )
+
+  field(:tags, 7, repeated: true, type: :string)
 end
 
 defmodule InternalApi.Notifications.Notification.Rule.Notify.Slack do
@@ -224,10 +227,11 @@ defmodule InternalApi.Notifications.Notification do
           update_time: Google.Protobuf.Timestamp.t() | nil,
           rules: [InternalApi.Notifications.Notification.Rule.t()],
           status: InternalApi.Notifications.Notification.Status.t() | nil,
-          org_id: String.t()
+          org_id: String.t(),
+          creator_id: String.t()
         }
 
-  defstruct [:name, :id, :create_time, :update_time, :rules, :status, :org_id]
+  defstruct [:name, :id, :create_time, :update_time, :rules, :status, :org_id, :creator_id]
 
   field(:name, 1, type: :string)
   field(:id, 2, type: :string)
@@ -236,6 +240,7 @@ defmodule InternalApi.Notifications.Notification do
   field(:rules, 5, repeated: true, type: InternalApi.Notifications.Notification.Rule)
   field(:status, 6, type: InternalApi.Notifications.Notification.Status)
   field(:org_id, 7, type: :string)
+  field(:creator_id, 8, type: :string)
 end
 
 defmodule InternalApi.Notifications.ListRequest do

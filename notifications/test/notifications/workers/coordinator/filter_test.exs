@@ -51,12 +51,14 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r3, "pipeline", true, ".*")
       create_pattern(r3, "result", true, ".*")
 
-      assert names(Filter.find_rules(org1, "cli", "master", "", "prod.yml", "passed")) == [
+      assert names(Filter.find_rules(org1, "cli", "master", "", "prod.yml", "passed", nil)) == [
                "A",
                "B"
              ]
 
-      assert names(Filter.find_rules(org2, "cli", "master", "", "prod.yml", "failed")) == ["C"]
+      assert names(Filter.find_rules(org2, "cli", "master", "", "prod.yml", "failed", nil)) == [
+               "C"
+             ]
     end
   end
 
@@ -72,8 +74,11 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "pipeline", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
-      assert names(Filter.find_rules(org, "cli", "master", "", "prod.yml", "passed")) == ["A"]
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
+
+      assert names(Filter.find_rules(org, "cli", "master", "", "prod.yml", "passed", nil)) == [
+               "A"
+             ]
     end
 
     test "regex match" do
@@ -87,8 +92,11 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "pipeline", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "s2-123", "master", "", "prod.yml", "passed")) == ["A"]
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "s2-123", "master", "", "prod.yml", "passed", nil)) == [
+               "A"
+             ]
+
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
     end
   end
 
@@ -104,11 +112,22 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "pipeline", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == ["A"]
-      assert names(Filter.find_rules(org, "api", "staging", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == [
+               "A"
+             ]
+
+      assert names(Filter.find_rules(org, "api", "staging", "", "prod.yml", "passed", nil)) == []
 
       assert names(
-               Filter.find_rules(org, "api", "pull-request-54348", "master", "prod.yml", "passed")
+               Filter.find_rules(
+                 org,
+                 "api",
+                 "pull-request-54348",
+                 "master",
+                 "prod.yml",
+                 "passed",
+                 nil
+               )
              ) == ["A"]
     end
 
@@ -123,11 +142,12 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "pipeline", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "staging-123", "", "prod.yml", "passed")) == [
-               "A"
-             ]
+      assert names(Filter.find_rules(org, "api", "staging-123", "", "prod.yml", "passed", nil)) ==
+               [
+                 "A"
+               ]
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
 
       assert names(
                Filter.find_rules(
@@ -154,11 +174,12 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "branch", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "semaphore.yml", "passed")) == [
-               "A"
-             ]
+      assert names(Filter.find_rules(org, "api", "master", "", "semaphore.yml", "passed", nil)) ==
+               [
+                 "A"
+               ]
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
     end
 
     test "regex match" do
@@ -172,11 +193,12 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "branch", true, ".*")
       create_pattern(r, "result", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "stg-alpha.yml", "passed")) == [
-               "A"
-             ]
+      assert names(Filter.find_rules(org, "api", "master", "", "stg-alpha.yml", "passed", nil)) ==
+               [
+                 "A"
+               ]
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
     end
   end
 
@@ -192,11 +214,12 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "branch", true, ".*")
       create_pattern(r, "pipeline", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "semaphore.yml", "failed")) == [
-               "A"
-             ]
+      assert names(Filter.find_rules(org, "api", "master", "", "semaphore.yml", "failed", nil)) ==
+               [
+                 "A"
+               ]
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed")) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == []
     end
 
     test "regex match" do
@@ -210,10 +233,133 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
       create_pattern(r, "branch", true, ".*")
       create_pattern(r, "pipeline", true, ".*")
 
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "failed")) == []
-      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "exited")) == []
-      assert names(Filter.find_rules(org, "api", "master", "", "stg.yml", "passed")) == ["A"]
-      assert names(Filter.find_rules(org, "api", "master", "", "stg.yml", "stopped")) == ["A"]
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "failed", nil)) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "exited", nil)) == []
+      assert names(Filter.find_rules(org, "api", "master", "", "stg.yml", "passed", nil)) == ["A"]
+
+      assert names(Filter.find_rules(org, "api", "master", "", "stg.yml", "stopped", nil)) == [
+               "A"
+             ]
+    end
+  end
+
+  describe "filter by tag" do
+    test "exact match" do
+      org = Ecto.UUID.generate()
+      r = create_rule("A", org)
+
+      create_pattern(r, "tag", false, "v1.0.0")
+
+      # match every project/branch/pipeline/result
+      create_pattern(r, "project", true, ".*")
+      create_pattern(r, "branch", true, ".*")
+      create_pattern(r, "pipeline", true, ".*")
+      create_pattern(r, "result", true, ".*")
+
+      # Should match when tag is provided and matches pattern
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v1.0.0")) ==
+               ["A"]
+
+      # Should not match when tag doesn't match pattern
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v2.0.0")) ==
+               []
+
+      # When tag patterns exist but nil is passed, it skips tag filtering
+      # So the rule WILL match (because all other patterns match)
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == [
+               "A"
+             ]
+    end
+
+    test "regex match" do
+      org = Ecto.UUID.generate()
+      r = create_rule("A", org)
+
+      create_pattern(r, "tag", true, "^v\\d+\\.\\d+\\.\\d+$")
+
+      # match every project/branch/pipeline/result
+      create_pattern(r, "project", true, ".*")
+      create_pattern(r, "branch", true, ".*")
+      create_pattern(r, "pipeline", true, ".*")
+      create_pattern(r, "result", true, ".*")
+
+      # Should match semantic version tags
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v1.0.0")) ==
+               ["A"]
+
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v2.1.3")) ==
+               ["A"]
+
+      # Should not match non-semantic version tags
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "release-1")) ==
+               []
+
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v1.0")) ==
+               []
+
+      # When tag patterns exist but nil is passed, it skips tag filtering
+      # So the rule WILL match (because all other patterns match)
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) == [
+               "A"
+             ]
+    end
+
+    test "wildcard-style match with release prefix" do
+      org = Ecto.UUID.generate()
+      r = create_rule("A", org)
+
+      create_pattern(r, "tag", true, "^release-.*")
+
+      # match every project/branch/pipeline/result
+      create_pattern(r, "project", true, ".*")
+      create_pattern(r, "branch", true, ".*")
+      create_pattern(r, "pipeline", true, ".*")
+      create_pattern(r, "result", true, ".*")
+
+      # Should match release tags
+      assert names(
+               Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "release-1.0")
+             ) == ["A"]
+
+      assert names(
+               Filter.find_rules(
+                 org,
+                 "api",
+                 "master",
+                 "",
+                 "prod.yml",
+                 "passed",
+                 "release-staging"
+               )
+             ) == ["A"]
+
+      # Should not match other tags
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v1.0.0")) ==
+               []
+
+      assert names(
+               Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "hotfix-123")
+             ) == []
+    end
+
+    test "should match when no tag patterns exist (default behavior)" do
+      org = Ecto.UUID.generate()
+      r = create_rule("A", org)
+
+      # Create patterns for all other types, including the default tag pattern
+      create_pattern(r, "project", true, ".*")
+      create_pattern(r, "branch", true, ".*")
+      create_pattern(r, "pipeline", true, ".*")
+      create_pattern(r, "result", true, ".*")
+      # This is the default pattern rule_factory would add
+      create_pattern(r, "tag", true, ".*")
+
+      # When the default ".*" tag pattern exists, the rule should match ANY tag value (including nil)
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", "v1.0.0")) ==
+               ["A"]
+
+      assert names(Filter.find_rules(org, "api", "master", "", "prod.yml", "passed", nil)) ==
+               ["A"]
     end
   end
 
@@ -250,6 +396,6 @@ defmodule Notifications.Workers.Coordinator.FilterTest do
     create_pattern(r1, "block", true, ".*")
     create_pattern(r1, "result", true, ".*")
 
-    assert names(Filter.find_rules(org1, "a", "stg", "", "semaphore.yml", "passed")) == ["A"]
+    assert names(Filter.find_rules(org1, "a", "stg", "", "semaphore.yml", "passed", nil)) == ["A"]
   end
 end
