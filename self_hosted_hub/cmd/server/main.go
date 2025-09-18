@@ -31,11 +31,6 @@ func startPublicAPI() {
 		panic("Public API port can't be empty")
 	}
 
-	rabbitURL := os.Getenv("RABBITMQ_URL")
-	if rabbitURL == "" {
-		panic("Public API needs RABBITMQ_URL")
-	}
-
 	provider, err := configureFeatureProvider()
 	if err != nil {
 		panic(err)
@@ -52,10 +47,7 @@ func startPublicAPI() {
 		log.Fatalf("Error creating agent counter: %v", err)
 	}
 
-	publisher, err := amqp.NewPublisher(rabbitURL)
-	if err != nil {
-		log.Fatalf("Error creating AMQP publisher: %v", err)
-	}
+	publisher := createPublisher()
 
 	server, err := publicapi.NewServer(quotaClient, agentCounter, publisher)
 	if err != nil {
@@ -85,7 +77,8 @@ func startInternalAPI() {
 
 func startAgentCleaner() {
 	log.Println("Starting Agent Cleaner")
-	agentcleaner.Start()
+	publisher := createPublisher()
+	agentcleaner.Start(publisher)
 }
 
 func startDisconnectedAgentCleaner() {
@@ -187,4 +180,19 @@ func main() {
 	log.Println("Self Hosted Hub is UP.")
 
 	select {}
+}
+
+// Creates a publisher for AMQP
+// Panics if RABBITMQ_URL is not set or if there is an error creating the publisher
+func createPublisher() *amqp.Publisher {
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		panic("RABBITMQ_URL is required to run the service")
+	}
+
+	publisher, err := amqp.NewPublisher(rabbitURL)
+	if err != nil {
+		log.Fatalf("Error creating AMQP publisher: %v", err)
+	}
+	return publisher
 }
