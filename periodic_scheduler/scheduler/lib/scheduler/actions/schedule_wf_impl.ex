@@ -89,8 +89,11 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     # Handle backwards compatibility: normalize reference to full format
     git_reference = GitReference.normalize(trigger.reference)
 
-    # Extract branch name for legacy branch_name field
-    branch_name = GitReference.extract_name(trigger.reference)
+    # Use legacy format for branch_name field (Plumber compatibility)
+    branch_name = legacy_branch_name(trigger.reference)
+
+    # Extract clean name for label field
+    label = GitReference.extract_name(trigger.reference)
 
     %{
       service: schedule_workflow_service_type(repository.integration_type),
@@ -100,12 +103,13 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
       requester_id: requester_id,
       definition_file: trigger.pipeline_file,
       organization_id: periodic.organization_id,
-      label: branch_name,
+      label: label,
       scheduler_task_id: periodic.id,
       git: %{
         reference: git_reference,
         commit_sha: ""
       },
+      git_reference: git_reference,
       triggered_by: triggered_by,
       env_vars: parameter_values_to_env_vars(trigger.parameter_values)
     }
@@ -142,4 +146,21 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
 
   def to_str(val) when is_binary(val), do: val
   def to_str(val), do: "#{inspect(val)}"
+
+  # Legacy branch_name format required by Plumber
+  defp legacy_branch_name(reference) do
+    reference
+    |> GitReference.normalize()
+    |> legacy_branch_name_format()
+  end
+
+  defp legacy_branch_name_format("refs/tags/" <> _ = full_ref), do: full_ref
+
+  defp legacy_branch_name_format("refs/pull/" <> rest) do
+    pr_number = rest |> String.trim_trailing("/head")
+    "pull-request-#{pr_number}"
+  end
+
+  defp legacy_branch_name_format("refs/heads/" <> branch_name), do: branch_name
+  defp legacy_branch_name_format(_), do: nil
 end
