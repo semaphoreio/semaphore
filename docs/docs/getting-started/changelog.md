@@ -8,6 +8,32 @@ Thank you for using Semaphore!
 We continuously deploy changes that improve our product for our customers.
 This page is updated on a weekly basis.
 
+### Week of Sept 29 2025
+
+**(New)** New macOS Image will be released
+
+- Name: macos-xcode26
+- Availability: a2-standard-4 agent type
+
+**(New)** New packages:
+
+- Xcode 26
+- iOS simulator 26
+- iOS simulator 18.6
+
+**(Updated)** Updated packages:
+- macOS 16 -> 26
+- (System) Ruby 3.4.4 -> 3.4.6
+- Flutter 3.32.1 -> 3.35.4
+- Homebrew 4.5.3 -> 4.6.11
+- Fastlane 2.227.2 -> 2.228.0
+- Postgres 14.18 -> 14.19
+
+**(Removed)** Removed packages:
+- iOS simulator versions below 18.6
+
+
+
 ### Week of Jun 9 2025
 
 **(Improved) macos-xcode16 (apple silicon) image update**
