@@ -187,6 +187,15 @@ defmodule InternalApi.RepoProxy.CreateBlankResponse do
   field :repo, 5, type: InternalApi.RepoProxy.CreateBlankResponse.Repo
 end
 
+defmodule InternalApi.RepoProxy.PullRequestUnmergeable do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+
+  field :project_id, 1, type: :string, json_name: "projectId"
+  field :branch_name, 2, type: :string, json_name: "branchName"
+  field :timestamp, 3, type: Google.Protobuf.Timestamp
+end
+
 defmodule InternalApi.RepoProxy.RepoProxyService.Service do
   @moduledoc false
   use GRPC.Service,
