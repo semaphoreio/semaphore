@@ -22,6 +22,7 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
 
   @doc """
   Creates or updates a task
+  Note: This still uses ApplyRequest for YAML-based task creation
   """
   @spec upsert(String.t(), String.t(), String.t()) :: {:ok, String.t()} | {:error, any()}
   def upsert(yml_definition, organization_id, requester_id) do
@@ -69,10 +70,12 @@ defmodule Projecthub.Models.PeriodicTask.GRPC do
 
   defp stub_func(%API.ListRequest{}), do: &Stub.list/3
   defp stub_func(%API.ApplyRequest{}), do: &Stub.apply/3
+  defp stub_func(%API.PersistRequest{}), do: &Stub.persist/3
   defp stub_func(%API.DeleteRequest{}), do: &Stub.delete/3
 
   defp parse_response(%{code: :OK}, _request, %API.ListResponse{} = response), do: {:ok, response.periodics}
   defp parse_response(%{code: :OK}, _request, %API.ApplyResponse{} = response), do: {:ok, response.id}
+  defp parse_response(%{code: :OK}, _request, %API.PersistResponse{} = response), do: {:ok, response.periodic.id}
   defp parse_response(%{code: :OK}, %API.DeleteRequest{} = request, _response), do: {:ok, request.id}
 
   defp parse_response(%{code: code, message: message}, _request, _response)

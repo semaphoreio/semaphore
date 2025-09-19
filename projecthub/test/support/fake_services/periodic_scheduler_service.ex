@@ -15,4 +15,8 @@ defmodule Support.FakeServices.PeriodicSchedulerService do
   def apply(req, stream) do
     FunRegistry.run!(__MODULE__, :apply, [req, stream])
   end
+
+  def persist(req, stream) do
+    FunRegistry.run!(__MODULE__, :persist, [req, stream])
+  end
 end

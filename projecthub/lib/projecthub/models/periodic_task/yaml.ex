@@ -21,8 +21,10 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
   end
 
   defp base_yml_definition(task, project) do
+    reference_yml = compose_reference_yaml(task.branch, 2)
+
     """
-    apiVersion: v1.1
+    apiVersion: v1.2
     kind: Schedule
     metadata:
       name: \"#{task.name}\"
@@ -33,8 +35,7 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
       recurring: #{task.recurring}
       paused: #{task.status == :STATUS_INACTIVE}
       at: \"#{task.at}\"
-      branch: \"#{task.branch}\"
-      pipeline_file: \"#{task.pipeline_file}\"
+    #{reference_yml}  pipeline_file: \"#{task.pipeline_file}\"
     """
   end
 
@@ -77,6 +78,34 @@ defmodule Projecthub.Models.PeriodicTask.YAML do
 
   defp indentation(number),
     do: 0..(number - 1) |> Enum.map_join(fn _ -> " " end)
+
+  # Composes reference YAML according to v1.2 spec
+  defp compose_reference_yaml(branch, indent) when is_binary(branch) do
+    {ref_type, ref_name} = parse_reference(branch)
+
+    "#{indentation(indent)}reference:\n" <>
+      "#{indentation(indent)}  type: #{ref_type}\n" <>
+      "#{indentation(indent)}  name: \"#{ref_name}\"\n"
+  end
+
+  defp compose_reference_yaml(_, indent),
+    do:
+      "#{indentation(indent)}reference:\n#{indentation(indent)}  type: BRANCH\n#{indentation(indent)}  name: \"master\"\n"
+
+  # Parse different reference formats to type and name
+  defp parse_reference("refs/heads/" <> branch_name), do: {"BRANCH", branch_name}
+  defp parse_reference("refs/tags/" <> tag_name), do: {"TAG", tag_name}
+  defp parse_reference("refs/pull/" <> pr_ref), do: {"PR", extract_pr_number(pr_ref)}
+  defp parse_reference(branch_name) when is_binary(branch_name) and branch_name != "", do: {"BRANCH", branch_name}
+  defp parse_reference(_), do: {"BRANCH", "master"}
+
+  # Extract PR number from refs/pull/123/head format
+  defp extract_pr_number(pr_ref) do
+    case String.split(pr_ref, "/") do
+      [pr_number | _] -> pr_number
+      _ -> pr_ref
+    end
+  end
 
   defp empty?(nil), do: true
   defp empty?(""), do: true

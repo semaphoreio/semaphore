@@ -41,18 +41,26 @@ defmodule Projecthub.Models.Scheduler do
   end
 
   def apply(scheduler, project, requester_id, metadata \\ nil) do
-    scheduler_yml_definition = to_yaml(scheduler, project)
-
-    Logger.info("Scheduler yml definition: #{inspect(scheduler_yml_definition)}")
+    Logger.info("Creating/updating scheduler #{scheduler.name} for project #{project.id}")
 
     req =
-      InternalApi.PeriodicScheduler.ApplyRequest.new(
+      InternalApi.PeriodicScheduler.PersistRequest.new(
+        id: scheduler.id,
+        name: scheduler.name,
+        description: "",
+        recurring: true,
+        state: :UNCHANGED,
         organization_id: project.organization_id,
+        project_name: project.name,
         requester_id: requester_id,
-        yml_definition: scheduler_yml_definition
+        reference: format_branch_as_reference(scheduler.branch),
+        pipeline_file: scheduler.pipeline_file,
+        at: scheduler.at,
+        parameters: [],
+        project_id: project.id
       )
 
-    {:ok, res} = InternalApi.PeriodicScheduler.PeriodicService.Stub.apply(channel(), req, options(metadata))
+    {:ok, res} = InternalApi.PeriodicScheduler.PeriodicService.Stub.persist(channel(), req, options(metadata))
 
     if res.status.code == status_ok() do
       {:ok, nil}
@@ -65,33 +73,6 @@ defmodule Projecthub.Models.Scheduler do
     end
   end
 
-  defp to_yaml(scheduler = %{status: status}, project) when status != :STATUS_UNSPECIFIED and status != nil do
-    yaml =
-      scheduler
-      |> Map.put(:status, :STATUS_UNSPECIFIED)
-      |> to_yaml(project)
-
-    yaml <>
-      """
-        paused: #{scheduler.status == :STATUS_INACTIVE}
-      """
-  end
-
-  defp to_yaml(scheduler, project) do
-    """
-    apiVersion: v1.0
-    kind: Schedule
-    metadata:
-      name: \"#{scheduler.name}\"
-      id: \"#{scheduler.id}\"
-    spec:
-      project: \"#{project.name}\"
-      branch: \"#{scheduler.branch}\"
-      at: \"#{scheduler.at}\"
-      pipeline_file: \"#{scheduler.pipeline_file}\"
-    """
-  end
-
   def construct_list(raw_schedulers) do
     raw_schedulers
     |> Enum.map(fn s -> construct(s) end)
@@ -101,7 +82,7 @@ defmodule Projecthub.Models.Scheduler do
     %__MODULE__{
       :id => raw_scheduler.id,
       :name => raw_scheduler.name,
-      :branch => raw_scheduler.branch,
+      :branch => extract_branch_name(raw_scheduler.reference),
       :at => raw_scheduler.at,
       :pipeline_file => raw_scheduler.pipeline_file,
       :status => construct_status(raw_scheduler.paused)
@@ -146,4 +127,30 @@ defmodule Projecthub.Models.Scheduler do
   end
 
   defp status_ok, do: :OK
+
+  # Helper function to extract branch name from Git reference format
+  # "refs/heads/main" -> "main"
+  # "refs/tags/v1.0" -> "refs/tags/v1.0"
+  # "main" -> "main" (fallback for plain strings)
+  defp extract_branch_name(reference) when is_binary(reference) do
+    if String.starts_with?(reference, "refs/heads/") do
+      String.replace_prefix(reference, "refs/heads/", "")
+    else
+      reference
+    end
+  end
+
+  defp extract_branch_name(_), do: ""
+
+  # Helper function to format branch name as Git reference
+  # "main" -> "refs/heads/main"
+  # "refs/tags/v1.0" -> "refs/tags/v1.0" (default to branch format)
+  defp format_branch_as_reference("refs/tags/" <> _ = tag), do: tag
+  defp format_branch_as_reference("refs/pull/" <> _ = pr), do: pr
+
+  defp format_branch_as_reference(branch_name) when is_binary(branch_name) do
+    "refs/heads/#{branch_name}"
+  end
+
+  defp format_branch_as_reference(_), do: "refs/heads/main"
 end

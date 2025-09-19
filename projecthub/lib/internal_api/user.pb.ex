@@ -50,6 +50,7 @@ defmodule InternalApi.User.User.CreationSource do
 
   field(:NOT_SET, 0)
   field(:OKTA, 1)
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.User.ListFavoritesRequest do

@@ -33,7 +33,7 @@ defmodule Projecthub.Models.SchedulerTest do
               id: "12345678-1234-5678-1234-567812345678",
               name: "cron",
               project_id: "12345678-1234-5678-1234-567812345678",
-              branch: "master",
+              reference: "refs/heads/master",
               at: "*",
               pipeline_file: ".semaphore/cron.yml",
               paused: false
@@ -130,39 +130,37 @@ defmodule Projecthub.Models.SchedulerTest do
 
       {:ok, project} = Support.Factories.Project.create()
 
-      apply_response =
-        InternalApi.PeriodicScheduler.ApplyResponse.new(
+      persist_response =
+        InternalApi.PeriodicScheduler.PersistResponse.new(
           status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK))
         )
 
-      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :apply, fn req, _s ->
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :persist, fn req, _s ->
         assert req.organization_id == project.organization_id
         assert req.requester_id == "requester_id"
+        assert req.id == scheduler.id
+        assert req.name == scheduler.name
+        assert req.description == ""
+        assert req.recurring == true
+        assert req.state == :UNCHANGED
+        assert req.project_name == project.name
+        assert req.reference == "refs/heads/master"
+        assert req.pipeline_file == scheduler.pipeline_file
+        assert req.at == scheduler.at
+        assert req.parameters == []
+        assert req.project_id == project.id
 
-        assert req.yml_definition == """
-               apiVersion: v1.0
-               kind: Schedule
-               metadata:
-                 name: \"cron\"
-                 id: \"12345678-1234-5678-1234-567812345678\"
-               spec:
-                 project: \"#{project.name}\"
-                 branch: \"master\"
-                 at: \"*\"
-                 pipeline_file: \".semaphore/cron.yml\"
-               """
-
-        apply_response
+        persist_response
       end)
 
       {:ok, nil} = Scheduler.apply(scheduler, project, "requester_id")
     end
 
-    test "it applies scheduler paused with correct params and returns ok" do
+    test "it applies scheduler with tag reference correctly" do
       scheduler = %Scheduler{
         id: "12345678-1234-5678-1234-567812345678",
         name: "cron",
-        branch: "master",
+        branch: "refs/tags/v1.0.0",
         at: "*",
         pipeline_file: ".semaphore/cron.yml",
         status: :STATUS_ACTIVE
@@ -170,36 +168,23 @@ defmodule Projecthub.Models.SchedulerTest do
 
       {:ok, project} = Support.Factories.Project.create()
 
-      apply_response =
-        InternalApi.PeriodicScheduler.ApplyResponse.new(
+      persist_response =
+        InternalApi.PeriodicScheduler.PersistResponse.new(
           status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK))
         )
 
-      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :apply, fn req, _s ->
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :persist, fn req, _s ->
         assert req.organization_id == project.organization_id
         assert req.requester_id == "requester_id"
+        assert req.reference == "refs/tags/v1.0.0"
 
-        assert req.yml_definition == """
-               apiVersion: v1.0
-               kind: Schedule
-               metadata:
-                 name: \"cron\"
-                 id: \"12345678-1234-5678-1234-567812345678\"
-               spec:
-                 project: \"#{project.name}\"
-                 branch: \"master\"
-                 at: \"*\"
-                 pipeline_file: \".semaphore/cron.yml\"
-                 paused: false
-               """
-
-        apply_response
+        persist_response
       end)
 
       {:ok, nil} = Scheduler.apply(scheduler, project, "requester_id")
     end
 
-    test "when scheduler is new => send yml with empty ID" do
+    test "when scheduler is new => send request with empty ID" do
       scheduler = %Scheduler{
         id: "",
         name: "cron",
@@ -211,30 +196,21 @@ defmodule Projecthub.Models.SchedulerTest do
 
       {:ok, project} = Support.Factories.Project.create()
 
-      apply_response =
-        InternalApi.PeriodicScheduler.ApplyResponse.new(
+      persist_response =
+        InternalApi.PeriodicScheduler.PersistResponse.new(
           status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK))
         )
 
-      yml = """
-      apiVersion: v1.0
-      kind: Schedule
-      metadata:
-        name: \"#{scheduler.name}\"
-        id: \"\"
-      spec:
-        project: \"#{project.name}\"
-        branch: \"#{scheduler.branch}\"
-        at: \"#{scheduler.at}\"
-        pipeline_file: \"#{scheduler.pipeline_file}\"
-      """
-
-      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :apply, fn req, _s ->
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :persist, fn req, _s ->
         assert req.organization_id == project.organization_id
         assert req.requester_id == "requester_id"
-        assert req.yml_definition == yml
+        assert req.id == ""
+        assert req.name == scheduler.name
+        assert req.reference == "refs/heads/master"
+        assert req.at == scheduler.at
+        assert req.pipeline_file == scheduler.pipeline_file
 
-        apply_response
+        persist_response
       end)
 
       {:ok, nil} = Scheduler.apply(scheduler, project, "requester_id")
@@ -244,8 +220,8 @@ defmodule Projecthub.Models.SchedulerTest do
       scheduler = %Scheduler{id: ""}
       {:ok, project} = Support.Factories.Project.create()
 
-      apply_response =
-        InternalApi.PeriodicScheduler.ApplyResponse.new(
+      persist_response =
+        InternalApi.PeriodicScheduler.PersistResponse.new(
           status:
             InternalApi.Status.new(
               code: Google.Rpc.Code.value(:FAILED_PRECONDITION),
@@ -253,10 +229,85 @@ defmodule Projecthub.Models.SchedulerTest do
             )
         )
 
-      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :apply, apply_response)
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :persist, persist_response)
 
       {:error, error} = Scheduler.apply(scheduler, project, "requester_id")
       assert error == "Failed precondition"
+    end
+  end
+
+  describe "reference/tag support" do
+    test "constructs scheduler with branch reference correctly" do
+      raw_scheduler =
+        InternalApi.PeriodicScheduler.Periodic.new(
+          id: "123",
+          name: "test",
+          reference: "refs/heads/main",
+          at: "*",
+          pipeline_file: "test.yml",
+          paused: false
+        )
+
+      scheduler = Projecthub.Models.Scheduler.construct_list([raw_scheduler]) |> List.first()
+
+      assert scheduler.branch == "main"
+      assert scheduler.status == :STATUS_ACTIVE
+    end
+
+    test "constructs scheduler with tag reference correctly" do
+      raw_scheduler =
+        InternalApi.PeriodicScheduler.Periodic.new(
+          id: "123",
+          name: "test",
+          reference: "refs/tags/v1.0.0",
+          at: "*",
+          pipeline_file: "test.yml",
+          paused: false
+        )
+
+      scheduler = Projecthub.Models.Scheduler.construct_list([raw_scheduler]) |> List.first()
+
+      assert scheduler.branch == "refs/tags/v1.0.0"
+    end
+
+    test "constructs scheduler with pull request reference correctly" do
+      raw_scheduler =
+        InternalApi.PeriodicScheduler.Periodic.new(
+          id: "123",
+          name: "test",
+          reference: "refs/pull/42/head",
+          at: "*",
+          pipeline_file: "test.yml",
+          paused: false
+        )
+
+      scheduler = Projecthub.Models.Scheduler.construct_list([raw_scheduler]) |> List.first()
+
+      assert scheduler.branch == "refs/pull/42/head"
+    end
+
+    test "applies scheduler with pull request reference correctly" do
+      scheduler = %Scheduler{
+        id: "12345678-1234-5678-1234-567812345678",
+        name: "pr-check",
+        branch: "refs/pull/42/head",
+        at: "*",
+        pipeline_file: ".semaphore/pr.yml"
+      }
+
+      {:ok, project} = Support.Factories.Project.create()
+
+      persist_response =
+        InternalApi.PeriodicScheduler.PersistResponse.new(
+          status: InternalApi.Status.new(code: Google.Rpc.Code.value(:OK))
+        )
+
+      FunRegistry.set!(Support.FakeServices.PeriodicSchedulerService, :persist, fn req, _s ->
+        assert req.reference == "refs/pull/42/head"
+        persist_response
+      end)
+
+      {:ok, nil} = Scheduler.apply(scheduler, project, "requester_id")
     end
   end
 end

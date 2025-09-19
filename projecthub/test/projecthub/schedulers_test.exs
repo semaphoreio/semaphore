@@ -12,7 +12,7 @@ defmodule Projecthub.SchedulersTest do
             id: "12345678-1234-5678-1234-567812345678",
             name: "cron",
             project_id: "12345678-1234-5678-1234-567812345678",
-            branch: "master",
+            reference: "refs/heads/master",
             at: "*",
             pipeline_file: ".semaphore/cron.yml"
           )

@@ -20,7 +20,7 @@ defmodule Projecthub.Models.PeriodicTaskTest do
          name: "task1",
          recurring: false,
          at: "",
-         branch: "",
+         reference: "",
          pipeline_file: ""
        }),
      periodic2:
@@ -39,7 +39,7 @@ defmodule Projecthub.Models.PeriodicTaskTest do
          name: "task3",
          recurring: false,
          at: "",
-         branch: "develop",
+         reference: "refs/heads/develop",
          pipeline_file: ".semaphore/semaphore.yml",
          paused: true
        })}
@@ -157,7 +157,7 @@ defmodule Projecthub.Models.PeriodicTaskTest do
       FunRegistry.set!(PeriodicService, :apply, fn request, _stream ->
         assert request.yml_definition ==
                  """
-                 apiVersion: v1.1
+                 apiVersion: v1.2
                  kind: Schedule
                  metadata:
                    name: "task"
@@ -168,7 +168,9 @@ defmodule Projecthub.Models.PeriodicTaskTest do
                    recurring: true
                    paused: false
                    at: "0 0 * * *"
-                   branch: "master"
+                   reference:
+                     type: BRANCH
+                     name: "master"
                    pipeline_file: "pipeline.yml"
                  """
 

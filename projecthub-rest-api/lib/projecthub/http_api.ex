@@ -507,15 +507,31 @@ defmodule Projecthub.HttpApi do
 
     schedulers
     |> Enum.map(fn scheduler ->
-      case scheduler.status do
-        @unspecified_status ->
-          Map.delete(scheduler, :status)
-
-        _ ->
-          Map.put(scheduler, :status, encode_scheduler_status(scheduler.status))
-      end
+      scheduler
+      |> encode_scheduler_status_field()
+      |> encode_reference_field()
     end)
   end
+
+  defp encode_scheduler_status_field(scheduler) do
+    case scheduler.status do
+      @unspecified_status ->
+        Map.delete(scheduler, :status)
+
+      status ->
+        Map.put(scheduler, :status, encode_scheduler_status(status))
+    end
+  end
+
+  defp encode_reference_field(%{branch: "refs/tags/" <> tag_name} = scheduler) do
+    Map.put(scheduler, :reference, %{"type" => "tag", "name" => tag_name})
+  end
+
+  defp encode_reference_field(%{branch: "refs/heads/" <> branch_name} = scheduler) do
+    Map.put(scheduler, :reference, %{"type" => "branch", "name" => branch_name})
+  end
+
+  defp encode_reference_field(scheduler), do: scheduler
 
   defp encode_scheduler_status(@status_inactive), do: "INACTIVE"
   defp encode_scheduler_status(@status_active), do: "ACTIVE"
@@ -528,16 +544,22 @@ defmodule Projecthub.HttpApi do
   defp encode_tasks(tasks) do
     tasks
     |> Stream.map(fn task ->
-      case task.status do
-        @task_unspecified_status ->
-          Map.delete(task, :status)
-
-        _ ->
-          Map.put(task, :status, encode_task_status(task.status))
-      end
+      task
+      |> encode_task_status_field()
+      |> encode_reference_field()
     end)
     |> Stream.map(&Map.put(&1, :scheduled, &1.recurring))
     |> Enum.map(&Map.delete(&1, :recurring))
+  end
+
+  defp encode_task_status_field(task) do
+    case task.status do
+      @task_unspecified_status ->
+        Map.delete(task, :status)
+
+      status ->
+        Map.put(task, :status, encode_task_status(status))
+    end
   end
 
   defp encode_task_status(@task_status_inactive), do: "INACTIVE"
@@ -596,7 +618,9 @@ defmodule Projecthub.HttpApi do
         Scheduler.new(
           id: scheduler["id"] || "",
           name: scheduler["name"],
-          branch: scheduler["branch"],
+          branch:
+            scheduler["branch"] ||
+              construct_reference(scheduler["reference_type"], scheduler["reference_name"]),
           at: scheduler["at"],
           pipeline_file: scheduler["pipeline_file"],
           status: scheduler_status(scheduler["status"])
@@ -618,7 +642,9 @@ defmodule Projecthub.HttpApi do
           name: task["name"],
           description: task["description"] || "",
           recurring: if(is_nil(task["scheduled"]), do: true, else: task["scheduled"]),
-          branch: task["branch"] || "",
+          branch:
+            task["branch"] || construct_reference(task["reference_type"], task["reference_name"]) ||
+              "",
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
@@ -629,6 +655,16 @@ defmodule Projecthub.HttpApi do
       []
     end
   end
+
+  defp construct_reference("branch", reference_name) do
+    "refs/heads/#{reference_name}"
+  end
+
+  defp construct_reference("tag", reference_name) do
+    "refs/tags/#{reference_name}"
+  end
+
+  defp construct_reference(_, _), do: nil
 
   defp construct_task_parameters(raw_task_parameters) do
     alias InternalApi.Projecthub.Project.Spec.Task.Parameter, as: SpecTaskParameter
