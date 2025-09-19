@@ -57,10 +57,11 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter do
           pipelines: [String.t()],
           blocks: [String.t()],
           states: [[Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter.State.t()]],
-          results: [String.t()]
+          results: [String.t()],
+          tags: [String.t()]
         }
 
-  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results]
+  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results, :tags]
 
   field(:projects, 1, repeated: true, type: :string)
   field(:branches, 2, repeated: true, type: :string)
@@ -74,6 +75,7 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter do
   )
 
   field(:results, 6, repeated: true, type: :string)
+  field(:tags, 7, repeated: true, type: :string)
 end
 
 defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Notify.Slack do

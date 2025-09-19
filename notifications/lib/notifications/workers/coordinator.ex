@@ -26,14 +26,19 @@ defmodule Notifications.Workers.Coordinator do
 
         Logger.info("#{request_id} #{event.pipeline_id} #{project.metadata.name}")
 
+        tag_name = if hook.git_ref_type == :TAG, do: hook.git_ref, else: nil
+        branch_name = if hook.git_ref_type == :TAG, do: nil, else: pipeline.branch_name
+        pr_branch_name = if hook.git_ref_type == :TAG, do: "", else: hook.pr_branch_name
+
         rules =
           Filter.find_rules(
             project.metadata.org_id,
             project.metadata.name,
-            pipeline.branch_name,
-            hook.pr_branch_name,
+            branch_name,
+            pr_branch_name,
             pipeline.yaml_file_name,
-            map_result_to_string(pipeline.result)
+            map_result_to_string(pipeline.result),
+            tag_name
           )
 
         Logger.info("#{request_id} #{event.pipeline_id} #{inspect(rules)}")

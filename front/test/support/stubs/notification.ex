@@ -133,6 +133,15 @@ defmodule Support.Stubs.Notification do
     def create_notification(notification, call) do
       {org_id, _} = call |> extract_headers
 
+      notification =
+        if notification.metadata.id == "" do
+          id = UUID.gen()
+          metadata = %{notification.metadata | id: id}
+          %{notification | metadata: metadata}
+        else
+          notification
+        end
+
       DB.insert(:notifications, %{
         id: notification.metadata.id,
         org_id: org_id,
@@ -146,10 +155,19 @@ defmodule Support.Stubs.Notification do
     def update_notification(req, call) do
       case find(req, call) do
         {:ok, notification} ->
+          # Ensure the notification has the correct ID in metadata
+          updated_notification =
+            if req.notification.metadata.id == "" do
+              metadata = %{req.notification.metadata | id: notification.id}
+              %{req.notification | metadata: metadata}
+            else
+              req.notification
+            end
+
           new_notification = %{
-            id: req.notification.metadata.id,
-            name: req.notification.metadata.name,
-            api_model: req.notification,
+            id: notification.id,
+            name: updated_notification.metadata.name,
+            api_model: updated_notification,
             org_id: notification.org_id
           }
 
