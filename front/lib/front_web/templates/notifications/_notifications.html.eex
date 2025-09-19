@@ -21,6 +21,10 @@
                       <td><%= rule.filter.branches |> Enum.join(", ") %></td>
                     </tr>
                     <tr class="v-top">
+                      <td class="pr3">Tags</td>
+                      <td><%= rule.filter.tags |> Enum.join(", ") %></td>
+                    </tr>
+                    <tr class="v-top">
                       <td class="pr3">Pipelines</td>
                       <td><%= rule.filter.pipelines |> Enum.join(", ") %></td>
                     </tr>

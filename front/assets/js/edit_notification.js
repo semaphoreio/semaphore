@@ -46,6 +46,17 @@ export var EditNotification = {
             </div>
 
             <div class="pl4 mb3">
+              <label for="tags" class="db b mb1">
+                Tags
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <input id="tags" name="rule_${rule_hash}[tags]" type="text"
+                     class="form-control w-100"
+                     placeholder="e.g. v1.0.0, /^v\\\\d+\\\\.\\\\d+\\\\.\\\\d+$/, release-*" >
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+
+            <div class="pl4 mb3">
               <label for="pipelines" class="db b mb1">
                 Pipelines
                 <span class="f6 normal gray"> · optional</span>
