@@ -154,7 +154,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     |> legacy_branch_name_format()
   end
 
-  defp legacy_branch_name_format("refs/tags/" <> _ = full_ref), do: full_ref
+  defp legacy_branch_name_format(full_ref = "refs/tags/" <> _), do: full_ref
 
   defp legacy_branch_name_format("refs/pull/" <> rest) do
     pr_number = rest |> String.trim_trailing("/head")
