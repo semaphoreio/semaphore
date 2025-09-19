@@ -10,6 +10,7 @@ package semaphore_project_secrets_v1
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,382 +25,298 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
-
 var (
-	filter_ProjectSecretsApi_ListSecrets_0 = &utilities.DoubleArray{Encoding: map[string]int{"project_id_or_name": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
 )
 
+var filter_ProjectSecretsApi_ListSecrets_0 = &utilities.DoubleArray{Encoding: map[string]int{"project_id_or_name": 0}, Base: []int{1, 1, 0}, Check: []int{0, 1, 2}}
+
 func request_ProjectSecretsApi_ListSecrets_0(ctx context.Context, marshaler runtime.Marshaler, client ProjectSecretsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSecretsRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq ListSecretsRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProjectSecretsApi_ListSecrets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListSecrets(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_ProjectSecretsApi_ListSecrets_0(ctx context.Context, marshaler runtime.Marshaler, server ProjectSecretsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListSecretsRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq ListSecretsRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_ProjectSecretsApi_ListSecrets_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListSecrets(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_ProjectSecretsApi_GetSecret_0(ctx context.Context, marshaler runtime.Marshaler, client ProjectSecretsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSecretRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := client.GetSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_ProjectSecretsApi_GetSecret_0(ctx context.Context, marshaler runtime.Marshaler, server ProjectSecretsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetSecretRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := server.GetSecret(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_ProjectSecretsApi_CreateSecret_0(ctx context.Context, marshaler runtime.Marshaler, client ProjectSecretsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Secret
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Secret
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["metadata.project_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["metadata.project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "metadata.project_id_or_name")
 	}
-
 	err = runtime.PopulateFieldFromPath(&protoReq, "metadata.project_id_or_name", val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "metadata.project_id_or_name", err)
 	}
-
 	msg, err := client.CreateSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_ProjectSecretsApi_CreateSecret_0(ctx context.Context, marshaler runtime.Marshaler, server ProjectSecretsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Secret
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Secret
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["metadata.project_id_or_name"]
+	val, ok := pathParams["metadata.project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "metadata.project_id_or_name")
 	}
-
 	err = runtime.PopulateFieldFromPath(&protoReq, "metadata.project_id_or_name", val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "metadata.project_id_or_name", err)
 	}
-
 	msg, err := server.CreateSecret(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_ProjectSecretsApi_UpdateSecret_0(ctx context.Context, marshaler runtime.Marshaler, client ProjectSecretsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateSecretRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Secret); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Secret); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["project_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := client.UpdateSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_ProjectSecretsApi_UpdateSecret_0(ctx context.Context, marshaler runtime.Marshaler, server ProjectSecretsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateSecretRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Secret); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Secret); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["project_id_or_name"]
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := server.UpdateSecret(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_ProjectSecretsApi_DeleteSecret_0(ctx context.Context, marshaler runtime.Marshaler, client ProjectSecretsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteSecretRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := client.DeleteSecret(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_ProjectSecretsApi_DeleteSecret_0(ctx context.Context, marshaler runtime.Marshaler, server ProjectSecretsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteSecretRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteSecretRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["project_id_or_name"]
+	val, ok := pathParams["project_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "project_id_or_name")
 	}
-
 	protoReq.ProjectIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "project_id_or_name", err)
 	}
-
 	val, ok = pathParams["secret_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "secret_id_or_name")
 	}
-
 	protoReq.SecretIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "secret_id_or_name", err)
 	}
-
 	msg, err := server.DeleteSecret(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterProjectSecretsApiHandlerServer registers the http handlers for service ProjectSecretsApi to "mux".
 // UnaryRPC     :call ProjectSecretsApiServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterProjectSecretsApiHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ProjectSecretsApiServer) error {
-
-	mux.Handle("GET", pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/ListSecrets", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/ListSecrets", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -411,20 +328,15 @@ func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_ListSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_ProjectSecretsApi_GetSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_ProjectSecretsApi_GetSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/GetSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/GetSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -436,20 +348,15 @@ func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_GetSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_ProjectSecretsApi_CreateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_ProjectSecretsApi_CreateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/CreateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{metadata.project_id_or_name}/secrets"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/CreateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{metadata.project_id_or_name}/secrets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -461,20 +368,15 @@ func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_CreateSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_ProjectSecretsApi_UpdateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_ProjectSecretsApi_UpdateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/UpdateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/UpdateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -486,20 +388,15 @@ func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_UpdateSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_ProjectSecretsApi_DeleteSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_ProjectSecretsApi_DeleteSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/DeleteSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/DeleteSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -511,9 +408,7 @@ func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_DeleteSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -540,7 +435,6 @@ func RegisterProjectSecretsApiHandlerFromEndpoint(ctx context.Context, mux *runt
 			}
 		}()
 	}()
-
 	return RegisterProjectSecretsApiHandler(ctx, mux, conn)
 }
 
@@ -554,16 +448,13 @@ func RegisterProjectSecretsApiHandler(ctx context.Context, mux *runtime.ServeMux
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ProjectSecretsApiClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ProjectSecretsApiClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ProjectSecretsApiClient" to call the correct interceptors.
+// "ProjectSecretsApiClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ProjectSecretsApiClient) error {
-
-	mux.Handle("GET", pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/ListSecrets", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/ListSecrets", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -574,18 +465,13 @@ func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_ListSecrets_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_ProjectSecretsApi_GetSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_ProjectSecretsApi_GetSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/GetSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/GetSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -596,18 +482,13 @@ func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_GetSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_ProjectSecretsApi_CreateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_ProjectSecretsApi_CreateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/CreateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{metadata.project_id_or_name}/secrets"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/CreateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{metadata.project_id_or_name}/secrets"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -618,18 +499,13 @@ func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_CreateSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_ProjectSecretsApi_UpdateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_ProjectSecretsApi_UpdateSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/UpdateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/UpdateSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -640,18 +516,13 @@ func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_UpdateSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_ProjectSecretsApi_DeleteSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_ProjectSecretsApi_DeleteSecret_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/DeleteSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.project_secrets.v1.ProjectSecretsApi/DeleteSecret", runtime.WithHTTPPathPattern("/api/v1/projects/{project_id_or_name}/secrets/{secret_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -662,34 +533,23 @@ func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.Se
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_ProjectSecretsApi_DeleteSecret_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
 	return nil
 }
 
 var (
-	pattern_ProjectSecretsApi_ListSecrets_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"api", "v1", "projects", "project_id_or_name", "secrets"}, ""))
-
-	pattern_ProjectSecretsApi_GetSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"api", "v1", "projects", "project_id_or_name", "secrets", "secret_id_or_name"}, ""))
-
+	pattern_ProjectSecretsApi_ListSecrets_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"api", "v1", "projects", "project_id_or_name", "secrets"}, ""))
+	pattern_ProjectSecretsApi_GetSecret_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"api", "v1", "projects", "project_id_or_name", "secrets", "secret_id_or_name"}, ""))
 	pattern_ProjectSecretsApi_CreateSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4}, []string{"api", "v1", "projects", "metadata.project_id_or_name", "secrets"}, ""))
-
 	pattern_ProjectSecretsApi_UpdateSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"api", "v1", "projects", "project_id_or_name", "secrets", "secret_id_or_name"}, ""))
-
 	pattern_ProjectSecretsApi_DeleteSecret_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3, 2, 4, 1, 0, 4, 1, 5, 5}, []string{"api", "v1", "projects", "project_id_or_name", "secrets", "secret_id_or_name"}, ""))
 )
 
 var (
-	forward_ProjectSecretsApi_ListSecrets_0 = runtime.ForwardResponseMessage
-
-	forward_ProjectSecretsApi_GetSecret_0 = runtime.ForwardResponseMessage
-
+	forward_ProjectSecretsApi_ListSecrets_0  = runtime.ForwardResponseMessage
+	forward_ProjectSecretsApi_GetSecret_0    = runtime.ForwardResponseMessage
 	forward_ProjectSecretsApi_CreateSecret_0 = runtime.ForwardResponseMessage
-
 	forward_ProjectSecretsApi_UpdateSecret_0 = runtime.ForwardResponseMessage
-
 	forward_ProjectSecretsApi_DeleteSecret_0 = runtime.ForwardResponseMessage
 )

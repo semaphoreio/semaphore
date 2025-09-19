@@ -10,6 +10,7 @@ package semaphore_notifications_v1alpha
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,254 +25,214 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
-
 var (
-	filter_NotificationsApi_ListNotifications_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
 )
 
-func request_NotificationsApi_ListNotifications_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListNotificationsRequest
-	var metadata runtime.ServerMetadata
+var filter_NotificationsApi_ListNotifications_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
+func request_NotificationsApi_ListNotifications_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListNotificationsRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NotificationsApi_ListNotifications_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListNotifications(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_NotificationsApi_ListNotifications_0(ctx context.Context, marshaler runtime.Marshaler, server NotificationsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListNotificationsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListNotificationsRequest
+		metadata runtime.ServerMetadata
+	)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_NotificationsApi_ListNotifications_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListNotifications(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_NotificationsApi_GetNotification_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetNotificationRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := client.GetNotification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_NotificationsApi_GetNotification_0(ctx context.Context, marshaler runtime.Marshaler, server NotificationsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetNotificationRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := server.GetNotification(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_NotificationsApi_CreateNotification_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Notification
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Notification
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateNotification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_NotificationsApi_CreateNotification_0(ctx context.Context, marshaler runtime.Marshaler, server NotificationsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Notification
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Notification
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.CreateNotification(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_NotificationsApi_UpdateNotification_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateNotificationRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Notification); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Notification); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := client.UpdateNotification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_NotificationsApi_UpdateNotification_0(ctx context.Context, marshaler runtime.Marshaler, server NotificationsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateNotificationRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Notification); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Notification); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := server.UpdateNotification(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_NotificationsApi_DeleteNotification_0(ctx context.Context, marshaler runtime.Marshaler, client NotificationsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNotificationRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := client.DeleteNotification(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_NotificationsApi_DeleteNotification_0(ctx context.Context, marshaler runtime.Marshaler, server NotificationsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteNotificationRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteNotificationRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["notification_id_or_name"]
+	val, ok := pathParams["notification_id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "notification_id_or_name")
 	}
-
 	protoReq.NotificationIdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "notification_id_or_name", err)
 	}
-
 	msg, err := server.DeleteNotification(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterNotificationsApiHandlerServer registers the http handlers for service NotificationsApi to "mux".
 // UnaryRPC     :call NotificationsApiServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterNotificationsApiHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.ServeMux, server NotificationsApiServer) error {
-
-	mux.Handle("GET", pattern_NotificationsApi_ListNotifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_NotificationsApi_ListNotifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/ListNotifications", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/ListNotifications", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -283,20 +244,15 @@ func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_ListNotifications_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_NotificationsApi_GetNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_NotificationsApi_GetNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/GetNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/GetNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -308,20 +264,15 @@ func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_GetNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_NotificationsApi_CreateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_NotificationsApi_CreateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/CreateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/CreateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -333,20 +284,15 @@ func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_CreateNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_NotificationsApi_UpdateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_NotificationsApi_UpdateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/UpdateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/UpdateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -358,20 +304,15 @@ func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_UpdateNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_NotificationsApi_DeleteNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_NotificationsApi_DeleteNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/DeleteNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/DeleteNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -383,9 +324,7 @@ func RegisterNotificationsApiHandlerServer(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_DeleteNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -412,7 +351,6 @@ func RegisterNotificationsApiHandlerFromEndpoint(ctx context.Context, mux *runti
 			}
 		}()
 	}()
-
 	return RegisterNotificationsApiHandler(ctx, mux, conn)
 }
 
@@ -426,16 +364,13 @@ func RegisterNotificationsApiHandler(ctx context.Context, mux *runtime.ServeMux,
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "NotificationsApiClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "NotificationsApiClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "NotificationsApiClient" to call the correct interceptors.
+// "NotificationsApiClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.ServeMux, client NotificationsApiClient) error {
-
-	mux.Handle("GET", pattern_NotificationsApi_ListNotifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_NotificationsApi_ListNotifications_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/ListNotifications", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/ListNotifications", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -446,18 +381,13 @@ func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_ListNotifications_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_NotificationsApi_GetNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_NotificationsApi_GetNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/GetNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/GetNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -468,18 +398,13 @@ func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_GetNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_NotificationsApi_CreateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_NotificationsApi_CreateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/CreateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/CreateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -490,18 +415,13 @@ func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_CreateNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_NotificationsApi_UpdateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_NotificationsApi_UpdateNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/UpdateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/UpdateNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -512,18 +432,13 @@ func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_UpdateNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_NotificationsApi_DeleteNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_NotificationsApi_DeleteNotification_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/DeleteNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.notifications.v1alpha.NotificationsApi/DeleteNotification", runtime.WithHTTPPathPattern("/api/v1alpha/notifications/{notification_id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -534,34 +449,23 @@ func RegisterNotificationsApiHandlerClient(ctx context.Context, mux *runtime.Ser
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_NotificationsApi_DeleteNotification_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
 	return nil
 }
 
 var (
-	pattern_NotificationsApi_ListNotifications_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "notifications"}, ""))
-
-	pattern_NotificationsApi_GetNotification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "notifications", "notification_id_or_name"}, ""))
-
+	pattern_NotificationsApi_ListNotifications_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "notifications"}, ""))
+	pattern_NotificationsApi_GetNotification_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "notifications", "notification_id_or_name"}, ""))
 	pattern_NotificationsApi_CreateNotification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "notifications"}, ""))
-
 	pattern_NotificationsApi_UpdateNotification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "notifications", "notification_id_or_name"}, ""))
-
 	pattern_NotificationsApi_DeleteNotification_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "notifications", "notification_id_or_name"}, ""))
 )
 
 var (
-	forward_NotificationsApi_ListNotifications_0 = runtime.ForwardResponseMessage
-
-	forward_NotificationsApi_GetNotification_0 = runtime.ForwardResponseMessage
-
+	forward_NotificationsApi_ListNotifications_0  = runtime.ForwardResponseMessage
+	forward_NotificationsApi_GetNotification_0    = runtime.ForwardResponseMessage
 	forward_NotificationsApi_CreateNotification_0 = runtime.ForwardResponseMessage
-
 	forward_NotificationsApi_UpdateNotification_0 = runtime.ForwardResponseMessage
-
 	forward_NotificationsApi_DeleteNotification_0 = runtime.ForwardResponseMessage
 )
