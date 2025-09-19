@@ -37,7 +37,7 @@ services:
       LOG_LEVEL: "debug"
 
     volumes:
-      - .:/app
+      - .:/app/api
       - /.elixir_ls
 
     depends_on:

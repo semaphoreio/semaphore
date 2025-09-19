@@ -41,7 +41,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
           organization_id: String.t(),
           project_name: String.t(),
           requester_id: String.t(),
-          branch: String.t(),
+          reference: String.t(),
           pipeline_file: String.t(),
           at: String.t(),
           parameters: [InternalApi.PeriodicScheduler.Periodic.Parameter.t()],
@@ -56,7 +56,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
     :organization_id,
     :project_name,
     :requester_id,
-    :branch,
+    :reference,
     :pipeline_file,
     :at,
     :parameters,
@@ -71,7 +71,7 @@ defmodule InternalApi.PeriodicScheduler.PersistRequest do
   field(:organization_id, 6, type: :string)
   field(:project_name, 7, type: :string)
   field(:requester_id, 8, type: :string)
-  field(:branch, 9, type: :string)
+  field(:reference, 9, type: :string)
   field(:pipeline_file, 10, type: :string)
   field(:at, 11, type: :string)
   field(:parameters, 12, repeated: true, type: InternalApi.PeriodicScheduler.Periodic.Parameter)
@@ -160,15 +160,15 @@ defmodule InternalApi.PeriodicScheduler.RunNowRequest do
   @type t :: %__MODULE__{
           id: String.t(),
           requester: String.t(),
-          branch: String.t(),
+          reference: String.t(),
           pipeline_file: String.t(),
           parameter_values: [InternalApi.PeriodicScheduler.ParameterValue.t()]
         }
-  defstruct [:id, :requester, :branch, :pipeline_file, :parameter_values]
+  defstruct [:id, :requester, :reference, :pipeline_file, :parameter_values]
 
   field(:id, 1, type: :string)
   field(:requester, 2, type: :string)
-  field(:branch, 3, type: :string)
+  field(:reference, 3, type: :string)
   field(:pipeline_file, 4, type: :string)
   field(:parameter_values, 5, repeated: true, type: InternalApi.PeriodicScheduler.ParameterValue)
 end
@@ -227,7 +227,7 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
           id: String.t(),
           name: String.t(),
           project_id: String.t(),
-          branch: String.t(),
+          reference: String.t(),
           at: String.t(),
           pipeline_file: String.t(),
           requester_id: String.t(),
@@ -246,7 +246,7 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
     :id,
     :name,
     :project_id,
-    :branch,
+    :reference,
     :at,
     :pipeline_file,
     :requester_id,
@@ -265,7 +265,7 @@ defmodule InternalApi.PeriodicScheduler.Periodic do
   field(:id, 1, type: :string)
   field(:name, 2, type: :string)
   field(:project_id, 3, type: :string)
-  field(:branch, 4, type: :string)
+  field(:reference, 4, type: :string)
   field(:at, 5, type: :string)
   field(:pipeline_file, 6, type: :string)
   field(:requester_id, 7, type: :string)
@@ -308,7 +308,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
   @type t :: %__MODULE__{
           triggered_at: Google.Protobuf.Timestamp.t(),
           project_id: String.t(),
-          branch: String.t(),
+          reference: String.t(),
           pipeline_file: String.t(),
           scheduling_status: String.t(),
           scheduled_workflow_id: String.t(),
@@ -321,7 +321,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
   defstruct [
     :triggered_at,
     :project_id,
-    :branch,
+    :reference,
     :pipeline_file,
     :scheduling_status,
     :scheduled_workflow_id,
@@ -334,7 +334,7 @@ defmodule InternalApi.PeriodicScheduler.Trigger do
 
   field(:triggered_at, 1, type: Google.Protobuf.Timestamp)
   field(:project_id, 2, type: :string)
-  field(:branch, 3, type: :string)
+  field(:reference, 3, type: :string)
   field(:pipeline_file, 4, type: :string)
   field(:scheduling_status, 5, type: :string)
   field(:scheduled_workflow_id, 6, type: :string)

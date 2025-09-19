@@ -39,7 +39,10 @@ defmodule Router.Tasks.UpdateTest do
         apiVersion: "v2",
         kind: "Task",
         spec: %{
-          branch: "develop",
+          reference: %{
+            type: "branch",
+            name: "develop"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: ""
         }
@@ -66,7 +69,7 @@ defmodule Router.Tasks.UpdateTest do
       assert %{
                api_model: %{
                  id: ^scheduler_id,
-                 branch: "develop",
+                 reference: "refs/heads/develop",
                  pipeline_file: "pipeline.yml",
                  at: "",
                  recurring: false
@@ -117,6 +120,99 @@ defmodule Router.Tasks.UpdateTest do
              } = Support.Stubs.DB.find(:schedulers, scheduler.id)
     end
 
+    test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint updates reference structure for branch",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          reference: %{
+            type: "branch",
+            name: "feature-branch"
+          }
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+      scheduler_id = scheduler.id
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.patch(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{
+               api_model: %{
+                 id: ^scheduler_id,
+                 reference: "refs/heads/feature-branch"
+               }
+             } = Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
+    test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint updates reference structure for tag",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          }
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+      scheduler_id = scheduler.id
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.patch(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{
+               api_model: %{
+                 id: ^scheduler_id,
+                 reference: "refs/tags/v1.0.0"
+               }
+             } = Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
+    test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint updates reference structure with partial updates",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          }
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+      scheduler_id = scheduler.id
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.patch(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{
+               api_model: %{
+                 id: ^scheduler_id,
+                 reference: "refs/tags/v1.0.0"
+               }
+             } = Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
     test "PATCH /projects/:project_id_or_name/tasks/:id - endpoint returns 404 when task is not owned by requester",
          ctx do
       wrong_owner = UUID.uuid4()
@@ -138,7 +234,10 @@ defmodule Router.Tasks.UpdateTest do
         kind: "Task",
         spec: %{
           name: "Task",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml"
         }
       }

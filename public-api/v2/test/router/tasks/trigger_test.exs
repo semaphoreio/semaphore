@@ -39,7 +39,10 @@ defmodule Router.Tasks.TriggerTest do
         apiVersion: "v2",
         kind: "TaskTrigger",
         spec: %{
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: ".semaphore/semaphore.yml",
           parameters: [
             %{name: "FIRST_PARAM", value: "first_value"}
@@ -79,13 +82,109 @@ defmodule Router.Tasks.TriggerTest do
       assert [_] = Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id)
     end
 
+    test "POST /projects/:project_id_or_name/tasks/:id/triggers - endpoint returns 200 with new reference structure for branch",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "TaskTrigger",
+        spec: %{
+          reference: %{
+            type: "branch",
+            name: "feature-branch"
+          },
+          pipeline_file: ".semaphore/semaphore.yml",
+          parameters: [
+            %{name: "FIRST_PARAM", value: "first_value"}
+          ]
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id)
+
+      assert {:ok, %Tesla.Env{status: 200} = env} =
+               Tesla.post(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/#{scheduler.id}/triggers",
+                 params
+               )
+
+      assert %{"metadata" => %{"workflow_id" => workflow_id}} = env.body
+      assert {:ok, _} = UUID.info(workflow_id)
+
+      assert [_] = Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id)
+    end
+
+    test "POST /projects/:project_id_or_name/tasks/:id/triggers - endpoint returns 200 with new reference structure for tag",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "TaskTrigger",
+        spec: %{
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          },
+          pipeline_file: ".semaphore/semaphore.yml",
+          parameters: [
+            %{name: "FIRST_PARAM", value: "first_value"}
+          ]
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id)
+
+      assert {:ok, %Tesla.Env{status: 200} = env} =
+               Tesla.post(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/#{scheduler.id}/triggers",
+                 params
+               )
+
+      assert %{"metadata" => %{"workflow_id" => workflow_id}} = env.body
+      assert {:ok, _} = UUID.info(workflow_id)
+
+      assert [_] = Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id)
+    end
+
+    test "POST /projects/:project_id_or_name/tasks/:id/triggers - endpoint returns 200 with reference structure",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "TaskTrigger",
+        spec: %{
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
+          pipeline_file: ".semaphore/semaphore.yml"
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id)
+
+      assert {:ok, %Tesla.Env{status: 200} = env} =
+               Tesla.post(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/#{scheduler.id}/triggers",
+                 params
+               )
+
+      assert %{"metadata" => %{"workflow_id" => workflow_id}} = env.body
+      assert {:ok, _} = UUID.info(workflow_id)
+
+      assert [_] = Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id)
+    end
+
     test "POST /projects/:project_id_or_name/tasks/:id/triggers - endpoint returns 404 when periodic does not exist",
          ctx do
       params = %{
         apiVersion: "v2",
         kind: "TaskTrigger",
         spec: %{
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: ".semaphore/semaphore.yml",
           parameters: [
             %{name: "FIRST_PARAM", value: "first_value"}
@@ -123,7 +222,10 @@ defmodule Router.Tasks.TriggerTest do
         apiVersion: "v2",
         kind: "TaskTrigger",
         spec: %{
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: ".semaphore/semaphore.yml"
         }
       }

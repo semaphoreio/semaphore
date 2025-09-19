@@ -25,7 +25,10 @@ defmodule Router.Tasks.ReplaceTest do
                    kind: "Task",
                    spec: %{
                      name: "Task",
-                     branch: "master",
+                     reference: %{
+                       type: "branch",
+                       name: "master"
+                     },
                      pipeline_file: "pipeline.yml"
                    }
                  }
@@ -51,7 +54,10 @@ defmodule Router.Tasks.ReplaceTest do
         spec: %{
           name: "Task",
           description: "Task description",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: "0 0 * * *",
           parameters: [
@@ -92,7 +98,10 @@ defmodule Router.Tasks.ReplaceTest do
         apiVersion: "v2",
         kind: "Task",
         spec: %{
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: "0 0 * * *",
           parameters: [
@@ -119,6 +128,90 @@ defmodule Router.Tasks.ReplaceTest do
       assert %{"errors" => [%{"detail" => "Missing field: name"}]} = env.body
     end
 
+    test "PUT /projects/:project_id_or_name/tasks/:id - endpoint replaces with reference structure for branch",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Reference",
+          reference: %{
+            type: "branch",
+            name: "feature-branch"
+          },
+          pipeline_file: "pipeline.yml"
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.put(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{api_model: %{name: "Task with Reference", reference: "refs/heads/feature-branch"}} =
+               Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
+    test "PUT /projects/:project_id_or_name/tasks/:id - endpoint replaces with reference structure for tag",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Tag",
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          },
+          pipeline_file: "pipeline.yml"
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.put(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{api_model: %{name: "Task with Tag", reference: "refs/tags/v1.0.0"}} =
+               Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
+    test "PUT /projects/:project_id_or_name/tasks/:id - endpoint replaces task with reference structure",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Reference",
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          },
+          pipeline_file: "pipeline.yml"
+        }
+      }
+
+      scheduler = Support.Stubs.Scheduler.create(ctx.project_id, ctx.user_id, name: "Scheduler")
+
+      assert {:ok, %Tesla.Env{status: 200}} =
+               Tesla.put(
+                 http_client(ctx),
+                 "/projects/#{ctx.project_id}/tasks/" <> scheduler.id,
+                 params
+               )
+
+      assert %{api_model: %{name: "Task with Reference", reference: "refs/tags/v1.0.0"}} =
+               Support.Stubs.DB.find(:schedulers, scheduler.id)
+    end
+
     test "PUT /projects/:project_id_or_name/tasks/:id - endpoint returns 404 when task is not owned by requester org",
          ctx do
       wrong_owner = UUID.uuid4()
@@ -140,7 +233,10 @@ defmodule Router.Tasks.ReplaceTest do
         kind: "Task",
         spec: %{
           name: "Task",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml"
         }
       }

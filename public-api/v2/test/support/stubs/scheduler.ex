@@ -29,7 +29,7 @@ defmodule Support.Stubs.Scheduler do
         id: UUID.uuid4(),
         name: "Scheduler",
         project_id: project_id,
-        branch: "master",
+        reference: "refs/heads/master",
         at: "* * * * *",
         pipeline_file: ".semaphore/semaphore.yml",
         requester_id: user_id,
@@ -64,7 +64,7 @@ defmodule Support.Stubs.Scheduler do
       [
         triggered_at: Time.now(),
         project_id: periodic.project_id,
-        branch: periodic.branch,
+        reference: periodic.reference,
         pipeline_file: periodic.pipeline_file,
         scheduling_status: "passed",
         scheduled_workflow_id: workflow_id,
@@ -159,7 +159,7 @@ defmodule Support.Stubs.Scheduler do
       end
     end
 
-    @modifiable_fields ~w(name description recurring branch pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
 
     def persist(req, _) do
       model_from_req = periodic_from_req(req)
@@ -324,7 +324,7 @@ defmodule Support.Stubs.Scheduler do
           params =
             Enum.filter(
               [
-                branch: if(req.branch != "", do: req.branch),
+                reference: if(req.reference != "", do: req.reference),
                 pipeline_file: if(req.pipeline_file != "", do: req.pipeline_file),
                 parameter_values: req.parameter_values
               ],
@@ -363,7 +363,7 @@ defmodule Support.Stubs.Scheduler do
         id: metadata["id"],
         name: metadata["name"],
         project_id: "",
-        branch: spec["branch"],
+        reference: "refs/heads/#{spec["branch"]}",
         at: spec["at"],
         pipeline_file: spec["pipeline_file"],
         requester_id: req.requester_id,
@@ -378,7 +378,7 @@ defmodule Support.Stubs.Scheduler do
         description: req.description,
         recurring: req.recurring,
         requester_id: req.requester_id,
-        branch: req.branch,
+        reference: req.reference,
         pipeline_file: req.pipeline_file,
         at: req.at,
         parameters: req.parameters

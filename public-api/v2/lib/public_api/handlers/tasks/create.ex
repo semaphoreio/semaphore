@@ -71,6 +71,7 @@ defmodule PublicAPI.Handlers.Tasks.Create do
     conn = super(conn, opts)
 
     conn.body_params[:spec]
+    |> Map.from_struct()
     |> Map.put(:organization_id, conn.assigns[:organization_id])
     |> Map.put(:requester_id, conn.assigns[:user_id])
     |> Map.put(:project_id, conn.assigns[:project_id])

@@ -9,7 +9,30 @@ defmodule PublicAPI.Schemas.Tasks.Triggers.Spec do
     description: "Task Trigger specification",
     type: :object,
     properties: %{
-      branch: %Schema{type: :string, example: "master"},
+      reference: %Schema{
+        type: :object,
+        description: "Git reference to trigger the task with",
+        properties: %{
+          type: %Schema{
+            type: :string,
+            enum: ["branch", "tag"],
+            description: "Type of git reference",
+            example: "branch"
+          },
+          name: %Schema{
+            type: :string,
+            description: "Name of the branch or tag",
+            example: "master"
+          }
+        },
+        required: [:type, :name]
+      },
+      branch: %Schema{
+        type: :string,
+        example: "master",
+        description: "Legacy branch parameter - use reference.name instead",
+        deprecated: true
+      },
       pipeline_file: %Schema{type: :string, example: ".semaphore/semaphore.yml"},
       parameters: %Schema{
         type: :array,

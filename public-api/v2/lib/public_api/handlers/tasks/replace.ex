@@ -86,6 +86,7 @@ defmodule PublicAPI.Handlers.Tasks.Replace do
 
   def replace(conn, _opts) do
     conn.body_params[:spec]
+    |> Map.from_struct()
     |> Map.put(:requester_id, conn.assigns[:user_id])
     |> Map.put(:task_id, conn.params[:task_id])
     |> Client.persist()
