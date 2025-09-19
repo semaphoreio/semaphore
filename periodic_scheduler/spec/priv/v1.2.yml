@@ -1,0 +1,51 @@
+$schema: http://json-schema.org/draft-04/schema#
+version: v1.2
+title: Semaphore pipeline definition file specification
+type: object
+properties:
+  project:
+    type: string
+  reference:
+    type: object
+    properties:
+      type:
+        type: string
+        enum: [BRANCH, TAG, PR]
+        description: "The type of Git reference"
+      name:
+        type: string
+        description: "The name of the reference (branch name, tag name, or PR number)"
+    additionalProperties: false
+    required: [type, name]
+  at:
+    type: string
+  pipeline_file:
+    type: string
+  paused:
+    type: boolean
+  recurring:
+    type: boolean
+  parameters:
+    type: array
+    items:
+      type: object
+      properties:
+        name:
+          type: string
+        options:
+          type: array
+          items:
+            type: string
+        required:
+          type: boolean
+        default_value:
+          type: string
+        description:
+          type: string
+      additionalProperties: false
+      required: [name, required]
+additionalProperties: false
+required: [project, recurring]
+anyOf:
+  - required: [reference]
+  - required: [branch]
