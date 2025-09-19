@@ -190,8 +190,16 @@ defmodule Scheduler.PeriodicsTriggers.Model.HistoryPage do
   defp apply_filter(query, {:triggered_by, triggered_by}),
     do: Ecto.Query.where(query, [dt, s], dt.run_now_requester_id == ^triggered_by)
 
-  defp apply_filter(query, {:branch_name, branch_name}),
-    do: Ecto.Query.where(query, [dt, s], dt.branch == ^branch_name)
+  defp apply_filter(
+         query,
+         {:reference, %{normalized: normalized, short: short, original: original}}
+       ) do
+    possible_values = [normalized, short, original] |> Enum.uniq()
+    Ecto.Query.where(query, [dt, s], dt.reference in ^possible_values)
+  end
+
+  defp apply_filter(query, {:reference, reference}) when is_binary(reference),
+    do: Ecto.Query.where(query, [dt, s], dt.reference == ^reference)
 
   defp apply_filter(query, {:pipeline_file, pipeline_file}),
     do: Ecto.Query.where(query, [dt, s], dt.pipeline_file == ^pipeline_file)

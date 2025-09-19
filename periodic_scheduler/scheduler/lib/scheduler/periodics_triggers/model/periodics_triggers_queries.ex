@@ -9,6 +9,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries do
   alias Scheduler.PeriodicsRepo, as: Repo
   alias Scheduler.Periodics.Model.Periodics
   alias Scheduler.PeriodicsTriggers.Model.PeriodicsTriggers
+  alias Scheduler.Utils.GitReference
   alias LogTee, as: LT
   alias Util.ToTuple
 
@@ -36,14 +37,25 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries do
       triggered_at: DateTime.utc_now(),
       project_id: periodic.project_id,
       recurring: periodic.recurring,
-      branch: periodic.branch,
+      reference: periodic.reference,
       pipeline_file: periodic.pipeline_file,
       parameter_values: Periodics.default_parameter_values(periodic),
       scheduling_status: "running",
       run_now_requester_id: params[:requester]
     }
 
-    default_params |> Map.merge(params) |> insert_()
+    merged_params = default_params |> Map.merge(params)
+
+    normalized_params =
+      case merged_params.reference do
+        ref when is_binary(ref) ->
+          Map.put(merged_params, :reference, GitReference.normalize(ref))
+
+        _ ->
+          merged_params
+      end
+
+    insert_(normalized_params)
   end
 
   defp insert_(params) do

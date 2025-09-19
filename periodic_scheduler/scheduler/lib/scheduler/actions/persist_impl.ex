@@ -50,7 +50,7 @@ defmodule Scheduler.Actions.PersistImpl do
   defp create(request) do
     with {:ok, project_name} <- get_project_name(request.organization_id, request.project_id),
          {:ok, params} <- form_periodic_params(request, project_name),
-         {:ok, periodic} <- PeriodicsQueries.insert(params, "v1.1"),
+         {:ok, periodic} <- PeriodicsQueries.insert(params, "v1.2"),
          {:ok, _job} <- start_periodic_job(periodic) do
       {:ok, periodic.id}
     end
@@ -58,7 +58,7 @@ defmodule Scheduler.Actions.PersistImpl do
 
   defp update(periodic, request) do
     with {:ok, params} <- form_periodic_params(request, periodic),
-         {:ok, periodic} <- PeriodicsQueries.update(periodic, params, "v1.1"),
+         {:ok, periodic} <- PeriodicsQueries.update(periodic, params, "v1.2"),
          {:ok, _job} <- start_or_stop_periodic_job(periodic) do
       {:ok, periodic.id}
     end
@@ -83,7 +83,7 @@ defmodule Scheduler.Actions.PersistImpl do
     |> Map.take(~w(
       name description recurring
       organization_id project_id requester_id
-      branch pipeline_file at
+      reference pipeline_file at
     )a)
     |> Map.put(:parameters, parameters)
     |> inject_paused(request.state)
@@ -97,7 +97,7 @@ defmodule Scheduler.Actions.PersistImpl do
     request
     |> Map.take(~w(
       name description recurring requester_id
-      branch pipeline_file at
+      reference pipeline_file at
     )a)
     |> inject_paused(request.state)
     |> Map.put(:parameters, parameters)

@@ -101,6 +101,16 @@ defmodule InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse do
   field :installation_url, 3, type: :string, json_name: "installationUrl"
 end
 
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationRequest do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+end
+
+defmodule InternalApi.RepositoryIntegrator.InitGithubInstallationResponse do
+  @moduledoc false
+  use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
+end
+
 defmodule InternalApi.RepositoryIntegrator.GetRepositoriesRequest do
   @moduledoc false
   use Protobuf, protoc_gen_elixir_version: "0.11.0", syntax: :proto3
@@ -156,6 +166,10 @@ defmodule InternalApi.RepositoryIntegrator.RepositoryIntegratorService.Service d
   rpc :GithubInstallationInfo,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoRequest,
       InternalApi.RepositoryIntegrator.GithubInstallationInfoResponse
+
+  rpc :InitGithubInstallation,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationRequest,
+      InternalApi.RepositoryIntegrator.InitGithubInstallationResponse
 
   rpc :GetRepositories,
       InternalApi.RepositoryIntegrator.GetRepositoriesRequest,

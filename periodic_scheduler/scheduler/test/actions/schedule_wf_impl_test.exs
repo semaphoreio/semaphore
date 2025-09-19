@@ -2,7 +2,6 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
   use ExUnit.Case
 
   alias Scheduler.Actions.ScheduleWfImpl
-  alias Scheduler.Workers.ScheduleTask
   alias Scheduler.Workers.ScheduleTaskManager
   alias Scheduler.Periodics.Model.Periodics
   alias Scheduler.Periodics.Model.PeriodicsQueries
@@ -50,89 +49,26 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
       name: "Periodic_1",
       project_name: "Project_1",
       project_id: ids.pr_id,
-      branch: "master",
+      reference: "master",
       at: "* * * * *",
       pipeline_file: "deploy.yml"
     }
   end
 
-  test "schedule() - schedule params are correctly formed when there is only after in hook payload",
-       ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("ok")
+  describe "just_run scheduling implementation" do
+    test "schedule() - schedule params are correctly formed for JustRun case", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
 
-    ts_before = DateTime.utc_now()
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
 
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
-    assert tr.attempts == 1
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - schedule params are correctly formed for JustRun case", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("ok")
-    use_mock_repository_service()
-    mock_repositoryhub_response("ok")
-
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    ctx.periodic
-    |> Periodics.changeset("v1.1", %{
-      parameters: [
-        %{name: "param1", required: true, default_value: "value1"},
-        %{name: "param2", required: false, default_value: "value2"},
-        %{name: "param3", required: false}
-      ]
-    })
-    |> Scheduler.PeriodicsRepo.update!()
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
-    assert tr.attempts == 1
-
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{"param1" => "value1", "param2" => "value2"}
-
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - schedule params are correctly formed for bitbucket in JustRun case", ctx do
-    alias Scheduler.Actions.ScheduleWfImpl
-
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("ok")
-    use_mock_repository_service()
-    mock_repositoryhub_response("ok")
-
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    periodic =
       ctx.periodic
       |> Periodics.changeset("v1.1", %{
         parameters: [
@@ -143,165 +79,250 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
       })
       |> Scheduler.PeriodicsRepo.update!()
 
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
 
-    :timer.sleep(2_000)
+      :timer.sleep(2_000)
 
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
 
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
+      assert tr.scheduling_status == "passed"
+      assert tr.scheduled_workflow_id == "wf_id"
+      assert tr.error_description == nil
+      assert tr.attempts == 1
 
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{"param1" => "value1", "param2" => "value2"}
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{"param1" => "value1", "param2" => "value2"}
 
-    assert tr.attempts == 1
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    end
 
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    test "schedule() - schedule params are correctly formed for bitbucket in JustRun case", ctx do
+      alias Scheduler.Actions.ScheduleWfImpl
 
-    repository = %{id: UUID.uuid4(), integration_type: :BITBUCKET}
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
 
-    assert {:ok, schedule_params} =
-             ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
 
-    assert schedule_params.service == :BITBUCKET
-    assert schedule_params.requester_id == periodic.requester_id
-    assert schedule_params.triggered_by == :SCHEDULE
-  end
+      periodic =
+        ctx.periodic
+        |> Periodics.changeset("v1.1", %{
+          parameters: [
+            %{name: "param1", required: true, default_value: "value1"},
+            %{name: "param2", required: false, default_value: "value2"},
+            %{name: "param3", required: false}
+          ]
+        })
+        |> Scheduler.PeriodicsRepo.update!()
 
-  test "schedule() - schedule params are correctly formed for gitlab in JustRun case", ctx do
-    alias Scheduler.Actions.ScheduleWfImpl
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
 
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("ok")
-    use_mock_repository_service()
-    mock_repositoryhub_response("ok")
+      :timer.sleep(2_000)
 
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
 
-    periodic =
-      ctx.periodic
-      |> Periodics.changeset("v1.1", %{
-        parameters: [
-          %{name: "param_gitlab1", required: true, default_value: "value1"},
-          %{name: "param_gitlab2", required: false, default_value: "value2"},
-          %{name: "param_gitlab3", required: false, default_value: "value3"},
-          %{name: "param_gitlab4", required: false}
-        ]
-      })
-      |> Scheduler.PeriodicsRepo.update!()
+      assert tr.scheduling_status == "passed"
+      assert tr.scheduled_workflow_id == "wf_id"
+      assert tr.error_description == nil
 
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{"param1" => "value1", "param2" => "value2"}
 
-    :timer.sleep(2_000)
+      assert tr.attempts == 1
 
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
 
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
+      repository = %{id: UUID.uuid4(), integration_type: :BITBUCKET}
 
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{
-               "param_gitlab1" => "value1",
-               "param_gitlab2" => "value2",
-               "param_gitlab3" => "value3"
-             }
+      assert {:ok, schedule_params} =
+               ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
 
-    assert tr.attempts == 1
+      assert schedule_params.service == :BITBUCKET
+      assert schedule_params.requester_id == periodic.requester_id
+      assert schedule_params.triggered_by == :SCHEDULE
+    end
 
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    test "schedule() - schedule params are correctly formed for gitlab in JustRun case", ctx do
+      alias Scheduler.Actions.ScheduleWfImpl
 
-    repository = %{id: UUID.uuid4(), integration_type: :GITLAB}
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
 
-    assert {:ok, schedule_params} =
-             ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
 
-    assert schedule_params.service == :GITLAB
-    assert schedule_params.requester_id == periodic.requester_id
-    assert schedule_params.triggered_by == :SCHEDULE
-  end
+      periodic =
+        ctx.periodic
+        |> Periodics.changeset("v1.1", %{
+          parameters: [
+            %{name: "param_gitlab1", required: true, default_value: "value1"},
+            %{name: "param_gitlab2", required: false, default_value: "value2"},
+            %{name: "param_gitlab3", required: false, default_value: "value3"},
+            %{name: "param_gitlab4", required: false}
+          ]
+        })
+        |> Scheduler.PeriodicsRepo.update!()
 
-  test "schedule() - schedule params are correctly formed for git agnostic in JustRun case",
-       ctx do
-    alias Scheduler.Actions.ScheduleWfImpl
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
 
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("ok")
-    use_mock_repository_service()
-    mock_repositoryhub_response("ok")
+      :timer.sleep(2_000)
 
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
 
-    periodic =
-      ctx.periodic
-      |> Periodics.changeset("v1.1", %{
-        parameters: [
-          %{name: "param_git1", required: true, default_value: "value1"},
-          %{name: "param_git2", required: false, default_value: "value2"},
-          %{name: "param_git3", required: false, default_value: "value3"},
-          %{name: "param_git4", required: false}
-        ]
-      })
-      |> Scheduler.PeriodicsRepo.update!()
+      assert tr.scheduling_status == "passed"
+      assert tr.scheduled_workflow_id == "wf_id"
+      assert tr.error_description == nil
 
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{
+                 "param_gitlab1" => "value1",
+                 "param_gitlab2" => "value2",
+                 "param_gitlab3" => "value3"
+               }
 
-    :timer.sleep(2_000)
+      assert tr.attempts == 1
 
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
 
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
+      repository = %{id: UUID.uuid4(), integration_type: :GITLAB}
 
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{
-               "param_git1" => "value1",
-               "param_git2" => "value2",
-               "param_git3" => "value3"
-             }
+      assert {:ok, schedule_params} =
+               ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
 
-    assert tr.attempts == 1
+      assert schedule_params.service == :GITLAB
+      assert schedule_params.requester_id == periodic.requester_id
+      assert schedule_params.triggered_by == :SCHEDULE
+    end
 
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    test "schedule() - schedule params are correctly formed for git agnostic in JustRun case",
+         ctx do
+      alias Scheduler.Actions.ScheduleWfImpl
 
-    repository = %{id: UUID.uuid4(), integration_type: :GIT}
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
 
-    assert {:ok, schedule_params} =
-             ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
 
-    assert schedule_params.service == :GIT
-    assert schedule_params.requester_id == periodic.requester_id
-    assert schedule_params.triggered_by == :SCHEDULE
-  end
+      periodic =
+        ctx.periodic
+        |> Periodics.changeset("v1.1", %{
+          parameters: [
+            %{name: "param_git1", required: true, default_value: "value1"},
+            %{name: "param_git2", required: false, default_value: "value2"},
+            %{name: "param_git3", required: false, default_value: "value3"},
+            %{name: "param_git4", required: false}
+          ]
+        })
+        |> Scheduler.PeriodicsRepo.update!()
 
-  test "schedule() - when project service fails for JustRun case then workflow is not scheduled",
-       ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("failed_precondition")
-    use_mock_repository_service()
-    mock_repositoryhub_response("ok")
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
 
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
+      :timer.sleep(2_000)
 
-    periodic =
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+      assert tr.scheduling_status == "passed"
+      assert tr.scheduled_workflow_id == "wf_id"
+      assert tr.error_description == nil
+
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{
+                 "param_git1" => "value1",
+                 "param_git2" => "value2",
+                 "param_git3" => "value3"
+               }
+
+      assert tr.attempts == 1
+
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+
+      repository = %{id: UUID.uuid4(), integration_type: :GIT}
+
+      assert {:ok, schedule_params} =
+               ScheduleWfImpl.form_just_run_schedule_params(periodic, tr, repository)
+
+      assert schedule_params.service == :GIT
+      assert schedule_params.requester_id == periodic.requester_id
+      assert schedule_params.triggered_by == :SCHEDULE
+    end
+
+    test "schedule() - when project service fails for JustRun case then workflow is not scheduled",
+         ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("failed_precondition")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      periodic =
+        ctx.periodic
+        |> Periodics.changeset("v1.1", %{
+          parameters: [
+            %{name: "param1", required: true, default_value: "value1"},
+            %{name: "param2", required: false, default_value: "value2"},
+            %{name: "param3", required: false}
+          ]
+        })
+        |> Scheduler.PeriodicsRepo.update!()
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(2_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+      assert tr.scheduling_status == "failed"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "{:missing_project, \"#{periodic.project_id}\"}"
+
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{"param1" => "value1", "param2" => "value2"}
+
+      assert tr.attempts >= 1
+
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    end
+
+    test "schedule() - when repository service fails for JustRun case then workflow is not scheduled",
+         ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("just_run")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("failed_precondition")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
       ctx.periodic
       |> Periodics.changeset("v1.1", %{
         parameters: [
@@ -312,371 +333,244 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
       })
       |> Scheduler.PeriodicsRepo.update!()
 
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(2_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+
+      assert tr.scheduling_status == "failed"
+      assert tr.scheduled_workflow_id == ""
+
+      assert tr.error_description ==
+               "{:missing_revision, [commit_sha: \"\", reference: \"refs/heads/master\"]}"
+
+      assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
+               %{"param1" => "value1", "param2" => "value2"}
+
+      assert tr.attempts >= 1
 
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "{:missing_project, \"#{periodic.project_id}\"}"
-
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{"param1" => "value1", "param2" => "value2"}
-
-    assert tr.attempts >= 1
-
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - when repository service fails for JustRun case then workflow is not scheduled",
-       ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("just_run")
-    reset_mock_feature_service()
-    mock_feature_response("just_run")
-    use_mock_project_service()
-    mock_projecthub_response("ok")
-    use_mock_repository_service()
-    mock_repositoryhub_response("failed_precondition")
-
-    ts_before = DateTime.utc_now()
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    ctx.periodic
-    |> Periodics.changeset("v1.1", %{
-      parameters: [
-        %{name: "param1", required: true, default_value: "value1"},
-        %{name: "param2", required: false, default_value: "value2"},
-        %{name: "param3", required: false}
-      ]
-    })
-    |> Scheduler.PeriodicsRepo.update!()
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-
-    assert tr.error_description ==
-             "{:missing_revision, [commit_sha: \"\", reference: \"refs/heads/master\"]}"
-
-    assert Map.new(tr.parameter_values, &{&1.name, &1.value}) ==
-             %{"param1" => "value1", "param2" => "value2"}
-
-    assert tr.attempts >= 1
-
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - when using Create API schedule params are correctly formed and proper API is called",
-       %{project_id: project_id, org_id: org_id} do
-    use_mock_repo_proxy_service(project_id)
-    mock_repo_proxy_service_response("ok")
-    reset_mock_feature_service()
-    mock_feature_response("scheduler_hook")
-
-    ids = %{
-      usr_id: UUID.uuid4(),
-      org_id: org_id,
-      pr_id: project_id
-    }
-
-    assert {:ok, periodic} = periodic_params(ids) |> PeriodicsQueries.insert()
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(periodic.id, timestamp)
-
-    :timer.sleep(5_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(periodic.id, 1)
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "repo_proxy_wf_id"
-    assert tr.error_description == nil
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-    reset_mock_feature_service()
-  end
-
-  test "schedule() - schedule params are correctly formed when there is only head_commit in hook payload",
-       ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("ok")
-
-    payload = %{head_commit: %{id: ctx.ids.commit_sha}, after: ""}
-    request = '{"payload": #{inspect(Jason.encode!(payload))}}'
-
-    assert {:ok, _resp} =
-             "UPDATE workflows SET request = '#{request}' WHERE true"
-             |> Scheduler.FrontRepo.query([])
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "passed"
-    assert tr.scheduled_workflow_id == "wf_id"
-    assert tr.error_description == nil
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-  end
-
-  test "schedule() - scheduling fails if commit_sha can not be found", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("ok")
-
-    payload = %{head_commit: %{id: ""}, after: ""}
-    request = '{"payload": #{inspect(Jason.encode!(payload))}}'
-
-    assert {:ok, _resp} =
-             "UPDATE workflows SET request = '#{request}' WHERE true"
-             |> Scheduler.FrontRepo.query([])
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(4_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "Hook is missing commit_sha data"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-  end
-
-  test "schedule() - scheduling fails if pipeline limit is exhausted", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("resource_exhausted")
-
-    ts_before = DateTime.utc_now()
-    Timex.shift(ts_before, minutes: -1)
-    {:ok, trigger} = PTQueries.insert(ctx.periodic)
-    state = %{periodic: ctx.periodic, trigger: trigger}
-
-    assert {:stop, :restart, _state} = ScheduleTask.handle_info(:schedule_workflow, state)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "running"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :RESOURCE_EXHAUSTED, message: \"Error\"}"
-    assert tr.attempts == 1
-  end
-
-  test "schedule() - error response from workflow service is stored in trigger", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("invalid_argument")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(4_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-  end
-
-  test "schedule() - error response when calling Create API is stored in trigger", %{
-    project_id: project_id,
-    org_id: org_id
-  } do
-    use_mock_repo_proxy_service(project_id)
-    mock_repo_proxy_service_response("invalid_argument")
-    reset_mock_feature_service()
-    mock_feature_response("scheduler_hook")
-
-    ids = %{
-      usr_id: UUID.uuid4(),
-      org_id: org_id,
-      pr_id: project_id
-    }
-
-    assert {:ok, periodic} = periodic_params(ids) |> PeriodicsQueries.insert()
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(periodic.id, timestamp)
-
-    :timer.sleep(4_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(periodic.id, 1)
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-    assert String.contains?(tr.error_description, "message: \"Invalid argument\"")
-    assert String.contains?(tr.error_description, "status: 3")
-    assert String.contains?(tr.error_description, "GRPC.RPCError")
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-    reset_mock_feature_service()
-  end
-
-  test "schedule() - too long error message from wf service is stored truncated to max length",
-       ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("too_long_error_msg")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(4_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "failed"
-    assert tr.scheduled_workflow_id == ""
-
-    assert "%{code: :INVALID_ARGUMENT, message: \"aaaaaaa" <> _rest = tr.error_description
-
-    assert String.length(tr.error_description) == 254
-    assert tr.attempts >= 1
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - error message is removed if next scheduling attempt passes", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("invalid_argument")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(1_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "running"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-
-    mock_workflow_service_response("ok")
-    :timer.sleep(3_000)
-
-    assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr2.scheduling_status == "passed"
-    assert tr2.scheduled_workflow_id == "wf_id"
-    assert tr2.error_description == nil
-    assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
-    assert tr2.attempts >= tr.attempts
-  end
-
-  test "schedule() - scheduling fails if periodic is supended", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("invalid_argument")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(1_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "running"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-
-    assert {:ok, _periodic} = PeriodicsQueries.suspend(ctx.periodic)
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr2.scheduling_status == "failed"
-    assert tr2.scheduled_workflow_id == ""
-    assert tr2.error_description == "Scheduler with id '#{ctx.periodic.id}' is suspended."
-    assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
-    assert tr2.attempts >= tr.attempts
-  end
-
-  test "schedule() - scheduling fails if periodic is paused", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("invalid_argument")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(1_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "running"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-
-    assert {:ok, _periodic} = PeriodicsQueries.pause(ctx.periodic, "user_1")
-
-    :timer.sleep(2_000)
-
-    assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr2.scheduling_status == "failed"
-    assert tr2.scheduled_workflow_id == ""
-    assert tr2.error_description == "Scheduler with id '#{ctx.periodic.id}' is paused."
-    assert tr2.attempts >= tr.attempts
-    assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
-  end
-
-  test "schedule() - restarting schedulr task is terminated if periodic is deleted", ctx do
-    use_mock_workflow_service()
-    mock_workflow_service_response("invalid_argument")
-
-    ts_before = DateTime.utc_now()
-
-    timestamp = Timex.shift(ts_before, minutes: -1)
-
-    assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
-
-    :timer.sleep(1_000)
-
-    assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
-    assert tr.scheduling_status == "running"
-    assert tr.scheduled_workflow_id == ""
-    assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
-    assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
-    assert tr.attempts >= 1
-
-    assert %{workers: 1} = ScheduleTaskManager.count_children()
-
-    assert {:ok, _message} = Scheduler.Actions.delete(%{id: ctx.periodic.id, requester: "asdf"})
-
-    :timer.sleep(2_000)
-
-    assert %{workers: 0} = ScheduleTaskManager.count_children()
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    end
+
+    test "schedule() - error response from workflow service is stored in trigger", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("invalid_argument")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(4_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "failed"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+    end
+
+    test "schedule() - scheduling fails if pipeline limit is exhausted", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("resource_exhausted")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(4_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :RESOURCE_EXHAUSTED, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+    end
+
+    test "schedule() - too long error message from workflow service is stored truncated to max length",
+         ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("too_long_error_msg")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(4_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "failed"
+      assert tr.scheduled_workflow_id == ""
+
+      assert "%{code: :INVALID_ARGUMENT, message: \"aaaaaaa" <> _rest = tr.error_description
+
+      assert String.length(tr.error_description) == 254
+      assert tr.attempts >= 1
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+    end
+
+    test "schedule() - error message is removed if next scheduling attempt passes", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("invalid_argument")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(1_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+
+      mock_workflow_service_response("just_run")
+      :timer.sleep(3_000)
+
+      assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr2.scheduling_status == "passed"
+      assert tr2.scheduled_workflow_id == "wf_id"
+      assert tr2.error_description == nil
+      assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
+      assert tr2.attempts >= tr.attempts
+    end
+
+    test "schedule() - scheduling fails if periodic is suspended", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("invalid_argument")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(1_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+
+      assert {:ok, _periodic} = PeriodicsQueries.suspend(ctx.periodic)
+
+      :timer.sleep(2_000)
+
+      assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr2.scheduling_status == "failed"
+      assert tr2.scheduled_workflow_id == ""
+      assert tr2.error_description == "Scheduler with id '#{ctx.periodic.id}' is suspended."
+      assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
+      assert tr2.attempts >= tr.attempts
+    end
+
+    test "schedule() - scheduling fails if periodic is paused", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("invalid_argument")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(1_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+
+      assert {:ok, _periodic} = PeriodicsQueries.pause(ctx.periodic, "user_1")
+
+      :timer.sleep(2_000)
+
+      assert {:ok, [tr2]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr2.scheduling_status == "failed"
+      assert tr2.scheduled_workflow_id == ""
+      assert tr2.error_description == "Scheduler with id '#{ctx.periodic.id}' is paused."
+      assert tr2.attempts >= tr.attempts
+      assert DateTime.compare(tr2.scheduled_at, ts_before) == :gt
+    end
+
+    test "schedule() - restarting scheduler task is terminated if periodic is deleted", ctx do
+      use_mock_workflow_service()
+      mock_workflow_service_response("invalid_argument")
+      reset_mock_feature_service()
+      mock_feature_response("just_run")
+      use_mock_project_service()
+      mock_projecthub_response("ok")
+      use_mock_repository_service()
+      mock_repositoryhub_response("ok")
+
+      ts_before = DateTime.utc_now()
+      timestamp = Timex.shift(ts_before, minutes: -1)
+
+      assert {:ok, _pid} = ScheduleWfImpl.start_schedule_task(ctx.periodic.id, timestamp)
+
+      :timer.sleep(1_000)
+
+      assert {:ok, [tr]} = PTQueries.get_n_by_periodic_id(ctx.periodic.id, 1)
+      assert tr.scheduling_status == "running"
+      assert tr.scheduled_workflow_id == ""
+      assert tr.error_description == "%{code: :INVALID_ARGUMENT, message: \"Error\"}"
+      assert DateTime.compare(tr.scheduled_at, ts_before) == :gt
+      assert tr.attempts >= 1
+
+      assert %{workers: 1} = ScheduleTaskManager.count_children()
+
+      assert {:ok, _message} = Scheduler.Actions.delete(%{id: ctx.periodic.id, requester: "asdf"})
+
+      :timer.sleep(2_000)
+
+      assert %{workers: 0} = ScheduleTaskManager.count_children()
+    end
   end
 
   defp use_mock_project_service(),
@@ -705,16 +599,6 @@ defmodule Scheduler.Actions.ScheduleWfImpl.Test do
 
   def mock_workflow_service_response(value),
     do: Application.put_env(:scheduler, :mock_workflow_service_response, value)
-
-  defp use_mock_repo_proxy_service(project_id) do
-    Application.put_env(
-      :scheduler,
-      :repo_proxy_api_grpc_endpoint,
-      "localhost:#{inspect(@grpc_port)}"
-    )
-
-    Application.put_env(:scheduler, :repo_proxy_service, {Test.MockRepoProxy, project_id})
-  end
 
   defp reset_mock_feature_service() do
     Cachex.clear(Elixir.Scheduler.FeatureHubProvider)
@@ -750,7 +634,11 @@ defmodule AssertPramsWorkflowService do
     assert :GIT_HUB = request.service
     assert {:ok, _} = request.project_id |> UUID.info()
 
-    if Application.get_env(:scheduler, :mock_workflow_service_response) != "just_run" do
+    feature_response = Application.get_env(:scheduler, :mock_feature_service_response)
+    workflow_response = Application.get_env(:scheduler, :mock_workflow_service_response)
+
+    # Check if we're using just_run feature (not the workflow response type)
+    if feature_response != "just_run" do
       assert {:ok, _} = request.branch_id |> UUID.info()
       assert {:ok, _} = request.hook_id |> UUID.info()
       assert {:ok, _} = request.repo.commit_sha |> UUID.info()
@@ -763,16 +651,16 @@ defmodule AssertPramsWorkflowService do
     assert request.snapshot_id == ""
     assert request.definition_file == "deploy.yml"
 
-    response_type = Application.get_env(:scheduler, :mock_workflow_service_response)
-
-    if response_type == "just_run" do
+    # For just_run feature, check different repo structure
+    if feature_response == "just_run" do
       assert request.repo.owner == ""
       assert request.repo.repo_name == ""
       assert request.repo.commit_sha == ""
       assert request.repo.branch_name == "master"
     end
 
-    response_type = if response_type == "just_run", do: "ok", else: response_type
+    # Convert just_run workflow response to ok for mock
+    response_type = if workflow_response == "just_run", do: "ok", else: workflow_response
     respond(response_type)
   end
 

@@ -14,7 +14,7 @@ defmodule Test.Actions.DescribeImpl.Test do
                project_name: "Project_1",
                project_id: UUID.uuid4(),
                recurring: true,
-               branch: "master",
+               reference: "master",
                at: "* * * * *",
                pipeline_file: "deploy.yml",
                parameters: [

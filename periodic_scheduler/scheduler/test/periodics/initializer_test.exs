@@ -36,7 +36,7 @@ defmodule Scheduler.Workers.Initializer.Test do
       name: "Periodic_#{ind}",
       project_name: "Project_1",
       project_id: ids.pr_id,
-      branch: "master",
+      reference: "master",
       at: "* * * * *",
       pipeline_file: "deploy.yml"
     }

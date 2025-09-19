@@ -129,6 +129,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     repeated: true,
     type: InternalApi.PlumberWF.ScheduleRequest.EnvVar,
     json_name: "envVars"
+
+  field :start_in_conceived_state, 18, type: :bool, json_name: "startInConceivedState"
+  field :git_reference, 19, type: :string, json_name: "gitReference"
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do

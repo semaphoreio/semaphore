@@ -80,7 +80,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.name == "P1"
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.ids.pr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "refs/heads/master"
     assert periodic.at == "0 0 * * * *"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.recurring
@@ -127,7 +127,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.project_id == ctx.ids.pr_id
     refute periodic.recurring
     refute periodic.at
-    assert periodic.branch == "master"
+    assert periodic.reference == "refs/heads/master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.paused == false
     assert periodic.pause_toggled_by == ""
@@ -147,7 +147,7 @@ defmodule Scheduler.GrpcServer.Test do
 
   defp default_params(ctx) do
     %{
-      branch: "master",
+      reference: "master",
       at: "0 0 * * * *",
       project: "Project 1",
       name: "P1",
@@ -182,7 +182,7 @@ defmodule Scheduler.GrpcServer.Test do
     spec:
       project: #{params.project}
       recurring: true
-      branch: #{params.branch}
+      branch: #{params.reference}
       at: #{params.at}
       pipeline_file: #{params.pipeline_file}
       #{if is_nil(params[:paused]), do: "", else: "paused: #{params.paused}"}
@@ -242,7 +242,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.name == "P1"
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.ids.pr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "refs/heads/master"
     assert periodic.at == "0 0 * * * *"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.paused == false
@@ -278,7 +278,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.name == "P1"
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.ids.pr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "refs/heads/master"
     assert periodic.at == "0 0 * * * *"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.paused == true
@@ -310,7 +310,7 @@ defmodule Scheduler.GrpcServer.Test do
       id: #{id}
     spec:
       project: #{params.project}
-      branch: #{params.branch}
+      branch: #{params.reference}
       at: #{params.at}
       pipeline_file: #{params.pipeline_file}
       #{if params.paused != nil, do: "paused: #{params.paused}", else: ""}
@@ -325,7 +325,7 @@ defmodule Scheduler.GrpcServer.Test do
       name: #{params.name}
     spec:
       project: #{params.project}
-      branch: #{params.branch}
+      branch: #{params.reference}
       at: #{params.at}
       pipeline_file: #{params.pipeline_file}
       #{if params.paused != nil, do: "paused: #{params.paused}", else: ""}
@@ -341,7 +341,7 @@ defmodule Scheduler.GrpcServer.Test do
     spec:
       project: #{params.project}
       recurring: #{params.recurring}
-      branch: #{params.branch}]
+      branch: #{params.reference}]
       at: #{params.at}
       pipeline_file: #{params.pipeline_file}
       paused: #{params.paused == true}
@@ -582,7 +582,7 @@ defmodule Scheduler.GrpcServer.Test do
       %{
         requester_id: ctx.ids.usr_id,
         organization_id: ctx.ids.org_id,
-        yml_definition: valid_yml_definition(ctx, %{branch: "dev"})
+        yml_definition: valid_yml_definition(ctx, %{reference: "dev"})
       }
       |> Proto.deep_new!(ApplyRequest)
 
@@ -675,7 +675,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.name == "P1"
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.ids.pr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.at == "0 0 * * * *"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.recurring
@@ -719,7 +719,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.project_id == ctx.ids.pr_id
     refute periodic.recurring
     refute periodic.at
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.paused == false
     assert periodic.pause_toggled_by == ""
@@ -755,7 +755,7 @@ defmodule Scheduler.GrpcServer.Test do
     assert periodic.project_id == ctx.ids.pr_id
     assert periodic.recurring
     assert periodic.at == "0 0 * * * *"
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.paused == true
     assert periodic.pause_toggled_by == ctx.ids.usr_id
@@ -971,9 +971,11 @@ defmodule Scheduler.GrpcServer.Test do
     assert String.starts_with?(msg, "Invalid cron expression in 'at' field:")
   end
 
-  test "gRPC persist() returns INVALID_ARGUMENT when one of parameters is missing", ctx do
-    for arg <- ~w(name branch pipeline_file organization_id project_id)a do
-      request = default_params(ctx) |> Map.put(arg, "") |> Proto.deep_new!(PersistRequest)
+  for arg <- ~w(name reference pipeline_file organization_id project_id)a do
+    test "gRPC persist() returns INVALID_ARGUMENT when #{arg} is missing", ctx do
+      request =
+        default_params(ctx) |> Map.put(unquote(arg), "") |> Proto.deep_new!(PersistRequest)
+
       assert {nil, msg} = persist_grpc(request, :INVALID_ARGUMENT)
       assert String.contains?(msg, "empty")
     end
@@ -1390,6 +1392,7 @@ defmodule Scheduler.GrpcServer.Test do
              :inserted_at,
              :description,
              :updated_at,
+             :organization_id,
              :pause_toggled_at,
              :__struct__,
              :__unknown_fields__
@@ -1446,7 +1449,6 @@ defmodule Scheduler.GrpcServer.Test do
       :description,
       :inserted_at,
       :updated_at,
-      :organization_id,
       :pause_toggled_at,
       :__meta__
     ]
@@ -1539,6 +1541,7 @@ defmodule Scheduler.GrpcServer.Test do
              :inserted_at,
              :description,
              :updated_at,
+             :organization_id,
              :pause_toggled_at,
              :__struct__,
              :__unknown_fields__
@@ -1613,6 +1616,7 @@ defmodule Scheduler.GrpcServer.Test do
              :description,
              :updated_at,
              :pause_toggled_at,
+             :organization_id,
              :__struct__,
              :__unknown_fields__
            ]) ==

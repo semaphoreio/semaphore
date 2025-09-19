@@ -64,7 +64,7 @@ defmodule Scheduler.EventsConsumers.OrgBlocked.Test do
 
   defp valid_yml_definition(params) do
     %{
-      branch: "master",
+      reference: "master",
       at: "0 0 * * * *",
       project: "Project 1",
       name: "P1",

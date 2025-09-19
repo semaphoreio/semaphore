@@ -42,7 +42,7 @@ defmodule Test.Actions.UnpauseImpl.Test do
       project_name: "Project_1",
       recurring: if(is_nil(extra[:recurring]), do: true, else: extra[:recurring]),
       project_id: ids.pr_id,
-      branch: extra[:branch] || "master",
+      reference: extra[:reference] || "master",
       at: extra[:at] || "* * * * *",
       paused: if(is_nil(extra[:paused]), do: false, else: extra[:paused]),
       pipeline_file: extra[:pipeline_file] || "deploy.yml",

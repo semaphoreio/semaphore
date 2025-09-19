@@ -246,7 +246,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     assert periodic.name == params.name
     assert periodic.project_name == params.project_name
     assert periodic.project_id == params.project_id
-    assert periodic.branch == params.branch
+    assert periodic.reference == "refs/heads/#{params.reference}"
     assert periodic.at == params.at
     assert periodic.pipeline_file == params.pipeline_file
     assert NaiveDateTime.compare(ts_before, periodic.inserted_at) == :lt
@@ -264,7 +264,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     assert periodic.name == params.name
     assert periodic.project_name == params.project_name
     assert periodic.project_id == params.project_id
-    assert periodic.branch == params.branch
+    assert periodic.reference == "refs/heads/#{params.reference}"
     assert periodic.pipeline_file == params.pipeline_file
     refute periodic.at
 
@@ -288,7 +288,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
       name: "Periodic_1",
       project_name: "Project_1",
       project_id: "pr1",
-      branch: "master",
+      reference: "master",
       at: "* * * * *",
       pipeline_file: "deploy.yml"
     }
@@ -302,7 +302,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
       project_name: "Project_1",
       project_id: "pr1",
       recurring: false,
-      branch: "master",
+      reference: "master",
       at: "",
       pipeline_file: "deploy.yml",
       parameters: [
@@ -329,28 +329,28 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     end)
   end
 
-  test "can insert periodic without at" do
-    params = insert_params("v1.1")
+  describe "insert/2 validation" do
+    for field <-
+          ~w(requester_id organization_id name project_name project_id reference pipeline_file)a do
+      test "returns error when #{field} is missing" do
+        params = insert_params("v1.1")
+        params_ = params |> Map.delete(unquote(field))
 
-    ~w(requester_id organization_id name project_name project_id branch pipeline_file)a
-    |> Enum.map(fn field_name ->
-      params_ = params |> Map.delete(field_name)
+        assert {:error, msg} = PeriodicsQueries.insert(params_, "v1.1")
+        error_msg_1 = "errors: [#{unquote(field)}: {\"can't be blank\", [validation: :required]}]"
+        error_msg_2 = "The '#{unquote(field)}' parameter can not be empty string."
 
-      assert {:error, msg} = PeriodicsQueries.insert(params_, "v1.1")
-      error_msg_1 = "errors: [#{field_name}: {\"can't be blank\", [validation: :required]}]"
-      error_msg_2 = "The '#{field_name}' parameter can not be empty string."
+        assert String.contains?("#{inspect(msg)}", error_msg_1) or
+                 String.contains?("#{inspect(msg)}", error_msg_2)
+      end
+    end
 
-      assert String.contains?("#{inspect(msg)}", error_msg_1) or
-               String.contains?("#{inspect(msg)}", error_msg_2)
-    end)
-
-    ~w(at)a
-    |> Enum.map(fn field_name ->
-      params_ =
-        params |> Map.delete(field_name) |> Map.put(:name, "Periodic without #{field_name}")
+    test "can insert periodic without at field" do
+      params = insert_params("v1.1")
+      params_ = params |> Map.delete(:at) |> Map.put(:name, "Periodic without at")
 
       assert {:ok, _periodic} = PeriodicsQueries.insert(params_, "v1.1")
-    end)
+    end
   end
 
   test "can not insert two periodics with same name for same project" do
@@ -368,14 +368,14 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries.Test do
     params = insert_params("v1.0")
     assert {:ok, periodic_1} = PeriodicsQueries.insert(params, "v1.0")
 
-    params_2 = params |> Map.merge(%{branch: "dev", at: "@yearly"})
+    params_2 = params |> Map.merge(%{reference: "dev", at: "@yearly"})
     assert {:ok, periodic_2} = PeriodicsQueries.update(periodic_1, params_2, "v1.0")
 
-    assert periodic_2.branch == "dev"
+    assert periodic_2.reference == "refs/heads/dev"
     assert periodic_2.at == "@yearly"
 
-    assert periodic_1 |> Map.drop([:updated_at, :branch, :at]) ==
-             periodic_2 |> Map.drop([:updated_at, :branch, :at])
+    assert periodic_1 |> Map.drop([:updated_at, :reference, :at]) ==
+             periodic_2 |> Map.drop([:updated_at, :reference, :at])
   end
 
   test "cannot update periodics to the existing name for same project" do

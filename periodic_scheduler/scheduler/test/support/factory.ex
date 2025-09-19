@@ -21,7 +21,7 @@ defmodule Test.Support.Factory do
       project_name: "Project",
       recurring: true,
       pipeline_file: "deploy.yml",
-      branch: "master",
+      reference: "master",
       at: "0 0 * * *",
       name: "Periodic",
       id: UUID.uuid4()
@@ -42,7 +42,7 @@ defmodule Test.Support.Factory do
       periodic_id: context.periodic.id,
       project_id: context.periodic.project_id,
       recurring: context.periodic.recurring,
-      branch: extra[:branch] || context.periodic.branch,
+      reference: extra[:reference] || context.periodic.reference,
       pipeline_file: extra[:pipeline_file] || context.periodic.pipeline_file,
       scheduling_status: extra[:scheduling_status] || "passed",
       run_now_requester_id: extra[:triggered_by] || UUID.uuid4(),

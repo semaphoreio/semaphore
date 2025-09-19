@@ -24,7 +24,7 @@ defmodule Test.Actions.PersistImpl.Test do
         organization_id: ctx.org_id,
         project_id: ctx.pr_id,
         requester_id: ctx.usr_id,
-        branch: "master",
+        reference: "master",
         pipeline_file: ".semaphore/cron.yml",
         at: "",
         parameters: [
@@ -47,7 +47,7 @@ defmodule Test.Actions.PersistImpl.Test do
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.pr_id
     assert periodic.requester_id == ctx.usr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     refute periodic.at
 
@@ -72,7 +72,7 @@ defmodule Test.Actions.PersistImpl.Test do
         organization_id: ctx.org_id,
         project_id: ctx.pr_id,
         requester_id: ctx.usr_id,
-        branch: "master",
+        reference: "master",
         pipeline_file: ".semaphore/cron.yml",
         at: "0 0 * * *",
         parameters: []
@@ -87,7 +87,7 @@ defmodule Test.Actions.PersistImpl.Test do
     assert periodic.project_name == "Project 1"
     assert periodic.project_id == ctx.pr_id
     assert periodic.requester_id == ctx.usr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     assert periodic.at == "0 0 * * *"
     assert periodic.parameters == []
@@ -112,7 +112,7 @@ defmodule Test.Actions.PersistImpl.Test do
         name: "test periodic new",
         recurring: false,
         requester_id: UUID.uuid4(),
-        branch: "master",
+        reference: "master",
         pipeline_file: ".semaphore/cron.yml",
         at: "",
         parameters: [
@@ -136,7 +136,7 @@ defmodule Test.Actions.PersistImpl.Test do
     assert periodic.project_name == "Project"
     assert periodic.project_id == ctx.pr_id
     assert periodic.requester_id != ctx.usr_id
-    assert periodic.branch == "master"
+    assert periodic.reference == "master"
     assert periodic.pipeline_file == ".semaphore/cron.yml"
     refute periodic.at
 
@@ -169,7 +169,7 @@ defmodule Test.Actions.PersistImpl.Test do
         name: "test periodic new",
         recurring: false,
         requester_id: UUID.uuid4(),
-        branch: "master",
+        reference: "master",
         pipeline_file: ".semaphore/cron.yml",
         at: "",
         parameters: [
