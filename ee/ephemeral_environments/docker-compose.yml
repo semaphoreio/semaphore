@@ -7,9 +7,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: dev
+      target: ${DOCKER_BUILD_TARGET:-dev}
       args:
-        - MIX_ENV=dev
+        - BUILD_ENV=test
     ports:
       - "50051"
     env_file:
