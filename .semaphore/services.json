@@ -63,7 +63,7 @@
     "Ephemeral Environments": [
       {
         "path": "ee/ephemeral_environments",
-        "component": "ephemeral_environments"
+        "component": "ephemeral-environments"
       }
     ],
     "Statsd": [
