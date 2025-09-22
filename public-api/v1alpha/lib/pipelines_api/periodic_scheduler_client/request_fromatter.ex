@@ -125,19 +125,13 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
   end
 
   defp build_reference(params) do
-    # Support new structured reference format with fallback to legacy branch parameter
     case params |> Map.get("reference") do
       reference_map when is_map(reference_map) ->
         reference_type = Map.get(reference_map, "type", "BRANCH")
         reference_name = Map.get(reference_map, "name", "")
 
-        # Return appropriate format based on type
         case String.upcase(reference_type) do
-          # Just tag name for tags
-          "TAG" -> reference_name
-          # Full ref for PRs
-          "PR" -> "refs/pull/#{reference_name}/head"
-          # Full ref for branches
+          "TAG" -> "refs/tags/#{reference_name}"
           _ -> "refs/heads/#{reference_name}"
         end
 
