@@ -61,6 +61,7 @@ func local_request_ArtifactsService_GenerateSignedURLs_0(ctx context.Context, ma
 // UnaryRPC     :call ArtifactsServiceServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterArtifactsServiceHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterArtifactsServiceHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ArtifactsServiceServer) error {
 
 	mux.Handle("POST", pattern_ArtifactsService_GenerateSignedURLs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -126,7 +127,7 @@ func RegisterArtifactsServiceHandler(ctx context.Context, mux *runtime.ServeMux,
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ArtifactsServiceClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ArtifactsServiceClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ArtifactsServiceClient" to call the correct interceptors.
+// "ArtifactsServiceClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterArtifactsServiceHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ArtifactsServiceClient) error {
 
 	mux.Handle("POST", pattern_ArtifactsService_GenerateSignedURLs_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
