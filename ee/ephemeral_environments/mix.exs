@@ -18,7 +18,7 @@ defmodule EphemeralEnvironments.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: []
+      mod: {EphemeralEnvironments.Application, []}
     ]
   end
 
