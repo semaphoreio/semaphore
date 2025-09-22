@@ -15,11 +15,14 @@ defmodule FrontWeb.SchedulersView do
   end
 
   def target_link(project, scheduler) do
-    branch = %{type: "branch", name: scheduler.branch, display_name: scheduler.branch}
-    branch_url = human_accessible_repository_url(project, branch)
+    ref_type = scheduler.reference_type || "branch"
+    ref_name = scheduler.reference_name || scheduler.branch || ""
 
-    Phoenix.HTML.Link.link("#{scheduler.branch} > #{scheduler.pipeline_file}",
-      to: branch_url <> "/" <> scheduler.pipeline_file,
+    ref_info = %{type: ref_type, name: ref_name, display_name: ref_name}
+    ref_url = human_accessible_repository_url(project, ref_info)
+
+    Phoenix.HTML.Link.link("#{ref_name} > #{scheduler.pipeline_file}",
+      to: ref_url <> "/" <> scheduler.pipeline_file,
       class: "ml1 db link dark-gray underline-hover"
     )
   end

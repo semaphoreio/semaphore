@@ -56,7 +56,8 @@ export class Tasks {
 
   static run() {
     return JustRunForm.init({
-      branch: window.InjectedDataByBackend.Tasks.Branch,
+      referenceType: window.InjectedDataByBackend.Tasks.ReferenceType,
+      referenceName: window.InjectedDataByBackend.Tasks.ReferenceName,
       pipelineFile: window.InjectedDataByBackend.Tasks.PipelineFile,
       parameters: window.InjectedDataByBackend.Tasks.Parameters,
     })

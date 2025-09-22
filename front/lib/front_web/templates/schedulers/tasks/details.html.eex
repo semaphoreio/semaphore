@@ -10,7 +10,7 @@
             <td class="v-top pr2">What will run:</td>
             <td>
               <div class="flex items-center">
-                <span class="material-symbols-outlined f6">fork_right</span>
+                <span class="material-symbols-outlined f6"><%= git_ref_icon(@scheduler.reference_type || "branch") %></span>
                 <%= target_link(@project, @scheduler) %>
               </div>
             </td>
