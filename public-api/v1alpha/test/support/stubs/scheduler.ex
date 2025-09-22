@@ -28,7 +28,7 @@ defmodule Support.Stubs.Scheduler do
       id: UUID.uuid4(),
       name: "Scheduler",
       project_id: project_id,
-      branch: "master",
+      reference: "refs/heads/master",
       at: "* * * * *",
       pipeline_file: ".semaphore/semaphore.yml",
       requester_id: user_id,
@@ -61,7 +61,7 @@ defmodule Support.Stubs.Scheduler do
     defaults = [
       triggered_at: Time.now(),
       project_id: periodic.project_id,
-      branch: params[:branch] || periodic.branch,
+      reference: params[:reference] || periodic.reference,
       pipeline_file: params[:pipeline_file] || periodic.pipeline_file,
       parameter_values: params[:parameter_values] || [],
       scheduling_status: "passed",
@@ -123,7 +123,7 @@ defmodule Support.Stubs.Scheduler do
     end
 
     def run_now(req, _) do
-      if req.branch == "RESOURCE_EXHAUSTED" do
+      if req.reference == "refs/heads/RESOURCE_EXHAUSTED" do
         InternalApi.PeriodicScheduler.RunNowResponse.new(
           status:
             InternalApi.Status.new(
@@ -149,7 +149,7 @@ defmodule Support.Stubs.Scheduler do
               scheduler.api_model,
               UUID.uuid4(),
               req.requester,
-              branch: req.branch,
+              reference: req.reference,
               pipeline_file: req.pipeline_file,
               parameter_values: req.parameter_values
             )
@@ -240,11 +240,13 @@ defmodule Support.Stubs.Scheduler do
       metadata = data["metadata"]
       spec = data["spec"]
 
+      reference = if data["apiVersion"] == "v1.2", do: spec["reference"], else: spec["branch"]
+
       InternalApi.PeriodicScheduler.Periodic.new(
         id: metadata["id"],
         name: metadata["name"],
         project_id: "",
-        branch: spec["branch"],
+        reference: reference,
         at: spec["at"],
         pipeline_file: spec["pipeline_file"],
         requester_id: req.requester_id,
