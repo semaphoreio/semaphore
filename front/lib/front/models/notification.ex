@@ -128,7 +128,8 @@ defmodule Front.Models.Notification do
           pipelines: data.pipelines,
           projects: data.projects,
           branches: data.branches,
-          results: data.results
+          results: data.results,
+          tags: data.tags || []
         ),
       name: data.rule_name,
       notify:
