@@ -27,7 +27,7 @@ end
 defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :GIT_HUB | :LOCAL | :SNAPSHOT | :BITBUCKET
+  @type t :: integer | :GIT_HUB | :LOCAL | :SNAPSHOT | :BITBUCKET | :GITLAB | :GIT
 
   field(:GIT_HUB, 0)
 
@@ -36,6 +36,10 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   field(:SNAPSHOT, 2)
 
   field(:BITBUCKET, 3)
+
+  field(:GITLAB, 4)
+
+  field(:GIT, 5)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order do
@@ -158,7 +162,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
           label: String.t(),
           triggered_by: InternalApi.PlumberWF.TriggeredBy.t(),
           scheduler_task_id: String.t(),
-          env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()]
+          env_vars: [InternalApi.PlumberWF.ScheduleRequest.EnvVar.t()],
+          start_in_conceived_state: boolean,
+          git_reference: String.t()
         }
 
   defstruct [
@@ -175,7 +181,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     :label,
     :triggered_by,
     :scheduler_task_id,
-    :env_vars
+    :env_vars,
+    :start_in_conceived_state,
+    :git_reference
   ]
 
   field(:service, 2, type: InternalApi.PlumberWF.ScheduleRequest.ServiceType, enum: true)
@@ -192,6 +200,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
   field(:triggered_by, 15, type: InternalApi.PlumberWF.TriggeredBy, enum: true)
   field(:scheduler_task_id, 16, type: :string)
   field(:env_vars, 17, repeated: true, type: InternalApi.PlumberWF.ScheduleRequest.EnvVar)
+  field(:start_in_conceived_state, 18, type: :bool)
+  field(:git_reference, 19, type: :string)
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do
