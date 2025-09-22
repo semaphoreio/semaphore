@@ -4,7 +4,7 @@ include ../Makefile
 
 APP_NAME=$(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
 PROTOC_TAG=1.12.1-3.17.3-0.7.1
-TMP_REPO_DIR=/tmp/internal_api
+TMP_REPO_DIR ?= /tmp/internal_api
 
 INTERNAL_API_BRANCH ?= master
 PUBLIC_API_BRANCH ?= master

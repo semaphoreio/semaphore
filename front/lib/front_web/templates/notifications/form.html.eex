@@ -68,6 +68,18 @@
             </div>
             <div class="mb3 pl4">
               <label class="db b mb1">
+                Tags
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <%= text_input f, :tags,
+                  name: "rule_#{rule_hash}[tags]",
+                  value: rule.filter.tags |> Enum.join(", "),
+                  class: "form-control w-100",
+                  placeholder: "e.g. v1.0.0, /^v\\d+\\.\\d+\\.\\d+$/, release-*" %>
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+            <div class="mb3 pl4">
+              <label class="db b mb1">
                 Pipelines
                 <span class="f6 normal gray"> · optional</span>
               </label>

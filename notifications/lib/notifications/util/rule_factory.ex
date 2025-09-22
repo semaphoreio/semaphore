@@ -35,7 +35,8 @@ defmodule Notifications.Util.RuleFactory do
         Models.Pattern.new(org_id, r.id, rule.filter.branches, "branch") ++
         Models.Pattern.new(org_id, r.id, rule.filter.pipelines, "pipeline") ++
         Models.Pattern.new(org_id, r.id, rule.filter.blocks, "block") ++
-        Models.Pattern.new(org_id, r.id, rule.filter.results, "result")
+        Models.Pattern.new(org_id, r.id, rule.filter.results, "result") ++
+        Models.Pattern.new(org_id, r.id, rule.filter.tags, "tag")
 
     # create block rules if doesn't exists
     patterns =
@@ -65,6 +66,14 @@ defmodule Notifications.Util.RuleFactory do
     patterns =
       if rule.filter.results == [] do
         patterns ++ Models.Pattern.new(org_id, r.id, ["/.*/"], "result")
+      else
+        patterns
+      end
+
+    # create tag rules if don't exist
+    patterns =
+      if Map.get(rule.filter, :tags, []) == [] do
+        patterns ++ Models.Pattern.new(org_id, r.id, ["/.*/"], "tag")
       else
         patterns
       end
