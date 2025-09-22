@@ -167,15 +167,8 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
     end
   end
 
-  def reference_to_branch_field(reference) when is_binary(reference) do
-    with true <- String.starts_with?(reference, "refs/heads/"),
-         true <- not String.starts_with?(reference, "refs/pull/"),
-         true <- not String.starts_with?(reference, "refs/tags/") do
-      String.replace_prefix(reference, "refs/heads/", "")
-    else
-      _ -> nil
-    end
-  end
+  def reference_to_branch_field("refs/heads/" <> branch_name), do: branch_name
+  def reference_to_branch_field(_), do: nil
 
   defp log_invalid_response(response, rpc_method) do
     response
