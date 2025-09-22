@@ -128,7 +128,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
              RequestFormatter.form_run_now_request(nil, conn)
   end
 
-  test "form_run_now_request() returns {:ok, request} when called with map with all params" do
+  test "form_run_now_request() returns {:ok, request} when called with legacy branch parameter" do
     conn = create_conn(:run_now)
 
     params = %{
@@ -142,13 +142,61 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
 
     assert request.id == params["periodic_id"]
     assert request.requester == "test_user"
-    assert request.branch == "master"
+    assert request.reference == "refs/heads/master"
     assert request.pipeline_file == ".semaphore/semaphore.yml"
 
     assert request.parameter_values == [
              %ParameterValue{name: "param1", value: "value1"},
              %ParameterValue{name: "param2", value: "value2"}
            ]
+  end
+
+  test "form_run_now_request() returns {:ok, request} when called with new reference format - BRANCH" do
+    conn = create_conn(:run_now)
+
+    params = %{
+      "reference" => %{
+        "type" => "BRANCH",
+        "name" => "feature/new-feature"
+      },
+      "pipeline_file" => ".semaphore/deploy.yml",
+      "periodic_id" => UUID.uuid4(),
+      "parameters" => %{"ENV" => "staging"}
+    }
+
+    assert {:ok, request = %RunNowRequest{}} = RequestFormatter.form_run_now_request(params, conn)
+
+    assert request.id == params["periodic_id"]
+    assert request.requester == "test_user"
+    # BRANCH
+    assert request.reference == "refs/heads/feature/new-feature"
+    assert request.pipeline_file == ".semaphore/deploy.yml"
+
+    assert request.parameter_values == [
+             %ParameterValue{name: "ENV", value: "staging"}
+           ]
+  end
+
+  test "form_run_now_request() returns {:ok, request} when called with new reference format - TAG" do
+    conn = create_conn(:run_now)
+
+    params = %{
+      "reference" => %{
+        "type" => "TAG",
+        "name" => "v1.2.0"
+      },
+      "pipeline_file" => ".semaphore/release.yml",
+      "periodic_id" => UUID.uuid4()
+    }
+
+    assert {:ok, request = %RunNowRequest{}} = RequestFormatter.form_run_now_request(params, conn)
+
+    assert request.id == params["periodic_id"]
+    assert request.requester == "test_user"
+    # TAG
+    assert request.reference == "refs/tags/v1.2.0"
+    assert request.pipeline_file == ".semaphore/release.yml"
+    assert request.parameter_values == []
   end
 
   test "form_run_now_request() returns {:ok, request} when called with map with missing params" do
@@ -158,7 +206,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
 
     assert request.id == params["periodic_id"]
     assert request.requester == "test_user"
-    assert request.branch == ""
+    assert request.reference == "refs/heads/"
     assert request.pipeline_file == ""
     assert request.parameter_values == []
   end
