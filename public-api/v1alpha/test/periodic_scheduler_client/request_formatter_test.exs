@@ -194,7 +194,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
     assert request.id == params["periodic_id"]
     assert request.requester == "test_user"
     # TAG
-    assert request.reference == "v1.2.0"
+    assert request.reference == "refs/tags/v1.2.0"
     assert request.pipeline_file == ".semaphore/release.yml"
     assert request.parameter_values == []
   end

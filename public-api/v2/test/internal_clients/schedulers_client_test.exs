@@ -355,7 +355,7 @@ defmodule InternalClients.SchedulersClientTest do
       assert {:ok, response} = Client.run_now(%{task_id: scheduler.id, requester_id: "user-1"})
       assert {:ok, _} = UUID.info(response.metadata.workflow_id)
       assert response.metadata.status == "PASSED"
-      assert response.spec.reference == %{"name" => "", "type" => "branch"}
+      assert response.spec.reference == %{"name" => "master", "type" => "branch"}
       assert response.spec.pipeline_file == scheduler.pipeline_file
       assert response.metadata.triggered_by.id == "user-1"
     end
@@ -367,7 +367,7 @@ defmodule InternalClients.SchedulersClientTest do
                Client.run_now(%{
                  task_id: scheduler.id,
                  requester_id: "user-1",
-                 branch: "develop",
+                 reference: %{"name" => "develop", "type" => "branch"},
                  pipeline_file: "semaphore.yml",
                  parameters: [
                    %{
@@ -379,7 +379,7 @@ defmodule InternalClients.SchedulersClientTest do
 
       assert {:ok, _} = UUID.info(response.metadata.workflow_id)
       assert response.metadata.status == "PASSED"
-      assert response.spec.reference == %{"name" => "", "type" => "branch"}
+      assert response.spec.reference == %{"name" => "develop", "type" => "branch"}
       assert response.spec.pipeline_file == "semaphore.yml"
       assert response.metadata.triggered_by.id == "user-1"
 

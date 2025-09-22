@@ -16,7 +16,7 @@ defmodule InternalClients.Schedulers.RequestFormatterTest do
       assert request.id == "task-123"
       assert request.requester == "user-1"
       assert request.pipeline_file == "semaphore.yml"
-      assert request.reference == "refs/heads/"
+      assert request.reference == ""
     end
 
     test "formats request with new reference structure for branch" do
@@ -114,7 +114,7 @@ defmodule InternalClients.Schedulers.RequestFormatterTest do
 
       assert request.name == "My Task"
       # empty reference default
-      assert request.reference == "refs/heads/"
+      assert request.reference == ""
       assert request.pipeline_file == "semaphore.yml"
     end
 

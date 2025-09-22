@@ -123,9 +123,7 @@ defmodule InternalClients.Schedulers.RequestFormatter do
         end
 
       _ ->
-        # Default to empty branch name if reference is not provided
-        # This will fail validation in the service if reference is required
-        "refs/heads/"
+        ""
     end
   end
 
