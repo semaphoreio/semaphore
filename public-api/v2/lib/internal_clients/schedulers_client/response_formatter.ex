@@ -93,7 +93,7 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
     %{
       name: periodic.name,
       description: periodic.description,
-      branch: periodic.branch,
+      reference: reference_from_pb(periodic.reference),
       pipeline_file: periodic.pipeline_file,
       cron_schedule: periodic.at,
       parameters: Enum.into(periodic.parameters, [], &parameter_from_pb/1)
@@ -112,7 +112,7 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
         status: trigger.scheduling_status |> String.upcase()
       },
       spec: %{
-        branch: trigger.branch,
+        reference: reference_from_pb(trigger.reference),
         pipeline_file: trigger.pipeline_file,
         parameters: Enum.into(trigger.parameter_values, [], &parameter_value_from_pb/1)
       }
@@ -137,6 +137,23 @@ defmodule InternalClients.Schedulers.ResponseFormatter do
       value: parameter.value
     }
   end
+
+  defp reference_from_pb(reference) when is_binary(reference) do
+    cond do
+      String.starts_with?(reference, "refs/heads/") ->
+        name = String.replace_prefix(reference, "refs/heads/", "")
+        %{"type" => "branch", "name" => name}
+
+      String.starts_with?(reference, "refs/tags/") ->
+        name = String.replace_prefix(reference, "refs/tags/", "")
+        %{"type" => "tag", "name" => name}
+
+      true ->
+        %{"type" => "branch", "name" => reference}
+    end
+  end
+
+  defp reference_from_pb(_), do: %{"type" => "branch", "name" => ""}
 
   defp user_from_id(nil), do: nil
   defp user_from_id(""), do: nil
