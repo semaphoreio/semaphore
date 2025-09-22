@@ -104,7 +104,8 @@ defmodule Notifications.Util.Validator do
         rule.filter.branches ++
         rule.filter.pipelines ++
         rule.filter.blocks ++
-        rule.filter.results
+        rule.filter.results ++
+        rule.filter.tags
     end)
   end
 
