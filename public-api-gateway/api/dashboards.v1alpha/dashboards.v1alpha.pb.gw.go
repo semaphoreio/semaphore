@@ -10,6 +10,7 @@ package semaphore_dashboards_v1alpha
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 
@@ -24,254 +25,214 @@ import (
 )
 
 // Suppress "imported and not used" errors
-var _ codes.Code
-var _ io.Reader
-var _ status.Status
-var _ = runtime.String
-var _ = utilities.NewDoubleArray
-var _ = metadata.Join
-
 var (
-	filter_DashboardsApi_ListDashboards_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
+	_ codes.Code
+	_ io.Reader
+	_ status.Status
+	_ = errors.New
+	_ = runtime.String
+	_ = utilities.NewDoubleArray
+	_ = metadata.Join
 )
 
-func request_DashboardsApi_ListDashboards_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListDashboardsRequest
-	var metadata runtime.ServerMetadata
+var filter_DashboardsApi_ListDashboards_0 = &utilities.DoubleArray{Encoding: map[string]int{}, Base: []int(nil), Check: []int(nil)}
 
+func request_DashboardsApi_ListDashboards_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
+	var (
+		protoReq ListDashboardsRequest
+		metadata runtime.ServerMetadata
+	)
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DashboardsApi_ListDashboards_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := client.ListDashboards(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_DashboardsApi_ListDashboards_0(ctx context.Context, marshaler runtime.Marshaler, server DashboardsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq ListDashboardsRequest
-	var metadata runtime.ServerMetadata
-
+	var (
+		protoReq ListDashboardsRequest
+		metadata runtime.ServerMetadata
+	)
 	if err := req.ParseForm(); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
 	if err := runtime.PopulateQueryParameters(&protoReq, req.Form, filter_DashboardsApi_ListDashboards_0); err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.ListDashboards(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_DashboardsApi_GetDashboard_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetDashboardRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := client.GetDashboard(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_DashboardsApi_GetDashboard_0(ctx context.Context, marshaler runtime.Marshaler, server DashboardsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq GetDashboardRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq GetDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id_or_name"]
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := server.GetDashboard(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_DashboardsApi_CreateDashboard_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Dashboard
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Dashboard
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
 	msg, err := client.CreateDashboard(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_DashboardsApi_CreateDashboard_0(ctx context.Context, marshaler runtime.Marshaler, server DashboardsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq Dashboard
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && err != io.EOF {
+	var (
+		protoReq Dashboard
+		metadata runtime.ServerMetadata
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
 	msg, err := server.CreateDashboard(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_DashboardsApi_UpdateDashboard_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateDashboardRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Dashboard); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Dashboard); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := client.UpdateDashboard(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_DashboardsApi_UpdateDashboard_0(ctx context.Context, marshaler runtime.Marshaler, server DashboardsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq UpdateDashboardRequest
-	var metadata runtime.ServerMetadata
-
-	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Dashboard); err != nil && err != io.EOF {
+	var (
+		protoReq UpdateDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
+	)
+	if err := marshaler.NewDecoder(req.Body).Decode(&protoReq.Dashboard); err != nil && !errors.Is(err, io.EOF) {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "%v", err)
 	}
-
-	var (
-		val string
-		ok  bool
-		err error
-		_   = err
-	)
-
-	val, ok = pathParams["id_or_name"]
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := server.UpdateDashboard(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 func request_DashboardsApi_DeleteDashboard_0(ctx context.Context, marshaler runtime.Marshaler, client DashboardsApiClient, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteDashboardRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id_or_name"]
+	if req.Body != nil {
+		_, _ = io.Copy(io.Discard, req.Body)
+	}
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := client.DeleteDashboard(ctx, &protoReq, grpc.Header(&metadata.HeaderMD), grpc.Trailer(&metadata.TrailerMD))
 	return msg, metadata, err
-
 }
 
 func local_request_DashboardsApi_DeleteDashboard_0(ctx context.Context, marshaler runtime.Marshaler, server DashboardsApiServer, req *http.Request, pathParams map[string]string) (proto.Message, runtime.ServerMetadata, error) {
-	var protoReq DeleteDashboardRequest
-	var metadata runtime.ServerMetadata
-
 	var (
-		val string
-		ok  bool
-		err error
-		_   = err
+		protoReq DeleteDashboardRequest
+		metadata runtime.ServerMetadata
+		err      error
 	)
-
-	val, ok = pathParams["id_or_name"]
+	val, ok := pathParams["id_or_name"]
 	if !ok {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "missing parameter %s", "id_or_name")
 	}
-
 	protoReq.IdOrName, err = runtime.String(val)
 	if err != nil {
 		return nil, metadata, status.Errorf(codes.InvalidArgument, "type mismatch, parameter: %s, error: %v", "id_or_name", err)
 	}
-
 	msg, err := server.DeleteDashboard(ctx, &protoReq)
 	return msg, metadata, err
-
 }
 
 // RegisterDashboardsApiHandlerServer registers the http handlers for service DashboardsApi to "mux".
 // UnaryRPC     :call DashboardsApiServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterDashboardsApiHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeMux, server DashboardsApiServer) error {
-
-	mux.Handle("GET", pattern_DashboardsApi_ListDashboards_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_DashboardsApi_ListDashboards_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/ListDashboards", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/ListDashboards", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -283,20 +244,15 @@ func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_ListDashboards_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_DashboardsApi_GetDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_DashboardsApi_GetDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/GetDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/GetDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -308,20 +264,15 @@ func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_GetDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_DashboardsApi_CreateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_DashboardsApi_CreateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/CreateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/CreateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -333,20 +284,15 @@ func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_CreateDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_DashboardsApi_UpdateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_DashboardsApi_UpdateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/UpdateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/UpdateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -358,20 +304,15 @@ func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_UpdateDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_DashboardsApi_DeleteDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_DashboardsApi_DeleteDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		var stream runtime.ServerTransportStream
 		ctx = grpc.NewContextWithServerTransportStream(ctx, &stream)
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/DeleteDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateIncomingContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/DeleteDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -383,9 +324,7 @@ func RegisterDashboardsApiHandlerServer(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_DeleteDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
 
 	return nil
@@ -412,7 +351,6 @@ func RegisterDashboardsApiHandlerFromEndpoint(ctx context.Context, mux *runtime.
 			}
 		}()
 	}()
-
 	return RegisterDashboardsApiHandler(ctx, mux, conn)
 }
 
@@ -426,16 +364,13 @@ func RegisterDashboardsApiHandler(ctx context.Context, mux *runtime.ServeMux, co
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "DashboardsApiClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "DashboardsApiClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "DashboardsApiClient" to call the correct interceptors.
+// "DashboardsApiClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeMux, client DashboardsApiClient) error {
-
-	mux.Handle("GET", pattern_DashboardsApi_ListDashboards_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_DashboardsApi_ListDashboards_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/ListDashboards", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/ListDashboards", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -446,18 +381,13 @@ func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_ListDashboards_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("GET", pattern_DashboardsApi_GetDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodGet, pattern_DashboardsApi_GetDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/GetDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/GetDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -468,18 +398,13 @@ func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_GetDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("POST", pattern_DashboardsApi_CreateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPost, pattern_DashboardsApi_CreateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/CreateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/CreateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -490,18 +415,13 @@ func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_CreateDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("PATCH", pattern_DashboardsApi_UpdateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodPatch, pattern_DashboardsApi_UpdateDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/UpdateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/UpdateDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -512,18 +432,13 @@ func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_UpdateDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
-	mux.Handle("DELETE", pattern_DashboardsApi_DeleteDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
+	mux.Handle(http.MethodDelete, pattern_DashboardsApi_DeleteDashboard_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
 		ctx, cancel := context.WithCancel(req.Context())
 		defer cancel()
 		inboundMarshaler, outboundMarshaler := runtime.MarshalerForRequest(mux, req)
-		var err error
-		var annotatedContext context.Context
-		annotatedContext, err = runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/DeleteDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
+		annotatedContext, err := runtime.AnnotateContext(ctx, mux, req, "/semaphore.dashboards.v1alpha.DashboardsApi/DeleteDashboard", runtime.WithHTTPPathPattern("/api/v1alpha/dashboards/{id_or_name}"))
 		if err != nil {
 			runtime.HTTPError(ctx, mux, outboundMarshaler, w, req, err)
 			return
@@ -534,34 +449,23 @@ func RegisterDashboardsApiHandlerClient(ctx context.Context, mux *runtime.ServeM
 			runtime.HTTPError(annotatedContext, mux, outboundMarshaler, w, req, err)
 			return
 		}
-
 		forward_DashboardsApi_DeleteDashboard_0(annotatedContext, mux, outboundMarshaler, w, req, resp, mux.GetForwardResponseOptions()...)
-
 	})
-
 	return nil
 }
 
 var (
-	pattern_DashboardsApi_ListDashboards_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "dashboards"}, ""))
-
-	pattern_DashboardsApi_GetDashboard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "dashboards", "id_or_name"}, ""))
-
+	pattern_DashboardsApi_ListDashboards_0  = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "dashboards"}, ""))
+	pattern_DashboardsApi_GetDashboard_0    = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "dashboards", "id_or_name"}, ""))
 	pattern_DashboardsApi_CreateDashboard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"api", "v1alpha", "dashboards"}, ""))
-
 	pattern_DashboardsApi_UpdateDashboard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "dashboards", "id_or_name"}, ""))
-
 	pattern_DashboardsApi_DeleteDashboard_0 = runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2, 1, 0, 4, 1, 5, 3}, []string{"api", "v1alpha", "dashboards", "id_or_name"}, ""))
 )
 
 var (
-	forward_DashboardsApi_ListDashboards_0 = runtime.ForwardResponseMessage
-
-	forward_DashboardsApi_GetDashboard_0 = runtime.ForwardResponseMessage
-
+	forward_DashboardsApi_ListDashboards_0  = runtime.ForwardResponseMessage
+	forward_DashboardsApi_GetDashboard_0    = runtime.ForwardResponseMessage
 	forward_DashboardsApi_CreateDashboard_0 = runtime.ForwardResponseMessage
-
 	forward_DashboardsApi_UpdateDashboard_0 = runtime.ForwardResponseMessage
-
 	forward_DashboardsApi_DeleteDashboard_0 = runtime.ForwardResponseMessage
 )

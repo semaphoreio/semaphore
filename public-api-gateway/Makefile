@@ -5,7 +5,7 @@ include ../Makefile
 APP_NAME=public-api-gateway
 APP_ENV=prod
 SHELL=/bin/bash
-TMP_REPO_DIR=/tmp/public_api
+TMP_REPO_DIR?=/tmp/public_api
 
 # Locally we want to bind volumes we're working on.
 # On CI environment this is not necessary and would only slow us down. The data is already on the host.
@@ -20,7 +20,7 @@ endif
 
 pb.gen: api.checkout
 	mkdir -p api/$(API)
-	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t golang:1.18-alpine sh -c /home/protoc/code/scripts/public_protos.sh
+	docker run --rm -v $(PWD):/home/protoc/code -v $(TMP_REPO_DIR):/home/protoc/source -t golang:1.23-alpine sh -c /home/protoc/code/scripts/public_protos.sh
 
 api.checkout:
 	rm -rf $(TMP_REPO_DIR)
