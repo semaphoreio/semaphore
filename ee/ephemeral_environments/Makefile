@@ -8,6 +8,10 @@ PROTOC_TAG=1.18.4-3.20.1-0.13.0
 TMP_REPO_DIR?=/tmp/internal_api
 
 CONTAINER_ENV_VARS = $(shell [ -f .env ] && sed 's/^/-e /' .env | tr '\n' ' ')
+ifdef CI
+CONTAINER_ENV_VARS := $(shell echo "$(CONTAINER_ENV_VARS)" | sed 's/-e POSTGRES_DB_HOST=[^ ]*/-e POSTGRES_DB_HOST=0.0.0.0/g')
+$(info CI detected - CONTAINER_ENV_VARS: $(CONTAINER_ENV_VARS))
+endif
 
 POSTGRES_DB_NAME = $(shell [ -f .env ] && grep '^POSTGRES_DB_NAME=' .env | cut -d'=' -f2)
 POSTGRES_DB_USER = $(shell [ -f .env ] && grep '^POSTGRES_DB_USER=' .env | cut -d'=' -f2)

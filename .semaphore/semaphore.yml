@@ -2359,6 +2359,96 @@ blocks:
             - export TEST_RESULTS_NAME="RBAC CE Tests"
             - make test.ex
           parallelism: 2
+  # Ephemeral Environments
+  - name: "Ephemeral Environments: Provision Test Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/ephemeral_environments', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "test"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/ephemeral_environments
+      jobs:
+        - name: "Build test image"
+          commands:
+            - make build
+            - make push
+  - name: "Ephemeral Environments: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/ee/ephemeral_environments', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/ephemeral_environments
+      jobs:
+        - name: "Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "Ephemeral Environments: Deployment Preconditions"
+    dependencies: ["Ephemeral Environments: Provision Prod Image"]
+    run:
+      when: "change_in('/ee/ephemeral_environments', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: "prod"
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: SERVICE_NAME
+          value: "Ephemeral Environments"
+      prologue:
+        commands:
+          - checkout && cd ee/ephemeral_environments
+          - make pull
+      jobs:
+        - name: "Check code"
+          commands:
+            - make check.ex.code
+        - name: "Check dependencies"
+          commands:
+            - make check.ex.deps
+        - name: "Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "Ephemeral Environments: QA"
+    dependencies: ["Ephemeral Environments: Provision Test Image"]
+    run:
+      when: "change_in('/ee/ephemeral_environments', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: MIX_ENV
+          value: test
+        - name: DOCKER_BUILDKIT
+          value: "1"
+      prologue:
+        commands:
+          - checkout && cd ee/ephemeral_environments
+          - make build
+      jobs:
+        - name: "Lint"
+          commands:
+            - make format.ex
+        - name: "Credo"
+          commands:
+            - make lint.ex
+        - name: "Test"
+          commands:
+            - export TEST_RESULTS_NAME="Ephemeral Environments Tests"
+            - make test.ex
   # RBAC EE
   - name: "RBAC EE: Provision Test Image"
     dependencies: []
