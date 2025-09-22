@@ -126,4 +126,7 @@ config :guard, Guard.OrganizationCleaner,
 
 config :guard, :hard_destroy_grace_period_days, 30
 
+config :guard, :posthog_api_key, ""
+config :guard, :posthog_host, "https://app.posthog.com"
+
 import_config "#{config_env()}.exs"
