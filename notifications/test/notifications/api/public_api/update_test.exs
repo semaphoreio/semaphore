@@ -132,7 +132,7 @@ defmodule Notifications.Api.PublicApi.UpdateTest do
                "secret" => "B7L2XRJ12"
              }
 
-      assert length(rule.patterns) == 8
+      assert length(rule.patterns) == 9
 
       assert Enum.find(rule.patterns, fn p ->
                p.type == "project" && p.regex && p.term == "^s2-*"
