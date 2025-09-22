@@ -1,15 +1,12 @@
-formatters = [ExUnit.CLIFormatter]
-
 formatters =
   System.get_env("CI", "")
   |> case do
     "" ->
-      formatters
+      [ExUnit.CLIFormatter]
 
     _ ->
-      [JUnitFormatter | formatters]
+      [JUnitFormatter, ExUnit.CLIFormatter]
   end
-
 
 ExUnit.configure(
   exclude: [integration: true],
