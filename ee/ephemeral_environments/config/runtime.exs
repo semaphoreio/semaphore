@@ -5,7 +5,7 @@ config :ephemeral_environments, EphemeralEnvironments.Repo,
   username: System.fetch_env!("POSTGRES_DB_USER"),
   password: System.fetch_env!("POSTGRES_DB_PASSWORD"),
   hostname: System.fetch_env!("POSTGRES_DB_HOST"),
-  pool_size: String.to_integer(System.fetch_env!("POSTGRES_DB_POOL_SIZE")),
+  pool_size: String.to_integer(System.fetch_env!("DB_POOL_SIZE")),
   ssl: System.fetch_env!("POSTGRES_DB_SSL") == "true",
   ssl_opts: [verify: :verify_none]
 
