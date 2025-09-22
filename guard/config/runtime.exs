@@ -166,6 +166,9 @@ config :guard,
        :hide_gitlab_login_page,
        System.get_env("HIDE_GITLAB_LOGIN_PAGE") == "true"
 
+config :guard, :posthog_api_key, System.get_env("POSTHOG_API_KEY")
+config :guard, :posthog_host, System.get_env("POSTHOG_HOST") || "https://app.posthog.com"
+
 if System.get_env("AMQP_URL") != nil do
   config :amqp,
     connections: [
