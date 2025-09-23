@@ -9,6 +9,7 @@ defmodule Scheduler.Actions.ApplyImpl do
   alias Scheduler.FrontDB.Model.FrontDBQueries
   alias Crontab.CronExpression.Parser
   alias Scheduler.Workers.QuantumScheduler
+  alias Scheduler.Utils.GitReference
 
   def apply(request) do
     with {:ok, definition} <- DefinitionValidator.validate_yaml_string(request.yml_definition),
@@ -52,6 +53,9 @@ defmodule Scheduler.Actions.ApplyImpl do
       else: {:cron, {:ok, %Crontab.CronExpression{}}}
   end
 
+  defp validate_cron_expression(definition, "v1.2"),
+    do: validate_cron_expression(definition, "v1.1")
+
   defp validate_cron_expression(definition, _version_1_0) do
     cron_exp = definition |> Map.get("spec", %{}) |> Map.get("at", "")
 
@@ -73,7 +77,7 @@ defmodule Scheduler.Actions.ApplyImpl do
       {:hook, {:ok, true}}
     else
       recurring = definition |> Map.get("spec", %{}) |> Map.get("recurring", true)
-      branch = definition |> Map.get("spec", %{}) |> Map.get("branch", "")
+      branch = extract_branch_name(definition)
 
       if recurring,
         do: {:hook, FrontDBQueries.hook_exists?(project_id, branch)},
@@ -138,10 +142,13 @@ defmodule Scheduler.Actions.ApplyImpl do
   end
 
   defp form_periodic_params(request, definition, project_id, original_periodic \\ %{}) do
+    api_version = definition |> Map.get("apiVersion", "")
+
     definition
     |> transform_keys()
     |> extract_spec()
     |> extract_metadata()
+    |> handle_reference_field_mapping(api_version, definition)
     |> Map.merge(request)
     |> consolidate_paused(original_periodic)
     |> Map.merge(%{project_id: project_id})
@@ -193,4 +200,69 @@ defmodule Scheduler.Actions.ApplyImpl do
   end
 
   defp consolidate_paused(params, _), do: params
+
+  # Handle mapping between API versions and database field
+  defp handle_reference_field_mapping(params, api_version, original_definition) do
+    cond do
+      # v1.1 and earlier use 'branch' field - map it to 'reference' for database
+      api_version in ["v1.0", "v1.1"] ->
+        branch_name = extract_branch_name(original_definition)
+
+        params
+        |> Map.delete(:branch)
+        |> Map.put(:reference, branch_name)
+
+      # v1.2 uses 'reference' object - extract the name
+      api_version == "v1.2" ->
+        reference_name = extract_reference_name(original_definition)
+
+        params
+        |> Map.delete(:reference)
+        |> Map.put(:reference, reference_name)
+
+      # Default case
+      true ->
+        params
+    end
+  end
+
+  # Extract branch name for v1.1 and earlier, or from v1.2 reference object
+  defp extract_branch_name(definition) do
+    api_version = definition |> Map.get("apiVersion", "")
+    spec = definition |> Map.get("spec", %{})
+
+    case api_version do
+      "v1.2" ->
+        case spec |> Map.get("reference") do
+          reference when is_map(reference) ->
+            reference |> Map.get("name", "")
+
+          _not_a_map ->
+            spec |> Map.get("branch", "")
+        end
+
+      _other ->
+        spec |> Map.get("branch", "")
+    end
+  end
+
+  # Extract and build full reference path from v1.2 reference object or branch field
+  defp extract_reference_name(definition) do
+    spec = definition |> Map.get("spec", %{})
+
+    case spec |> Map.get("reference") do
+      reference when is_map(reference) ->
+        type = reference |> Map.get("type", "")
+        name = reference |> Map.get("name", "")
+        build_full_reference(type, name)
+
+      _not_a_map ->
+        # Fallback to branch field for backwards compatibility in v1.2
+        branch_name = spec |> Map.get("branch", "")
+        build_full_reference("BRANCH", branch_name)
+    end
+  end
+
+  # Build full reference path based on type
+  defp build_full_reference(type, name), do: GitReference.build_full_reference(type, name)
 end
