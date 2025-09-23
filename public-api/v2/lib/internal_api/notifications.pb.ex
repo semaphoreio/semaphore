@@ -152,6 +152,7 @@ defmodule InternalApi.Notifications.Notification do
   field(:rules, 5, repeated: true, type: InternalApi.Notifications.Notification.Rule)
   field(:status, 6, type: InternalApi.Notifications.Notification.Status)
   field(:org_id, 7, type: :string, json_name: "orgId")
+  field(:creator_id, 8, type: :string, json_name: "creatorId")
 end
 
 defmodule InternalApi.Notifications.ListRequest do
