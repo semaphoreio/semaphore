@@ -29,7 +29,7 @@ defmodule Support.Stubs.Scheduler do
       name: "Scheduler",
       project_id: project.id,
       recurring: true,
-      branch: "master",
+      reference: "master",
       at: "10 17 * * 1-5",
       pipeline_file: ".semaphore/semaphore.yml",
       requester_id: user.id,
@@ -63,7 +63,7 @@ defmodule Support.Stubs.Scheduler do
     defaults = [
       triggered_at: Time.now(),
       project_id: periodic.project_id,
-      branch: periodic.branch,
+      reference: periodic.reference,
       pipeline_file: periodic.pipeline_file,
       scheduling_status: "passed",
       scheduled_workflow_id: workflow.wf_id,
@@ -165,18 +165,12 @@ defmodule Support.Stubs.Scheduler do
       wf_id = DB.first(:workflows) |> Map.get(:id)
       workflow = %{wf_id: wf_id}
 
+      pipeline_file = get_pipeline_file(req.pipeline_file, scheduler.api_model.pipeline_file)
+
       trigger =
         Support.Stubs.Scheduler.create_trigger(scheduler.api_model, workflow, user,
-          branch:
-            if(req.branch == "",
-              do: scheduler.api_model.branch,
-              else: req.branch
-            ),
-          pipeline_file:
-            if(req.pipeline_file == "",
-              do: scheduler.api_model.pipeline_file,
-              else: req.pipeline_file
-            ),
+          reference: req.reference,
+          pipeline_file: pipeline_file,
           parameter_values: req.parameter_values || []
         )
 
@@ -188,9 +182,11 @@ defmodule Support.Stubs.Scheduler do
         RunNowResponse.new(status: status(:NOT_FOUND))
     end
 
-    @modifiable_fields ~w(name description recurring branch pipeline_file at parameters)a
+    @modifiable_fields ~w(name description recurring reference pipeline_file at parameters)a
 
     def persist(req, _) do
+      require Logger
+      Logger.info("persisting scheduler: #{inspect(req)}")
       model_from_req = periodic_from_req(req)
 
       if req.id != nil && req.id != "" do
@@ -325,11 +321,14 @@ defmodule Support.Stubs.Scheduler do
         description: req.description,
         recurring: req.recurring,
         requester_id: req.requester_id,
-        branch: req.branch,
+        reference: req.reference,
         pipeline_file: req.pipeline_file,
         at: req.at,
         parameters: req.parameters
       )
     end
+
+    defp get_pipeline_file("", default_file), do: default_file
+    defp get_pipeline_file(file, _default), do: file
   end
 end

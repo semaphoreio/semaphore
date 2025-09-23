@@ -8,6 +8,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
 
   alias Scheduler.PeriodicsRepo, as: Repo
   alias Scheduler.Periodics.Model.Periodics
+  alias Scheduler.Utils.GitReference
   alias LogTee, as: LT
   alias Util.ToTuple
 
@@ -15,12 +16,15 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
   Inserts new Periodic into DB
   """
   def insert(params, api_version \\ "v1.1") do
-    params = params |> Map.put(:id, UUID.uuid4())
+    processed_params =
+      params
+      |> Map.put(:id, UUID.uuid4())
+      |> preprocess_reference_field(api_version)
 
     %Periodics{}
-    |> Periodics.changeset(api_version, params)
+    |> Periodics.changeset(api_version, processed_params)
     |> Repo.insert()
-    |> process_response(params)
+    |> process_response(processed_params)
   rescue
     e -> {:error, e}
   catch
@@ -44,8 +48,8 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
     {:error, "The 'at' parameter can not be empty string."}
   end
 
-  defp process_response({:error, %{errors: [branch: {"can't be blank", _msg}]}}, _p) do
-    {:error, "The 'branch' parameter can not be empty string."}
+  defp process_response({:error, %{errors: [reference: {"can't be blank", _msg}]}}, _p) do
+    {:error, "The 'reference' parameter can not be empty string."}
   end
 
   defp process_response({:error, %{errors: [pipeline_file: {"can't be blank", _msg}]}}, _p) do
@@ -69,10 +73,12 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
   Updates Periodic record with given params
   """
   def update(periodic, params, api_version \\ "v1.1") do
+    processed_params = preprocess_reference_field(params, api_version)
+
     periodic
-    |> Periodics.changeset_update(api_version, params)
+    |> Periodics.changeset_update(api_version, processed_params)
     |> Repo.update()
-    |> process_response(params)
+    |> process_response(processed_params)
   rescue
     e -> {:error, e}
   catch
@@ -283,7 +289,7 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
         name: per.name,
         recurring: per.recurring,
         project_id: per.project_id,
-        branch: per.branch,
+        reference: per.reference,
         at: per.at,
         pipeline_file: per.pipeline_file,
         requester_id: per.requester_id,
@@ -313,6 +319,23 @@ defmodule Scheduler.Periodics.Model.PeriodicsQueries do
   defp convert_parameter_to_map(parameter) do
     parameter |> Map.take(~w(name required description default_value options)a)
   end
+
+  defp preprocess_reference_field(params, "v1.0") do
+    case Map.get(params, :reference) do
+      nil ->
+        params
+
+      reference when is_binary(reference) ->
+        Map.put(params, :reference, GitReference.normalize(reference))
+
+      _ ->
+        params
+    end
+  end
+
+  defp preprocess_reference_field(params, "v1.1"), do: preprocess_reference_field(params, "v1.0")
+
+  defp preprocess_reference_field(params, _api_version), do: params
 
   # Utility
 
