@@ -4,6 +4,7 @@ defmodule Ppl.WorkflowQueries do
   """
 
   import Ecto.Query
+  alias Ecto.Adapters.SQL
 
   alias Ppl.PplRequests.Model.PplRequests
   alias Ppl.Ppls.Model.Ppls
@@ -293,25 +294,50 @@ defmodule Ppl.WorkflowQueries do
   end
 
   defp execute_slow_list_latest_workflows_query(params) do
+    pr_cte_query =
+      from(
+        pr in PplRequests,
+        where: pr.initial_request == true,
+        where: fragment("?->>?", pr.request_args, "project_id") == ^params.project_id
+      )
+
+    pr_cte_query =
+      if params[:requester_id] do
+        pr_cte_query
+        |> where([pr], fragment("?->>?", pr.request_args, "requester_id") == ^params.requester_id)
+      else
+        pr_cte_query
+      end
+
+    pr_cte_query =
+      if params[:git_ref_types] do
+        pr_cte_query
+        |> where([pr], fragment("?->>?", pr.source_args, "git_ref_type") in ^params.git_ref_types)
+      else
+        pr_cte_query
+      end
+
+    pr_cte_query =
+      pr_cte_query
+      |> select([pr], %{id: pr.id, wf_id: pr.wf_id})
+
     query =
       from(
         l in LatestWfs,
-        inner_join: pr in PplRequests,
-        on: pr.wf_id == l.wf_id,
-        inner_join: p in Ppls,
-        on: p.ppl_id == pr.id
-      )
-      |> where([_l, pr, _p], pr.initial_request == true)
-      |> where([l, _pr, _p], l.project_id == ^params.project_id)
-      |> order_by([l, _pr, _p], desc: l.updated_at, desc: l.id)
-      |> select(
-        [l, pr, p],
-        %{
+        where: l.project_id == ^params.project_id,
+        join: pr_cte in subquery(pr_cte_query),
+          on: l.wf_id == pr_cte.wf_id,
+        join: pr in PplRequests,
+          on: pr.id == pr_cte.id,
+        join: p in Ppls,
+          on: p.ppl_id == pr.id,
+        order_by: [desc: l.updated_at, desc: l.id],
+        select: %{
           ppl_id: p.id,
           id: l.id,
           updated_at: l.updated_at,
           inserted_at: p.inserted_at,
-          wf_id: pr.wf_id,
+          wf_id: l.wf_id,
           initial_ppl_id: p.ppl_id,
           project_id: p.project_id,
           hook_id: fragment("?->>?", pr.request_args, "hook_id"),
@@ -347,27 +373,6 @@ defmodule Ppl.WorkflowQueries do
         }
       )
 
-    query =
-      if params[:requester_id] do
-        query
-        |> where(
-          [_p, pr, _l],
-          fragment("?->>?", pr.request_args, "requester_id") == ^params.requester_id
-        )
-      else
-        query
-      end
-
-    query =
-      if params[:git_ref_types] do
-        query
-        |> where(
-          [_p, pr, _l],
-          fragment("?->>?", pr.source_args, "git_ref_type") in ^params.git_ref_types
-        )
-      else
-        query
-      end
 
     page =
       query
