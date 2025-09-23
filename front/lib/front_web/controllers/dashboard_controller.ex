@@ -77,7 +77,7 @@ defmodule FrontWeb.DashboardController do
     end
   end
 
-  defp params(conn, page_token, direction, filters, project_ids) do
+  defp params(conn, page_token, direction, filters, project_ids, org_id) do
     user_id = conn.assigns.user_id
     direction = map_workflow_direction(direction)
 
@@ -90,7 +90,8 @@ defmodule FrontWeb.DashboardController do
       page_token: page_token,
       direction: direction,
       created_after: time,
-      project_ids: project_ids
+      project_ids: project_ids,
+      organization_id: org_id
     ]
     |> inject_requester(filters.requester, user_id)
   end
@@ -118,7 +119,7 @@ defmodule FrontWeb.DashboardController do
     {:ok, project_ids} = Front.RBAC.Members.list_accessible_projects(org_id, user_id)
 
     filters = %{requester: requester}
-    params = params(conn, page_token, direction, filters, project_ids)
+    params = params(conn, page_token, direction, filters, project_ids, org_id)
 
     {workflows, next_page_token, previous_page_token} = list_workflows(params)
 
@@ -140,7 +141,8 @@ defmodule FrontWeb.DashboardController do
       params: [
         page_token: page_token,
         direction: direction,
-        requester: requester
+        requester: requester,
+        organization_id: org_id
       ]
     }
 
@@ -525,7 +527,7 @@ defmodule FrontWeb.DashboardController do
         Front.RBAC.Members.list_accessible_projects(org_id, user_id)
       end)
 
-    params = params(conn, page_token, direction, filters, project_ids)
+    params = params(conn, page_token, direction, filters, project_ids, org_id)
 
     {workflows, next_page_token, previous_page_token} =
       Watchman.benchmark("home_page.list_workflows", fn ->
@@ -550,7 +552,8 @@ defmodule FrontWeb.DashboardController do
       params: [
         page_token: page_token,
         direction: direction,
-        requester: filters.requester
+        requester: filters.requester,
+        organization_id: org_id
       ]
     }
 

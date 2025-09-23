@@ -342,6 +342,7 @@ defmodule FrontWeb.NotificationsController do
       blocks: params["blocks"] |> parse_entry,
       pipelines: params["pipelines"] |> parse_entry,
       results: params["results"] |> parse_entry,
+      tags: params["tags"] |> parse_entry,
       rule_name: params["name"],
       slack_channels: params["slack_channels"] |> parse_entry,
       slack_endpoint: params["slack_endpoint"],
@@ -373,7 +374,8 @@ defmodule FrontWeb.NotificationsController do
               pipelines: [],
               projects: [],
               results: [],
-              states: []
+              states: [],
+              tags: []
             },
             name: "",
             notify: %Notification.Spec.Rule.Notify{

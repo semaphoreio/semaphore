@@ -188,6 +188,12 @@ defmodule Guard.Id.Api do
   end
 
   defp render_signup_page(conn, assigns) do
+    assigns =
+      Keyword.merge(assigns,
+        posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+      )
+
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "signup.html")
 
     conn
@@ -326,6 +332,12 @@ defmodule Guard.Id.Api do
   end
 
   defp render_login_page(conn, assigns) do
+    assigns =
+      Keyword.merge(assigns,
+        posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+      )
+
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "login.html")
 
     conn

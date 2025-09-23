@@ -9,6 +9,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
   alias Scheduler.FrontDB.Model.FrontDBQueries
   alias Scheduler.Clients.{WorkflowClient, RepoProxyClient, ProjecthubClient, RepositoryClient}
   alias Scheduler.Workers.ScheduleTaskManager
+  alias Scheduler.Utils.GitReference
   alias Util.ToTuple
   alias LogTee, as: LT
 
@@ -36,39 +37,7 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     end
   end
 
-  def schedule_wf(periodic = %{organization_id: org_id}, trigger) do
-    cond do
-      FeatureProvider.feature_enabled?(:just_run, param: org_id) ->
-        schedule_wf_just_run(periodic, trigger)
-
-      FeatureProvider.feature_enabled?(:scheduler_hook, param: org_id) ->
-        schedule_wf_run_api(periodic, trigger)
-
-      true ->
-        schedule_wf_db_query(periodic, trigger)
-    end
-  end
-
-  defp schedule_wf_run_api(periodic, trigger) do
-    with {:ok, params} <- form_create_params(periodic, trigger),
-         {:ok, wf_id} <- RepoProxyClient.create(params) do
-      params = %{
-        scheduled_workflow_id: wf_id,
-        scheduling_status: "passed",
-        error_description: nil,
-        attempts: (trigger.attempts || 0) + 1
-      }
-
-      PeriodicsTriggersQueries.update(trigger, params)
-    else
-      error ->
-        Watchman.increment({"PeriodicSch.schedule_wf_failure", ["run-wf-api"]})
-        record_error(error, trigger)
-        error
-    end
-  end
-
-  defp schedule_wf_just_run(periodic, trigger) do
+  def schedule_wf(periodic, trigger) do
     Watchman.benchmark("PeriodicSch.schedule_just_run", fn ->
       with {:ok, repository} <- fetch_project_repository(trigger.project_id),
            {:ok, params} <- form_just_run_schedule_params(periodic, trigger, repository),
@@ -92,14 +61,14 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     end)
   end
 
-  defp fetch_project_repository(project_id) do
+  def fetch_project_repository(project_id) do
     case ProjecthubClient.describe(project_id) do
       {:ok, project} -> {:ok, project.spec.repository}
       {:error, _reason} -> {:error, {:missing_project, project_id}}
     end
   end
 
-  defp fetch_branch_revision(repository_id, revision_args) do
+  def fetch_branch_revision(repository_id, revision_args) do
     case RepositoryClient.describe_revision(repository_id, revision_args) do
       {:ok, commit} -> {:ok, commit}
       {:error, _reason} -> {:error, {:missing_revision, revision_args}}
@@ -117,20 +86,30 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
         do: :MANUAL_RUN,
         else: :SCHEDULE
 
+    # Handle backwards compatibility: normalize reference to full format
+    git_reference = GitReference.normalize(trigger.reference)
+
+    # Use legacy format for branch_name field (Plumber compatibility)
+    branch_name = legacy_branch_name(trigger.reference)
+
+    # Extract clean name for label field
+    label = GitReference.extract_name(trigger.reference)
+
     %{
       service: schedule_workflow_service_type(repository.integration_type),
-      repo: %{branch_name: trigger.branch},
+      repo: %{branch_name: branch_name},
       request_token: trigger.periodic_id <> "-#{trigger.id}",
       project_id: trigger.project_id,
       requester_id: requester_id,
       definition_file: trigger.pipeline_file,
       organization_id: periodic.organization_id,
-      label: trigger.branch,
+      label: label,
       scheduler_task_id: periodic.id,
       git: %{
-        reference: "refs/heads/" <> trigger.branch,
+        reference: git_reference,
         commit_sha: ""
       },
+      git_reference: git_reference,
       triggered_by: triggered_by,
       env_vars: parameter_values_to_env_vars(trigger.parameter_values)
     }
@@ -151,32 +130,12 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     %{name: name, value: if(is_nil(value), do: "", else: value)}
   end
 
-  defp schedule_wf_db_query(periodic, trigger) do
-    with {:ok, hook} <- FrontDBQueries.get_hook(periodic.project_id, trigger.branch),
-         {:ok, params} <- form_schedule_params(periodic, trigger, hook),
-         {:ok, wf_id} <- WorkflowClient.schedule(params) do
-      params = %{
-        scheduled_workflow_id: wf_id,
-        scheduling_status: "passed",
-        error_description: nil,
-        attempts: (trigger.attempts || 0) + 1
-      }
-
-      PeriodicsTriggersQueries.update(trigger, params)
-    else
-      error ->
-        Watchman.increment({"PeriodicSch.schedule_wf_failure", ["db-query"]})
-        record_error(error, trigger)
-        error
-    end
-  end
-
   # The error is saved in DB after each failed attempt, so we can debug months
   # later when logs are not available. If scheduling passes in the following
   # attempt, the error_description field will be cleared.
-  defp record_error({:error, error}, trigger), do: record_error(error, trigger)
+  def record_error({:error, error}, trigger), do: record_error(error, trigger)
 
-  defp record_error(error, trigger) do
+  def record_error(error, trigger) do
     with log_msg <- "Scheduling for periodic #{trigger.periodic_id} failed with error",
          str_error <- error |> to_str() |> LT.warn(log_msg),
          str_error <- str_error |> String.slice(0..253),
@@ -185,59 +144,23 @@ defmodule Scheduler.Actions.ScheduleWfImpl do
     end
   end
 
-  defp to_str(val) when is_binary(val), do: val
-  defp to_str(val), do: "#{inspect(val)}"
+  def to_str(val) when is_binary(val), do: val
+  def to_str(val), do: "#{inspect(val)}"
 
-  defp form_create_params(periodic, trigger) do
-    %{
-      request_token: trigger.periodic_id <> "-#{trigger.id}",
-      project_id: trigger.project_id,
-      requester_id: periodic.requester_id,
-      definition_file: trigger.pipeline_file,
-      git: %{
-        reference: "refs/heads/" <> trigger.branch,
-        commit_sha: ""
-      },
-      triggered_by: :SCHEDULE
-    }
-    |> ToTuple.ok()
+  # Legacy branch_name format required by Plumber
+  defp legacy_branch_name(reference) do
+    reference
+    |> GitReference.normalize()
+    |> legacy_branch_name_format()
   end
 
-  defp form_schedule_params(periodic, trigger, hook) do
-    hook
-    |> Map.put(:service, :GIT_HUB)
-    |> Map.put(:triggered_by, :SCHEDULE)
-    |> add_trigger_data(periodic, trigger)
-    |> extract_commit_sha()
+  defp legacy_branch_name_format(full_ref = "refs/tags/" <> _), do: full_ref
+
+  defp legacy_branch_name_format("refs/pull/" <> rest) do
+    pr_number = rest |> String.trim_trailing("/head")
+    "pull-request-#{pr_number}"
   end
 
-  defp add_trigger_data(params, periodic, trigger) do
-    params
-    |> Map.put(:organization_id, periodic.organization_id)
-    |> Map.put(:requester_id, periodic.requester_id)
-    |> Map.put(:definition_file, trigger.pipeline_file)
-    |> Map.put(:request_token, trigger.periodic_id <> "-#{trigger.id}")
-  end
-
-  defp extract_commit_sha(params) do
-    with {:ok, payload} <- params.repo.payload |> Jason.decode(),
-         repo <- params.repo |> Map.delete(:payload),
-         {:ok, commit_sha} <- find_commit_sha(payload),
-         repo <- repo |> Map.put(:commit_sha, commit_sha) do
-      params |> Map.put(:repo, repo) |> ToTuple.ok()
-    else
-      error = {:error, _e} -> error
-      error -> {:error, error}
-    end
-  end
-
-  defp find_commit_sha(%{"head_commit" => %{"id" => commit_sha}})
-       when is_binary(commit_sha) and commit_sha != "",
-       do: {:ok, commit_sha}
-
-  defp find_commit_sha(%{"after" => commit_sha})
-       when is_binary(commit_sha) and commit_sha != "",
-       do: {:ok, commit_sha}
-
-  defp find_commit_sha(_params), do: {:error, "Hook is missing commit_sha data"}
+  defp legacy_branch_name_format("refs/heads/" <> branch_name), do: branch_name
+  defp legacy_branch_name_format(_), do: nil
 end

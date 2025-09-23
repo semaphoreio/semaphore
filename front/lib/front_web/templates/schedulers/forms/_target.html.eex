@@ -1,6 +1,7 @@
 <script nonce="<%= @conn.assigns[:script_src_nonce] %>">
     window.InjectedDataByBackend.Tasks.Target = {
-        branch: "<%= @scheduler.branch %>",
+        reference_type: "<%= @scheduler.reference_type || 'branch' %>",
+        reference_name: "<%= @scheduler.reference_name %>",
         pipeline_file: "<%= @scheduler.pipeline_file %>"
     };
 </script>
@@ -14,16 +15,42 @@
     </div>
 <% end %>
 
-<div class="ml2 mt2 mb4" data-validation="branch">
-    <%= label @form, :branch, class: "db b mb2" do %>
-        Branch <span class="gray normal">(overridable)</span>
-    <% end %>
-    <%= hidden_input @form, :id %>
-    <%= hidden_input @form, :unique_token %>
-    <%= text_input @form, :branch, value: @scheduler.branch, class: "form-control w-100 w-50-m",
-        "data-validation-input": "branch", placeholder: "e.g. master" %>
-    <p class="f6 mt1 mb0 nb1">Please ensure that selected branch exists in the repository.</p>
-    <div class="f5 b mv1 red" data-validation-message="branch"></div>
+<div class="ml2 mt2 mb4">
+    <div class="mb3">
+        <div class="mb1"><%= label @form, :reference_type, class: "db b mb2" do %>Reference Type<% end %></div>
+        <div class="flex mb3">
+            <label class="flex items-center mr4">
+                <%= radio_button @form, :reference_type, "branch",
+                      checked: (@scheduler.reference_type || "branch") == "branch",
+                      class: "mr2",
+                      'data-validation-input': "referenceType" %>
+                <span class="f6">Branch</span>
+            </label>
+            <label class="flex items-center">
+                <%= radio_button @form, :reference_type, "tag",
+                      checked: @scheduler.reference_type == "tag",
+                      class: "mr2",
+                      'data-validation-input': "referenceType" %>
+                <span class="f6">Tag</span>
+            </label>
+        </div>
+    </div>
+    <div data-validation="branch">
+        <%= label @form, :reference_name, class: "db b mb2" do %>
+            <span data-reference-label>Branch</span> Name <span class="gray normal">(overridable)</span>
+        <% end %>
+        <%= hidden_input @form, :id %>
+        <%= hidden_input @form, :unique_token %>
+        <% placeholder_text = cond do
+            @scheduler.reference_type == "tag" -> "e.g. v1.0.0"
+            true -> "e.g. master"
+        end %>
+        <%= text_input @form, :reference_name, name: "reference_name", value: @scheduler.reference_name,
+            class: "form-control w-100 w-50-m", "data-validation-input": "branch",
+            placeholder: placeholder_text %>
+        <p class="f6 mt1 mb0 nb1">Please ensure that selected <span data-reference-type-text>branch</span> exists in the repository.</p>
+        <div class="f5 b mv1 red" data-validation-message="branch"></div>
+    </div>
 </div>
 
 <div class="ml2 mt2 mb4" data-validation="pipelineFile">
