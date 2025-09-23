@@ -3,19 +3,24 @@ defmodule Notifications.Workers.Coordinator.Filter do
   alias Notifications.Models.Rule
   alias Notifications.Repo
 
-  def find_rules(org_id, project, branch, pr_branch, pipeline, result) do
+  def find_rules(org_id, project, branch, pr_branch, pipeline, result, tag \\ nil) do
     Rule
     |> where([r], r.org_id == ^org_id)
     |> with_pattern(project, "project")
     |> with_pattern([branch, pr_branch], "branch")
     |> with_pattern(pipeline, "pipeline")
     |> with_pattern(result, "result")
+    |> with_pattern(tag, "tag")
     |> preload(:notification)
     |> Repo.all()
   end
 
   defp with_pattern(query, [actual_value, ""], pattern_type) do
     with_pattern(query, actual_value, pattern_type)
+  end
+
+  defp with_pattern(query, nil, _pattern_type) do
+    query
   end
 
   defp with_pattern(query, [actual_value1, actual_value2], pattern_type) do

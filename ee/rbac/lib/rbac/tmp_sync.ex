@@ -83,7 +83,7 @@ defmodule Rbac.TempSync do
     end)
   end
 
-  defp get_org_creator_id(org_id, no_of_retries \\ 0) do
+  def get_org_creator_id(org_id, no_of_retries \\ 0) do
     case Rbac.FrontRepo.Organization
          |> where([org], org.id == ^org_id)
          |> select([org], org.creator_id)

@@ -389,6 +389,7 @@ func local_request_ProjectSecretsApi_DeleteSecret_0(ctx context.Context, marshal
 // UnaryRPC     :call ProjectSecretsApiServer directly.
 // StreamingRPC :currently unsupported pending https://github.com/grpc/grpc-go/issues/906.
 // Note that using this registration option will cause many gRPC library features to stop working. Consider using RegisterProjectSecretsApiHandlerFromEndpoint instead.
+// GRPC interceptors will not work for this type of registration. To use interceptors, you must use the "runtime.WithMiddlewares" option in the "runtime.NewServeMux" call.
 func RegisterProjectSecretsApiHandlerServer(ctx context.Context, mux *runtime.ServeMux, server ProjectSecretsApiServer) error {
 
 	mux.Handle("GET", pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
@@ -554,7 +555,7 @@ func RegisterProjectSecretsApiHandler(ctx context.Context, mux *runtime.ServeMux
 // to "mux". The handlers forward requests to the grpc endpoint over the given implementation of "ProjectSecretsApiClient".
 // Note: the gRPC framework executes interceptors within the gRPC handler. If the passed in "ProjectSecretsApiClient"
 // doesn't go through the normal gRPC flow (creating a gRPC client etc.) then it will be up to the passed in
-// "ProjectSecretsApiClient" to call the correct interceptors.
+// "ProjectSecretsApiClient" to call the correct interceptors. This client ignores the HTTP middlewares.
 func RegisterProjectSecretsApiHandlerClient(ctx context.Context, mux *runtime.ServeMux, client ProjectSecretsApiClient) error {
 
 	mux.Handle("GET", pattern_ProjectSecretsApi_ListSecrets_0, func(w http.ResponseWriter, req *http.Request, pathParams map[string]string) {
