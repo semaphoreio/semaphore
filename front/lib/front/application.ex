@@ -101,14 +101,27 @@ defmodule Front.Application do
   end
 
   def clients do
-    Application.get_env(:front, :service_account_client)
-    |> case do
-      {client_mod, _} = client when client_mod in [Support.FakeClients.ServiceAccount] ->
-        [client]
+    service_account_client =
+      Application.get_env(:front, :service_account_client)
+      |> case do
+        {client_mod, _} = client when client_mod in [Support.FakeClients.ServiceAccount] ->
+          [client]
 
-      _ ->
-        []
-    end
+        _ ->
+          []
+      end
+
+    ephemeral_environments_client =
+      Application.get_env(:front, :ephemeral_environments_client)
+      |> case do
+        {client_mod, _} = client when client_mod in [Support.FakeClients.EphemeralEnvironments] ->
+          [client]
+
+        _ ->
+          []
+      end
+
+    service_account_client ++ ephemeral_environments_client
   end
 
   def config_change(changed, _new, removed) do

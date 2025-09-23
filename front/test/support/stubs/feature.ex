@@ -140,7 +140,8 @@ defmodule Support.Stubs.Feature do
       {"ui_reports", state: :ENABLED, quantity: 1},
       {"ui_partial_ppl_rebuild", state: :ENABLED, quantity: 1},
       {"service_accounts", state: :ENABLED, quantity: 1},
-      {"rbac__project_roles", state: :ENABLED, quantity: 1}
+      {"rbac__project_roles", state: :ENABLED, quantity: 1},
+      {"ephemeral_environments", state: :ENABLED, quantity: 1}
     ]
   end
 

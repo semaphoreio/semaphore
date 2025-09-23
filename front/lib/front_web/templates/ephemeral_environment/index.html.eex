@@ -1,0 +1,4 @@
+<script nonce="<%= @conn.assigns[:script_src_nonce] %>">
+  window.InjectedDataByBackend.JS = "ephemeral_environments_page";
+</script>
+<div id="ephemeral-environments" data-config="<%= Poison.encode!(ephemeral_environments_config(@conn)) %>"></div>
