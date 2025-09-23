@@ -749,7 +749,7 @@ defmodule FrontWeb.ProjectController do
 
       branches =
         Enum.map(branches, fn branch ->
-          Map.take(branch, [:id, :display_name, :html_url, :type])
+          Map.take(branch, [:id, :display_name, :name, :html_url, :type])
         end)
 
       conn
