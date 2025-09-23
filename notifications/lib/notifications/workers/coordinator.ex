@@ -105,7 +105,7 @@ defmodule Notifications.Workers.Coordinator do
     defp extract_references(_pipeline, hook = %{git_ref_type: :TAG}), do: {hook.tag_name, nil, ""}
     defp extract_references(pipeline, hook), do: {nil, pipeline.branch_name, hook.pr_branch_name}
 
-    defp extract_references_from_pipeline(%{branch_name: "refs/tags" <> tag_name}),
+    defp extract_references_from_pipeline(%{branch_name: "refs/tags/" <> tag_name}),
       do: {tag_name, nil, ""}
 
     defp extract_references_from_pipeline(%{branch_name: branch_name}), do: {nil, branch_name, ""}
