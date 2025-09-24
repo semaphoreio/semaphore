@@ -71,11 +71,9 @@ defmodule PipelinesAPI.Schedules.RunNow do
 
   defp normalize_reference_params(params) do
     cond do
-      # New reference format
       params["reference"] ->
         {:ok, params}
 
-      # Legacy branch format - convert to reference
       params["branch"] ->
         reference = %{
           "type" => "BRANCH",
@@ -89,9 +87,8 @@ defmodule PipelinesAPI.Schedules.RunNow do
 
         {:ok, updated_params}
 
-      # No reference information provided
       true ->
-        {:error, "Either 'reference' or 'branch' parameter is required"}
+        {:ok, params}
     end
   end
 
@@ -111,6 +108,8 @@ defmodule PipelinesAPI.Schedules.RunNow do
         {:error, "Reference must contain 'type' and 'name' fields"}
     end
   end
+
+  defp validate_reference_params(params), do: {:ok, params}
 
   # Enhanced error handling
 
