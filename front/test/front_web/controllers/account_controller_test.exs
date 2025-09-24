@@ -33,8 +33,10 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "/account/update_repo_scope/github"
     end
 
-    test "when bitbucket feature is disabled => do not show bitbucket scope", %{conn: conn} do
-      Application.put_env(:front, :hide_bitbucket_me_page, true)
+    test "when bitbucket feature is disabled => do not show bitbucket scope", %{
+      conn: conn
+    } do
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :HIDDEN, quantity: 0)
 
       conn =
         conn
@@ -43,7 +45,89 @@ defmodule FrontWeb.AccountControllerTest do
       refute html_response(conn, 200) =~ "Bitbucket"
       assert html_response(conn, 200) =~ "GitHub"
 
-      Application.put_env(:front, :hide_bitbucket_me_page, false)
+      Support.Stubs.Feature.setup_feature("bitbucket", state: :ENABLED, quantity: 1)
+    end
+  end
+
+  describe "POST change_my_email" do
+    test "successfully changes user email when feature enabled", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn = post(conn, "/account/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/account"
+      assert get_flash(conn, :notice) == "Updated email"
+    end
+
+    test "handles invalid email format", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn = post(conn, "/account/change_email", %{"email" => "invalid-email"})
+
+      assert redirected_to(conn, 302) == "/account"
+      assert get_flash(conn, :alert) == "Please enter a valid email address."
+    end
+
+    test "handles empty email", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn = post(conn, "/account/change_email", %{"email" => ""})
+
+      assert redirected_to(conn, 302) == "/account"
+      assert get_flash(conn, :alert) == "Email address cannot be empty."
+    end
+
+    test "handles backend error gracefully", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      # Setup stub to return error
+      GrpcMock.stub(GuardMock, :change_email, fn %{user_id: "fail"}, _ ->
+        {:error, %GRPC.RPCError{message: "User not found"}}
+      end)
+
+      conn =
+        conn
+        |> put_req_header("x-semaphore-user-id", "fail")
+        |> post("/account/change_email", %{"email" => "new@example.com"})
+
+      assert redirected_to(conn, 302) == "/account"
+      assert get_flash(conn, :alert) =~ "Failed to update email:"
+    end
+  end
+
+  describe "POST reset_my_password" do
+    test "successfully resets password when feature enabled", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      conn = post(conn, "/account/reset_my_password")
+
+      assert html_response(conn, 200) =~ "New Temporary Password"
+      assert get_flash(conn, :notice) == "Password reset"
+    end
+
+    test "prevents password reset when feature disabled", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :HIDDEN, quantity: 0)
+
+      conn = post(conn, "/account/reset_my_password")
+
+      assert html_response(conn, 200) =~ "Password changes are not enabled"
+      assert get_flash(conn, :alert) == "Password changes are not enabled for your organization."
+    end
+
+    test "handles backend error gracefully", %{conn: conn} do
+      Support.Stubs.Feature.setup_feature("email_members", state: :ENABLED, quantity: 1)
+
+      # Setup stub to return error
+      GrpcMock.stub(GuardMock, :reset_password, fn %{user_id: "fail"}, _ ->
+        {:error, %GRPC.RPCError{message: "Password reset failed"}}
+      end)
+
+      conn =
+        conn
+        |> post("/account/reset_my_password")
+
+      assert html_response(conn, 200)
+      assert get_flash(conn, :alert) =~ "Failed to reset password:"
     end
   end
 

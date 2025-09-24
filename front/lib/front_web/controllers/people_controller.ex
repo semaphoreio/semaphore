@@ -139,6 +139,7 @@ defmodule FrontWeb.PeopleController do
       user_id = params["user_id"]
       role_id = params["role_id"]
       requester_id = conn.assigns.user_id
+      member_type = params["member_type"] || "user"
 
       conn =
         conn
@@ -148,7 +149,14 @@ defmodule FrontWeb.PeopleController do
       if conn.halted() do
         {:error, :render_404}
       else
-        case RoleManagement.assign_role(requester_id, org_id, user_id, role_id, project_id) do
+        case RoleManagement.assign_role(
+               requester_id,
+               org_id,
+               user_id,
+               role_id,
+               project_id,
+               member_type
+             ) do
           {:ok, _} ->
             log_assign_role(conn, user_id, org_id, role_id, project_id)
 
@@ -276,7 +284,7 @@ defmodule FrontWeb.PeopleController do
     user_type = params["type"] || ""
 
     member_role_id =
-      if Front.ce_roles?() do
+      if Front.ce?() do
         {:ok, roles} = RoleManagement.list_possible_roles(org_id, "org_scope")
 
         member_role = Enum.find(roles, fn role -> role.name == "Member" end)
@@ -493,7 +501,7 @@ defmodule FrontWeb.PeopleController do
 
   defp create_email_member(conn, params) do
     Watchman.benchmark("people.create_member", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         user_id = conn.assigns.user_id
         org_id = conn.assigns.organization_id
 
@@ -657,6 +665,9 @@ defmodule FrontWeb.PeopleController do
       fetch_groups =
         Async.run(fn -> Members.list_project_members(org_id, project.id, member_type: "group") end)
 
+      fetch_service_accounts =
+        async_fetch_members(org_id, project.id, member_type: "service_account")
+
       fetch_is_project_starred? =
         Async.run(fn -> Models.User.has_favorite(user_id, org_id, project.id) end)
 
@@ -667,6 +678,7 @@ defmodule FrontWeb.PeopleController do
       {:ok, {:ok, {members, total_pages}}} = Async.await(fetch_members)
       {:ok, {:ok, {groups, _}}} = Async.await(fetch_groups)
       {:ok, is_project_starred?} = Async.await(fetch_is_project_starred?)
+      {:ok, {:ok, {service_accounts, _total_pages}}} = Async.await(fetch_service_accounts)
 
       assigns =
         %{
@@ -677,6 +689,7 @@ defmodule FrontWeb.PeopleController do
           permissions: conn.assigns.permissions,
           members: members,
           groups: groups,
+          service_accounts: service_accounts,
           project_id: project.id,
           title: "People・#{project.name}",
           org_scope?: false,
@@ -767,11 +780,15 @@ defmodule FrontWeb.PeopleController do
   end
 
   def change_email(conn, params = %{"user_id" => user_id, "format" => "json"}) do
-    change_user_email(conn, user_id, params["email"])
-    |> case do
-      {:ok, %{message: message}} ->
+    with true <- email_members_supported?(conn.assigns.organization_id) || Front.ce?(),
+         {:ok, %{message: message}} <- change_user_email(conn, user_id, params["email"]) do
+      conn
+      |> json(%{message: message})
+    else
+      false ->
         conn
-        |> json(%{message: message})
+        |> put_status(404)
+        |> json(%{message: "not found"})
 
       {:error, :render_404} ->
         conn
@@ -785,25 +802,60 @@ defmodule FrontWeb.PeopleController do
     end
   end
 
+  def change_email(conn, %{"user_id" => user_id, "email" => email}) do
+    Watchman.benchmark("people.change_email.form", fn ->
+      email = String.trim(email)
+
+      with :ok <- validate_user_ownership(user_id, conn.assigns.user_id),
+           :ok <- validate_email_not_empty(email),
+           :ok <- validate_email_format(email),
+           {:ok, %{message: message}} <- change_user_email(conn, user_id, email) do
+        conn
+        |> put_flash(:notice, message)
+        |> redirect(to: people_path(conn, :show, user_id))
+      else
+        {:error, :empty_email} ->
+          conn
+          |> put_flash(:alert, "Email address cannot be empty.")
+          |> redirect(to: people_path(conn, :show, user_id))
+
+        {:error, :invalid_email} ->
+          conn
+          |> put_flash(:alert, "Please enter a valid email address.")
+          |> redirect(to: people_path(conn, :show, user_id))
+
+        {:error, :unauthorized} ->
+          conn
+          |> put_flash(:error, "You can not update this user's email.")
+          |> redirect(to: people_path(conn, :show, user_id))
+
+        {:error, :render_404} ->
+          conn
+          |> render_404()
+
+        {:error, error_msg} ->
+          conn
+          |> put_flash(:alert, "Failed to update email: #{error_msg}")
+          |> redirect(to: people_path(conn, :show, user_id))
+      end
+    end)
+  end
+
   defp change_user_email(conn, user_id, email) do
     Watchman.benchmark("people.change_email", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
-        conn
-        |> Audit.new(:User, :Modified)
-        |> Audit.add(description: "Change Email")
-        |> Audit.add(resource_id: user_id)
-        |> Audit.log()
+      conn
+      |> Audit.new(:User, :Modified)
+      |> Audit.add(description: "Change Email")
+      |> Audit.add(resource_id: user_id)
+      |> Audit.log()
 
-        Models.Member.change_email(conn.assigns.user_id, user_id, email)
-        |> case do
-          {:ok, %{msg: msg}} ->
-            {:ok, %{message: msg}}
+      Models.Member.change_email(conn.assigns.user_id, user_id, email)
+      |> case do
+        {:ok, %{msg: msg}} ->
+          {:ok, %{message: msg}}
 
-          {:error, error_msg} ->
-            {:error, error_msg}
-        end
-      else
-        {:error, :render_404}
+        {:error, error_msg} ->
+          {:error, error_msg}
       end
     end)
   end
@@ -854,7 +906,7 @@ defmodule FrontWeb.PeopleController do
 
   defp reset_user_password(conn, user_id) do
     Watchman.benchmark("people.reset_password", fn ->
-      if email_members_supported?(conn.assigns.organization_id) || Front.ce_roles?() do
+      if email_members_supported?(conn.assigns.organization_id) || Front.ce?() do
         conn
         |> Audit.new(:User, :Modified)
         |> Audit.add(description: "Reset Password")
@@ -922,9 +974,16 @@ defmodule FrontWeb.PeopleController do
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
     fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
-    {:ok, user} = Async.await(fetch_user)
 
-    render_show(conn, user, errors)
+    case Async.await(fetch_user) do
+      {:ok, user} ->
+        render_show(conn, user, errors)
+
+      _ ->
+        conn
+        |> put_flash(:alert, "User not found.")
+        |> redirect(to: "/")
+    end
   end
 
   defp render_show(conn, user, errors) do
@@ -1139,4 +1198,19 @@ defmodule FrontWeb.PeopleController do
   @spec email_members_supported?(organization_id :: String.t()) :: bool
   defp email_members_supported?(organization_id),
     do: FeatureProvider.feature_enabled?(:email_members, param: organization_id)
+
+  defp validate_email_not_empty(""), do: {:error, :empty_email}
+  defp validate_email_not_empty(_email), do: :ok
+
+  defp validate_email_format(email) do
+    if valid_email_format?(email), do: :ok, else: {:error, :invalid_email}
+  end
+
+  defp validate_user_ownership(user_id, user_id), do: :ok
+  defp validate_user_ownership(_, _), do: {:error, :unauthorized}
+
+  defp valid_email_format?(email) do
+    email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    Regex.match?(email_regex, email)
+  end
 end

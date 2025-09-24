@@ -4,11 +4,11 @@ Description: Manage user access with RBAC
 
 # Role Based Access Control
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 Manage user permissions in your server and projects with Role Based Access Control (RBAC). This page describes gives an overview of RBAC and how to assign roles to users.
 

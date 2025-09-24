@@ -56,7 +56,7 @@ defmodule FrontWeb.RolesController do
       case Async.await(async_role) do
         {:ok, role} ->
           async_roles = fetch_roles_async(conn.assigns.organization_id)
-          scope = if Front.ce_roles?(), do: "", else: role.scope
+          scope = if Front.ce?(), do: "", else: role.scope
           async_permissions = fetch_permissions_async(scope)
 
           {:ok, roles} = Async.await(async_roles)

@@ -5,19 +5,13 @@ sidebar_position: 4
 
 # Monorepos
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to use monorepos on Semaphore" src="https://www.youtube.com/embed/DPsQg215Efo?si=UheVJSwMZvuOn7O7" />
 
 Semaphore features a repository change detection strategy to optimize monorepo pipelines. This page explains how to configure monorepo pipelines to reduce time and costs.
 
 ## Overview
 
-A [monorepo](https://semaphoreci.com/blog/what-is-monorepo) is a repository that holds many projects. While these projects may be related, they are often logically independent, uncoupled, and sometimes even managed by different teams.
+A [monorepo](https://semaphore.io/blog/what-is-monorepo) is a repository that holds many projects. While these projects may be related, they are often logically independent, uncoupled, and sometimes even managed by different teams.
 
 Semaphore can detect changes between commits, allowing you to set up fine-grained jobs that only run when the underlying code changes. Skipping jobs covering unchanged code can greatly speed testing and reduce costs on big codebases.
 

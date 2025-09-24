@@ -680,7 +680,9 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
           done_after: Google.Protobuf.Timestamp.t() | nil,
           label: String.t(),
           git_ref_types: [[InternalApi.Plumber.GitRefType.t()]],
-          queue_id: String.t()
+          queue_id: String.t(),
+          pr_head_branch: String.t(),
+          pr_target_branch: String.t()
         }
 
   defstruct [
@@ -697,7 +699,9 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
     :done_after,
     :label,
     :git_ref_types,
-    :queue_id
+    :queue_id,
+    :pr_head_branch,
+    :pr_target_branch
   ]
 
   field(:page_size, 1, type: :int32)
@@ -714,6 +718,8 @@ defmodule InternalApi.Plumber.ListKeysetRequest do
   field(:label, 12, type: :string)
   field(:git_ref_types, 13, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
   field(:queue_id, 14, type: :string)
+  field(:pr_head_branch, 15, type: :string)
+  field(:pr_target_branch, 16, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListKeysetResponse do
@@ -750,7 +756,9 @@ defmodule InternalApi.Plumber.ListRequest do
           done_after: Google.Protobuf.Timestamp.t() | nil,
           label: String.t(),
           git_ref_types: [[InternalApi.Plumber.GitRefType.t()]],
-          queue_id: String.t()
+          queue_id: String.t(),
+          pr_head_branch: String.t(),
+          pr_target_branch: String.t()
         }
 
   defstruct [
@@ -766,7 +774,9 @@ defmodule InternalApi.Plumber.ListRequest do
     :done_after,
     :label,
     :git_ref_types,
-    :queue_id
+    :queue_id,
+    :pr_head_branch,
+    :pr_target_branch
   ]
 
   field(:project_id, 1, type: :string)
@@ -782,6 +792,8 @@ defmodule InternalApi.Plumber.ListRequest do
   field(:label, 11, type: :string)
   field(:git_ref_types, 12, repeated: true, type: InternalApi.Plumber.GitRefType, enum: true)
   field(:queue_id, 13, type: :string)
+  field(:pr_head_branch, 14, type: :string)
+  field(:pr_target_branch, 15, type: :string)
 end
 
 defmodule InternalApi.Plumber.ListResponse do
@@ -869,7 +881,8 @@ defmodule InternalApi.Plumber.Pipeline do
           after_task_id: String.t(),
           repository_id: String.t(),
           env_vars: [InternalApi.Plumber.EnvVariable.t()],
-          triggerer: InternalApi.Plumber.Triggerer.t() | nil
+          triggerer: InternalApi.Plumber.Triggerer.t() | nil,
+          organization_id: String.t()
         }
 
   defstruct [
@@ -907,7 +920,8 @@ defmodule InternalApi.Plumber.Pipeline do
     :after_task_id,
     :repository_id,
     :env_vars,
-    :triggerer
+    :triggerer,
+    :organization_id
   ]
 
   field(:ppl_id, 1, type: :string)
@@ -945,6 +959,7 @@ defmodule InternalApi.Plumber.Pipeline do
   field(:repository_id, 33, type: :string)
   field(:env_vars, 34, repeated: true, type: InternalApi.Plumber.EnvVariable)
   field(:triggerer, 35, type: InternalApi.Plumber.Triggerer)
+  field(:organization_id, 36, type: :string)
 end
 
 defmodule InternalApi.Plumber.Triggerer do

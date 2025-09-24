@@ -4,11 +4,6 @@ description: Semaphore toolbox reference
 
 # Semaphore Toolbox
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 The toolbox is an [open source](https://github.com/semaphoreci/toolbox) package of command line tools available in every Semaphore job. It provides utility functions to clone, cache data, run test services, or change language versions. This page explains all the available tools.
 
 ## Overview
@@ -238,35 +233,21 @@ $ checksum package-lock.json
 
 ## install-package {#install-package}
 
-The `install-package` tool is used to manage Ubuntu packages you may need for your jobs. It downloads and caches packages in a way that can be quickly reinstalled over and over again in different jobs. This is a convenient tool, you can still use `sudo` to install packages using the system's package manager.
+The `install-package` tool is used to manage Ubuntu packages you may need for your jobs. It downloads and caches packages in a way that can be quickly reinstalled over and over again in different jobs. This is a tool made for convenience, but you can still use `sudo` to install packages using the system's package manager.
 
 The syntax is:
 
 ```shell title="install-package syntax"
-install-package <command> <pkg-name>
+install-package <flag> <pkg-name>
 ```
 
 Where `<pkg-name>` is the Ubuntu package name without the `.deb` extension. In other words, you want `libc6` instead of `libc6.deb`.
 
-Where command is one of the following:
+Where the flag is one of the following:
 
-- `update`: Retrieve new lists of packages
-- `upgrade`: Perform an upgrade
-- `install`: Install new packages
-- `reinstall`: Reinstall packages
-- `remove`: Remove packages
-- `purge`: Remove packages and config files
-- `autoremove`: Remove automatically all unused packages
-- `dist-upgrade`: Distribution upgrade, see apt-get(8)
-- `dselect-upgrade`: Follow dselect selections
-- `build-dep`: Configure build-dependencies for source packages
-- `satisfy`: Satisfy dependency strings
-- `clean`: Erase downloaded archive files
-- `autoclean`: Erase old downloaded archive files
-- `check`: Verify that there are no broken dependencies
-- `source`: Download source archives
-- `download`: Download the binary package into the current directory
-- `changelog`: Download and display the changelog for the given package
+- `--update` (or -u): Retrieve new lists of packages
+- `--skip-update` (or -s): Skips repository list update
+- `--update-new` (or -n): Update only repository lists modified in the last 1 hour
 
 You can supply multiple packages with their versions in the same invocation:
 

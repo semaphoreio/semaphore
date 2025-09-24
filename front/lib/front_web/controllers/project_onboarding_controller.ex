@@ -350,7 +350,9 @@ defmodule FrontWeb.ProjectOnboardingController do
             check_url: project_onboarding_path(conn, :is_ready, project.name),
             repo_connection_url:
               project_onboarding_path(conn, :project_repository_status, project.name),
-            project_name: project.name
+            project_name: project.name,
+            skip_project_onboarding_url:
+              project_onboarding_path(conn, :skip_onboarding, project.name)
           })
         else
           conn
@@ -630,14 +632,14 @@ defmodule FrontWeb.ProjectOnboardingController do
          ) do
         project_onboarding_path(conn, :onboarding_index, project.name, [""])
       else
-        if Front.on_prem?() do
+        if Front.saas?() do
+          project_onboarding_path(conn, :invite_collaborators, project.name)
+        else
           if Models.Project.file_exists?(project.id, project.initial_pipeline_file) do
             project_onboarding_path(conn, :existing_configuration, project.name)
           else
             project_onboarding_path(conn, :template, project.name)
           end
-        else
-          project_onboarding_path(conn, :invite_collaborators, project.name)
         end
       end
 

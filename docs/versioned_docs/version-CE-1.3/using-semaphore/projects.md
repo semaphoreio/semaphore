@@ -4,11 +4,11 @@ description: Connect Git repositories to Semaphore (CE)
 
 # Projects
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 

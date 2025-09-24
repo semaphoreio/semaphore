@@ -4,12 +4,6 @@ description: Configure self-hosted agents
 
 # Configure Agents
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
 
 Self-hosted agents allow you to run Semaphore jobs on your own hardware. This page explains the configuration settings available and how to enable additional features.

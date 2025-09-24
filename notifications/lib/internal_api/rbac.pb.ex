@@ -1,11 +1,13 @@
 defmodule InternalApi.RBAC.SubjectType do
   @moduledoc false
   use Protobuf, enum: true, syntax: :proto3
-  @type t :: integer | :USER | :GROUP
+  @type t :: integer | :USER | :GROUP | :SERVICE_ACCOUNT
 
   field(:USER, 0)
 
   field(:GROUP, 1)
+
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.RBAC.Scope do
@@ -33,6 +35,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
           | :ROLE_BINDING_SOURCE_GITLAB
           | :ROLE_BINDING_SOURCE_SCIM
           | :ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE
+          | :ROLE_BINDING_SOURCE_SAML_JIT
 
   field(:ROLE_BINDING_SOURCE_UNSPECIFIED, 0)
 
@@ -47,6 +50,8 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field(:ROLE_BINDING_SOURCE_SCIM, 5)
 
   field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
+
+  field(:ROLE_BINDING_SOURCE_SAML_JIT, 7)
 end
 
 defmodule InternalApi.RBAC.ListUserPermissionsRequest do
@@ -226,6 +231,92 @@ defmodule InternalApi.RBAC.ListRolesResponse do
   field(:roles, 1, repeated: true, type: InternalApi.RBAC.Role)
 end
 
+defmodule InternalApi.RBAC.DescribeRoleRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          role_id: String.t()
+        }
+
+  defstruct [:org_id, :role_id]
+
+  field(:org_id, 1, type: :string)
+  field(:role_id, 2, type: :string)
+end
+
+defmodule InternalApi.RBAC.DescribeRoleResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          role: InternalApi.RBAC.Role.t() | nil
+        }
+
+  defstruct [:role]
+
+  field(:role, 1, type: InternalApi.RBAC.Role)
+end
+
+defmodule InternalApi.RBAC.ModifyRoleRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          role: InternalApi.RBAC.Role.t() | nil,
+          requester_id: String.t()
+        }
+
+  defstruct [:role, :requester_id]
+
+  field(:role, 1, type: InternalApi.RBAC.Role)
+  field(:requester_id, 2, type: :string)
+end
+
+defmodule InternalApi.RBAC.ModifyRoleResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          role: InternalApi.RBAC.Role.t() | nil
+        }
+
+  defstruct [:role]
+
+  field(:role, 1, type: InternalApi.RBAC.Role)
+end
+
+defmodule InternalApi.RBAC.DestroyRoleRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t(),
+          role_id: String.t(),
+          requester_id: String.t()
+        }
+
+  defstruct [:org_id, :role_id, :requester_id]
+
+  field(:org_id, 1, type: :string)
+  field(:role_id, 2, type: :string)
+  field(:requester_id, 3, type: :string)
+end
+
+defmodule InternalApi.RBAC.DestroyRoleResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          role_id: String.t()
+        }
+
+  defstruct [:role_id]
+
+  field(:role_id, 1, type: :string)
+end
+
 defmodule InternalApi.RBAC.ListMembersRequest.Page do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -270,15 +361,13 @@ defmodule InternalApi.RBAC.ListMembersResponse.Member do
 
   @type t :: %__MODULE__{
           subject: InternalApi.RBAC.Subject.t() | nil,
-          subject_role_bindings: [InternalApi.RBAC.SubjectRoleBinding.t()],
-          roles: [InternalApi.RBAC.Role.t()]
+          subject_role_bindings: [InternalApi.RBAC.SubjectRoleBinding.t()]
         }
 
-  defstruct [:subject, :subject_role_bindings, :roles]
+  defstruct [:subject, :subject_role_bindings]
 
   field(:subject, 1, type: InternalApi.RBAC.Subject)
   field(:subject_role_bindings, 3, repeated: true, type: InternalApi.RBAC.SubjectRoleBinding)
-  field(:roles, 2, repeated: true, type: InternalApi.RBAC.Role)
 end
 
 defmodule InternalApi.RBAC.ListMembersResponse do
@@ -294,6 +383,32 @@ defmodule InternalApi.RBAC.ListMembersResponse do
 
   field(:members, 1, repeated: true, type: InternalApi.RBAC.ListMembersResponse.Member)
   field(:total_pages, 2, type: :int32)
+end
+
+defmodule InternalApi.RBAC.CountMembersRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.RBAC.CountMembersResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          members: integer
+        }
+
+  defstruct [:members]
+
+  field(:members, 1, type: :int32)
 end
 
 defmodule InternalApi.RBAC.SubjectRoleBinding do
@@ -403,6 +518,27 @@ defmodule InternalApi.RBAC.Subject do
   field(:display_name, 3, type: :string)
 end
 
+defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.RBAC.RefreshCollaboratorsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+  @type t :: %__MODULE__{}
+
+  defstruct []
+end
+
 defmodule InternalApi.RBAC.Role do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -416,7 +552,8 @@ defmodule InternalApi.RBAC.Role do
           permissions: [String.t()],
           rbac_permissions: [InternalApi.RBAC.Permission.t()],
           inherited_role: InternalApi.RBAC.Role.t() | nil,
-          maps_to: InternalApi.RBAC.Role.t() | nil
+          maps_to: InternalApi.RBAC.Role.t() | nil,
+          readonly: boolean
         }
 
   defstruct [
@@ -428,7 +565,8 @@ defmodule InternalApi.RBAC.Role do
     :permissions,
     :rbac_permissions,
     :inherited_role,
-    :maps_to
+    :maps_to,
+    :readonly
   ]
 
   field(:id, 1, type: :string)
@@ -440,6 +578,7 @@ defmodule InternalApi.RBAC.Role do
   field(:rbac_permissions, 7, repeated: true, type: InternalApi.RBAC.Permission)
   field(:inherited_role, 8, type: InternalApi.RBAC.Role)
   field(:maps_to, 9, type: InternalApi.RBAC.Role)
+  field(:readonly, 10, type: :bool)
 end
 
 defmodule InternalApi.RBAC.Permission do
@@ -489,7 +628,15 @@ defmodule InternalApi.RBAC.RBAC.Service do
 
   rpc(:ListRoles, InternalApi.RBAC.ListRolesRequest, InternalApi.RBAC.ListRolesResponse)
 
+  rpc(:DescribeRole, InternalApi.RBAC.DescribeRoleRequest, InternalApi.RBAC.DescribeRoleResponse)
+
+  rpc(:ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse)
+
+  rpc(:DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse)
+
   rpc(:ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse)
+
+  rpc(:CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse)
 
   rpc(
     :ListAccessibleOrgs,
@@ -501,6 +648,12 @@ defmodule InternalApi.RBAC.RBAC.Service do
     :ListAccessibleProjects,
     InternalApi.RBAC.ListAccessibleProjectsRequest,
     InternalApi.RBAC.ListAccessibleProjectsResponse
+  )
+
+  rpc(
+    :RefreshCollaborators,
+    InternalApi.RBAC.RefreshCollaboratorsRequest,
+    InternalApi.RBAC.RefreshCollaboratorsResponse
   )
 end
 

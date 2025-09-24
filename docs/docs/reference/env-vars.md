@@ -4,11 +4,6 @@ description: Environment variables defined by Semaphore
 
 # Environment variables
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 ## Semaphore variables {#semaphore-variables}
 
 These variables describe various aspects of Semaphore workings.
@@ -150,6 +145,13 @@ The URL for the organization that owns the project running the current job.
 - **Example**: `ea3e6bba-d19a-45d7-86a0-e78a2301b616`
 
 The unique identifier for the current workflow. All jobs that belong to the same pipeline share the same ID.
+
+### Pipeline name {#pipeline-name}
+
+- **Environment variable**: `SEMAPHORE_PIPELINE_NAME`
+- **Example**: `my-pipeline`
+
+The name of the pipeline.
 
 ### Pipeline is promotion {#pipeline-promotion}
 

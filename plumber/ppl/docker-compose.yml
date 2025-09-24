@@ -49,6 +49,8 @@ services:
     tty: true
     volumes:
       - .:/app:delegated
+      - elixir_deps:/app/deps
+      - elixir_build:/app/_build
 
   db:
     image: "postgres:9.6"
@@ -121,3 +123,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+volumes:
+  elixir_deps:
+  elixir_build:
