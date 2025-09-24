@@ -206,7 +206,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter.Test do
 
     assert request.id == params["periodic_id"]
     assert request.requester == "test_user"
-    assert request.reference == "refs/heads/"
+    assert request.reference == ""
     assert request.pipeline_file == ""
     assert request.parameter_values == []
   end
