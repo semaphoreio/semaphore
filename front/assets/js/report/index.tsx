@@ -78,7 +78,7 @@ const MarkdownBody = (props: { markdown: string, }) => {
     if (props.markdown) {
       setTimeout(() => {
         void Mermaid.run();
-      }, 100);
+      }, 300);
     }
   }, [props.markdown]);
 
@@ -98,15 +98,44 @@ const MarkdownBody = (props: { markdown: string, }) => {
       `mark`,
       `ins`,
       `small`,
-      `abbr`
+      `abbr`,
+      // SVG elements needed for mermaid
+      `svg`, `g`, `path`, `polygon`, `rect`, `circle`, `line`, `text`,
+      `foreignObject`, `ellipse`, `defs`, `marker`
     ],
     ALLOWED_ATTR: [
       `title`,
-      `open`
+      `open`,
+      `class`,
+      `id`,
+      `style`,
+      `viewBox`,
+      `width`,
+      `height`,
+      `d`,
+      `x`,
+      `y`,
+      `cx`,
+      `cy`,
+      `r`,
+      `fill`,
+      `stroke`,
+      `stroke-width`,
+      `points`,
+      `transform`,
+      `aria-roledescription`,
+      `aria-label`,
+      `role`,
+      `orient`,
+      `markerWidth`,
+      `markerHeight`,
+      `text-anchor`,
+      `dominant-baseline`,
+      `xmlns`
     ],
     FORBID_TAGS: [`a`, `img`, `script`, `object`, `embed`, `iframe`, `link`],
-    FORBID_ATTR: [`href`, `src`, `class`, `id`, `style`, `target`],
-    ALLOW_DATA_ATTR: false
+    FORBID_ATTR: [`href`, `src`, `target`],
+    ALLOW_DATA_ATTR: true
   });
 
   return (
