@@ -236,6 +236,7 @@ defmodule FrontWeb.ProjectControllerTest do
                %{
                  "id" => branch.id,
                  "type" => "branch",
+                 "name" => branch.api_model.name,
                  "display_name" => branch.api_model.name,
                  "html_url" => "/branches/#{branch.id}"
                }
