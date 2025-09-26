@@ -32,7 +32,106 @@ This page is updated on a weekly basis.
 **(Removed)** Removed packages:
 - iOS simulator versions below 18.6
 
+**(Improved) Ubuntu 22.04 image update**
 
+**(New)** New packages:
+
+- Helmfile 1.1.7
+- Swiftly 1.0.1
+- Erlang 28.1
+- Ruby 3.4.5, 3.4.6
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-55.57 -> 6.8.0-84.84
+- Git: 2.49.0 -> 2.51.0
+- Gitlfs: 3.6.1 -> 3.7.0
+- Gh: 2.69.0 -> 2.80.0
+- Chrome: 131.0.6778.139 -> 140.0.7339.207
+- Chromedriver: 131.0.6778.139 -> 140.0.7339.207
+- Docker: 28.0.2 -> 28.4.0
+- Docker compose v2: 2.34.0 -> 2.39.4
+- Dockerize: 0.9.3 -> 0.9.6
+- Docker buildx: 0.22.0 -> 0.28.0
+- Containerd.io: 1.7.25 -> 1.7.27
+- Aws v2: 2.25.0 -> 2.31.1
+- Azure: 2.70.0 -> 2.77.0
+- Doctl: 1.123.0 -> 1.142.0
+- Eb: 3.20.10 -> 3.25
+- Gcloud: 515.0.0 -> 540.0.0
+- Heroku: 10.4.0 -> 10.13.2
+- Terraform: 1.11.2 -> 1.13.3
+- Helm: 3.17.2 -> 3.19.0
+- Go: 1.24.1 -> 1.25.1
+- Java 11: 11.0.26 -> 11.0.28
+- Java 17: 17.0.14 -> 17.0.16
+- Maven: 3.9.9 -> 3.9.11
+- Gradle: 8.13 -> 9.1
+- Bazel: 8.1.1 -> 8.4.1
+- Nodejs: 22.14.0 -> 22.19.0
+- Npm: 10.9.2 -> 10.9.3
+- Nvm: 0.40.2 -> 0.40.3
+- Python3.11: 3.11.11 -> 3.11.13
+- Python3.12: 3.12.9 -> 3.12.11
+- Pip: 25.0.1 -> 25.2
+- Virtualenv: 20.29.3 -> 20.34.0
+- Sbt: 1.10.11 -> 1.11.6
+- Yq: 4.45.1 -> 4.47.2
+- Rust: 1.85.1 -> 1.90.0
+- Leiningen: 2.11.2 -> 2.12.0
+
+To learn more about this image, check our [Ubuntu 22.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2204-image/).
+
+**(Improved) Ubuntu 24.04 image update**
+
+**(New)** New packages:
+
+- Helmfile 1.1.7
+- Swiftly 1.0.1
+- Erlang 28.1
+- Ruby 3.4.5, 3.4.6
+
+**(Updated)** Updated packages:
+
+- Kernel: 6.8.0-55.57 -> 6.8.0-84.84
+- Git: 2.49.0 -> 2.51.0
+- Gitlfs: 3.6.1 -> 3.7.0
+- Gh: 2.69.0 -> 2.80.0
+- Chrome: 131.0.6778.139 -> 140.0.7339.207
+- Chromedriver: 131.0.6778.139 -> 140.0.7339.207
+- Docker: 28.0.2 -> 28.4.0
+- Docker compose v2: 2.34.0 -> 2.39.4
+- Dockerize: 0.9.3 -> 0.9.6
+- Docker buildx: 0.22.0 -> 0.28.0
+- Containerd.io: 1.7.25 -> 1.7.27
+- Aws v2: 2.25.0 -> 2.31.1
+- Azure: 2.70.0 -> 2.77.0
+- Doctl: 1.123.0 -> 1.142.0
+- Eb: 3.20.10 -> 3.25
+- Gcloud: 515.0.0 -> 540.0.0
+- Heroku: 10.4.0 -> 10.13.2
+- Terraform: 1.11.2 -> 1.13.3
+- Helm: 3.17.2 -> 3.19.0
+- Go: 1.24.1 -> 1.25.1
+- Java 11: 11.0.26 -> 11.0.28
+- Java 17: 17.0.14 -> 17.0.16
+- Java 21: 21.0.6 -> 21.0.8
+- Maven: 3.9.9 -> 3.9.11
+- Gradle: 8.13 -> 9.1
+- Bazel: 8.1.1 -> 8.4.1
+- Nodejs: 22.14.0 -> 22.19.0
+- Npm: 10.9.2 -> 10.9.3
+- Nvm: 0.40.2 -> 0.40.3
+- Python3.10: 3.10.16 -> 3.10.18
+- Python3.11: 3.11.11 -> 3.11.13
+- Pip: 25.0.1 -> 25.2
+- Virtualenv: 20.29.3 -> 20.34.0
+- Sbt: 1.10.11 -> 1.11.6
+- Yq: 4.45.1 -> 4.47.2
+- Rust: 1.85.1 -> 1.90.0
+- Leiningen: 2.11.2 -> 2.12.0
+
+To learn more about this image, check our [Ubuntu 24.04 page](https://docs.semaphoreci.com/reference/os-ubuntu-images/ubuntu-2404-image/).
 
 ### Week of Jun 9 2025
 
