@@ -18,23 +18,27 @@ defmodule Zebra.Workers.Scheduler.Org do
   """
   def load(org_id) do
     Zebra.Cache.fetch!("quotas-#{org_id}-v3", @cache_timeout, fn ->
-      cold_load(org_id)
+      result =
+        Wormhole.capture(__MODULE__, :fetch_org, [org_id],
+          timeout: 10_500,
+          stacktrace: true,
+          skip_log: true
+        )
+
+      case result do
+        {:ok, {:ok, org}} ->
+          {:commit, {:ok, new(org, org_id)}}
+
+        {:ok, error} ->
+          {:ignore, error}
+
+        error ->
+          {:ignore, error}
+      end
     end)
   end
 
-  defp cold_load(org_id) do
-    find_org = Task.async(fn -> fetch_org(org_id) end)
-
-    case Task.await(find_org) do
-      {:ok, org} ->
-        {:ok, new(org, org_id)}
-
-      e ->
-        e
-    end
-  end
-
-  defp fetch_org(org_id) do
+  def fetch_org(org_id) do
     alias InternalApi.Organization.DescribeRequest, as: Request
     alias InternalApi.Organization.OrganizationService.Stub
 
