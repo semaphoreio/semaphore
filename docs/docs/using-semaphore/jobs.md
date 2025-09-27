@@ -1089,6 +1089,8 @@ It's not possible to use job parallelism at the same time as [job matrices](#mat
 
 ## Job matrix {#matrix}
 
+<VideoTutorial title="How to use a Job Matrix" src="https://www.youtube.com/embed/jRpj2Pu5eak" />
+
 A job matrix is a more advanced form of [job parallelism](#job-parallelism) where you can define multiple variables with different values and run all the possible permutations.
 
 For example, let's say we want to test our application using three Node.js versions using npm and yarn
