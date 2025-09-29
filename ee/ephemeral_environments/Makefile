@@ -3,7 +3,7 @@ export MIX_ENV?=dev
 include ../../Makefile
 
 APP_NAME := $(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
-INTERNAL_API_BRANCH?=master
+INTERNAL_API_BRANCH=master
 PROTOC_TAG=1.18.4-3.20.1-0.13.0
 TMP_REPO_DIR?=/tmp/internal_api
 
