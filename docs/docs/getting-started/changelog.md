@@ -32,6 +32,9 @@ This page is updated on a weekly basis.
 **(Removed)** Removed packages:
 - iOS simulator versions below 18.6
 
+To learn more about this image, check our [macOS Xcode 26](https://docs.semaphore.io/reference/os-apple#mac-26).
+
+
 **(Improved) Ubuntu 22.04 image update**
 
 **(New)** New packages:
