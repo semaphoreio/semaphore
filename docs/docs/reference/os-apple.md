@@ -12,6 +12,177 @@ The Operating System image defines what OS and software are pre-installed in you
 
 This page describes OS images to run on Apple-based Semaphore Cloud [machines](./machine-types). You can add more OS options using [self-hosted agents](../using-semaphore/self-hosted).
 
+## macOS Xcode 26 {#mac-26}
+
+<Tabs groupId="editor-yaml">
+<TabItem value="editor" label="Editor">
+
+To use this operating system, choose `macos-xcode26` in the **OS Image** selector. This OS can be paired with [A2s Apple machine](./machine-types#macos).
+
+![Selecting the macOS Xcode26 using the workflow editor](./img/macos26-selector.png)
+
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+To use this operating system, use `macos-xcode26` as the `os_image`. This OS can be paired with [A2s Apple machine](./machine-types#macos).
+
+```yaml
+version: v1.0
+name: Initial Pipeline
+agent:
+  machine:
+  # highlight-start
+    type: a2-standard-4
+    os_image: macos-xcode26
+  # highlight-end
+```
+
+</TabItem>
+</Tabs>
+
+System version:
+
+- ProductVersion: 26.0
+- BuildVersion: 25A354
+- Kernel Version: Darwin 25.0.0
+
+### Version control
+
+The following version control tools are pre-installed:
+
+- Git (2.x)
+- Git LFS (Git Large File Storage)
+
+
+### Utilities
+
+The following utilities are pre-installed:
+
+- homebrew
+- bundler
+- rbenv
+- nvm
+- curl
+- wget
+- jq
+- carthage
+
+### Browsers
+
+The following browsers are pre-installed:
+
+- Safari
+- google-chrome
+- firefox
+- microsoft-edge
+
+### Languages
+
+<details>
+<summary>Xcode</summary>
+<div>
+
+Installed versions:
+
+- 16.4
+- 26.0 (default)
+
+The default installed Xcode version is `26.0`.
+
+Xcode 26.0 has the following SDKs preinstalled:
+
+- iOS 26.0
+- macOS 26.0
+- tvOS 26.0
+- watchOS 26.0
+- visionOS 26.0
+
+Xcode 16.4 has the following SDKs preinstalled:
+
+- iOS 18.5
+- macOS 15.5
+- tvOS 18.5
+- watchOS 11.5
+- visionOS 2.5
+
+</div>
+</details>
+
+<details>
+<summary>iOS</summary>
+<div>
+
+Installed standalone iOS simulators runtimes:
+
+- 18.5
+- 26
+
+</div>
+</details>
+
+<details>
+<summary>JavaScript and Node.js</summary>
+<div>
+
+Installed version:
+
+- Node.js: v22.14.0
+- Yarn: 1.22.22
+
+</div>
+</details>
+
+<details>
+<summary>Python</summary>
+<div>
+
+Installed version:
+
+- 3.13.7
+
+Supporting libraries:
+
+- pip3: 25.2
+
+</div>
+</details>
+
+<details>
+<summary>Ruby</summary>
+<div>
+
+Installed versions:
+
+- 3.4.6 (system)
+- 3.2.9
+
+Following gems are pre-installed:
+
+- fastlane (2.228.0)
+- cocoapods (1.16.2)
+
+</div>
+</details>
+
+<details>
+<summary>Java and JVM</summary>
+<div>
+
+- openjdk 17
+
+</div>
+</details>
+
+<details>
+<summary>Flutter</summary>
+<div>
+
+- 3.35.4
+
+</div>
+</details>
+
+
 ## macOS Xcode 16 {#mac-16}
 
 <Tabs groupId="editor-yaml">
