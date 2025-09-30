@@ -1,6 +1,7 @@
 import { render } from "preact";
 import { BrowserRouter } from "react-router-dom";
-import { AppConfig, ConfigContext } from "./config";
+import { AppConfig, ConfigContext } from "./contexts/ConfigContext";
+import { ProjectsProvider } from "./contexts/ProjectsContext";
 import { App } from "./app";
 
 export default function ({
@@ -13,11 +14,13 @@ export default function ({
   const appConfig = AppConfig.fromJSON(jsonConfig);
 
   render(
-    <BrowserRouter basename={appConfig.baseUrl}>
-      <ConfigContext.Provider value={appConfig}>
-        <App/>
-      </ConfigContext.Provider>
-    </BrowserRouter>,
+    <ConfigContext.Provider value={appConfig}>
+      <ProjectsProvider config={appConfig}>
+        <BrowserRouter basename={appConfig.baseUrl}>
+          <App/>
+        </BrowserRouter>
+      </ProjectsProvider>
+    </ConfigContext.Provider>,
     dom
   );
 }

@@ -1,20 +1,20 @@
-import { useState, useContext, useEffect, useCallback } from "preact/hooks";
+import { useState, useEffect, useCallback } from "preact/hooks";
 import { useParams, useNavigate } from "react-router-dom";
 import { Fragment } from "preact";
-import { Modal, Box, Asset } from "js/toolbox";
-import { ConfigContext } from "../config";
+import { Modal, Box } from "js/toolbox";
+import { useConfig } from "../contexts/ConfigContext";
 import { EnvironmentDetails } from "../types";
-import { EphemeralEnvironmentsAPI } from "../utils/api";
 import { Loader } from "../utils/elements";
 import { EnvironmentDetails as EnvironmentDetailsComponent } from "../components/EnvironmentDetails";
 
 export const EnvironmentDetailsPage = () => {
-  const config = useContext(ConfigContext);
-  const api = new EphemeralEnvironmentsAPI(config);
+  const config = useConfig();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string, }>();
 
-  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(null);
+  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -26,7 +26,7 @@ export const EnvironmentDetailsPage = () => {
     setLoading(true);
     setError(null);
 
-    const response = await api.get(id);
+    const response = await config.apiUrls.show.replace({ '__ID__': id }).call();
 
     if (response.error) {
       setError(response.error || `Failed to load environment details`);
@@ -35,7 +35,7 @@ export const EnvironmentDetailsPage = () => {
     }
 
     setLoading(false);
-  }, [id]);
+  }, [id, config]);
 
   useEffect(() => {
     void loadEnvironmentDetails();
@@ -49,7 +49,6 @@ export const EnvironmentDetailsPage = () => {
     navigate(`/${id}/edit`);
   };
 
-
   const handleDeleteClick = () => {
     setDeleteModalOpen(true);
     setDeleteConfirmation(``);
@@ -59,12 +58,11 @@ export const EnvironmentDetailsPage = () => {
     if (!id || !environment) return;
     if (deleteConfirmation !== environment.name) return;
 
-    const response = await api.delete(id);
+    const response = await config.apiUrls.delete.replace({ '__ID__': id }).call();
 
     if (response.error) {
       console.error(`Failed to delete environment:`, response.error);
     } else {
-      // Navigate back to list
       navigate(`/`);
     }
   };
@@ -99,7 +97,6 @@ export const EnvironmentDetailsPage = () => {
         canManage={config.canManage}
       />
 
-
       <Modal
         isOpen={deleteModalOpen}
         close={() => setDeleteModalOpen(false)}
@@ -108,7 +105,8 @@ export const EnvironmentDetailsPage = () => {
         <div className="pa4">
           <Box type="warning" className="mb3">
             <p className="ma0">
-              This action cannot be undone. All instances of this environment will be terminated.
+              This action cannot be undone. All instances of this environment
+              will be terminated.
             </p>
           </Box>
 
@@ -120,7 +118,9 @@ export const EnvironmentDetailsPage = () => {
             type="text"
             className="input-reset ba b--black-20 pa2 db w-100 mb3"
             value={deleteConfirmation}
-            onChange={(e) => setDeleteConfirmation((e.target as HTMLInputElement).value)}
+            onChange={(e) =>
+              setDeleteConfirmation((e.target as HTMLInputElement).value)
+            }
             placeholder="Enter environment name"
           />
         </div>

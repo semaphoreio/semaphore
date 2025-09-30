@@ -1,13 +1,11 @@
 import { useState, useContext, useEffect, useCallback } from "preact/hooks";
 import { Link } from "react-router-dom";
-import { ConfigContext } from "../config";
+import { ConfigContext } from "../contexts/ConfigContext";
 import { EnvironmentType } from "../types";
-import { EphemeralEnvironmentsAPI } from "../utils/api";
 import { EnvironmentsList } from "../components/EnvironmentsList";
 
 export const EnvironmentsListPage = () => {
   const config = useContext(ConfigContext);
-  const api = new EphemeralEnvironmentsAPI(config);
 
   const [environments, setEnvironments] = useState<EnvironmentType[]>([]);
   const [loading, setLoading] = useState(true);
@@ -17,7 +15,7 @@ export const EnvironmentsListPage = () => {
     setLoading(true);
     setError(null);
 
-    const response = await api.list();
+    const response = await config.apiUrls.list.call();
 
     if (response.error) {
       setError(response.error || `Failed to load ephemeral environments`);
@@ -26,25 +24,15 @@ export const EnvironmentsListPage = () => {
     }
 
     setLoading(false);
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     void loadEnvironments();
   }, []);
 
-  const handleEnvironmentClick = (environment: EnvironmentType) => {
-    // Navigation will be handled by Link in EnvironmentCard
-  };
-
-  const handleCreateClick = () => {
-    // Navigation will be handled by Link
-  };
-
   return (
     <EnvironmentsList
       environments={environments}
-      onEnvironmentClick={handleEnvironmentClick}
-      onCreateClick={handleCreateClick}
       canManage={config.canManage}
       loading={loading}
       error={error}
