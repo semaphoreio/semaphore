@@ -6,13 +6,12 @@ defmodule FrontWeb.EphemeralEnvironmentView do
   def ephemeral_environments_config(conn) do
     # Use __ID__ as placeholder for client-side replacement
     placeholder_id = "__ID__"
+    placeholder_search = "__SEARCH__"
 
     %{
       org_id: conn.assigns.organization_id,
       can_manage: conn.assigns.permissions["organization.ephemeral_environments.manage"] || false,
       can_view: conn.assigns.permissions["organization.ephemeral_environments.view"] || false,
-      # TODO: Load available projects
-      projects: [],
       base_path: "/ephemeral_environments",
       base_url: ephemeral_environment_path(conn, :index),
 
@@ -41,6 +40,22 @@ defmodule FrontWeb.EphemeralEnvironmentView do
         cordon: %{
           method: "post",
           path: ephemeral_environment_path(conn, :cordon, placeholder_id, format: "json")
+        },
+        projects_list: %{
+          method: "get",
+          path: project_path(conn, :index, format: "json")
+        },
+        users_list: %{
+          method: "get",
+          path: people_path(conn, :index) <> "?type=user&search=#{placeholder_search}"
+        },
+        groups_list: %{
+          method: "get",
+          path: people_path(conn, :index) <> "?type=group&search=#{placeholder_search}"
+        },
+        service_accounts_list: %{
+          method: "get",
+          path: people_path(conn, :index) <> "?type=service_account&search=#{placeholder_search}"
         }
       }
     }

@@ -152,6 +152,7 @@ defmodule FrontWeb.Router do
 
     scope "/people" do
       get("/", PeopleController, :organization)
+      get("/list", PeopleController, :index)
       post("/", PeopleController, :create)
       post("/refresh", PeopleController, :refresh)
       post("/assign_role", PeopleController, :assign_role)

@@ -8,7 +8,10 @@ interface EnvironmentCardProps {
   onClick?: () => void;
 }
 
-export const EnvironmentCard = ({ environment, counts, onClick }: EnvironmentCardProps) => {
+export const EnvironmentCard = ({
+  environment,
+  counts,
+}: EnvironmentCardProps) => {
   const getStatusColor = (state: EnvironmentType[`state`]) => {
     switch (state) {
       case `ready`:
@@ -27,16 +30,21 @@ export const EnvironmentCard = ({ environment, counts, onClick }: EnvironmentCar
   const getInstanceBar = () => {
     if (!counts) return null;
 
-    const { pending, running, failed, total } = counts;
+    const { pending, running, failed } = counts;
     const maxInstances = environment.max_number_of_instances;
 
     return (
       <div className="mt2">
         <div className="flex justify-between f7 mb1">
           <span>pending</span>
-          <span className="gold">{pending}/{maxInstances}</span>
+          <span className="gold">
+            {pending}/{maxInstances}
+          </span>
         </div>
-        <div className="w-100 bg-black-10 br2 overflow-hidden" style={{ height: `4px` }}>
+        <div
+          className="w-100 bg-black-10 br2 overflow-hidden"
+          style={{ height: `4px` }}
+        >
           <div
             className="bg-gold h-100"
             style={{ width: `${(pending / maxInstances) * 100}%` }}
@@ -45,9 +53,14 @@ export const EnvironmentCard = ({ environment, counts, onClick }: EnvironmentCar
 
         <div className="flex justify-between f7 mb1 mt2">
           <span>running</span>
-          <span className="green">{running}/{maxInstances}</span>
+          <span className="green">
+            {running}/{maxInstances}
+          </span>
         </div>
-        <div className="w-100 bg-black-10 br2 overflow-hidden" style={{ height: `4px` }}>
+        <div
+          className="w-100 bg-black-10 br2 overflow-hidden"
+          style={{ height: `4px` }}
+        >
           <div
             className="bg-green h-100"
             style={{ width: `${(running / maxInstances) * 100}%` }}
@@ -58,9 +71,14 @@ export const EnvironmentCard = ({ environment, counts, onClick }: EnvironmentCar
           <>
             <div className="flex justify-between f7 mb1 mt2">
               <span>failed</span>
-              <span className="red">{failed}/{maxInstances}</span>
+              <span className="red">
+                {failed}/{maxInstances}
+              </span>
             </div>
-            <div className="w-100 bg-black-10 br2 overflow-hidden" style={{ height: `4px` }}>
+            <div
+              className="w-100 bg-black-10 br2 overflow-hidden"
+              style={{ height: `4px` }}
+            >
               <div
                 className="bg-red h-100"
                 style={{ width: `${(failed / maxInstances) * 100}%` }}
@@ -85,11 +103,7 @@ export const EnvironmentCard = ({ environment, counts, onClick }: EnvironmentCar
           <Tooltip
             content={`There is one failed provisioning pipeline`}
             placement="top"
-            anchor={
-              <MaterializeIcon
-                name="info"
-                className="f5 red pointer"
-              />}
+            anchor={<MaterializeIcon name="info" className="f5 red pointer"/>}
           />
         )}
       </div>
