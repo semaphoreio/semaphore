@@ -23,6 +23,9 @@ ifdef CI
 	sem-service start postgres 9.6 --db=$(POSTGRES_DB_NAME) --user=$(POSTGRES_DB_USER) --password=$(POSTGRES_DB_PASSWORD)
 endif
 
+console.ex:
+	docker compose run --service-ports $(CONTAINER_ENV_VARS) --rm app sh -c "mix ecto.create && mix ecto.migrate && iex -S mix"
+
 migration.gen:
 	@if [ -z "$(NAME)" ]; then \
 		echo "Usage: make migration.gen NAME={migration_name}"; \
