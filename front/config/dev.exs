@@ -19,8 +19,7 @@ config :front, FrontWeb.Endpoint,
       ~r{priv/static/assets/.*(js|css)$},
       ~r{priv/static/assets/.*(png|jpeg|jpg|gif|svg)$},
       ~r{lib/front_web/views/.*(ex)$},
-      ~r{lib/front_web/templates/.*(eex)$},
-      ~r{assets/js/.*(ts|tsx|js)$}
+      ~r{lib/front_web/templates/.*(eex)$}
     ],
     web_console_logger: true
   ]
