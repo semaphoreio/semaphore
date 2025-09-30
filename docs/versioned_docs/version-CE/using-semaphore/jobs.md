@@ -4,12 +4,6 @@ description: Jobs and blocks are the basic unit of work
 
 # Jobs
 
-
-
-
-
-
-
 Jobs get stuff done. This page explains to create and configure jobs.
 
 ## Job lifecycle {#job-lifecycle}
@@ -1024,6 +1018,8 @@ It's not possible to use job parallelism at the same time as [job matrices](#mat
 :::
 
 ## Job matrix {#matrix}
+
+<VideoTutorial title="How to use a Job Matrix" src="https://www.youtube.com/embed/jRpj2Pu5eak" />
 
 A job matrix is a more advanced form of [job parallelism](#job-parallelism) where you can define multiple variables with different values and run all the possible permutations.
 
