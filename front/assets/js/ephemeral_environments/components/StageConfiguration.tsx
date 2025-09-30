@@ -4,6 +4,7 @@ import * as types from "../types";
 import { ParametersList } from "./ParametersList";
 import { RBACSubjectSelector } from "./RBACSubjectSelector";
 import { useProjects } from "../contexts/ProjectsContext";
+import pluralize from "js/toolbox/pluralize";
 
 interface StageConfigurationProps {
   stage: types.StageConfig;
@@ -44,7 +45,7 @@ export const StageConfiguration = (props: StageConfigurationProps) => {
               pipeline={stage.pipeline}
               onPipelineUpdate={onPipelineUpdate}
             />
-            {!expanded && <StageOverview stage={stage}/>}
+            <StageOverview stage={stage}/>
 
             <button
               type="button"
@@ -281,17 +282,19 @@ const StageOverview = (props: StageOverviewProps) => {
   const rbacCount = stage.rbacAccess?.length || 0;
 
   return (
-    <div className="flex flex-column gap-1 gray">
+    <div className="flex gap-1 gray">
       {paramCount > 0 && (
-        <span className="flex items-center">
-          <MaterializeIcon name="settings" className="mr1"/>
-          {paramCount} parameters
+        <span className="flex items-center gap-1">
+          <MaterializeIcon name="settings"/>
+          {pluralize(paramCount, `parameter`, `parameters`)}
         </span>
       )}
+
+      {paramCount > 0 && rbacCount > 0 && <span>&middot;</span>}
       {rbacCount > 0 && (
-        <span className="flex items-center">
-          <MaterializeIcon name="security" className="mr1"/>
-          {rbacCount} access rules
+        <span className="flex items-center gap-1">
+          <MaterializeIcon name="security"/>
+          {pluralize(rbacCount, `access rule`, `access rules`)}
         </span>
       )}
       {paramCount === 0 && rbacCount === 0 && (
