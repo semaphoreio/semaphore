@@ -90,11 +90,11 @@ const MarkdownBody = (props: { markdown: string, }) => {
   // 1. It uses DOMPurify internally for sanitizing diagram content
   // 2. With securityLevel: 'sandbox' configured above, it renders each diagram in a sandboxed iframe
   // First, configure DOMPurify hooks
-  DOMPurify.addHook('afterSanitizeAttributes', function(node) {
+  DOMPurify.addHook(`afterSanitizeAttributes`, function(node) {
     // Force all links to open in new tab with security attributes
-    if ('tagName' in node && node.tagName === 'A') {
-      node.setAttribute('target', '_blank');
-      node.setAttribute('rel', 'noopener noreferrer nofollow');
+    if (`tagName` in node && node.tagName === `A`) {
+      node.setAttribute(`target`, `_blank`);
+      node.setAttribute(`rel`, `noopener noreferrer nofollow`);
     }
   });
 
@@ -121,7 +121,7 @@ const MarkdownBody = (props: { markdown: string, }) => {
       `title`,
       `open`,
       `class`,
-      `href`,  // DOMPurify by default blocks dangerous protocols (javascript:, data:, vbscript:) and only allows safe ones (http:, https:, mailto:, etc.)
+      `href`, // DOMPurify by default blocks dangerous protocols (javascript:, data:, vbscript:) and only allows safe ones (http:, https:, mailto:, etc.)
       `target`,
       `rel`
     ],
@@ -134,7 +134,7 @@ const MarkdownBody = (props: { markdown: string, }) => {
   });
 
   // Clean up the hook after sanitization to avoid memory leaks
-  DOMPurify.removeHook('afterSanitizeAttributes');
+  DOMPurify.removeHook(`afterSanitizeAttributes`);
 
   return (
     <div
