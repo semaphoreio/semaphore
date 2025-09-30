@@ -50,31 +50,63 @@ export interface EnvironmentDetails extends EnvironmentType {
   failed_count: number;
 }
 
+export type RBACSubjectType = `user` | `group` | `service_account`;
+
+export interface RBACSubject {
+  type: RBACSubjectType;
+  id: string;
+  name?: string;
+}
+
+export interface StageConfig {
+  id: string;
+  name: string;
+  description?: string;
+  pipeline?: PipelineConfig;
+  parameters?: EnvironmentParameter[];
+  rbacAccess?: RBACSubject[];
+}
+
+export interface TTLConfig {
+  default_ttl_hours: number | null; // null means never expire
+  allow_extension: boolean;
+}
+
 export interface CreateEnvironmentData {
   name: string;
   description: string;
   max_instances: number;
-  provisioning_pipeline?: PipelineConfig;
-  deprovisioning_pipeline?: PipelineConfig;
-  deployment_pipeline?: PipelineConfig;
+  provisioning_stage?: StageConfig;
+  deployment_stage?: StageConfig;
+  deprovisioning_stage?: StageConfig;
+  environment_context?: EnvironmentContext[];
   project_access?: ProjectAccess[];
-  ephemeral_secrets?: EphemeralSecret[];
+  ttl_config?: TTLConfig;
 }
 
 export interface PipelineConfig {
-  project_id: string;
+  projectId: string;
   branch: string;
-  pipeline_yaml_name: string;
+  pipelineYamlFile: string;
 }
 
 export interface ProjectAccess {
-  project_id: string;
-  permission: `provision` | `deploy` | `admin`;
+  projectId: string;
 }
 
-export interface EphemeralSecret {
+export interface GroupAccess {
+  group_id: string;
+}
+
+export interface EnvironmentContext {
   name: string;
   description: string;
+}
+
+export interface EnvironmentParameter {
+  name: string;
+  description?: string;
+  required?: boolean;
 }
 
 export interface ListResponse {
@@ -86,4 +118,26 @@ export interface InstanceCounts {
   running: number;
   failed: number;
   total: number;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export interface ProjectSelectOption {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+}
+
+export interface Member {
+  id: string;
+  name: string;
 }
