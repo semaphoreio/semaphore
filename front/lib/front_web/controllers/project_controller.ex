@@ -47,6 +47,28 @@ defmodule FrontWeb.ProjectController do
 
   plug(:maybe_redirect_to_onboarding when action in [:show])
 
+  def index(conn, _params = %{"format" => "json"}) do
+    Watchman.benchmark("project.list_json.duration", fn ->
+      user_id = conn.assigns.user_id
+      org_id = conn.assigns.organization_id
+
+      {projects, _page_count} = Models.Project.list(org_id, user_id, 1)
+
+      projects_json =
+        projects
+        |> Enum.map(fn project ->
+          %{
+            id: project.id,
+            name: project.name,
+            description: project.description
+          }
+        end)
+
+      conn
+      |> json(%{projects: projects_json})
+    end)
+  end
+
   def index(conn, _params) do
     Watchman.benchmark("project.list.duration", fn ->
       user_id = conn.assigns.user_id
