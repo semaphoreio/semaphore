@@ -57,20 +57,20 @@ export const StageConfiguration = (props: StageConfigurationProps) => {
               />
               {expanded ? `Hide` : `Show`} Configuration
             </button>
+
+            {expanded && (
+              <StageTabs
+                className="mt2"
+                stage={stage}
+                onParameterAdded={onParameterAdded}
+                onParameterRemoved={onParameterRemoved}
+                onParameterUpdated={onParameterUpdated}
+                onSubjectAdded={onSubjectAdded}
+                onSubjectRemoved={onSubjectRemoved}
+              />
+            )}
           </div>
         </div>
-
-        {expanded && (
-          <StageTabs
-            className="mt3"
-            stage={stage}
-            onParameterAdded={onParameterAdded}
-            onParameterRemoved={onParameterRemoved}
-            onParameterUpdated={onParameterUpdated}
-            onSubjectAdded={onSubjectAdded}
-            onSubjectRemoved={onSubjectRemoved}
-          />
-        )}
       </div>
     </div>
   );
