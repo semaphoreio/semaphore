@@ -189,9 +189,11 @@ defmodule FrontWeb.Router do
       get("/list", EphemeralEnvironmentController, :list)
       post("/", EphemeralEnvironmentController, :create)
       get("/:id", EphemeralEnvironmentController, :show)
-      put("/:id", EphemeralEnvironmentController, :update)
       delete("/:id", EphemeralEnvironmentController, :delete)
       post("/:id/cordon", EphemeralEnvironmentController, :cordon)
+
+      # Update endpoint
+      put("/:id", EphemeralEnvironmentController, :update)
 
       # React router wildcard - must be last
       get("/*path", EphemeralEnvironmentController, :index)

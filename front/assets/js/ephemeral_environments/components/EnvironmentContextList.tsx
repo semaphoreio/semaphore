@@ -28,24 +28,28 @@ export const EnvironmentContextList = ({
   return (
     <div>
       {contexts.length === 0 && !isAddingNew && (
-        <p className="ma0 gray lh-copy tc mb3">
-          No context variables defined yet.
-        </p>
+        <div className="mb3 ba b--black-10 br2 pa2 bg-near-white mb2 flex flex-column gap-1">
+          <p className="ma0 gray lh-copy tc">
+            No context variables defined yet.
+          </p>
+        </div>
       )}
 
-      <div className="flex flex-column gap-2 mb3">
-        {contexts.map((context, index) => (
-          <CollapsibleContext
-            key={index}
-            context={context}
-            onContextUpdated={(updatedContext) =>
-              onContextUpdated(context.name, updatedContext)
-            }
-            onContextRemoved={() => onContextRemoved(context)}
-            disabled={disabled}
-          />
-        ))}
-      </div>
+      {contexts.length > 0 && (
+        <div className="flex flex-column gap-2 mb3">
+          {contexts.map((context, index) => (
+            <CollapsibleContext
+              key={index}
+              context={context}
+              onContextUpdated={(updatedContext) =>
+                onContextUpdated(context.name, updatedContext)
+              }
+              onContextRemoved={() => onContextRemoved(context)}
+              disabled={disabled}
+            />
+          ))}
+        </div>
+      )}
 
       {!disabled && !isAddingNew && (
         <button
@@ -160,7 +164,10 @@ const CollapsibleContext = (props: CollapsibleContextProps) => {
           <span className="fw6">{context.name}</span>
         </div>
         {!disabled && !isEditing && (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               className="btn btn-link pa1 flex items-center"

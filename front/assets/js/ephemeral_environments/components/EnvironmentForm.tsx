@@ -8,6 +8,7 @@ import {
   useEnvironment,
 } from "../contexts/EnvironmentContext";
 import { useProjects } from "../contexts/ProjectsContext";
+import { EnvironmentSectionIcon } from "../utils/elements";
 
 interface EnvironmentFormProps {
   environmentId?: string;
@@ -52,17 +53,12 @@ export const EnvironmentForm = (props: EnvironmentFormProps) => {
 };
 
 const BasicConfiguration = () => {
-  const {
-    state,
-    updateName,
-    updateDescription,
-    updateMaxInstances,
-    errors,
-  } = useEnvironment();
+  const { state, updateName, updateDescription, updateMaxInstances, errors } =
+    useEnvironment();
 
   return (
     <div className="pa4">
-      <h2 className="f3 mb4">Basic Configuration</h2>
+      <h2 className="f3 mb3 flex items-center gap-2">Basic Configuration</h2>
 
       <div className="mb2">
         <label className="db fw6 lh-copy mb2">
@@ -123,16 +119,14 @@ const BasicConfiguration = () => {
 };
 
 const EnvironmentContextSection = () => {
-  const {
-    state,
-    addContext,
-    updateContext,
-    removeContext,
-  } = useEnvironment();
+  const { state, addContext, updateContext, removeContext } = useEnvironment();
 
   return (
     <div className="bt b--black-10 pa4">
-      <h2 className="f3 mb3">Environment Context</h2>
+      <h2 className="f3 mb3 flex items-center gap-2">
+        <EnvironmentSectionIcon sectionId="context"/>
+        Environment Context
+      </h2>
 
       <Box type="info" className="mb3">
         <p className="ma0">
@@ -152,16 +146,21 @@ const EnvironmentContextSection = () => {
 };
 
 const ProjectAccessSection = () => {
-  const {
-    state,
-    addProjectAccess,
-    removeProjectAccess,
-  } = useEnvironment();
+  const { state, addProjectAccess, removeProjectAccess } = useEnvironment();
   const { projects, loading } = useProjects();
 
   return (
     <div className="bt b--black-10 pa4">
-      <h2 className="f3 mb3">Access Control</h2>
+      <h2 className="f3 mb3 flex items-center gap-2">
+        <EnvironmentSectionIcon sectionId="project_access"/>
+        Access Control
+      </h2>
+      <Box type="info" className="mb3">
+        <p className="ma0">
+          Control which projects have access to create instances of this
+          environment.
+        </p>
+      </Box>
 
       <ProjectAccessConfiguration
         projects={projects}
@@ -187,8 +186,11 @@ const StagesConfiguration = () => {
 
   return (
     <div className="bt b--black-10 pa4">
-      <h2 className="f3 mb3">Pipeline Configuration</h2>
-      <Box type="info" className="mb4">
+      <h2 className="f3 mb3 flex items-center gap-2">
+        <EnvironmentSectionIcon sectionId="pipeline"/>
+        Pipeline Configuration
+      </h2>
+      <Box type="info" className="mb3">
         <p className="ma0">
           Configure pipelines, parameters, and access control for each stage of
           the environment lifecycle.
@@ -218,12 +220,18 @@ const TTLConfiguration = () => {
 
   return (
     <div className="bt b--black-10 pa4">
-      <h2 className="f3 mb3">Lifecycle Management</h2>
+      <h2 className="f3 mb3 flex items-center gap-2">
+        <EnvironmentSectionIcon sectionId="ttl"/>
+        Lifecycle Management
+      </h2>
+      <Box type="info" className="mb3">
+        <p className="ma0">
+          Configure automatic cleanup of environment instances based on their
+          age.
+        </p>
+      </Box>
 
-      <TTLSelector
-        ttlConfig={state.ttlConfig}
-        onTTLChange={updateTTLConfig}
-      />
+      <TTLSelector ttlConfig={state.ttlConfig} onTTLChange={updateTTLConfig}/>
     </div>
   );
 };

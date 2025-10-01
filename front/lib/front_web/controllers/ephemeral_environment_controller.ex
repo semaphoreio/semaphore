@@ -5,7 +5,7 @@ defmodule FrontWeb.EphemeralEnvironmentController do
   alias Front.Models
   alias FrontWeb.Plugs.{FetchPermissions, PageAccess, FeatureEnabled}
 
-  @manage ~w(create update delete cordon)a
+  @manage ~w(create delete cordon update)a
 
   plug(FetchPermissions, scope: "org")
   plug(PageAccess, permissions: "organization.ephemeral_environments.view")
@@ -66,23 +66,10 @@ defmodule FrontWeb.EphemeralEnvironmentController do
   def create(conn, params) do
     org_id = conn.assigns.organization_id
     user_id = conn.assigns.user_id
-    name = params["name"] || ""
-    description = params["description"] || ""
-    max_instances = params["max_instances"] || 1
 
-    Models.EphemeralEnvironment.create(org_id, name, description, user_id, max_instances)
+    Models.EphemeralEnvironment.create(org_id, user_id, params)
     |> case do
       {:ok, environment_type} ->
-        # conn
-        # |> Audit.new(:EphemeralEnvironment, :Added)
-        # |> Audit.add(resource_id: environment_type.id)
-        # |> Audit.add(resource_name: environment_type.name)
-        # |> Audit.add(description: "Ephemeral environment type created")
-        # |> Audit.metadata(organization_id: org_id)
-        # |> Audit.metadata(user_id: user_id)
-        # |> Audit.metadata(project_id: params["project_id"] || "")
-        # |> Audit.log()
-
         conn
         |> put_status(:created)
         |> render("show.json", environment_type: environment_type)
@@ -92,49 +79,6 @@ defmodule FrontWeb.EphemeralEnvironmentController do
         |> put_status(422)
         |> json(%{error: message})
     end
-  end
-
-  # API request with format=json parameter
-  def update(conn, params = %{"id" => environment_id, "format" => "json"}) do
-    org_id = conn.assigns.organization_id
-    user_id = conn.assigns.user_id
-    name = params["name"] || ""
-    description = params["description"] || ""
-    max_instances = params["max_instances"] || 1
-    state = parse_state(params["state"])
-
-    Models.EphemeralEnvironment.update(
-      environment_id,
-      org_id,
-      name,
-      description,
-      user_id,
-      max_instances,
-      state
-    )
-    |> case do
-      {:ok, environment_type} ->
-        # conn
-        # |> Audit.new(:EphemeralEnvironment, :Modified)
-        # |> Audit.add(resource_id: environment_type.id)
-        # |> Audit.add(resource_name: environment_type.name)
-        # |> Audit.add(description: "Ephemeral environment type updated")
-        # |> Audit.metadata(organization_id: org_id)
-        # |> Audit.metadata(user_id: user_id)
-        # |> Audit.log()
-
-        render(conn, "show.json", environment_type: environment_type)
-
-      {:error, message} ->
-        conn
-        |> put_status(422)
-        |> json(%{error: message})
-    end
-  end
-
-  # HTML request - render React app for any other :id path
-  def update(conn, %{"id" => _environment_id}) do
-    render(conn, "index.html")
   end
 
   def delete(conn, %{"id" => environment_id}) do
@@ -195,10 +139,19 @@ defmodule FrontWeb.EphemeralEnvironmentController do
     end
   end
 
-  defp parse_state(nil), do: Models.EphemeralEnvironment.state_to_proto(:draft)
-  defp parse_state("draft"), do: Models.EphemeralEnvironment.state_to_proto(:draft)
-  defp parse_state("ready"), do: Models.EphemeralEnvironment.state_to_proto(:ready)
-  defp parse_state("cordoned"), do: Models.EphemeralEnvironment.state_to_proto(:cordoned)
-  defp parse_state("deleted"), do: Models.EphemeralEnvironment.state_to_proto(:deleted)
-  defp parse_state(_), do: Models.EphemeralEnvironment.state_to_proto(:draft)
+  def update(conn, %{"id" => environment_id} = params) do
+    org_id = conn.assigns.organization_id
+
+    Models.EphemeralEnvironment.update(environment_id, org_id, params)
+    |> case do
+      {:ok, environment_type} ->
+        conn
+        |> render("show.json", environment_type: environment_type)
+
+      {:error, message} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: message})
+    end
+  end
 end

@@ -83,30 +83,6 @@ defmodule InternalApi.EphemeralEnvironments.CreateResponse do
   field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
 end
 
-defmodule InternalApi.EphemeralEnvironments.UpdateRequest do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          environment_type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType.t()
-        }
-  defstruct [:environment_type]
-
-  field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
-end
-
-defmodule InternalApi.EphemeralEnvironments.UpdateResponse do
-  @moduledoc false
-  use Protobuf, syntax: :proto3
-
-  @type t :: %__MODULE__{
-          environment_type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType.t()
-        }
-  defstruct [:environment_type]
-
-  field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
-end
-
 defmodule InternalApi.EphemeralEnvironments.DeleteRequest do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -154,6 +130,30 @@ defmodule InternalApi.EphemeralEnvironments.CordonResponse do
   field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
 end
 
+defmodule InternalApi.EphemeralEnvironments.UpdateRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          environment_type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType.t()
+        }
+  defstruct [:environment_type]
+
+  field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
+end
+
+defmodule InternalApi.EphemeralEnvironments.UpdateResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          environment_type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType.t()
+        }
+  defstruct [:environment_type]
+
+  field(:environment_type, 1, type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
+end
+
 defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -168,7 +168,11 @@ defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
           created_at: Google.Protobuf.Timestamp.t(),
           updated_at: Google.Protobuf.Timestamp.t(),
           state: integer,
-          max_number_of_instances: integer
+          max_number_of_instances: integer,
+          stages: [InternalApi.EphemeralEnvironments.StageConfig.t()],
+          environment_context: [InternalApi.EphemeralEnvironments.EnvironmentContext.t()],
+          accessible_project_ids: [String.t()],
+          ttl_config: InternalApi.EphemeralEnvironments.TTLConfig.t()
         }
   defstruct [
     :id,
@@ -180,7 +184,11 @@ defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
     :created_at,
     :updated_at,
     :state,
-    :max_number_of_instances
+    :max_number_of_instances,
+    :stages,
+    :environment_context,
+    :accessible_project_ids,
+    :ttl_config
   ]
 
   field(:id, 1, type: :string)
@@ -193,6 +201,107 @@ defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
   field(:updated_at, 8, type: Google.Protobuf.Timestamp)
   field(:state, 9, type: InternalApi.EphemeralEnvironments.TypeState, enum: true)
   field(:max_number_of_instances, 10, type: :int32)
+  field(:stages, 11, repeated: true, type: InternalApi.EphemeralEnvironments.StageConfig)
+
+  field(:environment_context, 12,
+    repeated: true,
+    type: InternalApi.EphemeralEnvironments.EnvironmentContext
+  )
+
+  field(:accessible_project_ids, 13, repeated: true, type: :string)
+  field(:ttl_config, 14, type: InternalApi.EphemeralEnvironments.TTLConfig)
+end
+
+defmodule InternalApi.EphemeralEnvironments.StageConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          type: integer,
+          pipeline: InternalApi.EphemeralEnvironments.PipelineConfig.t(),
+          parameters: [InternalApi.EphemeralEnvironments.StageParameter.t()],
+          rbac_rules: [InternalApi.EphemeralEnvironments.RBACRule.t()]
+        }
+  defstruct [:type, :pipeline, :parameters, :rbac_rules]
+
+  field(:type, 1, type: InternalApi.EphemeralEnvironments.StageType, enum: true)
+  field(:pipeline, 2, type: InternalApi.EphemeralEnvironments.PipelineConfig)
+  field(:parameters, 3, repeated: true, type: InternalApi.EphemeralEnvironments.StageParameter)
+  field(:rbac_rules, 4, repeated: true, type: InternalApi.EphemeralEnvironments.RBACRule)
+end
+
+defmodule InternalApi.EphemeralEnvironments.StageParameter do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t(),
+          required: boolean
+        }
+  defstruct [:name, :description, :required]
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+  field(:required, 3, type: :bool)
+end
+
+defmodule InternalApi.EphemeralEnvironments.RBACRule do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          subject_type: integer,
+          subject_id: String.t()
+        }
+  defstruct [:subject_type, :subject_id]
+
+  field(:subject_type, 1, type: InternalApi.RBAC.SubjectType, enum: true)
+  field(:subject_id, 2, type: :string)
+end
+
+defmodule InternalApi.EphemeralEnvironments.EnvironmentContext do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          name: String.t(),
+          description: String.t()
+        }
+  defstruct [:name, :description]
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+end
+
+defmodule InternalApi.EphemeralEnvironments.PipelineConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          project_id: String.t(),
+          branch: String.t(),
+          pipeline_yaml_file: String.t()
+        }
+  defstruct [:project_id, :branch, :pipeline_yaml_file]
+
+  field(:project_id, 1, type: :string)
+  field(:branch, 2, type: :string)
+  field(:pipeline_yaml_file, 3, type: :string)
+end
+
+defmodule InternalApi.EphemeralEnvironments.TTLConfig do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          duration_hours: integer,
+          allow_extension: boolean
+        }
+  defstruct [:duration_hours, :allow_extension]
+
+  field(:duration_hours, 1, type: :int32)
+  field(:allow_extension, 2, type: :bool)
 end
 
 defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentInstance do
@@ -327,6 +436,16 @@ defmodule InternalApi.EphemeralEnvironments.InstanceStateChange do
   field(:execution_workflow_id, 10, type: :string)
   field(:started_at, 11, type: Google.Protobuf.Timestamp)
   field(:finished_at, 12, type: Google.Protobuf.Timestamp)
+end
+
+defmodule InternalApi.EphemeralEnvironments.StageType do
+  @moduledoc false
+  use Protobuf, enum: true, syntax: :proto3
+
+  field(:STAGE_TYPE_UNSPECIFIED, 0)
+  field(:STAGE_TYPE_PROVISION, 1)
+  field(:STAGE_TYPE_DEPLOY, 2)
+  field(:STAGE_TYPE_DEPROVISION, 3)
 end
 
 defmodule InternalApi.EphemeralEnvironments.InstanceState do

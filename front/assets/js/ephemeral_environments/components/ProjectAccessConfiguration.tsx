@@ -86,36 +86,36 @@ export const ProjectAccessConfiguration = (
 
   const addProjects = () => {
     selectedProjectIds.forEach((projectId) => {
-      onProjectAdded({ projectId });
+      const project = projects.find((p) => p.id === projectId);
+      onProjectAdded({
+        projectId,
+        projectName: project?.name || projectId,
+        projectDescription: project?.description,
+      });
     });
     setSelectedProjectIds([]);
   };
 
   return (
     <div>
-      <div className="mb3 ba b--black-10 br2 pa2 bg-near-white flex flex-column gap-2">
-        {projectAccess.length === 0 && (
+      {projectAccess.length === 0 && (
+        <div className="mb3 ba b--black-10 br2 pa2 bg-near-white flex flex-column gap-2">
           <p className="ma0 gray lh-copy tc">No projects have access yet.</p>
-        )}
-        {projectAccess.length > 0 && (
-          <div>
-            <div className="flex items-center mb1">
-              <MaterializeIcon name="folder" className="mr1 gray"/>
-              <span className="fw6 gray">Projects:</span>
-            </div>
-            <div className="flex flex-wrap gap-1 ml3">
-              {projectAccess.map((access) => (
-                <Badge
-                  key={access.projectId}
-                  label={getProjectName(access.projectId)}
-                  onDeselect={() => onProjectRemoved(access)}
-                  icon="folder"
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {projectAccess.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb3">
+          {projectAccess.map((access) => (
+            <Badge
+              key={access.projectId}
+              label={getProjectName(access.projectId)}
+              onDeselect={() => onProjectRemoved(access)}
+              icon="folder"
+            />
+          ))}
+        </div>
+      )}
 
       <div className="ba b--black-10 br2 pa3 bg-white">
         <div className="flex items-center gap-2">

@@ -8,7 +8,11 @@ export interface EnvironmentType {
   created_at: string;
   updated_at: string;
   state: `draft` | `ready` | `cordoned` | `deleted`;
-  max_number_of_instances: number;
+  maxInstances: number;
+  stages?: StageConfig[];
+  environmentContext?: EnvironmentContext[];
+  projectAccess?: ProjectAccess[];
+  ttlConfig?: TTLConfig | null;
 }
 
 export interface EnvironmentInstance {
@@ -51,6 +55,14 @@ export interface EnvironmentDetails extends EnvironmentType {
 }
 
 export type RBACSubjectType = `user` | `group` | `service_account`;
+export type StageId = `` | `provisioning` | `deployment` | `deprovisioning`;
+export type EnvironmentSectionId =
+  | `basics`
+  | `instances`
+  | `project_access`
+  | `context`
+  | `ttl`
+  | `pipeline`;
 
 export interface RBACSubject {
   type: RBACSubjectType;
@@ -59,7 +71,7 @@ export interface RBACSubject {
 }
 
 export interface StageConfig {
-  id: string;
+  id: StageId;
   name: string;
   description?: string;
   pipeline?: PipelineConfig;
@@ -68,34 +80,22 @@ export interface StageConfig {
 }
 
 export interface TTLConfig {
-  default_ttl_hours: number | null; // null means never expire
+  default_ttl_hours: number; // null means never expire
   allow_extension: boolean;
-}
-
-export interface CreateEnvironmentData {
-  name: string;
-  description: string;
-  max_instances: number;
-  provisioning_stage?: StageConfig;
-  deployment_stage?: StageConfig;
-  deprovisioning_stage?: StageConfig;
-  environment_context?: EnvironmentContext[];
-  project_access?: ProjectAccess[];
-  ttl_config?: TTLConfig;
 }
 
 export interface PipelineConfig {
   projectId: string;
+  projectName: string;
+  projectDescription?: string | null;
   branch: string;
   pipelineYamlFile: string;
 }
 
 export interface ProjectAccess {
   projectId: string;
-}
-
-export interface GroupAccess {
-  group_id: string;
+  projectName: string;
+  projectDescription?: string;
 }
 
 export interface EnvironmentContext {
@@ -111,13 +111,6 @@ export interface EnvironmentParameter {
 
 export interface ListResponse {
   environment_types: EnvironmentType[];
-}
-
-export interface InstanceCounts {
-  pending: number;
-  running: number;
-  failed: number;
-  total: number;
 }
 
 export interface Project {
