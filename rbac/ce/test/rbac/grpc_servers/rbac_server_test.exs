@@ -1141,6 +1141,137 @@ defmodule Rbac.GrpcServers.RbacServerTest do
     end
   end
 
+  describe "list_subjects/2" do
+    test "invalid org_id returns error", %{channel: channel} do
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: "invalid-uuid",
+        subject_ids: []
+      }
+
+      {:error, grpc_error} = Stub.list_subjects(channel, request)
+      assert grpc_error.message =~ "Invalid uuid"
+    end
+
+    test "returns subjects that are part of the organization", %{channel: channel} do
+      org_id = Ecto.UUID.generate()
+      user1_id = Ecto.UUID.generate()
+      user2_id = Ecto.UUID.generate()
+      user3_id = Ecto.UUID.generate()
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: user1_id,
+        role_id: Rbac.Roles.Admin.role().id,
+        org_id: org_id
+      })
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: user2_id,
+        role_id: Rbac.Roles.Member.role().id,
+        org_id: org_id
+      })
+
+      GrpcMock.stub(UserMock, :describe_many, fn _request, _ ->
+        %InternalApi.User.DescribeManyResponse{
+          users: [
+            %InternalApi.User.User{id: user1_id, name: "User One"},
+            %InternalApi.User.User{id: user2_id, name: "User Two"}
+          ]
+        }
+      end)
+
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: org_id,
+        subject_ids: [user1_id, user2_id, user3_id]
+      }
+
+      {:ok, response} = Stub.list_subjects(channel, request)
+
+      assert length(response.subjects) == 2
+      subject_ids = Enum.map(response.subjects, & &1.subject_id)
+      assert user1_id in subject_ids
+      assert user2_id in subject_ids
+      refute user3_id in subject_ids
+    end
+
+    test "returns empty list when no subjects match", %{channel: channel} do
+      org_id = Ecto.UUID.generate()
+      user_id = Ecto.UUID.generate()
+
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: org_id,
+        subject_ids: [user_id]
+      }
+
+      {:ok, response} = Stub.list_subjects(channel, request)
+
+      assert response.subjects == []
+    end
+
+    test "returns subjects with correct type and display name", %{channel: channel} do
+      org_id = Ecto.UUID.generate()
+      user_id = Ecto.UUID.generate()
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: user_id,
+        role_id: Rbac.Roles.Admin.role().id,
+        org_id: org_id
+      })
+
+      GrpcMock.stub(UserMock, :describe_many, fn _request, _ ->
+        %InternalApi.User.DescribeManyResponse{
+          users: [%InternalApi.User.User{id: user_id, name: "Test User"}]
+        }
+      end)
+
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: org_id,
+        subject_ids: [user_id]
+      }
+
+      {:ok, response} = Stub.list_subjects(channel, request)
+
+      assert length(response.subjects) == 1
+      subject = hd(response.subjects)
+      assert subject.subject_id == user_id
+      assert subject.display_name == "Test User"
+      assert subject.subject_type == :USER
+    end
+
+    test "returns empty list when subject_ids is empty", %{channel: channel} do
+      org_id = Ecto.UUID.generate()
+
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: org_id,
+        subject_ids: []
+      }
+
+      {:ok, response} = Stub.list_subjects(channel, request)
+
+      assert response.subjects == []
+    end
+
+    test "filters subjects by organization correctly", %{channel: channel} do
+      org_id = Ecto.UUID.generate()
+      other_org_id = Ecto.UUID.generate()
+      user_id = Ecto.UUID.generate()
+
+      Rbac.Support.RoleAssignmentsFixtures.role_assignment_fixture(%{
+        user_id: user_id,
+        role_id: Rbac.Roles.Admin.role().id,
+        org_id: other_org_id
+      })
+
+      request = %InternalApi.RBAC.ListSubjectsRequest{
+        org_id: org_id,
+        subject_ids: [user_id]
+      }
+
+      {:ok, response} = Stub.list_subjects(channel, request)
+
+      assert response.subjects == []
+    end
+  end
+
   defp setup_assign_and_retract(channel) do
     alias InternalApi.{User, ResponseStatus}
 
