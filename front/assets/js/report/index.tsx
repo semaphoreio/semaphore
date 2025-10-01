@@ -9,7 +9,7 @@ import DOMPurify from 'dompurify';
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
 
-Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `sandbox` });
+Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `strict` });
 const md = MarkdownIt({
   html: true,
   linkify: false,
