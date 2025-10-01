@@ -3,7 +3,7 @@ defmodule Google.Rpc.Status do
 
   use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
 
-  field(:code, 1, type: :int32)
-  field(:message, 2, type: :string)
-  field(:details, 3, repeated: true, type: Google.Protobuf.Any)
+  field :code, 1, type: :int32
+  field :message, 2, type: :string
+  field :details, 3, repeated: true, type: Google.Protobuf.Any
 end

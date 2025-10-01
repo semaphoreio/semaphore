@@ -264,6 +264,18 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
+  def list_subjects(%RBAC.ListSubjectsRequest{} = req, _stream) do
+    Watchman.benchmark("list_subjects.duration", fn ->
+      validate_uuid!(req.org_id)
+
+      subjects = Rbac.Repo.Subject.find_by_ids_and_org(req.subject_ids, req.org_id)
+
+      %RBAC.ListSubjectsResponse{
+        subjects: Enum.map(subjects, &construct_grpc_subject/1)
+      }
+    end)
+  end
+
   ###
   ### Helper functions
   ###
@@ -440,6 +452,16 @@ defmodule Rbac.GrpcServers.RbacServer do
       name: permission.name,
       description: permission.description,
       scope: scope_name_to_grpc_enum(permission.scope.scope_name)
+    }
+  end
+
+  defp construct_grpc_subject(subject) do
+    subject_type = subject.type |> String.upcase() |> String.to_existing_atom()
+
+    %RBAC.Subject{
+      subject_type: subject_type,
+      subject_id: subject.id,
+      display_name: subject.name
     }
   end
 
