@@ -14,7 +14,7 @@ const TTL_PRESETS = [
   { label: `1 day`, value: 24 },
   { label: `3 days`, value: 72 },
   { label: `1 week`, value: 168 },
-  { label: `Never expire`, value: null },
+  { label: `Never expire`, value: 0 },
 ];
 
 export const TTLSelector = ({

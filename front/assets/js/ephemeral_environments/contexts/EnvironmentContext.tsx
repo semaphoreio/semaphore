@@ -1,10 +1,13 @@
-import { useContext, useState, useRef, useMemo } from "preact/hooks";
+import { useContext, useState } from "preact/hooks";
 import { createContext } from "preact";
 import * as types from "../types";
+import { createEnvironmentAPI } from "../services/api";
+import { useConfig } from "../contexts/ConfigContext";
 
 interface Errors {
   [field: string]: string;
 }
+
 export interface EnvironmentState {
   name: string;
   description: string;
@@ -26,6 +29,7 @@ interface EnvironmentContextValue {
 
   isSubmitting: boolean;
   isLoading: boolean;
+  isSavingSection: Record<string, boolean>;
 
   // Basic Info
   updateName: (name: string) => void;
@@ -33,11 +37,9 @@ interface EnvironmentContextValue {
   updateMaxInstances: (max: number) => void;
 
   // Stages
-  // -> Pipeline
   updatePipelineConfig: (
     stage: types.StageConfig
   ) => (config: types.PipelineConfig) => void;
-  // -> Parameters
   addParameter: (
     stage: types.StageConfig
   ) => (param: types.EnvironmentParameter) => void;
@@ -47,8 +49,6 @@ interface EnvironmentContextValue {
   removeParameter: (
     stage: types.StageConfig
   ) => (param: types.EnvironmentParameter) => void;
-
-  // -> Access
   addRBACSubject: (
     stage: types.StageConfig
   ) => (subject: types.RBACSubject) => void;
@@ -71,14 +71,10 @@ interface EnvironmentContextValue {
   addProjectAccess: (access: types.ProjectAccess) => void;
   removeProjectAccess: (access: types.ProjectAccess) => void;
 
-  // TODO: For now
-  save: () => Promise<void>;
-  reset: () => void;
-  validate: () => boolean;
+  // Save actions
+  saveEnvironment: () => Promise<void>;
 
-  // Computed
-  isDirty: boolean;
-  canSubmit: boolean;
+  validate: () => boolean;
   hasErrors: boolean;
 }
 
@@ -121,12 +117,14 @@ interface EnvironmentProviderProps {
   initialData?: EnvironmentState | null;
   environmentId?: string | null;
 }
+
 export const EnvironmentProvider = ({
   children,
   mode = `create`,
   initialData,
   environmentId,
 }: EnvironmentProviderProps) => {
+  const config = useConfig();
   const [state, setState] = useState<EnvironmentState>(
     initialData || defaultState
   );
@@ -134,9 +132,11 @@ export const EnvironmentProvider = ({
   const [globalError, setGlobalError] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const originalState = useRef<EnvironmentState>(initialData || defaultState);
+  const [isSavingSection, setIsSavingSection] = useState<
+  Record<string, boolean>
+  >({});
 
-  const clearError = (field) => {
+  const clearError = (field: string) => {
     if (errors[field]) {
       setErrors((prev) => {
         const next = { ...prev };
@@ -146,6 +146,11 @@ export const EnvironmentProvider = ({
     }
   };
 
+  const setSectionSaving = (section: string, saving: boolean) => {
+    setIsSavingSection((prev) => ({ ...prev, [section]: saving }));
+  };
+
+  // Basic Info Updates
   const updateName = (name: string) => {
     setState((prev) => ({ ...prev, name }));
     clearError(`name`);
@@ -161,16 +166,14 @@ export const EnvironmentProvider = ({
     clearError(`maxInstances`);
   };
 
+  // Stage Updates
   const updatePipelineConfig =
     (stage: types.StageConfig) => (config: types.PipelineConfig) => {
       setState((prev) => {
         const updatedStages = prev.stages.map((s) =>
           s.id === stage.id ? { ...s, pipeline: config } : s
         );
-        return {
-          ...prev,
-          stages: updatedStages,
-        };
+        return { ...prev, stages: updatedStages };
       });
     };
 
@@ -182,10 +185,7 @@ export const EnvironmentProvider = ({
             ? { ...s, parameters: [...(s.parameters || []), param] }
             : s
         );
-        return {
-          ...prev,
-          stages: updatedStages,
-        };
+        return { ...prev, stages: updatedStages };
       });
     };
 
@@ -202,10 +202,7 @@ export const EnvironmentProvider = ({
             }
             return s;
           });
-          return {
-            ...prev,
-            stages: updatedStages,
-          };
+          return { ...prev, stages: updatedStages };
         });
       };
 
@@ -221,10 +218,7 @@ export const EnvironmentProvider = ({
           }
           return s;
         });
-        return {
-          ...prev,
-          stages: updatedStages,
-        };
+        return { ...prev, stages: updatedStages };
       });
     };
 
@@ -236,10 +230,7 @@ export const EnvironmentProvider = ({
             ? { ...s, rbacAccess: [...(s.rbacAccess || []), subject] }
             : s
         );
-        return {
-          ...prev,
-          stages: updatedStages,
-        };
+        return { ...prev, stages: updatedStages };
       });
     };
 
@@ -255,13 +246,11 @@ export const EnvironmentProvider = ({
           }
           return s;
         });
-        return {
-          ...prev,
-          stages: updatedStages,
-        };
+        return { ...prev, stages: updatedStages };
       });
     };
 
+  // Other Updates
   const updateTTLConfig = (config: types.TTLConfig) => {
     setState((prev) => ({ ...prev, ttlConfig: config }));
     clearError(`ttlConfig`);
@@ -315,6 +304,7 @@ export const EnvironmentProvider = ({
     }));
   };
 
+  // Validation
   const validate = (): boolean => {
     const newErrors: Errors = {};
     if (!state.name.trim()) {
@@ -323,45 +313,53 @@ export const EnvironmentProvider = ({
     if (state.maxInstances < 1) {
       newErrors[`maxInstances`] = `Max instances must be at least 1.`;
     }
-    // Additional validations can be added here
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const save = async () => {
+  // Unified Save Method
+  const saveEnvironment = async () => {
     setGlobalError(null);
     if (!validate()) return;
 
     setIsSubmitting(true);
+    setIsLoading(true);
+
     try {
-      // Simulate API call
-      setIsLoading(true);
-      // eslint-disable-next-line no-console
-      console.log(`Saving environment:`, environmentId, state);
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      // On success, update original state
-      originalState.current = state;
+      const api = createEnvironmentAPI(config, environmentId);
+
+      const payload = {
+        name: state.name,
+        description: state.description,
+        max_instances: state.maxInstances,
+        stages: state.stages,
+        environment_context: state.environmentContext,
+        accessible_project_ids: state.projectAccess.map((pa) => pa.projectId),
+        ttl_config: state.ttlConfig,
+      };
+
+      if (mode === `create`) {
+        const newEnvironment = await api.create(payload);
+        window.location.href = `/ephemeral_environments/${newEnvironment.id}`;
+      } else {
+        const updatedEnvironment = await api.update(payload);
+        window.location.href = `/ephemeral_environments/${updatedEnvironment.id}`;
+      }
     } catch (error) {
-      setGlobalError(`Failed to save environment. Please try again.`);
+      console.error(`Save error:`, error);
+      setGlobalError(
+        error instanceof Error
+          ? error.message
+          : `Failed to save environment. Please try again.`
+      );
+      throw error;
     } finally {
       setIsLoading(false);
       setIsSubmitting(false);
     }
   };
 
-  const reset = () => {
-    setState(originalState.current);
-    setErrors({});
-    setGlobalError(null);
-  };
-
-  const isDirty = useMemo(() => {
-    return JSON.stringify(state) !== JSON.stringify(originalState.current);
-  }, [state]);
-
   const hasErrors = Object.keys(errors).length > 0;
-  const canSubmit = isDirty && !hasErrors && !isSubmitting && !isLoading;
 
   const value: EnvironmentContextValue = {
     state,
@@ -370,6 +368,7 @@ export const EnvironmentProvider = ({
     globalError,
     isSubmitting,
     isLoading,
+    isSavingSection,
     updateName,
     updateDescription,
     updateMaxInstances,
@@ -385,11 +384,8 @@ export const EnvironmentProvider = ({
     removeContext,
     addProjectAccess,
     removeProjectAccess,
-    save,
-    reset,
+    saveEnvironment,
     validate,
-    isDirty,
-    canSubmit,
     hasErrors,
   };
 

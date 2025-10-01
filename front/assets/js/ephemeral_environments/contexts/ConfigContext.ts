@@ -24,9 +24,9 @@ export class AppConfig {
         list: Url.fromJSON<types.ListResponse>(apiUrls.list),
         create: Url.fromJSON<types.EnvironmentType>(apiUrls.create),
         show: Url.fromJSON<types.EnvironmentDetails>(apiUrls.show),
-        update: Url.fromJSON<types.EnvironmentType>(apiUrls.update),
         delete: Url.fromJSON<void>(apiUrls.delete),
         cordon: Url.fromJSON<types.EnvironmentType>(apiUrls.cordon),
+        update: Url.fromJSON<types.EnvironmentType>(apiUrls.update),
         projectsList: Url.fromJSON<ProjectsListResponse>(apiUrls.projects_list),
         usersList: Url.fromJSON<MembersListResponse>(apiUrls.users_list),
         groupsList: Url.fromJSON<MembersListResponse>(apiUrls.groups_list),
@@ -46,9 +46,9 @@ export class AppConfig {
       list: Url<types.ListResponse>;
       create: Url<types.EnvironmentType>;
       show: Url<types.EnvironmentDetails>;
-      update: Url<types.EnvironmentType>;
       delete: Url<void>;
       cordon: Url<types.EnvironmentType>;
+      update: Url<types.EnvironmentType>;
       projectsList: Url<ProjectsListResponse>;
       usersList: Url<MembersListResponse>;
       groupsList: Url<MembersListResponse>;
