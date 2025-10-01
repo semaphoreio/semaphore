@@ -15,11 +15,11 @@
     "lint": "markdownlint-cli2 markdownlint-cli2 \"docs/**/*.md\" \"versioned_docs/**/*.md\" \"#node_modules\" \"#docs/getting-started/changelog.md\" \"#versioned_docs/**/getting-started/changelog.md\""
   },
   "dependencies": {
-    "@docusaurus/core": "^3.7.0",
-    "@docusaurus/plugin-google-gtag": "^3.7.0",
-    "@docusaurus/plugin-ideal-image": "^3.7.0",
-    "@docusaurus/preset-classic": "^3.7.0",
-    "@docusaurus/theme-mermaid": "^3.7.0",
+    "@docusaurus/core": "^3.9.1",
+    "@docusaurus/plugin-google-gtag": "^3.9.1",
+    "@docusaurus/plugin-ideal-image": "^3.9.1",
+    "@docusaurus/preset-classic": "^3.9.1",
+    "@docusaurus/theme-mermaid": "^3.9.1",
     "@iconify/react": "^5.0.2",
     "@mdx-js/react": "^3.0.0",
     "clsx": "^2.0.0",
@@ -31,8 +31,8 @@
     "react-dom": "^18.0.0"
   },
   "devDependencies": {
-    "@docusaurus/module-type-aliases": "^3.7.0",
-    "@docusaurus/types": "^3.7.0",
+    "@docusaurus/module-type-aliases": "^3.9.1",
+    "@docusaurus/types": "^3.9.1",
     "@iconify-icon/react": "^2.1.0",
     "markdownlint-cli2": "^0.13.0"
   },
