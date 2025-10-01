@@ -29,7 +29,6 @@ interface EnvironmentContextValue {
 
   isSubmitting: boolean;
   isLoading: boolean;
-  isSavingSection: Record<string, boolean>;
 
   // Basic Info
   updateName: (name: string) => void;
@@ -83,6 +82,8 @@ const defaultStage: types.StageConfig = {
   name: ``,
   pipeline: {
     projectId: ``,
+    projectName: ``,
+    projectDescription: null,
     branch: ``,
     pipelineYamlFile: ``,
   },
@@ -132,9 +133,6 @@ export const EnvironmentProvider = ({
   const [globalError, setGlobalError] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSavingSection, setIsSavingSection] = useState<
-  Record<string, boolean>
-  >({});
 
   const clearError = (field: string) => {
     if (errors[field]) {
@@ -144,10 +142,6 @@ export const EnvironmentProvider = ({
         return next;
       });
     }
-  };
-
-  const setSectionSaving = (section: string, saving: boolean) => {
-    setIsSavingSection((prev) => ({ ...prev, [section]: saving }));
   };
 
   // Basic Info Updates
@@ -368,7 +362,6 @@ export const EnvironmentProvider = ({
     globalError,
     isSubmitting,
     isLoading,
-    isSavingSection,
     updateName,
     updateDescription,
     updateMaxInstances,

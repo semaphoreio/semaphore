@@ -30,9 +30,9 @@ export const ParametersList = (props: ParametersListProps) => {
   return (
     <div>
       {parameters.length === 0 && !isAddingNew && (
-        <p className="ma0 gray lh-copy tc mb3">
-          No parameters defined yet.
-        </p>
+        <div className="mb3 ba b--black-10 br2 pa2 bg-near-white mb2 flex flex-column gap-1">
+          <p className="ma0 gray lh-copy tc">No parameters defined yet.</p>
+        </div>
       )}
 
       <div className="flex flex-column gap-2 mb3">
@@ -184,7 +184,10 @@ const CollapsibleParameter = (props: CollapsibleParameterProps) => {
           )}
         </div>
         {!disabled && !isEditing && (
-          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button
               type="button"
               className="btn btn-link pa1 flex items-center"

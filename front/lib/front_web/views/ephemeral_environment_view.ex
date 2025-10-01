@@ -1,10 +1,8 @@
 defmodule FrontWeb.EphemeralEnvironmentView do
   use FrontWeb, :view
-
   alias Front.Models.EphemeralEnvironment
 
   def ephemeral_environments_config(conn) do
-    # Use __ID__ as placeholder for client-side replacement
     placeholder_id = "__ID__"
     placeholder_search = "__SEARCH__"
 
@@ -12,7 +10,6 @@ defmodule FrontWeb.EphemeralEnvironmentView do
       org_id: conn.assigns.organization_id,
       can_manage: conn.assigns.permissions["organization.ephemeral_environments.manage"] || false,
       can_view: conn.assigns.permissions["organization.ephemeral_environments.view"] || false,
-      base_path: "/ephemeral_environments",
       base_url: ephemeral_environment_path(conn, :index),
 
       # API URLs using Url<T> pattern with method and path
@@ -29,10 +26,6 @@ defmodule FrontWeb.EphemeralEnvironmentView do
           method: "get",
           path: ephemeral_environment_path(conn, :show, placeholder_id, format: "json")
         },
-        update: %{
-          method: "put",
-          path: ephemeral_environment_path(conn, :update, placeholder_id, format: "json")
-        },
         delete: %{
           method: "delete",
           path: ephemeral_environment_path(conn, :delete, placeholder_id, format: "json")
@@ -40,6 +33,10 @@ defmodule FrontWeb.EphemeralEnvironmentView do
         cordon: %{
           method: "post",
           path: ephemeral_environment_path(conn, :cordon, placeholder_id, format: "json")
+        },
+        update: %{
+          method: "put",
+          path: ephemeral_environment_path(conn, :update, placeholder_id, format: "json")
         },
         projects_list: %{
           method: "get",
@@ -67,7 +64,7 @@ defmodule FrontWeb.EphemeralEnvironmentView do
     }
   end
 
-  def render("show.json", %{environment_type: environment_type = %EphemeralEnvironment{}}) do
+  def render("show.json", %{environment_type: environment_type}) do
     environment_type_json(environment_type)
   end
 
@@ -82,8 +79,33 @@ defmodule FrontWeb.EphemeralEnvironmentView do
       created_at: format_datetime(environment_type.created_at),
       updated_at: format_datetime(environment_type.updated_at),
       state: environment_type.state,
-      max_number_of_instances: environment_type.max_number_of_instances
+      maxInstances: environment_type.max_number_of_instances,
+      stages: environment_type.stages || [],
+      environmentContext: environment_type.environment_context || [],
+      projectAccess: map_project_access(environment_type.accessible_project_ids, environment_type.org_id),
+      ttlConfig: environment_type.ttl_config || %{enabled: false}
     }
+  end
+
+  defp map_project_access(nil, _org_id), do: []
+  defp map_project_access([], _org_id), do: []
+
+  defp map_project_access(project_ids, org_id) do
+    projects = Front.Models.Project.find_many_by_ids(project_ids, org_id)
+    projects_map = Map.new(projects, fn project -> {project.id, project} end)
+
+    Enum.map(project_ids, fn id ->
+      case Map.get(projects_map, id) do
+        nil ->
+          %{projectId: id, projectName: id, projectDescription: nil}
+        project ->
+          %{
+            projectId: id,
+            projectName: project.name,
+            projectDescription: project.description
+          }
+      end
+    end)
   end
 
   defp format_datetime(nil), do: nil

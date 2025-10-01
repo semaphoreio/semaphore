@@ -5,9 +5,9 @@ defmodule Front.Clients.EphemeralEnvironments do
     DescribeRequest,
     ListRequest,
     CreateRequest,
-    UpdateRequest,
     DeleteRequest,
-    CordonRequest
+    CordonRequest,
+    UpdateRequest
   }
 
   @behaviour Front.EphemeralEnvironments.Behaviour
@@ -36,7 +36,7 @@ defmodule Front.Clients.EphemeralEnvironments do
   def describe(id, org_id) do
     %DescribeRequest{
       id: id,
-      org_id: org_id,
+      org_id: org_id
     }
     |> grpc_call(:describe)
     |> case do
@@ -69,25 +69,6 @@ defmodule Front.Clients.EphemeralEnvironments do
   end
 
   @impl Front.EphemeralEnvironments.Behaviour
-  def update(environment_type) do
-    %UpdateRequest{
-      environment_type: environment_type
-    }
-    |> grpc_call(:update)
-    |> case do
-      {:ok, result} ->
-        {:ok, result.environment_type}
-
-      err ->
-        Logger.error(
-          "Error updating ephemeral environment #{environment_type.id}: #{inspect(err)}"
-        )
-
-        handle_error(err)
-    end
-  end
-
-  @impl Front.EphemeralEnvironments.Behaviour
   def delete(id, org_id) do
     %DeleteRequest{
       id: id,
@@ -100,6 +81,22 @@ defmodule Front.Clients.EphemeralEnvironments do
 
       err ->
         Logger.error("Error deleting ephemeral environment #{id}: #{inspect(err)}")
+        handle_error(err)
+    end
+  end
+
+  @impl Front.EphemeralEnvironments.Behaviour
+  def update(environment_type) do
+    %UpdateRequest{
+      environment_type: environment_type
+    }
+    |> grpc_call(:update)
+    |> case do
+      {:ok, result} ->
+        {:ok, result.environment_type}
+
+      err ->
+        Logger.error("Error updating ephemeral environment: #{inspect(err)}")
         handle_error(err)
     end
   end

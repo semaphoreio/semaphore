@@ -1,5 +1,4 @@
 import { useState, useContext, useEffect, useCallback } from "preact/hooks";
-import { Link } from "react-router-dom";
 import { ConfigContext } from "../contexts/ConfigContext";
 import { EnvironmentType } from "../types";
 import { EnvironmentsList } from "../components/EnvironmentsList";

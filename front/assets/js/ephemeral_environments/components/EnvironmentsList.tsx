@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
-import { EnvironmentType, InstanceCounts } from "../types";
-import { EnvironmentCard } from "./EnvironmentCard";
-import { Box } from "js/toolbox";
-import { Loader } from "../utils/elements";
+import { EnvironmentType } from "../types";
+import { Box, MaterializeIcon } from "js/toolbox";
+import { EnvironmentSectionIcon, Loader } from "../utils/elements";
 
 interface EnvironmentsListProps {
   environments: EnvironmentType[];
@@ -17,15 +16,6 @@ export const EnvironmentsList = ({
   loading,
   error,
 }: EnvironmentsListProps) => {
-  const getInstanceCounts = (): InstanceCounts => {
-    return {
-      pending: 0,
-      running: 0,
-      failed: 0,
-      total: 0,
-    };
-  };
-
   if (loading) {
     return <Loader content="Loading environments"/>;
   }
@@ -43,9 +33,9 @@ export const EnvironmentsList = ({
       <div className="mw8 center">
         <div className="flex items-center justify-between mb4">
           <div>
+            <h1 className="f3 ma0 mb2">Ephemeral Environments</h1>
             <p className="f5 gray ma0">
-              Your environment types available quick and easy testing of
-              projects
+              Quick and easy testing environments for your projects
             </p>
           </div>
           {canManage && (
@@ -69,28 +59,134 @@ export const EnvironmentsList = ({
             )}
           </div>
         ) : (
-          <div className="grid-container">
-            <style
-              dangerouslySetInnerHTML={{
-                __html: `
-              .grid-container {
-                display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                gap: 1rem;
-              }
-            `,
-              }}
-            />
+          <div className="flex flex-column gap-2">
             {environments.map((environment) => (
-              <EnvironmentCard
-                key={environment.id}
-                environment={environment}
-                counts={getInstanceCounts()}
-              />
+              <EnvironmentRow key={environment.id} environment={environment}/>
             ))}
           </div>
         )}
       </div>
     </div>
+  );
+};
+
+interface EnvironmentRowProps {
+  environment: EnvironmentType;
+}
+
+const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
+  const getStatusColor = (state: EnvironmentType[`state`]) => {
+    switch (state) {
+      case `ready`:
+        return `green`;
+      case `draft`:
+        return `gray`;
+      case `cordoned`:
+        return `gold`;
+      case `deleted`:
+        return `red`;
+      default:
+        return `gray`;
+    }
+  };
+
+  const getStatusBadge = (state: EnvironmentType[`state`]) => {
+    const color = getStatusColor(state);
+    return (
+      <span
+        className={`f7 fw5 ${color} br2 ph2 pv1 bg-${
+          color === `gray` ? `black` : color
+        }-10`}
+      >
+        {state.toUpperCase()}
+      </span>
+    );
+  };
+
+  const projectsCount = environment.projectAccess?.length || 0;
+  const projectNames =
+    environment.projectAccess
+      ?.slice(0, 3)
+      .map((p) => p.projectName)
+      .join(`, `) || `None`;
+  const moreProjects = projectsCount > 3 ? ` +${projectsCount - 3} more` : ``;
+  const contextVarsCount = environment.environmentContext?.length || 0;
+  const hasTTL = environment.ttlConfig?.default_ttl_hours !== 0;
+
+  const maxInstances = environment.maxInstances;
+  const activeInstances = Math.floor(Math.random() * (maxInstances + 1));
+  const capacityPercentage =
+    maxInstances > 0 ? (activeInstances / maxInstances) * 100 : 0;
+
+  return (
+    <Link
+      to={`/${environment.id}`}
+      className="db bg-white ba b--black-10 br3 pa3 pointer hover-shadow-1 transition-shadow link black"
+    >
+      <div className="flex items-start gap-3">
+        {/* Left side - Main info */}
+        <div className="flex-auto">
+          <div className="flex items-center gap-2 mb2">
+            <h3 className="f5 ma0">{environment.name}</h3>
+            {getStatusBadge(environment.state)}
+          </div>
+          {environment.description && (
+            <p className="f6 gray ma0 mb2">{environment.description}</p>
+          )}
+
+          {/* Metadata row */}
+          <div className="flex items-center gap-3 f7 gray">
+            <div className="flex items-center gap-1">
+              <EnvironmentSectionIcon sectionId="project_access"/>
+              <span className="fw5">Projects:</span>
+              <span>
+                {projectNames}
+                {moreProjects}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <EnvironmentSectionIcon sectionId="context"/>
+              <span>
+                {contextVarsCount} context{` `}
+                {contextVarsCount === 1 ? `var` : `vars`}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <EnvironmentSectionIcon sectionId="ttl"/>
+              <span>
+                {hasTTL
+                  ? `${environment.ttlConfig?.default_ttl_hours}h TTL`
+                  : `No expiration`}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Right side - Instance capacity meter */}
+        <div className="flex flex-column items-end" style="min-width: 200px;">
+          <div className="f7 gray mb1 tr">Instance Capacity</div>
+          <div className="w-100 mb1">
+            <div
+              className="meter br2 overflow-hidden"
+              style="height: 20px; background-color: #e0e0e0;"
+            >
+              <div
+                className="meter-fill bg-blue"
+                style={`height: 100%; width: ${capacityPercentage}%; transition: width 0.3s ease;`}
+                title={`${activeInstances} / ${maxInstances} instances`}
+              />
+            </div>
+          </div>
+          <div className="f7 gray tr">
+            {activeInstances} / {maxInstances} active
+          </div>
+        </div>
+
+        {/* Arrow */}
+        <div className="flex items-center">
+          <MaterializeIcon name="chevron_right" className="gray"/>
+        </div>
+      </div>
+    </Link>
   );
 };

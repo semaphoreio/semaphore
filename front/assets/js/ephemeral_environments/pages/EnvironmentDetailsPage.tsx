@@ -26,7 +26,7 @@ export const EnvironmentDetailsPage = () => {
     setLoading(true);
     setError(null);
 
-    const response = await config.apiUrls.show.replace({ '__ID__': id }).call();
+    const response = await config.apiUrls.show.replace({ __ID__: id }).call();
 
     if (response.error) {
       setError(response.error || `Failed to load environment details`);
@@ -41,14 +41,6 @@ export const EnvironmentDetailsPage = () => {
     void loadEnvironmentDetails();
   }, [id]);
 
-  const handleBack = () => {
-    navigate(`/`);
-  };
-
-  const handleEdit = () => {
-    navigate(`/${id}/edit`);
-  };
-
   const handleDeleteClick = () => {
     setDeleteModalOpen(true);
     setDeleteConfirmation(``);
@@ -58,7 +50,7 @@ export const EnvironmentDetailsPage = () => {
     if (!id || !environment) return;
     if (deleteConfirmation !== environment.name) return;
 
-    const response = await config.apiUrls.delete.replace({ '__ID__': id }).call();
+    const response = await config.apiUrls.delete.replace({ __ID__: id }).call();
 
     if (response.error) {
       console.error(`Failed to delete environment:`, response.error);
@@ -89,8 +81,6 @@ export const EnvironmentDetailsPage = () => {
     <Fragment>
       <EnvironmentDetailsComponent
         environment={environment}
-        onBack={handleBack}
-        onEdit={handleEdit}
         onDelete={handleDeleteClick}
         onProvision={handleProvision}
         onDeprovision={void handleDeprovision}

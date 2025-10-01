@@ -79,39 +79,6 @@ defmodule Support.FakeClients.EphemeralEnvironments do
   end
 
   @impl Front.EphemeralEnvironments.Behaviour
-  def update(environment_type) do
-    cond do
-      environment_type.name == "" ->
-        {:error, "Environment type name cannot be empty"}
-
-      String.length(environment_type.name) > 100 ->
-        {:error, "Environment type name is too long (maximum 100 characters)"}
-
-      !valid_uuid?(environment_type.id) ->
-        {:error, "Invalid environment type ID format"}
-
-      true ->
-        Agent.get_and_update(__MODULE__, fn state ->
-          case get_in(state, [:environment_types, environment_type.id]) do
-            nil ->
-              {{:error, "Environment type not found"}, state}
-
-            existing_type ->
-              updated_type = %EphemeralEnvironmentType{
-                environment_type
-                | updated_at: now_proto_timestamp(),
-                  created_at: existing_type.created_at
-              }
-
-              new_state = put_in(state, [:environment_types, environment_type.id], updated_type)
-
-              {{:ok, updated_type}, new_state}
-          end
-        end)
-    end
-  end
-
-  @impl Front.EphemeralEnvironments.Behaviour
   def delete(id, org_id) do
     Agent.get_and_update(__MODULE__, fn state ->
       case get_in(state, [:environment_types, id]) do
@@ -126,6 +93,32 @@ defmodule Support.FakeClients.EphemeralEnvironments do
             envs = Map.delete(state.environment_types, id)
             new_state = %{state | environment_types: envs}
             {:ok, new_state}
+          end
+      end
+    end)
+  end
+
+  @impl Front.EphemeralEnvironments.Behaviour
+  def update(environment_type) do
+    id = environment_type.id
+    org_id = environment_type.org_id
+
+    Agent.get_and_update(__MODULE__, fn state ->
+      case get_in(state, [:environment_types, id]) do
+        nil ->
+          {{:error, "Environment type not found"}, state}
+
+        existing_type ->
+          if existing_type.org_id != org_id do
+            {{:error, "Environment type does not belong to this organization"}, state}
+          else
+            updated_type = %EphemeralEnvironmentType{
+              environment_type
+              | updated_at: now_proto_timestamp()
+            }
+
+            new_state = put_in(state, [:environment_types, id], updated_type)
+            {{:ok, updated_type}, new_state}
           end
       end
     end)
@@ -162,13 +155,6 @@ defmodule Support.FakeClients.EphemeralEnvironments do
     Agent.update(__MODULE__, fn state ->
       put_in(state, [:environment_types, environment_type.id], environment_type)
     end)
-  end
-
-  defp valid_uuid?(string) do
-    case Ecto.UUID.cast(string) do
-      {:ok, _} -> true
-      :error -> false
-    end
   end
 
   defp now_proto_timestamp do

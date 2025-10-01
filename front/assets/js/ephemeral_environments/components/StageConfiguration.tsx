@@ -5,6 +5,7 @@ import { ParametersList } from "./ParametersList";
 import { RBACSubjectSelector } from "./RBACSubjectSelector";
 import { useProjects } from "../contexts/ProjectsContext";
 import pluralize from "js/toolbox/pluralize";
+import { StageIcon } from "../utils/elements";
 
 interface StageConfigurationProps {
   stage: types.StageConfig;
@@ -35,9 +36,9 @@ export const StageConfiguration = (props: StageConfigurationProps) => {
     <div className="ba b--black-10 br2">
       <div className="pa3">
         <div className="flex items-start gap-2 flex-wrap">
-          <div className="flex-1">
-            <label className="db fw6 mb1">{stage.name}</label>
-            <p className="ma0 gray lh-copy">{stage.description}</p>
+          <div className="flex-1 flex items-center gap-1">
+            <StageIcon stageId={stage.id}/>
+            <label className="db fw6">{stage.name}</label>
           </div>
 
           <div className="flex-3 flex flex-column gap-2">
@@ -228,9 +229,16 @@ const PipelineConfiguration = (props: PipelineConfigurationProps) => {
         <RichSelect.RichSelect
           options={projectOptions}
           value={pipeline.projectId}
-          onChange={(value) =>
-            onPipelineUpdate({ ...pipeline, projectId: value as string })
-          }
+          onChange={(value) => {
+            const projectId = value as string;
+            const project = projects.find((p) => p.id === projectId);
+            onPipelineUpdate({
+              ...pipeline,
+              projectId,
+              projectName: project?.name || projectId,
+              projectDescription: project?.description || null,
+            });
+          }}
           placeholder={loading ? `Loading projects...` : `Select project...`}
           searchable={true}
           searchFilter={projectSearchFilter}
