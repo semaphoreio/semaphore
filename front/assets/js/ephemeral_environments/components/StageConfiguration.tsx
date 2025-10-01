@@ -84,7 +84,6 @@ interface StageTabsProps {
     param: types.EnvironmentParameter
   ) => void;
   onParameterRemoved: (param: types.EnvironmentParameter) => void;
-
   onSubjectAdded: (subject: types.RBACSubject) => void;
   onSubjectRemoved: (subject: types.RBACSubject) => void;
   className?: string;

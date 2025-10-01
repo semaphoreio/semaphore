@@ -11,22 +11,39 @@ import { useProjects } from "../contexts/ProjectsContext";
 
 interface EnvironmentFormProps {
   environmentId?: string;
+  initialData?: any;
 }
+
 export const EnvironmentForm = (props: EnvironmentFormProps) => {
-  const { environmentId } = props;
+  const { environmentId, initialData } = props;
   const mode = environmentId ? `edit` : `create`;
+
+  // Transform API data to match internal state structure if in edit mode
+  const transformedInitialData = initialData
+    ? {
+      name: initialData.name || ``,
+      description: initialData.description || ``,
+      maxInstances: initialData.maxInstances || 1,
+      stages: initialData.stages || [],
+      environmentContext: initialData.environmentContext || [],
+      projectAccess: initialData.projectAccess || [],
+      ttlConfig: initialData.ttlConfig || { enabled: false },
+    }
+    : undefined;
+
   return (
-    <EnvironmentProvider environmentId={environmentId} mode={mode}>
+    <EnvironmentProvider
+      environmentId={environmentId}
+      mode={mode}
+      initialData={transformedInitialData}
+    >
       <div className="bg-white br3 ba b--black-10">
         <form onSubmit={(e) => e.preventDefault()}>
           <BasicConfiguration/>
-
           <StagesConfiguration/>
-
           <EnvironmentContextSection/>
           <ProjectAccessSection/>
           <TTLConfiguration/>
-
           <FormActions/>
         </form>
       </div>
@@ -35,8 +52,14 @@ export const EnvironmentForm = (props: EnvironmentFormProps) => {
 };
 
 const BasicConfiguration = () => {
-  const { state, updateName, updateDescription, updateMaxInstances, errors } =
-    useEnvironment();
+  const {
+    state,
+    updateName,
+    updateDescription,
+    updateMaxInstances,
+    errors,
+  } = useEnvironment();
+
   return (
     <div className="pa4">
       <h2 className="f3 mb4">Basic Configuration</h2>
@@ -59,7 +82,7 @@ const BasicConfiguration = () => {
       <div className="mb2">
         <label className="db fw6 lh-copy mb2">Description:</label>
         <textarea
-          id="name"
+          id="description"
           className={`form-control pa2 db w-100 ${
             errors.description ? `b--red` : ``
           }`}
@@ -100,12 +123,17 @@ const BasicConfiguration = () => {
 };
 
 const EnvironmentContextSection = () => {
-  const { state, addContext, updateContext, removeContext, isSubmitting } =
-    useEnvironment();
+  const {
+    state,
+    addContext,
+    updateContext,
+    removeContext,
+  } = useEnvironment();
 
   return (
     <div className="bt b--black-10 pa4">
       <h2 className="f3 mb3">Environment Context</h2>
+
       <Box type="info" className="mb3">
         <p className="ma0">
           Environment context variables are set during provisioning and are
@@ -118,30 +146,34 @@ const EnvironmentContextSection = () => {
         onContextAdded={addContext}
         onContextRemoved={removeContext}
         onContextUpdated={updateContext}
-        disabled={isSubmitting}
       />
     </div>
   );
 };
 
 const ProjectAccessSection = () => {
-  const { state, addProjectAccess, removeProjectAccess, isSubmitting } =
-    useEnvironment();
+  const {
+    state,
+    addProjectAccess,
+    removeProjectAccess,
+  } = useEnvironment();
   const { projects, loading } = useProjects();
 
   return (
     <div className="bt b--black-10 pa4">
       <h2 className="f3 mb3">Access Control</h2>
+
       <ProjectAccessConfiguration
         projects={projects}
         onProjectAdded={addProjectAccess}
         onProjectRemoved={removeProjectAccess}
         projectAccess={state.projectAccess}
-        disabled={isSubmitting || loading}
+        disabled={loading}
       />
     </div>
   );
 };
+
 const StagesConfiguration = () => {
   const {
     state,
@@ -152,6 +184,7 @@ const StagesConfiguration = () => {
     addRBACSubject,
     removeRBACSubject,
   } = useEnvironment();
+
   return (
     <div className="bt b--black-10 pa4">
       <h2 className="f3 mb3">Pipeline Configuration</h2>
@@ -181,50 +214,39 @@ const StagesConfiguration = () => {
 };
 
 const TTLConfiguration = () => {
-  const { state, updateTTLConfig, isSubmitting } = useEnvironment();
+  const { state, updateTTLConfig } = useEnvironment();
+
   return (
     <div className="bt b--black-10 pa4">
       <h2 className="f3 mb3">Lifecycle Management</h2>
+
       <TTLSelector
         ttlConfig={state.ttlConfig}
         onTTLChange={updateTTLConfig}
-        disabled={isSubmitting}
       />
     </div>
   );
 };
 
 const FormActions = () => {
-  const { save, reset, canSubmit, isDirty, isSubmitting, mode } =
-    useEnvironment();
+  const { saveEnvironment, isSubmitting, hasErrors, mode } = useEnvironment();
 
   return (
     <div className="bt b--black-10 pa4 flex justify-end">
-      <div className="flex items-center gap-3">
-        {mode == `edit` && isDirty && (
-          <>
-            <span className="unsaved-indicator">Unsaved changes</span>
-
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={reset}
-              disabled={!isDirty}
-            >
-              Reset
-            </button>
-          </>
-        )}
-
-        <button
-          type="submit"
-          onClick={save}
-          disabled={!canSubmit}
-          className="btn btn-primary mr3"
-        >
-          {isSubmitting ? `Saving...` : mode === `create` ? `Create` : `Update`}
-        </button>
-      </div>
+      <button
+        type="submit"
+        onClick={saveEnvironment}
+        disabled={isSubmitting || hasErrors}
+        className="btn btn-primary"
+      >
+        {isSubmitting
+          ? mode === `create`
+            ? `Creating...`
+            : `Saving...`
+          : mode === `create`
+            ? `Create Environment`
+            : `Save Changes`}
+      </button>
     </div>
   );
 };
