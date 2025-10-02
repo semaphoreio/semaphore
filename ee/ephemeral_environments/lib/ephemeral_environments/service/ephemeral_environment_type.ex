@@ -15,7 +15,7 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
       - max_number_of_instances (optional)
 
   ## Returns
-    - {:ok, %Schema{}} on success
+    - {:ok, map} on success
     - {:error, String.t()} on validation failure
   """
   def create(attrs) do
@@ -26,9 +26,19 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
     |> Schema.changeset(attrs)
     |> Repo.insert()
     |> case do
-      {:ok, record} -> {:ok, record}
+      {:ok, record} -> {:ok, struct_to_map(record)}
       {:error, changeset} -> {:error, format_errors(changeset)}
     end
+  end
+
+  ###
+  ### Helper functions
+  ###
+
+  defp struct_to_map(struct) do
+    struct
+    |> Map.from_struct()
+    |> Map.drop([:__meta__])
   end
 
   defp format_errors(changeset) do

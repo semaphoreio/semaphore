@@ -25,8 +25,9 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer do
   end
 
   def create(request, _stream) do
-    ret = EphemeralEnvironments.Service.EphemeralEnvironmentType.create(request.environment_type)
-    %CreateResponse{}
+    {:ok, ret} = EphemeralEnvironments.Service.EphemeralEnvironmentType.create(request.environment_type)
+    converted = EphemeralEnvironments.Utils.Proto.from_map(%{environment_type: ret}, CreateResponse)
+    converted
   end
 
   def update(_request, _stream) do

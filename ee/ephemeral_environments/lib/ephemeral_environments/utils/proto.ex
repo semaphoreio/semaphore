@@ -1,7 +1,36 @@
 defmodule EphemeralEnvironments.Utils.Proto do
   @moduledoc """
-  Utility functions for converting protobuf structs to plain Elixir maps.
+  Utility functions for converting between protobuf structs and plain Elixir maps.
   """
+
+  @doc """
+  Converts an Elixir map to a protobuf struct of the given module type.
+  - Converts DateTime to Google.Protobuf.Timestamp
+  - Converts normalized enum atoms (:ready) to protobuf enum atoms (:TYPE_STATE_READY)
+  - Recursively processes nested maps to nested proto structs
+
+  ## Examples
+
+      from_map(%{name: "test", state: :ready}, InternalApi.EphemeralEnvironments.EphemeralEnvironmentType)
+  """
+  def from_map(nil, _module), do: nil
+
+  def from_map(map, module) when is_map(map) and is_atom(module) do
+    field_props = module.__message_props__().field_props
+
+    # Convert map to struct fields
+    fields =
+      map
+      |> Enum.map(fn {key, value} ->
+        # Find field info for this key
+        field_info = find_field_info(field_props, key)
+        converted_value = convert_value_from_map(value, field_info)
+        {key, converted_value}
+      end)
+      |> Enum.into(%{})
+
+    struct(module, fields)
+  end
 
   @doc """
   Recursively converts a protobuf struct to a plain Elixir map.
@@ -115,5 +144,81 @@ defmodule EphemeralEnvironments.Utils.Proto do
     |> List.last()
     |> Macro.underscore()
     |> String.upcase()
+  end
+
+  # Find field info by field name atom
+  defp find_field_info(field_props, field_name) do
+    field_props
+    |> Enum.find(fn {_num, props} -> props.name_atom == field_name end)
+    |> case do
+      {_num, props} -> props
+      nil -> nil
+    end
+  end
+
+  defp convert_value_from_map(nil, _field_info), do: nil
+
+  defp convert_value_from_map(%DateTime{} = dt, _field_info) do
+    %Google.Protobuf.Timestamp{
+      seconds: DateTime.to_unix(dt),
+      nanos: 0
+    }
+  end
+
+  @unix_epoch ~N[1970-01-01 00:00:00]
+  defp convert_value_from_map(%NaiveDateTime{} = ndt, _field_info) do
+    %Google.Protobuf.Timestamp{
+      seconds: NaiveDateTime.diff(ndt, @unix_epoch)
+    }
+  end
+
+  defp convert_value_from_map(value, nil), do: value
+
+  defp convert_value_from_map(values, field_info) when is_list(values) do
+    if field_info.embedded? do
+      Enum.map(values, fn item ->
+        if is_map(item) and not is_struct(item) do
+          from_map(item, field_info.type)
+        else
+          item
+        end
+      end)
+    else
+      values
+    end
+  end
+
+  # Handle nested maps (embedded messages)
+  defp convert_value_from_map(value, field_info) when is_map(value) and not is_struct(value) do
+    if field_info.embedded? do
+      from_map(value, field_info.type)
+    else
+      value
+    end
+  end
+
+  # Handle enum atoms - convert normalized atom back to proto enum
+  defp convert_value_from_map(value, field_info) when is_atom(value) do
+    if field_info.enum? do
+      case field_info.type do
+        {:enum, enum_module} -> denormalize_enum_name(value, enum_module)
+        _ -> value
+      end
+    else
+      value
+    end
+  end
+
+  defp convert_value_from_map(value, _field_info), do: value
+
+  # Denormalize enum: :ready -> :TYPE_STATE_READY
+  defp denormalize_enum_name(normalized_atom, enum_module) do
+    prefix = extract_enum_prefix(enum_module)
+
+    normalized_atom
+    |> Atom.to_string()
+    |> String.upcase()
+    |> then(&"#{prefix}_#{&1}")
+    |> String.to_atom()
   end
 end
