@@ -17,7 +17,6 @@ defmodule EphemeralEnvironments.Repo.EphemeralEnvironmentType do
     timestamps()
   end
 
-  @doc false
   def changeset(ephemeral_environment_type, attrs) do
     ephemeral_environment_type
     |> cast(attrs, [
