@@ -24,7 +24,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer do
     %DescribeResponse{}
   end
 
-  def create(_request, _stream) do
+  def create(request, _stream) do
+    ret = EphemeralEnvironments.Service.EphemeralEnvironmentType.create(request.environment_type)
     %CreateResponse{}
   end
 
