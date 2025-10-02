@@ -9,15 +9,12 @@ defmodule EphemeralEnvironments.Application do
       "Starting EphemeralEnvironments in '#{Application.get_env(:ephemeral_environments, :env)}' environment"
     )
 
-    grpc_port = Application.get_env(:ephemeral_environments, :grpc_listen_port)
-
     children = [
       EphemeralEnvironments.Repo,
       {GRPC.Server.Supervisor,
-        servers: [EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer],
-        port: Application.get_env(:ephemeral_environments, :grpc_listen_port),
-        start_server: true,
-        adapter_opts: [ip: {0, 0, 0, 0}]}
+       endpoint: EphemeralEnvironments.Grpc.Endpoint,
+       port: Application.fetch_env!(:ephemeral_environments, :grpc_listen_port),
+       start_server: true}
     ]
 
     opts = [strategy: :one_for_one, name: EphemeralEnvironments.Supervisor]
