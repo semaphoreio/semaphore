@@ -6,10 +6,7 @@ interface EnvironmentContextListProps {
   contexts: types.EnvironmentContext[];
   onContextAdded: (context: types.EnvironmentContext) => void;
   onContextRemoved: (context: types.EnvironmentContext) => void;
-  onContextUpdated: (
-    contextKey: string,
-    context: types.EnvironmentContext
-  ) => void;
+  onContextUpdated: (contextKey: string, context: types.EnvironmentContext) => void;
   disabled?: boolean;
 }
 
@@ -21,17 +18,14 @@ export const EnvironmentContextList = ({
   disabled = false,
 }: EnvironmentContextListProps) => {
   const emptyContext = { name: ``, description: `` };
-  const [newContext, setNewContext] =
-    useState<types.EnvironmentContext>(emptyContext);
+  const [newContext, setNewContext] = useState<types.EnvironmentContext>(emptyContext);
   const [isAddingNew, setIsAddingNew] = useState(false);
 
   return (
     <div>
       {contexts.length === 0 && !isAddingNew && (
         <div className="mb3 ba b--black-10 br2 pa2 bg-near-white mb2 flex flex-column gap-1">
-          <p className="ma0 gray lh-copy tc">
-            No context variables defined yet.
-          </p>
+          <p className="ma0 gray lh-copy tc">No context variables defined yet.</p>
         </div>
       )}
 
@@ -41,9 +35,7 @@ export const EnvironmentContextList = ({
             <CollapsibleContext
               key={index}
               context={context}
-              onContextUpdated={(updatedContext) =>
-                onContextUpdated(context.name, updatedContext)
-              }
+              onContextUpdated={(updatedContext) => onContextUpdated(context.name, updatedContext)}
               onContextRemoved={() => onContextRemoved(context)}
               disabled={disabled}
             />
@@ -52,11 +44,7 @@ export const EnvironmentContextList = ({
       )}
 
       {!disabled && !isAddingNew && (
-        <button
-          type="button"
-          className="btn btn-secondary flex items-center"
-          onClick={() => setIsAddingNew(true)}
-        >
+        <button type="button" className="btn btn-secondary flex items-center" onClick={() => setIsAddingNew(true)}>
           <MaterializeIcon name="add" className="mr1"/>
           Add Context Variable
         </button>
@@ -156,18 +144,12 @@ const CollapsibleContext = (props: CollapsibleContextProps) => {
         className="pa2 flex items-center pointer hover-bg-near-white"
         onClick={() => !isEditing && setIsExpanded(!isExpanded)}
       >
-        <MaterializeIcon
-          name={isExpanded ? `expand_more` : `chevron_right`}
-          className="mr2 gray"
-        />
+        <MaterializeIcon name={isExpanded ? `expand_more` : `chevron_right`} className="mr2 gray"/>
         <div className="flex-1">
           <span className="fw6">{context.name}</span>
         </div>
         {!disabled && !isEditing && (
-          <div
-            className="flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="btn btn-link pa1 flex items-center"
@@ -178,11 +160,7 @@ const CollapsibleContext = (props: CollapsibleContextProps) => {
             >
               <MaterializeIcon name="edit"/>
             </button>
-            <button
-              type="button"
-              className="btn btn-link pa1 flex items-center red"
-              onClick={onContextRemoved}
-            >
+            <button type="button" className="btn btn-link pa1 flex items-center red" onClick={onContextRemoved}>
               <MaterializeIcon name="delete"/>
             </button>
           </div>
@@ -199,9 +177,7 @@ const CollapsibleContext = (props: CollapsibleContextProps) => {
                   <p className="ma0 lh-copy">{context.description}</p>
                 </div>
               )}
-              {!context.description && (
-                <p className="ma0 gray i">No description provided</p>
-              )}
+              {!context.description && <p className="ma0 gray i">No description provided</p>}
             </div>
           ) : (
             <div>
@@ -245,11 +221,7 @@ const CollapsibleContext = (props: CollapsibleContextProps) => {
                   <MaterializeIcon name="check" className="mr1"/>
                   Save
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary flex items-center"
-                  onClick={handleCancel}
-                >
+                <button type="button" className="btn btn-secondary flex items-center" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>

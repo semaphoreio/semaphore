@@ -20,8 +20,7 @@ export const CreateEnvironmentPage = () => {
         <div className="mb4">
           <h1 className="f2 f1-m lh-title mb2">Create Environment</h1>
           <p className="mb0 measure-wide gray">
-            Set up a new environment type that can be provisioned on-demand for
-            your projects.
+            Set up a new environment type that can be provisioned on-demand for your projects.
           </p>
         </div>
 

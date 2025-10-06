@@ -11,10 +11,7 @@ export interface EnvironmentPayload {
   ttl_config?: types.TTLConfig | null;
 }
 
-export const createEnvironmentAPI = (
-  config: AppConfig,
-  environmentId?: string
-) => {
+export const createEnvironmentAPI = (config: AppConfig, environmentId?: string) => {
   const create = async (payload: EnvironmentPayload) => {
     const response = await config.apiUrls.create.call({ body: payload });
 
@@ -28,9 +25,7 @@ export const createEnvironmentAPI = (
   const update = async (payload: EnvironmentPayload) => {
     if (!environmentId) throw new Error(`Environment ID is required`);
 
-    const response = await config.apiUrls.update
-      .replace({ __ID__: environmentId })
-      .call({ body: payload });
+    const response = await config.apiUrls.update.replace({ __ID__: environmentId }).call({ body: payload });
 
     if (response.error) {
       throw new Error(response.error);

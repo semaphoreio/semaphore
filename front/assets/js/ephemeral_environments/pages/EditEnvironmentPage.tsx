@@ -8,9 +8,7 @@ export const EditEnvironmentPage = () => {
   const config = useContext(ConfigContext);
   const { id } = useParams();
 
-  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(
-    null
-  );
+  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,10 +71,7 @@ export const EditEnvironmentPage = () => {
             </li>
             <li className="dib mr2 gray">/</li>
             <li className="dib mr2 gray">
-              <Link
-                to={`/${environment.id}`}
-                className="pointer flex items-center f6"
-              >
+              <Link to={`/${environment.id}`} className="pointer flex items-center f6">
                 {environment.name}
               </Link>
             </li>
@@ -86,18 +81,11 @@ export const EditEnvironmentPage = () => {
         </nav>
 
         <div className="mb4">
-          <h1 className="f2 f1-m lh-title mb2">
-            Edit Environment: {environment.name}
-          </h1>
-          <p className="mb0 measure-wide gray">
-            Update the configuration for this ephemeral environment type.
-          </p>
+          <h1 className="f2 f1-m lh-title mb2">Edit Environment: {environment.name}</h1>
+          <p className="mb0 measure-wide gray">Update the configuration for this ephemeral environment type.</p>
         </div>
 
-        <EnvironmentForm
-          environmentId={environment.id}
-          initialData={environment}
-        />
+        <EnvironmentForm environmentId={environment.id} initialData={environment}/>
       </div>
     </div>
   );

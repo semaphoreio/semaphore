@@ -10,11 +10,9 @@ import { EnvironmentDetails as EnvironmentDetailsComponent } from "../components
 export const EnvironmentDetailsPage = () => {
   const config = useConfig();
   const navigate = useNavigate();
-  const { id } = useParams<{ id: string, }>();
+  const { id } = useParams<{ id: string }>();
 
-  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(
-    null
-  );
+  const [environment, setEnvironment] = useState<EnvironmentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -87,17 +85,10 @@ export const EnvironmentDetailsPage = () => {
         canManage={config.canManage}
       />
 
-      <Modal
-        isOpen={deleteModalOpen}
-        close={() => setDeleteModalOpen(false)}
-        title="Delete Environment"
-      >
+      <Modal isOpen={deleteModalOpen} close={() => setDeleteModalOpen(false)} title="Delete Environment">
         <div className="pa4">
           <Box type="warning" className="mb3">
-            <p className="ma0">
-              This action cannot be undone. All instances of this environment
-              will be terminated.
-            </p>
+            <p className="ma0">This action cannot be undone. All instances of this environment will be terminated.</p>
           </Box>
 
           <p className="mb3">
@@ -108,25 +99,16 @@ export const EnvironmentDetailsPage = () => {
             type="text"
             className="input-reset ba b--black-20 pa2 db w-100 mb3"
             value={deleteConfirmation}
-            onChange={(e) =>
-              setDeleteConfirmation((e.target as HTMLInputElement).value)
-            }
+            onChange={(e) => setDeleteConfirmation((e.target as HTMLInputElement).value)}
             placeholder="Enter environment name"
           />
         </div>
 
         <div className="pa3 bt b--black-10 flex justify-end">
-          <button
-            className="btn btn-secondary mr2"
-            onClick={() => setDeleteModalOpen(false)}
-          >
+          <button className="btn btn-secondary mr2" onClick={() => setDeleteModalOpen(false)}>
             Cancel
           </button>
-          <button
-            className="btn btn-danger"
-            onClick={handleDelete}
-            disabled={deleteConfirmation !== environment.name}
-          >
+          <button className="btn btn-danger" onClick={handleDelete} disabled={deleteConfirmation !== environment.name}>
             Delete Environment
           </button>
         </div>

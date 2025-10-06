@@ -3,10 +3,7 @@ import { StageConfiguration } from "./StageConfiguration";
 import { ProjectAccessConfiguration } from "./ProjectAccessConfiguration";
 import { TTLSelector } from "./TTLSelector";
 import { EnvironmentContextList } from "./EnvironmentContextList";
-import {
-  EnvironmentProvider,
-  useEnvironment,
-} from "../contexts/EnvironmentContext";
+import { EnvironmentProvider, useEnvironment } from "../contexts/EnvironmentContext";
 import { useProjects } from "../contexts/ProjectsContext";
 import { EnvironmentSectionIcon } from "../utils/elements";
 
@@ -33,11 +30,7 @@ export const EnvironmentForm = (props: EnvironmentFormProps) => {
     : undefined;
 
   return (
-    <EnvironmentProvider
-      environmentId={environmentId}
-      mode={mode}
-      initialData={transformedInitialData}
-    >
+    <EnvironmentProvider environmentId={environmentId} mode={mode} initialData={transformedInitialData}>
       <div className="bg-white br3 ba b--black-10">
         <form onSubmit={(e) => e.preventDefault()}>
           <BasicConfiguration/>
@@ -53,8 +46,7 @@ export const EnvironmentForm = (props: EnvironmentFormProps) => {
 };
 
 const BasicConfiguration = () => {
-  const { state, updateName, updateDescription, updateMaxInstances, errors } =
-    useEnvironment();
+  const { state, updateName, updateDescription, updateMaxInstances, errors } = useEnvironment();
 
   return (
     <div className="pa4">
@@ -79,18 +71,12 @@ const BasicConfiguration = () => {
         <label className="db fw6 lh-copy mb2">Description:</label>
         <textarea
           id="description"
-          className={`form-control pa2 db w-100 ${
-            errors.description ? `b--red` : ``
-          }`}
+          className={`form-control pa2 db w-100 ${errors.description ? `b--red` : ``}`}
           value={state.description}
-          onChange={(e) =>
-            updateDescription((e.target as HTMLInputElement).value)
-          }
+          onChange={(e) => updateDescription((e.target as HTMLInputElement).value)}
           placeholder="Brief description of this environment type"
         />
-        {errors.description && (
-          <small className="red db mt1">{errors.description}</small>
-        )}
+        {errors.description && <small className="red db mt1">{errors.description}</small>}
       </div>
 
       <div className="mb2">
@@ -100,19 +86,11 @@ const BasicConfiguration = () => {
         <input
           type="number"
           id="max_instances"
-          className={`form-control pa2 db w-30 ${
-            errors.maxInstances ? `b--red` : ``
-          }`}
+          className={`form-control pa2 db w-30 ${errors.maxInstances ? `b--red` : ``}`}
           value={state.maxInstances}
-          onChange={(e) =>
-            updateMaxInstances(
-              parseInt((e.target as HTMLInputElement).value) || 1
-            )
-          }
+          onChange={(e) => updateMaxInstances(parseInt((e.target as HTMLInputElement).value) || 1)}
         />
-        {errors.maxInstances && (
-          <small className="red db mt1">{errors.maxInstances}</small>
-        )}
+        {errors.maxInstances && <small className="red db mt1">{errors.maxInstances}</small>}
       </div>
     </div>
   );
@@ -130,8 +108,8 @@ const EnvironmentContextSection = () => {
 
       <Box type="info" className="mb3">
         <p className="ma0">
-          Environment context variables are set during provisioning and are
-          available globally to all stages throughout the environment lifecycle.
+          Environment context variables are set during provisioning and are available globally to all stages throughout
+          the environment lifecycle.
         </p>
       </Box>
 
@@ -156,10 +134,7 @@ const ProjectAccessSection = () => {
         Access Control
       </h2>
       <Box type="info" className="mb3">
-        <p className="ma0">
-          Control which projects have access to create instances of this
-          environment.
-        </p>
+        <p className="ma0">Control which projects have access to create instances of this environment.</p>
       </Box>
 
       <ProjectAccessConfiguration
@@ -192,8 +167,7 @@ const StagesConfiguration = () => {
       </h2>
       <Box type="info" className="mb3">
         <p className="ma0">
-          Configure pipelines, parameters, and access control for each stage of
-          the environment lifecycle.
+          Configure pipelines, parameters, and access control for each stage of the environment lifecycle.
         </p>
       </Box>
 
@@ -225,10 +199,7 @@ const TTLConfiguration = () => {
         Lifecycle Management
       </h2>
       <Box type="info" className="mb3">
-        <p className="ma0">
-          Configure automatic cleanup of environment instances based on their
-          age.
-        </p>
+        <p className="ma0">Configure automatic cleanup of environment instances based on their age.</p>
       </Box>
 
       <TTLSelector ttlConfig={state.ttlConfig} onTTLChange={updateTTLConfig}/>
@@ -241,12 +212,7 @@ const FormActions = () => {
 
   return (
     <div className="bt b--black-10 pa4 flex justify-end">
-      <button
-        type="submit"
-        onClick={saveEnvironment}
-        disabled={isSubmitting || hasErrors}
-        className="btn btn-primary"
-      >
+      <button type="submit" onClick={saveEnvironment} disabled={isSubmitting || hasErrors} className="btn btn-primary">
         {isSubmitting
           ? mode === `create`
             ? `Creating...`

@@ -9,52 +9,26 @@ interface ProjectAccessConfigurationProps {
   onProjectRemoved: (projectId: types.ProjectAccess) => void;
   projectAccess: types.ProjectAccess[];
 }
-export const ProjectAccessConfiguration = (
-  props: ProjectAccessConfigurationProps
-) => {
-  const {
-    projects,
-    projectAccess,
-    onProjectAdded,
-    onProjectRemoved,
-    disabled,
-  } = props;
+export const ProjectAccessConfiguration = (props: ProjectAccessConfigurationProps) => {
+  const { projects, projectAccess, onProjectAdded, onProjectRemoved, disabled } = props;
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
-  const availableProjects = projects.filter(
-    (p) => !projectAccess.some((pa) => pa.projectId === p.id)
-  );
+  const availableProjects = projects.filter((p) => !projectAccess.some((pa) => pa.projectId === p.id));
 
-  const projectOptions: types.ProjectSelectOption[] = availableProjects.map(
-    (project) => ({
-      value: project.id,
-      label: project.name,
-      description: project.description,
-    })
-  );
+  const projectOptions: types.ProjectSelectOption[] = availableProjects.map((project) => ({
+    value: project.id,
+    label: project.name,
+    description: project.description,
+  }));
 
-  const projectSearchFilter = (
-    searchTerm: string,
-    option: types.ProjectSelectOption
-  ) => {
+  const projectSearchFilter = (searchTerm: string, option: types.ProjectSelectOption) => {
     const term = searchTerm.toLowerCase();
-    return (
-      option.label.toLowerCase().includes(term) ||
-      option.description?.toLowerCase().includes(term) ||
-      false
-    );
+    return option.label.toLowerCase().includes(term) || option.description?.toLowerCase().includes(term) || false;
   };
 
-  const renderProjectOption = (
-    option: types.ProjectSelectOption,
-    isSelected: boolean
-  ) => {
+  const renderProjectOption = (option: types.ProjectSelectOption, isSelected: boolean) => {
     return (
-      <div
-        className={`pa2 bb b--black-05 pointer hover-bg-washed-gray ${
-          isSelected ? `bg-washed-gray` : ``
-        }`}
-      >
+      <div className={`pa2 bb b--black-05 pointer hover-bg-washed-gray ${isSelected ? `bg-washed-gray` : ``}`}>
         <div className="flex items-start">
           <input
             type="checkbox"
@@ -67,10 +41,7 @@ export const ProjectAccessConfiguration = (
           <div className="flex-1">
             <div className="f6">{option.label}</div>
             {option.description && (
-              <div
-                className="f7 gray truncate"
-                style="max-height: 2.5em; line-height: 1.25em; overflow: hidden;"
-              >
+              <div className="f7 gray truncate" style="max-height: 2.5em; line-height: 1.25em; overflow: hidden;">
                 {option.description}
               </div>
             )}

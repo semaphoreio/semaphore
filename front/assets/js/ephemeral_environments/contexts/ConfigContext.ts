@@ -30,9 +30,7 @@ export class AppConfig {
         projectsList: Url.fromJSON<ProjectsListResponse>(apiUrls.projects_list),
         usersList: Url.fromJSON<MembersListResponse>(apiUrls.users_list),
         groupsList: Url.fromJSON<MembersListResponse>(apiUrls.groups_list),
-        serviceAccountsList: Url.fromJSON<MembersListResponse>(
-          apiUrls.service_accounts_list
-        ),
+        serviceAccountsList: Url.fromJSON<MembersListResponse>(apiUrls.service_accounts_list),
       }
     );
   }

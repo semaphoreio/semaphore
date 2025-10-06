@@ -16,10 +16,7 @@ interface ProjectsProviderProps {
   config: AppConfig;
 }
 
-export const ProjectsProvider = ({
-  children,
-  config,
-}: ProjectsProviderProps) => {
+export const ProjectsProvider = ({ children, config }: ProjectsProviderProps) => {
   const [projects, setProjects] = useState<types.Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,16 +32,9 @@ export const ProjectsProvider = ({
     });
   }, [config]);
 
-  const value = useMemo(
-    () => ({ projects, loading, error }),
-    [projects, loading, error]
-  );
+  const value = useMemo(() => ({ projects, loading, error }), [projects, loading, error]);
 
-  return (
-    <ProjectsContext.Provider value={value}>
-      {children}
-    </ProjectsContext.Provider>
-  );
+  return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>;
 };
 
 export const useProjects = () => {

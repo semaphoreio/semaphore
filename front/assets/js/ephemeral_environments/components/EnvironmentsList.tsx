@@ -10,12 +10,7 @@ interface EnvironmentsListProps {
   error: string | null;
 }
 
-export const EnvironmentsList = ({
-  environments,
-  canManage,
-  loading,
-  error,
-}: EnvironmentsListProps) => {
+export const EnvironmentsList = ({ environments, canManage, loading, error }: EnvironmentsListProps) => {
   if (loading) {
     return <Loader content="Loading environments"/>;
   }
@@ -34,9 +29,7 @@ export const EnvironmentsList = ({
         <div className="flex items-center justify-between mb4">
           <div>
             <h1 className="f3 ma0 mb2">Ephemeral Environments</h1>
-            <p className="f5 gray ma0">
-              Quick and easy testing environments for your projects
-            </p>
+            <p className="f5 gray ma0">Quick and easy testing environments for your projects</p>
           </div>
           {canManage && (
             <Link to="/new" className="btn btn-primary">
@@ -49,8 +42,7 @@ export const EnvironmentsList = ({
           <div className="bg-white ba b--black-10 br3 pa5 tc">
             <p className="f4 gray mb3">No environments yet</p>
             <p className="f6 gray mb4">
-              Create your first environment type to enable quick provisioning of
-              test environments.
+              Create your first environment type to enable quick provisioning of test environments.
             </p>
             {canManage && (
               <Link to="/new" className="btn btn-primary">
@@ -93,11 +85,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
   const getStatusBadge = (state: EnvironmentType[`state`]) => {
     const color = getStatusColor(state);
     return (
-      <span
-        className={`f7 fw5 ${color} br2 ph2 pv1 bg-${
-          color === `gray` ? `black` : color
-        }-10`}
-      >
+      <span className={`f7 fw5 ${color} br2 ph2 pv1 bg-${color === `gray` ? `black` : color}-10`}>
         {state.toUpperCase()}
       </span>
     );
@@ -115,8 +103,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
 
   const maxInstances = environment.maxInstances;
   const activeInstances = Math.floor(maxInstances / 2);
-  const capacityPercentage =
-    maxInstances > 0 ? (activeInstances / maxInstances) * 100 : 0;
+  const capacityPercentage = maxInstances > 0 ? (activeInstances / maxInstances) * 100 : 0;
 
   return (
     <Link
@@ -130,9 +117,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
             <h3 className="f5 ma0">{environment.name}</h3>
             {getStatusBadge(environment.state)}
           </div>
-          {environment.description && (
-            <p className="f6 gray ma0 mb2">{environment.description}</p>
-          )}
+          {environment.description && <p className="f6 gray ma0 mb2">{environment.description}</p>}
 
           {/* Metadata row */}
           <div className="flex items-center gap-3 f7 gray">
@@ -153,11 +138,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
             </div>
             <div className="flex items-center gap-1">
               <EnvironmentSectionIcon sectionId="ttl"/>
-              <span>
-                {hasTTL
-                  ? `${environment.ttlConfig?.default_ttl_hours}h TTL`
-                  : `No expiration`}
-              </span>
+              <span>{hasTTL ? `${environment.ttlConfig?.default_ttl_hours}h TTL` : `No expiration`}</span>
             </div>
           </div>
         </div>
@@ -166,10 +147,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
         <div className="flex flex-column items-end" style="min-width: 200px;">
           <div className="f7 gray mb1 tr">Instance Capacity</div>
           <div className="w-100 mb1">
-            <div
-              className="meter br2 overflow-hidden"
-              style="height: 20px; background-color: #e0e0e0;"
-            >
+            <div className="meter br2 overflow-hidden" style="height: 20px; background-color: #e0e0e0;">
               <div
                 className="meter-fill bg-blue"
                 style={`height: 100%; width: ${capacityPercentage}%; transition: width 0.3s ease;`}

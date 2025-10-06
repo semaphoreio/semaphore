@@ -56,13 +56,7 @@ export interface EnvironmentDetails extends EnvironmentType {
 
 export type RBACSubjectType = `user` | `group` | `service_account`;
 export type StageId = `` | `provisioning` | `deployment` | `deprovisioning`;
-export type EnvironmentSectionId =
-  | `basics`
-  | `instances`
-  | `project_access`
-  | `context`
-  | `ttl`
-  | `pipeline`;
+export type EnvironmentSectionId = `basics` | `instances` | `project_access` | `context` | `ttl` | `pipeline`;
 
 export interface RBACSubject {
   type: RBACSubjectType;

@@ -29,12 +29,5 @@ export const EnvironmentsListPage = () => {
     void loadEnvironments();
   }, []);
 
-  return (
-    <EnvironmentsList
-      environments={environments}
-      canManage={config.canManage}
-      loading={loading}
-      error={error}
-    />
-  );
+  return <EnvironmentsList environments={environments} canManage={config.canManage} loading={loading} error={error}/>;
 };

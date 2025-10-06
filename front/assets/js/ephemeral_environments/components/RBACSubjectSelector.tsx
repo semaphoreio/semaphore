@@ -2,12 +2,7 @@ import { useState } from "preact/hooks";
 import { MaterializeIcon, RichSelect } from "js/toolbox";
 import * as types from "../types";
 import { useRBACSearch } from "../hooks/useRBACSearch";
-import {
-  getSubjectIcon,
-  getSubjectTypeLabel,
-  groupSubjectsByType,
-  SUBJECT_TYPE_OPTIONS,
-} from "../utils/rbacHelpers";
+import { getSubjectIcon, getSubjectTypeLabel, groupSubjectsByType, SUBJECT_TYPE_OPTIONS } from "../utils/rbacHelpers";
 import { Badge } from "../utils/elements";
 
 interface RBACSubjectSelectorProps {
@@ -19,21 +14,12 @@ interface RBACSubjectSelectorProps {
 
 export const RBACSubjectSelector = (props: RBACSubjectSelectorProps) => {
   const { subjects, onSubjectAdded, onSubjectRemoved, disabled } = props;
-  const {
-    members,
-    loading,
-    setSearchTerm,
-    subjectType,
-    setSubjectType,
-    handleInteraction,
-  } = useRBACSearch();
+  const { members, loading, setSearchTerm, subjectType, setSubjectType, handleInteraction } = useRBACSearch();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const getSubjectOptions = (): RichSelect.RichSelectOption[] => {
     return members
-      .filter(
-        (m) => !subjects.some((s) => s.type === subjectType && s.id === m.id)
-      )
+      .filter((m) => !subjects.some((s) => s.type === subjectType && s.id === m.id))
       .map((m) => ({ value: m.id, label: m.name }));
   };
 
@@ -60,11 +46,7 @@ export const RBACSubjectSelector = (props: RBACSubjectSelectorProps) => {
 
   return (
     <div>
-      <SelectedSubjectsDisplay
-        subjects={subjects}
-        onSubjectRemoved={onSubjectRemoved}
-        disabled={disabled}
-      />
+      <SelectedSubjectsDisplay subjects={subjects} onSubjectRemoved={onSubjectRemoved} disabled={disabled}/>
 
       {!disabled && (
         <SubjectSearchInput
@@ -96,9 +78,7 @@ const SelectedSubjectsDisplay = (props: SelectedSubjectsDisplayProps) => {
 
   return (
     <div className="mb3 ba b--black-10 br2 pa2 bg-near-white mb2 flex flex-column gap-1">
-      {subjects.length === 0 && (
-        <p className="ma0 gray lh-copy tc">No subjects added yet.</p>
-      )}
+      {subjects.length === 0 && <p className="ma0 gray lh-copy tc">No subjects added yet.</p>}
       {Object.entries(groupedSubjects).map(([type, items]) => {
         if (items.length === 0) return null;
         const rbacType = type as types.RBACSubjectType;
@@ -106,13 +86,8 @@ const SelectedSubjectsDisplay = (props: SelectedSubjectsDisplayProps) => {
         return (
           <div key={type} className="mb2">
             <div className="flex items-center mb1">
-              <MaterializeIcon
-                name={getSubjectIcon(rbacType)}
-                className="mr1 gray"
-              />
-              <span className="fw6 gray">
-                {getSubjectTypeLabel(rbacType)}s:
-              </span>
+              <MaterializeIcon name={getSubjectIcon(rbacType)} className="mr1 gray"/>
+              <span className="fw6 gray">{getSubjectTypeLabel(rbacType)}s:</span>
             </div>
             <div className="flex flex-wrap gap-1 ml3">
               {items.map((subject) => (
@@ -164,11 +139,7 @@ const SubjectSearchInput = (props: SubjectSearchInputProps) => {
         <select
           className="form-control pa1"
           value={subjectType}
-          onChange={(e) =>
-            onTypeChange(
-              (e.target as HTMLSelectElement).value as types.RBACSubjectType
-            )
-          }
+          onChange={(e) => onTypeChange((e.target as HTMLSelectElement).value as types.RBACSubjectType)}
         >
           {SUBJECT_TYPE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -185,9 +156,7 @@ const SubjectSearchInput = (props: SubjectSearchInputProps) => {
             onSearchChange={(search) => onSearchChange(search)}
             placeholder={
               loading
-                ? `Loading ${getSubjectTypeLabel(
-                  subjectType
-                ).toLowerCase()}s...`
+                ? `Loading ${getSubjectTypeLabel(subjectType).toLowerCase()}s...`
                 : `Search ${getSubjectTypeLabel(subjectType)}...`
             }
             disabled={disabled}

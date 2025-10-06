@@ -36,33 +36,18 @@ interface EnvironmentContextValue {
   updateMaxInstances: (max: number) => void;
 
   // Stages
-  updatePipelineConfig: (
-    stage: types.StageConfig
-  ) => (config: types.PipelineConfig) => void;
-  addParameter: (
-    stage: types.StageConfig
-  ) => (param: types.EnvironmentParameter) => void;
-  updateParameter: (
-    stage: types.StageConfig
-  ) => (paramKey: string, param: types.EnvironmentParameter) => void;
-  removeParameter: (
-    stage: types.StageConfig
-  ) => (param: types.EnvironmentParameter) => void;
-  addRBACSubject: (
-    stage: types.StageConfig
-  ) => (subject: types.RBACSubject) => void;
-  removeRBACSubject: (
-    stage: types.StageConfig
-  ) => (subject: types.RBACSubject) => void;
+  updatePipelineConfig: (stage: types.StageConfig) => (config: types.PipelineConfig) => void;
+  addParameter: (stage: types.StageConfig) => (param: types.EnvironmentParameter) => void;
+  updateParameter: (stage: types.StageConfig) => (paramKey: string, param: types.EnvironmentParameter) => void;
+  removeParameter: (stage: types.StageConfig) => (param: types.EnvironmentParameter) => void;
+  addRBACSubject: (stage: types.StageConfig) => (subject: types.RBACSubject) => void;
+  removeRBACSubject: (stage: types.StageConfig) => (subject: types.RBACSubject) => void;
 
   // TTL Config
   updateTTLConfig: (config: types.TTLConfig) => void;
 
   // Environment Context
-  updateContext: (
-    contextKey: string,
-    context: types.EnvironmentContext
-  ) => void;
+  updateContext: (contextKey: string, context: types.EnvironmentContext) => void;
   addContext: (context: types.EnvironmentContext) => void;
   removeContext: (context: types.EnvironmentContext) => void;
 
@@ -108,9 +93,7 @@ const defaultState: EnvironmentState = {
   },
 };
 
-export const EnvironmentContext = createContext<EnvironmentContextValue | null>(
-  null
-);
+export const EnvironmentContext = createContext<EnvironmentContextValue | null>(null);
 
 interface EnvironmentProviderProps {
   children?: any;
@@ -126,9 +109,7 @@ export const EnvironmentProvider = ({
   environmentId,
 }: EnvironmentProviderProps) => {
   const config = useConfig();
-  const [state, setState] = useState<EnvironmentState>(
-    initialData || defaultState
-  );
+  const [state, setState] = useState<EnvironmentState>(initialData || defaultState);
   const [errors, setErrors] = useState<Errors>({});
   const [globalError, setGlobalError] = useState<string | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -161,88 +142,71 @@ export const EnvironmentProvider = ({
   };
 
   // Stage Updates
-  const updatePipelineConfig =
-    (stage: types.StageConfig) => (config: types.PipelineConfig) => {
-      setState((prev) => {
-        const updatedStages = prev.stages.map((s) =>
-          s.id === stage.id ? { ...s, pipeline: config } : s
-        );
-        return { ...prev, stages: updatedStages };
-      });
-    };
+  const updatePipelineConfig = (stage: types.StageConfig) => (config: types.PipelineConfig) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) => (s.id === stage.id ? { ...s, pipeline: config } : s));
+      return { ...prev, stages: updatedStages };
+    });
+  };
 
-  const addParameter =
-    (stage: types.StageConfig) => (param: types.EnvironmentParameter) => {
-      setState((prev) => {
-        const updatedStages = prev.stages.map((s) =>
-          s.id === stage.id
-            ? { ...s, parameters: [...(s.parameters || []), param] }
-            : s
-        );
-        return { ...prev, stages: updatedStages };
-      });
-    };
+  const addParameter = (stage: types.StageConfig) => (param: types.EnvironmentParameter) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) =>
+        s.id === stage.id ? { ...s, parameters: [...(s.parameters || []), param] } : s
+      );
+      return { ...prev, stages: updatedStages };
+    });
+  };
 
-  const updateParameter =
-    (stage: types.StageConfig) =>
-      (paramKey: string, param: types.EnvironmentParameter) => {
-        setState((prev) => {
-          const updatedStages = prev.stages.map((s) => {
-            if (s.id === stage.id) {
-              const updatedParams = (s.parameters || []).map((p) =>
-                p.name === paramKey ? param : p
-              );
-              return { ...s, parameters: updatedParams };
-            }
-            return s;
-          });
-          return { ...prev, stages: updatedStages };
-        });
-      };
-
-  const removeParameter =
-    (stage: types.StageConfig) => (param: types.EnvironmentParameter) => {
-      setState((prev) => {
-        const updatedStages = prev.stages.map((s) => {
-          if (s.id === stage.id) {
-            const updatedParams = (s.parameters || []).filter(
-              (p) => p.name !== param.name
-            );
-            return { ...s, parameters: updatedParams };
-          }
-          return s;
-        });
-        return { ...prev, stages: updatedStages };
+  const updateParameter = (stage: types.StageConfig) => (paramKey: string, param: types.EnvironmentParameter) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) => {
+        if (s.id === stage.id) {
+          const updatedParams = (s.parameters || []).map((p) => (p.name === paramKey ? param : p));
+          return { ...s, parameters: updatedParams };
+        }
+        return s;
       });
-    };
+      return { ...prev, stages: updatedStages };
+    });
+  };
 
-  const addRBACSubject =
-    (stage: types.StageConfig) => (subject: types.RBACSubject) => {
-      setState((prev) => {
-        const updatedStages = prev.stages.map((s) =>
-          s.id === stage.id
-            ? { ...s, rbacAccess: [...(s.rbacAccess || []), subject] }
-            : s
-        );
-        return { ...prev, stages: updatedStages };
+  const removeParameter = (stage: types.StageConfig) => (param: types.EnvironmentParameter) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) => {
+        if (s.id === stage.id) {
+          const updatedParams = (s.parameters || []).filter((p) => p.name !== param.name);
+          return { ...s, parameters: updatedParams };
+        }
+        return s;
       });
-    };
+      return { ...prev, stages: updatedStages };
+    });
+  };
 
-  const removeRBACSubject =
-    (stage: types.StageConfig) => (subject: types.RBACSubject) => {
-      setState((prev) => {
-        const updatedStages = prev.stages.map((s) => {
-          if (s.id === stage.id) {
-            const updatedAccess = (s.rbacAccess || []).filter(
-              (sa) => !(sa.type === subject.type && sa.id === subject.id)
-            );
-            return { ...s, rbacAccess: updatedAccess };
-          }
-          return s;
-        });
-        return { ...prev, stages: updatedStages };
+  const addRBACSubject = (stage: types.StageConfig) => (subject: types.RBACSubject) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) =>
+        s.id === stage.id ? { ...s, rbacAccess: [...(s.rbacAccess || []), subject] } : s
+      );
+      return { ...prev, stages: updatedStages };
+    });
+  };
+
+  const removeRBACSubject = (stage: types.StageConfig) => (subject: types.RBACSubject) => {
+    setState((prev) => {
+      const updatedStages = prev.stages.map((s) => {
+        if (s.id === stage.id) {
+          const updatedAccess = (s.rbacAccess || []).filter(
+            (sa) => !(sa.type === subject.type && sa.id === subject.id)
+          );
+          return { ...s, rbacAccess: updatedAccess };
+        }
+        return s;
       });
-    };
+      return { ...prev, stages: updatedStages };
+    });
+  };
 
   // Other Updates
   const updateTTLConfig = (config: types.TTLConfig) => {
@@ -250,14 +214,9 @@ export const EnvironmentProvider = ({
     clearError(`ttlConfig`);
   };
 
-  const updateContext = (
-    contextKey: string,
-    context: types.EnvironmentContext
-  ) => {
+  const updateContext = (contextKey: string, context: types.EnvironmentContext) => {
     setState((prev) => {
-      const index = prev.environmentContext.findIndex(
-        (ec) => ec.name === contextKey
-      );
+      const index = prev.environmentContext.findIndex((ec) => ec.name === contextKey);
       if (index === -1) return prev;
       const updated = [...prev.environmentContext];
       updated[index] = context;
@@ -275,9 +234,7 @@ export const EnvironmentProvider = ({
   const removeContext = (context: types.EnvironmentContext) => {
     setState((prev) => ({
       ...prev,
-      environmentContext: prev.environmentContext.filter(
-        (ec) => ec.name !== context.name
-      ),
+      environmentContext: prev.environmentContext.filter((ec) => ec.name !== context.name),
     }));
   };
 
@@ -292,9 +249,7 @@ export const EnvironmentProvider = ({
   const removeProjectAccess = (access: types.ProjectAccess) => {
     setState((prev) => ({
       ...prev,
-      projectAccess: prev.projectAccess.filter(
-        (pa) => pa.projectId !== access.projectId
-      ),
+      projectAccess: prev.projectAccess.filter((pa) => pa.projectId !== access.projectId),
     }));
   };
 
@@ -341,11 +296,7 @@ export const EnvironmentProvider = ({
       }
     } catch (error) {
       console.error(`Save error:`, error);
-      setGlobalError(
-        error instanceof Error
-          ? error.message
-          : `Failed to save environment. Please try again.`
-      );
+      setGlobalError(error instanceof Error ? error.message : `Failed to save environment. Please try again.`);
       throw error;
     } finally {
       setIsLoading(false);
@@ -382,19 +333,13 @@ export const EnvironmentProvider = ({
     hasErrors,
   };
 
-  return (
-    <EnvironmentContext.Provider value={value}>
-      {children}
-    </EnvironmentContext.Provider>
-  );
+  return <EnvironmentContext.Provider value={value}>{children}</EnvironmentContext.Provider>;
 };
 
 export const useEnvironment = () => {
   const context = useContext(EnvironmentContext);
   if (!context) {
-    throw new Error(
-      `useEnvironment must be used within an EnvironmentProvider`
-    );
+    throw new Error(`useEnvironment must be used within an EnvironmentProvider`);
   }
   return context;
 };

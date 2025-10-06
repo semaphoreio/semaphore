@@ -11,10 +11,7 @@ interface StageConfigurationProps {
   stage: types.StageConfig;
   onPipelineUpdate: (config: types.PipelineConfig) => void;
   onParameterAdded: (param: types.EnvironmentParameter) => void;
-  onParameterUpdated: (
-    paramKey: string,
-    param: types.EnvironmentParameter
-  ) => void;
+  onParameterUpdated: (paramKey: string, param: types.EnvironmentParameter) => void;
   onParameterRemoved: (param: types.EnvironmentParameter) => void;
   onSubjectAdded: (subject: types.RBACSubject) => void;
   onSubjectRemoved: (subject: types.RBACSubject) => void;
@@ -42,20 +39,11 @@ export const StageConfiguration = (props: StageConfigurationProps) => {
           </div>
 
           <div className="flex-3 flex flex-column gap-2">
-            <PipelineConfiguration
-              pipeline={stage.pipeline}
-              onPipelineUpdate={onPipelineUpdate}
-            />
+            <PipelineConfiguration pipeline={stage.pipeline} onPipelineUpdate={onPipelineUpdate}/>
             <StageOverview stage={stage}/>
 
-            <button
-              type="button"
-              className="btn btn-link pa0 flex items-center"
-              onClick={() => setExpanded(!expanded)}
-            >
-              <MaterializeIcon
-                name={expanded ? `expand_less` : `expand_more`}
-              />
+            <button type="button" className="btn btn-link pa0 flex items-center" onClick={() => setExpanded(!expanded)}>
+              <MaterializeIcon name={expanded ? `expand_less` : `expand_more`}/>
               {expanded ? `Hide` : `Show`} Configuration
             </button>
 
@@ -80,10 +68,7 @@ export const StageConfiguration = (props: StageConfigurationProps) => {
 interface StageTabsProps {
   stage: types.StageConfig;
   onParameterAdded: (param: types.EnvironmentParameter) => void;
-  onParameterUpdated: (
-    paramKey: string,
-    param: types.EnvironmentParameter
-  ) => void;
+  onParameterUpdated: (paramKey: string, param: types.EnvironmentParameter) => void;
   onParameterRemoved: (param: types.EnvironmentParameter) => void;
   onSubjectAdded: (subject: types.RBACSubject) => void;
   onSubjectRemoved: (subject: types.RBACSubject) => void;
@@ -102,9 +87,7 @@ const StageTabs = (props: StageTabsProps) => {
   } = props;
   const paramCount = stage.parameters?.length || 0;
   const rbacCount = stage.rbacAccess?.length || 0;
-  const [activeTab, setActiveTab] = useState<`parameters` | `rbac`>(
-    `parameters`
-  );
+  const [activeTab, setActiveTab] = useState<`parameters` | `rbac`>(`parameters`);
 
   return (
     <div className={className}>
@@ -135,10 +118,7 @@ const StageTabs = (props: StageTabsProps) => {
         {activeTab === `parameters` && (
           <div>
             <Box type="info" className="mb3">
-              <p className="ma0">
-                Define parameters that will be passed to this stage&apos;s
-                pipeline.
-              </p>
+              <p className="ma0">Define parameters that will be passed to this stage&apos;s pipeline.</p>
             </Box>
             <ParametersList
               parameters={stage.parameters}
@@ -152,8 +132,7 @@ const StageTabs = (props: StageTabsProps) => {
           <div>
             <Box type="info" className="mb3">
               <p className="ma0">
-                Define who can execute this stage. You can specify users,
-                groups, or service accounts.
+                Define who can execute this stage. You can specify users, groups, or service accounts.
               </p>
             </Box>
             <RBACSubjectSelector
@@ -176,44 +155,25 @@ interface PipelineConfigurationProps {
 const PipelineConfiguration = (props: PipelineConfigurationProps) => {
   const { pipeline, onPipelineUpdate } = props;
   const { projects, loading } = useProjects();
-  const projectOptions: types.ProjectSelectOption[] = projects.map(
-    (project) => ({
-      value: project.id,
-      label: project.name,
-      description: project.description,
-    })
-  );
+  const projectOptions: types.ProjectSelectOption[] = projects.map((project) => ({
+    value: project.id,
+    label: project.name,
+    description: project.description,
+  }));
 
-  const projectSearchFilter = (
-    searchTerm: string,
-    option: types.ProjectSelectOption
-  ) => {
+  const projectSearchFilter = (searchTerm: string, option: types.ProjectSelectOption) => {
     const term = searchTerm.toLowerCase();
-    return (
-      option.label.toLowerCase().includes(term) ||
-      option.description?.toLowerCase().includes(term) ||
-      false
-    );
+    return option.label.toLowerCase().includes(term) || option.description?.toLowerCase().includes(term) || false;
   };
 
-  const renderProjectOption = (
-    option: types.ProjectSelectOption,
-    isSelected: boolean
-  ) => {
+  const renderProjectOption = (option: types.ProjectSelectOption, isSelected: boolean) => {
     return (
-      <div
-        className={`pa2 bb b--black-05 pointer hover-bg-washed-gray ${
-          isSelected ? `bg-washed-gray` : ``
-        }`}
-      >
+      <div className={`pa2 bb b--black-05 pointer hover-bg-washed-gray ${isSelected ? `bg-washed-gray` : ``}`}>
         <div className="flex items-center">
           <div className="flex-1">
             <div className={isSelected ? `fw6` : ``}>{option.label}</div>
             {option.description && (
-              <div
-                className={`gray truncate`}
-                style="max-height: 2.5em; line-height: 1.25em; overflow: hidden;"
-              >
+              <div className={`gray truncate`} style="max-height: 2.5em; line-height: 1.25em; overflow: hidden;">
                 {option.description}
               </div>
             )}
@@ -304,9 +264,7 @@ const StageOverview = (props: StageOverviewProps) => {
           {pluralize(rbacCount, `access rule`, `access rules`)}
         </span>
       )}
-      {paramCount === 0 && rbacCount === 0 && (
-        <span>No additional configuration</span>
-      )}
+      {paramCount === 0 && rbacCount === 0 && <span>No additional configuration</span>}
     </div>
   );
 };

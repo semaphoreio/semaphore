@@ -5,26 +5,16 @@ import * as types from "../types";
 interface ParametersListProps {
   parameters: types.EnvironmentParameter[];
   onParameterAdded: (param: types.EnvironmentParameter) => void;
-  onParameterUpdated: (
-    paramKey: string,
-    param: types.EnvironmentParameter
-  ) => void;
+  onParameterUpdated: (paramKey: string, param: types.EnvironmentParameter) => void;
   onParameterRemoved: (param: types.EnvironmentParameter) => void;
   disabled?: boolean;
 }
 
 export const ParametersList = (props: ParametersListProps) => {
-  const {
-    parameters,
-    onParameterAdded,
-    onParameterUpdated,
-    onParameterRemoved,
-    disabled,
-  } = props;
+  const { parameters, onParameterAdded, onParameterUpdated, onParameterRemoved, disabled } = props;
 
   const emptyParam = { name: ``, description: ``, required: false };
-  const [newParam, setNewParam] =
-    useState<types.EnvironmentParameter>(emptyParam);
+  const [newParam, setNewParam] = useState<types.EnvironmentParameter>(emptyParam);
   const [isAddingNew, setIsAddingNew] = useState(false);
 
   return (
@@ -40,9 +30,7 @@ export const ParametersList = (props: ParametersListProps) => {
           <CollapsibleParameter
             key={index}
             param={param}
-            onParamUpdated={(updatedParam) =>
-              onParameterUpdated(param.name, updatedParam)
-            }
+            onParamUpdated={(updatedParam) => onParameterUpdated(param.name, updatedParam)}
             onParamRemoved={() => onParameterRemoved(param)}
             disabled={disabled}
           />
@@ -50,11 +38,7 @@ export const ParametersList = (props: ParametersListProps) => {
       </div>
 
       {!disabled && !isAddingNew && (
-        <button
-          type="button"
-          className="btn btn-secondary flex items-center"
-          onClick={() => setIsAddingNew(true)}
-        >
+        <button type="button" className="btn btn-secondary flex items-center" onClick={() => setIsAddingNew(true)}>
           <MaterializeIcon name="add" className="mr1"/>
           Add Parameter
         </button>
@@ -171,23 +155,13 @@ const CollapsibleParameter = (props: CollapsibleParameterProps) => {
         className="pa2 flex items-center pointer hover-bg-near-white"
         onClick={() => !isEditing && setIsExpanded(!isExpanded)}
       >
-        <MaterializeIcon
-          name={isExpanded ? `expand_more` : `chevron_right`}
-          className="mr2 gray"
-        />
+        <MaterializeIcon name={isExpanded ? `expand_more` : `chevron_right`} className="mr2 gray"/>
         <div className="flex-1">
           <span className="fw6">{param.name}</span>
-          {param.required && (
-            <span className="ml2 ba b--black-20 br2 ph1 pv0 gray">
-              Required
-            </span>
-          )}
+          {param.required && <span className="ml2 ba b--black-20 br2 ph1 pv0 gray">Required</span>}
         </div>
         {!disabled && !isEditing && (
-          <div
-            className="flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
               className="btn btn-link pa1 flex items-center"
@@ -198,11 +172,7 @@ const CollapsibleParameter = (props: CollapsibleParameterProps) => {
             >
               <MaterializeIcon name="edit"/>
             </button>
-            <button
-              type="button"
-              className="btn btn-link pa1 flex items-center red"
-              onClick={onParamRemoved}
-            >
+            <button type="button" className="btn btn-link pa1 flex items-center red" onClick={onParamRemoved}>
               <MaterializeIcon name="delete"/>
             </button>
           </div>
@@ -219,9 +189,7 @@ const CollapsibleParameter = (props: CollapsibleParameterProps) => {
                   <p className="ma0 lh-copy">{param.description}</p>
                 </div>
               )}
-              {!param.description && (
-                <p className="ma0 gray i">No description provided</p>
-              )}
+              {!param.description && <p className="ma0 gray i">No description provided</p>}
             </div>
           ) : (
             <div>
@@ -282,11 +250,7 @@ const CollapsibleParameter = (props: CollapsibleParameterProps) => {
                   <MaterializeIcon name="check" className="mr1"/>
                   Save
                 </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary flex items-center"
-                  onClick={handleCancel}
-                >
+                <button type="button" className="btn btn-secondary flex items-center" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>

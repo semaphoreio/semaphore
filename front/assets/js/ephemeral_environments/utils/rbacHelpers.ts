@@ -32,9 +32,7 @@ export function getSubjectTypeLabel(type: types.RBACSubjectType): string {
   }
 }
 
-export function groupSubjectsByType(
-  subjects: types.RBACSubject[]
-): Record<types.RBACSubjectType, types.RBACSubject[]> {
+export function groupSubjectsByType(subjects: types.RBACSubject[]): Record<types.RBACSubjectType, types.RBACSubject[]> {
   const grouped: Record<types.RBACSubjectType, types.RBACSubject[]> = {
     user: [],
     group: [],

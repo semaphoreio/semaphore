@@ -2,7 +2,7 @@ import { Asset, MaterializeIcon } from "js/toolbox";
 import { VNode } from "preact";
 import { JSX } from "preact/jsx-runtime";
 import * as types from "../types";
-export const Loader = (props: { content?: string, }) => {
+export const Loader = (props: { content?: string }) => {
   return (
     <div className="tc pv5">
       <Asset path="images/spinner-2.svg" className="spinner"/>

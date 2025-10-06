@@ -4,13 +4,7 @@ import { AppConfig, ConfigContext } from "./contexts/ConfigContext";
 import { ProjectsProvider } from "./contexts/ProjectsContext";
 import { App } from "./app";
 
-export default function ({
-  dom,
-  config: jsonConfig,
-}: {
-  dom: HTMLElement;
-  config: any;
-}) {
+export default function ({ dom, config: jsonConfig }: { dom: HTMLElement, config: any }) {
   const appConfig = AppConfig.fromJSON(jsonConfig);
 
   render(

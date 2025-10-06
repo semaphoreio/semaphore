@@ -87,6 +87,7 @@ module.exports = {
           },
         ],
         "no-console": ["error", { allow: ["warn", "error"] }],
+        "max-len": ["error", {"code": 120, "ignoreComments": true}],
         "no-multi-spaces": "error",
         "@typescript-eslint/member-delimiter-style": [
           "warn",
@@ -97,7 +98,7 @@ module.exports = {
             },
             singleline: {
               delimiter: "comma",
-              requireLast: true,
+              requireLast: false,
             },
           },
         ],

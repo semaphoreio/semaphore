@@ -17,14 +17,9 @@ const TTL_PRESETS = [
   { label: `Never expire`, value: 0 },
 ];
 
-export const TTLSelector = ({
-  ttlConfig,
-  onTTLChange,
-  disabled = false,
-}: TTLSelectorProps) => {
+export const TTLSelector = ({ ttlConfig, onTTLChange, disabled = false }: TTLSelectorProps) => {
   const [useCustomTTL, setUseCustomTTL] = useState(
-    ttlConfig?.default_ttl_hours !== null &&
-      ttlConfig?.default_ttl_hours !== undefined
+    ttlConfig?.default_ttl_hours !== null && ttlConfig?.default_ttl_hours !== undefined
       ? !TTL_PRESETS.some((p) => p.value === ttlConfig.default_ttl_hours)
       : false
   );
@@ -53,10 +48,8 @@ export const TTLSelector = ({
                 type="button"
                 className={`btn ${
                   !useCustomTTL &&
-                  ((preset.value === null &&
-                    currentConfig.default_ttl_hours === null) ||
-                    (preset.value !== null &&
-                      currentConfig.default_ttl_hours === preset.value))
+                  ((preset.value === null && currentConfig.default_ttl_hours === null) ||
+                    (preset.value !== null && currentConfig.default_ttl_hours === preset.value))
                     ? `btn-primary`
                     : `btn-secondary`
                 }`}
@@ -71,9 +64,7 @@ export const TTLSelector = ({
             ))}
             <button
               type="button"
-              className={`btn ${
-                useCustomTTL ? `btn-primary` : `btn-secondary`
-              }`}
+              className={`btn ${useCustomTTL ? `btn-primary` : `btn-secondary`}`}
               onClick={() => setUseCustomTTL(true)}
               disabled={disabled}
             >
@@ -87,12 +78,7 @@ export const TTLSelector = ({
                 type="number"
                 className="form-control pa1 w4"
                 value={currentConfig.default_ttl_hours}
-                onChange={(e) =>
-                  updateConfig(
-                    `default_ttl_hours`,
-                    parseInt((e.target as HTMLInputElement).value) || 1
-                  )
-                }
+                onChange={(e) => updateConfig(`default_ttl_hours`, parseInt((e.target as HTMLInputElement).value) || 1)}
                 min={1}
                 max={8760}
                 disabled={disabled}
@@ -109,12 +95,7 @@ export const TTLSelector = ({
             <input
               type="checkbox"
               checked={currentConfig.allow_extension}
-              onChange={(e) =>
-                updateConfig(
-                  `allow_extension`,
-                  (e.target as HTMLInputElement).checked
-                )
-              }
+              onChange={(e) => updateConfig(`allow_extension`, (e.target as HTMLInputElement).checked)}
               className="mr2"
               disabled={disabled}
             />
