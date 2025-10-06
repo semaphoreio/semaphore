@@ -2,13 +2,16 @@ import { Fragment, VNode } from "preact";
 import * as Loading from "../stores/loading";
 import { Asset } from "js/toolbox";
 
-export const Loader = ({ loadingState, children }: { loadingState: Loading.State, children?: VNode<any>[] | VNode<any>, }) => {
-  const {
-    loading,
-    errors
-  } = loadingState;
+export const Loader = ({
+  loadingState,
+  children,
+}: {
+  loadingState: Loading.State;
+  children?: VNode<any>[] | VNode<any>;
+}) => {
+  const { loading, errors } = loadingState;
 
-  const containerStyle = { };
+  const containerStyle = {};
 
   if (errors.length > 0) {
     return (
@@ -39,9 +42,5 @@ export const Loader = ({ loadingState, children }: { loadingState: Loading.State
     );
   }
 
-  return (
-    <Fragment>
-      {children}
-    </Fragment>
-  );
+  return <Fragment>{children}</Fragment>;
 };

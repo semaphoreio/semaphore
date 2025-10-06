@@ -120,8 +120,8 @@ export const NavigationItem = ({
   icon,
   value,
   state
-}: { to: any, title: string, icon?: VNode, value: string, state?: object, }) => {
-  const className = ({ isActive }: { isActive: boolean, }) => {
+}: { to: any, title: string, icon?: VNode, value: string, state?: object }) => {
+  const className = ({ isActive }: { isActive: boolean }) => {
     return `link flex items-center justify-between pa1 mt1 ph3 pointer br3 ` + (isActive ? `bg-green hover-bg-green white b` : `dark-gray`);
   };
   return (

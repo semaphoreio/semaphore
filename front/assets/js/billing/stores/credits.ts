@@ -10,11 +10,10 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_AVAILABLE`, available: Credits.Available[], }
-  | { type: `SET_BALANCE`, balance: Credits.Balance[], }
-  | { type: `SET_STATUS`, value: Status, }
-  | { type: `SET_STATUS_MESSAGE`, value: string, }
-  ;
+  | { type: `SET_AVAILABLE`, available: Credits.Available[] }
+  | { type: `SET_BALANCE`, balance: Credits.Balance[] }
+  | { type: `SET_STATUS`, value: Status }
+  | { type: `SET_STATUS_MESSAGE`, value: string };
 
 export interface State {
   url: string;
@@ -47,4 +46,7 @@ export const EmptyState: State = {
   balance: [],
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({
+  state: EmptyState,
+  dispatch: () => undefined,
+});

@@ -21,5 +21,5 @@ export {
   Invoice,
   Project,
   ProjectCost,
-  DetailedProject
+  DetailedProject,
 };

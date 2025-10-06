@@ -2,7 +2,7 @@
 import { useContext } from "preact/hooks";
 import * as store from "../stores";
 
-export const TableHeaders = ({ tableSize }: { tableSize: number, }) => {
+export const TableHeaders = ({ tableSize }: { tableSize: number }) => {
   const { state, dispatch } = useContext(store.FlakyTest.Context);
   const sortOrder = state.sortOrder;
 

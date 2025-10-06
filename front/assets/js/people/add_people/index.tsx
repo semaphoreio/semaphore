@@ -51,7 +51,7 @@ export const App = () => {
   );
 };
 
-const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
+const AddNewUsers = (props: { close: (reload: boolean) => void }) => {
   const config = useContext(Config);
 
   const userProviders = AvailableProviderTypes.filter((type) =>
@@ -82,7 +82,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
   }, []);
 
   const userProviderBox = (provider: UserProvider) => {
-    const Link = (props: { icon: VNode, title: string, }) => {
+    const Link = (props: { icon: VNode, title: string }) => {
       return (
         <ActiveShadowLink
           className={`flex-grow-1 btn btn-secondary ${

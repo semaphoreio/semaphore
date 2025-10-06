@@ -5,7 +5,7 @@ import { UrlStore } from "../stores";
 import Icon from "./icon";
 
 interface Props {
-  loader: { init: (any: any) => void, };
+  loader: { init: (any: any) => void };
   pollUrl: string;
   pipelineId: string;
   pipelineName: string;

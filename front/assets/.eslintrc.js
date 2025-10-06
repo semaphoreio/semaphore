@@ -87,7 +87,7 @@ module.exports = {
           },
         ],
         "no-console": ["error", { allow: ["warn", "error"] }],
-        "max-len": ["error", {"code": 120, "ignoreComments": true}],
+        "max-len": ["error", {"code": 120, "ignoreComments": true, "ignoreStrings": true, "ignoreTemplateLiterals": true}],
         "no-multi-spaces": "error",
         "@typescript-eslint/member-delimiter-style": [
           "warn",

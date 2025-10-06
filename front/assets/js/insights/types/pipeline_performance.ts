@@ -1,4 +1,4 @@
-import * as types from './index';
+import * as types from "./index";
 
 export class DynamicMetrics {
   metrics: DynamicMetric[];
@@ -13,12 +13,11 @@ export class DynamicMetrics {
       .map((value) => {
         return DynamicMetric.fromJSON(value);
       })
-      .filter(m => !m.isEmpty());
+      .filter((m) => !m.isEmpty());
 
     return dynamicMetrics;
   }
 }
-
 
 export class DynamicMetric implements types.Chart.PerformanceMetric {
   fromDate: Date;
@@ -95,7 +94,7 @@ export class Metrics {
         metric.passedCount = metric.count;
         return metric;
       })
-      .filter(m => !m.isEmpty());
+      .filter((m) => !m.isEmpty());
 
     metrics.failed = json.failed
       .map((value) => {
@@ -103,29 +102,35 @@ export class Metrics {
         metric.failedCount = metric.count;
         return metric;
       })
-      .filter(m => !m.isEmpty());
+      .filter((m) => !m.isEmpty());
 
     metrics.all = json.all
       .map((value) => {
         const metric = Metric.fromJSON(value);
         const failedMetric = metrics.failed.find((failedMetric) => {
-          return failedMetric.fromDate.getTime() == metric.fromDate.getTime() && failedMetric.toDate.getTime() == metric.toDate.getTime();
+          return (
+            failedMetric.fromDate.getTime() == metric.fromDate.getTime() &&
+            failedMetric.toDate.getTime() == metric.toDate.getTime()
+          );
         });
 
-        if(failedMetric) {
+        if (failedMetric) {
           metric.failedCount = failedMetric.count;
         }
         const passedMetric = metrics.passed.find((passedMetric) => {
-          return passedMetric.fromDate.getTime() == metric.fromDate.getTime() && passedMetric.toDate.getTime() == metric.toDate.getTime();
+          return (
+            passedMetric.fromDate.getTime() == metric.fromDate.getTime() &&
+            passedMetric.toDate.getTime() == metric.toDate.getTime()
+          );
         });
 
-        if(passedMetric) {
+        if (passedMetric) {
           metric.passedCount = passedMetric.count;
         }
 
         return metric;
       })
-      .filter(m => !m.isEmpty());
+      .filter((m) => !m.isEmpty());
     return metrics;
   }
 }

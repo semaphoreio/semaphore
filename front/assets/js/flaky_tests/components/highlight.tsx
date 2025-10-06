@@ -132,7 +132,7 @@ export const Highlight = (props: HighlightProps) => {
   const getTextNodeAtPosition = (
     root: Node,
     index: number
-  ): { node: Node, position: number, } => {
+  ): { node: Node, position: number } => {
     const NODE_TYPE = NodeFilter.SHOW_TEXT;
     const treeWalker = document.createTreeWalker(root, NODE_TYPE, function next(elem) {
       if (index > elem.textContent.length) {

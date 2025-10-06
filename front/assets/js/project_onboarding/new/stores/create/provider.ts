@@ -7,7 +7,7 @@ export interface State {
 }
 
 type ProviderAction = 
-  | { type: `SET_PROVIDER`, payload: Provider.Provider, };
+  | { type: `SET_PROVIDER`, payload: Provider.Provider };
 
 const defaultState: State = {
   selectedProvider: null as unknown as Provider.Provider
