@@ -142,6 +142,8 @@ export var ManageSecret = {
       secretEditor.browseFilesOnClick(fileUploadLink, fileUpload);
       secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, fileMd5PresentId, fileImageId);
       secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInput, fileContent, md5Id);
+      // Attach trimming handler for the file path input
+      secretEditor.attachFilePathTrimmer(fileInput);
     });
   },
 
@@ -152,11 +154,15 @@ export var ManageSecret = {
 
       let envVarIndex = secretEditor.envVars.length - 1;
       let envVar = secretEditor.envVars[envVarIndex];
-      let [element, envVarDiv, envVarDeleteLink, envVarInput, md5Id] =
+      // envVarElement returns [element, envVarNameId, envVarDivId, envVarDeleteLink, envVarValueId, envVarMd5Id]
+      let [element, envVarNameId, envVarDiv, envVarDeleteLink, envVarInput, md5Id] =
         secretEditor.envVarElement(envVar, envVarIndex);
 
       document.getElementById("env-vars-input").insertAdjacentHTML("beforeend", element);
       secretEditor.activateEnvVarDeleteLink(envVarDeleteLink, envVarDiv, envVarInput, md5Id);
+
+      // ensure validation/trim is attached for the newly created input
+      secretEditor.activateEnvVarValidation(envVarNameId);
 
       return false;
     });
@@ -177,22 +183,44 @@ export var ManageSecret = {
       secretEditor.browseFilesOnClick(fileUploadLink, fileUpload);
       secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, fileMd5PresentId, fileImageId);
       secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInput, fileContent, md5Id);
+      // Attach trimming handler for newly cloned file path input
+      secretEditor.attachFilePathTrimmer(fileInput);
 
       return false;
     });
   },
 
+  attachFilePathTrimmer: function(fileInputId) {
+    // fileInputId is the id of the visible text input for the file path (e.g. files_0_path)
+    $("body").on("change blur input", "#" + fileInputId, function() {
+      let raw = $(this).val();
+      let trimmed = raw !== undefined && raw !== null ? raw.trim() : raw;
+      if (raw !== trimmed) {
+        $(this).val(trimmed);
+      }
+    });
+  },
+
   activateEnvVarValidation: function (selector) {
     let secretEditor = this;
-    $("body").on("change textInput input", "#" + selector, function () {
-      valid_name_regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
-      let name = $(this).val();
+    // Validate on input and change, but always validate the trimmed value.
+    $("body").on("change textInput input blur", "#" + selector, function () {
+  const valid_name_regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+      // Trim whitespace from the input value (leading/trailing) and update the field on blur/change
+      let raw = $(this).val();
+      let name = raw !== undefined && raw !== null ? raw.trim() : raw;
+
       if (name.match(valid_name_regex)) {
         $(this).next(".error-message").remove(); // removes existing error message
       }
       else {
         $(this).next(".error-message").remove(); // removes existing error message
         $(this).after('<p class="f6 fw5 mt1 mb0 red error-message">Invalid variable name!</p>');
+      }
+
+      // If the visible value differs from trimmed, update it on blur/change
+      if (raw !== name) {
+        $(this).val(name);
       }
     });
   },
