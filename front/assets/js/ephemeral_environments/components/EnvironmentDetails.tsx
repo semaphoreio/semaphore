@@ -465,7 +465,7 @@ export const EnvironmentConfiguration = ({
                                   ? `person`
                                   : subject.type === `group`
                                     ? `group`
-                                    : `key`
+                                    : `smart_toy`
                               }
                             />
                             {subject.name || subject.id}
