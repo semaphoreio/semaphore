@@ -9,6 +9,7 @@ defmodule Scheduler.Actions.RunNowImpl do
   alias Scheduler.Periodics.Model.Periodics
   alias Scheduler.Clients.{ProjecthubClient, RepositoryClient}
   alias Scheduler.Actions
+  alias Scheduler.Utils.GitReference
   alias Util.ToTuple
 
   def run_now(params) do
@@ -25,8 +26,8 @@ defmodule Scheduler.Actions.RunNowImpl do
     end
   end
 
-  defp validate_params(%Periodics{branch: nil}, %{branch: ""}),
-    do: "You have to provide branch for this task" |> ToTuple.error(:INVALID_ARGUMENT)
+  defp validate_params(%Periodics{reference: nil}, %{reference: ""}),
+    do: "You have to provide reference for this task" |> ToTuple.error(:INVALID_ARGUMENT)
 
   defp validate_params(%Periodics{pipeline_file: nil}, %{pipeline_file: ""}),
     do: "You have to provide pipeline file for this task" |> ToTuple.error(:INVALID_ARGUMENT)
@@ -35,10 +36,10 @@ defmodule Scheduler.Actions.RunNowImpl do
          periodics = %Periodics{parameters: parameters},
          params = %{parameter_values: values}
        ) do
-    branch =
-      if String.length(params.branch) > 1,
-        do: params.branch,
-        else: periodics.branch
+    reference =
+      if String.length(params.reference) > 1,
+        do: params.reference,
+        else: periodics.reference
 
     pipeline_file =
       if String.length(params.pipeline_file) > 1,
@@ -49,7 +50,7 @@ defmodule Scheduler.Actions.RunNowImpl do
       {:ok, values} ->
         {:ok,
          params
-         |> Map.put(:branch, branch)
+         |> Map.put(:reference, reference)
          |> Map.put(:pipeline_file, pipeline_file)
          |> Map.put(:parameter_values, values)}
 
@@ -101,7 +102,9 @@ defmodule Scheduler.Actions.RunNowImpl do
     do: "The 'requester' parameter can not be empty string." |> ToTuple.error(:INVALID_ARGUMENT)
 
   defp verify_revision_exists(periodic, params) do
-    revision_args = [reference: "refs/heads/" <> params.branch, commit_sha: ""]
+    git_reference = GitReference.normalize(params.reference)
+
+    revision_args = [reference: git_reference, commit_sha: ""]
 
     with {:ok, repository_id} <- fetch_project_repository_id(periodic.project_id),
          {:ok, commit} <- fetch_branch_revision(repository_id, revision_args) do

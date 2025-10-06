@@ -56,7 +56,11 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
     with tf_map <- %{Timestamp => {__MODULE__, :timestamp_to_datetime_string}},
          {:ok, response} <- Proto.to_map(proto_response, transformations: tf_map),
          :OK <- response.status.code do
-      {:ok, %{schedule: response.periodic, triggers: response.triggers}}
+      {:ok,
+       %{
+         schedule: rename_reference_to_branch(response.periodic),
+         triggers: rename_reference_to_branch(response.triggers)
+       }}
     else
       :INVALID_ARGUMENT ->
         proto_response.status |> Map.get(:message) |> ToTuple.user_error()
@@ -98,7 +102,7 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
          {:ok, response} <- Proto.to_map(proto_response, transformations: tf_map),
          :OK <- response.status.code do
       response
-      |> Map.put(:entries, response.periodics)
+      |> Map.put(:entries, rename_reference_to_branch(response.periodics))
       |> Map.drop([:periodics, :status])
       |> to_page()
       |> ToTuple.ok()
@@ -151,6 +155,20 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.ResponseFormatter do
     {:ok, ts_date_time} = DateTime.from_unix(ts_in_microseconds, :microsecond)
     DateTime.to_string(ts_date_time)
   end
+
+  defp rename_reference_to_branch(periodics) when is_list(periodics) do
+    Enum.map(periodics, &rename_reference_to_branch/1)
+  end
+
+  defp rename_reference_to_branch(periodic) do
+    case reference_to_branch_field(periodic.reference) do
+      nil -> periodic
+      branch_name -> Map.put(periodic, :branch, branch_name)
+    end
+  end
+
+  def reference_to_branch_field("refs/heads/" <> branch_name), do: branch_name
+  def reference_to_branch_field(_), do: nil
 
   defp log_invalid_response(response, rpc_method) do
     response

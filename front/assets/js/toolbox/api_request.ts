@@ -152,6 +152,16 @@ export class Url<T> {
     });
   }
 
+  replace(params: Record<string, string>): Url<T> {
+    let path = this.path;
+    Object.entries(params).forEach(([key, value]) => {
+      // URL-encode the value to handle special characters like #, &, =, etc.
+      const encodedValue = encodeURIComponent(value);
+      path = path.replace(key, encodedValue);
+    });
+    return new Url<T>(this.method, path);
+  }
+
   constructor(method: string, path: string) {
     this.method = method as Method;
     this.path = path;

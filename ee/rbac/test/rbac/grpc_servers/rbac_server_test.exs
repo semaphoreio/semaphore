@@ -1068,6 +1068,84 @@ defmodule Rbac.GrpcServers.RbacServer.Test do
     end
   end
 
+  describe "list_subjects" do
+    alias InternalApi.RBAC.ListSubjectsRequest, as: Request
+
+    test "invalid org_id returns error", state do
+      req = %Request{org_id: "invalid-uuid", subject_ids: []}
+      {:error, grpc_error} = state.grpc_channel |> Stub.list_subjects(req)
+      assert grpc_error.message =~ "Invalid uuid"
+    end
+
+    test "returns subjects that are part of the organization", state do
+      user1_id = UUID.generate()
+      user2_id = UUID.generate()
+      user3_id = UUID.generate()
+
+      Support.Factories.RbacUser.insert(user1_id, "User One")
+      Support.Factories.RbacUser.insert(user2_id, "User Two")
+      Support.Factories.RbacUser.insert(user3_id, "User Three")
+
+      Support.Rbac.assign_org_role_by_name(@org_id, user1_id, "Admin")
+      Support.Rbac.assign_org_role_by_name(@org_id, user2_id, "Member")
+
+      req = %Request{org_id: @org_id, subject_ids: [user1_id, user2_id, user3_id]}
+      {:ok, %{subjects: subjects}} = state.grpc_channel |> Stub.list_subjects(req)
+
+      assert length(subjects) == 2
+      subject_ids = Enum.map(subjects, & &1.subject_id)
+      assert user1_id in subject_ids
+      assert user2_id in subject_ids
+      refute user3_id in subject_ids
+    end
+
+    test "returns empty list when no subjects match", state do
+      user_id = UUID.generate()
+      Support.Factories.RbacUser.insert(user_id, "User One")
+
+      req = %Request{org_id: @org_id, subject_ids: [user_id]}
+      {:ok, %{subjects: subjects}} = state.grpc_channel |> Stub.list_subjects(req)
+
+      assert subjects == []
+    end
+
+    test "returns subjects with correct type and display name", state do
+      user_id = UUID.generate()
+      Support.Factories.RbacUser.insert(user_id, "Test User")
+      Support.Rbac.assign_org_role_by_name(@org_id, user_id, "Admin")
+
+      req = %Request{org_id: @org_id, subject_ids: [user_id]}
+      {:ok, %{subjects: subjects}} = state.grpc_channel |> Stub.list_subjects(req)
+
+      assert length(subjects) == 1
+      subject = hd(subjects)
+      assert subject.subject_id == user_id
+      assert subject.display_name == "Test User"
+      assert subject.subject_type == :USER
+    end
+
+    test "returns empty list when subject_ids is empty", state do
+      req = %Request{org_id: @org_id, subject_ids: []}
+      {:ok, %{subjects: subjects}} = state.grpc_channel |> Stub.list_subjects(req)
+
+      assert subjects == []
+    end
+
+    test "filters subjects by organization correctly", state do
+      other_org_id = UUID.generate()
+      user_id = UUID.generate()
+
+      Support.Factories.RbacUser.insert(user_id, "User One")
+      Support.Rbac.create_org_roles(other_org_id)
+      Support.Rbac.assign_org_role_by_name(other_org_id, user_id, "Admin")
+
+      req = %Request{org_id: @org_id, subject_ids: [user_id]}
+      {:ok, %{subjects: subjects}} = state.grpc_channel |> Stub.list_subjects(req)
+
+      assert subjects == []
+    end
+  end
+
   ###
   ### Helper functions
   ###
