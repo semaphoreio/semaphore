@@ -9,7 +9,6 @@ import * as toolbox from "js/toolbox";
 import { Notice } from "js/notice";
 import { useLocation, NavLink, useParams } from "react-router-dom";
 
-
 export const ProjectPage = () => {
   const config = useContext(stores.Config.Context);
   const spendings = useContext(stores.Spendings.Context);
@@ -22,16 +21,15 @@ export const ProjectPage = () => {
   });
 
   useLayoutEffect(() => {
-    if(spendings.state.selectedSpendingId) {
+    if (spendings.state.selectedSpendingId) {
       dispatchRequest({ type: `SET_PARAM`, name: `spending_id`, value: spendings.state.selectedSpendingId });
       dispatchRequest({ type: `SET_PARAM`, name: `project_name`, value: projectName });
       dispatchRequest({ type: `FETCH` });
     }
   }, [spendings.state.selectedSpendingId]);
 
-
   useLayoutEffect(() => {
-    if(request.status == types.RequestStatus.Fetch) {
+    if (request.status == types.RequestStatus.Fetch) {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       fetch(request.url)
         .then((response) => response.json())
@@ -50,7 +48,6 @@ export const ProjectPage = () => {
   const { search } = useLocation();
   return (
     <stores.Request.Context.Provider value={{ state: request, dispatch: dispatchRequest }}>
-
       <div className="flex items-center justify-between">
         <div>
           <div className="inline-flex items-center">
@@ -73,14 +70,22 @@ export const ProjectPage = () => {
       >
         <Chart project={project}/>
         <Fragment>
-          {project.cost.groups.map((group, idx) => <components.SpendingGroup showItemTotalPriceTrends={true} hideUsage={true} hideUnitPrice={true} group={group} key={idx}/>)}
+          {project.cost.groups.map((group, idx) => (
+            <components.SpendingGroup
+              showItemTotalPriceTrends={true}
+              hideUsage={true}
+              hideUnitPrice={true}
+              group={group}
+              key={idx}
+            />
+          ))}
         </Fragment>
       </components.Loader.Container>
     </stores.Request.Context.Provider>
   );
 };
 
-export const Chart = ({ project }: { project: types.Spendings.DetailedProject, }) => {
+export const Chart = ({ project }: { project: types.Spendings.DetailedProject }) => {
   return (
     <div className="shadow-1 bg-white br3 mb3">
       <div className="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top">
@@ -94,7 +99,9 @@ export const Chart = ({ project }: { project: types.Spendings.DetailedProject, }
 
       <div className="flex bb b--black-075">
         <WorkflowGroup project={project}/>
-        {project.cost.groups.map((group, idx) => (<SpendingGroup price={group.price} group={group} lastItem={idx == project.cost.groups.length - 1} key={idx}/>))}
+        {project.cost.groups.map((group, idx) => (
+          <SpendingGroup price={group.price} group={group} lastItem={idx == project.cost.groups.length - 1} key={idx}/>
+        ))}
       </div>
 
       <components.ProjectChart project={project}/>
@@ -112,7 +119,10 @@ const SpendingGroup = ({ group, price, lastItem }: SpendingGroupProps) => {
     <div className={`w-100 b--black-075 pa3 ${lastItem ? `` : `br`}`}>
       <div className="inline-flex items-center f5">
         <div className="mr1">
-          <span className="mr2 dib" style={`width:10px; height: 10px; background-color:${types.Spendings.Group.hexColor(group.type)}`}></span>
+          <span
+            className="mr2 dib"
+            style={`width:10px; height: 10px; background-color:${types.Spendings.Group.hexColor(group.type)}`}
+          ></span>
           {group.name}
         </div>
         <components.GroupTooltip group={group}/>
@@ -126,7 +136,6 @@ const SpendingGroup = ({ group, price, lastItem }: SpendingGroupProps) => {
   );
 };
 
-
 interface WorkflowGroupProps {
   project: types.Spendings.DetailedProject;
 }
@@ -136,7 +145,10 @@ const WorkflowGroup = (props: WorkflowGroupProps) => {
     <div className={`w-100 b--black-075 pa3 br`}>
       <div className="inline-flex items-center f5">
         <div className="mr1">
-          <span className="mr2 dib" style={`width:10px; height: 10px; background-color:${toolbox.Formatter.colorFromName(`workflows`)}`}></span>
+          <span
+            className="mr2 dib"
+            style={`width:10px; height: 10px; background-color:${toolbox.Formatter.colorFromName(`workflows`)}`}
+          ></span>
           Workflows
         </div>
       </div>

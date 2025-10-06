@@ -10,10 +10,9 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_INVOICES`, invoices: Spendings.Invoice[], }
-  | { type: `SET_STATUS`, value: Status, }
-  | { type: `SET_STATUS_MESSAGE`, value: string, }
-  ;
+  | { type: `SET_INVOICES`, invoices: Spendings.Invoice[] }
+  | { type: `SET_STATUS`, value: Status }
+  | { type: `SET_STATUS_MESSAGE`, value: string };
 
 export interface State {
   url: string;
@@ -42,4 +41,7 @@ export const EmptyState: State = {
   invoices: [],
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({
+  state: EmptyState,
+  dispatch: () => undefined,
+});

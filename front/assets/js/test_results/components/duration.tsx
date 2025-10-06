@@ -1,7 +1,7 @@
 
 import moment from "moment";
 
-export const Duration = ({ duration, className }: { duration: number, className?: string, }) => {
+export const Duration = ({ duration, className }: { duration: number, className?: string }) => {
   duration = (Math.floor(duration / 1000000) * 1000000) / 1000000;
   const dur = moment.duration(duration);
   const milliseconds = dur.milliseconds();

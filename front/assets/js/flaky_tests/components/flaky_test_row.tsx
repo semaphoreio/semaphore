@@ -8,7 +8,7 @@ import * as stores from "../stores";
 import * as components from "../components";
 
 
-export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
+export const FlakyTestRow = ({ item }: { item: FlakyTestItem }) => {
   const [labels, setLabels] = useState([``]);
   useEffect(() => {
     const labels = item.labels.map((label) => {
@@ -58,7 +58,7 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
   </div>;
 };
 
-const Name = ({ item }: { item: FlakyTestItem, }) => {
+const Name = ({ item }: { item: FlakyTestItem }) => {
   const { state: filterState, dispatch: dispatchFilter } = useContext(stores.Filter.Context);
 
 
@@ -86,7 +86,7 @@ const Name = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem, }) => {
+const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem }) => {
   return (
     <Fragment>
       <div title={util.Formatter.dateTime(item.latestDisruptionTimestamp)}>

@@ -1,7 +1,7 @@
 import { createContext } from "preact";
 
 export type Action =
-  | { type: `SET_URL`, url: string, }
+  | { type: `SET_URL`, url: string }
   ;
 
 

@@ -21,7 +21,7 @@ const DefaultPlotState: PlotState = {
   width: 0,
 };
 
-const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[], }>({
+const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[] }>({
   plotState: DefaultPlotState,
   plotData: [],
 });
@@ -32,7 +32,6 @@ export interface PlotData {
   value: number;
   details: Record<string, number>;
 }
-
 
 interface PlotState {
   width: number;
@@ -89,10 +88,9 @@ export const Plot = (props: PlotProps) => {
     return () => window.removeEventListener(`resize`, throttleResize);
   }, []);
 
-
   // Sync container's width with the state when the window resizes
   useLayoutEffect(() => {
-    if(chartContainerRef.current) {
+    if (chartContainerRef.current) {
       const boundingRect = chartContainerRef.current.getBoundingClientRect();
       const width = boundingRect.width;
 
@@ -103,39 +101,45 @@ export const Plot = (props: PlotProps) => {
 
   // Update the scales when new data is loaded, or the viewbox changes
   useEffect(() => {
-    if(!plotState) {
+    if (!plotState) {
       return;
     }
 
-    if(plotState.width == 0) {
+    if (plotState.width == 0) {
       return;
     }
 
-    const xScale = d3.scaleTime()
+    const xScale = d3
+      .scaleTime()
       .rangeRound([plotState.margin.left, plotState.width - plotState.margin.right])
       .domain(props.domain);
 
-    const yScale = d3.scaleLinear()
+    const yScale = d3
+      .scaleLinear()
       .rangeRound([plotState.height - plotState.margin.bottom - plotState.margin.top, plotState.margin.top]);
 
     setPlotState({ ...plotState, xScale, yScale });
   }, [plotState.width, plotState.height, props.domain]);
 
-
   const onMouseOver = (e: MouseEvent) => {
-    if(tooltip.focus)
-      return;
+    if (tooltip.focus) return;
     const x = d3.pointer(e)[0];
     let date = plotState.xScale.invert(x + 15);
     date = moment(date).startOf(`day`).toDate();
-    if(!moment(date).isSameOrBefore(moment())) {
+    if (!moment(date).isSameOrBefore(moment())) {
       return;
     }
     const tooltipMetrics = plotData.filter((metric) => moment(metric.day).isSame(date, `day`));
 
-
     if (moment(date).isBetween(plotState.xScale.domain()[0], plotState.xScale.domain()[1], `day`, `[]`)) {
-      tooltipDispatch({ type: `SET_TOOLTIP`, x: plotState.xScale(date), y: 0, hidden: false, tooltipMetrics: tooltipMetrics, selectedDate: date });
+      tooltipDispatch({
+        type: `SET_TOOLTIP`,
+        x: plotState.xScale(date),
+        y: 0,
+        hidden: false,
+        tooltipMetrics: tooltipMetrics,
+        selectedDate: date,
+      });
     } else {
       tooltipDispatch({ type: `SET_TOOLTIP`, x: 0, y: 0, hidden: true, tooltipMetrics: null, selectedDate: null });
     }
@@ -167,7 +171,6 @@ export const Plot = (props: PlotProps) => {
   );
 };
 
-
 export const DateAxisX = () => {
   const { plotState } = useContext(PlotContext);
 
@@ -176,12 +179,10 @@ export const DateAxisX = () => {
   const vMargins = plotState.margin.top + plotState.margin.bottom;
   const yTranslation = plotState.height - vMargins;
 
-  const tickScale = d3.scaleQuantize()
-    .domain([200, 1000])
-    .range([4, 2, 1]);
+  const tickScale = d3.scaleQuantize().domain([200, 1000]).range([4, 2, 1]);
 
   useEffect(() => {
-    if(!xScaleRef.current) {
+    if (!xScaleRef.current) {
       return;
     }
     const xAxis = d3
@@ -190,15 +191,9 @@ export const DateAxisX = () => {
       .tickFormat((d) => moment(d as Date).format(`D`))
       .ticks(d3.timeDay.every(tickScale(plotState.width)));
 
+    d3.select(xScaleRef.current).call(xAxis).selectAll(`line`).remove();
 
-    d3.select(xScaleRef.current)
-      .call(xAxis)
-      .selectAll(`line`).remove();
-
-    d3.select(xScaleRef.current)
-      .call(xAxis)
-      .selectAll(`.tick text`).attr(`y`, `10`);
-
+    d3.select(xScaleRef.current).call(xAxis).selectAll(`.tick text`).attr(`y`, `10`);
   }, [yTranslation, plotState.xScale]);
 
   return (
@@ -219,8 +214,8 @@ export const LineChartLeft = (props: YScaleProps) => {
   const yScaleRef = createRef<SVGGElement>();
 
   useEffect(() => {
-
-    const defaultYScale = d3.scaleLinear()
+    const defaultYScale = d3
+      .scaleLinear()
       .rangeRound([plotState.height - plotState.margin.bottom - plotState.margin.top, plotState.margin.top]);
 
     setYScale(() => defaultYScale);
@@ -230,46 +225,42 @@ export const LineChartLeft = (props: YScaleProps) => {
     if (!yScaleRef.current) {
       return;
     }
-    if(!yScale) {
+    if (!yScale) {
       return;
     }
     const range = calculateOptimalRange(plotData);
     const max = range.max;
     const min = Math.min(0, range.min);
 
-    const yAxis = d3.axisRight(yScale)
+    const yAxis = d3
+      .axisRight(yScale)
       .tickSize(plotState.width - plotState.margin.left - plotState.margin.right)
       .tickFormat((d: number) => `${Math.floor(d)}`);
 
     const bottom = min;
-    const middown = min + ((max-min)/4) * 1;
-    const mid = min + ((max-min)/4) * 2;
-    const midup = min + ((max-min)/4) * 3;
+    const middown = min + ((max - min) / 4) * 1;
+    const mid = min + ((max - min) / 4) * 2;
+    const midup = min + ((max - min) / 4) * 3;
     const top = max;
 
+    yScale.domain([bottom, top].map((d) => Math.floor(d)));
+    yAxis.tickValues([bottom, middown, mid, midup, top].map((d) => Math.floor(d)));
 
-    yScale.domain([bottom, top].map(d => Math.floor(d)));
-    yAxis.tickValues([
-      bottom,
-      middown,
-      mid,
-      midup,
-      top
-    ].map(d => Math.floor(d)));
-
-    d3.select(yScaleRef.current)
-      .call(yAxis)
-      .selectAll(`.tick text`).attr(`x`, `-5`);
+    d3.select(yScaleRef.current).call(yAxis).selectAll(`.tick text`).attr(`x`, `-5`);
   }, [yScale, plotState.width, plotData]);
 
   return (
     <Fragment>
-      <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(${plotState.width - 30} 0)`}></g>
+      <g
+        className="y axis"
+        style={{ cursor: `default` }}
+        ref={yScaleRef}
+        transform={`translate(${plotState.width - 30} 0)`}
+      ></g>
       <LineChart plotData={plotData} yScale={yScale}/>
     </Fragment>
   );
 };
-
 
 export const MoneyScaleY = () => {
   const { plotState, plotData } = useContext(PlotContext);
@@ -284,36 +275,24 @@ export const MoneyScaleY = () => {
     const max = range.max;
     const min = Math.min(0, range.min);
 
-
     const yAxis = d3
       .axisLeft(plotState.yScale)
       .tickSize(-plotState.width)
       .tickFormat((d: number) => `${toolbox.Formatter.toMoney(Math.floor(d)).replace(`.00`, ``)}`);
 
     const bottom = min;
-    const middown = min + ((max-min)/4) * 1;
-    const mid = min + ((max-min)/4) * 2;
-    const midup = min + ((max-min)/4) * 3;
+    const middown = min + ((max - min) / 4) * 1;
+    const mid = min + ((max - min) / 4) * 2;
+    const midup = min + ((max - min) / 4) * 3;
     const top = max;
 
-    plotState.yScale.domain([bottom, top].map(d => Math.floor(d)));
-    yAxis.tickValues([
-      bottom,
-      middown,
-      mid,
-      midup,
-      top
-    ].map(d => Math.floor(d)));
+    plotState.yScale.domain([bottom, top].map((d) => Math.floor(d)));
+    yAxis.tickValues([bottom, middown, mid, midup, top].map((d) => Math.floor(d)));
 
-
-    d3.select(yScaleRef.current)
-      .call(yAxis)
-      .selectAll(`.tick text`).attr(`x`, `-5`);
+    d3.select(yScaleRef.current).call(yAxis).selectAll(`.tick text`).attr(`x`, `-5`);
   }, [plotState.yScale, plotState.width, plotData]);
 
-  return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>
-  );
+  return <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>;
 };
 
 interface ChartProps {
@@ -329,7 +308,7 @@ interface ChartProps {
 export const LineChart = (props: ChartProps) => {
   const { plotState, plotData: plotContextData } = useContext(PlotContext);
   let plotData = plotContextData;
-  if(props.plotData) {
+  if (props.plotData) {
     plotData = props.plotData;
   }
 
@@ -340,9 +319,9 @@ export const LineChart = (props: ChartProps) => {
   const dotRef = createRef<SVGGElement>();
 
   useLayoutEffect(() => {
-    if(!plotData.length) return;
-    if(!plotState.xScale) return;
-    if(!yScale) return;
+    if (!plotData.length) return;
+    if (!plotState.xScale) return;
+    if (!yScale) return;
 
     lineChartRef.current.replaceChildren(``);
     dotRef.current.replaceChildren(``);
@@ -355,11 +334,14 @@ export const LineChart = (props: ChartProps) => {
       .attr(`stroke`, (d) => colorScale(d[0].name))
       .attr(`pointer-events`, `visibleStroke`)
       .transition()
-      .attr(`d`, d3.line<PlotData>()
-        .x((d) => plotState.xScale(d.day) || 0)
-        .y((d) => {
-          return yScale(d.value) || 0;
-        })
+      .attr(
+        `d`,
+        d3
+          .line<PlotData>()
+          .x((d) => plotState.xScale(d.day) || 0)
+          .y((d) => {
+            return yScale(d.value) || 0;
+          })
       );
 
     d3.select(dotRef.current)
@@ -369,11 +351,9 @@ export const LineChart = (props: ChartProps) => {
       .attr(`r`, `2`) // radius
       .attr(`fill`, (d) => colorScale(d.name))
       .attr(`stroke`, (d) => colorScale(d.name))
-      .attr(`cx`, d => plotState.xScale(d.day) || 0) // center x passing through your xScale
-      .attr(`cy`, d => yScale(d.value) || 0); // center y through your yScale
-
+      .attr(`cx`, (d) => plotState.xScale(d.day) || 0) // center x passing through your xScale
+      .attr(`cy`, (d) => yScale(d.value) || 0); // center y through your yScale
   }, [plotState.xScale, plotState.yScale, plotData]);
-
 
   return (
     <Fragment>
@@ -386,21 +366,23 @@ export const LineChart = (props: ChartProps) => {
 export const TooltipLine = () => {
   const { state: tooltip } = useContext(stores.Tooltip.Context);
   const { plotState } = useContext(PlotContext);
-  if(tooltip.hidden && !tooltip.focus) {
+  if (tooltip.hidden && !tooltip.focus) {
     return;
   }
 
-  return <g>
-    <line
-      className={`focus-line ` + (tooltip.focus ? `focus-line--locked` : ``) }
-      style="shape-rendering: cripsedges;"
-      x1={tooltip.x}
-      y1={plotState.yScale(plotState.yScale.domain()[1])}
-      x2={tooltip.x}
-      y2={plotState.yScale(plotState.yScale.domain()[0])}
-      stroke={`rgb(134, 88, 214)`}
-    />
-  </g>;
+  return (
+    <g>
+      <line
+        className={`focus-line ` + (tooltip.focus ? `focus-line--locked` : ``)}
+        style="shape-rendering: cripsedges;"
+        x1={tooltip.x}
+        y1={plotState.yScale(plotState.yScale.domain()[1])}
+        x2={tooltip.x}
+        y2={plotState.yScale(plotState.yScale.domain()[0])}
+        stroke={`rgb(134, 88, 214)`}
+      />
+    </g>
+  );
 };
 
 //
@@ -416,7 +398,7 @@ export const TooltipLine = () => {
 function calculateOptimalRange(metrics: PlotData[]) {
   const zeroState = { min: 0, max: 20 };
 
-  if(metrics.length == 0) {
+  if (metrics.length == 0) {
     return zeroState;
   }
 
@@ -427,8 +409,8 @@ function calculateOptimalRange(metrics: PlotData[]) {
     return zeroState;
   }
 
-  while(!isItNice(min, max)) {
-    if(min == 0) {
+  while (!isItNice(min, max)) {
+    if (min == 0) {
       max = max + 1;
     } else {
       min = min - 1;
@@ -441,7 +423,7 @@ function calculateOptimalRange(metrics: PlotData[]) {
 function isItNice(min: number, max: number) {
   const range = max - min;
 
-  const dividesNicely = (range % 4 == 0);
+  const dividesNicely = range % 4 == 0;
   const upperValueIsRound = isOneNumberAllZeros(max);
   const bottomValueIsRound = isOneNumberAllZeros(min);
 
@@ -463,7 +445,7 @@ function isItNice(min: number, max: number) {
 //
 function isOneNumberAllZeros(value: number) {
   const digits = value.toString().length;
-  const divisor = Math.pow(10, digits-1);
+  const divisor = Math.pow(10, digits - 1);
 
   return value % divisor == 0;
 }
@@ -472,7 +454,7 @@ export const StackedBar = (props: ChartProps) => {
   const { dispatch: tooltipDispatch, state: tooltip } = useContext(stores.Tooltip.Context);
   const { plotState, plotData: plotContextData } = useContext(PlotContext);
   let plotData = plotContextData;
-  if(props.plotData) {
+  if (props.plotData) {
     plotData = props.plotData;
   }
 
@@ -490,33 +472,30 @@ export const StackedBar = (props: ChartProps) => {
     el.current.replaceChildren(``);
 
     const keys = _.chain(plotData)
-      .flatMap(metric => Object.keys(metric.details))
+      .flatMap((metric) => Object.keys(metric.details))
       .uniq()
       .value();
 
-    const stackGen = d3.stack()
+    const stackGen = d3
+      .stack()
       .keys(keys)
       .value((obj, key: string) => {
         return obj.details[key] as number;
       });
 
-
     // @ts-expect-error - d3 types are wrong
     const stackedSeries = stackGen(plotData);
 
-    const mouseover = function() {
-      if(tooltip.focus || hasMetricSelected)
-        return;
+    const mouseover = function () {
+      if (tooltip.focus || hasMetricSelected) return;
       // @ts-expect-error - d3 types are wrong
       const detailName = d3.select(this.parentNode).datum().key as string;
-
 
       tooltipDispatch({ type: `SET_DETAIL_NAME`, value: detailName });
     };
 
-    const mouseleave = function() {
-      if(tooltip.focus || hasMetricSelected)
-        return;
+    const mouseleave = function () {
+      if (tooltip.focus || hasMetricSelected) return;
 
       tooltipDispatch({ type: `SET_DETAIL_NAME`, value: null });
     };
@@ -524,24 +503,28 @@ export const StackedBar = (props: ChartProps) => {
     d3.select(el.current)
       .selectAll(`g`)
       .data(stackedSeries)
-      .enter().append(`g`)
+      .enter()
+      .append(`g`)
       .attr(`fill`, (d) => props.colorScale(d.key))
-      .attr(`class`, (d) => `chart-rect ` + d.key )
+      .attr(`class`, (d) => `chart-rect ` + d.key)
       .style(`opacity`, 0.7)
       .style(`shape-rendering`, `crispedges`)
       .selectAll(`rect`)
       .data((d) => d)
-      .enter().append(`rect`)
-      .attr(`x`, (d) => (plotState.xScale(d.data.day) - width / 2) || 0)
-      .attr(`y`, (d) => plotState.yScale(d[1]) )
-      .attr(`height`, (d) => { return Math.max(plotState.yScale(d[0]) - plotState.yScale(d[1]), 0); } )
+      .enter()
+      .append(`rect`)
+      .attr(`x`, (d) => plotState.xScale(d.data.day) - width / 2 || 0)
+      .attr(`y`, (d) => plotState.yScale(d[1]))
+      .attr(`height`, (d) => {
+        return Math.max(plotState.yScale(d[0]) - plotState.yScale(d[1]), 0);
+      })
       .attr(`width`, width)
       .on(`mouseover`, mouseover)
       .on(`mouseleave`, mouseleave);
 
     const detailName = props.selectedMetric;
 
-    if(hasMetricSelected) {
+    if (hasMetricSelected) {
       d3.selectAll(`.chart-rect`).style(`opacity`, 0.2);
       d3.selectAll(`.chart-rect.${detailName}`).style(`opacity`, 1);
     } else {
@@ -549,8 +532,5 @@ export const StackedBar = (props: ChartProps) => {
     }
   }, [plotData, plotState.xScale, plotState.yScale, tooltip.focus]);
 
-
-  return (
-    <g ref={el}></g>
-  );
+  return <g ref={el}></g>;
 };

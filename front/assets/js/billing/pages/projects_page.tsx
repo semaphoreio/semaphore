@@ -135,7 +135,7 @@ export const ProjectList = () => {
   }, [projectNameFilter, orderBy, orderByDir, projects]);
 
 
-  const RequestSorter = ({ name, label, className }: { name: string, label: string, className?: string, } ) => {
+  const RequestSorter = ({ name, label, className }: { name: string, label: string, className?: string } ) => {
     const isAsc = orderBy == name && orderByDir == `asc`;
     const isDesc = orderBy == name && orderByDir == `desc`;
     const isNone = !isAsc && !isDesc;
@@ -232,7 +232,7 @@ export const ProjectList = () => {
   );
 };
 
-const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: number, }) => {
+const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: number }) => {
   const { search } = useLocation();
 
   return (
@@ -271,7 +271,7 @@ const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: n
   );
 };
 
-export const Loader = ({ status, children }: { status: types.RequestStatus, children?: VNode<any>[] | VNode<any>, }) => {
+export const Loader = ({ status, children }: { status: types.RequestStatus, children?: VNode<any>[] | VNode<any> }) => {
   switch(status) {
     case types.RequestStatus.Loading:
       return <div className="pv2 flex items-center justify-center">

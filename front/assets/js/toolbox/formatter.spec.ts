@@ -27,7 +27,9 @@ describe(`Formatter.decimalThousands`, () => {
     specs.forEach((spec) => {
       const result = Formatter.decimalThousands(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
@@ -41,7 +43,7 @@ describe(`Formatter.decimalThousandsWithPrecision`, () => {
 
   test(`should format data properly`, () => {
     const specs = [
-      { precision: 2, input: 0.00, output: `0.00` },
+      { precision: 2, input: 0.0, output: `0.00` },
       { precision: 2, input: 1.123, output: `1.12` },
       { precision: 2, input: 10.43, output: `10.43` },
       { precision: 2, input: 100.2333, output: `100.23` },
@@ -55,13 +57,17 @@ describe(`Formatter.decimalThousandsWithPrecision`, () => {
     ] as spec[];
 
     specs.forEach((spec) => {
-      const result = Formatter.decimalThousandsWithPrecision(spec.input, spec.precision);
+      const result = Formatter.decimalThousandsWithPrecision(
+        spec.input,
+        spec.precision
+      );
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
-
 
 describe(`Formatter.stringToHexColor`, () => {
   interface spec {
@@ -78,11 +84,12 @@ describe(`Formatter.stringToHexColor`, () => {
     specs.forEach((spec) => {
       const result = Formatter.stringToHexColor(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
-
 
 describe(`Formatter.humanize`, () => {
   interface spec {
@@ -102,7 +109,9 @@ describe(`Formatter.humanize`, () => {
     specs.forEach((spec) => {
       const result = Formatter.humanize(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
@@ -114,8 +123,8 @@ describe(`Formatter.parseMoney`, () => {
   }
   test(`should format data properly`, () => {
     const specs = [
-      { input: `$ 23.00`, output: 23.00 },
-      { input: `$ 0.00`, output: 0.00 },
+      { input: `$ 23.00`, output: 23.0 },
+      { input: `$ 0.00`, output: 0.0 },
       { input: `$ 11.23`, output: 11.23 },
       { input: `$ 123,000.00`, output: 123000 },
       { input: `$ 12,345.67`, output: 12345.67 },
@@ -125,7 +134,9 @@ describe(`Formatter.parseMoney`, () => {
     specs.forEach((spec) => {
       const result = Formatter.parseMoney(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
@@ -137,18 +148,20 @@ describe(`Formatter.toMoney`, () => {
   }
   test(`should format data properly`, () => {
     const specs = [
-      { input: 23.00, output: `$23.00`, },
-      { input: 0.00, output: `$0.00`, },
-      { input: 11.23, output: `$11.23`, },
-      { input: 123000, output: `$123,000.00`, },
-      { input: 12345.67, output: `$12,345.67`, },
-      { input: 0.01, output: `$0.01`, },
+      { input: 23.0, output: `$23.00` },
+      { input: 0.0, output: `$0.00` },
+      { input: 11.23, output: `$11.23` },
+      { input: 123000, output: `$123,000.00` },
+      { input: 12345.67, output: `$12,345.67` },
+      { input: 0.01, output: `$0.01` },
     ] as spec[];
 
     specs.forEach((spec) => {
       const result = Formatter.toMoney(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
@@ -178,7 +191,62 @@ describe(`Formatter.formatTestDuration`, () => {
     specs.forEach((spec) => {
       const result = Formatter.formatTestDuration(spec.input);
 
-      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(spec.output);
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
+    });
+  });
+});
+
+describe(`Formatter.formatTimeAgo`, () => {
+  interface spec {
+    input: string;
+    output: string;
+  }
+
+  test(`should format data properly`, () => {
+    const now = new Date();
+    const specs = [
+      {
+        input: new Date(now.getTime() - 5 * 1000).toISOString(),
+        output: `a few seconds ago`,
+      },
+      {
+        input: new Date(now.getTime() - 30 * 1000).toISOString(),
+        output: `a few seconds ago`,
+      },
+      {
+        input: new Date(now.getTime() - 60 * 1000).toISOString(),
+        output: `a minute ago`,
+      },
+      {
+        input: new Date(now.getTime() - 5 * 60 * 1000).toISOString(),
+        output: `5 minutes ago`,
+      },
+      {
+        input: new Date(now.getTime() - 60 * 60 * 1000).toISOString(),
+        output: `an hour ago`,
+      },
+      {
+        input: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+        output: `2 hours ago`,
+      },
+      {
+        input: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(),
+        output: `a day ago`,
+      },
+      {
+        input: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+        output: `3 days ago`,
+      },
+    ] as spec[];
+
+    specs.forEach((spec) => {
+      const result = Formatter.formatTimeAgo(spec.input);
+
+      expect(result, `${spec.input} should format to ${spec.output}`).to.eq(
+        spec.output
+      );
     });
   });
 });
