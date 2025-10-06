@@ -81,7 +81,7 @@ defmodule Test.Actions.HistoryImpl.Test do
 
   test "periodic has many triggers and filters are passed => list page", ctx do
     insert_triggers_for_past(ctx, 60, :minutes)
-    insert_triggers_for_past(ctx, 5, :minutes, branch: "develop")
+    insert_triggers_for_past(ctx, 5, :minutes, reference: "develop")
     insert_triggers_for_past(ctx, 5, :minutes, pipeline_file: ".semaphore/semaphore.yml")
     insert_triggers_for_past(ctx, 5, :minutes, triggered_by: "scheduler")
 

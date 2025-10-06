@@ -74,6 +74,18 @@ defmodule Rbac.Models.RoleAssignment do
   end
 
   @doc """
+  Finds role assignments by subject IDs and organization ID.
+  Returns distinct assignments filtered by org_id.
+  """
+  def find_by_ids_and_org(subject_ids, org_id) do
+    from(r in __MODULE__,
+      where: r.user_id in ^subject_ids and r.org_id == ^org_id,
+      distinct: r.user_id
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Get user ids that are owner or admin in the given organization
   """
   def get_owner_and_admin_user_ids(org_id) do

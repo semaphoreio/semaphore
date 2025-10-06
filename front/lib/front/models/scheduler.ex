@@ -26,7 +26,7 @@ defmodule Front.Models.Scheduler do
   alias InternalApi.Status, as: Status
   require Logger
 
-  @required_fields [:name, :branch, :pipeline_file, :recurring]
+  @required_fields [:name, :reference_name, :pipeline_file, :recurring]
   @default_page_args [page: 1, page_size: 10, page_query: ""]
   embedded_schema do
     field(:name, :string)
@@ -34,7 +34,9 @@ defmodule Front.Models.Scheduler do
     field(:updated_at, :string)
     field(:project_id, :string)
     field(:recurring, :boolean)
-    field(:branch, :string)
+    field(:reference, :string)
+    field(:reference_type, :string, virtual: true)
+    field(:reference_name, :string, virtual: true)
     field(:at, :string)
     field(:parameters, :map)
     field(:pipeline_file, :string)
@@ -143,7 +145,9 @@ defmodule Front.Models.Scheduler do
     use TypedStruct
 
     typedstruct do
-      field(:branch, :string)
+      field(:reference, :string)
+      field(:reference_type, :string)
+      field(:reference_name, :string)
       field(:pipeline_file, :string)
       field(:workflow_id, :string)
       field(:status, :string)
@@ -159,8 +163,13 @@ defmodule Front.Models.Scheduler do
     end
 
     def construct(trigger) do
+      {reference_type, reference_name} =
+        Front.Models.Scheduler.parse_git_reference(trigger.reference)
+
       %__MODULE__{
-        branch: trigger.branch,
+        reference: trigger.reference,
+        reference_type: reference_type,
+        reference_name: reference_name,
         pipeline_file: trigger.pipeline_file,
         workflow_id: trigger.scheduled_workflow_id,
         status: trigger.scheduling_status,
@@ -302,10 +311,17 @@ defmodule Front.Models.Scheduler do
   end
 
   def run_now(id, user_id, just_run_params \\ %{}, metadata \\ nil) do
-    run_now_params = just_run_params |> Map.merge(%{id: id, requester: user_id})
+    run_now_params =
+      just_run_params
+      |> Map.merge(%{id: id, requester: user_id})
+      |> Map.put(:reference, build_reference(just_run_params))
+      |> Map.delete(:reference_type)
+      |> Map.delete(:reference_name)
 
     with {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
          request <- Util.Proto.deep_new!(RunNowRequest, run_now_params),
+         :ok <-
+           Logger.info("run_now_params: #{inspect(run_now_params)}, request: #{inspect(request)}"),
          {:ok, response = %RunNowResponse{status: %Status{code: 0}}} <-
            Stub.run_now(channel, request, options(metadata)),
          triggers <- response.triggers ++ [empty_trigger()] do
@@ -417,9 +433,13 @@ defmodule Front.Models.Scheduler do
     all_data = Map.merge(form_data, context_data)
     scheduler_id = context_data[:id] || ""
 
+    # Build the reference field from reference_type and reference_name for gRPC service
+    reference = build_reference(all_data)
+    grpc_data = Map.put(all_data, :reference, reference)
+
     with true <- changeset.valid?,
          {:ok, channel} <- GRPC.Stub.connect(api_endpoint()),
-         {:ok, request} <- Util.Proto.deep_new(PersistRequest, all_data),
+         {:ok, request} <- Util.Proto.deep_new(PersistRequest, grpc_data),
          {:ok, %PersistResponse{status: %Status{code: 0}, periodic: periodic}} <-
            Stub.persist(channel, request, options(metadata)) do
       {:ok, periodic.id}
@@ -498,7 +518,7 @@ defmodule Front.Models.Scheduler do
 
   defp empty_trigger do
     %{
-      branch: "",
+      reference: "",
       pipeline_file: "",
       scheduling_status: "",
       scheduled_at: %{seconds: 0},
@@ -514,6 +534,8 @@ defmodule Front.Models.Scheduler do
   end
 
   defp construct({raw_scheduler, latest_trigger}) do
+    {reference_type, reference_name} = parse_git_reference(raw_scheduler.reference)
+
     %__MODULE__{
       id: raw_scheduler.id,
       name: raw_scheduler.name,
@@ -522,7 +544,9 @@ defmodule Front.Models.Scheduler do
       project_id: raw_scheduler.project_id,
       recurring: raw_scheduler.recurring,
       next: "not-added-yet",
-      branch: raw_scheduler.branch,
+      reference: raw_scheduler.reference,
+      reference_type: reference_type,
+      reference_name: reference_name,
       at: raw_scheduler.at,
       parameters: construct_parameters(raw_scheduler.parameters),
       pipeline_file: raw_scheduler.pipeline_file,
@@ -566,6 +590,27 @@ defmodule Front.Models.Scheduler do
     [timeout: 30_000, metadata: metadata]
   end
 
+  defp build_reference(params) do
+    reference_type = Map.get(params, :reference_type, "branch")
+    reference_name = Map.get(params, :reference_name) || Map.get(params, :reference, "")
+
+    # Format as proper Git reference
+    case String.downcase(to_string(reference_type)) do
+      "tag" ->
+        "refs/tags/#{String.trim(reference_name)}"
+
+      "pr" ->
+        "refs/pull/#{String.trim(reference_name)}/head"
+
+      "pull_request" ->
+        "refs/pull/#{String.trim(reference_name)}/head"
+
+      _ ->
+        # Default to branch
+        "refs/heads/#{String.trim(reference_name)}"
+    end
+  end
+
   defp parse_error_response_message(msg) do
     cond do
       msg =~ "parameters" ->
@@ -574,8 +619,8 @@ defmodule Front.Models.Scheduler do
       msg =~ "name" ->
         %{errors: %{name: String.replace(msg, "Periodic with name", "Scheduler")}}
 
-      msg =~ "branch" ->
-        %{errors: %{branch: msg}}
+      msg =~ "reference" ->
+        %{errors: %{reference: msg}}
 
       msg =~ "Invalid cron expression in 'at' field" ->
         %{
@@ -591,6 +636,36 @@ defmodule Front.Models.Scheduler do
 
       true ->
         %{errors: %{other: msg}}
+    end
+  end
+
+  def parse_git_reference(nil), do: {"branch", ""}
+  def parse_git_reference(""), do: {"branch", ""}
+
+  def parse_git_reference(reference) when is_binary(reference) do
+    cond do
+      String.starts_with?(reference, "refs/heads/") ->
+        {"branch", String.replace_prefix(reference, "refs/heads/", "")}
+
+      String.starts_with?(reference, "refs/tags/") ->
+        {"tag", String.replace_prefix(reference, "refs/tags/", "")}
+
+      String.starts_with?(reference, "refs/pull/") ->
+        pr_number =
+          reference
+          |> String.replace_prefix("refs/pull/", "")
+          |> String.replace_suffix("/head", "")
+
+        {"pr", "PR ##{pr_number}"}
+
+      String.contains?(reference, "/") ->
+        # If it looks like a full reference but doesn't match known patterns, treat as branch
+        parts = String.split(reference, "/")
+        {"branch", List.last(parts)}
+
+      true ->
+        # Plain name, assume it's a branch
+        {"branch", reference}
     end
   end
 end

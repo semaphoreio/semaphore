@@ -90,12 +90,7 @@ defmodule Support.Stubs.DB do
   def insert(table, entry) do
     verify_insert!(table, entry)
 
-    new_table = all(table) ++ [entry]
-    new_tables = Map.update!(tables(), table, fn _ -> new_table end)
-
-    State.update_tables(new_tables)
-
-    entry
+    State.insert_entry(table, entry)
   end
 
   def upsert(table, entry, field \\ :id) do
@@ -116,32 +111,13 @@ defmodule Support.Stubs.DB do
   def update(table, new_entry, field \\ :id) do
     verify_insert!(table, new_entry)
 
-    new_table =
-      all(table)
-      |> Enum.map(fn old_entry ->
-        if Map.get(old_entry, field) == Map.get(new_entry, field) do
-          new_entry
-        else
-          old_entry
-        end
-      end)
-
-    new_tables = Map.update!(tables(), table, fn _ -> new_table end)
-
-    State.update_tables(new_tables)
-
-    new_entry
+    State.update_entry(table, new_entry, field)
   end
 
   def delete(table, callback) when is_function(callback) do
     verify_table_exists!(table)
 
-    new_table = Enum.reject(all(table), callback)
-    new_tables = Map.update!(tables(), table, fn _ -> new_table end)
-
-    State.update_tables(new_tables)
-
-    :ok
+    State.delete_entries(table, callback)
   end
 
   def delete(table, entry_id) do
@@ -151,11 +127,7 @@ defmodule Support.Stubs.DB do
   def clear(table) do
     verify_table_exists!(table)
 
-    new_tables = Map.update!(tables(), table, fn _ -> [] end)
-
-    State.update_tables(new_tables)
-
-    :ok
+    State.clear_table(table)
   end
 
   #
@@ -235,6 +207,53 @@ defmodule Support.Stubs.DB do
 
     def update_schemas(new_schemas) do
       Agent.update(__MODULE__, fn db -> %{db | schemas: new_schemas} end)
+    end
+
+    def insert_entry(table, entry) do
+      Agent.get_and_update(__MODULE__, fn db ->
+        current_table = Map.get(db.tables, table, [])
+        new_table = current_table ++ [entry]
+        new_tables = Map.put(db.tables, table, new_table)
+
+        {entry, %{db | tables: new_tables}}
+      end)
+    end
+
+    def update_entry(table, entry, field) do
+      Agent.get_and_update(__MODULE__, fn db ->
+        current_table = Map.get(db.tables, table, [])
+
+        new_table =
+          Enum.map(current_table, fn old_entry ->
+            if Map.get(old_entry, field) == Map.get(entry, field) do
+              entry
+            else
+              old_entry
+            end
+          end)
+
+        new_tables = Map.put(db.tables, table, new_table)
+
+        {entry, %{db | tables: new_tables}}
+      end)
+    end
+
+    def delete_entries(table, filter_fn) do
+      Agent.get_and_update(__MODULE__, fn db ->
+        current_table = Map.get(db.tables, table, [])
+        new_table = Enum.reject(current_table, filter_fn)
+        new_tables = Map.put(db.tables, table, new_table)
+
+        {:ok, %{db | tables: new_tables}}
+      end)
+    end
+
+    def clear_table(table) do
+      Agent.get_and_update(__MODULE__, fn db ->
+        new_tables = Map.put(db.tables, table, [])
+
+        {:ok, %{db | tables: new_tables}}
+      end)
     end
   end
 end
