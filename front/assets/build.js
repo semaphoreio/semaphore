@@ -83,8 +83,8 @@ const buildOptions = {
 
 if (watch) {
   esbuild.context(buildOptions).then(async context => {
-    context.watch()
     await copyAssets()
+    await context.watch()
 
     const chokidar = require('chokidar')
     const cssDir = path.join(__dirname, 'css')
