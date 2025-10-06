@@ -23,7 +23,7 @@ defmodule FrontWeb.EphemeralEnvironmentController do
   plug(:put_layout, :organization)
 
   # Page rendering action for the UI or API endpoint for listing
-  def index(conn, %{"format" => "json"} = params) do
+  def index(conn, params = %{"format" => "json"}) do
     org_id = conn.assigns.organization_id
     project_id = params["project_id"] || ""
 
@@ -155,7 +155,7 @@ defmodule FrontWeb.EphemeralEnvironmentController do
     end
   end
 
-  def update(conn, %{"id" => environment_id} = params) do
+  def update(conn, params = %{"id" => environment_id}) do
     org_id = conn.assigns.organization_id
 
     Models.EphemeralEnvironment.update(environment_id, org_id, params)

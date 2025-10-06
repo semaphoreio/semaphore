@@ -114,7 +114,7 @@ const EnvironmentRow = ({ environment }: EnvironmentRowProps) => {
   const hasTTL = environment.ttlConfig?.default_ttl_hours !== 0;
 
   const maxInstances = environment.maxInstances;
-  const activeInstances = Math.floor(Math.random() * (maxInstances + 1));
+  const activeInstances = Math.floor(maxInstances / 2);
   const capacityPercentage =
     maxInstances > 0 ? (activeInstances / maxInstances) * 100 : 0;
 

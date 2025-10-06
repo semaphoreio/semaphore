@@ -168,6 +168,7 @@ defmodule Front.Models.EphemeralEnvironment do
 
   defp map_stages_from_proto(nil, _org_id), do: []
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp map_stages_from_proto(stages, org_id) do
     alias InternalApi.EphemeralEnvironments.StageType
 
