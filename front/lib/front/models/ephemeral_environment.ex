@@ -178,9 +178,24 @@ defmodule Front.Models.EphemeralEnvironment do
       |> Enum.filter(&(&1 != nil && &1 != ""))
       |> Enum.uniq()
 
+    # Collect all subject IDs from RBAC rules
+    subject_ids =
+      stages
+      |> Enum.flat_map(fn stage -> stage.rbac_rules || [] end)
+      |> Enum.map(fn rule -> rule.subject_id end)
+      |> Enum.filter(&(&1 != nil && &1 != ""))
+      |> Enum.uniq()
+
     # Fetch all projects at once
     projects = Front.Models.Project.find_many_by_ids(project_ids, org_id)
     projects_map = Map.new(projects, fn project -> {project.id, project} end)
+
+    # Fetch all subjects at once
+    subjects_map =
+      case Front.RBAC.Subjects.list_subjects(org_id, subject_ids) do
+        {:ok, subjects} -> subjects
+        {:error, _} -> %{}
+      end
 
     Enum.map(stages, fn stage ->
       %{
@@ -200,12 +215,19 @@ defmodule Front.Models.EphemeralEnvironment do
           end,
         pipeline: map_pipeline_from_proto(stage.pipeline, projects_map),
         parameters: map_parameters_from_proto(stage.parameters),
-        rbacAccess: map_rbac_rules_from_proto(stage.rbac_rules)
+        rbacAccess: map_rbac_rules_from_proto(stage.rbac_rules, subjects_map)
       }
     end)
   end
 
-  defp map_pipeline_from_proto(nil, _projects_map), do: %{projectId: "", projectName: "", projectDescription: nil, branch: "", pipelineYamlFile: ""}
+  defp map_pipeline_from_proto(nil, _projects_map),
+    do: %{
+      projectId: "",
+      projectName: "",
+      projectDescription: nil,
+      branch: "",
+      pipelineYamlFile: ""
+    }
 
   defp map_pipeline_from_proto(pipeline, projects_map) do
     project_id = pipeline.project_id || ""
@@ -232,12 +254,14 @@ defmodule Front.Models.EphemeralEnvironment do
     end)
   end
 
-  defp map_rbac_rules_from_proto(nil), do: []
+  defp map_rbac_rules_from_proto(nil, _subjects_map), do: []
 
-  defp map_rbac_rules_from_proto(rbac_rules) do
+  defp map_rbac_rules_from_proto(rbac_rules, subjects_map) do
     alias InternalApi.RBAC.SubjectType
 
     Enum.map(rbac_rules, fn rule ->
+      subject = Map.get(subjects_map, rule.subject_id)
+
       %{
         type:
           case SubjectType.key(rule.subject_type) do
@@ -247,9 +271,7 @@ defmodule Front.Models.EphemeralEnvironment do
             _ -> "unknown"
           end,
         id: rule.subject_id,
-        # TODO: We need to fetch the actual name from the backend
-        # For now, just use the ID as the name so the UI doesn't break
-        name: rule.subject_id
+        name: if(subject, do: subject.display_name, else: rule.subject_id)
       }
     end)
   end

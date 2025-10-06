@@ -22,7 +22,23 @@ defmodule FrontWeb.EphemeralEnvironmentController do
 
   plug(:put_layout, :organization)
 
-  # Page rendering action for the UI
+  # Page rendering action for the UI or API endpoint for listing
+  def index(conn, %{"format" => "json"} = params) do
+    org_id = conn.assigns.organization_id
+    project_id = params["project_id"] || ""
+
+    case Models.EphemeralEnvironment.list(org_id, project_id) do
+      {:ok, environment_types} ->
+        conn
+        |> render("list.json", environment_types: environment_types)
+
+      {:error, message} ->
+        conn
+        |> put_status(422)
+        |> json(%{error: message})
+    end
+  end
+
   def index(conn, _params) do
     render(conn, "index.html")
   end

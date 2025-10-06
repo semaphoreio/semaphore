@@ -91,7 +91,7 @@ interface SelectedSubjectsDisplayProps {
 }
 
 const SelectedSubjectsDisplay = (props: SelectedSubjectsDisplayProps) => {
-  const { subjects, onSubjectRemoved, disabled } = props;
+  const { subjects, onSubjectRemoved } = props;
   const groupedSubjects = groupSubjectsByType(subjects);
 
   return (
