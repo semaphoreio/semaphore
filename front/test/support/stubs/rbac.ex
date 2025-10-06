@@ -412,6 +412,7 @@ defmodule Support.Stubs.RBAC do
       GrpcMock.stub(RBACMock, :list_accessible_projects, &__MODULE__.list_accessible_projects/2)
       GrpcMock.stub(RBACMock, :list_existing_permissions, &__MODULE__.list_existing_permissions/2)
       GrpcMock.stub(RBACMock, :refresh_collaborators, &__MODULE__.refresh_collaborators/2)
+      GrpcMock.stub(RBACMock, :list_subjects, &__MODULE__.list_subjects/2)
     end
 
     def expect(function, n \\ 1, callback) do
@@ -689,6 +690,37 @@ defmodule Support.Stubs.RBAC do
 
     def refresh_collaborators(_req, _) do
       InternalApi.RBAC.RefreshCollaboratorsResponse.new()
+    end
+
+    def list_subjects(req, _) do
+      alias InternalApi.RBAC
+
+      subjects =
+        req.subject_ids
+        |> Enum.map(fn subject_id ->
+          case DB.find(:subjects, subject_id) do
+            nil ->
+              nil
+
+            subject ->
+              subject_type =
+                case subject.type do
+                  "user" -> RBAC.SubjectType.value(:USER)
+                  "group" -> RBAC.SubjectType.value(:GROUP)
+                  "service_account" -> RBAC.SubjectType.value(:SERVICE_ACCOUNT)
+                  _ -> RBAC.SubjectType.value(:USER)
+                end
+
+              RBAC.Subject.new(
+                subject_type: subject_type,
+                subject_id: subject.id,
+                display_name: subject.name
+              )
+          end
+        end)
+        |> Enum.filter(& &1)
+
+      RBAC.ListSubjectsResponse.new(subjects: subjects)
     end
 
     ###

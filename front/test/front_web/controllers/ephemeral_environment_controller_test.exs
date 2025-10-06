@@ -58,7 +58,7 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
         {:ok, [environment_type]}
       end)
 
-      conn = get(conn, "/ephemeral_environments")
+      conn = get(conn, "/ephemeral_environments", format: "json")
 
       assert json_response(conn, 200) == %{
                "environment_types" => [
@@ -72,7 +72,11 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
                    "created_at" => "2024-01-01T10:00:00Z",
                    "updated_at" => "2024-01-01T10:00:00Z",
                    "state" => "ready",
-                   "max_number_of_instances" => 5
+                   "maxInstances" => 5,
+                   "stages" => [],
+                   "environmentContext" => [],
+                   "projectAccess" => [],
+                   "ttlConfig" => %{"default_ttl_hours" => nil, "allow_extension" => false}
                  }
                ]
              }
@@ -83,7 +87,7 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
         {:error, "Failed to list environment types"}
       end)
 
-      conn = get(conn, "/ephemeral_environments")
+      conn = get(conn, "/ephemeral_environments", format: "json")
 
       assert json_response(conn, 422) == %{
                "error" => "Failed to list ephemeral environments"
@@ -94,8 +98,8 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
       Support.Stubs.PermissionPatrol.remove_all_permissions()
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
 
-      conn = get(conn, "/ephemeral_environments")
-      assert response(conn, 403)
+      conn = get(conn, "/ephemeral_environments", format: "json")
+      assert response(conn, 404)
     end
   end
 
@@ -137,7 +141,7 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
       assert response["id"] == "ee_new_123"
       assert response["name"] == "New Environment"
       assert response["description"] == "New environment description"
-      assert response["max_number_of_instances"] == 3
+      assert response["maxInstances"] == 3
       assert response["state"] == "draft"
     end
 
@@ -168,7 +172,7 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
           "description" => "Test"
         })
 
-      assert response(conn, 403)
+      assert response(conn, 404)
     end
   end
 
@@ -208,7 +212,7 @@ defmodule FrontWeb.EphemeralEnvironmentControllerTest do
       assert response["id"] == "ee_123"
       assert response["name"] == "Updated Environment"
       assert response["description"] == "Updated description"
-      assert response["max_number_of_instances"] == 10
+      assert response["maxInstances"] == 10
     end
 
     test "returns error when update fails", %{conn: conn, org_id: org_id, user_id: user_id} do

@@ -82,7 +82,8 @@ defmodule FrontWeb.EphemeralEnvironmentView do
       maxInstances: environment_type.max_number_of_instances,
       stages: environment_type.stages || [],
       environmentContext: environment_type.environment_context || [],
-      projectAccess: map_project_access(environment_type.accessible_project_ids, environment_type.org_id),
+      projectAccess:
+        map_project_access(environment_type.accessible_project_ids, environment_type.org_id),
       ttlConfig: environment_type.ttl_config || %{enabled: false}
     }
   end
@@ -98,6 +99,7 @@ defmodule FrontWeb.EphemeralEnvironmentView do
       case Map.get(projects_map, id) do
         nil ->
           %{projectId: id, projectName: id, projectDescription: nil}
+
         project ->
           %{
             projectId: id,
