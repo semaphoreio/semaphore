@@ -277,6 +277,36 @@ defmodule FrontWeb.PeopleController do
 
   @max_people_per_org 2000
   @return_non_members 10
+
+  def index(conn, params) do
+    Watchman.benchmark("people.index.duration", fn ->
+      org_id = conn.assigns.organization_id
+      # Sanitize inputs
+      search = (params["search"] || "") |> String.trim() |> String.slice(0, 50)
+
+      type =
+        params["type"]
+        |> case do
+          "user" -> "user"
+          "group" -> "group"
+          "service_account" -> "service_account"
+          _ -> "user"
+        end
+
+      members =
+        case Front.RBAC.Members.list_org_members(org_id,
+               username: search,
+               page_size: 20,
+               member_type: type
+             ) do
+          {:ok, {members, _}} -> members
+          _ -> []
+        end
+
+      conn |> json(%{members: members})
+    end)
+  end
+
   def fetch_project_non_members(conn, params) do
     org_id = conn.assigns.organization_id
     project = conn.assigns.project
