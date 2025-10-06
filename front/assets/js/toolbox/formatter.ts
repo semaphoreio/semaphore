@@ -4,10 +4,7 @@ export const decimalThousands = (value: number): string => {
   return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, `,`);
 };
 
-export const decimalThousandsWithPrecision = (
-  value: number,
-  precision: number
-): string => {
+export const decimalThousandsWithPrecision = (value: number, precision: number): string => {
   // format the value with the given precision
   value = parseFloat(value.toFixed(precision));
   const stringValue = value.toFixed(precision);
@@ -111,4 +108,15 @@ export const formatTestDuration = (value: number): string => {
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, `0`)}min`;
   }
+};
+
+/**
+ * Formats a date string into a "time ago" format (e.g., "5 minutes ago").
+ * Uses the moment.js library for formatting.
+ * @param dateStr - The date string to format.
+ * @returns A string representing the time elapsed since the given date.
+ */
+export const formatTimeAgo = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return moment(date).fromNow();
 };

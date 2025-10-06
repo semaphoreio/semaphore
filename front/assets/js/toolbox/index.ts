@@ -13,6 +13,7 @@ import * as ChartHelpers from "./chart_helpers";
 import * as APIRequest from "./api_request";
 import { default as PreCopy } from "./pre_copy";
 import { Box } from "./box";
+import * as RichSelect from "./rich_select";
 
 export {
   Asset,
@@ -30,4 +31,5 @@ export {
   YamlEditor,
   PreCopy,
   Box,
+  RichSelect,
 };
