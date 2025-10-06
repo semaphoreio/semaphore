@@ -18,7 +18,10 @@ defmodule Router.Tasks.CreateTest do
         spec: %{
           name: "Task",
           description: "Task description",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: "0 0 * * *",
           parameters: [
@@ -59,7 +62,10 @@ defmodule Router.Tasks.CreateTest do
         spec: %{
           name: "Task",
           description: "Task description",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: "0 0 * * *",
           parameters: [
@@ -81,13 +87,100 @@ defmodule Router.Tasks.CreateTest do
       assert {:ok, _} = UUID.info(task_id)
     end
 
+    test "POST /tasks - endpoint returns 200 when task is created with reference structure for branch",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Reference",
+          description: "Task description",
+          reference: %{
+            type: "branch",
+            name: "feature-branch"
+          },
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          parameters: [
+            %{
+              name: "PARAM_NAME",
+              description: "Parameter description",
+              required: true,
+              default_value: "Default value",
+              options: ["Option 1", "Option 2"]
+            }
+          ]
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: %{"metadata" => %{"id" => task_id}}}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert Support.Stubs.DB.find(:schedulers, task_id)
+      assert {:ok, _} = UUID.info(task_id)
+    end
+
+    test "POST /tasks - endpoint returns 200 when task is created with reference structure for tag",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Tag",
+          description: "Task description",
+          reference: %{
+            type: "tag",
+            name: "v1.0.0"
+          },
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          parameters: []
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: %{"metadata" => %{"id" => task_id}}}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      assert Support.Stubs.DB.find(:schedulers, task_id)
+      assert {:ok, _} = UUID.info(task_id)
+    end
+
+    test "POST /tasks - endpoint returns 200 when task is created with reference structure",
+         ctx do
+      params = %{
+        apiVersion: "v2",
+        kind: "Task",
+        spec: %{
+          name: "Task with Reference",
+          description: "Task description",
+          reference: %{
+            type: "branch",
+            name: "main"
+          },
+          pipeline_file: "pipeline.yml",
+          cron_schedule: "0 0 * * *",
+          parameters: []
+        }
+      }
+
+      assert {:ok, %Tesla.Env{status: 200, body: %{"metadata" => %{"id" => task_id}}}} =
+               Tesla.post(http_client(ctx), "/projects/#{ctx.project_id}/tasks", params)
+
+      task = Support.Stubs.DB.find(:schedulers, task_id)
+      assert task
+      assert task.api_model.reference == "refs/heads/main"
+    end
+
     test "POST /tasks - endpoint returns 422 when request is invalid", ctx do
       params = %{
         apiVersion: "v2",
         kind: "Task",
         spec: %{
           name: "Test",
-          branch: "master",
+          reference: %{
+            type: "branch",
+            name: "master"
+          },
           pipeline_file: "pipeline.yml",
           cron_schedule: "0 0 * * *",
           parameters: [

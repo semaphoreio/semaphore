@@ -4,12 +4,6 @@ description: Frequently Asked Questions (EE)
 
 # FAQ
 
-
-
-
-
-
-
 This page contains Frequently Asked Questions.
 
 ## Architecture
@@ -255,6 +249,21 @@ Some commands like `bash -e` or `set -x otrace` may override this behavior and m
 :::
 
 ## Project
+
+### When I try to edit the workflow, I get a 500 error page (workflow editor button)?
+
+This can happen if no [initialization machine](../using-semaphore/pipelines#init-job) is defined. To fix the error, follow these steps:
+
+1. Open the server menu and press **Settings**
+2. Select **Initialiation jobs** on the left menu
+3. Unsure at least **Environment type** and **Machine type** are select
+4. Press **Save changes** *even it the correct options were already selected*
+
+:::note
+
+Even if the correct options are selected, press **Save changes** to ensure they are applied.
+
+:::
 
 ### Can I transfer ownership of a project?
 

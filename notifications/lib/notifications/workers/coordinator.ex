@@ -26,14 +26,17 @@ defmodule Notifications.Workers.Coordinator do
 
         Logger.info("#{request_id} #{event.pipeline_id} #{project.metadata.name}")
 
+        {tag_name, branch_name, pr_branch_name} = extract_references(pipeline, hook)
+
         rules =
           Filter.find_rules(
             project.metadata.org_id,
             project.metadata.name,
-            pipeline.branch_name,
-            hook.pr_branch_name,
+            branch_name,
+            pr_branch_name,
             pipeline.yaml_file_name,
-            map_result_to_string(pipeline.result)
+            map_result_to_string(pipeline.result),
+            tag_name
           )
 
         Logger.info("#{request_id} #{event.pipeline_id} #{inspect(rules)}")
@@ -97,6 +100,15 @@ defmodule Notifications.Workers.Coordinator do
         _ -> false
       end
     end
+
+    defp extract_references(pipeline, nil), do: extract_references_from_pipeline(pipeline)
+    defp extract_references(_pipeline, hook = %{git_ref_type: :TAG}), do: {hook.tag_name, nil, ""}
+    defp extract_references(pipeline, hook), do: {nil, pipeline.branch_name, hook.pr_branch_name}
+
+    defp extract_references_from_pipeline(%{branch_name: "refs/tags/" <> tag_name}),
+      do: {tag_name, nil, ""}
+
+    defp extract_references_from_pipeline(%{branch_name: branch_name}), do: {nil, branch_name, ""}
 
     defp map_result_to_string(enum), do: enum |> Atom.to_string() |> String.downcase()
   end

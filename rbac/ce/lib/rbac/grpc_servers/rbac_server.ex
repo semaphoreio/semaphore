@@ -261,6 +261,21 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
+  @spec list_subjects(RBAC.ListSubjectsRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ListSubjectsResponse.t()
+  def list_subjects(%RBAC.ListSubjectsRequest{} = req, _stream) do
+    Log.observe("grpc.rbac.list_subjects", fn ->
+      validate_uuid!(req.org_id)
+
+      role_assignments = RoleAssignment.find_by_ids_and_org(req.subject_ids, req.org_id)
+      display_names_by_id = fetch_display_names(role_assignments)
+
+      %RBAC.ListSubjectsResponse{
+        subjects: Enum.map(role_assignments, &construct_grpc_subject(&1, display_names_by_id))
+      }
+    end)
+  end
+
   # ----------------
   # Helper functions
   # ----------------
@@ -538,5 +553,15 @@ defmodule Rbac.GrpcServers.RbacServer do
       # Default fallback for unknown values
       _ -> "user"
     end
+  end
+
+  defp construct_grpc_subject(assignment, display_names_by_id) do
+    subject_type = assignment.subject_type |> String.upcase() |> String.to_existing_atom()
+
+    %RBAC.Subject{
+      subject_type: subject_type,
+      subject_id: assignment.user_id,
+      display_name: display_names_by_id[assignment.user_id] || ""
+    }
   end
 end
