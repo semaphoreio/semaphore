@@ -44,15 +44,18 @@ defmodule FrontWeb.EphemeralEnvironmentView do
         },
         users_list: %{
           method: "get",
-          path: people_path(conn, :index) <> "?type=user&search=#{placeholder_search}"
+          path: people_path(conn, :index) <> "?format=json&type=user&search=#{placeholder_search}"
         },
         groups_list: %{
           method: "get",
-          path: people_path(conn, :index) <> "?type=group&search=#{placeholder_search}"
+          path:
+            people_path(conn, :index) <> "?format=json&type=group&search=#{placeholder_search}"
         },
         service_accounts_list: %{
           method: "get",
-          path: people_path(conn, :index) <> "?type=service_account&search=#{placeholder_search}"
+          path:
+            people_path(conn, :index) <>
+              "?format=json&type=service_account&search=#{placeholder_search}"
         }
       }
     }
