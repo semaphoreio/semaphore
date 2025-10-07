@@ -47,6 +47,9 @@ defmodule E2E.UI.UserTestCase do
       # Fill in login form and authenticate
       logged_in_session = login(session, login_url, root_email, root_password)
 
+      :timer.sleep(1000)
+      take_screenshot(logged_in_session, name: "loggedin")
+
       assert current_url(logged_in_session) ==
                "https://#{organization}.#{base_domain}/get_started/"
 

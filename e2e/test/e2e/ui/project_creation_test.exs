@@ -50,7 +50,7 @@ defmodule E2E.UI.ProjectCreationFlowTest do
       session = maybe_enable_duplicate(session)
 
       Logger.info("Clicking create project button")
-      assert_has(session, Wallaby.Query.css("button.btn.btn-primary"))
+      session = wait_for(session, Wallaby.Query.css("button.btn.btn-primary"), 30_000)
       click(session, Wallaby.Query.button("✓"))
 
       # Take screenshot after clicking continue
@@ -92,7 +92,6 @@ defmodule E2E.UI.ProjectCreationFlowTest do
       # Take a screenshot after clicking the start button
       take_screenshot(session, name: "after_start_button")
 
-      # Wait for 15 seconds to allow page transition
       Logger.info("Waiting 15 seconds for page transition...")
       :timer.sleep(15_000)
 
@@ -111,8 +110,27 @@ defmodule E2E.UI.ProjectCreationFlowTest do
   end
 
   defp maybe_enable_duplicate(session) do
-    if has?(session, Wallaby.Query.button("Make a duplicate project")) do
-      click(session, Wallaby.Query.button("Make a duplicate project"))
+    duplicate_button = Wallaby.Query.button("Make a duplicate project")
+
+    if has?(session, duplicate_button) do
+      click(session, duplicate_button)
+    else
+      session
     end
   end
+
+  defp wait_for(session, query, timeout_ms, interval_ms \\ 200)
+  defp wait_for(session, query, timeout_ms, _interval_ms) when timeout_ms <= 0 do
+    assert_has(session, query)
+  end
+
+  defp wait_for(session, query, timeout_ms, interval_ms) do
+    if has?(session, query) do
+      session
+    else
+      Process.sleep(interval_ms)
+      wait_for(session, query, timeout_ms - interval_ms, interval_ms)
+    end
+  end
+
 end

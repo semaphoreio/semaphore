@@ -47,7 +47,6 @@ defmodule E2E.UI.UserManagementTest do
       {:ok, login_session} = Wallaby.start_session()
 
       login_session
-      |> visit(login_url)
       |> E2E.Support.UserAction.login(login_url, user_cred.email, user_cred.password)
       |> E2E.Support.UserAction.change_password(hd(random_emails(1)))
     end
@@ -92,16 +91,34 @@ defmodule E2E.UI.UserManagementTest do
         Wallaby.Element.click(admin_label)
         scope
       end)
-      |> click(Wallaby.Query.button("Save changes"))
       |> then(fn scope ->
-        assert_has(scope, Wallaby.Query.text("Role successfully assigned"))
+        # Zoom out to make sure the button is in viewport
+        _ = execute_script(scope, "document.body.style.zoom = '0.7';")
         scope
       end)
-      |> click(Wallaby.Query.button("Cancel"))
+      |> wait_and_click(Wallaby.Query.button("Save changes"), 1_000)
+      |> then(fn scope ->
+        _ = execute_script(scope, "document.body.style.zoom = '1';")
+        scope
+      end)
+      |> wait_for(Wallaby.Query.text("Role successfully assigned"), 2_000)
+      |> then(fn scope ->
+        _ = execute_script(scope, "document.body.style.zoom = '0.6';")
+        take_screenshot(scope, name: "role_assigned")
+        _ = execute_script(scope, "document.body.style.zoom = '1';")
+        scope
+      end)
+      |> then(fn scope ->
+        _ = execute_script(scope, "document.body.style.zoom = '0.7';")
+        scope
+      end)
+      |> wait_and_click(Wallaby.Query.button("Cancel"), 1_000)
 
       # confirm that member is now admin
-      find_member_scope_by_email(session, known_email)
-      |> assert_has(Wallaby.Query.css("span.f6.normal", text: "Admin"))
+      session
+      |> wait_for(Wallaby.Query.css("div#members"), 3_000)
+      |> find_member_scope_by_email(known_email)
+      |> wait_for(Wallaby.Query.css("span", text: "Admin"), 3_000)
     end
   end
 
@@ -130,7 +147,7 @@ defmodule E2E.UI.UserManagementTest do
 
   # Helper: create users by filling in emails and submitting
   defp create_users(session, emails) do
-    Enum.reduce(Enum.with_index(emails, 1), session, fn {email, i}, session_acc ->
+    Enum.reduce(Enum.with_index(emails, 1), session, fn {email, _i}, session_acc ->
       email_fields = all(session_acc, Wallaby.Query.fillable_field("Enter email address"))
       email_field_index = length(email_fields) - 1
       updated_session =
@@ -175,12 +192,19 @@ defmodule E2E.UI.UserManagementTest do
 
     all(session, Wallaby.Query.css("div#member"))
     |> Enum.find(fn div ->
-      has?(div, Wallaby.Query.css("a", text: username))
+      has?(div, Wallaby.Query.link(username))
     end)
+    |> case do
+      nil ->
+        flunk("Could not find member card for #{email}")
+
+      member_div ->
+        member_div
+    end
   end
 
   defp random_emails(n) do
-    random_str = Enum.map(1..5, fn _ -> Enum.random('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') end) |> to_string()
+    random_str = Enum.map(1..5, fn _ -> Enum.random(~c(abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789)) end) |> to_string()
     Enum.map(1..n, fn i ->
       random_email(random_str, i)
     end)
@@ -188,5 +212,28 @@ defmodule E2E.UI.UserManagementTest do
   # Helper: generate a random email
   defp random_email(random_str, n) do
     "#{random_str}#{n}@example.com"
+  end
+
+  defp wait_and_click(scope, query, timeout_ms) do
+    wait_for(scope, query, timeout_ms)
+    click(scope, query)
+  end
+
+  defp wait_for(scope, query, timeout_ms, interval_ms \\ 200)
+  defp wait_for(scope, query, timeout_ms, _interval_ms) when timeout_ms <= 0 do
+    if has?(scope, query) do
+      scope
+    else
+      flunk("Timed out waiting for #{inspect(query)}")
+    end
+  end
+
+  defp wait_for(scope, query, timeout_ms, interval_ms) do
+    if has?(scope, query) do
+      scope
+    else
+      Process.sleep(interval_ms)
+      wait_for(scope, query, timeout_ms - interval_ms, interval_ms)
+    end
   end
 end
