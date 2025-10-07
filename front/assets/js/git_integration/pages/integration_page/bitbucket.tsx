@@ -125,7 +125,7 @@ export const BitbucketIntegration = ({ integration, csrfToken, orgUsername }: Pr
   );
 };
 
-const EditFields = ({ integration }: { integration: types.Integration.BitbucketIntegration, }) => {
+const EditFields = ({ integration }: { integration: types.Integration.BitbucketIntegration }) => {
   const [clientId, setClientId] = useState(``);
   const [clientSecret, setClientSecret] = useState(``);
   const config = useContext(stores.Config.Context);
@@ -197,7 +197,7 @@ const EditFields = ({ integration }: { integration: types.Integration.BitbucketI
   );
 };
 
-const CopyFields = ({ integration }: { integration: types.Integration.BitbucketIntegration, }) => {
+const CopyFields = ({ integration }: { integration: types.Integration.BitbucketIntegration }) => {
   const manifest = integration.manifest as {
     permissions: string;
     redirect_urls: string;

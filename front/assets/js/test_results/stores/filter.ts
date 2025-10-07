@@ -2,20 +2,18 @@ import { createContext } from "preact";
 import * as Stateful from "../util/stateful";
 
 export type Action =
-  | { type: `SET_QUERY`, query: string, }
-  | { type: `SET_SORT`, sort: SortOrder, }
-  | { type: `TRIM_REPORT_NAME`, }
-  | { type: `DONT_TRIM_REPORT_NAME`, }
-  | { type: `WRAP_LINES`, }
-  | { type: `DONT_WRAP_LINES`, }
-  | { type: `SET_TOGGLE`, toggle: boolean, }
-  | { type: `REMOVE_EXCLUDED_TEST_STATE`, state: Stateful.State, }
-  | { type: `EXCLUDE_TEST_STATE`, state: Stateful.State, }
-  | { type: `SET_EXCLUDED_TEST_STATE`, states: Stateful.State[], }
-  ;
+  | { type: `SET_QUERY`, query: string }
+  | { type: `SET_SORT`, sort: SortOrder }
+  | { type: `TRIM_REPORT_NAME` }
+  | { type: `DONT_TRIM_REPORT_NAME` }
+  | { type: `WRAP_LINES` }
+  | { type: `DONT_WRAP_LINES` }
+  | { type: `SET_TOGGLE`, toggle: boolean }
+  | { type: `REMOVE_EXCLUDED_TEST_STATE`, state: Stateful.State }
+  | { type: `EXCLUDE_TEST_STATE`, state: Stateful.State }
+  | { type: `SET_EXCLUDED_TEST_STATE`, states: Stateful.State[] };
 
 export type SortOrder = `failed-first` | `slowest-first` | `alphabetical`;
-
 
 export interface State {
   query: string;
@@ -49,7 +47,7 @@ export const Reducer = (state: State, action: Action): State => {
     case `EXCLUDE_TEST_STATE`:
       return { ...state, excludedStates: [...state.excludedStates, action.state] };
     case `REMOVE_EXCLUDED_TEST_STATE`:
-      return { ...state, excludedStates: state.excludedStates.filter(s => s !== action.state) };
+      return { ...state, excludedStates: state.excludedStates.filter((s) => s !== action.state) };
     case `SET_EXCLUDED_TEST_STATE`:
       return { ...state, excludedStates: action.states };
     default:
@@ -63,7 +61,10 @@ export const EmptyState: State = {
   trimReportName: JSON.parse(localStorage.getItem(`TR_TRIM_REPORT_NAME`) || `false`),
   toggleAll: false,
   sort: `failed-first`,
-  excludedStates:  [Stateful.State.EMPTY] as Stateful.State[]
+  excludedStates: [Stateful.State.EMPTY] as Stateful.State[],
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({
+  state: EmptyState,
+  dispatch: () => undefined,
+});

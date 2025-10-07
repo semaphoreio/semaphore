@@ -1,4 +1,3 @@
-
 import { useContext } from "preact/hooks";
 import { NavLink, useLocation } from "react-router-dom";
 import * as stores from "../stores";
@@ -14,20 +13,14 @@ export const Navigation = () => {
   const displayProjects = config.projectSpendings;
   const hasPlans = config.availablePlans.length > 0;
 
-  const className = ({ isActive }: { isActive: boolean, }) => {
-    return (
-      `link db pv1 ph2 br3 ` +
-      (isActive ? `white active bg-green` : `dark-gray hover-bg-lightest-gray`)
-    );
+  const className = ({ isActive }: { isActive: boolean }) => {
+    return `link db pv1 ph2 br3 ` + (isActive ? `white active bg-green` : `dark-gray hover-bg-lightest-gray`);
   };
 
   return (
     <div className="bb bn-l b--black-10 pb3">
       <div className="lh-title measure pb2 mb3">
-        <div className="gray">
-          Get insights about the your spending, past invoices and update your
-          plan.
-        </div>
+        <div className="gray">Get insights about the your spending, past invoices and update your plan.</div>
       </div>
       <NavLink to={`/overview${search}`} className={className}>
         Overview

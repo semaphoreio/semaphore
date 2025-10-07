@@ -1,9 +1,9 @@
 export type Action =
-    | { type: `SET_CD_BRANCH_NAME`, value: string, }
-    | { type: `SET_CD_PIPELINE_FILE_NAME`, value: string, }
-    | { type: `SET_CI_BRANCH_NAME`, value: string, }
-    | { type: `SET_CI_PIPELINE_FILE_NAME`, value: string, }
-    | { type: `SET_STATE`, state: State, }
+    | { type: `SET_CD_BRANCH_NAME`, value: string }
+    | { type: `SET_CD_PIPELINE_FILE_NAME`, value: string }
+    | { type: `SET_CI_BRANCH_NAME`, value: string }
+    | { type: `SET_CI_PIPELINE_FILE_NAME`, value: string }
+    | { type: `SET_STATE`, state: State }
     ;
 
 

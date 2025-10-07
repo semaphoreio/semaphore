@@ -24,7 +24,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
   useEffect(() => {
     if (yamlContent && previewVisible && diagramRef.current) {
       try {
-        const workflowData = yaml.load(yamlContent) as { name?: string, };
+        const workflowData = yaml.load(yamlContent) as { name?: string };
         setPipelineName(workflowData.name || `Pipeline`);
       } catch (error) {
         setPipelineName(`Pipeline`);

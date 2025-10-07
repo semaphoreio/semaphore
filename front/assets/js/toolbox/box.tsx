@@ -12,7 +12,14 @@ export const Box = (props: BoxProps) => {
   const [copied, setCopied] = useState(false);
   const [anchorFocused, setAnchorFocused] = useState(false);
 
-  const { type, copyContent, showCopy = false, className = ``, children, ...rest } = props;
+  const {
+    type,
+    copyContent,
+    showCopy = false,
+    className = ``,
+    children,
+    ...rest
+  } = props;
 
   const onCopyClick = () => {
     if (copyContent) {
@@ -36,11 +43,11 @@ export const Box = (props: BoxProps) => {
   const getIcon = () => {
     switch (type) {
       case `danger`:
-        return <toolbox.MaterializeIcon name="error" className="f4 red mr2"/>;
+        return <toolbox.MaterializeIcon name="error" className="red mr2"/>;
       case `warning`:
-        return <toolbox.MaterializeIcon name="warning" className="f4 gold mr2"/>;
+        return <toolbox.MaterializeIcon name="warning" className="gold mr2"/>;
       case `info`:
-        return <toolbox.MaterializeIcon name="info" className="f4 blue mr2"/>;
+        return <toolbox.MaterializeIcon name="info" className="blue mr2"/>;
     }
   };
 
@@ -62,13 +69,13 @@ export const Box = (props: BoxProps) => {
             onClick={onCopyClick}
           >
             {!copied && (
-              <div className="flex items-center gray f6">
-                <toolbox.MaterializeIcon name="content_copy" className="f4"/>
+              <div className="flex items-center gray">
+                <toolbox.MaterializeIcon name="content_copy"/>
               </div>
             )}
             {copied && (
-              <div className="flex items-center gray f6">
-                <toolbox.MaterializeIcon name="done" className="f4"/>
+              <div className="flex items-center gray">
+                <toolbox.MaterializeIcon name="done"/>
               </div>
             )}
           </button>
@@ -80,12 +87,12 @@ export const Box = (props: BoxProps) => {
 
   return (
     <div
-      className={`f6 ba br3 relative ${getColorClasses()} ${className as string}`}
+      className={`ba br3 relative ${getColorClasses()} ${className.toString()}`}
       onMouseOver={() => setAnchorFocused(true)}
       onMouseOut={() => setAnchorFocused(false)}
       {...rest}
     >
-      <div className="flex items-start pa3">
+      <div className="flex items-center pa3">
         {getIcon()}
         <div className="flex-auto">
           {typeof children === `string` ? (

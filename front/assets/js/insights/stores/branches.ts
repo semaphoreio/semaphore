@@ -1,6 +1,6 @@
 export type Action =
-  | { type: `SET_STATE`, branches: Branch[], }
-  | { type: `SET_ACTIVE_BRANCH`, branch: Branch, }
+  | { type: `SET_STATE`, branches: Branch[] }
+  | { type: `SET_ACTIVE_BRANCH`, branch: Branch }
   ;
 interface Branch {
   value: string;

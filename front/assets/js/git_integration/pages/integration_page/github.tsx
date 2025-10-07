@@ -111,7 +111,7 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
   );
 };
 
-const EditFields = ({ integration }: { integration: types.Integration.GithubIntegration, }) => {
+const EditFields = ({ integration }: { integration: types.Integration.GithubIntegration }) => {
   return (
     <Fragment>
       <components.EditField
@@ -171,7 +171,7 @@ const EditFields = ({ integration }: { integration: types.Integration.GithubInte
   );
 };
 
-const CopyFields = ({ integration }: { integration: types.Integration.GithubIntegration, }) => {
+const CopyFields = ({ integration }: { integration: types.Integration.GithubIntegration }) => {
   const manifest = integration.manifest as {
     callback_urls: string;
     setup_url: string;

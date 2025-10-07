@@ -57,7 +57,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
     },
     xScale: d3.scaleTime(),
     yScale: d3.scaleLinear(),
-    width: 0
+    width: 0,
   });
 
   useLayoutEffect(() => {
@@ -71,10 +71,9 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
     return () => window.removeEventListener(`resize`, throttleResize);
   }, []);
 
-
   // Sync container's width with the state when the window resizes
   useEffect(() => {
-    if(chartContainerRef.current) {
+    if (chartContainerRef.current) {
       const boundingRect = chartContainerRef.current.getBoundingClientRect();
       const width = boundingRect.width;
 
@@ -85,39 +84,41 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
 
   // Update the scales when new data is loaded, or the viewbox changes
   useEffect(() => {
-    if(state.width == 0) {
+    if (state.width == 0) {
       return;
     }
 
     // //date range
-    const xScale = d3.scaleTime()
+    const xScale = d3
+      .scaleTime()
       .range([0, state.width - state.margin.left - state.margin.right])
       .domain([xDomainFrom, xDomainTo]);
 
-    const yScale = d3.scaleLinear()
-      .range([state.height - state.margin.top - state.margin.bottom, 0]);
+    const yScale = d3.scaleLinear().range([state.height - state.margin.top - state.margin.bottom, 0]);
 
     setState({ ...state, xScale, yScale });
   }, [state.width, state.height, xDomainFrom, xDomainTo]);
 
-
   // Find the nearest metric to the mouse position
   const onMouseMove = (e: MouseEvent) => {
-    if(state.focusLock) {
+    if (state.focusLock) {
       return;
     }
 
     const bisectDate = d3.bisector((d: Date, y: Date) => y.getTime() - d.getTime()).left;
     const mouse = d3.pointer(e, chartSVGRef.current);
     const mouseDate: Date = state.xScale.invert(mouse[0] - state.margin.left);
-    const i = bisectDate(metrics.map(d => d.date), mouseDate); // returns the index to the current data item
+    const i = bisectDate(
+      metrics.map((d) => d.date),
+      mouseDate
+    ); // returns the index to the current data item
 
     // We're out of bounds
-    if(i <= 0 || i >= metrics.length) {
+    if (i <= 0 || i >= metrics.length) {
       return;
     }
 
-    const d0 = metrics[i-1];
+    const d0 = metrics[i - 1];
     const d1 = metrics[i];
 
     const activeMetric = mouseDate.getTime() - d0.date.getTime() < d1.date.getTime() - mouseDate.getTime() ? d1 : d0;
@@ -127,7 +128,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
 
   // Update the x,y position of the mouse at the chart
   useEffect(() => {
-    if(!state.activeMetric) {
+    if (!state.activeMetric) {
       return;
     }
 
@@ -150,30 +151,27 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
     setState({ ...state, focusLock: !state.focusLock });
   };
 
-  const isTooltipVisible = (): boolean =>{
-    return !!state.activeMetric
-      && (tooltipVisible || state.focusLock)
-      && !loadingState.loading
-      && !(loadingState.errors.length > 0);
+  const isTooltipVisible = (): boolean => {
+    return (
+      !!state.activeMetric &&
+      (tooltipVisible || state.focusLock) &&
+      !loadingState.loading &&
+      !(loadingState.errors.length > 0)
+    );
   };
-
 
   return (
     <div ref={chartContainerRef} onMouseLeave={hideTooltip} onMouseEnter={showTooltip}>
-      {isTooltipVisible() &&
-        <chart.Tooltip
-          top={state.margin.top}
-          left={state.xPos}
-          content={tooltip}
-          activeMetric={state.activeMetric}
-        />}
+      {isTooltipVisible() && (
+        <chart.Tooltip top={state.margin.top} left={state.xPos} content={tooltip} activeMetric={state.activeMetric}/>
+      )}
       <ChartLoader loadingState={loadingState} metrics={metrics}/>
       <svg
         ref={chartSVGRef}
         width={state.width}
         height={state.height}
         viewBox={`0 0 ${state.width} ${state.height}`}
-        onClick={() => toggleFocusLock() }
+        onClick={() => toggleFocusLock()}
         className="pointer"
         onMouseMove={(e) => onMouseMove(e)}
       >
@@ -182,7 +180,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
           {cloneElement(axisY, {
             translation: state.width - state.margin.left - state.margin.right,
             yScale: state.yScale,
-            metrics: metrics
+            metrics: metrics,
           })}
 
           {charts.map((chart) => {
@@ -193,8 +191,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
             });
           })}
         </g>
-        {
-          isTooltipVisible() &&
+        {isTooltipVisible() &&
           focus.map((focus) => {
             return cloneElement(focus, {
               x: state.xPos,
@@ -205,18 +202,25 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
               rightMargin: state.width - state.margin.right - state.margin.left,
               focusLock: state.focusLock,
             });
-          })
-        }
+          })}
       </svg>
     </div>
   );
 }
 
-const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.State, metrics: types.Chart.Metric[], }) => {
+const ChartLoader = ({
+  loadingState,
+  metrics,
+}: {
+  loadingState: stores.Loading.State;
+  metrics: types.Chart.Metric[];
+}) => {
   const Overlay = () => {
     return (
-      <div className="bg-white o-80 mt2" style={{ width: `100%`, height: `95%`, position: `absolute`, zIndex: `1` }}>
-      </div>
+      <div
+        className="bg-white o-80 mt2"
+        style={{ width: `100%`, height: `95%`, position: `absolute`, zIndex: `1` }}
+      ></div>
     );
   };
 
@@ -240,22 +244,20 @@ const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.S
   }
 
   if (!loadingState.loading && metrics.length < 2) {
-    return <Fragment>
-      <div className="flex items-center justify-center br3" style={containerStyle}>
-        <div className="flex items-center">
-          <p className="ml1 tc gray">
-            <span>
-              There are no insights available for this project yet.
-            </span>
-            <br/>
-            <span className="f7 o-80">
-              To display insights we need to collect the data from at least 2 days.
-            </span>
-          </p>
+    return (
+      <Fragment>
+        <div className="flex items-center justify-center br3" style={containerStyle}>
+          <div className="flex items-center">
+            <p className="ml1 tc gray">
+              <span>There are no insights available for this project yet.</span>
+              <br/>
+              <span className="f7 o-80">To display insights we need to collect the data from at least 2 days.</span>
+            </p>
+          </div>
         </div>
-      </div>
-      <Overlay/>
-    </Fragment>;
+        <Overlay/>
+      </Fragment>
+    );
   }
 
   if (!loadingState.loading) {
@@ -275,18 +277,16 @@ const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.S
   );
 };
 
-const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number>, }) => {
+const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number> }) => {
   const xScaleRef = createRef<SVGGElement>();
   useEffect(() => {
-    if(xScaleRef.current) {
+    if (xScaleRef.current) {
       const xAxis = d3
         .axisBottom(xScale)
         .tickSize(-translation)
         .tickFormat((d) => d3.timeFormat(`%b %d`)(d as Date));
 
-      d3.select(xScaleRef.current)
-        .call(xAxis)
-        .selectAll(`.tick text`).attr(`y`, `10`);
+      d3.select(xScaleRef.current).call(xAxis).selectAll(`.tick text`).attr(`y`, `10`);
     }
   }, [translation, xScale]);
 
