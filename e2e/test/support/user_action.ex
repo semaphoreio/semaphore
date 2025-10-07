@@ -1,4 +1,5 @@
 defmodule E2E.Support.UserAction do
+  require Wallaby.Browser
   import Wallaby.Browser
   import Wallaby.Query
 
