@@ -265,25 +265,11 @@ defmodule Guard.Id.Api do
   defp login_page(conn, "root") do
     methods = Application.get_env(:guard, :root_login_methods)
 
-    assigns =
-      Enum.reduce(methods, [], fn method, acc ->
-        case method do
-          "github" ->
-            Keyword.merge(acc, github: id_page("github"))
-
-          "bitbucket" ->
-            Keyword.merge(acc, bitbucket: id_page("bitbucket"))
-
-          "gitlab" ->
-            Keyword.merge(acc, gitlab: id_page("gitlab") |> filter_gitlab())
-
-          _ ->
-            acc
-        end
-      end)
-
-    conn
-    |> render_login_page(assigns)
+    if Guard.OIDC.enabled?() do
+      root_oidc_login(conn, methods)
+    else
+      root_local_login(conn, methods)
+    end
   end
 
   defp login_page(conn, "local") do
@@ -315,6 +301,45 @@ defmodule Guard.Id.Api do
       Logger.info("OIDC configuration is missing")
       conn |> error_login_page("OIDC configuration is missing")
     end
+  end
+
+  defp root_oidc_login(conn, _methods) do
+    oidc_callback = id_page("oidc/callback")
+
+    case Guard.OIDC.authorization_uri(oidc_callback) do
+      {:ok, {state, verifier, url}} ->
+        conn
+        |> Guard.Utils.Http.put_state_value(@state_cookie_key, {state, verifier})
+        |> render_login_page(github: "#{url}&kc_idp_hint=github")
+
+      {:error, error} ->
+        Logger.error("Error occurred while fetching authorization uri: #{inspect(error)}")
+
+        conn
+        |> error_login_page("Error occurred while fetching authorization uri")
+    end
+  end
+
+  defp root_local_login(conn, methods) do
+    assigns =
+      Enum.reduce(methods, [], fn method, acc ->
+        case method do
+          "github" ->
+            Keyword.merge(acc, github: id_page("oauth/github"))
+
+          "bitbucket" ->
+            Keyword.merge(acc, bitbucket: id_page("oauth/bitbucket"))
+
+          "gitlab" ->
+            Keyword.merge(acc, gitlab: id_page("oauth/gitlab") |> filter_gitlab())
+
+          _ ->
+            acc
+        end
+      end)
+
+    conn
+    |> render_login_page(assigns)
   end
 
   defp render_login_page(conn, url) when is_binary(url) do
