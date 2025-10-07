@@ -4,7 +4,7 @@ import MarkdownIt, { PluginSimple } from "markdown-it";
 import markdownItTextualUml from "markdown-it-textual-uml";
 import Mermaid from "mermaid";
 import "github-markdown-css/github-markdown-light.css";
-import DOMPurify from 'dompurify';
+import DOMPurify from "dompurify";
 
 import * as toolbox from "js/toolbox";
 import { useEffect, useState } from "preact/hooks";
@@ -13,10 +13,10 @@ Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `stric
 const md = MarkdownIt({
   html: true,
   linkify: false,
-  typographer: true
+  typographer: true,
 }).use(markdownItTextualUml as PluginSimple);
 
-export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
+export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
   render(<App reportUrl={config.reportUrl} context={config.reportContext}/>, dom);
 }
 
@@ -26,12 +26,11 @@ enum ReportContext {
   Project = `project`,
 }
 
-const App = (props: { reportUrl: string, context: ReportContext, }) => {
+const App = (props: { reportUrl: string, context: ReportContext }) => {
   const [markdown, setMarkdown] = useState(``);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(``);
   const [reportExists, setReportExists] = useState(true);
-
 
   const fetchReport = async () => {
     try {
@@ -40,7 +39,7 @@ const App = (props: { reportUrl: string, context: ReportContext, }) => {
       const response = await fetch(props.reportUrl);
       setLoading(false);
 
-      if(response.status == 404) {
+      if (response.status == 404) {
         setReportExists(false);
 
         return;
@@ -73,7 +72,7 @@ const App = (props: { reportUrl: string, context: ReportContext, }) => {
   );
 };
 
-const MarkdownBody = (props: { markdown: string, }) => {
+const MarkdownBody = (props: { markdown: string }) => {
   useEffect(() => {
     if (props.markdown) {
       setTimeout(() => {
@@ -90,7 +89,7 @@ const MarkdownBody = (props: { markdown: string, }) => {
   // 1. It uses DOMPurify internally for sanitizing diagram content
   // 2. With securityLevel: 'sandbox' configured above, it renders each diagram in a sandboxed iframe
   // First, configure DOMPurify hooks
-  DOMPurify.addHook(`afterSanitizeAttributes`, function(node) {
+  DOMPurify.addHook(`afterSanitizeAttributes`, function (node) {
     // Force all links to open in new tab with security attributes
     if (`tagName` in node && node.tagName === `A`) {
       node.setAttribute(`target`, `_blank`);
@@ -101,21 +100,49 @@ const MarkdownBody = (props: { markdown: string, }) => {
   const sanitizedHtml = DOMPurify.sanitize(renderedHtml, {
     ALLOWED_TAGS: [
       // Basic
-      `details`, `summary`, `p`, `br`, `h1`, `h2`, `h3`, `h4`, `h5`, `h6`,
-      `ul`, `ol`, `li`, `blockquote`, `pre`, `hr`, `div`,
+      `details`,
+      `summary`,
+      `p`,
+      `br`,
+      `h1`,
+      `h2`,
+      `h3`,
+      `h4`,
+      `h5`,
+      `h6`,
+      `ul`,
+      `ol`,
+      `li`,
+      `blockquote`,
+      `pre`,
+      `hr`,
+      `div`,
       // Tables
-      `table`, `thead`, `tbody`, `tr`, `td`, `th`,
+      `table`,
+      `thead`,
+      `tbody`,
+      `tr`,
+      `td`,
+      `th`,
       //Formating
-      `strong`, `b`, `em`, `i`, `u`, `code`, `span`,
-      `del`, `s`,
-      `sup`, `sub`,
+      `strong`,
+      `b`,
+      `em`,
+      `i`,
+      `u`,
+      `code`,
+      `span`,
+      `del`,
+      `s`,
+      `sup`,
+      `sub`,
       `kbd`,
       `mark`,
       `ins`,
       `small`,
       `abbr`,
       // Links (safe with DOMPurify's URL sanitization)
-      `a`
+      `a`,
     ],
     ALLOWED_ATTR: [
       `title`,
@@ -123,28 +150,23 @@ const MarkdownBody = (props: { markdown: string, }) => {
       `class`,
       `href`, // DOMPurify by default blocks dangerous protocols (javascript:, data:, vbscript:) and only allows safe ones (http:, https:, mailto:, etc.)
       `target`,
-      `rel`
+      `rel`,
     ],
     // Critical: Keep blocking dangerous tags that were part of the original vulnerability
     FORBID_TAGS: [`img`, `script`, `object`, `embed`, `iframe`, `link`, `form`, `input`, `style`, `meta`, `base`],
     FORBID_ATTR: [`src`, `id`, `style`, `onclick`, `onload`, `onerror`, `action`, `method`],
     ALLOW_DATA_ATTR: false,
     // Force secure link attributes
-    ADD_ATTR: [`target`, `rel`]
+    ADD_ATTR: [`target`, `rel`],
   });
 
   // Clean up the hook after sanitization to avoid memory leaks
   DOMPurify.removeHook(`afterSanitizeAttributes`);
 
-  return (
-    <div
-      className="markdown-body"
-      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-    />
-  );
+  return <div className="markdown-body" dangerouslySetInnerHTML={{ __html: sanitizedHtml }}/>;
 };
 
-const ReportInstructions = (props: { context: ReportContext, }) => {
+const ReportInstructions = (props: { context: ReportContext }) => {
   let command = ``;
 
   switch (props.context) {
@@ -164,7 +186,7 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
       <div className="pv3-m mw7 center">
         <h2 className="f3 mb0">Your Markdown reports will appear here.</h2>
         <p className="f4 normal mb4">
-           These reports help share key details about your {props.context}, like build metrics or custom insights.
+          These reports help share key details about your {props.context}, like build metrics or custom insights.
         </p>
         <div className="flex-m">
           <div className="flex-shrink-0 dn db-m nl4 ph4">
@@ -189,12 +211,8 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
                 </div>
                 <div className="pl3 nt1">
                   <h3 className="f4 mb0">Push your Markdown file as an artifact</h3>
-                  <p className="measure-wide">
-                    Upload your Markdown file by running the command below:
-                  </p>
-                  <pre className="bg-white ba b--black-10 br2 pa2 f6 mt2">
-                    {command}
-                  </pre>
+                  <p className="measure-wide">Upload your Markdown file by running the command below:</p>
+                  <pre className="bg-white ba b--black-10 br2 pa2 f6 mt2">{command}</pre>
                 </div>
               </div>
               <div className="flex mb2">
@@ -204,7 +222,8 @@ const ReportInstructions = (props: { context: ReportContext, }) => {
                 <div className="flex-auto pl3 nt1">
                   <h3 className="f4 mb0">Your report will show up here</h3>
                   <p className="measure-wide">
-                    Once your job has finished and pushed the report, it will show up here. That&apos;s it — no extra steps needed!
+                    Once your job has finished and pushed the report, it will show up here. That&apos;s it — no extra
+                    steps needed!
                   </p>
                 </div>
               </div>
@@ -222,11 +241,7 @@ interface LoaderProps {
   children: React.ReactNode;
 }
 
-const Loader = ({
-  loading,
-  error,
-  children,
-}: LoaderProps) => {
+const Loader = ({ loading, error, children }: LoaderProps) => {
   if (loading) {
     return (
       <div className="flex items-center justify-center">

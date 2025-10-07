@@ -17,7 +17,7 @@ interface InitializationProps {
   workflowSummaryURL: string;
 }
 
-export const StateContext = ({ children, url }: { children?: ComponentChildren, url: string, }) => {
+export const StateContext = ({ children, url }: { children?: ComponentChildren, url: string }) => {
   const [reportState, reportDispatch] = useReducer(ReportStore.Reducer, ReportStore.EmptyState);
   const [filterState, filterDispatch] = useReducer(FilterStore.Reducer, FilterStore.EmptyState);
   const [navigationState, navigationDispatch] = useReducer(NavigationStore.Reducer, {
@@ -41,23 +41,31 @@ export const StateContext = ({ children, url }: { children?: ComponentChildren, 
   );
 };
 
-export default function ({ dom, pplTreeLoader, pipelineId, pollURL, workflowSummaryURL, encodedEmail, jsonURL, scope, ...init }: { dom: HTMLElement, } & InitializationProps) {
+export default function ({
+  dom,
+  pplTreeLoader,
+  pipelineId,
+  pollURL,
+  workflowSummaryURL,
+  encodedEmail,
+  jsonURL,
+  scope,
+  ...init
+}: { dom: HTMLElement } & InitializationProps) {
   render(
     <StateContext url={jsonURL}>
-      {scope == `pipeline` && <InteractivePipelineTree
-        loader={pplTreeLoader}
-        pipelineId={pipelineId}
-        pollUrl={pollURL}
-        workflowSummaryURL={workflowSummaryURL}
-        pipelineName={init.pipelineName}
-        pipelineStatus={init.pipelineStatus}
-      />
-      }
-      <TestResults
-        className="flex-l no-ligatures"
-        scope={scope}
-        encodedEmail={encodedEmail}
-      />
-    </StateContext>
-    , dom);
+      {scope == `pipeline` && (
+        <InteractivePipelineTree
+          loader={pplTreeLoader}
+          pipelineId={pipelineId}
+          pollUrl={pollURL}
+          workflowSummaryURL={workflowSummaryURL}
+          pipelineName={init.pipelineName}
+          pipelineStatus={init.pipelineStatus}
+        />
+      )}
+      <TestResults className="flex-l no-ligatures" scope={scope} encodedEmail={encodedEmail}/>
+    </StateContext>,
+    dom
+  );
 }

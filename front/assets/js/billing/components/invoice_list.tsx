@@ -1,18 +1,20 @@
-
 import { useContext, useLayoutEffect, useReducer } from "preact/hooks";
 import * as types from "../types";
 import * as stores from "../stores";
 
 export const InvoiceList = () => {
   const config = useContext(stores.Config.Context);
-  const [state, dispatch] = useReducer(stores.Invoices.Reducer, { ... stores.Invoices.EmptyState, url: config.invoicesUrl } );
+  const [state, dispatch] = useReducer(stores.Invoices.Reducer, {
+    ...stores.Invoices.EmptyState,
+    url: config.invoicesUrl,
+  });
 
-  if(!config.isBillingManager) {
+  if (!config.isBillingManager) {
     return null;
   }
 
   useLayoutEffect(() => {
-    if(config.invoicesUrl) {
+    if (config.invoicesUrl) {
       const url = new URL(state.url, location.origin);
 
       dispatch({ type: `SET_STATUS`, value: stores.Invoices.Status.Loading });
@@ -22,7 +24,8 @@ export const InvoiceList = () => {
           const invoices = json.invoices.map(types.Spendings.Invoice.fromJSON) as types.Spendings.Invoice[];
           dispatch({ type: `SET_INVOICES`, invoices });
           dispatch({ type: `SET_STATUS`, value: stores.Invoices.Status.Loaded });
-        }).catch((e) => {
+        })
+        .catch((e) => {
           dispatch({ type: `SET_STATUS`, value: stores.Invoices.Status.Error });
           dispatch({ type: `SET_STATUS_MESSAGE`, value: `${e as string}` });
         });
@@ -49,26 +52,25 @@ export const InvoiceList = () => {
         {stateLoading && <div className="tc">Loading...</div>}
         {stateError && <div className="tc">Error: {state.statusMessage}</div>}
         {stateLoadedEmpty && <div className="tc">No invoices found.</div>}
-        {stateLoaded && state.invoices.map((invoice, i) =>
-          <Invoice
-            invoice={invoice}
-            key={i}
-            lastItem={i == state.invoices.length - 1}
-          />
-        )}
+        {stateLoaded &&
+          state.invoices.map((invoice, i) => (
+            <Invoice invoice={invoice} key={i} lastItem={i == state.invoices.length - 1}/>
+          ))}
       </div>
     </div>
   );
 };
 
-const Invoice = ({ invoice, lastItem }: { invoice: types.Spendings.Invoice, lastItem?: boolean, }) => {
+const Invoice = ({ invoice, lastItem }: { invoice: types.Spendings.Invoice, lastItem?: boolean }) => {
   return (
-    <div className={ lastItem ? `` : `b--black-075 bb`}>
+    <div className={lastItem ? `` : `b--black-075 bb`}>
       <div className="ph3 pv2">
         <div className="flex items-center-ns">
           <div className="w-100">
             <div className="flex-ns items-center">
-              <div className="w-80-ns"><a href={invoice.url}>{invoice.name}</a></div>
+              <div className="w-80-ns">
+                <a href={invoice.url}>{invoice.name}</a>
+              </div>
               <div className="w-20-ns tr-ns tnum">{invoice.total}</div>
             </div>
           </div>

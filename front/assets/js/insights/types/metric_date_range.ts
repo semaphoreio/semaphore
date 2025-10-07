@@ -5,7 +5,9 @@ export class MetricsDateRange {
 
   static fromJSON(json: types.JSONInterface.AvailableDateRanges): MetricsDateRange {
     const metricsDateRange = new MetricsDateRange();
-    metricsDateRange.ranges = json.available_dates.map((range: types.JSONInterface.MetricDateRange) => MetricDateRange.fromJSON(range));
+    metricsDateRange.ranges = json.available_dates.map((range: types.JSONInterface.MetricDateRange) =>
+      MetricDateRange.fromJSON(range)
+    );
     return metricsDateRange;
   }
 }

@@ -55,7 +55,7 @@ export class State {
   }
 }
 
-export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, dom: HTMLElement, }) {
+export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, dom: HTMLElement }) {
   render(
     <Config.Provider value={State.fromJSON(config)}>
       <App/>
@@ -72,7 +72,7 @@ interface Mapping {
 interface MappingSectionProps {
   mappings: Mapping[];
   setMappings: (mappings: Mapping[]) => void;
-  options: { id: string, name: string, }[];
+  options: { id: string, name: string }[];
   leftLabel: string;
   rightLabel: string;
   leftPlaceholder: (index: number) => string;

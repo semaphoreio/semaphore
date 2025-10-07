@@ -1,4 +1,3 @@
-
 import { Spendings } from "../types";
 import * as stores from "../stores";
 import * as types from "../types";
@@ -10,17 +9,15 @@ import { useContext, useLayoutEffect, useReducer, useState } from "preact/hooks"
 export const SpendingChart = () => {
   const spendings = useContext(stores.Spendings.Context);
   const config = useContext(stores.Config.Context);
-  const [state, dispatch] = useReducer(stores.Prices.Reducer, { ... stores.Prices.EmptyState, url: config.costsUrl } );
-
+  const [state, dispatch] = useReducer(stores.Prices.Reducer, { ...stores.Prices.EmptyState, url: config.costsUrl });
 
   const spending = spendings.state.selectedSpending;
-  if(!spending)
-    return;
+  if (!spending) return;
 
   const groups = spending.groups || [];
 
   useLayoutEffect(() => {
-    if(spending) {
+    if (spending) {
       const url = new URL(config.costsUrl, location.origin);
       url.searchParams.set(`spending_id`, spendings.state.selectedSpendingId);
 
@@ -33,7 +30,8 @@ export const SpendingChart = () => {
 
           dispatch({ type: `SET_PRICES`, prices: costs });
           dispatch({ type: `SET_STATUS`, value: stores.Prices.Status.Loaded });
-        }).catch((e) => {
+        })
+        .catch((e) => {
           dispatch({ type: `SET_STATUS`, value: stores.Prices.Status.Error });
           dispatch({ type: `SET_STATUS_MESSAGE`, value: `${e as string}` });
         });
@@ -47,7 +45,7 @@ export const SpendingChart = () => {
 
   const setGroup = (group: Spendings.GroupType) => {
     const index = groupTypes.indexOf(group);
-    if(index == -1) {
+    if (index == -1) {
       setGroupsTypes([...groupTypes, group]);
     } else {
       const newGroupTypes = [...groupTypes];
@@ -65,8 +63,7 @@ export const SpendingChart = () => {
   const lastPriceInGroup = (type: Spendings.GroupType): string => {
     const prices = state.prices.filter((price) => price.type == type);
 
-    if(prices.length == 0)
-      return toolbox.Formatter.toMoney(0);
+    if (prices.length == 0) return toolbox.Formatter.toMoney(0);
 
     return toolbox.Formatter.toMoney(prices[prices.length - 1].priceUpToDay);
   };
@@ -77,28 +74,41 @@ export const SpendingChart = () => {
         <div>
           <div className="flex items-center">
             <span className="material-symbols-outlined pr2">stacked_bar_chart</span>
-            <div className="b">Spending stats <span className=" f6 gray">· {spendings.state.selectedSpending?.name}</span></div>
+            <div className="b">
+              Spending stats <span className=" f6 gray">· {spendings.state.selectedSpending?.name}</span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="flex bb b--black-075">
-        {groups.map((group, idx) => <SpendingGroup group={group} price={lastPriceInGroup(group.type)} lastItem={(idx + 1) == groups.length} key={idx}/>)}
+        {groups.map((group, idx) => (
+          <SpendingGroup
+            group={group}
+            price={lastPriceInGroup(group.type)}
+            lastItem={idx + 1 == groups.length}
+            key={idx}
+          />
+        ))}
       </div>
       <Chart costs={state.prices} spending={spending} aggregate={aggregate} groupTypes={groupTypes}/>
 
       <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
         <div className="flex items-center">
           <label className="mr2">Show</label>
-          <select className="db form-control mb3 mb0-m mr2 form-control-tiny" value={aggregate} onChange={ setAggregateFromEvent }>
-            <option value='cumulative'>Cumulative</option>
-            <option value='normal'>Daily</option>
+          <select
+            className="db form-control mb3 mb0-m mr2 form-control-tiny"
+            value={aggregate}
+            onChange={setAggregateFromEvent}
+          >
+            <option value="cumulative">Cumulative</option>
+            <option value="normal">Daily</option>
           </select>
           <span className="mr2">for</span>
           {groups.map((group, idx) => (
             <label className="flex items-center" key={idx}>
-              <input type="checkbox" checked={groupTypes.includes(group.type)} onClick={ () => setGroup(group.type) }/>
-              <span className="ml1 mr2">{ group.name }</span>
+              <input type="checkbox" checked={groupTypes.includes(group.type)} onClick={() => setGroup(group.type)}/>
+              <span className="ml1 mr2">{group.name}</span>
             </label>
           ))}
         </div>
@@ -125,22 +135,22 @@ const Chart = ({ spending, aggregate, groupTypes, costs }: ChartProps) => {
   useLayoutEffect(() => {
     let metrics: types.Metric.Interface[] = [];
 
-    if(aggregate == `cumulative`) {
+    if (aggregate == `cumulative`) {
       metrics = selectedCosts.map((cost: Spendings.DailySpending) => {
         return {
           name: cost.type,
           date: cost.day,
-          value: cost.priceUpToDay
+          value: cost.priceUpToDay,
         } as types.Metric.Interface;
       });
     }
 
-    if(aggregate == `normal`) {
+    if (aggregate == `normal`) {
       metrics = selectedCosts.map((cost: Spendings.DailySpending) => {
         return {
           name: cost.type,
           date: cost.day,
-          value: cost.price
+          value: cost.price,
         } as types.Metric.Interface;
       });
     }
@@ -149,13 +159,9 @@ const Chart = ({ spending, aggregate, groupTypes, costs }: ChartProps) => {
 
   const domain = [d3.timeDay.floor(spending.from), d3.timeDay.ceil(spending.to)];
 
-
   return (
     <div className="c-billing-chart">
-      <components.SpendingPlot.Plot
-        domain={domain}
-        metrics={metrics}
-      />
+      <components.SpendingPlot.Plot domain={domain} metrics={metrics}/>
     </div>
   );
 };
@@ -171,7 +177,10 @@ const SpendingGroup = ({ group, price, lastItem }: SpendingGroupProps) => {
     <div className={`w-100 b--black-075 pa3 ${lastItem ? `` : `br`}`}>
       <div className="inline-flex items-center f5">
         <div className="mr1">
-          <span className="mr2 dib" style={`width:10px; height: 10px; background-color:${Spendings.Group.hexColor(group.type)}`}></span>
+          <span
+            className="mr2 dib"
+            style={`width:10px; height: 10px; background-color:${Spendings.Group.hexColor(group.type)}`}
+          ></span>
           {group.name}
         </div>
         <components.GroupTooltip group={group}/>

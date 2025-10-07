@@ -110,7 +110,7 @@ export const OnboardingPage = () => {
   );
 };
 
-const Bullet = styled.div<{ $completed?: boolean, }>`
+const Bullet = styled.div<{ $completed?: boolean }>`
   text-align: center;
   position: relative;
   color: gray;
