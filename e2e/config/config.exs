@@ -47,8 +47,7 @@ if System.get_env("START_WALLABY") do
         "--no-sandbox",
         "--disable-gpu",
         "--disable-dev-shm-usage",
-        "--disable-software-rasterizer",
-        "--window-size=1280,800"
+        "--window-size=1920,1200"
       ]
     ]
 end
