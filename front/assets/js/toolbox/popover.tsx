@@ -7,7 +7,7 @@ import { Placement } from "tippy.js";
 
 interface PopoverProps {
   anchor: VNode<any>;
-  content?: VNode<any> | (({ setVisible }: { setVisible: (visible: boolean) => void, }) => VNode<any>);
+  content?: VNode<any> | (({ setVisible }: { setVisible: (visible: boolean) => void }) => VNode<any>);
   className?: string;
   placement?: Placement;
   maxWidth?: number;

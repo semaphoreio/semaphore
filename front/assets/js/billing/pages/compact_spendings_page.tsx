@@ -10,8 +10,7 @@ export const CompactSpendingsPage = () => {
   const { state } = useContext(stores.Spendings.Context);
   const spending = state.selectedSpending;
 
-  if (!spending)
-    return;
+  if (!spending) return;
 
   return (
     <div className="w-60 center">
@@ -28,14 +27,15 @@ export const CompactSpendingsPage = () => {
         </div>
         <MachineInfo spending={spending}/>
         <div className="pa3 bt bw1 b--black-075 w-100">
-          <span className="b">Want to make changes to your plan?</span> – Contact your <a href="mailto:customersuccess@semaphoreci.com">customer success</a> representative.
+          <span className="b">Want to make changes to your plan?</span> – Contact your{` `}
+          <a href="mailto:customersuccess@semaphoreci.com">customer success</a> representative.
         </div>
       </div>
     </div>
   );
 };
 
-const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }
@@ -72,7 +72,7 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
 
     if (isDesc) {
       order = [``, ``];
-    } else if(isAsc) {
+    } else if (isAsc) {
       order = [name, `desc`];
     } else {
       order = [name, `asc`];
@@ -81,7 +81,7 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
     return (
       <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
         <div className={`flex ${className}`}>
-          <span className={ isNone ? `` : `b`}>{displayName}</span>
+          <span className={isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
           {isDesc && <i className="material-symbols-outlined">expand_less</i>}
           {isNone && <i className="material-symbols-outlined">unfold_more</i>}
@@ -105,12 +105,14 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
         </div>
       </div>
       {sortedItems.length == 0 && <div className="pa3 tc">No machines available</div>}
-      {sortedItems.map((machine, idx) => <MachineItem machine={machine} lastItem={ idx == sortedItems.length - 1 } key={idx}/>)}
+      {sortedItems.map((machine, idx) => (
+        <MachineItem machine={machine} lastItem={idx == sortedItems.length - 1} key={idx}/>
+      ))}
     </Fragment>
   );
 };
 
-const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean, }) => {
+const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean }) => {
   return (
     <div className={`hover-bg-washed-gray ${lastItem ? `` : `bb b--black-075`}`}>
       <div className="ph4 pv2">
@@ -130,16 +132,15 @@ const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, las
   );
 };
 
-const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }
 
   const plan = spending.plan;
 
-
   const planDescription = () => {
-    switch(plan.type) {
+    switch (plan.type) {
       case types.Spendings.PlanType.Flat:
         return `Unlimited minutes, fixed annual charge.`;
       case types.Spendings.PlanType.Grandfathered:
@@ -148,7 +149,7 @@ const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
   };
 
   const planName = () => {
-    switch(plan.type) {
+    switch (plan.type) {
       case types.Spendings.PlanType.Flat:
         return `Flat plan`;
       case types.Spendings.PlanType.Grandfathered:
@@ -157,16 +158,18 @@ const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
   };
 
   const planDetails = () => {
-    switch(plan.type) {
+    switch (plan.type) {
       case types.Spendings.PlanType.Flat:
-        if(!plan.subscriptionEndsOn) {
+        if (!plan.subscriptionEndsOn) {
           return;
         }
 
         return (
           <div>
             <div className="inline-flex items-center">
-              <p className="mb0 tr mr1">Ends on: <span className="b">{toolbox.Formatter.dateFull(plan.subscriptionEndsOn)}</span></p>
+              <p className="mb0 tr mr1">
+                Ends on: <span className="b">{toolbox.Formatter.dateFull(plan.subscriptionEndsOn)}</span>
+              </p>
             </div>
           </div>
         );
@@ -180,7 +183,6 @@ const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
         );
     }
   };
-
 
   return (
     <div className="flex items-center justify-between">

@@ -141,8 +141,8 @@ export const Test = ({ test }: TestProps) => {
   );
 };
 
-export const TestDetails = ({ test, className, wrap }: { test: TestCase, className?: string, wrap: boolean, }) => {
-  const Info = ({ title, content }: { title: string, content: string, }) => {
+export const TestDetails = ({ test, className, wrap }: { test: TestCase, className?: string, wrap: boolean }) => {
+  const Info = ({ title, content }: { title: string, content: string }) => {
     return (
       <Fragment>
         <strong className="f6 db mt0 mb1">{title}</strong>

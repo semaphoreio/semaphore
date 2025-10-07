@@ -6,7 +6,7 @@ import { useContext, useEffect } from "preact/hooks";
 import { FilterStore, NavigationStore, ReportStore } from "../stores";
 import { Inflector } from "../util";
 
-export const NavBar = ({ className }: { className?: string, }) => {
+export const NavBar = ({ className }: { className?: string }) => {
   const reports = useContext(ReportStore.Context);
   const navigation = useContext(NavigationStore.Context);
 
@@ -38,7 +38,7 @@ export const NavBar = ({ className }: { className?: string, }) => {
   );
 };
 
-const NavBarItem = ({ className, report }: { className?: string, report: Report, }) => {
+const NavBarItem = ({ className, report }: { className?: string, report: Report }) => {
   const navigation = useContext(NavigationStore.Context);
   const filter = useContext(FilterStore.Context);
   const { summary } = report;

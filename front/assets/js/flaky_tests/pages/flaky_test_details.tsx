@@ -30,7 +30,7 @@ export const FlakyTestDetails = () => {
   }, [testId]);
 
   useLayoutEffect(() => {
-    if(request.status == types.RequestStatus.Fetch) {
+    if (request.status == types.RequestStatus.Fetch) {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       fetch(request.url)
         .then((response) => response.json())
@@ -51,7 +51,9 @@ export const FlakyTestDetails = () => {
   return (
     <div className="bg-washed-gray mt4 pa3 pa4-l br3 ba b--black-075">
       <div className="mb3">
-        <Link to=".." className="gray">Flaky Tests Home</Link>
+        <Link to=".." className="gray">
+          Flaky Tests Home
+        </Link>
         <span className="ph1">›</span>
       </div>
 
@@ -69,9 +71,10 @@ export const FlakyTestDetails = () => {
   );
 };
 
-
 const Page = () => {
-  const { state: { test: test } } = useContext(stores.FlakyTestDetail.Context);
+  const {
+    state: { test: test },
+  } = useContext(stores.FlakyTestDetail.Context);
   const [selectedBranch, setSelectedBranch] = useState(test.selectedContext);
 
   return (
@@ -93,7 +96,6 @@ const Page = () => {
           <DisruptionHistory/>
         </div>
 
-
         <div className="pt3 bt b--lighter-gray">
           <DisruptionDetails selectedBranch={selectedBranch}/>
         </div>
@@ -108,7 +110,9 @@ interface BranchSelectorProps {
 }
 
 const BranchSelector = ({ selectedBranch, setSelectedBranch }: BranchSelectorProps) => {
-  const { state: { test: test } } = useContext(stores.FlakyTestDetail.Context);
+  const {
+    state: { test: test },
+  } = useContext(stores.FlakyTestDetail.Context);
   const { dispatch: dispatchRequest } = useContext(stores.Request.Context);
 
   const [selectBranches, setSelectBranches] = useState(false);
@@ -118,7 +122,7 @@ const BranchSelector = ({ selectedBranch, setSelectedBranch }: BranchSelectorPro
     setSelectedBranch(branch);
     setSelectBranches(false);
     let query = ``;
-    if(branch != ``) {
+    if (branch != ``) {
       query = `@git.branch:"${branch}"`;
     }
 
@@ -129,11 +133,15 @@ const BranchSelector = ({ selectedBranch, setSelectedBranch }: BranchSelectorPro
   useEffect(() => {
     const branches = test.availableContexts.map((c) => {
       return {
-        label: <div className="flex">
-          <span className="material-symbols-outlined mr1" style="font-size: 1.5em;">fork_right</span>
-          {c == selectedBranch ? <b>{c}</b> : c}
-        </div>,
-        value: c
+        label: (
+          <div className="flex">
+            <span className="material-symbols-outlined mr1" style="font-size: 1.5em;">
+              fork_right
+            </span>
+            {c == selectedBranch ? <b>{c}</b> : c}
+          </div>
+        ),
+        value: c,
       };
     });
     branches.unshift({ label: <span>All branches</span>, value: `` });
@@ -145,37 +153,59 @@ const BranchSelector = ({ selectedBranch, setSelectedBranch }: BranchSelectorPro
     <Fragment>
       <span className="material-symbols-outlined f5 mr1">fork_right</span>
       <span className="gray mb0 mr1">
-        Showing insights for <span className="b">{selectedBranch == `` ? `all` : `${selectedBranch}`}</span> {selectedBranch == `` ? `branches` : `branch`}·
+        Showing insights for <span className="b">{selectedBranch == `` ? `all` : `${selectedBranch}`}</span>{` `}
+        {selectedBranch == `` ? `branches` : `branch`}·
       </span>
 
-      {!selectBranches && selectedBranch == `` && <a className="link underline pointer" onClick={() => setSelectBranches(true)}>specify a branch instead</a>}
-      {!selectBranches && selectedBranch != `` && <a className="link underline pointer" onClick={() => setSelectBranches(true)}>change the branch</a>}
-      {selectBranches && <components.Autocomplete items={branches} onChange={ doSelectABranch }/>}
+      {!selectBranches && selectedBranch == `` && (
+        <a className="link underline pointer" onClick={() => setSelectBranches(true)}>
+          specify a branch instead
+        </a>
+      )}
+      {!selectBranches && selectedBranch != `` && (
+        <a className="link underline pointer" onClick={() => setSelectBranches(true)}>
+          change the branch
+        </a>
+      )}
+      {selectBranches && <components.Autocomplete items={branches} onChange={doSelectABranch}/>}
     </Fragment>
   );
 };
 
 const Info = () => {
-  const { state: { test: test } } = useContext(stores.FlakyTestDetail.Context);
+  const {
+    state: { test: test },
+  } = useContext(stores.FlakyTestDetail.Context);
   const [labels, setLabels] = useState(test.labels);
 
   return (
     <Fragment>
       <div className="flex items-center">
         <h1 className="f3 f2-m mb0 mr2">{test.name}</h1>
-        <span className="material-symbols-outlined mr1 pointer gray hover-black" data-tippy-content="Mark this test as resolved">done_all</span>
-        <span className="material-symbols-outlined mr1 pointer gray hover-dark-brown" data-tippy-content="Ticket has been created for this test">assignment_turned_in</span>
+        <span
+          className="material-symbols-outlined mr1 pointer gray hover-black"
+          data-tippy-content="Mark this test as resolved"
+        >
+          done_all
+        </span>
+        <span
+          className="material-symbols-outlined mr1 pointer gray hover-dark-brown"
+          data-tippy-content="Ticket has been created for this test"
+        >
+          assignment_turned_in
+        </span>
       </div>
-      <p className="mb0">
-        {test.file}
-      </p>
+      <p className="mb0">{test.file}</p>
       <p className="gray mb0">{test.runner}</p>
-      <span className="mr1">
-      Labels:
-      </span>
+      <span className="mr1">Labels:</span>
 
       <div className="flex items-center">
-        <components.LabelList testId={test.id} labels={labels} setLabels={setLabels} labelClass="flex items-center mr2"/>
+        <components.LabelList
+          testId={test.id}
+          labels={labels}
+          setLabels={setLabels}
+          labelClass="flex items-center mr2"
+        />
       </div>
     </Fragment>
   );
@@ -193,12 +223,12 @@ const MetricWithTrend = ({ data, reverseTrend, formatValue }: MetricWithTrendPro
     let currentPeriod = data[0];
     let previousPeriod = data[1];
 
-    if(previousPeriod === null) {
+    if (previousPeriod === null) {
       trendExists = false;
       previousPeriod = 0;
     }
 
-    if(currentPeriod === null) {
+    if (currentPeriod === null) {
       trendExists = false;
       currentPeriod = 0;
     }
@@ -207,24 +237,24 @@ const MetricWithTrend = ({ data, reverseTrend, formatValue }: MetricWithTrendPro
 
     let trendClass = ``;
     let trendIcon = ``;
-    if(trendValue < 0) {
+    if (trendValue < 0) {
       trendIcon = `arrow_upward`;
-    } else if(trendValue > 0) {
+    } else if (trendValue > 0) {
       trendIcon = `arrow_downward`;
     }
 
-    if(trendValue == 0) {
+    if (trendValue == 0) {
       trendClass = ``;
-    } else if(trendValue < 0) {
-      if(reverseTrend) {
+    } else if (trendValue < 0) {
+      if (reverseTrend) {
         trendClass = `red`;
-      } else{
+      } else {
         trendClass = `green`;
       }
     } else {
-      if(reverseTrend) {
+      if (reverseTrend) {
         trendClass = `green`;
-      } else{
+      } else {
         trendClass = `red`;
       }
     }
@@ -233,19 +263,24 @@ const MetricWithTrend = ({ data, reverseTrend, formatValue }: MetricWithTrendPro
 
     return (
       <div className="flex justify-center items-center">
-        {trendExists &&
-
-            <toolbox.Tooltip
-              anchor={
-                <Fragment>
-                  <span className={`material-symbols-outlined ${trendClass} f5`} style="font-size: 1rem;">{trendIcon}</span>
-                  <span className={`${trendClass} f6`}>{formatValue(trendValue)}</span>
-                </Fragment>
-              }
-              content={<span className="f6">Compared to the previous 30 days</span>}
-            />
-        }
-        {!trendExists && <span className={`material-symbols-outlined gray f5`} style="font-size: 1rem;">remove</span>}
+        {trendExists && (
+          <toolbox.Tooltip
+            anchor={
+              <Fragment>
+                <span className={`material-symbols-outlined ${trendClass} f5`} style="font-size: 1rem;">
+                  {trendIcon}
+                </span>
+                <span className={`${trendClass} f6`}>{formatValue(trendValue)}</span>
+              </Fragment>
+            }
+            content={<span className="f6">Compared to the previous 30 days</span>}
+          />
+        )}
+        {!trendExists && (
+          <span className={`material-symbols-outlined gray f5`} style="font-size: 1rem;">
+            remove
+          </span>
+        )}
       </div>
     );
   };
@@ -253,15 +288,14 @@ const MetricWithTrend = ({ data, reverseTrend, formatValue }: MetricWithTrendPro
   const metricValueClass = `b f3`;
 
   const value = data[0];
-  if(value === null) {
+  if (value === null) {
     return (
       <Fragment>
         <span className={metricValueClass}>-</span>
         <TrendValue/>
       </Fragment>
     );
-  }
-  else {
+  } else {
     return (
       <Fragment>
         <span className={metricValueClass}>{formatValue(value)}</span>
@@ -269,7 +303,6 @@ const MetricWithTrend = ({ data, reverseTrend, formatValue }: MetricWithTrendPro
       </Fragment>
     );
   }
-
 };
 
 interface MetricProps {
@@ -290,14 +323,17 @@ const Metric = ({ title, children, lastElement }: MetricProps) => {
 };
 
 const Metrics = () => {
-  const { state: { test: test } } = useContext(stores.FlakyTestDetail.Context);
+  const {
+    state: { test: test },
+  } = useContext(stores.FlakyTestDetail.Context);
   const formatPercentage = (value: number): string => {
     const formattedValue = value.toFixed(2);
     return `${formattedValue}%`;
   };
 
   const formatDisruptions = toolbox.Formatter.decimalThousands;
-  const formatRuns = (value: number) => toolbox.Pluralize(value, `run`, `runs`, (value: number) => toolbox.Formatter.decimalThousands(value));
+  const formatRuns = (value: number) =>
+    toolbox.Pluralize(value, `run`, `runs`, (value: number) => toolbox.Formatter.decimalThousands(value));
 
   return (
     <Fragment>
@@ -308,42 +344,61 @@ const Metrics = () => {
             <MetricWithTrend data={test.totalCounts} formatValue={formatRuns}/>
           </Metric>
 
-          <Metric title={
-            <div className="flex flex-center justify-center items-center">
-              Disruptions
-              <toolbox.Tooltip
-                anchor={<span className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">info</span>}
-                content={<div className="f4">Affected {test.hashes.length} commits across {test.contexts.length} branches.</div>}
-                placement="top"
-              />
-            </div>
-          }>
+          <Metric
+            title={
+              <div className="flex flex-center justify-center items-center">
+                Disruptions
+                <toolbox.Tooltip
+                  anchor={
+                    <span className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">
+                      info
+                    </span>
+                  }
+                  content={
+                    <div className="f4">
+                      Affected {test.hashes.length} commits across {test.contexts.length} branches.
+                    </div>
+                  }
+                  placement="top"
+                />
+              </div>
+            }
+          >
             <MetricWithTrend data={test.disruptionCount} formatValue={formatDisruptions} reverseTrend={true}/>
           </Metric>
-          <Metric title={
-            <div className="flex flex-center justify-center items-center">
-              Impact
-              <toolbox.Tooltip
-                anchor={<div className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">help</div>}
-                content={<div className="f4">Percentage of test runs disrupted by this test.</div>}
-                placement="top"
-              />
-            </div>
-          }>
+          <Metric
+            title={
+              <div className="flex flex-center justify-center items-center">
+                Impact
+                <toolbox.Tooltip
+                  anchor={
+                    <div className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">
+                      help
+                    </div>
+                  }
+                  content={<div className="f4">Percentage of test runs disrupted by this test.</div>}
+                  placement="top"
+                />
+              </div>
+            }
+          >
             <MetricWithTrend data={test.impacts} formatValue={formatPercentage} reverseTrend={true}/>
           </Metric>
           <Metric title="Pass rate">
             <MetricWithTrend data={test.passRates} formatValue={formatPercentage} reverseTrend={false}/>
           </Metric>
           <Metric title="Duration (p95)" lastElement={true}>
-            <MetricWithTrend data={test.p95Durations} formatValue={toolbox.Formatter.formatTestDuration} reverseTrend={true}/>
+            <MetricWithTrend
+              data={test.p95Durations}
+              formatValue={toolbox.Formatter.formatTestDuration}
+              reverseTrend={true}
+            />
           </Metric>
         </div>
       </div>
     </Fragment>
   );
 };
-
 
 interface DisruptionDetailsProps {
   selectedBranch: string;
@@ -365,7 +420,7 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
 
   useLayoutEffect(() => {
     let query = ``;
-    if(selectedBranch != ``) {
+    if (selectedBranch != ``) {
       query = `@git.branch:"${selectedBranch}"`;
     }
 
@@ -373,21 +428,19 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
     dispatchRequest({ type: `SET_PARAM`, name: `test_id`, value: testId });
     setPage(1);
     dispatchRequest({ type: `FETCH` });
-
   }, [testId, selectedBranch]);
 
   useEffect(() => {
     dispatchRequest({ type: `SET_PARAM`, name: `page`, value: `${page}` });
   }, [page]);
 
-
   useLayoutEffect(() => {
-    if(request.status == types.RequestStatus.Fetch) {
+    if (request.status == types.RequestStatus.Fetch) {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       fetch(request.url)
         .then((response) => {
           const totalPages = parseInt(response.headers.get(`X-TOTAL-PAGES`) || `1`, 10);
-          if(totalPages > page) {
+          if (totalPages > page) {
             setPage(page + 1);
             setHasNextPage(true);
           } else {
@@ -398,13 +451,14 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
         .then((response) => response.json())
         .then((json) => {
           dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Success });
-          const newDisruptionOccurences = json.map(types.Tests.DisruptionOccurence.fromJSON) as types.Tests.DisruptionOccurence[];
-          if(page == 1) {
+          const newDisruptionOccurences = json.map(
+            types.Tests.DisruptionOccurence.fromJSON
+          ) as types.Tests.DisruptionOccurence[];
+          if (page == 1) {
             setDisruptionOccurences(newDisruptionOccurences);
           } else {
             setDisruptionOccurences(disruptionOccurences.concat(newDisruptionOccurences));
           }
-
         })
         .catch((e) => {
           // eslint-disable-next-line no-console
@@ -420,15 +474,19 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
     dispatchRequest({ type: `FETCH` });
   };
 
-  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence, }) => {
+  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence }) => {
     const humanizedDate = moment(item.timestamp).from(moment());
     return (
       <div className="flex items-center">
         <span className="material-symbols-outlined f5 mr1">fork_right</span>
         <span>{item.context}</span>
         <span className="material-symbols-outlined f5 b mh2">commit</span>
-        <a href={item.url} className="measure truncate" title={item.workflowName} target="_blank" rel="noreferrer">{item.workflowName}</a>
-        <span className="ml1" title={item.timestamp?.toString()}>· {humanizedDate}, by {item.requester}</span>
+        <a href={item.url} className="measure truncate" title={item.workflowName} target="_blank" rel="noreferrer">
+          {item.workflowName}
+        </a>
+        <span className="ml1" title={item.timestamp?.toString()}>
+          · {humanizedDate}, by {item.requester}
+        </span>
       </div>
     );
   };
@@ -437,20 +495,30 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
     <Fragment>
       <h2 className="f4 mv1">Disruption occurrences</h2>
       <div className="mb3">
-        {disruptionOccurences.map((disruptionOccurrence, idx) =>
+        {disruptionOccurences.map((disruptionOccurrence, idx) => (
           <DisruptionOccurence item={disruptionOccurrence} key={idx}/>
-        )}
+        ))}
 
-        {(request.status == types.RequestStatus.Loading || request.status == types.RequestStatus.Zero) && <components.Loader.LoadingSpinner text={`Loading disruption occurrences …`}/>}
-        {request.status == types.RequestStatus.Error && <components.Loader.LoadingFailed text={`Loading disruption occurrences failed`}/>}
-        {hasNextPage && <a className="pointer" onClick={fetchNextPage}>+ Load more</a>}
+        {(request.status == types.RequestStatus.Loading || request.status == types.RequestStatus.Zero) && (
+          <components.Loader.LoadingSpinner text={`Loading disruption occurrences …`}/>
+        )}
+        {request.status == types.RequestStatus.Error && (
+          <components.Loader.LoadingFailed text={`Loading disruption occurrences failed`}/>
+        )}
+        {hasNextPage && (
+          <a className="pointer" onClick={fetchNextPage}>
+            + Load more
+          </a>
+        )}
       </div>
     </Fragment>
   );
 };
 
 const DisruptionHistory = () => {
-  const { state: { test: test } } = useContext(stores.FlakyTestDetail.Context);
+  const {
+    state: { test: test },
+  } = useContext(stores.FlakyTestDetail.Context);
 
   const [cummulative, setCummulative] = useState(false);
 
@@ -462,10 +530,12 @@ const DisruptionHistory = () => {
           <toolbox.Tooltip
             anchor={
               <span
-                onClick={ () => setCummulative(false) }
-                className={`material-symbols-outlined pointer b ${!cummulative ? `dark-gray` : `light-gray hover-dark-gray`}`}
+                onClick={() => setCummulative(false)}
+                className={`material-symbols-outlined pointer b ${
+                  !cummulative ? `dark-gray` : `light-gray hover-dark-gray`
+                }`}
               >
-                  bar_chart
+                bar_chart
               </span>
             }
             content={<div>Daily overview</div>}
@@ -475,17 +545,26 @@ const DisruptionHistory = () => {
           <toolbox.Tooltip
             anchor={
               <span
-                onClick={ () => setCummulative(true) }
-                className={`material-symbols-outlined pointer b ${cummulative ? `dark-gray` : `light-gray hover-dark-gray`}`}
+                onClick={() => setCummulative(true)}
+                className={`material-symbols-outlined pointer b ${
+                  cummulative ? `dark-gray` : `light-gray hover-dark-gray`
+                }`}
               >
-                  monitoring
-              </span>}
+                monitoring
+              </span>
+            }
             content={<div>Cumulative overview</div>}
             placement="top"
           />
         </div>
       </div>
-      <components.HistoryChart history={test.disruptionHistory} cummulative={cummulative} color="#E53935" tooltipTitle="Broken builds" tickTitle="fail"/>
+      <components.HistoryChart
+        history={test.disruptionHistory}
+        cummulative={cummulative}
+        color="#E53935"
+        tooltipTitle="Broken builds"
+        tickTitle="fail"
+      />
     </Fragment>
   );
 };

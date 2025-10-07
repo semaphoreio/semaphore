@@ -30,7 +30,6 @@ interface State {
   metrics?: types.Metric.Interface[];
 }
 
-
 export const Plot = ({ domain, metrics }: PlotProps) => {
   const chartSVGRef = createRef<SVGSVGElement>();
   const chartContainerRef = createRef<HTMLDivElement>();
@@ -52,9 +51,8 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
     },
     xScale: d3.scaleTime(),
     yScale: d3.scaleLinear(),
-    width: 0
+    width: 0,
   });
-
 
   // Update the resize state when the window is resized(throttled to 50ms)
   useEffect(() => {
@@ -63,10 +61,9 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
     return () => window.removeEventListener(`resize`, throttleResize);
   }, []);
 
-
   // Sync container's width with the state when the window resizes
   useEffect(() => {
-    if(chartContainerRef.current) {
+    if (chartContainerRef.current) {
       const boundingRect = chartContainerRef.current.getBoundingClientRect();
       const width = boundingRect.width;
 
@@ -77,19 +74,20 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
 
   // Update the scales when new data is loaded, or the viewbox changes
   useEffect(() => {
-    if(!domain.length) {
+    if (!domain.length) {
       return;
     }
-    if(state.width == 0) {
+    if (state.width == 0) {
       return;
     }
 
-    const xScale = d3.scaleTime()
+    const xScale = d3
+      .scaleTime()
       .rangeRound([state.margin.left, state.width - state.margin.right])
       .domain(domain);
 
-
-    const yScale = d3.scaleLinear()
+    const yScale = d3
+      .scaleLinear()
       .rangeRound([state.height - state.margin.bottom - state.margin.top, state.margin.top]);
 
     setState({ ...state, xScale, yScale });
@@ -100,24 +98,21 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
   const xTranslation = state.width;
   const yTranslation = state.height - vMargins;
 
-
   return (
     <div ref={chartContainerRef}>
-      <svg
-        ref={chartSVGRef}
-        width={state.width}
-        height={state.height}
-      >
+      <svg ref={chartSVGRef} width={state.width} height={state.height}>
         <AxisX xScale={state.xScale} translation={yTranslation}/>
         <Count yScale={state.yScale} translation={xTranslation} metrics={metrics}/>
-        <StackedBar setTooltip={setTooltip} tooltip={tooltip} metrics={metrics} xScale={state.xScale} yScale={state.yScale}/>
+        <StackedBar
+          setTooltip={setTooltip}
+          tooltip={tooltip}
+          metrics={metrics}
+          xScale={state.xScale}
+          yScale={state.yScale}
+        />
       </svg>
 
-      {!tooltip.hidden && <Tooltip
-        content={tooltip.content}
-        left={tooltip.x}
-        top={tooltip.y}
-      />}
+      {!tooltip.hidden && <Tooltip content={tooltip.content} left={tooltip.x} top={tooltip.y}/>}
     </div>
   );
 };
@@ -131,7 +126,7 @@ const AxisX = ({ translation, xScale }: AxisXProps) => {
   const xScaleRef = createRef<SVGGElement>();
 
   useEffect(() => {
-    if(!xScaleRef.current) {
+    if (!xScaleRef.current) {
       return;
     }
     const xAxis = d3
@@ -140,15 +135,9 @@ const AxisX = ({ translation, xScale }: AxisXProps) => {
       .tickFormat((d) => moment(d as Date).format(`D`))
       .ticks(d3.timeDay.every(1));
 
+    d3.select(xScaleRef.current).call(xAxis).selectAll(`line`).remove();
 
-    d3.select(xScaleRef.current)
-      .call(xAxis)
-      .selectAll(`line`).remove();
-
-    d3.select(xScaleRef.current)
-      .call(xAxis)
-      .selectAll(`.tick text`).attr(`y`, `10`);
-
+    d3.select(xScaleRef.current).call(xAxis).selectAll(`.tick text`).attr(`y`, `10`);
   }, [translation, xScale]);
 
   return (
@@ -156,13 +145,12 @@ const AxisX = ({ translation, xScale }: AxisXProps) => {
   );
 };
 
-
-export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode, }) => {
+export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode }) => {
   const adjustedLeft = (left: number) => {
     if (left < 2 * width) {
       left += 25;
     } else {
-      left -= (width + 25);
+      left -= width + 25;
     }
 
     return left;
@@ -175,18 +163,17 @@ export const Tooltip = ({ top, left, content }: { top: number, left: number, con
     <div
       className="tooltip"
       style={{
-        "position": `absolute`,
-        "top": top,
-        "left": left,
-        "width": width,
-        "z-index": `3`
+        position: `absolute`,
+        top: top,
+        left: left,
+        width: width,
+        "z-index": `3`,
       }}
     >
       {content}
     </div>
   );
 };
-
 
 interface CountProps {
   yScale?: d3.ScaleLinear<number, number>;
@@ -206,36 +193,24 @@ const Count = ({ yScale, translation, metrics }: CountProps) => {
     const max = range.max;
     const min = Math.min(0, range.min);
 
-
     const yAxis = d3
       .axisLeft(yScale)
       .tickSize(-translation)
       .tickFormat((d: number) => `${toolbox.Formatter.toMoney(Math.floor(d)).replace(`.00`, ``)}`);
 
     const bottom = min;
-    const middown = min + ((max-min)/4) * 1;
-    const mid = min + ((max-min)/4) * 2;
-    const midup = min + ((max-min)/4) * 3;
+    const middown = min + ((max - min) / 4) * 1;
+    const mid = min + ((max - min) / 4) * 2;
+    const midup = min + ((max - min) / 4) * 3;
     const top = max;
 
-    yScale.domain([bottom, top].map(d => Math.floor(d)));
-    yAxis.tickValues([
-      bottom,
-      middown,
-      mid,
-      midup,
-      top
-    ].map(d => Math.floor(d)));
+    yScale.domain([bottom, top].map((d) => Math.floor(d)));
+    yAxis.tickValues([bottom, middown, mid, midup, top].map((d) => Math.floor(d)));
 
-
-    d3.select(yScaleRef.current)
-      .call(yAxis)
-      .selectAll(`.tick text`).attr(`x`, `-5`);
+    d3.select(yScaleRef.current).call(yAxis).selectAll(`.tick text`).attr(`x`, `-5`);
   }, [yScale, translation, metrics]);
 
-  return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>
-  );
+  return <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>;
 };
 
 //
@@ -254,14 +229,14 @@ function calculateOptimalRange(metrics: types.Metric.Interface[]) {
   metrics.forEach((metric) => {
     const found = combinedTypes.find((r) => moment(r.date).isSame(metric.date, `day`));
 
-    if(found) {
+    if (found) {
       found.value += metric.value;
     } else {
       combinedTypes.push({ ...metric });
     }
   });
 
-  if(combinedTypes.length == 0) {
+  if (combinedTypes.length == 0) {
     return zeroState;
   }
 
@@ -272,8 +247,8 @@ function calculateOptimalRange(metrics: types.Metric.Interface[]) {
     return zeroState;
   }
 
-  while(!isItNice(min, max)) {
-    if(min == 0) {
+  while (!isItNice(min, max)) {
+    if (min == 0) {
       max = max + 1;
     } else {
       min = min - 1;
@@ -286,7 +261,7 @@ function calculateOptimalRange(metrics: types.Metric.Interface[]) {
 function isItNice(min: number, max: number) {
   const range = max - min;
 
-  const dividesNicely = (range % 4 == 0);
+  const dividesNicely = range % 4 == 0;
   const upperValueIsRound = isOneNumberAllZeros(max);
   const bottomValueIsRound = isOneNumberAllZeros(min);
 
@@ -308,11 +283,10 @@ function isItNice(min: number, max: number) {
 //
 function isOneNumberAllZeros(value: number) {
   const digits = value.toString().length;
-  const divisor = Math.pow(10, digits-1);
+  const divisor = Math.pow(10, digits - 1);
 
   return value % divisor == 0;
 }
-
 
 interface StackedBarProps {
   metrics: types.Metric.Interface[];
@@ -327,14 +301,14 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
   const width = 30;
   const el = createRef<SVGGElement>();
 
-
   useEffect(() => {
     // Hack - forces recreation of the rects
     // Otherwise changes on the chart are not reflected properly
     el.current.replaceChildren(``);
 
     const keys = Object.values(types.Spendings.GroupType).reverse();
-    const stackGen = d3.stack()
+    const stackGen = d3
+      .stack()
       .keys(keys)
       .value((obj, key: string) => {
         return obj.values[key] as number;
@@ -353,7 +327,7 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
       const record: MetricRecord = { date: metric.date, hexColor: metric.hexColor, values: {}, total: metric.value };
       const found = groupedTypes.find((r) => moment(r.date).isSame(metric.date, `day`));
 
-      if(found) {
+      if (found) {
         found.values[metric.name] = metric.value;
         found.total += metric.value;
       } else {
@@ -362,8 +336,7 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
       }
     }, []);
 
-
-    const mouseover = function(e: MouseEvent, d: any) {
+    const mouseover = function (e: MouseEvent, d: any) {
       // @ts-expect-error - d3 types are wrong
       const subgroupName = d3.select(this.parentNode).datum().key as string;
       const data = d.data;
@@ -380,56 +353,59 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
         x: x,
         y: y,
         hidden: false,
-        content: <div>
-          <div className="f6">
-            <b>{moment(chartDay).format(`MMMM Do`)}</b>
-            <br/>
-            Total: {toolbox.Formatter.toMoney(dayTotal)}
-            <br/>
-            {toolbox.Formatter.humanize(subgroupName)}: {toolbox.Formatter.toMoney(subgroupValue)}
+        content: (
+          <div>
+            <div className="f6">
+              <b>{moment(chartDay).format(`MMMM Do`)}</b>
+              <br/>
+              Total: {toolbox.Formatter.toMoney(dayTotal)}
+              <br/>
+              {toolbox.Formatter.humanize(subgroupName)}: {toolbox.Formatter.toMoney(subgroupValue)}
+            </div>
           </div>
-        </div>
+        ),
       });
 
       d3.selectAll(`.chart-rect`).style(`opacity`, 0.2);
       d3.selectAll(`.chart-rect.${subgroupName}`).style(`opacity`, 1);
     };
 
-    const mouseleave = function() {
+    const mouseleave = function () {
       setTooltip({
         ...tooltip,
         hidden: true,
-        content: undefined
+        content: undefined,
       });
 
-      d3.selectAll(`.chart-rect`).style(`opacity`,0.7);
+      d3.selectAll(`.chart-rect`).style(`opacity`, 0.7);
     };
 
     // @ts-expect-error - d3 types are wrong
     const stackedSeries = stackGen(groupedTypes);
 
-
     d3.select(el.current)
       .selectAll(`g`)
       .data(stackedSeries)
-      .enter().append(`g`)
+      .enter()
+      .append(`g`)
       .attr(`fill`, (d) => {
         return types.Spendings.Group.hexColor(d.key as types.Spendings.GroupType);
       })
-      .attr(`class`, (d) => `chart-rect ` + d.key )
-      .style(`opacity`,0.7)
+      .attr(`class`, (d) => `chart-rect ` + d.key)
+      .style(`opacity`, 0.7)
       .selectAll(`rect`)
       .data((d) => d)
-      .enter().append(`rect`)
+      .enter()
+      .append(`rect`)
       .attr(`x`, (d) => xScale(d.data.date) - width / 2)
-      .attr(`y`, (d) => yScale(d[1]) )
-      .attr(`height`, (d) => { return yScale(d[0]) - yScale(d[1]); } )
+      .attr(`y`, (d) => yScale(d[1]))
+      .attr(`height`, (d) => {
+        return yScale(d[0]) - yScale(d[1]);
+      })
       .attr(`width`, width)
       .on(`mouseover`, mouseover)
       .on(`mouseleave`, mouseleave);
   }, [metrics, xScale, yScale]);
 
-  return (
-    <g ref={el}></g>
-  );
+  return <g ref={el}></g>;
 };

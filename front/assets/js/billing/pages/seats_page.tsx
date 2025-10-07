@@ -198,7 +198,7 @@ const List = () => {
   );
 };
 
-const SeatItem = ({ seat, lastItem }: { seat: Seats.Seat, lastItem: boolean, }) => {
+const SeatItem = ({ seat, lastItem }: { seat: Seats.Seat, lastItem: boolean }) => {
   return (
     <div className={lastItem ? `` : `bb b--black-075`}>
       <div className="pv1">

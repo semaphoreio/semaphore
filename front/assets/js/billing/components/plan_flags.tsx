@@ -16,7 +16,7 @@ export const PlanFlags = () => {
   );
 };
 
-const SuspensionFlag = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const SuspensionFlag = ({ plan }: { plan: types.Spendings.Plan }) => {
   if (plan.didCreditsRunOut()) {
     return <CreditsRunOut plan={plan}/>;
   }
@@ -30,7 +30,7 @@ const SuspensionFlag = ({ plan }: { plan: types.Spendings.Plan, }) => {
   }
 };
 
-const NoPaymentMethod = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const NoPaymentMethod = ({ plan }: { plan: types.Spendings.Plan }) => {
   return (
     <div className="flex items-center justify-between bb b--black-075 w-100-l mb3 br3 bg-red bg-pattern-wave pa3">
       <div className="white f3">Payment method not set.</div>
@@ -39,7 +39,7 @@ const NoPaymentMethod = ({ plan }: { plan: types.Spendings.Plan, }) => {
   );
 };
 
-const PaymentFailed = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const PaymentFailed = ({ plan }: { plan: types.Spendings.Plan }) => {
   return (
     <div className="flex items-center justify-between bb b--black-075 w-100-l mb3 br3 bg-red bg-pattern-wave pa3">
       <div className="white f3">Your last payment failed.</div>
@@ -48,7 +48,7 @@ const PaymentFailed = ({ plan }: { plan: types.Spendings.Plan, }) => {
   );
 };
 
-const CreditsRunOut = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const CreditsRunOut = ({ plan }: { plan: types.Spendings.Plan }) => {
   let content = `You ran out of credits.`;
   if (plan.isFree()) {
     content = `You used up your free credit quota.`;

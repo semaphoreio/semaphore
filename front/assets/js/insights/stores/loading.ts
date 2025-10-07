@@ -1,11 +1,6 @@
 import { createContext } from "preact";
 
-export type Action =
-  | { type: `ADD_ERROR`, error: string, }
-  | { type: `RESET`, }
-  | { type: `LOADED`, }
-  ;
-
+export type Action = { type: `ADD_ERROR`, error: string } | { type: `RESET` } | { type: `LOADED` };
 
 export interface State {
   loading: boolean;
@@ -32,4 +27,7 @@ export const EmptyState: State = {
   errors: [],
 };
 
-export const Context = createContext<{ loadingState: State, loadingDispatch: (a: Action) => void, }>({ loadingState: EmptyState, loadingDispatch: () => undefined });
+export const Context = createContext<{ loadingState: State, loadingDispatch: (a: Action) => void }>({
+  loadingState: EmptyState,
+  loadingDispatch: () => undefined,
+});

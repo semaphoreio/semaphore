@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import * as stores from "js/agents/stores";
 import * as pages from "js/agents/pages";
 
-export default function ({ dom, config }: { dom: HTMLElement, config: any, }) {
+export default function ({ dom, config }: { dom: HTMLElement, config: any }) {
   const configState = stores.Config.State.fromJSON(config);
   render(
     <BrowserRouter basename={config.baseUrl}>
@@ -18,15 +18,9 @@ export default function ({ dom, config }: { dom: HTMLElement, config: any, }) {
               {configState.accessProvider.canManageAgents() && (
                 <Fragment>
                   <Route path="settings" element={<pages.SelfHosted.Edit/>}/>
-                  <Route
-                    path="disable_all"
-                    element={<pages.SelfHosted.DisableAll/>}
-                  />
+                  <Route path="disable_all" element={<pages.SelfHosted.DisableAll/>}/>
                   <Route path="delete" element={<pages.SelfHosted.Delete/>}/>
-                  <Route
-                    path="reset"
-                    element={<pages.SelfHosted.ResetToken/>}
-                  />
+                  <Route path="reset" element={<pages.SelfHosted.ResetToken/>}/>
                 </Fragment>
               )}
               <Route path="*" element={<Navigate to="." replace/>}/>
