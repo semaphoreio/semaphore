@@ -1,0 +1,207 @@
+{{- if .Values.global.development.minimalDeployment }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-job-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ .Chart.Name }}-task-api"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: NodePort
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: "jobs-v1alpha-public-grpc-api-headless"
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    app: "{{ .Chart.Name }}"
+  ports:
+    - name: grpc
+      port: 50051
+      targetPort: 50051
+      protocol: TCP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: "{{ .Chart.Name }}"
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  template:
+    metadata:
+      name: {{ .Chart.Name }}
+      labels:
+        app: {{ .Chart.Name }}
+        product: semaphoreci
+    spec:
+{{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+{{- range .Values.imagePullSecrets }}
+        - name: {{ . }}
+{{- end }}
+{{- end }}
+      automountServiceAccountToken: false
+      volumes:
+        - name: features-volume
+          configMap:
+            defaultMode: 0644
+            name: features
+            items:
+            - key: features.yml
+              path: features.yml
+      initContainers:
+{{ include "initContainers.all" . | indent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
+          ports:
+            - name: grpc-public-api
+              containerPort: 50051
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: features-volume
+              mountPath: "/app/features.yml"
+              readOnly: true
+              subPath: features.yml
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.global.internalApi.configMapName }}
+          env:
+            {{- include "env.db.elixir" . | indent 12 }}
+            - name: FEATURE_YAML_PATH
+              value: "/app/features.yml"
+            - name: ON_PREM
+              value: "true"
+            - name: BASE_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ .Values.global.domain.configMapName }}
+                  key: BASE_DOMAIN
+            - name: MIX_ENV
+              value: prod
+            - name: START_PUBLIC_JOB_API
+              value: "true"
+            - name: DISPATCH_SELF_HOSTED_ONLY
+              value: "true"
+            - name: DISPATCH_CLOUD_ONLY
+              value: "false"
+            - name: START_GRPC_HEALTH_CHECK
+              value: "true"
+            - name: START_JOB_STARTED_CALLBACK_WORKER
+              value: "true"
+            - name: START_JOB_FINISHED_CALLBACK_WORKER
+              value: "true"
+            - name: START_JOB_TEARDOWN_CALLBACK_WORKER
+              value: "true"
+            - name: START_TASK_FINISHER_WORKER
+              value: "true"
+            - name: START_TASK_FAIL_FAST_WORKER
+              value: "true"
+            - name: START_INTERNAL_JOB_API
+              value: "true"
+            - name: START_INTERNAL_TASK_API
+              value: "true"
+            - name: START_DISPATCHER_WORKER
+              value: "true"
+            - name: START_SCHEDULER_WORKER
+              value: "true"
+            - name: START_JOB_REQUEST_FACTORY
+              value: "true"
+            - name: START_MONITOR
+              value: "false"
+            - name: START_JOB_STOPPER
+              value: "true"
+            - name: START_JOB_TERMINATOR
+              value: "true"
+            - name: START_WAITING_JOB_TERMINATOR
+              value: "true"
+            - name: POSTGRES_DB_SSL
+              value: {{ .Values.global.database.ssl | quote }}
+            - name: POSTGRES_DB_NAME
+              value: {{ .Values.db.name | quote }}
+            - name: POSTGRES_DB_POOL_SIZE
+              value: {{ .Values.publicApi.dbPoolSize | quote }}
+            - name: AMQP_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
+{{- if .Values.global.statsd.enabled }}
+            - name: METRICS_NAMESPACE
+              value: {{ .Values.global.statsd.metricsNamespace }}
+{{- end }}
+          livenessProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          startupProbe:
+            grpc:
+              port: 50051
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+{{- if .Values.publicApi.resources }}
+          resources:
+{{ toYaml .Values.publicApi.resources | indent 12 }}
+{{- end }}
+{{- if .Values.global.statsd.enabled }}
+        - name: {{ .Chart.Name }}-statsd
+          image: "{{ .Values.global.image.registry }}/{{ .Values.global.statsd.image }}:{{ .Values.global.statsd.imageTag }}"
+          env:
+            - name: FLUSH_INTERVAL
+              value: "60000"
+            - name: GRAPHITE_HOST
+              value: {{ .Values.global.statsd.graphiteHost }}
+          securityContext:
+            privileged: false
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+{{- if .Values.statsd.resources }}
+          resources:
+{{ toYaml .Values.statsd.resources | indent 13 }}
+{{- end }}
+{{- end }}
+{{- end }}

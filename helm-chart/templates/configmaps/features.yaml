@@ -24,12 +24,24 @@ data:
       enabled: true
     gitlab:
       enabled: true
+    git:
+      enabled: true
     github_oauth_token:
+      enabled: false
+    email_members:
+      enabled: true
+    github_user_provider:
+      enabled: false
+    gitlab_user_provider:
+      enabled: false
+    bitbucket_user_provider:
       enabled: false
     deployment_targets:
       enabled: false
     expose_cloud_agent_types:
       enabled: false
+    experimental_strict_hook_verification:
+      enabled: true
     feedback:
       enabled: false
     help:
@@ -40,7 +52,7 @@ data:
       enabled: true
     max_paralellism_in_org:
       quantity: 500
-    max_people_in_organization:
+    max_people_in_org:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
@@ -102,7 +114,13 @@ data:
       enabled: false
     ui_monaco_workflow_code_editor:
       enabled: true
+    ui_reports:
+      enabled: true
     new_project_onboarding:
+      enabled: true
+    wf_editor_via_jobs:
+      enabled: true
+    service_accounts:
       enabled: true
 {{- else }}
   features.yml: |-
@@ -126,6 +144,14 @@ data:
       enabled: true
     github_oauth_token:
       enabled: false
+    email_members:
+      enabled: true
+    github_user_provider:
+      enabled: false
+    gitlab_user_provider:
+      enabled: false
+    bitbucket_user_provider:
+      enabled: false
     deployment_targets:
       enabled: true
     expose_cloud_agent_types:
@@ -140,7 +166,7 @@ data:
       enabled: true
     max_paralellism_in_org:
       quantity: 500
-    max_people_in_organization:
+    max_people_in_org:
       quantity: 600
     max_projects_in_org:
       quantity: 10000
@@ -204,6 +230,10 @@ data:
       enabled: true
     ui_monaco_workflow_code_editor:
       enabled: true
+    ui_reports:
+      enabled: true
     new_project_onboarding:
+      enabled: true
+    service_accounts:
       enabled: true
 {{- end }}

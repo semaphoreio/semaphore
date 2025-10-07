@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/semaphoreio/semaphore/self_hosted_hub/pkg/amqp"
 	database "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/database"
 	models "github.com/semaphoreio/semaphore/self_hosted_hub/pkg/models"
 	"github.com/stretchr/testify/require"
@@ -12,6 +13,7 @@ import (
 
 var orgID = database.UUID()
 var requesterID = database.UUID()
+var publisher, _ = amqp.NewPublisher("amqp://guest:guest@rabbitmq:5672")
 
 func Test__DeletingStuckAgents(t *testing.T) {
 	database.TruncateTables()
@@ -20,7 +22,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 
 	t.Run("it doesn't delete agents that didn't sync at all up to 1m after registring", func(t *testing.T) {
 		agent := createAgent(t, at.Name)
-		Tick()
+		Tick(publisher)
 		assertAgentExists(t, agent.ID.String())
 	})
 
@@ -30,7 +32,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 		agent.CreatedAt = &when
 		updateAgent(t, agent)
 
-		Tick()
+		Tick(publisher)
 
 		assertAgentDoesntExists(t, agent.ID.String())
 	})
@@ -42,7 +44,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 		agent.LastSyncAt = &when
 		updateAgent(t, agent)
 
-		Tick()
+		Tick(publisher)
 
 		assertAgentExists(t, agent.ID.String())
 	})
@@ -53,7 +55,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 		agent.LastSyncAt = &when
 		updateAgent(t, agent)
 
-		Tick()
+		Tick(publisher)
 
 		assertAgentDoesntExists(t, agent.ID.String())
 	})
@@ -67,7 +69,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 		agent.AssignedJobID = &job
 		updateAgent(t, agent)
 
-		Tick()
+		Tick(publisher)
 
 		assertAgentExists(t, agent.ID.String())
 	})
@@ -81,7 +83,7 @@ func Test__DeletingStuckAgents(t *testing.T) {
 		agent.AssignedJobID = &job
 		updateAgent(t, agent)
 
-		Tick()
+		Tick(publisher)
 
 		assertAgentDoesntExists(t, agent.ID.String())
 	})

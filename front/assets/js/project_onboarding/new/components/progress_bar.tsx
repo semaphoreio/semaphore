@@ -1,39 +1,22 @@
-import { FunctionComponent } from "preact";
+import { Fragment } from "preact/jsx-runtime";
+import { useSteps } from "../stores/create/steps";
 
-export type OnboardingStep =
-  | `select-type`
-  | `setup-project`
-  | `select-environment`
-  | `setup-workflow`;
 
-interface ProgressBarProps {
-  currentStep: OnboardingStep;
-}
+export const ProgressBar = () => {
+  const { state } = useSteps<{ id: string, title: string, }>();
 
-// eslint-disable-next-line react/prop-types
-export const ProgressBar: FunctionComponent<ProgressBarProps> = ({ currentStep }) => {
-  const steps = [
-    { id: `select-type`, label: `1. Select project type` },
-    { id: `setup-project`, label: `2. Setup the project` },
-    { id: `select-environment`, label: `3. Select the environment` },
-    { id: `setup-workflow`, label: `4. Setup workflow` },
-  ];
+  const steps = state?.steps || [];
 
   return (
     <div className="dn db-m mb4">
       {steps.map((step, index) => (
-        <>
-          <span
-            className={`${
-              currentStep === step.id ? `ph3 pv1 bg-green white br-pill` : ``
-            }`}
-          >
-            {step.label}
-          </span>
-          {index < steps.length - 1 && (
+        <Fragment key="{step.id}">
+          {(step.id !== state.currentStepId) && <span>{index + 1}. {step.title}</span>}
+          {(step.id === state.currentStepId) && <span className="ph3 bg-green white br-pill">{index + 1}. {step.title}</span>}
+          {index < state.steps.length - 1 && (
             <span className="gray mh2">→</span>
           )}
-        </>
+        </Fragment>
       ))}
     </div>
   );

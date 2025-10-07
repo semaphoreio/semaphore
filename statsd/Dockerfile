@@ -1,5 +1,5 @@
-ARG NODE_VERSION=18.17.1
-ARG ALPINE_VERSION=3.18
+ARG NODE_VERSION=18.19.0
+ARG ALPINE_VERSION=3.19
 ARG BASE_IMAGE="node:${NODE_VERSION}-alpine${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -24,7 +24,7 @@ EXPOSE 8125
 HEALTHCHECK NONE
 
 # trivyfs security updates
-RUN apk add --upgrade --no-cache libcrypto1.1 libssl1.1 && \
+RUN apk add --upgrade --no-cache && \
   apk add --no-cache make netcat-openbsd tcpdump && \
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 

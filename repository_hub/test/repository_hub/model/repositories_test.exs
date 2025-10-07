@@ -6,8 +6,6 @@ defmodule RepositoryHub.Model.RepositoriesTest do
 
   doctest Repositories
 
-  @organization_with_strict_hook_verification "9290123e-6066-41ae-8ae3-321964100dce"
-
   setup do
     repository = RepositoryModelFactory.build_repository()
     repository_empty_secret = RepositoryModelFactory.build_repository(hook_secret_enc: nil)
@@ -23,7 +21,6 @@ defmodule RepositoryHub.Model.RepositoriesTest do
       assert {:ok, true} ==
                Repositories.hook_signature_valid?(
                  repository,
-                 @organization_with_strict_hook_verification,
                  "Hello, World!",
                  "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
                )
@@ -33,7 +30,6 @@ defmodule RepositoryHub.Model.RepositoriesTest do
       assert {:ok, false} ==
                Repositories.hook_signature_valid?(
                  repository,
-                 @organization_with_strict_hook_verification,
                  "Hello, World!",
                  "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
                )
@@ -43,7 +39,6 @@ defmodule RepositoryHub.Model.RepositoriesTest do
       assert {:ok, false} ==
                Repositories.hook_signature_valid?(
                  repository,
-                 @organization_with_strict_hook_verification,
                  "Hello, World!",
                  "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e15"
                )
@@ -53,7 +48,6 @@ defmodule RepositoryHub.Model.RepositoriesTest do
       assert {:ok, false} ==
                Repositories.hook_signature_valid?(
                  repository,
-                 @organization_with_strict_hook_verification,
                  "Hello, World!",
                  "757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
                )
@@ -63,19 +57,8 @@ defmodule RepositoryHub.Model.RepositoriesTest do
       assert {:ok, false} ==
                Repositories.hook_signature_valid?(
                  repository,
-                 @organization_with_strict_hook_verification,
                  "Hello, World",
                  "sha256=757107ea0eb2509fc211221cce984b8a37570b6d7586c22c46f4379c8b043e17"
-               )
-    end
-
-    test "#hook_signature_valid? is always valid if feature is disabled for organization", %{repository: repository} do
-      assert {:ok, true} ==
-               Repositories.hook_signature_valid?(
-                 repository,
-                 Ecto.UUID.generate(),
-                 "",
-                 ""
                )
     end
 

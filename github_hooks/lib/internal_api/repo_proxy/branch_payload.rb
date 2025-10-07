@@ -10,21 +10,26 @@ module InternalApi::RepoProxy
     def call(project, user)
       repo_host = ::RepoHost::Factory.create_from_project(project)
 
-      reference = repo_host.reference(project.repo_owner_and_name, ref.delete_prefix("refs/"))
+      encoded_ref = CGI.escape(ref.delete_prefix("refs/heads/"))
+      reference = repo_host.reference(project.repo_owner_and_name, "heads/#{encoded_ref}")
 
-      commit = repo_host.commit(project.repo_owner_and_name, commit_sha(sha, reference))
+      branch_commit = repo_host.commit(project.repo_owner_and_name, commit_sha(sha, reference))
 
-      repo_url = commit[:html_url].split("/").first(5).join("/")
+      repo_url = branch_commit[:html_url].split("/").first(5).join("/")
       author_name  = user.github_repo_host_account.name
       author_email = user.email
       github_uid = user.github_repo_host_account.github_uid
       avatar = ::Avatar.avatar_url(github_uid)
 
       commit = {
-        "message" => commit.commit.message,
-        "id" => commit.sha,
-        "url" => commit.html_url,
-        "author" => { "name" => "", "email" => "" },
+        "message" => branch_commit.commit.message,
+        "id" => branch_commit.sha,
+        "url" => branch_commit.html_url,
+        "author" => {
+          "name" => branch_commit.commit.author&.name || "",
+          "email" => branch_commit.commit.author&.email || "",
+          "username" => branch_commit.author&.login
+        },
         "timestamp" => ""
       }
 

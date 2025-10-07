@@ -29,7 +29,6 @@ spec:
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
           command: ["bash", "-c"]
           args: ["bundle exec puma sidekiq.ru -C config/puma_sidekiq.rb"]
-          imagePullPolicy: Always
           ports:
             - name: web-port
               containerPort: 3000

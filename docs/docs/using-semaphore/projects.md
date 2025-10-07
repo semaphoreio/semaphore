@@ -1,16 +1,10 @@
 ---
-description: Connect Git repos to Semaphore
+description: Connect Git repos to Semaphore (Cloud)
 ---
 
 # Projects
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
-Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphoreci.com/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
+Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphore.io/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 
 This page explains how to set up projects and what settings are available.
 
@@ -20,22 +14,22 @@ This page explains how to set up projects and what settings are available.
 
 To create a Semaphore project you need:
 
-- A [Semaphore](https://semaphoreci.com) account with an [organization](./organizations.md)
+- A [Semaphore](https://semaphore.io) account with an [organization](./organizations.md)
+- A repository with at least one commit
 - A GitHub or Bitbucket account. For more information, see the connection guides
   - [How to connect to GitHub](./connect-github)
   - [How to connect to Bitbucket](./connect-bitbucket)
-- A repository with at least one commit
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
 
-Go to Semaphore, press **+Create New** 1 and then press **Choose repository**
+Go to Semaphore, press **+Create New** and then press **Choose repository**
 
 ![Creating a new project](./img/create-project-1.jpg)
 
 <Steps>
 
-1. Select the GitHub or Bitbucket tab. You may need to press the **Connect account** button if this is the first time
+1. Select the GitHub or BitBucket tab. You may need to press the **Connect account** button if this is the first time
 2. Select the repository from the list and press on **Choose**
 
     <details>
@@ -602,7 +596,7 @@ There are several actions that can break the connection between GitHub and Semap
 - renaming the GitHub user account
 - renaming the GitHub organization
 
-When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphoreci.com) providing the following details:
+When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphore.io) providing the following details:
 
 - Previous repository name and URL
 - New repository name and URL

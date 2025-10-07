@@ -9,10 +9,10 @@ defmodule Front.Browser.PeopleTest do
   @change_role_btn Query.css(".change_role_btn", count: :any, at: 0)
 
   setup do
-    ce_roles = Application.get_env(:front, :ce_roles)
-    Application.put_env(:front, :ce_roles, false)
+    edition = Application.get_env(:front, :edition)
+    Application.put_env(:front, :edition, "")
 
-    on_exit(fn -> Application.put_env(:front, :ce_roles, ce_roles) end)
+    on_exit(fn -> Application.put_env(:front, :edition, edition) end)
     :ok
   end
 
@@ -47,7 +47,9 @@ defmodule Front.Browser.PeopleTest do
 
       session
       |> visit(ctx.path)
-      |> assert_number_of_role_labels(9)
+      # Service accounts are loaded asynchronously, so we need to wait a bit
+      |> sleep(500)
+      |> assert_number_of_role_labels(12)
     end
 
     test "if there is only 1 page, do not show buttons", ctx do
@@ -154,11 +156,8 @@ defmodule Front.Browser.PeopleTest do
 
   defp test_remove_user(ctx) do
     number = get_number_of_members(ctx.page)
-
     new_page = ctx.page |> remove_user()
-
     new_number = get_number_of_members(new_page)
-
     assert number == new_number + 1
 
     true

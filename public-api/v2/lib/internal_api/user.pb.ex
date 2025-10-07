@@ -56,6 +56,7 @@ defmodule InternalApi.User.User.CreationSource do
 
   field(:NOT_SET, 0)
   field(:OKTA, 1)
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.User.ListFavoritesRequest do
@@ -238,24 +239,6 @@ defmodule InternalApi.User.RegenerateTokenResponse do
   field(:api_token, 3, type: :string, json_name: "apiToken")
 end
 
-defmodule InternalApi.User.RefererRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:user_id, 1, type: :string, json_name: "userId")
-end
-
-defmodule InternalApi.User.RefererResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:user_id, 1, type: :string, json_name: "userId")
-  field(:entry_url, 2, type: :string, json_name: "entryUrl")
-  field(:http_referer, 3, type: :string, json_name: "httpReferer")
-end
-
 defmodule InternalApi.User.CheckGithubTokenRequest do
   @moduledoc false
 
@@ -321,6 +304,14 @@ defmodule InternalApi.User.DescribeByRepositoryProviderRequest do
   field(:provider, 1, type: InternalApi.User.RepositoryProvider)
 end
 
+defmodule InternalApi.User.DescribeByEmailRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:email, 1, type: :string)
+end
+
 defmodule InternalApi.User.RefreshRepositoryProviderRequest do
   @moduledoc false
 
@@ -341,6 +332,24 @@ defmodule InternalApi.User.RefreshRepositoryProviderResponse do
     type: InternalApi.User.RepositoryProvider,
     json_name: "repositoryProvider"
   )
+end
+
+defmodule InternalApi.User.CreateRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
+
+  field(:email, 1, type: :string)
+  field(:name, 2, type: :string)
+  field(:password, 3, type: :string)
+
+  field(:repository_providers, 4,
+    repeated: true,
+    type: InternalApi.User.RepositoryProvider,
+    json_name: "repositoryProviders"
+  )
+
+  field(:skip_password_change, 5, type: :bool, json_name: "skipPasswordChange")
 end
 
 defmodule InternalApi.User.User do
@@ -403,16 +412,6 @@ defmodule InternalApi.User.UserUpdated do
 
   field(:user_id, 1, type: :string, json_name: "userId")
   field(:timestamp, 2, type: Google.Protobuf.Timestamp)
-end
-
-defmodule InternalApi.User.UserRefererCreated do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.12.0"
-
-  field(:user_id, 1, type: :string, json_name: "userId")
-  field(:entry_url, 2, type: :string, json_name: "entryUrl")
-  field(:http_referer, 3, type: :string, json_name: "httpReferer")
 end
 
 defmodule InternalApi.User.UserJoinedOrganization do
@@ -505,6 +504,8 @@ defmodule InternalApi.User.UserService.Service do
     InternalApi.User.User
   )
 
+  rpc(:DescribeByEmail, InternalApi.User.DescribeByEmailRequest, InternalApi.User.User)
+
   rpc(:SearchUsers, InternalApi.User.SearchUsersRequest, InternalApi.User.SearchUsersResponse)
 
   rpc(:DescribeMany, InternalApi.User.DescribeManyRequest, InternalApi.User.DescribeManyResponse)
@@ -529,8 +530,6 @@ defmodule InternalApi.User.UserService.Service do
 
   rpc(:DeleteFavorite, InternalApi.User.Favorite, InternalApi.User.Favorite)
 
-  rpc(:Referer, InternalApi.User.RefererRequest, InternalApi.User.RefererResponse)
-
   rpc(
     :CheckGithubToken,
     InternalApi.User.CheckGithubTokenRequest,
@@ -552,6 +551,8 @@ defmodule InternalApi.User.UserService.Service do
     InternalApi.User.RefreshRepositoryProviderRequest,
     InternalApi.User.RefreshRepositoryProviderResponse
   )
+
+  rpc(:Create, InternalApi.User.CreateRequest, InternalApi.User.User)
 end
 
 defmodule InternalApi.User.UserService.Stub do

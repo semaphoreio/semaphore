@@ -4,12 +4,6 @@ description: SSO and user management automation
 
 # Okta Integration
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to integrate with Okta" src="https://www.youtube.com/embed/2_am8-e0UTc?si=_XEDoQgiEAsnaFCb"/>
 
 Use Okta to provision, manage your user, and provide Single Sign On (SSO) to your users. This page explains how to integrate Okta with Semaphore to manage your users and groups using Okta.
@@ -237,11 +231,17 @@ Semaphore asks new users logging in via SSO to [connect their GitHub](./connect-
 
 ![Connect Git](./img/connect-git.jpg)
 
+:::info
+
+Once enforced, Okta is the **only login method allowed** for all users in the organization. Dual authentication methods like Okta + GitHub/BitBucket/GitLab are not supported.
+
+:::
+
 ## Troubleshooting duplicated users {#troubleshooting}
 
 Semaphore tries to match new users provisioned via SCIM to existing Semaphore users by email address. If the email address associated with the SCIM request matches the email address of existing Semaphore users, the two accounts will be connected, and no new account will be provisioned. Email associated with Semaphore is the primary email from GitHub or BitBucket.
 
-If you are not sure how many organization members have corporate email accounts, or have any other question, feel free to contact our support team at `support@semaphoreci.com` and we will help you update user emails and smoothly integrate our app with your SCIM/SAML provider.
+If you are not sure how many organization members have corporate email accounts, or have any other question, feel free to contact our support team at `support@semaphore.io` and we will help you update user emails and smoothly integrate our app with your SCIM/SAML provider.
 
 ## See also
 

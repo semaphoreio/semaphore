@@ -11,19 +11,7 @@ ENV APP_NAME=${APP_NAME}
 RUN echo "Build of $APP_NAME started"
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates unzip curl libc-bin libc6 \
-    && apt-get clean && rm -f /var/lib/apt/lists/*_*
-
-WORKDIR /app
-COPY api api
-COPY go.mod go.mod
-COPY go.sum go.sum
-COPY main.go main.go
-
-FROM base AS dev
-
-COPY test test
-COPY scripts scripts
-COPY lint.toml lint.toml
+  && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 WORKDIR /tmp
 RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-3.3.0-linux-x86_64.zip -o protoc && \
@@ -31,11 +19,27 @@ RUN curl -sL https://github.com/google/protobuf/releases/download/v3.3.0/protoc-
   mv bin/protoc /usr/local/bin/protoc
 
 WORKDIR /app
+
 RUN go install github.com/mgechev/revive@v1.7.0
 RUN go install gotest.tools/gotestsum@v1.12.1
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.7
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.3.0
+
+FROM base AS dev
+
+WORKDIR /app
+
+COPY api api
+COPY protos protos
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY main.go main.go
+
 RUN rm -rf build && CGO_ENABLED=0 go build -o build/server main.go
+
+COPY test test
+COPY scripts scripts
+COPY lint.toml lint.toml
 
 CMD [ "/bin/bash",  "-c \"while sleep 1000; do :; done\"" ]
 

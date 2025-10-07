@@ -14,10 +14,10 @@ defimpl RepositoryHub.Server.VerifyWebhookSignatureAction, for: RepositoryHub.Un
          {:ok, result} <-
            Repositories.hook_signature_valid?(
              repository,
-             request.organization_id,
              request.payload,
              request.signature
-           ) do
+           ),
+         _ <- repository |> maybe_connect(result) do
       %VerifyWebhookSignatureResponse{valid: result}
       |> wrap()
     end
@@ -35,4 +35,16 @@ defimpl RepositoryHub.Server.VerifyWebhookSignatureAction, for: RepositoryHub.Un
       ]
     )
   end
+
+  @spec maybe_connect(Repositories.t(), boolean()) :: :ok
+  defp maybe_connect(repository, true) do
+    if !repository.connected do
+      repository
+      |> RepositoryQuery.update(%{connected: true})
+    end
+
+    :ok
+  end
+
+  defp maybe_connect(_repository, _), do: :ok
 end

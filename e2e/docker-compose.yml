@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    platform: linux/arm64 # Use ARM64 platform for Apple Silicon Macs
+    platform: ${PLATFORM:-linux/arm64} # Use ARM64 platform for Apple Silicon Macs
     shm_size: 2gb # Increase shared memory for Chrome
     volumes:
       - .:/app

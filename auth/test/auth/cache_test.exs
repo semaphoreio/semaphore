@@ -1,6 +1,6 @@
 defmodule Auth.CacheTest do
   use ExUnit.Case
-  use Plug.Test
+
   doctest Auth
 
   test "it caches values" do

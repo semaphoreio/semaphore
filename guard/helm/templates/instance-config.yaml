@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -103,6 +104,10 @@ spec:
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL
               value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+{{- if .Values.global.development.skipTlsVerifyInternal }}
+            - name: TLS_SKIP_VERIFY_INTERNAL
+              value: "true"
+{{- end }}
             - name: BASE_DOMAIN
               valueFrom:
                 configMapKeyRef:
@@ -222,4 +227,4 @@ spec:
 {{ toYaml .Values.statsd.resources | indent 13 }}
 {{- end }}
 {{- end }}
-
+{{- end }}

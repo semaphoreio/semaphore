@@ -12,6 +12,7 @@ defmodule Rbac.Models.RoleAssignment do
     field(:role_id, :binary_id)
     field(:org_id, :binary_id, primary_key: true)
     field(:user_id, :binary_id, primary_key: true)
+    field(:subject_type, :string, default: "user")
 
     timestamps(inserted_at: :created_at, updated_at: :updated_at)
   end
@@ -19,7 +20,7 @@ defmodule Rbac.Models.RoleAssignment do
   @doc false
   def changeset(role_assignment, attrs) do
     role_assignment
-    |> cast(attrs, [:user_id, :org_id, :role_id])
+    |> cast(attrs, [:user_id, :org_id, :role_id, :subject_type])
     |> validate_required([:user_id, :org_id, :role_id])
   end
 
@@ -45,6 +46,7 @@ defmodule Rbac.Models.RoleAssignment do
           :user_id -> from(r in query, where: r.user_id == ^value)
           :org_id -> from(r in query, where: r.org_id == ^value)
           :role_id -> from(r in query, where: r.role_id == ^value)
+          :subject_type -> from(r in query, where: r.subject_type == ^value)
           _ -> query
         end
       end)
@@ -68,6 +70,18 @@ defmodule Rbac.Models.RoleAssignment do
   def get_org_ids_by_user_id(user_id) do
     from(p in __MODULE__, where: p.user_id == ^user_id)
     |> select([p], p.org_id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Finds role assignments by subject IDs and organization ID.
+  Returns distinct assignments filtered by org_id.
+  """
+  def find_by_ids_and_org(subject_ids, org_id) do
+    from(r in __MODULE__,
+      where: r.user_id in ^subject_ids and r.org_id == ^org_id,
+      distinct: r.user_id
+    )
     |> Repo.all()
   end
 

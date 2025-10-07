@@ -95,6 +95,24 @@ func (p *Publisher) PublishTeardownFinishedCallback(ctx context.Context, jobID s
 	})
 }
 
+/*
+ * This function is used to publish the job finished and teardown finished callbacks.
+ * It is used by the job-finished sync request and agent cleaners.
+ */
+func (p *Publisher) HandleJobFinished(ctx context.Context, jobID string, result string) error {
+	err := p.PublishFinishedCallback(ctx, jobID, result)
+	if err != nil {
+		return err
+	}
+
+	err = p.PublishTeardownFinishedCallback(ctx, jobID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func buildJobFinishedMessage(jobId, result string) ([]byte, error) {
 
 	/*

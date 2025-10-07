@@ -49,7 +49,7 @@
                   conn: @conn, project: @project, scheduler: scheduler, permissions: @permissions %>
             <%= render FrontWeb.SchedulersView, "tasks/last_run.html",
                   conn: @conn, project: @project, scheduler_id: scheduler.id,
-                  trigger: scheduler.latest_trigger %>
+                  trigger: scheduler.latest_trigger, permissions: @permissions %>
           <% end %>
         <% end %>
       </div>

@@ -12,6 +12,7 @@ export SEMAPHORE_ORGANIZATION ?= semaphore
 export SEMAPHORE_BASE_DOMAIN ?= $(CLOUD_TEST_ENV_PREFIX).$(BASE_DOMAIN)
 export SEMAPHORE_USER_EMAIL ?= root@example.com
 export GOOGLE_APPLICATION_CREDENTIALS ?= /home/semaphore/creds.json
+export PLATFORM ?= linux/arm64
 
 ifeq (test.ui,$(MAKECMDGOALS))
     export START_WALLABY=true

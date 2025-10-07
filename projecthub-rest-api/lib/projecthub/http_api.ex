@@ -1,5 +1,5 @@
 defmodule Projecthub.HttpApi do
-  alias Projecthub.{Auth, Utils, Organization}
+  alias Projecthub.{Auth, Organization, Utils}
 
   require Logger
 
@@ -39,15 +39,18 @@ defmodule Projecthub.HttpApi do
   #
 
   get "/api/#{@version}/projects" do
-    org_id = conn.assigns.org_id
+    case list_projects(conn) do
+      {:ok, {projects, page, has_more}} ->
+        conn
+        |> put_resp_header("x-page", Integer.to_string(page))
+        |> put_resp_header("x-has-more", to_string(has_more))
+        |> send_resp(200, Poison.encode!(projects))
 
-    projects_rsp = list_projects(conn)
-    restricted = Organization.restricted?(org_id)
+      {:error, :not_found} ->
+        send_resp(conn, 404, Poison.encode!(%{message: "Not found"}))
 
-    case projects_rsp do
-      {:ok, projects} -> send_resp(conn, 200, encode(projects, restricted))
-      {:error, :not_found} -> send_resp(conn, 404, Poison.encode!(%{message: "Not found"}))
-      {:error, message} -> send_resp(conn, 400, Poison.encode!(%{message: message}))
+      {:error, message} ->
+        send_resp(conn, 400, Poison.encode!(%{message: message}))
     end
   end
 
@@ -504,15 +507,31 @@ defmodule Projecthub.HttpApi do
 
     schedulers
     |> Enum.map(fn scheduler ->
-      case scheduler.status do
-        @unspecified_status ->
-          Map.delete(scheduler, :status)
-
-        _ ->
-          Map.put(scheduler, :status, encode_scheduler_status(scheduler.status))
-      end
+      scheduler
+      |> encode_scheduler_status_field()
+      |> encode_reference_field()
     end)
   end
+
+  defp encode_scheduler_status_field(scheduler) do
+    case scheduler.status do
+      @unspecified_status ->
+        Map.delete(scheduler, :status)
+
+      status ->
+        Map.put(scheduler, :status, encode_scheduler_status(status))
+    end
+  end
+
+  defp encode_reference_field(%{branch: "refs/tags/" <> tag_name} = scheduler) do
+    Map.put(scheduler, :reference, %{"type" => "tag", "name" => tag_name})
+  end
+
+  defp encode_reference_field(%{branch: "refs/heads/" <> branch_name} = scheduler) do
+    Map.put(scheduler, :reference, %{"type" => "branch", "name" => branch_name})
+  end
+
+  defp encode_reference_field(scheduler), do: scheduler
 
   defp encode_scheduler_status(@status_inactive), do: "INACTIVE"
   defp encode_scheduler_status(@status_active), do: "ACTIVE"
@@ -525,16 +544,22 @@ defmodule Projecthub.HttpApi do
   defp encode_tasks(tasks) do
     tasks
     |> Stream.map(fn task ->
-      case task.status do
-        @task_unspecified_status ->
-          Map.delete(task, :status)
-
-        _ ->
-          Map.put(task, :status, encode_task_status(task.status))
-      end
+      task
+      |> encode_task_status_field()
+      |> encode_reference_field()
     end)
     |> Stream.map(&Map.put(&1, :scheduled, &1.recurring))
     |> Enum.map(&Map.delete(&1, :recurring))
+  end
+
+  defp encode_task_status_field(task) do
+    case task.status do
+      @task_unspecified_status ->
+        Map.delete(task, :status)
+
+      status ->
+        Map.put(task, :status, encode_task_status(status))
+    end
   end
 
   defp encode_task_status(@task_status_inactive), do: "INACTIVE"
@@ -593,7 +618,9 @@ defmodule Projecthub.HttpApi do
         Scheduler.new(
           id: scheduler["id"] || "",
           name: scheduler["name"],
-          branch: scheduler["branch"],
+          branch:
+            scheduler["branch"] ||
+              construct_reference(scheduler["reference_type"], scheduler["reference_name"]),
           at: scheduler["at"],
           pipeline_file: scheduler["pipeline_file"],
           status: scheduler_status(scheduler["status"])
@@ -615,7 +642,9 @@ defmodule Projecthub.HttpApi do
           name: task["name"],
           description: task["description"] || "",
           recurring: if(is_nil(task["scheduled"]), do: true, else: task["scheduled"]),
-          branch: task["branch"] || "",
+          branch:
+            task["branch"] || construct_reference(task["reference_type"], task["reference_name"]) ||
+              "",
           at: task["at"] || "",
           pipeline_file: task["pipeline_file"] || "",
           parameters: construct_task_parameters(task["parameters"]),
@@ -626,6 +655,16 @@ defmodule Projecthub.HttpApi do
       []
     end
   end
+
+  defp construct_reference("branch", reference_name) do
+    "refs/heads/#{reference_name}"
+  end
+
+  defp construct_reference("tag", reference_name) do
+    "refs/tags/#{reference_name}"
+  end
+
+  defp construct_reference(_, _), do: nil
 
   defp construct_task_parameters(raw_task_parameters) do
     alias InternalApi.Projecthub.Project.Spec.Task.Parameter, as: SpecTaskParameter
@@ -686,13 +725,25 @@ defmodule Projecthub.HttpApi do
   end
 
   defp list_projects(conn) do
+    org_id = conn.assigns.org_id
+    restricted = Organization.restricted?(org_id)
+
+    case parse_int(conn.params, "page", 1, 100, 1) do
+      {:ok, page} -> do_list_projects(conn, org_id, restricted, page)
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp page_size, do: Application.get_env(:projecthub, :projects_page_size, 500)
+
+  defp do_list_projects(conn, org_id, restricted, page) do
     req =
       InternalApi.Projecthub.ListRequest.new(
         metadata: Utils.construct_req_meta(conn),
         pagination:
           InternalApi.Projecthub.PaginationRequest.new(
-            page: 0,
-            page_size: 500
+            page: page,
+            page_size: page_size()
           )
       )
 
@@ -702,9 +753,45 @@ defmodule Projecthub.HttpApi do
     {:ok, res} = InternalApi.Projecthub.ProjectService.Stub.list(channel, req, timeout: 30_000)
 
     case InternalApi.Projecthub.ResponseMeta.Code.key(res.metadata.status.code) do
-      :OK -> {:ok, Auth.filter_projects(res.projects, conn.assigns.org_id, conn.assigns.user_id)}
-      :NOT_FOUND -> {:error, :not_found}
-      _ -> {:error, "Bad Request"}
+      :OK ->
+        projects =
+          res.projects
+          |> Auth.filter_projects(org_id, conn.assigns.user_id)
+          |> Enum.map(&encode_project(&1, restricted))
+          |> Enum.map(&Map.merge(&1, %{"apiVersion" => @version, "kind" => "Project"}))
+
+        total = Map.get(res.pagination || %{}, :total_entries, 0)
+        has_more = (page - 1) * page_size() + length(res.projects) < total
+
+        if total < (page - 1) * page_size() do
+          {:ok, {[], page, false}}
+        else
+          {:ok, {projects, page, has_more}}
+        end
+
+      :NOT_FOUND ->
+        {:error, :not_found}
+
+      _ ->
+        {:error, "Bad Request"}
+    end
+  end
+
+  defp parse_int(params, key, min, max, default) do
+    case Map.get(params, key) do
+      nil ->
+        {:ok, default}
+
+      str when is_binary(str) ->
+        case Integer.parse(str) do
+          {n, ""} when n >= min and n <= max -> {:ok, n}
+          {n, ""} when n < min -> {:error, "#{key} must be at least #{min}"}
+          {n, ""} when n > max -> {:error, "#{key} must be at most #{max}"}
+          _ -> {:error, "#{key} must be a number"}
+        end
+
+      _ ->
+        {:error, "#{key} must be a number"}
     end
   end
 end

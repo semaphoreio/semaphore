@@ -20,6 +20,7 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.ListResponse
   alias InternalApi.Projecthub.ListKeysetResponse
   alias InternalApi.Projecthub.DestroyResponse
+  alias InternalApi.Projecthub.RestoreResponse
   alias InternalApi.Projecthub.CreateResponse
   alias InternalApi.Projecthub.ForkAndCreateResponse
   alias InternalApi.Projecthub.UpdateResponse
@@ -28,6 +29,7 @@ defmodule Projecthub.Api.GrpcServer do
   alias InternalApi.Projecthub.RegenerateDeployKeyResponse
   alias InternalApi.Projecthub.CheckWebhookResponse
   alias InternalApi.Projecthub.RegenerateWebhookResponse
+  alias InternalApi.Projecthub.RegenerateWebhookSecretResponse
   alias InternalApi.Projecthub.ChangeProjectOwnerResponse
   alias InternalApi.Projecthub.GithubAppSwitchResponse
   alias InternalApi.Projecthub.FinishOnboardingResponse
@@ -37,7 +39,7 @@ defmodule Projecthub.Api.GrpcServer do
 
   def describe(request, _) do
     Watchman.benchmark("projecthub_api.describe.duration", fn ->
-      find_project(request)
+      find_project(request, request.soft_deleted)
       |> case do
         {:ok, project} ->
           DescribeResponse.new(
@@ -53,7 +55,7 @@ defmodule Projecthub.Api.GrpcServer do
 
   def describe_many(req, _) do
     Watchman.benchmark("projecthub_api.describe_many.duration", fn ->
-      projects = Project.find_many(req.metadata.org_id, req.ids)
+      projects = Project.find_many(req.metadata.org_id, req.ids, req.soft_deleted)
 
       projects =
         projects
@@ -127,7 +129,8 @@ defmodule Projecthub.Api.GrpcServer do
         req.pagination.page,
         req.pagination.page_size,
         owner_id: req.owner_id,
-        repo_url: url
+        repo_url: url,
+        soft_deleted: req.soft_deleted
       )
     end)
   end
@@ -205,7 +208,7 @@ defmodule Projecthub.Api.GrpcServer do
                integration_type,
                true
              ) do
-        Logger.info("ForkAndCreate finished succesfully. Request: #{inspect(req)}")
+        Logger.info("ForkAndCreate finished successfully. Request: #{inspect(req)}")
 
         Watchman.increment({"repository.integration_type", ["#{integration_type}"]})
 
@@ -271,7 +274,7 @@ defmodule Projecthub.Api.GrpcServer do
                integration_type,
                req.skip_onboarding
              ) do
-        Logger.info("Create finished succesfully. Request: #{inspect(req)}")
+        Logger.info("Create finished successfully. Request: #{inspect(req)}")
 
         CreateResponse.new(
           metadata: status_ok(req),
@@ -351,6 +354,24 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
+  def restore(req, _) do
+    Watchman.benchmark("projecthub_api.restore.duration", fn ->
+      soft_deleted = true
+
+      case find_project(req, soft_deleted) do
+        {:ok, project} ->
+          {:ok, _} = Project.restore(project)
+          RestoreResponse.new(metadata: status_ok(req))
+
+        {:error, :not_found} ->
+          RestoreResponse.new(metadata: status_not_found(req))
+
+        {:error, %{message: message}} ->
+          RestoreResponse.new(metadata: status_failed_precondition(req, message))
+      end
+    end)
+  end
+
   # DEPRECATED
   def users(req, _) do
     Watchman.benchmark("projecthub_api.users.duration", fn ->
@@ -371,7 +392,8 @@ defmodule Projecthub.Api.GrpcServer do
             RegenerateDeployKeyResponse.DeployKey.new(
               title: response.deploy_key.title,
               fingerprint: response.deploy_key.fingerprint,
-              created_at: response.deploy_key.created_at
+              created_at: response.deploy_key.created_at,
+              public_key: response.deploy_key.public_key
             )
         )
       else
@@ -573,6 +595,21 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
+  def regenerate_webhook_secret(req, _) do
+    Watchman.benchmark("projecthub_api.regenerate_webhook_secret.duration", fn ->
+      with {:ok, project} <- find_project(req),
+           {:ok, response} <- RepositoryHubClient.regenerate_webhook_secret(%{repository_id: project.repository.id}) do
+        RegenerateWebhookSecretResponse.new(
+          metadata: status_ok(req),
+          secret: response.secret
+        )
+      else
+        {:error, message} ->
+          RegenerateWebhookSecretResponse.new(metadata: status_failed_precondition(req, message))
+      end
+    end)
+  end
+
   def change_project_owner(req, _) do
     Watchman.benchmark("projecthub_api.change_project_owner.duration", fn ->
       with {:ok, project} <- find_project(req),
@@ -662,16 +699,16 @@ defmodule Projecthub.Api.GrpcServer do
     end)
   end
 
-  defp find_project(req) do
+  defp find_project(req, soft_deleted \\ false) do
     cond do
       req.id != "" and req.metadata.org_id != "" ->
-        Project.find_in_org(req.metadata.org_id, req.id)
+        Project.find_in_org(req.metadata.org_id, req.id, soft_deleted)
 
       req.id != "" ->
-        Project.find(req.id)
+        Project.find(req.id, soft_deleted)
 
       req.name != "" ->
-        Project.find_by_name(req.name, req.metadata.org_id)
+        Project.find_by_name(req.name, req.metadata.org_id, soft_deleted)
 
       true ->
         {:error, :failed_precondition, "Name or ID must be provided"}
@@ -906,7 +943,8 @@ defmodule Projecthub.Api.GrpcServer do
       build_tag: Enum.member?(run_on, :TAGS),
       build_branch: Enum.member?(run_on, :BRANCHES),
       build_pr: Enum.member?(run_on, :PULL_REQUESTS),
-      build_forked_pr: Enum.member?(run_on, :FORKED_PULL_REQUESTS)
+      build_forked_pr: Enum.member?(run_on, :FORKED_PULL_REQUESTS),
+      build_draft_pr: Enum.member?(run_on, :DRAFT_PULL_REQUESTS)
     }
   end
 
@@ -965,7 +1003,7 @@ defmodule Projecthub.Api.GrpcServer do
   end
 
   defp projects_count_quota_reached?(org) do
-    Project.count_in_org(org.id) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, param: org.id)
+    Project.count_in_org(org.id, false) + 1 > FeatureProvider.feature_quota(:max_projects_in_org, param: org.id)
   end
 
   defp serialize(project), do: serialize(project, true)
@@ -1144,8 +1182,8 @@ defmodule Projecthub.Api.GrpcServer do
       whitelist: project.repository.whitelist,
       public: !project.repository.private,
       integration_type: project.repository.integration_type,
-      connected: true,
-      default_branch: project.repository.default_branch
+      default_branch: project.repository.default_branch,
+      connected: project.repository.connected
     )
   end
 
@@ -1188,7 +1226,8 @@ defmodule Projecthub.Api.GrpcServer do
       {:TAGS, project.build_tag},
       {:BRANCHES, project.build_branch},
       {:PULL_REQUESTS, project.build_pr},
-      {:FORKED_PULL_REQUESTS, project.build_forked_pr}
+      {:FORKED_PULL_REQUESTS, project.build_forked_pr},
+      {:DRAFT_PULL_REQUESTS, project.build_draft_pr}
     ]
     |> Enum.filter(fn e -> elem(e, 1) end)
     |> Enum.map(fn e -> elem(e, 0) end)

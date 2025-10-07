@@ -18,15 +18,21 @@ defmodule FrontWeb.Router do
         subdomains: true,
         preload: true
       )
+
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin",
+        "cross-origin-embedder-policy" => "credentialless"
+      })
+    else
+      plug(:put_secure_browser_headers, %{
+        "cross-origin-resource-policy" => "same-site",
+        "cross-origin-opener-policy" => "same-origin"
+        # Omit COEP in dev to allow Phoenix LiveReload iframe
+      })
     end
 
     plug(:protect_from_forgery)
-
-    plug(:put_secure_browser_headers, %{
-      "cross-origin-resource-policy" => "same-site",
-      "cross-origin-opener-policy" => "same-origin",
-      "cross-origin-embedder-policy" => "credentialless"
-    })
 
     plug(FrontWeb.Plug.ContentSecurityPolicy)
 
@@ -38,6 +44,7 @@ defmodule FrontWeb.Router do
     plug(FrontWeb.Plug.AssignOrgInfo)
     plug(FrontWeb.Plug.AssignBillingInfo)
     plug(FrontWeb.Plug.SentryContext)
+    plug(FrontWeb.Plugs.LicenseVerifier)
     plug(Traceman.Plug.TraceHeaders)
     plug(Front.Tracing.TracingPlug)
     plug(FrontWeb.Plugs.CacheControl, :private_cache)
@@ -61,6 +68,8 @@ defmodule FrontWeb.Router do
     post("/account", AccountController, :update)
     post("/account/reset_token", AccountController, :reset_token)
     post("/account/reset_password", AccountController, :reset_password)
+    post("/account/change_email", AccountController, :change_my_email)
+    post("/account/reset_my_password", AccountController, :reset_my_password)
     post("/account/update_repo_scope/:provider", AccountController, :update_repo_scope)
 
     get("/sso/zendesk", SSOController, :zendesk)
@@ -107,11 +116,6 @@ defmodule FrontWeb.Router do
       :workflows_destroy
     )
 
-    get("/jobs/:id/artifacts", ArtifactsController, :jobs)
-    get("/jobs/:id/artifacts/:resource_path", ArtifactsController, :jobs_download)
-    delete("/jobs/:id/artifacts", ArtifactsController, :jobs_destroy)
-    delete("/jobs/:id/artifacts/:resource_path", ArtifactsController, :jobs_destroy)
-
     get("/settings", SettingsController, :show)
 
     get("/settings/change_url", SettingsController, :change_url)
@@ -136,6 +140,7 @@ defmodule FrontWeb.Router do
     get("/groups/:group_id/", GroupsController, :fetch_group)
     put("/groups/:group_id/", GroupsController, :modify_group)
     post("/groups", GroupsController, :create_group)
+    delete("/groups/:group_id", GroupsController, :destroy_group)
 
     get("/roles", RolesController, :index)
     get("/roles/:scope/new", RolesController, :new)
@@ -165,6 +170,15 @@ defmodule FrontWeb.Router do
       post("/:user_id/update_repo_scope/:provider", PeopleController, :update_repo_scope)
 
       get("/offboarding/:user_id", OffboardingController, :show)
+    end
+
+    scope "/service_accounts" do
+      get("/", ServiceAccountController, :index)
+      post("/", ServiceAccountController, :create)
+      get("/:id", ServiceAccountController, :show)
+      put("/:id", ServiceAccountController, :update)
+      delete("/:id", ServiceAccountController, :delete)
+      post("/:id/regenerate_token", ServiceAccountController, :regenerate_token)
     end
 
     post("/project/:name_or_id/offboarding", OffboardingController, :transfer)
@@ -297,9 +311,7 @@ defmodule FrontWeb.Router do
     get("/projects/:name_or_id/fetch_yaml_artifacts", ProjectController, :fetch_yaml_artifacts)
 
     # Project Onboarding
-
     get("/new_project", ProjectOnboardingController, :new)
-    get("/x/new_project", ProjectOnboardingController, :index)
 
     # old choose_repository
     get("/choose_repository", ProjectOnboardingController, :choose_repository,
@@ -317,31 +329,72 @@ defmodule FrontWeb.Router do
       as: :bitbucket_choose_repository
     )
 
-    # new choose_repository
-    get("/x/new_project/github_app", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :github_app},
-      as: :github_choose_repository
-    )
+    scope "/x" do
+      get("/new_project", ProjectOnboardingController, :index)
 
-    get("/x/new_project/github_oauth_token", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :github_oauth_token},
-      as: :github_legacy_choose_repository
-    )
+      get("/new_project/github_app", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :github_app},
+        as: :github_choose_repository
+      )
 
-    get("/x/new_project/bitbucket", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :bitbucket},
-      as: :bitbucket_choose_repository
-    )
+      get("/new_project/github_oauth_token", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :github_oauth_token},
+        as: :github_legacy_choose_repository
+      )
 
-    get("/x/new_project/gitlab", ProjectOnboardingController, :index,
-      assigns: %{integration_type: :gitlab},
-      as: :gitlab_choose_repository
-    )
+      get("/new_project/bitbucket", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :bitbucket},
+        as: :bitbucket_choose_repository
+      )
 
-    post("/x/new_project/check_duplicates", ProjectOnboardingController, :check_duplicates)
+      get("/new_project/gitlab", ProjectOnboardingController, :index,
+        assigns: %{integration_type: :gitlab},
+        as: :gitlab_choose_repository
+      )
+
+      post("/new_project/check_duplicates", ProjectOnboardingController, :check_duplicates)
+      get("/new_project/*other", ProjectOnboardingController, :index)
+
+      post("/projects", ProjectOnboardingController, :create)
+      get("/repositories", ProjectOnboardingController, :repositories)
+
+      post(
+        "/projects/:name_or_id/skip_onboarding",
+        ProjectOnboardingController,
+        :skip_onboarding
+      )
+
+      get("/projects/:name_or_id/onboarding", ProjectOnboardingController, :onboarding_index)
+
+      get(
+        "/projects/:name_or_id/onboarding/*stage",
+        ProjectOnboardingController,
+        :onboarding_index
+      )
+
+      post(
+        "/projects/:name_or_id/workflow_builder",
+        ProjectOnboardingController,
+        :x_workflow_builder,
+        as: :x_workflow_builder
+      )
+
+      get("/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
+
+      post(
+        "/projects/:name_or_id/regenerate_webhook_secret",
+        ProjectOnboardingController,
+        :regenerate_webhook_secret
+      )
+
+      put(
+        "/projects/:name_or_id/onboarding/set_initial_yaml",
+        ProjectOnboardingController,
+        :update_project_initial_pipeline_file
+      )
+    end
 
     post("/projects", ProjectOnboardingController, :create)
-    post("/x/projects", ProjectOnboardingController, :create)
 
     get(
       "/projects/:name_or_id/repository_status",
@@ -358,12 +411,8 @@ defmodule FrontWeb.Router do
     get("/projects/:name_or_id/initializing", ProjectOnboardingController, :initializing)
 
     get("/repositories", ProjectOnboardingController, :repositories)
-    get("/x/repositories", ProjectOnboardingController, :repositories)
 
     get("/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
-    get("/x/projects/:name_or_id/is_ready", ProjectOnboardingController, :is_ready)
-
-    post("/x/projects/:name_or_id/skip_onboarding", ProjectOnboardingController, :skip_onboarding)
 
     get(
       "/projects/:name_or_id/invite_collaborators",
@@ -379,30 +428,9 @@ defmodule FrontWeb.Router do
       :existing_configuration
     )
 
-    put(
-      "/x/projects/:name_or_id/onboarding/set_initial_yaml",
-      ProjectOnboardingController,
-      :update_project_initial_pipeline_file
-    )
-
-    get("/x/projects/:name_or_id/onboarding", ProjectOnboardingController, :onboarding_index)
-
-    get(
-      "/x/projects/:name_or_id/onboarding/*stage",
-      ProjectOnboardingController,
-      :onboarding_index
-    )
-
     get("/projects/:name_or_id/template", ProjectOnboardingController, :template)
 
     get("/projects/:name_or_id/workflow_builder", ProjectOnboardingController, :workflow_builder)
-
-    post(
-      "/x/projects/:name_or_id/workflow_builder",
-      ProjectOnboardingController,
-      :x_workflow_builder,
-      as: :x_workflow_builder
-    )
 
     post("/fork/:provider/:repository_name", ProjectForkController, :fork)
     get("/fork/:provider/:repository_name/auth", ProjectForkController, :after_auth)
@@ -535,6 +563,8 @@ defmodule FrontWeb.Router do
     put("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :put)
     delete("/projects/:name_or_id/settings/pre_flight_checks", ProjectPFCController, :delete)
 
+    get("/projects/:name_or_id/report", ReportController, :project)
+
     get("/", DashboardController, :index)
     get("/workflows", DashboardController, :workflows)
     get("/dashboards/:name", DashboardController, :show)
@@ -606,6 +636,7 @@ defmodule FrontWeb.Router do
 
     get("/workflows/:workflow_id/status", WorkflowController, :status)
     get("/workflows/:workflow_id/summary", TestResultsController, :pipeline_summary)
+    get("/workflows/:workflow_id/report", ReportController, :workflow)
     get("/workflows/:workflow_id/summary/:pipeline_id", TestResultsController, :details)
     get("/workflows/:workflow_id/pipelines/:pipeline_id", PipelineController, :show)
     get("/workflows/:workflow_id/pipelines/:pipeline_id/poll", PipelineController, :poll)
@@ -624,6 +655,10 @@ defmodule FrontWeb.Router do
       as: :pipeline_stop
     )
 
+    post("/workflows/:workflow_id/pipelines/:pipeline_id/rebuild", PipelineController, :rebuild,
+      as: :pipeline_rebuild
+    )
+
     post(
       "/workflows/:workflow_id/pipelines/:pipeline_id/swithes/:switch_id/targets/:name",
       TargetController,
@@ -631,24 +666,32 @@ defmodule FrontWeb.Router do
     )
 
     # Job Page
-    get("/jobs/:id", JobController, :show)
-    get("/jobs/:id/status", JobController, :status)
-    get("/jobs/:id/status_badge", JobController, :status_badge)
-    get("/jobs/:id/summary", TestResultsController, :job_summary)
-    get("/jobs/:id/logs", JobController, :logs)
+    scope "/jobs/:id" do
+      get("/", JobController, :show)
+      get("/status", JobController, :status)
+      get("/status_badge", JobController, :status_badge)
+      get("/summary", TestResultsController, :job_summary)
+      get("/logs", JobController, :logs)
+      get("/report", ReportController, :job)
 
-    get("/jobs/:id/edit_workflow", JobController, :edit_workflow)
+      get("/edit_workflow", JobController, :edit_workflow)
 
-    post("/jobs/:id/stop", JobController, :stop)
+      post("/stop", JobController, :stop)
 
-    get("/jobs/:id/raw_logs.json", JobController, :events)
+      get("/raw_logs.json", JobController, :events)
 
-    get("/jobs/:id/events.json", JobController, :events)
+      get("/events.json", JobController, :events)
 
-    get("/jobs/:id/plain_logs.txt", JobController, :plain_logs)
+      get("/plain_logs.txt", JobController, :plain_logs)
 
-    # Deprecated, left here for backwards compatibility.
-    get("/jobs/:id/plain_logs.json", JobController, :plain_logs)
+      # Deprecated, left here for backwards compatibility.
+      get("/plain_logs.json", JobController, :plain_logs)
+
+      get("/artifacts", ArtifactsController, :jobs)
+      get("/artifacts/:resource_path", ArtifactsController, :jobs_download)
+      delete("/artifacts", ArtifactsController, :jobs_destroy)
+      delete("/artifacts/:resource_path", ArtifactsController, :jobs_destroy)
+    end
 
     # Support Page
     get("/support", SupportController, :new)

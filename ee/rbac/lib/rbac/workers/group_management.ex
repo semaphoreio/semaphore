@@ -18,19 +18,20 @@ defmodule Rbac.Workers.GroupManagement do
     req = load_req_for_processing()
 
     if req != nil do
-      Logger.info(
-        "[RbacRefreshAllPermissionsRequest Worker] Performing a task on req: #{inspect(req)}"
-      )
+      Logger.info("[GroupManagement Worker] Performing a task on req: #{inspect(req)}")
 
       try do
         {:ok, group} = Rbac.Store.Group.fetch_group(req.group_id)
 
         case req.action do
-          :add ->
+          :add_user ->
             :ok = Rbac.Store.Group.add_to_group(group, req.user_id)
 
-          :remove ->
+          :remove_user ->
             :ok = Rbac.Store.Group.remove_from_group(group, req.user_id)
+
+          :destroy_group ->
+            :ok = Rbac.Store.Group.destroy(group.id)
 
           other ->
             raise "Unknown action: #{inspect(other)}"

@@ -4,12 +4,6 @@ description: Access your GitHub repositories
 
 # Connect GitHub
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 GitHub users need to provide access to Semaphore so it can read their repositories.
 
 ## Overview
@@ -142,7 +136,7 @@ To verify the status of a webhook:
 
 To fix the broken webhook, click on **Regenerate**. This should generate a new webhook and repair the connection between Semaphore and GitHub.
 
-### Reconnecting moved or renamed projects
+### Reconnecting moved or renamed projects {#reconnect}
 
 There are several actions that can break the connection between GitHub and Semaphore. For example:
 
@@ -164,6 +158,48 @@ When this happens, you must update the URL of the repository in Semaphore. To do
 
 After changing the URL, double-check the status of the [deploy key](#deploy-key) and the [webhook](#webhook).
 
+### File semaphore.yml is not available
+
+You might see the following error message when trying to run workflows on Semaphore:
+
+``` yaml
+semaphore.yml ERROR:
+Error: {"File '.semaphore/semaphore.yml' is not available", "Not Found"}
+```
+
+This means that Semaphore can't fetch the `.semaphore/semaphore.yml` file from the repository. There are two reasons why this might happen:
+
+1. **The file doesn't exist on your repository**: double check to make sure that the Semaphore YAML file actually exists
+2. **Repository is disconnected from Semaphore**: follow the steps [previously described](#reconnect)
+
+### This pull request is still a work in progress {#stuck-pr}
+
+Renaming the pipeline in Semaphore can cause GitHub pull requests to be stuck, as GitHub expects the old name to report back the status.
+
+For instance, renaming the `semaphore.yml` pipeline file from:
+
+```yaml
+version: v1.0
+name: Rails 7
+```
+
+To something like:
+
+```yaml
+version: v1.0
+name: Rails 8
+```
+
+Can cause any pending pull requests on GitHub to wait forever.
+
+To solve the issue, follow these steps:
+
+1. Go to your GitHub repository.
+2. Navigate to **Settings** > **Branches**,
+3. Under **Branch Protection Rules**, find the rule for your default or protected branch and press **Edit**
+4. In the **Require status checks to pass before merging** section, remove the outdated check, e.g. `ci/semaphoreci/push: old-name`) and add the new one if needed, e.g. `ci/semaphoreci/push: new-name`
+5. Save the changes.
+
 ## Connect with GitHub SAML
 
 Semaphore supports repositories hosted on GitHub with SAML single sign-on (SSO). This GitHub feature is available in the GitHub Enterprise Cloud offering.
@@ -183,8 +219,9 @@ Here is how you authorize Semaphore:
 
 If you click "Request Access" in step 5, the admin of the organization will receive an email showing your request.
 
+
 ## See also
 
-- [Getting Started Guide](../getting-started/guided-tour)
+- [Getting Started Guide](../getting-started/quickstart)
 - [Using OAuth with GitHub](./connect-github-oauth)
 - [How to connect with BitBucket](./connect-bitbucket)

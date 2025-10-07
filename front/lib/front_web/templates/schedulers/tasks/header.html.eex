@@ -8,7 +8,7 @@
 </div>
 <div class="flex items-center justify-between ">
   <div class="flex items-center mr3">
-    <span class="material-symbols-outlined f6">fork_right</span>
+    <span class="material-symbols-outlined f6"><%= git_ref_icon(@scheduler.reference_type || "branch") %></span>
     <%= target_link(@project, @scheduler) %>
   </div>
   <div class="button-group">
@@ -22,9 +22,9 @@
       <button class="btn btn-secondary" disabled>Delete</button>
     <% end %>
   </div>
-  <%= if @permissions["project.scheduler.manage"] do %>
+  <%= if @permissions["project.scheduler.run_manually"] do %>
     <%= link "Run Now", to: schedulers_path(@conn, :form_just_run, @project.name, @scheduler.id), class: "btn btn-primary ml3 btn-small" %>
   <% else %>
-      <button class="btn btn-primary ml3 btn-small" disabled>Run Now</button>
+      <button class="btn btn-primary ml3 btn-small" disabled title="You don't have permissions to run tasks">Run Now</button>
   <% end %>
 </div>

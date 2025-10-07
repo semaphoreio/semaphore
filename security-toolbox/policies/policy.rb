@@ -7,6 +7,11 @@ class Policy
     end
 
     install = args[:install_dependencies] || false
+
+    output_dir = args[:output_dir] || "out"
+    # Prepare the output directory for reports
+    System.prepare_directory(output_dir)
+
     if install
       puts "Installing dependencies #{dependency_names} for '#{self.class.name}'..."
       install_dependencies

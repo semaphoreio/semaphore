@@ -4,19 +4,13 @@ description: Manage people, permissions, and costs
 
 # Organizations
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Organizations are the administrative unit for Semaphore. This page explains how to set up [notifications](./notifications), manage users, and what settings are available.
 
 ## Overview {#overview}
 
 In order to access any non-public resources on Semaphore you must be invited to the organization your team or company has created. 
 
-If you are trying out Semaphore for the first time, we suggest the [Guided Tour](../getting-started/guided-tour), where we show how to create your first organization.
+If you are trying out Semaphore for the first time, we suggest the [Quickstart](../getting-started/quickstart), where we show how to create your first organization.
 
 Organizations have:
 
@@ -67,10 +61,6 @@ You must install and connect the [Semaphore command line](../reference/semaphore
 
 Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the organization and project level.
 
-Free plans are limited to 5 users per organization. Paid plans have no user limit.
-
-You can only invite people with GitHub or BitBucket accounts to your organization.
-
 To manage users in your organization, open the organization menu and select **People**. This tab shows users and groups in your organization along with their roles and groups.
 
 ![The people tab](./img/people-tab.jpg)
@@ -84,7 +74,8 @@ To invite a user to your organization, press the **Add people** button:
 <Steps>
 
 1. Select one of the available tabs
-    - Type the user's handle, e.g. `TomFern`, or select the user from the list.
+
+    - Type the user's handle, e.g. `TomFern`, or select the user from the list. Usernames are case-sensitive and all characters are considered. Ensure the handle is entered accurately to avoid errors.
     - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
 
     ![Invite users](./img/invite-users.jpg)
@@ -94,6 +85,14 @@ To invite a user to your organization, press the **Add people** button:
 
 
 </Steps>
+
+:::info
+
+If you see an error with the message "error finding USERNAME: 401", it's likely that the your Semaphore account, as the inviter, is no longer linked to GitHub or BitBucket.
+
+To fix the issue, reconnect your account by granting access again via [GitHub](./connect-github-oauth#connect-oauth) or [Bitbucket](./connect-bitbucket#grant-bb). This should restore your ability to send invitations.
+
+:::
 
 ### How to remove users {#remove-users}
 
@@ -288,6 +287,8 @@ In this section, you can add contact details in case the Semaphore Support Team 
 
 ## Audit logs {#audit-log}
 
+<VideoTutorial title="How to view audit logs" src="https://www.youtube.com/embed/o5yXSvjcz7s"/>
+
 <Available plans={['Scaleup']} />
 
 To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your organization, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
@@ -336,6 +337,8 @@ To configure streaming to an S3-compatible bucket, press the **Configure Streami
 :::info
 
 Audit logs are streamed to the bucket once per day.
+
+Large audit logs may cause errors when exporting to CSV. In this case, consider setting up an S3-compatible bucket instead of using CSV as the export medium.
 
 :::
 
@@ -388,7 +391,7 @@ Updating the ownership of an organization doesn't automatically transfer the pro
 
 ### How to remove an owner {#remove-owner}
 
-If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphoreci.com from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
+If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphore.io from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
 
 ## How to delete an organization {#deleting-an-organization}
 

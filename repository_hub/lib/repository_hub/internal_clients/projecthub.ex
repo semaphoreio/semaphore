@@ -70,11 +70,11 @@ defmodule RepositoryHub.ProjecthubClient do
 
     channel()
     |> unwrap(fn connection ->
-      request = %DescribeRequest{id: project_id, metadata: %RequestMeta{}}
-
-      ProjectService.Stub.describe(connection, request, opts)
+      # In the first call, we don't check soft deleted projects
+      # If the project is soft deleted, we will try again with soft deleted set to true
+      make_describe_request(connection, project_id, false, opts)
+      |> unwrap(fn response -> extract_project(response, connection, project_id, false, opts) end)
     end)
-    |> unwrap(&extract_project/1)
     |> unwrap_error(fn
       %{message: message} -> error(message)
       message when is_bitstring(message) -> error(message)
@@ -82,11 +82,16 @@ defmodule RepositoryHub.ProjecthubClient do
     end)
   end
 
-  defp extract_project(response) do
+  defp extract_project(response, connection, project_id, checked_soft_deleted, opts) do
     response.metadata.status.code
     |> case do
       :OK ->
         response.project
+
+      :NOT_FOUND when not checked_soft_deleted ->
+        # If the project is soft deleted, we will try again with soft deleted set to true
+        make_describe_request(connection, project_id, true, opts)
+        |> unwrap(fn resp -> extract_project(resp, connection, project_id, true, opts) end)
 
       code when code in [:NOT_FOUND, :FAILED_PRECONDITION] ->
         error(response.metadata.status.message)
@@ -94,6 +99,16 @@ defmodule RepositoryHub.ProjecthubClient do
       code ->
         error("Projecthub call to Describe returned invalid status code: #{inspect(code)}")
     end
+  end
+
+  defp make_describe_request(connection, project_id, soft_deleted, opts) do
+    request = %DescribeRequest{
+      id: project_id,
+      soft_deleted: soft_deleted,
+      metadata: %RequestMeta{}
+    }
+
+    ProjectService.Stub.describe(connection, request, opts)
   end
 
   defp channel do

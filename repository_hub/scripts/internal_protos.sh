@@ -10,7 +10,6 @@ projecthub
 organization
 health
 encryptor
-feature
 '
 
 for element in $list;do

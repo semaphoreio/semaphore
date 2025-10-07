@@ -15,14 +15,19 @@ defmodule Rbac.Okta.Scim.Api.Test do
     "x-semaphore-org-id": @org_id
   ]
 
-  setup do
+  setup_with_mocks([
+    {Rbac.Api.Organization, [],
+     [
+       find_by_id: fn _ -> {:ok, %{allowed_id_providers: []}} end,
+       update: fn _ -> {:ok, %{}} end
+     ]}
+  ]) do
     Rbac.FrontRepo.delete_all(Rbac.FrontRepo.User)
 
     Support.Rbac.create_org_roles(@org_id)
     Support.Rbac.create_project_roles(@org_id)
 
     {:ok, provisioner} = Rbac.Okta.Scim.Provisioner.start_link()
-
     on_exit(fn -> Process.exit(provisioner, :kill) end)
   end
 
@@ -41,7 +46,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
   end
 
   describe "authorization" do
-    test "unathorized okta calls return 401" do
+    test "unauthorized okta calls return 401" do
       base_path = "#{@host}/okta/scim/Users"
       headers = @headers
 
@@ -196,7 +201,6 @@ defmodule Rbac.Okta.Scim.Api.Test do
         )
 
       {:ok, token} = Rbac.Okta.Integration.generate_scim_token(integration)
-
       {:ok, %{integration: integration, token: token}}
     end
 
@@ -206,7 +210,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
       assert response["id"] != nil
     end
 
-    test "when user with that email already exists, just connecti it to the okta account", %{
+    test "when user with that email already exists, just connect it to the okta account", %{
       token: token
     } do
       alias Rbac.Events.UserJoinedOrganization
@@ -421,7 +425,7 @@ defmodule Rbac.Okta.Scim.Api.Test do
       end
     end
 
-    test "re-eactivate a user", ctx do
+    test "reactivate a user", ctx do
       alias Rbac.Repo.OktaUser
       alias Rbac.Events.UserJoinedOrganization
 

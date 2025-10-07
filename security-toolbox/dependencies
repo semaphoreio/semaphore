@@ -29,6 +29,10 @@ OptionParser.new do |parser|
   parser.on("-d", "--dependencies", "Install dependencies") do
     args[:install_dependencies] = true
   end
+
+  parser.on("-o", "--output-dir OUTPUT_DIR", "Output directory for scan results") do |output_dir|
+    args[:output_dir] = output_dir
+  end
 end.parse!
 
 if !args[:language]
@@ -44,7 +48,8 @@ end
 case args[:language]
 when "go", "js"
   require_relative "#{__dir__}/policies/dependencies/trivy_fs"
-  Policy.run_all(args, [Policy::TrivyFs])
+  require_relative "#{__dir__}/policies/dependencies/trivy_junit_output"
+  Policy.run_all(args, [Policy::TrivyFs, Policy::TrivyJunitOutput])
 when "elixir"
   require_relative "#{__dir__}/policies/dependencies/mix_audit"
   require_relative "#{__dir__}/policies/dependencies/mix_licenses"

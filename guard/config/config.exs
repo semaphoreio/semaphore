@@ -118,4 +118,15 @@ end
 
 config :guard, :front_git_integration_path, "/settings/git_integrations"
 
+config :guard, Guard.OrganizationCleaner,
+  jobs: [
+    # Every Midnight
+    {"0 0 * * *", {Guard.OrganizationCleaner, :process, []}}
+  ]
+
+config :guard, :hard_destroy_grace_period_days, 30
+
+config :guard, :posthog_api_key, ""
+config :guard, :posthog_host, "https://app.posthog.com"
+
 import_config "#{config_env()}.exs"

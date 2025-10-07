@@ -1,6 +1,5 @@
 
 import * as stores from "../stores";
-import 'billboard.js/dist/billboard.min.css';
 import { Status } from "../types";
 import { LoadingIndicator } from "./loading_indicator";
 import { Message } from "./flaky_test_table";

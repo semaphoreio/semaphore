@@ -18,7 +18,7 @@ defmodule Guard.GrpcServers.OrganizationServer do
     Logger.debug("describe request: #{inspect(request)}")
 
     observe("describe", fn ->
-      case fetch_organization(org_id, org_username) do
+      case fetch_organization(org_id, org_username, soft_deleted: request.soft_deleted) do
         {:ok, organization} ->
           %Organization.DescribeResponse{
             status: %InternalApi.ResponseStatus{
@@ -68,11 +68,17 @@ defmodule Guard.GrpcServers.OrganizationServer do
       {:ok, created_at_gt} = timestamp_to_datetime(request.created_at_gt, :skip)
 
       {:ok, %{organizations: organizations, next_page_token: next_page_token}} =
-        Guard.Store.Organization.list(%{created_at_gt: created_at_gt}, %{
-          page_token: token,
-          page_size: size,
-          order: InternalApi.Organization.ListRequest.Order.key(request.order)
-        })
+        Guard.Store.Organization.list(
+          %{
+            created_at_gt: created_at_gt,
+            soft_deleted: request.soft_deleted
+          },
+          %{
+            page_token: token,
+            page_size: size,
+            order: InternalApi.Organization.ListRequest.Order.key(request.order)
+          }
+        )
 
       %Organization.ListResponse{
         status: %InternalApi.ResponseStatus{
@@ -114,6 +120,10 @@ defmodule Guard.GrpcServers.OrganizationServer do
               InternalApi.RepositoryIntegrator.IntegrationType.value(:GITLAB),
               FeatureProvider.feature_enabled?(:gitlab, param: org_id)
             )
+            |> add_if_enabled(
+              InternalApi.RepositoryIntegrator.IntegrationType.value(:GIT),
+              FeatureProvider.feature_enabled?(:git, param: org_id)
+            )
 
           %Organization.RepositoryIntegratorsResponse{
             primary: primary,
@@ -129,14 +139,14 @@ defmodule Guard.GrpcServers.OrganizationServer do
 
   @spec describe_many(Organization.DescribeManyRequest.t(), GRPC.Server.Stream.t()) ::
           Organization.DescribeManyResponse.t()
-  def describe_many(%{org_ids: org_ids} = request, _stream) do
+  def describe_many(%{org_ids: org_ids, soft_deleted: soft_deleted} = request, _stream) do
     Logger.debug("describe_many request: #{inspect(request)}")
 
     observe("describe_many", fn ->
       organizations =
         org_ids
         |> Enum.filter(&valid_uuid?/1)
-        |> Guard.Store.Organization.list_by_ids()
+        |> Guard.Store.Organization.list_by_ids(soft_deleted: soft_deleted)
         |> Enum.map(&org_to_proto/1)
 
       %Organization.DescribeManyResponse{
@@ -414,7 +424,7 @@ defmodule Guard.GrpcServers.OrganizationServer do
   end
 
   @spec destroy(Organization.DestroyRequest.t(), GRPC.Server.Stream.t()) ::
-          Organization.DestroyResponse.t()
+          Google.Protobuf.Empty.t()
   def destroy(%{org_id: org_id} = request, _) do
     Logger.debug("destroy request: #{inspect(request)}")
 
@@ -428,6 +438,29 @@ defmodule Guard.GrpcServers.OrganizationServer do
             {:error, changeset} ->
               Logger.error("Error while deleting org #{org_id}: #{inspect(changeset.errors)}")
               grpc_error!(:internal, "Error while deleting org: #{org_id}")
+          end
+
+        {:error, {:not_found, msg}} ->
+          grpc_error!(:not_found, msg)
+      end
+    end)
+  end
+
+  @spec restore(Organization.RestoreRequest.t(), GRPC.Server.Stream.t()) ::
+          Google.Protobuf.Empty.t()
+  def restore(%{org_id: org_id} = request, _) do
+    Logger.debug("restore request: #{inspect(request)}")
+
+    observe("restore", fn ->
+      case fetch_organization(org_id, "", soft_deleted: true) do
+        {:ok, organization} ->
+          case Guard.Store.Organization.restore(organization) do
+            {:ok, _} ->
+              %Google.Protobuf.Empty{}
+
+            {:error, changeset} ->
+              Logger.error("Error while restoring org #{org_id}: #{inspect(changeset.errors)}")
+              grpc_error!(:internal, "Error while restoring org: #{org_id}")
           end
 
         {:error, {:not_found, msg}} ->
@@ -451,6 +484,19 @@ defmodule Guard.GrpcServers.OrganizationServer do
             deny_member_workflows: proto_org.deny_member_workflows,
             ip_allow_list: Enum.join(proto_org.ip_allow_list, ",")
           }
+
+          attrs =
+            case proto_org.allowed_id_providers do
+              [_head | _tail] ->
+                Map.put(
+                  attrs,
+                  :allowed_id_providers,
+                  Enum.join(proto_org.allowed_id_providers, ",")
+                )
+
+              _ ->
+                attrs
+            end
 
           case Guard.Store.Organization.update(organization, attrs) do
             {:ok, updated_org} ->
@@ -526,13 +572,18 @@ defmodule Guard.GrpcServers.OrganizationServer do
     end)
   end
 
-  @spec fetch_organization(String.t(), String.t()) ::
+  @spec fetch_organization(String.t(), String.t(), Keyword.t()) ::
           {:ok, FrontRepo.Organization.t()} | {:error, {:not_found, String.t()}}
-  defp fetch_organization(id, username) do
+  defp fetch_organization(id, username, opts \\ []) do
     cond do
-      valid_uuid?(id) -> Guard.Store.Organization.get_by_id(id)
-      is_binary(username) and username != "" -> Guard.Store.Organization.get_by_username(username)
-      true -> {:error, {:not_found, "Invalid organization id or username"}}
+      valid_uuid?(id) ->
+        Guard.Store.Organization.get_by_id(id, opts)
+
+      is_binary(username) and username != "" ->
+        Guard.Store.Organization.get_by_username(username, opts)
+
+      true ->
+        {:error, {:not_found, "Invalid organization id or username"}}
     end
   end
 

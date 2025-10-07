@@ -3,9 +3,12 @@
 
 require 'optparse'
 require_relative "policies/policy"
+
 Dir["#{__dir__}/policies/docker/*.rb"].each { |f| require_relative f }
 
-args = {}
+args = {
+  scanners: "vuln,misconfig,secret,license"
+}
 OptionParser.new do |parser|
   parser.on("-i", "--image IMAGE", "Docker image to scan") do |image|
     args[:image] = image
@@ -23,12 +26,24 @@ OptionParser.new do |parser|
     args[:severity] = severity
   end
 
+  parser.on("-c", "--scanners SCANNERS", "Comma-separated list of scanners to use (vuln,secret,license,misconfig)") do |scanners|
+    args[:scanners] = scanners
+  end
+
   parser.on("-p", "--ignore-policy IGNORE_POLICY_PATH", "Ignore policy to use when scanning docker image") do |ignore_policy|
     args[:ignore_policy] = ignore_policy
   end
 
   parser.on("-d", "--dependencies", "Install dependencies") do
     args[:install_dependencies] = true
+  end
+
+  parser.on("-v", "--vuln-severity-source SOURCES", "Vulnerability severity source (e.g., nvd,auto)") do |vuln_severity_source|
+    args[:vuln_severity_source] = vuln_severity_source
+  end
+
+  parser.on("", "--scanners SCANNERS", "Which scanners to use") do |scanners|
+    args[:scanners] = scanners
   end
 end.parse!
 
@@ -40,6 +55,6 @@ end
 Policy.run_all(args, [
   Policy::TrivyConfig,
   Policy::TrivyImage,
-  Policy::TrivyJunitOutput,
-  Policy::TrivyTableOutput
+  Policy::TrivyEOL,
+  Policy::TrivyJunitOutput
 ])

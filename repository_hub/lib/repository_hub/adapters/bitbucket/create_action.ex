@@ -24,7 +24,7 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.BitbucketAdapter d
 
     Multi.new()
     |> Multi.run(:git_repository, fn _repo, _context ->
-      GitRepository.new(request.repository_url)
+      GitRepository.from_bitbucket(request.repository_url)
     end)
     |> Multi.run(:bitbucket_token, fn _repo, _context ->
       BitbucketAdapter.fetch_token(request.user_id)

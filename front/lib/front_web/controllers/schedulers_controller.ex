@@ -41,7 +41,8 @@ defmodule FrontWeb.SchedulersController do
           |> render("tasks/last_run.html",
             project: conn.assigns.project,
             scheduler_id: scheduler_id,
-            trigger: latest_trigger
+            trigger: latest_trigger,
+            permissions: conn.assigns.permissions
           )
 
         _ ->
@@ -169,7 +170,8 @@ defmodule FrontWeb.SchedulersController do
         |> Audit.add(description: "Added a periodic scheduler")
         |> Audit.add(resource_name: scheduler_input.name)
         |> Audit.metadata(
-          branch: scheduler_input.branch,
+          reference_name: scheduler_input.reference_name,
+          reference_type: scheduler_input.reference_type,
           project_name: context.project_name,
           pipeline_file: scheduler_input.pipeline_file
         )
@@ -309,7 +311,8 @@ defmodule FrontWeb.SchedulersController do
         |> Audit.add(resource_name: scheduler_input.name)
         |> Audit.add(resource_id: scheduler_id)
         |> Audit.metadata(
-          branch: scheduler_input.branch,
+          reference_name: scheduler_input.reference_name,
+          reference_type: scheduler_input.reference_type,
           project_name: context.project_name,
           pipeline_file: scheduler_input.pipeline_file
         )
@@ -526,7 +529,7 @@ defmodule FrontWeb.SchedulersController do
       project = conn.assigns.project
       scheduler_id = params["id"]
 
-      with true <- conn.assigns.permissions["project.scheduler.manage"],
+      with true <- conn.assigns.permissions["project.scheduler.run_manually"],
            {:ok, scheduler} <- find_scheduler(scheduler_id, project.id),
            just_run_params <- parse_just_run_trigger_params(params, scheduler),
            {:ok, %{parameters: run_now_params}} <-
@@ -678,7 +681,7 @@ defmodule FrontWeb.SchedulersController do
   defp validate_run_now_parameters(scheduler, parameters) do
     errors =
       []
-      |> validate_run_now_field(parameters, :branch)
+      |> validate_run_now_field(parameters, :reference_name)
       |> validate_run_now_field(parameters, :pipeline_file)
       |> validate_run_now_parameter_values(parameters)
 
@@ -690,7 +693,8 @@ defmodule FrontWeb.SchedulersController do
          errors: [],
          scheduler: scheduler,
          parameters: %{
-           branch: parameters.branch,
+           reference_type: parameters.reference_type,
+           reference_name: parameters.reference_name,
            pipeline_file: parameters.pipeline_file,
            parameter_values: parameter_values
          }
@@ -744,10 +748,13 @@ defmodule FrontWeb.SchedulersController do
 
   defp parse_form_input(params) do
     recurring? = params["recurring"] != "false"
+    reference_type = params["reference_type"] || "branch"
+    reference_name = String.trim(params["reference_name"] || "")
 
     %{
-      at: if(recurring?, do: String.trim(params["at"]), else: ""),
-      branch: params["branch"],
+      at: get_at_value(params, recurring?),
+      reference_type: reference_type,
+      reference_name: reference_name,
       name: params["name"],
       description: params["description"] || "",
       pipeline_file: params["pipeline_file"],
@@ -755,6 +762,9 @@ defmodule FrontWeb.SchedulersController do
       parameters: parse_form_parameters(params["parameters"] || %{})
     }
   end
+
+  defp get_at_value(params, true), do: String.trim(params["at"] || "")
+  defp get_at_value(_params, false), do: ""
 
   defp parse_form_parameters(parameters) do
     parameters |> Map.values() |> Enum.map(&parse_form_input_parameter/1)
@@ -771,23 +781,42 @@ defmodule FrontWeb.SchedulersController do
   end
 
   defp parse_just_run_form_params(params, scheduler) do
-    branch = params["branch"] || scheduler.branch
+    reference_type = params["reference_type"] || "branch"
+
+    reference_name =
+      String.trim(params["reference_name"] || params["branch"] || scheduler.reference_name || "")
+
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
     parameter_values = params["parameters"] || %{}
 
     parameters = merge_form_values_with_default_values(scheduler, parameter_values)
-    %{branch: branch, pipeline_file: pipeline_file, parameters: parameters}
+
+    %{
+      reference_type: reference_type,
+      reference_name: reference_name,
+      pipeline_file: pipeline_file,
+      parameters: parameters
+    }
   end
 
   defp parse_just_run_trigger_params(params, scheduler) do
-    branch = params["branch"] || scheduler.branch
+    reference_type = params["reference_type"] || "branch"
+
+    reference_name = String.trim(params["reference_name"] || scheduler.reference_name || "")
+
     pipeline_file = params["pipeline_file"] || scheduler.pipeline_file
 
     parameter_values =
       (params["parameters"] || %{}) |> Map.values() |> Enum.into(%{}, &{&1["name"], &1["value"]})
 
     parameters = merge_form_values_with_default_values(scheduler, parameter_values)
-    %{branch: branch, pipeline_file: pipeline_file, parameters: parameters}
+
+    %{
+      reference_type: reference_type,
+      reference_name: reference_name,
+      pipeline_file: pipeline_file,
+      parameters: parameters
+    }
   end
 
   defp merge_form_values_with_default_values(scheduler, values) do
@@ -889,6 +918,7 @@ defmodule FrontWeb.SchedulersController do
       _ ->
         # Periodic Scheduler returned expected validation error
         # this error is communicated within the form
+        Logger.error("Failed to #{action} the scheduler: #{inspect(message)}")
 
         "Failed to #{action} the scheduler."
     end
@@ -897,7 +927,8 @@ defmodule FrontWeb.SchedulersController do
   defp compose_default_form_values(project_name) do
     %{
       at: "0 0 * * *",
-      branch: "master",
+      reference_type: "branch",
+      reference_name: "master",
       name: "",
       description: "",
       recurring: true,

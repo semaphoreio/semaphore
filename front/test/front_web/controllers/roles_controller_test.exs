@@ -141,8 +141,10 @@ defmodule FrontWeb.RolesControllerTest do
 
       refute ctx.permissions
              |> Enum.filter(&String.starts_with?(&1, "organization."))
-             |> Enum.reject(&Enum.member?(@test_org_permissions, &1))
-             |> Enum.reject(&(&1 == "organization.view"))
+             |> Enum.reject(fn permission ->
+               Enum.member?(@test_org_permissions, permission) ||
+                 permission == "organization.view"
+             end)
              |> Enum.any?(&permission_selected?(html, &1))
 
       assert role_mapping_set?(html, role)
@@ -160,8 +162,9 @@ defmodule FrontWeb.RolesControllerTest do
 
       refute ctx.permissions
              |> Enum.filter(&String.starts_with?(&1, "project."))
-             |> Enum.reject(&Enum.member?(@test_project_permissions, &1))
-             |> Enum.reject(&(&1 == "project.view"))
+             |> Enum.reject(fn permission ->
+               Enum.member?(@test_project_permissions, permission) || permission == "project.view"
+             end)
              |> Enum.any?(&permission_selected?(html, &1))
 
       refute role_mapping_set?(html)
@@ -298,8 +301,10 @@ defmodule FrontWeb.RolesControllerTest do
 
       refute ctx.permissions
              |> Enum.filter(&String.starts_with?(&1, "organization."))
-             |> Enum.reject(&Enum.member?(@test_org_permissions, &1))
-             |> Enum.reject(&(&1 == "organization.view"))
+             |> Enum.reject(fn permission ->
+               Enum.member?(@test_org_permissions, permission) ||
+                 permission == "organization.view"
+             end)
              |> Enum.any?(&permission_selected?(html, &1))
 
       assert role_mapping_set?(html, role)
@@ -317,8 +322,9 @@ defmodule FrontWeb.RolesControllerTest do
 
       refute ctx.permissions
              |> Enum.filter(&String.starts_with?(&1, "project."))
-             |> Enum.reject(&Enum.member?(@test_project_permissions, &1))
-             |> Enum.reject(&(&1 == "project.view"))
+             |> Enum.reject(fn permission ->
+               Enum.member?(@test_project_permissions, permission) || permission == "project.view"
+             end)
              |> Enum.any?(&permission_selected?(html, &1))
 
       refute role_mapping_set?(html)

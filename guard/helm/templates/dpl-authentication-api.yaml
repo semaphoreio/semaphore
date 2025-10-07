@@ -1,3 +1,4 @@
+{{- if not .Values.global.development.minimalDeployment }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -106,6 +107,10 @@ spec:
               value: "$(KC_ROOT_URL)/realms/$(KC_REALM)/.well-known/openid-configuration"
             - name: OIDC_MANAGE_URL
               value: "$(KC_LOCAL_URL)/admin/realms/$(KC_REALM)"
+{{- if .Values.global.development.skipTlsVerifyInternal }}
+            - name: TLS_SKIP_VERIFY_INTERNAL
+              value: "true"
+{{- end }}
             - name: LOG_LEVEL
               value: {{ .Values.authenticationApi.logging.level | quote }}
             - name: ENCRYPTOR_URL
@@ -202,4 +207,5 @@ spec:
             capabilities:
               drop:
                 - ALL
+{{- end }}
 {{- end }}

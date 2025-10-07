@@ -9,6 +9,7 @@ module RepoHost::Github
     PULL_REQUEST_REOPENED = "reopened"
     PULL_REQUEST_CLOSED = "closed"
     PULL_REQUEST_COMMIT = "synchronize"
+    PULL_REQUEST_READY_FOR_REVIEW = "ready_for_review"
 
     def initialize(payload)
       @data = JSON.parse(payload)
@@ -51,7 +52,7 @@ module RepoHost::Github
     end
 
     def branch_created?
-      if is_pull_request?
+      if pull_request?
         pull_request_opened?
       else
         @data["created"] && @data["ref"].starts_with?("refs/heads/")
@@ -63,7 +64,7 @@ module RepoHost::Github
     end
 
     def branch_deleted?
-      if is_pull_request?
+      if pull_request?
         pull_request_closed?
       else
         @data["deleted"]
@@ -75,7 +76,7 @@ module RepoHost::Github
     end
 
     def includes_ci_skip?
-      return false if is_pull_request? || head_commit_message.nil?
+      return false if pull_request? || head_commit_message.nil?
 
       ::Semaphore::SkipCi.new.call(head_commit_message)
     end
@@ -103,7 +104,7 @@ module RepoHost::Github
     end
 
     def author_name
-      if is_pull_request?
+      if pull_request?
         @data.dig("sender", "login")
       elsif sent_by_bot_account?
         commit_author.presence || App.github_bot_name
@@ -134,11 +135,13 @@ module RepoHost::Github
       @data.dig("pusher", "name") == App.github_bot_name
     end
 
-    def is_pull_request? # rubocop:disable Naming/PredicateName
+    def pull_request?
       @data["pull_request"].present?
     end
 
-    alias_method :pull_request?, :is_pull_request?
+    def draft_pull_request?
+      pull_request? && (@data.dig("pull_request", "draft") == true)
+    end
 
     def pull_request_within_repo?
       return false unless pull_request?
@@ -182,20 +185,24 @@ module RepoHost::Github
       @action == PULL_REQUEST_COMMIT
     end
 
+    def pull_request_ready_for_review?
+      @action == PULL_REQUEST_READY_FOR_REVIEW
+    end
+
     def pull_request_number
-      @data["number"] if is_pull_request?
+      @data["number"] if pull_request?
     end
 
     def pull_request_name
-      @data["pull_request"]["title"] if is_pull_request?
+      @data["pull_request"]["title"] if pull_request?
     end
 
     def pull_request_commits_url
-      @data["pull_request"]["commits_url"] if is_pull_request?
+      @data["pull_request"]["commits_url"] if pull_request?
     end
 
     def pull_request_repo
-      @data["pull_request"]["base"]["repo"]["full_name"] if is_pull_request?
+      @data["pull_request"]["base"]["repo"]["full_name"] if pull_request?
     end
 
     def repo_name
@@ -287,7 +294,7 @@ module RepoHost::Github
     end
 
     def extract_action
-      if is_pull_request?
+      if pull_request?
         @data["action"]
       else
         "undefined"
@@ -295,7 +302,7 @@ module RepoHost::Github
     end
 
     def extract_branch
-      if is_pull_request?
+      if pull_request?
         pull_request_branch_name
       elsif pr_comment?
         "pull-request-#{issue_number}"
@@ -310,7 +317,7 @@ module RepoHost::Github
     end
 
     def extract_commits
-      unless is_pull_request?
+      unless pull_request?
         extract_commits_from_push
       end
     end
@@ -326,7 +333,7 @@ module RepoHost::Github
     end
 
     def extract_head
-      if is_pull_request?
+      if pull_request?
         pr_head_sha
       elsif @data["head_commit"]
         # If head commit exists, use that one to extract the commit.
@@ -343,7 +350,7 @@ module RepoHost::Github
     end
 
     def extract_prev_head
-      if is_pull_request?
+      if pull_request?
         "0000000000000000000000000000000000000000"
       else
         @data["before"]

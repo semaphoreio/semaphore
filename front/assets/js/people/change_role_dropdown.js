@@ -67,7 +67,8 @@ export var ChangeRoleDropdown = {
     const body = {
       user_id: roleBtn.attributes.user_id.value,
       project_id: InjectedDataByBackend.ProjectId,
-      role_id: roleBtn.attributes.role_id.value
+      role_id: roleBtn.attributes.role_id.value,
+      member_type: roleBtn.attributes.member_type.value
     }
 
     toggleSpinner()
@@ -90,7 +91,7 @@ export var ChangeRoleDropdown = {
     .catch((error) => {
       console.log(error)
       toggleSpinner()
-      Notice.error("An error occured while changing the role. Please contact our support team.")
+      Notice.error("An error occurred while changing the role. Please contact our support team.")
     })
   }
 }

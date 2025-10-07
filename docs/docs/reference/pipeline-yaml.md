@@ -4,11 +4,6 @@ description: Pipeline YAML reference
 
 # Pipeline YAML 
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 This page describes the formal pipeline YAML specification for Semaphore.
 
 ## Overview
@@ -121,7 +116,11 @@ Each `container` entry can have:
 
 - [`name`](#name-in-containers): the name of the container
 - [`image`](#image-in-containers): the image for the container
-- [`env_vars](#env-vars-in-containers): optional list of key-value pairs to define environment variables
+- [`env_vars`](#env-vars-in-containers): optional list of key-value pairs to define environment variables
+- [`secrets`](#secrets-in-containers): optional list of secrets to import into the container
+- [`user`](#user-in-containers): optional user to run the container as
+- [`command`](#command-in-containers): optional override for the Docker CMD
+- [`entrypoint`](#entrypoint-in-containers): optional override for the Docker ENTRYPOINT
 
 ```yaml title="Example"
 agent:
@@ -168,38 +167,85 @@ agent:
 
 An optional array of key-value pairs. The keys are exported as environment variables when the container starts.
 
-You can define special variables to modify the container initialization:
-
-- `user`: the active user inside the container
-- `command`: overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd)
-- `entrypoint`: overrides the Docker image' [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint)
-
-You may also supply environment variables with `env_vars` and `secrets`.
-
 ```yaml title="Example"
 agent:
   machine:
     type: e1-standard-2
-  # highlight-start
   containers:
     - name: main
       image: 'registry.semaphoreci.com/ruby:2.6'
     - name: db
       image: 'registry.semaphoreci.com/postgres:9.6'
-      user: postgres
-      secrets:
-        - name: mysecret
+  # highlight-start
       env_vars:
         - name: POSTGRES_PASSWORD
           value: keyboard-cat
   # highlight-end
 ```
 
-:::note
+### secrets {#secrets-in-containers}
 
-For `secrets`, only environment variables defined in the secret are imported. Any files in the secret are ignored.
+An optional array of secrets to import into the container. Only environment variables defined in the secret are imported. Any files in the secret are ignored.
 
-:::
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-start
+      secrets:
+        - name: mysecret
+  # highlight-end
+```
+
+### user {#user-in-containers}
+
+An optional property that specifies the active user inside the container.
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+    - name: db
+      image: 'registry.semaphoreci.com/postgres:9.6'
+  # highlight-next-line
+      user: postgres
+```
+
+### command {#command-in-containers}
+
+An optional property that overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd).
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-next-line
+      command: ["bundle", "exec", "rails", "server"]
+```
+
+### entrypoint {#entrypoint-in-containers}
+
+An optional property that overrides the Docker image's [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint).
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-next-line
+      entrypoint: ["/bin/sh", "-c"]
+```
 
 ## execution_time_limit {#execution_time_limit}
 
@@ -1201,7 +1247,7 @@ Global job config is not applied to `after_pipeline` jobs. This includes secrets
 
 :::
 
-## promotions {#promotions}
+## Promotions {#promotions}
 
 The `promotions` property is used for *promoting* (manually or automatically triggering) one or more pipelines using one or more pipeline YAML files. A pipeline YAML file can have a single `promotions` block or no `promotions` block.
 

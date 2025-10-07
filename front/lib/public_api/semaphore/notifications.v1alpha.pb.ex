@@ -22,14 +22,16 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Metadata do
           name: String.t(),
           id: String.t(),
           create_time: integer,
-          update_time: integer
+          update_time: integer,
+          creator_id: String.t()
         }
-  defstruct [:name, :id, :create_time, :update_time]
+  defstruct [:name, :id, :create_time, :update_time, :creator_id]
 
   field(:name, 1, type: :string)
   field(:id, 2, type: :string)
   field(:create_time, 3, type: :int64)
   field(:update_time, 4, type: :int64)
+  field(:creator_id, 5, type: :string)
 end
 
 defmodule Semaphore.Notifications.V1alpha.Notification.Spec do
@@ -70,9 +72,10 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter do
           pipelines: [String.t()],
           blocks: [String.t()],
           states: [integer],
-          results: [String.t()]
+          results: [String.t()],
+          tags: [String.t()]
         }
-  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results]
+  defstruct [:projects, :branches, :pipelines, :blocks, :states, :results, :tags]
 
   field(:projects, 1, repeated: true, type: :string)
   field(:branches, 2, repeated: true, type: :string)
@@ -86,6 +89,7 @@ defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter do
   )
 
   field(:results, 6, repeated: true, type: :string)
+  field(:tags, 7, repeated: true, type: :string)
 end
 
 defmodule Semaphore.Notifications.V1alpha.Notification.Spec.Rule.Filter.State do

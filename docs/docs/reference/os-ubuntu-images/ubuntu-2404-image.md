@@ -4,15 +4,15 @@ description: Ubuntu 24.04 Image Reference
 
 # Ubuntu 24.04 (x86_64)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
 
-:::info
 
-This image is in the Technical Preview stage. If you wish to use this machine, please contact `support@semaphoreci.com`
+
+
+
+
+:::note
+
+The Ubuntu 24.04 (x86_64) image is currently available for [e2-standard](../machine-types#e2) and [f1-standard](../machine-types#f1) agent types.
 
 :::
 
@@ -28,7 +28,7 @@ To use this operating system, and choose `ubuntu2404` in the **OS Image** select
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-To use this operating system,  you must select an [`f1-standard`] machine and use `ubuntu2204` as the `os_image`:
+To use this operating system,  you must select an [`f1-standard`] machine and use `ubuntu2404` as the `os_image`:
 
 ```yaml
 version: 1.0
@@ -57,9 +57,9 @@ The image comes with the following [toolbox utilities](../toolbox) preinstalled:
 
 Following version control tools are pre-installed:
 
-- Git 2.49.0
-- Git LFS (Git Large File Storage) 3.6.1
-- GitHub CLI 2.69.0
+- Git 2.51.0
+- Git LFS (Git Large File Storage) 3.7.0
+- GitHub CLI 2.80.0
 - Mercurial 6.1.1
 - Svn 1.14.1
 
@@ -67,8 +67,8 @@ Following version control tools are pre-installed:
 
 - Firefox 102.11.0 (`102`, `default`, `esr`)
 - Geckodriver 0.36.0
-- Google Chrome 131.0.6778.139
-- ChromeDriver 131.0.6778.139
+- Google Chrome 140.0.7339.207
+- ChromeDriver 140.0.7339.207
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 
@@ -80,28 +80,29 @@ Refer to the documentation of associated libraries when configuring your project
 
  Docker toolset is installed and the following versions are available:
 
-- Docker 28.0.2
+- Docker 28.4.0
 - Docker-compose 1.29.2 (used as `docker-compose --version`)
-- Docker-compose 2.34.0 (used as `docker compose version`)
-- Docker-buildx 0.22.0
+- Docker-compose 2.39.4 (used as `docker compose version`)
+- Docker-buildx 0.28.0
 - Docker-machine 0.16.2
-- Dockerize 0.9.3
+- Dockerize 0.9.6
 - Buildah 1.33.7
 - Podman 4.9.3
 - Skopeo 1.13.3
 
 ### Cloud CLIs
 
-- Aws-cli v2 (used as `aws`) 2.25.0
-- Azure-cli 2.70.0
+- Aws-cli v2 (used as `aws`) 2.31.1
+- Azure-cli 2.77.0
 - Ecs-cli 1.21.0
-- Doctl 1.123.0
-- Gcloud 515.0.0
-- Gke-gcloud-auth-plugin 515.0.0
+- Doctl 1.142.0
+- Gcloud 540.0.0
+- Gke-gcloud-auth-plugin 540.0.0
 - Kubectl 1.29.1
-- Heroku 10.4.0
-- Terraform 1.11.2
-- Helm 3.17.2
+- Heroku 10.13.2
+- Terraform 1.13.3
+- Helm 3.19.0
+- Helmfile 1.1.7
 
 ### Network utilities
 
@@ -144,21 +145,23 @@ Versions:
 - 1.20.x
 - 1.21.x
 - 1.22.x
-- 1.23.x
-- 1.24.x (1.24.1 as default)
+- 1.24.x
+- 1.25.x
+
+The default installed Go version is 1.25.1.
 
 ### Java and JVM languages
 
-- Java: 11.0.26, 17.0.14 (default), 21.0.6
+- Java: 11.0.28, 17.0.16 (default), 21.0.8
 - Scala: 3.2.2
-- Leiningen: 2.11.2 (Clojure)
-- Sbt 1.10.11
+- Leiningen: 2.12.0 (Clojure)
+- Sbt 1.11.6
 
 ### Additional Java build tools
 
-- Maven: 3.9.9
-- Gradle: 8.13
-- Bazel: 8.1.1
+- Maven: 3.9.11
+- Gradle: 9.1
+- Bazel: 8.4.1
 
 ### JavaScript via Node.js
 
@@ -166,7 +169,7 @@ Node.js versions are managed by [nvm](https://github.com/nvm-sh/nvm).
 You can install any version you need with `nvm install [version]`.
 Installed version:
 
-- 22.14.0 (set as default, with alias 22.14), includes npm 10.9.2
+- 22.19.0 (set as default, with alias 22.19), includes npm 10.9.3
 
 ### Additional JS tools
 
@@ -192,15 +195,15 @@ PHPUnit: 9.5.28
 Python versions are installed and managed by
 [virtualenv](https://virtualenv.pypa.io/en/stable/). Installed versions:
 
-- 3.10.16 (default)
-- 3.11.11
+- 3.10.18 (default)
+- 3.11.13
 - 3.12.9
 
 Supporting libraries:
 
 - pypy3: 7.3.19
-- pip: 25.0.1
-- virtualenv: 20.29.3
+- pip: 25.2
+- virtualenv: 20.34.0
 
 ### Ruby
 
@@ -213,11 +216,15 @@ Available versions:
 - 3.4.x
 - jruby-9.4.1.0
 
-The default installed Ruby version is 3.3.6.
+The default installed Ruby version is 3.4.5.
 
 ### Rust
 
-- 1.85.1
+- 1.90.0
+
+### Swiftly
+
+- 1.0.1
 
 ## See also
 

@@ -40,6 +40,7 @@ defmodule Notifications.Api.PublicApi.CreateTest do
       n = Repo.preload(n, :rules)
 
       assert n.name == "first-notification"
+      assert n.creator_id == @user_id
       assert length(n.rules) == 1
 
       rule = hd(n.rules)
@@ -78,7 +79,7 @@ defmodule Notifications.Api.PublicApi.CreateTest do
                "secret" => "B7L2XRJ12"
              }
 
-      assert length(rule.patterns) == 8
+      assert length(rule.patterns) == 9
 
       assert Enum.find(rule.patterns, fn p ->
                p.type == "project" && p.regex && p.term == "^s2-*"

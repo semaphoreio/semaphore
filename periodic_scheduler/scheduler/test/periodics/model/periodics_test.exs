@@ -13,21 +13,21 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
       assert [at: {"can't be blank", _}] = errors
 
       full_params =
-        Map.merge(ctx.params, %{at: "* * * * *", branch: "master", pipeline_file: "deploy.yml"})
+        Map.merge(ctx.params, %{at: "* * * * *", reference: "master", pipeline_file: "deploy.yml"})
 
       assert %Ecto.Changeset{valid?: true} =
                Periodics.changeset(%Periodics{}, "v1.1", full_params)
     end
 
-    test "when recurring is true then validates if periodics has cron, branch and pipeline file",
+    test "when recurring is true then validates if periodics has cron, reference and pipeline file",
          ctx do
       partial_params =
-        Map.merge(ctx.params, %{recurring: true}) |> Map.drop(~w(at branch pipeline_file)a)
+        Map.merge(ctx.params, %{recurring: true}) |> Map.drop(~w(at reference pipeline_file)a)
 
       assert %Ecto.Changeset{valid?: false, errors: errors} =
                Periodics.changeset(%Periodics{}, "v1.1", partial_params)
 
-      assert [:at, :branch, :pipeline_file] = errors |> Keyword.keys()
+      assert [:at, :reference, :pipeline_file] = errors |> Keyword.keys()
 
       assert ["can't be blank"] =
                errors |> Keyword.values() |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
@@ -35,7 +35,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
       full_params =
         Map.merge(partial_params, %{
           at: "* * * * *",
-          branch: "master",
+          reference: "master",
           pipeline_file: "deploy.yml"
         })
 
@@ -49,7 +49,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
     end
 
     test "when cron expression is invalid then invalid", ctx do
-      params = Map.merge(ctx.params, %{branch: "master", pipeline_file: "deploy.yml"})
+      params = Map.merge(ctx.params, %{reference: "master", pipeline_file: "deploy.yml"})
 
       invalid_params = Map.put(params, :at, "0 0 * * 12")
 
@@ -71,7 +71,7 @@ defmodule Scheduler.Periodics.Model.Periodics.Test do
        name: "P1",
        project_name: "Pr1",
        project_id: "p1",
-       branch: "master",
+       reference: "master",
        pipeline_file: "deploy.yml",
        id: UUID.uuid1()
      }}

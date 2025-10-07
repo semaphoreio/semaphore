@@ -42,11 +42,9 @@ defmodule Front.ProjectSettings.DeletionValidator do
   end
 
   defp set_feedback_if_missing(changeset) do
-    with nil <- get_field(changeset, :feedback) do
-      put_change(changeset, :feedback, "N/A")
-    else
-      _e ->
-        changeset
+    case get_field(changeset, :feedback) do
+      nil -> put_change(changeset, :feedback, "N/A")
+      _e -> changeset
     end
   end
 

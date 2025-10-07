@@ -1,32 +1,20 @@
 defmodule Auth.IpFilter do
   require Logger
 
-  def block?(conn, org) do
+  def block?(client_ip, org) do
     if Enum.empty?(org.ip_allow_list) do
       false
     else
-      _block?(client_ip(conn), org.ip_allow_list)
+      _block?(client_ip, org.ip_allow_list)
     end
   end
 
-  def client_ip(conn) do
-    Plug.Conn.get_req_header(conn, "x-forwarded-for")
-    |> List.last()
-    |> String.split(", ")
-    |> List.first()
-    |> InetCidr.parse_address!()
-  rescue
-    e ->
-      Watchman.increment("auth.ip_filter.error")
-      Logger.error("Error parsing client IP: #{inspect(e)}")
-      Logger.error("Headers: #{inspect(conn.req_headers)}")
+  defp _block?(nil, _) do
+    Watchman.increment("auth.ip_filter.empty_ip")
+    log_error("Empty IP")
 
-      # If something goes wrong here, it means Ingress/Ambassador are sending us
-      # a bad X-Forwarded-For header, which is very unlikely, so we fail open
-      nil
+    true
   end
-
-  defp _block?(nil, _), do: false
 
   defp _block?(client_ip, ip_allow_list) do
     !Enum.any?(ip_allow_list, fn i -> allow?(i, client_ip) end)
@@ -41,14 +29,18 @@ defmodule Auth.IpFilter do
   rescue
     e ->
       Watchman.increment("auth.ip_filter.error")
-      Logger.error("Error parsing '#{inspect(cidr_or_ip)}': #{inspect(e)}")
+      log_error("Error parsing '#{inspect(cidr_or_ip)}': #{inspect(e)}")
 
       # If something goes wrong here, it means the validation for an organization
       # IPs/CIDRs is not working properly, which is very unlikely, so we fail open
-      true
+      false
   end
 
   defp is_cidr?(cidr_or_ip) do
     String.contains?(cidr_or_ip, "/")
+  end
+
+  defp log_error(message) do
+    Logger.error("[IpFilter] #{message}")
   end
 end

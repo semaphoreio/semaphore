@@ -40,7 +40,7 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
          requester_id <- get_requester_id(webhook, actor_id, "bitbucket"),
          {:ok, _webhook} <-
            process_webhook(hook_type, webhook, project.repository, requester_id) do
-      "Processing finished successfully." |> graceful_exit(state)
+      :ok |> graceful_exit(state)
     else
       error -> graceful_exit(error, state)
     end
@@ -72,13 +72,14 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
   end
 
   defp process_webhook("tag", webhook, repository, requester_id) do
-    with parsed_data <- BBPayload.extract_data(webhook.request, "tag", "push"),
+    with action_type <- BBPayload.branch_action(webhook.request),
+         parsed_data <- BBPayload.extract_data(webhook.request, "tag", action_type),
          parsed_data <- Map.put(parsed_data, :yml_file, repository.pipeline_file),
          parsed_data <- Map.put(parsed_data, :requester_id, requester_id),
          parsed_data <- Map.put(parsed_data, :provider, "bitbucket"),
          {:skip_ci, false} <- BBPayload.skip_ci_flag?(parsed_data),
          {:build, true} <- should_build?(repository, parsed_data, :TAGS) do
-      perform_actions(webhook, parsed_data, "tag", "new")
+      perform_actions(webhook, parsed_data, "tag", action_type)
     else
       {:skip_ci, true, parsed_data} ->
         HooksQueries.update_webhook(webhook, parsed_data, "skip_ci")
@@ -93,8 +94,14 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
-    "Unsuported type of the hook: '#{hook_type}'"
+  defp process_webhook(hook_type, webhook, _project, requester_id) do
+    params = %{provider: "bitbucket", requester_id: requester_id}
+    HooksQueries.update_webhook(webhook, params, "failed", "BAD REQUEST")
+
+    # Increment unsupported hook type metric
+    Watchman.increment({"hooks.processing.bitbucket", ["unsupported_hook"]})
+
+    {:error, "Unsuported type of the hook: '#{hook_type}'"}
   end
 
   defp perform_actions(webhook, parsed_data, hook_type, action_type)
@@ -102,16 +109,22 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
     schedule_workflow(webhook, parsed_data)
   end
 
-  defp perform_actions(webhook, parsed_data, "branch", "deleted") do
+  defp perform_actions(webhook, parsed_data, hook_type, "deleted") when hook_type in ["branch", "tag"] do
     update_to_deleting_branch(webhook, parsed_data)
   end
 
   defp should_build?(repository, hook_data, hook_type) do
     cond do
       hook_type not in repository.run_on ->
+        # Increment skip configuration metric
+        Watchman.increment({"hooks.processing.bitbucket", ["skip", "configuration"]})
+
         {:build, {false, hook_state(hook_type, :skip)}, hook_data}
 
       not whitelisted?(repository.whitelist, hook_data, hook_type) ->
+        # Increment skip configuration metric
+        Watchman.increment({"hooks.processing.bitbucket", ["skip", "whitelist"]})
+
         {:build, {false, hook_state(hook_type, :whitelist)}, hook_data}
 
       true ->
@@ -124,14 +137,28 @@ defmodule HooksProcessor.Hooks.Processing.BitbucketWorker do
   defp hook_state(:TAGS, :skip), do: "skip_tag"
   defp hook_state(:TAGS, :whitelist), do: "whitelist_tag"
 
-  defp graceful_exit(message, state) do
-    message
-    |> LT.info("Hook #{state.id} - bitbucket worker process exits: ")
+  defp graceful_exit(result, state) do
+    case result do
+      :ok ->
+        Watchman.increment({"hooks.processing.bitbucket", ["success"]})
+
+        "Processing finished successfully."
+        |> LT.debug("Hook #{state.id} - bitbucket worker process exits: ")
+
+      error ->
+        Watchman.increment({"hooks.processing.bitbucket", ["error"]})
+
+        error
+        |> LT.error("Hook #{state.id} - bitbucket worker process exits: ")
+    end
 
     {:stop, :normal, state}
   end
 
   defp restart(error, state) do
+    # Increment failure metric
+    Watchman.increment({"hooks.processing.bitbucket", ["restart"]})
+
     error
     |> LT.warn("Hook #{state.id} - bitbucket worker process failiure: ")
 

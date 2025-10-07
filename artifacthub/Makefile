@@ -4,7 +4,7 @@ include ../Makefile
 
 APP_NAME=artifacthub
 APP_ENV=prod
-INTERNAL_API_BRANCH=master
+INTERNAL_API_BRANCH?=master
 
 pb.gen:
 	rm -rf tmp && mkdir -p tmp
@@ -29,10 +29,10 @@ test.setup:
 	$(MAKE) db.migrate
 
 test:
-	docker-compose run --rm app gotestsum --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 test.watch:
-	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile junit-report.xml --packages="./..." -- -p 1
+	docker-compose run --rm app gotestsum --watch --format short-verbose --junitfile out/test-reports.xml --packages="./..." -- -p 1
 
 #
 # Database ops

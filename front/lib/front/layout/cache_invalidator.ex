@@ -37,6 +37,7 @@ defmodule Front.Layout.CacheInvalidator do
       {"project_exchange", "created", :created_project},
       {"project_exchange", "updated", :updated_project},
       {"project_exchange", "soft_deleted", :deleted_project},
+      {"project_exchange", "restored", :restored_project},
       {"user_exchange", "favorite_created", :starred},
       {"user_exchange", "favorite_deleted", :unstarred}
     ]
@@ -79,6 +80,17 @@ defmodule Front.Layout.CacheInvalidator do
 
       Logger.info(
         "#{@log_prefix} [PROJECT_CREATED] [project_id=#{event.project_id}] Processing finished"
+      )
+    end)
+  end
+
+  def restored_project(message) do
+    Watchman.benchmark({@metric_name, ["restored_project"]}, fn ->
+      event = InternalApi.Projecthub.ProjectRestored.decode(message)
+      event.project_id |> invalidate_cache_for_project_members(event.org_id)
+
+      Logger.info(
+        "#{@log_prefix} [PROJECT_RESTORED] [project_id=#{event.project_id}] Processing finished"
       )
     end)
   end
@@ -302,7 +314,7 @@ defmodule Front.Layout.CacheInvalidator do
   end
 
   def invalidate_billing(org_id) do
-    if not Front.on_prem?() do
+    if Front.saas?() do
       Front.Clients.Billing.invalidate_cache(:list_spendings, %{org_id: org_id})
       Front.Clients.Billing.invalidate_cache(:current_spending, %{org_id: org_id})
       Front.Clients.Billing.invalidate_cache(:credits_usage, %{org_id: org_id})

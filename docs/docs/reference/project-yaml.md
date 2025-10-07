@@ -4,12 +4,6 @@ description: Projects YAML reference
 
 # Projects YAML
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
-
 This document is the YAML syntax reference used for adding and editing Semaphore projects via [Semaphore Command Line](./semaphore-cli).
 
 ## Overview

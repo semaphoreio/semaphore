@@ -1,11 +1,12 @@
 {
   "title": "Elixir - Phoenix",
-  "description": "Run tests and quality checks for your Phoenix app with ExUnit and browser testing via Wallaby. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>ExUnit</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Wallaby</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Credo</span></div>",
-  "short_description": "Full-featured CI/CD pipeline for Phoenix web applications",
+  "description": "Run tests, security, and quality checks for your Phoenix app with ExUnit, Credo, Sobelow, and PostgreSQL. <div class='flex items-center mt1 mb3'><span class='f6 normal mr1 ph1 br2 bg-indigo white'>Elixir</span><span class='f6 normal mr1 ph1 br2 bg-orange white'>Phoenix</span><span class='f6 normal mr1 ph1 br2 bg-green white'>ExUnit</span><span class='f6 normal mr1 ph1 br2 bg-purple white'>Sobelow</span><span class='f6 normal mr1 ph1 br2 bg-blue white'>Credo</span><span class='f6 normal mr1 ph1 br2 bg-cyan white'>Postgres</span><span class='f6 normal mr1 ph1 br2 bg-dark-green white'>Coveralls</span></div><div class='mt2 ba br2 b--blue bg-washed-blue pa2'><strong>ℹ️ Coveralls integration:</strong> This pipeline uploads test-coverage data to Coveralls. Add a <a href='https://docs.semaphoreci.com/using-semaphore/secrets' target='_blank'>project secret</a> named <code>coveralls</code> containing your <code>COVERALLS_REPO_TOKEN</code> so the upload step succeeds.</div>",
+  "short_description": "Full‑featured CI pipeline for Phoenix web applications",
   "group": "ci",
   "language": "Elixir",
   "environment": "linux",
   "use_case": "ci_pipeline",
+  "tags": ["ci_pipeline", "security_checks"],
   "icon": "lang-elixir.svg",
   "template_path": "templates/phoenix_saas.yml",
   "workflow_tip": "other"

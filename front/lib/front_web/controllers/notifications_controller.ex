@@ -4,11 +4,7 @@ defmodule FrontWeb.NotificationsController do
 
   alias Front.Async
   alias Front.Audit
-
-  alias Front.Models.{
-    Notification,
-    Organization
-  }
+  alias Front.Models.{Notification, Organization, User}
 
   plug(FrontWeb.Plugs.FetchPermissions, scope: "org")
   plug(FrontWeb.Plugs.PageAccess, permissions: "organization.view")
@@ -25,6 +21,7 @@ defmodule FrontWeb.NotificationsController do
 
       {:ok, organization} = Async.await(fetch_organization)
       {:ok, notifications} = Async.await(fetch_notifications)
+      notifications = add_user_data_to_notifications(notifications)
 
       render(
         conn,
@@ -222,26 +219,27 @@ defmodule FrontWeb.NotificationsController do
       org_id = conn.assigns.organization_id
       user_id = conn.assigns.user_id
 
-      with {:ok, notification} <- Notification.find(id, user_id, org_id) do
-        organization = Organization.find(org_id)
+      case Notification.find(id, user_id, org_id) do
+        {:ok, notification} ->
+          organization = Organization.find(org_id)
 
-        render(
-          conn,
-          "form.html",
-          form_title: "Edit Notification",
-          js: "notification",
-          action: notifications_path(conn, :update, id),
-          method: :put,
-          notification: notification,
-          title: "Editing #{notification.metadata.name}・#{organization.name}",
-          cancel_path: notifications_path(conn, :index),
-          errors: %{},
-          organization: organization,
-          org_restricted: organization.restricted,
-          permissions: conn.assigns.permissions,
-          can_view_settings: true
-        )
-      else
+          render(
+            conn,
+            "form.html",
+            form_title: "Edit Notification",
+            js: "notification",
+            action: notifications_path(conn, :update, id),
+            method: :put,
+            notification: notification,
+            title: "Editing #{notification.metadata.name}・#{organization.name}",
+            cancel_path: notifications_path(conn, :index),
+            errors: %{},
+            organization: organization,
+            org_restricted: organization.restricted,
+            permissions: conn.assigns.permissions,
+            can_view_settings: true
+          )
+
         {:error, %{status: 5}} ->
           conn
           |> render_404
@@ -260,11 +258,12 @@ defmodule FrontWeb.NotificationsController do
       org_id = conn.assigns.organization_id
 
       if conn.assigns.permissions["organization.notifications.manage"] || false do
-        with {:ok, _} <- Notification.delete(id, user_id, org_id) do
-          conn
-          |> put_flash(:notice, "Notification deleted.")
-          |> redirect(to: notifications_path(conn, :index))
-        else
+        case Notification.delete(id, user_id, org_id) do
+          {:ok, _} ->
+            conn
+            |> put_flash(:notice, "Notification deleted.")
+            |> redirect(to: notifications_path(conn, :index))
+
           {:error, %{status: 5}} ->
             conn
             |> render_404
@@ -296,6 +295,27 @@ defmodule FrontWeb.NotificationsController do
     |> render("404.html")
   end
 
+  defp add_user_data_to_notifications(notifications) when is_list(notifications) do
+    import Enum
+
+    creators =
+      notifications
+      |> map(& &1.metadata.creator_id)
+      |> reject(&(&1 == ""))
+      |> uniq()
+      |> User.find_many()
+
+    map(notifications, fn n ->
+      if n.metadata.creator_id != "" do
+        default_username = Application.get_env(:front, :default_user_name)
+        creator = find(creators, &(&1.id == n.metadata.creator_id)) || %{name: default_username}
+        %{n | metadata: Map.put(n.metadata, :creator, creator)}
+      else
+        n
+      end
+    end)
+  end
+
   def get_rule_identifiers(params) do
     params
     |> Map.keys()
@@ -322,6 +342,7 @@ defmodule FrontWeb.NotificationsController do
       blocks: params["blocks"] |> parse_entry,
       pipelines: params["pipelines"] |> parse_entry,
       results: params["results"] |> parse_entry,
+      tags: params["tags"] |> parse_entry,
       rule_name: params["name"],
       slack_channels: params["slack_channels"] |> parse_entry,
       slack_endpoint: params["slack_endpoint"],
@@ -353,7 +374,8 @@ defmodule FrontWeb.NotificationsController do
               pipelines: [],
               projects: [],
               results: [],
-              states: []
+              states: [],
+              tags: []
             },
             name: "",
             notify: %Notification.Spec.Rule.Notify{

@@ -134,6 +134,7 @@ defmodule InternalApi.Artifacthub.ListPathRequest do
 
   field(:artifact_id, 1, type: :string, json_name: "artifactId")
   field(:path, 2, type: :string)
+  field(:unwrap_directories, 3, type: :bool, json_name: "unwrapDirectories")
 end
 
 defmodule InternalApi.Artifacthub.ListPathResponse do
@@ -257,6 +258,7 @@ defmodule InternalApi.Artifacthub.ListItem do
 
   field(:name, 1, type: :string)
   field(:is_directory, 2, type: :bool, json_name: "isDirectory")
+  field(:size, 3, type: :int64)
 end
 
 defmodule InternalApi.Artifacthub.Artifact do

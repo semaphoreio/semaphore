@@ -85,7 +85,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -196,7 +196,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -250,7 +250,7 @@ defmodule Projecthub.Api.GrpcServerTest do
               id: "12345678-1234-5678-1234-567812345678",
               name: "test",
               project_id: "12345678-1234-5678-1234-567812345678",
-              branch: "master",
+              reference: "refs/heads/master",
               at: "0 0 * * *",
               pipeline_file: ".semaphore/semaphore.yml",
               requester_id: "12345678-1234-5678-1234-567812345678",
@@ -340,7 +340,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -418,7 +418,7 @@ defmodule Projecthub.Api.GrpcServerTest do
               name: "test",
               description: "test description",
               project_id: "12345678-1234-5678-1234-567812345678",
-              branch: "master",
+              reference: "refs/heads/master",
               at: "",
               pipeline_file: ".semaphore/semaphore.yml",
               requester_id: "12345678-1234-5678-1234-567812345678",
@@ -526,7 +526,7 @@ defmodule Projecthub.Api.GrpcServerTest do
                                InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
                                  allowed_secrets: []
                                ),
-                             run_on: [:TAGS, :BRANCHES],
+                             run_on: [:TAGS, :BRANCHES, :DRAFT_PULL_REQUESTS],
                              pipeline_file: ".semaphore/semaphore.yml",
                              status:
                                InternalApi.Projecthub.Project.Spec.Repository.Status.new(
@@ -619,6 +619,49 @@ defmodule Projecthub.Api.GrpcServerTest do
                InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
 
       assert response.project.metadata.name == project.name
+      assert response.project.metadata.id == project.id
+      assert response.project.metadata.org_id == project.organization_id
+      assert response.project.metadata.description == project.description
+      assert response.project.spec.repository.url == project.repository.url
+      assert response.project.spec.repository.name == project.repository.name
+      assert response.project.spec.repository.owner == project.repository.owner
+    end
+
+    test "when a soft_deleted project is requested by id and soft_deleted param is true => returns the project" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
+
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      request =
+        InternalApi.Projecthub.DescribeRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: "",
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id,
+          name: "",
+          soft_deleted: true
+        )
+
+      {:ok, response} = Stub.describe(channel, request)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      cut_timestamp = create_cut_timestamp()
+      assert response.project.metadata.name =~ "#{project.name}-deleted-#{cut_timestamp}"
       assert response.project.metadata.id == project.id
       assert response.project.metadata.org_id == project.organization_id
       assert response.project.metadata.description == project.description
@@ -781,6 +824,56 @@ defmodule Projecthub.Api.GrpcServerTest do
       assert response.project.spec.repository.owner == project.repository.owner
     end
 
+    test "when a soft_deleted project is requested by name and soft_deleted param is true => returns the project" do
+      {:ok, project} = Support.Factories.Project.create_with_repo()
+      {:ok, nil} = Project.soft_destroy(project, %User{github_token: "token"})
+      {:ok, soft_deleted_project} = Project.find(project.id, true)
+
+      {:ok, _project_with_same_name} =
+        Support.Factories.Project.create(%{
+          name: soft_deleted_project.name
+        })
+
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      request =
+        InternalApi.Projecthub.DescribeRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: soft_deleted_project.organization_id,
+              user_id: Ecto.UUID.generate()
+            ),
+          id: "",
+          name: soft_deleted_project.name,
+          soft_deleted: true
+        )
+
+      {:ok, response} = Stub.describe(channel, request)
+
+      assert response.metadata.status ==
+               InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+
+      cut_timestamp = create_cut_timestamp()
+      assert response.project.metadata.name == soft_deleted_project.name
+      assert response.project.metadata.name =~ "#{project.name}-deleted-#{cut_timestamp}"
+      assert response.project.metadata.id == soft_deleted_project.id
+      assert response.project.metadata.org_id == soft_deleted_project.organization_id
+      assert response.project.metadata.description == soft_deleted_project.description
+      assert response.project.spec.repository.url == soft_deleted_project.repository.url
+      assert response.project.spec.repository.name == soft_deleted_project.repository.name
+      assert response.project.spec.repository.owner == soft_deleted_project.repository.owner
+    end
+
     test "when the project description is empty => returns the project" do
       {:ok, project} =
         Support.Factories.Project.create_with_repo(%{
@@ -915,6 +1008,54 @@ defmodule Projecthub.Api.GrpcServerTest do
                    )
                )
     end
+
+    test "when the project is soft deleted => returns a not found response" do
+      org_id = Ecto.UUID.generate()
+      {:ok, project} = Support.Factories.Project.create_with_repo(%{organization_id: org_id})
+      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
+
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      request =
+        InternalApi.Projecthub.DescribeRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: "",
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id,
+          name: ""
+        )
+
+      {:ok, response} = Stub.describe(channel, request)
+
+      assert response ==
+               InternalApi.Projecthub.DescribeResponse.new(
+                 metadata:
+                   InternalApi.Projecthub.ResponseMeta.new(
+                     api_version: "",
+                     kind: "",
+                     req_id: "",
+                     org_id: "",
+                     user_id: "12345678-1234-5678-1234-567812345678",
+                     status:
+                       InternalApi.Projecthub.ResponseMeta.Status.new(
+                         code: :NOT_FOUND,
+                         message: "project #{project.id} not found"
+                       )
+                   )
+               )
+    end
   end
 
   describe ".describe_many" do
@@ -940,8 +1081,16 @@ defmodule Projecthub.Api.GrpcServerTest do
           organization_id: org_id
         })
 
-      {:ok, project3} = Support.Factories.Project.create()
-      {:ok, _project4} = Support.Factories.Project.create()
+      {:ok, project3} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, project4} = Support.Factories.Project.create()
+      {:ok, _project5} = Support.Factories.Project.create()
+
+      # Project 3 should not be returned
+      {:ok, _} = Project.soft_destroy(project3, %User{github_token: "token"})
 
       request =
         InternalApi.Projecthub.DescribeManyRequest.new(
@@ -953,7 +1102,7 @@ defmodule Projecthub.Api.GrpcServerTest do
               org_id: org_id,
               user_id: "12345678-1234-5678-1234-567812345678"
             ),
-          ids: [project1.id, project2.id, project3.id]
+          ids: [project1.id, project2.id, project3.id, project4.id]
         )
 
       {:ok, response} = Stub.describe_many(channel, request)
@@ -973,6 +1122,75 @@ defmodule Projecthub.Api.GrpcServerTest do
       names = Enum.map(response.projects, fn p -> p.metadata.name end)
       assert Enum.member?(names, project1.name)
       assert Enum.member?(names, project2.name)
+    end
+
+    test "it returns the soft_deleted projects when soft_deleted param is true" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project1} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, project2} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      # Not soft deleted
+      {:ok, project3} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, project4} = Support.Factories.Project.create()
+      {:ok, _project5} = Support.Factories.Project.create()
+
+      {:ok, _} = Project.soft_destroy(project1, %User{github_token: "token"})
+      {:ok, _} = Project.soft_destroy(project2, %User{github_token: "token"})
+
+      request =
+        InternalApi.Projecthub.DescribeManyRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          ids: [project1.id, project2.id, project3.id, project4.id],
+          soft_deleted: true
+        )
+
+      {:ok, response} = Stub.describe_many(channel, request)
+
+      assert response.metadata ==
+               InternalApi.Projecthub.ResponseMeta.new(
+                 api_version: "",
+                 kind: "",
+                 req_id: "",
+                 org_id: org_id,
+                 user_id: "12345678-1234-5678-1234-567812345678",
+                 status: InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
+               )
+
+      assert Enum.count(response.projects) == 2
+
+      cut_timestamp = create_cut_timestamp()
+      names = Enum.map(response.projects, fn p -> p.metadata.name end)
+      assert Enum.any?(names, fn name -> name =~ "#{project1.name}-deleted-#{cut_timestamp}" end)
+      assert Enum.any?(names, fn name -> name =~ "#{project2.name}-deleted-#{cut_timestamp}" end)
+      assert Enum.all?(names, fn name -> name =~ "-deleted-#{cut_timestamp}" end)
     end
 
     test "when there are no projects => returns empty list" do
@@ -1062,6 +1280,71 @@ defmodule Projecthub.Api.GrpcServerTest do
                  page_size: 2,
                  total_entries: 3,
                  total_pages: 2
+               )
+
+      assert Enum.count(response.projects) == 2
+    end
+
+    test "returns a paginated project list of soft deleted projects" do
+      {:ok, channel} =
+        GRPC.Stub.connect("localhost:50051",
+          interceptors: [
+            Projecthub.Util.GRPC.ClientRequestIdInterceptor,
+            Projecthub.Util.GRPC.ClientLoggerInterceptor,
+            Projecthub.Util.GRPC.ClientRunAsyncInterceptor
+          ]
+        )
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project1} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, project2} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, _project3} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, _non_org_project} = Support.Factories.Project.create()
+
+      {:ok, _} = Project.soft_destroy(project1, %User{github_token: "token"})
+      {:ok, _} = Project.soft_destroy(project2, %User{github_token: "token"})
+
+      request =
+        InternalApi.Projecthub.ListRequest.new(
+          soft_deleted: true,
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          pagination:
+            InternalApi.Projecthub.PaginationRequest.new(
+              page: 1,
+              page_size: 2
+            )
+        )
+
+      {:ok, response} = Stub.list(channel, request)
+
+      assert response.metadata.status.code == :OK
+
+      assert response.pagination ==
+               InternalApi.Projecthub.PaginationResponse.new(
+                 page_number: 1,
+                 page_size: 2,
+                 total_entries: 2,
+                 total_pages: 1
                )
 
       assert Enum.count(response.projects) == 2
@@ -2687,6 +2970,66 @@ defmodule Projecthub.Api.GrpcServerTest do
     end
   end
 
+  describe ".restore" do
+    test "when a soft deleted project is set to be restored => restores the project and returns ok" do
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      {:ok, _} = Project.soft_destroy(project, %User{github_token: "token"})
+
+      request =
+        InternalApi.Projecthub.RestoreRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id
+        )
+
+      {:ok, response} = Stub.restore(channel, request)
+
+      assert response.metadata.status.code == :OK
+    end
+
+    test "when a project that is not soft deleted and it is requested to be restored => returns a not found response" do
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      org_id = Ecto.UUID.generate()
+
+      {:ok, project} =
+        Support.Factories.Project.create_with_repo(%{
+          organization_id: org_id
+        })
+
+      request =
+        InternalApi.Projecthub.RestoreRequest.new(
+          metadata:
+            InternalApi.Projecthub.RequestMeta.new(
+              api_version: "",
+              kind: "",
+              req_id: "",
+              org_id: org_id,
+              user_id: "12345678-1234-5678-1234-567812345678"
+            ),
+          id: project.id
+        )
+
+      {:ok, response} = Stub.restore(channel, request)
+
+      assert response.metadata.status.code == :NOT_FOUND
+    end
+  end
+
   describe ".users" do
     # TODO
   end
@@ -2841,5 +3184,11 @@ defmodule Projecthub.Api.GrpcServerTest do
                  InternalApi.Projecthub.ResponseMeta.Status.new(code: :OK)
       end
     end
+  end
+
+  defp create_cut_timestamp do
+    DateTime.utc_now()
+    |> DateTime.to_unix(:second)
+    |> Integer.floor_div(1000)
   end
 end

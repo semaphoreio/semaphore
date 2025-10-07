@@ -18,7 +18,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
       name: "Periodic_1",
       project_name: "Project_1",
       project_id: "pr1",
-      branch: "master",
+      reference: "master",
       at: "* * * * *",
       pipeline_file: "deploy.yml",
       parameters: [
@@ -35,12 +35,12 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
     assert {:ok, ptr} = PeriodicsTriggersQueries.insert(ctx.periodic)
 
     assert ptr.project_id == ctx.periodic.project_id
-    assert ptr.branch == ctx.periodic.branch
+    assert ptr.reference == ctx.periodic.reference
     assert ptr.pipeline_file == ctx.periodic.pipeline_file
     assert DateTime.compare(ts_before, ptr.triggered_at) == :lt
     assert ptr.scheduling_status == "running"
 
-    assert ptr.branch == "master"
+    assert ptr.reference == "refs/heads/master"
     assert ptr.pipeline_file == "deploy.yml"
     assert ptr.recurring
     refute ptr.run_now_requester_id
@@ -69,14 +69,14 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
                ],
                requester: "some_requester",
                pipeline_file: "cicd.yml",
-               branch: "develop"
+               reference: "refs/heads/develop"
              })
 
     assert ptr.project_id == ctx.periodic.project_id
     assert DateTime.compare(ts_before, ptr.triggered_at) == :lt
     assert ptr.scheduling_status == "running"
 
-    assert ptr.branch == "develop"
+    assert ptr.reference == "refs/heads/develop"
     assert ptr.pipeline_file == "cicd.yml"
     assert ptr.run_now_requester_id == "some_requester"
     refute ptr.recurring
@@ -94,7 +94,7 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
     assert {:ok, ptr_u} = PeriodicsTriggersQueries.update(ptr, params)
 
     assert ptr_u.project_id == ptr.project_id
-    assert ptr_u.branch == ptr.branch
+    assert ptr_u.reference == ptr.reference
     assert ptr_u.pipeline_file == ptr.pipeline_file
     assert ptr_u.triggered_at == ptr.triggered_at
     assert ptr_u.scheduling_status == "passed"
@@ -163,5 +163,42 @@ defmodule Scheduler.PeriodicsTriggers.Model.PeriodicsTriggersQueries.Test do
 
     assert {:ok, resp} = PeriodicsTriggersQueries.get_all_by_periodic_id(ctx.periodic.id)
     assert resp == [ptr_2, ptr_1]
+  end
+
+  test "insert new periodics_trigger with tag reference", ctx do
+    ts_before = DateTime.utc_now()
+
+    assert {:ok, ptr} =
+             PeriodicsTriggersQueries.insert(ctx.periodic, %{
+               reference: "refs/tags/v1.0.0"
+             })
+
+    assert ptr.project_id == ctx.periodic.project_id
+    assert ptr.reference == "refs/tags/v1.0.0"
+    assert ptr.pipeline_file == ctx.periodic.pipeline_file
+    assert DateTime.compare(ts_before, ptr.triggered_at) == :lt
+    assert ptr.scheduling_status == "running"
+    assert ptr.recurring
+    refute ptr.run_now_requester_id
+
+    assert %{"p1" => "v1", "p2" => "v2"} ==
+             Map.new(ptr.parameter_values, &{&1.name, &1.value})
+  end
+
+  test "insert new periodics_trigger with short tag name gets normalized", ctx do
+    ts_before = DateTime.utc_now()
+
+    # Test that a short tag name without refs/tags/ prefix gets normalized
+    assert {:ok, ptr} =
+             PeriodicsTriggersQueries.insert(ctx.periodic, %{
+               reference: "v2.0.0"
+             })
+
+    assert ptr.project_id == ctx.periodic.project_id
+    # Short names are assumed to be branches
+    assert ptr.reference == "refs/heads/v2.0.0"
+    assert ptr.pipeline_file == ctx.periodic.pipeline_file
+    assert DateTime.compare(ts_before, ptr.triggered_at) == :lt
+    assert ptr.scheduling_status == "running"
   end
 end

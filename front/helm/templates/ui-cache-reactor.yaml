@@ -42,11 +42,10 @@ spec:
       containers:
         - name: "ui-cache-reactor"
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
-          imagePullPolicy: Always
           securityContext:
             privileged: false
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: {{ not .Values.global.development.writableRootFilesystem }}
             capabilities:
               drop:
                 - ALL
@@ -96,8 +95,6 @@ spec:
             - name: METRICS_NAMESPACE
               value: {{ .Values.global.statsd.metricsNamespace }}
 {{- end }}
-            - name: ON_PREM
-              value: "true"
             - name: FEATURE_YAML_PATH
               value: {{ .Values.featureFlags.mountPath | quote }}
             - name: GETTING_STARTED_YAML_PATH
@@ -106,8 +103,6 @@ spec:
               value: {{ .Values.workflowTemplates.mountPath | quote }}
 {{- if eq .Values.global.edition "ce" }}
             - name: "SKIP_VELOCITY"
-              value: "true"
-            - name: "CE_ROLES"
               value: "true"
             - name: "HIDE_PROMOTIONS"
               value: "true"
@@ -154,13 +149,6 @@ spec:
               path: /is_alive
               port: http-port
             periodSeconds: 2
-          securityContext:
-            privileged: false
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
 
 {{- if .Values.cacheReactor.resources }}
           resources:

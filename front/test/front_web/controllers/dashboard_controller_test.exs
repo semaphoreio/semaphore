@@ -2,6 +2,8 @@ defmodule FrontWeb.DashboardControllerTest do
   use FrontWeb.ConnCase
   alias Support.Stubs.DB
 
+  import Mock
+
   setup %{conn: conn} do
     Cacheman.clear(:front)
 
@@ -144,6 +146,125 @@ defmodule FrontWeb.DashboardControllerTest do
         |> get("/workflows")
 
       assert html_response(conn, 200)
+    end
+  end
+
+  describe "EE license banner" do
+    test "does not show license banner when not EE", %{conn: conn} do
+      with_mocks [
+        {Front.Clients.License, [],
+         [
+           verify_license: fn ->
+             {:ok,
+              %InternalApi.License.VerifyLicenseResponse{
+                valid: false,
+                expires_at: nil,
+                message: "Expired"
+              }}
+           end
+         ]},
+        {Front, [], [ee?: fn -> false end]}
+      ] do
+        conn = get(conn, "/")
+        refute html_response(conn, 200) =~ "license-expired-banner"
+        refute html_response(conn, 200) =~ "license-expiring-banner"
+      end
+
+      with_mocks [
+        {Front.Clients.License, [],
+         [
+           verify_license: fn ->
+             expires_at_dt = DateTime.add(DateTime.utc_now(), 3 * 24 * 60 * 60)
+
+             expires_at = %Google.Protobuf.Timestamp{
+               seconds: DateTime.to_unix(expires_at_dt),
+               nanos: 0
+             }
+
+             {:ok,
+              %InternalApi.License.VerifyLicenseResponse{
+                valid: true,
+                expires_at: expires_at,
+                message: nil
+              }}
+           end
+         ]},
+        {Front, [], [ee?: fn -> false end]}
+      ] do
+        conn = get(conn, "/")
+        refute html_response(conn, 200) =~ "license-expired-banner"
+        refute html_response(conn, 200) =~ "license-expiring-banner"
+      end
+    end
+
+    test "shows expired license banner when license is expired", %{conn: conn} do
+      with_mocks [
+        {Front.Clients.License, [],
+         [
+           verify_license: fn ->
+             {:ok,
+              %InternalApi.License.VerifyLicenseResponse{
+                valid: false,
+                expires_at: nil,
+                message: "Expired"
+              }}
+           end
+         ]},
+        {Front, [], [ee?: fn -> true end]}
+      ] do
+        conn = get(conn, "/")
+        assert html_response(conn, 200) =~ "license-expired-banner"
+
+        assert html_response(conn, 200) =~
+                 "You are running a Semaphore Enterprise Edition server without a valid license"
+      end
+    end
+
+    test "shows soon-to-expire license banner when license is expiring soon", %{conn: conn} do
+      expires_at_dt = DateTime.add(DateTime.utc_now(), 3 * 24 * 60 * 60)
+      expires_at = %Google.Protobuf.Timestamp{seconds: DateTime.to_unix(expires_at_dt), nanos: 0}
+
+      with_mocks [
+        {Front.Clients.License, [],
+         [
+           verify_license: fn ->
+             {:ok,
+              %InternalApi.License.VerifyLicenseResponse{
+                valid: true,
+                expires_at: expires_at,
+                message: nil
+              }}
+           end
+         ]},
+        {Front, [], [ee?: fn -> true end]}
+      ] do
+        conn = get(conn, "/")
+        assert html_response(conn, 200) =~ "license-expiring-banner"
+
+        assert html_response(conn, 200) =~
+                 "Your Semaphore Enterprise Edition license will expire on"
+      end
+    end
+
+    test "does not show license banner for valid license", %{conn: conn} do
+      with_mocks [
+        {Front.Clients.License, [],
+         [
+           verify_license: fn ->
+             {:ok,
+              %InternalApi.License.VerifyLicenseResponse{
+                valid: true,
+                expires_at: nil,
+                message: nil
+              }}
+           end
+         ]},
+        {Front, [], [ee?: fn -> true end]}
+      ] do
+        conn = get(conn, "/")
+        refute html_response(conn, 200) =~ "license-expired-banner"
+        refute html_response(conn, 200) =~ "license-expiring-banner"
+      end
     end
   end
 end

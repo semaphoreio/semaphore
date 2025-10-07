@@ -1,4 +1,5 @@
 defmodule Ppl.DefinitionReviser.BlocksReviser do
+  require Logger
   @moduledoc """
   Module performs necessary transformations on raw block definition.
   """
@@ -10,7 +11,9 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
 
   @ppl_artefact_id_env_var_name "SEMAPHORE_PIPELINE_ARTEFACT_ID"
   @ppl_id_env_var_name "SEMAPHORE_PIPELINE_ID"
+  @ppl_name_env_var_name "SEMAPHORE_PIPELINE_NAME"
   @pipeline_rerun "SEMAPHORE_PIPELINE_RERUN"
+  @block_name "SEMAPHORE_BLOCK_NAME"
   @pipeline_promotion "SEMAPHORE_PIPELINE_PROMOTION"
   @pipeline_promoted_by "SEMAPHORE_PIPELINE_PROMOTED_BY"
   @workflow_id_env_var_name "SEMAPHORE_WORKFLOW_ID"
@@ -90,7 +93,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
     with {:ok, block_def}  <- set_agent(block_def, ppl_def),
          {:ok, ppl_def}    <- global_config_cmd_file_to_cmds(ppl_def, ppl_req.request_args),
          {:ok, block_def}  <- merge_with_global_job_config(block_def, ppl_def),
-         {:ok, block_def}  <- set_ppl_env_vars(block_def, ppl_req)
+         {:ok, block_def}  <- set_ppl_env_vars(block_def, ppl_def, ppl_req)
     do
       blocks ++ [block_def] |> ToTuple.ok()
     else
@@ -101,7 +104,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   defp set_additional_after_ppl_fields(error = {:error, _e}, _, _, _), do: error
   defp set_additional_after_ppl_fields({:ok, blocks}, block_def, ppl_def, ppl_req) do
     with {:ok, block_def}  <- set_agent(block_def, ppl_def),
-         {:ok, block_def}  <- set_ppl_env_vars(block_def, ppl_req)
+         {:ok, block_def}  <- set_ppl_env_vars(block_def, ppl_def, ppl_req)
     do
       blocks ++ [block_def] |> ToTuple.ok()
     else
@@ -109,11 +112,11 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
     end
   end
 
-  def set_ppl_env_vars(block_def, ppl_req) do
+  def set_ppl_env_vars(block_def, ppl_def, ppl_req) do
     with {:ok, ppl}        <- PplsQueries.get_by_id(ppl_req.id),
          {:ok, promoter}   <- promoted_by?(ppl_req.request_args),
          {:ok, triggerer}  <- triggered_by?(ppl_req),
-    do: set_ppl_env_vars_(block_def, ppl_req, ppl, promoter, triggerer)
+    do: set_ppl_env_vars_(block_def, ppl_def, ppl_req, ppl, promoter, triggerer)
   end
 
   defp promoted_by?(%{"auto_promoted" => true}), do: {:ok, "auto-promotion"}
@@ -231,10 +234,10 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   defp merge_vals(global_vals, block_vals, :global_first), do: global_vals ++ block_vals
   defp merge_vals(global_vals, block_vals, :block_first), do: block_vals ++ global_vals
 
-  defp set_ppl_env_vars_(block_def, ppl_req, ppl, promoter, triggerer) do
+  defp set_ppl_env_vars_(block_def, ppl_def, ppl_req, ppl, promoter, triggerer) do
     ppl_env_vars =
       ppl_req
-      |> basic_env_vars(ppl, promoter, triggerer)
+      |> basic_env_vars(ppl_def, ppl, promoter, triggerer, block_def)
       |> env_vars_from_prev_ppl_artefact_ids(ppl_req.prev_ppl_artefact_ids ++ [ppl_req.ppl_artefact_id])
       |> Enum.concat(Map.get(ppl_req.request_args, "env_vars", []))
 
@@ -253,8 +256,9 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
     list ++ prev_ids_env_vars
   end
 
-  defp basic_env_vars(ppl_req, ppl, promoter, triggerer) do
+  defp basic_env_vars(ppl_req, ppl_def, ppl, promoter, triggerer, block_def) do
     snapshot_id = get_snapshot_id(ppl_req.request_args)
+    block_name = get_block_name(block_def)
 
     [
      %{"name" => @workflow_id_env_var_name, "value" => "#{ppl_req.wf_id}"},
@@ -267,6 +271,8 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
      %{"name" => @workflow_triggered_by_manual_run, "value" => manual_run?(ppl_req.request_args)},
      %{"name" => @ppl_artefact_id_env_var_name, "value" => "#{ppl_req.ppl_artefact_id}"},
      %{"name" => @ppl_id_env_var_name, "value" => "#{ppl_req.id}"},
+     %{"name" => @ppl_name_env_var_name, "value" => "#{ppl_def["name"]}"},
+     %{"name" => @block_name, "value" => block_name},
      %{"name" => @pipeline_rerun, "value" => ppl_rerun?(ppl.partial_rebuild_of)},
      %{"name" => @pipeline_promotion, "value" => promotion?(ppl.extension_of)},
      %{"name" => @pipeline_promoted_by, "value" => promoter},
@@ -312,4 +318,7 @@ defmodule Ppl.DefinitionReviser.BlocksReviser do
   defp committer(source_args) when is_map(source_args),
     do: Map.get(source_args, "repo_host_username", "")
   defp committer(_source_args), do: ""
+
+  defp get_block_name(%{"name" => name}), do: name
+  defp get_block_name(_block_def), do: ""
 end

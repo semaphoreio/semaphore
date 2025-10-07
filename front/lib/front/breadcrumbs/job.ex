@@ -51,6 +51,32 @@ defmodule Front.Breadcrumbs.Job do
     Map.put(assigns, :breadcrumbs, breadcrumbs)
   end
 
+  def construct(assigns, _conn, :reports) do
+    breadcrumbs = [
+      %{
+        type: :project,
+        name: assigns.project.name,
+        url: "/projects/#{assigns.project.name}",
+        last: false
+      },
+      %{
+        type: :branch,
+        name: assigns.hook.name,
+        url: "/branches/#{assigns.workflow.branch_id}",
+        last: false
+      },
+      %{
+        type: :workflow,
+        name: assigns.workflow_name,
+        url: "/workflows/#{assigns.workflow.id}?pipeline_id=#{assigns.workflow.root_pipeline_id}",
+        last: false
+      },
+      %{name: "Reports", last: true}
+    ]
+
+    Map.put(assigns, :breadcrumbs, breadcrumbs)
+  end
+
   def construct(assigns, conn, title) do
     breadcrumbs = [
       %{
@@ -76,6 +102,4 @@ defmodule Front.Breadcrumbs.Job do
 
     Map.put(assigns, :breadcrumbs, breadcrumbs)
   end
-
-  def test_results_page(assigns, conn, :test_results), do: construct(assigns, conn, :test_results)
 end

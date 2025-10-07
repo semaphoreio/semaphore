@@ -45,15 +45,50 @@ defmodule FrontWeb.PeopleView do
     }
   end
 
+  def service_accounts_config(conn) do
+    org_id = conn.assigns.organization_id
+    permissions = conn.assigns.permissions
+
+    {:ok, all_roles} = Front.RBAC.RoleManagement.list_possible_roles(org_id, "org_scope")
+
+    # Filter roles - exclude Owner unless user has change_owner permission
+    filtered_roles =
+      all_roles
+      |> Enum.filter(fn
+        %{name: "Owner"} -> permissions["organization.change_owner"] || false
+        _role -> true
+      end)
+      |> Enum.map(fn role ->
+        %{
+          id: role.id,
+          name: role.name,
+          description: role.description
+        }
+      end)
+
+    %{
+      organization_id: org_id,
+      project_id: conn.assigns[:project_id],
+      permissions: %{
+        view: permissions["organization.service_accounts.view"] || false,
+        manage: permissions["organization.service_accounts.manage"] || false
+      },
+      roles: filtered_roles
+    }
+  end
+
   @spec available_user_providers(org_id :: String.t()) :: [String.t()]
   defp available_user_providers(org_id) do
     [
-      {"email",
-       FeatureProvider.feature_enabled?(:email_members, param: org_id) || Front.ce_roles?()},
-      {"github", !Front.ce_roles?()},
-      {"gitlab", FeatureProvider.feature_enabled?(:gitlab, param: org_id) && !Front.ce_roles?()},
+      {"email", FeatureProvider.feature_enabled?(:email_members, param: org_id)},
+      {"github",
+       Front.saas?() || FeatureProvider.feature_enabled?(:github_user_provider, param: org_id)},
+      {"gitlab",
+       (FeatureProvider.feature_enabled?(:gitlab, param: org_id) && Front.saas?()) ||
+         FeatureProvider.feature_enabled?(:gitlab_user_provider, param: org_id)},
       {"bitbucket",
-       FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && !Front.ce_roles?()}
+       (FeatureProvider.feature_enabled?(:bitbucket, param: org_id) && Front.saas?()) ||
+         FeatureProvider.feature_enabled?(:bitbucket_user_provider, param: org_id)}
     ]
     |> Enum.map(fn
       {name, true} ->
@@ -65,7 +100,7 @@ defmodule FrontWeb.PeopleView do
     |> Enum.filter(& &1)
   end
 
-  def edit_person_config(conn, member, roles, permissions) do
+  def edit_person_config(conn, member, member_type, roles, permissions) do
     filtered_roles =
       roles
       |> Enum.filter(fn
@@ -79,6 +114,7 @@ defmodule FrontWeb.PeopleView do
         avatar: member.avatar,
         name: member.name,
         email: member.email,
+        member_type: member_type,
         roles: build_roles(member, filtered_roles),
         reset_password_url:
           url(:post, people_path(conn, :reset_password, member.id, format: "json")),
@@ -135,13 +171,13 @@ defmodule FrontWeb.PeopleView do
 
     feature_enabled? =
       org_scope? || FeatureProvider.feature_enabled?(:rbac__project_roles, param: org_id) ||
-        Front.ce_roles?()
+        Front.ce?()
 
     user_has_permissions? and feature_enabled?
   end
 
   def roles_action_message do
-    if Front.ce_roles?(), do: "View", else: "Manage"
+    if Front.ce?(), do: "View", else: "Manage"
   end
 
   def construct_role_label(role_binding) do
@@ -194,28 +230,40 @@ defmodule FrontWeb.PeopleView do
     |> raw()
   end
 
-  defp map_role_to_colour("Admin"), do: "blue"
-  defp map_role_to_colour("Contributor"), do: "green"
-  defp map_role_to_colour("Reader"), do: "yellow"
-  defp map_role_to_colour("Owner"), do: "red"
-  defp map_role_to_colour("Member"), do: "green"
-  defp map_role_to_colour("Viewer"), do: "orange"
-  defp map_role_to_colour("Billing Admin"), do: "purple"
-  defp map_role_to_colour(_), do: "cyan"
+  def map_role_to_colour("Admin"), do: "blue"
+  def map_role_to_colour("Contributor"), do: "green"
+  def map_role_to_colour("Reader"), do: "yellow"
+  def map_role_to_colour("Owner"), do: "red"
+  def map_role_to_colour("Member"), do: "green"
+  def map_role_to_colour("Viewer"), do: "orange"
+  def map_role_to_colour("Billing Admin"), do: "purple"
+  def map_role_to_colour(_), do: "cyan"
 
   def construct_member_avatar(member) do
-    avatar_url =
-      if member.has_avatar do
-        member.avatar
-      else
-        first_letter = member.name |> String.first() |> String.downcase()
-        "#{assets_path()}/images/org-#{first_letter}.svg"
-      end
+    # Check if this is a service account
+    is_service_account = member.subject_type == "service_account"
 
-    """
-      <img src="#{avatar_url}" class="w2 h2 br-100 mr2 ba b--black-50">
-    """
-    |> raw()
+    if is_service_account do
+      """
+        <div class="w2 h2 br-100 mr2 ba b--black-50 flex items-center justify-center bg-light-gray">
+          <span class="material-symbols-outlined f6 gray">smart_toy</span>
+        </div>
+      """
+      |> raw()
+    else
+      avatar_url =
+        if member.has_avatar do
+          member.avatar
+        else
+          first_letter = member.name |> String.first() |> String.downcase()
+          "#{assets_path()}/images/org-#{first_letter}.svg"
+        end
+
+      """
+        <img src="#{avatar_url}" class="w2 h2 br-100 mr2 ba b--black-50">
+      """
+      |> raw()
+    end
   end
 
   def build_roles(member, roles) do
@@ -232,7 +280,7 @@ defmodule FrontWeb.PeopleView do
     end)
   end
 
-  def construct_role_dropdown_option(role, member) do
+  def construct_role_dropdown_option(role, member, member_type) do
     role_selected? = role.name in Enum.map(member.subject_role_bindings, & &1.role.name)
 
     binding_source =
@@ -245,7 +293,7 @@ defmodule FrontWeb.PeopleView do
       end
 
     """
-    <div role_id="#{role.id}" user_id="#{member.id}" name="role_button" class="#{extrapolate_role_div_class(role_selected?, binding_source)}", style="#{extrapolate_role_div_style(binding_source)}">
+    <div role_id="#{role.id}" user_id="#{member.id}" member_type="#{member_type}" name="role_button" class="#{extrapolate_role_div_class(role_selected?, binding_source)}", style="#{extrapolate_role_div_style(binding_source)}">
       <div style="flex-direction: column; display: flex;">
         #{if role_selected?,
       do: '<span class="material-symbols-outlined mr1">done</span>#{git_icon(binding_source)}',

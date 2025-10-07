@@ -7,7 +7,8 @@ defmodule FrontWeb.SchedulersControllerTest do
 
   @raw_scheduler_form_params %{
     at: "1 12,00 * * *",
-    branch: "master",
+    reference_type: "branch",
+    reference_name: "master",
     id: "888ea187-ssss-4f41-879d-a30a96faa01e",
     name: "first-scheduler",
     project_name_or_id: "ee2e6241-f30b-4892-a0d5-bd900b713430",
@@ -565,7 +566,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{project_name: project_name} do
       changeset = %{
         errors: [
-          branch: "Required. Cannot be empty.",
+          reference: "Required. Cannot be empty.",
           pipeline_file: "Required. Cannot be empty.",
           at: "Required. Cannot be empty."
         ],
@@ -598,7 +599,7 @@ defmodule FrontWeb.SchedulersControllerTest do
         {
           Front.Models.Scheduler,
           [:passthrough],
-          [persist: fn _, _ -> {:error, %{errors: %{branch: "Error about the branch"}}} end]
+          [persist: fn _, _ -> {:error, %{errors: %{reference: "Error about the reference"}}} end]
         }
       ]) do
         conn =
@@ -785,7 +786,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{project_name: project_name, scheduler_id: scheduler_id} do
       changeset = %{
         errors: [
-          branch: "Required. Cannot be empty.",
+          reference: "Required. Cannot be empty.",
           pipeline_file: "Required. Cannot be empty.",
           at: "Required. Cannot be empty."
         ],
@@ -820,7 +821,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       user_id: user_id
     } do
       PermissionPatrol.remove_all_permissions()
-      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.manage")
+      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.run_manually")
       scheduler = prepare_scheduler_for_just_run()
 
       conn = form_just_run(conn, scheduler)
@@ -846,7 +847,7 @@ defmodule FrontWeb.SchedulersControllerTest do
     test "correctly renders form with default values", %{conn: conn} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "develop",
+          reference: "refs/heads/develop",
           pipeline_file: "pipeline.yml",
           parameters: [
             %{name: "PARAM1", default_value: "VALUE11"},
@@ -880,7 +881,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       # imports default values
       assert html_response(conn, 200) =~
-               "placeholder=\"Enter a branch…\" type=\"text\" value=\"\""
+               "placeholder=\"Enter a branch or tag name…\" type=\"text\" value=\"\""
 
       assert html_response(conn, 200) =~
                "placeholder=\"e.g. .semaphore/semaphore.yml\" type=\"text\" value=\"\""
@@ -889,7 +890,7 @@ defmodule FrontWeb.SchedulersControllerTest do
     test "overrides default values with query parameters", %{conn: conn} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "master",
+          reference: "refs/heads/master",
           parameters: [
             %{name: "PARAM1", default_value: "VALUE11"},
             %{name: "PARAM2", options: ["VALUE21", "VALUE22"]},
@@ -900,7 +901,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       conn =
         form_just_run(conn, scheduler, %{
-          "branch" => "develop",
+          "reference_name" => "develop",
           "pipeline_file" => ".semaphore/semaphore.yml",
           "parameters" => %{
             "PARAM1" => "VALUE12",
@@ -911,7 +912,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       # imports default values
       assert html_response(conn, 200) =~
-               "placeholder=\"Enter a branch…\" type=\"text\" value=\"develop\""
+               "placeholder=\"Enter a branch or tag name…\" type=\"text\" value=\"develop\""
 
       assert html_response(conn, 200) =~
                "placeholder=\"e.g. .semaphore/semaphore.yml\" type=\"text\" value=\".semaphore/semaphore.yml\""
@@ -940,7 +941,7 @@ defmodule FrontWeb.SchedulersControllerTest do
     test "when user is not allowed it renders 404",
          %{conn: conn, project_name: project_name, org_id: org_id, user_id: user_id} do
       PermissionPatrol.remove_all_permissions()
-      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.manage")
+      PermissionPatrol.allow_everything_except(org_id, user_id, "project.scheduler.run_manually")
       scheduler = prepare_scheduler_for_just_run()
 
       conn = trigger_just_run(conn, scheduler)
@@ -959,7 +960,11 @@ defmodule FrontWeb.SchedulersControllerTest do
 
     test "when request fails because pipeline queue limit is reached it redirects to index with proper error message",
          %{conn: conn, project_name: project_name} do
-      scheduler = prepare_scheduler_for_just_run(branch: "master", pipeline_file: "pipeline.yml")
+      scheduler =
+        prepare_scheduler_for_just_run(
+          reference: "refs/heads/master",
+          pipeline_file: "pipeline.yml"
+        )
 
       with_mocks([
         {
@@ -987,7 +992,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{conn: conn, project_name: project_name} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "master",
+          reference: "refs/heads/master",
           pipeline_file: "pipeline.yml",
           parameters: [
             %{name: "PARAM1", default_value: "VALUE11"},
@@ -999,7 +1004,7 @@ defmodule FrontWeb.SchedulersControllerTest do
 
       conn =
         trigger_just_run(conn, scheduler, %{
-          "branch" => "develop",
+          "reference_name" => "develop",
           "pipeline_file" => "initial.yml",
           "parameters" => %{
             "0" => %{"name" => "PARAM1", "value" => "VALUE1"},
@@ -1013,7 +1018,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert get_flash(conn, :notice) == "Workflow started successfully."
       assert [trigger] = DB.find_all_by(:triggers, :periodic_id, scheduler.id)
 
-      assert trigger.api_model.branch == "develop"
+      assert trigger.api_model.reference == "refs/heads/develop"
       assert trigger.api_model.pipeline_file == "initial.yml"
 
       assert parameter_values =
@@ -1031,7 +1036,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{conn: conn, project_name: project_name} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "master",
+          reference: "refs/heads/master",
           pipeline_file: "pipeline.yml",
           parameters: [
             %{name: "PARAM1", default_value: "VALUE11"},
@@ -1047,7 +1052,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       assert get_flash(conn, :notice) == "Workflow started successfully."
       assert [trigger] = DB.find_all_by(:triggers, :periodic_id, scheduler.id)
 
-      assert trigger.api_model.branch == "master"
+      assert trigger.api_model.reference == "refs/heads/master"
       assert trigger.api_model.pipeline_file == "pipeline.yml"
 
       assert parameter_values =
@@ -1061,7 +1066,7 @@ defmodule FrontWeb.SchedulersControllerTest do
              } == parameter_values
     end
 
-    test "fails if branch is not given",
+    test "fails if reference is not given",
          %{conn: conn, project_name: _project_name} do
       scheduler =
         prepare_scheduler_for_just_run(
@@ -1081,7 +1086,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{conn: conn, project_name: _project_name} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "master",
+          reference: "refs/heads/master",
           parameters: [
             %{name: "PARAM1", default_value: "VALUE11"}
           ]
@@ -1097,7 +1102,7 @@ defmodule FrontWeb.SchedulersControllerTest do
          %{conn: conn, project_name: _project_name} do
       scheduler =
         prepare_scheduler_for_just_run(
-          branch: "master",
+          reference: "refs/heads/master",
           pipeline_file: "pipeline.yml",
           parameters: [
             %{name: "PARAM1", required: true}
@@ -1119,7 +1124,7 @@ defmodule FrontWeb.SchedulersControllerTest do
       name: "JustRun Scheduler",
       recurring: false,
       at: "",
-      branch: "",
+      reference: "",
       pipeline_file: "",
       parameters: []
     ]

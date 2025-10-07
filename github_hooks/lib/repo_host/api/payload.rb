@@ -15,6 +15,14 @@ module RepoHost::Api
     end
     alias_method :is_pull_request?, :pull_request?
 
+    def draft_pull_request?
+      false
+    end
+
+    def pull_request_ready_for_review?
+      false
+    end
+
     def pr_head_repo_name
       nil
     end

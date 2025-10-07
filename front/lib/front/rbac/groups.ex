@@ -52,6 +52,21 @@ defmodule Front.RBAC.Groups do
     end
   end
 
+  def destroy_group(group_id, requester_id) do
+    req =
+      Groups.DestroyGroupRequest.new(
+        group_id: group_id,
+        requester_id: requester_id
+      )
+
+    Front.RBAC.GroupsClient.channel()
+    |> Groups.Groups.Stub.destroy_group(req)
+    |> case do
+      {:ok, _} -> {:ok, nil}
+      e -> e
+    end
+  end
+
   def modify_group(
         group_id,
         name,
@@ -112,6 +127,26 @@ defmodule Front.RBAC.Groups do
         }
       )
 
-    group |> Map.put(:members, members)
+    member_user_ids = members |> Enum.map(& &1.id)
+    non_member_ids = group.member_ids -- member_user_ids
+
+    service_accounts =
+      Front.ServiceAccount.describe_many(non_member_ids)
+      |> case do
+        {:ok, service_accounts} ->
+          service_accounts
+
+        _ ->
+          []
+      end
+      |> Enum.map(
+        &%{
+          id: &1.id,
+          name: &1.name,
+          avatar: ""
+        }
+      )
+
+    group |> Map.put(:members, members ++ service_accounts)
   end
 end

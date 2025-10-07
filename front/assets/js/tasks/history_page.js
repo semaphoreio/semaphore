@@ -2,7 +2,6 @@ import { QueryList } from "../query_list"
 import { Props } from "../props"
 import _ from "lodash"
 
-import 'pikaday/css/pikaday.css';
 import pikaday from 'pikaday';
 
 export default class HistoryPage {
@@ -117,13 +116,12 @@ function jumpToBranch(historyPage) {
     },
     mapResults: function (results, selectedIndex) {
       return results
-        .filter(result => result.type === 'branch')
         .map((result, index) => {
           const props = new Props(index, selectedIndex, "autocomplete")
           let appliedFilters = {}
 
           appliedFilters = Object.assign(appliedFilters, historyPage.filters)
-          appliedFilters = Object.assign(appliedFilters, { branch_name: escapeHtml(result.display_name) })
+          appliedFilters = Object.assign(appliedFilters, { branch_name: result.name })
 
           return `<a href=${formUrl(historyPage.baseUrl, appliedFilters)} ${props}>
                   <img width=16 class="mr2 db-l" src="${gitIcon(result.type)}">

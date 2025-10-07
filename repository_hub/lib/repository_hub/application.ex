@@ -18,11 +18,7 @@ defmodule RepositoryHub.Application do
         {{Task.Supervisor, name: RepositoryHub.SentryEventSupervisor}, true},
         {{RepositoryHub.Repo, []}, true},
         {{GRPC.Server.Supervisor, endpoint: RepositoryHub.Server.Endpoint, port: grpc_port, start_server: true}, true},
-        {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true},
-        # Used by feature provider to cache results
-        {{Cachex, name: :feature_provider_cache}, true},
-        webhook_encryptor_worker_spec(),
-        feature_provider()
+        {{RepositoryHub.RemoteRepositoryChangedConsumer, []}, true}
       ])
 
     opts = [strategy: :one_for_one, name: RepositoryHub.Supervisor]
@@ -30,20 +26,9 @@ defmodule RepositoryHub.Application do
     Supervisor.start_link(children, opts)
   end
 
-  def webhook_encryptor_worker_spec do
-    config = Application.get_env(:repository_hub, RepositoryHub.WebhookEncryptor)
-    {{RepositoryHub.WebhookEncryptor, []}, config[:start] == true}
-  end
-
   def filter_enabled(list) do
     list
     |> Enum.filter(fn e -> elem(e, 1) end)
     |> Enum.map(fn e -> elem(e, 0) end)
-  end
-
-  defp feature_provider do
-    provider = Application.get_env(FeatureProvider, :provider)
-
-    {provider, System.get_env("FEATURE_YAML_PATH") != nil}
   end
 end

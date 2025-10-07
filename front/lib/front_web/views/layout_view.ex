@@ -296,10 +296,11 @@ defmodule FrontWeb.LayoutView do
   def safe_string(var) when is_bitstring(var), do: var
   def safe_string(_var), do: ""
 
-  @spec userpilot_config_json(Plug.Conn.t()) :: binary()
+  @spec posthog_config_json(Plug.Conn.t()) :: binary()
   # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
-  def userpilot_config_json(conn) do
-    token = Application.get_env(:front, :userpilot_token)
+  def posthog_config_json(conn) do
+    api_key = Application.get_env(:front, :posthog_api_key)
+    api_host = Application.get_env(:front, :posthog_host)
     organization_id = Map.get(conn.assigns, :organization_id)
     user_id = Map.get(conn.assigns, :user_id)
     user_created_at = Map.get(conn.assigns, :user_created_at) |> to_iso8601()
@@ -309,20 +310,21 @@ defmodule FrontWeb.LayoutView do
       organization_id
       |> case do
         nil ->
-          # On /me page we don't have an organization_id. We still want to enable Userpilot there.
+          # On /me page we don't have an organization_id. We still want to enable PostHog there.
           true
 
         _ ->
-          FeatureProvider.feature_enabled?(:experimental_userpilot, param: organization_id)
+          FeatureProvider.feature_enabled?(:experimental_posthog, param: organization_id)
       end
 
-    token_present? = token != "" and token != nil
+    api_key_present? = api_key != "" and api_key != nil
 
     user_data_present? = user_id != "" and user_id != nil
 
-    if feature_enabled? and token_present? and user_data_present? do
+    if feature_enabled? and api_key_present? and user_data_present? do
       %{
-        token: token,
+        apiKey: api_key,
+        apiHost: api_host,
         organizationId: organization_id,
         organizationCreatedAt: org_created_at,
         userId: user_id,
@@ -353,4 +355,53 @@ defmodule FrontWeb.LayoutView do
     |> DateTime.to_date()
     |> Date.to_iso8601()
   end
+
+  defp protobuf_timestamp_to_datetime(%Google.Protobuf.Timestamp{seconds: s, nanos: _n})
+       when is_integer(s) do
+    DateTime.from_unix!(s)
+  rescue
+    _ -> nil
+  end
+
+  defp protobuf_timestamp_to_datetime(_), do: nil
+
+  def license_soon_expiry?(%{valid: true, expires_at: expires_at}) when not is_nil(expires_at) do
+    dt = protobuf_timestamp_to_datetime(expires_at)
+
+    dt && DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) < 10 and
+      DateTime.diff(dt, DateTime.now!("Etc/UTC"), :day) >= 0
+  end
+
+  def license_soon_expiry?(_), do: false
+
+  @doc """
+  Returns the license expiry date as a formatted string, or nil.
+  """
+  def license_expiry_date(%{expires_at: nil}), do: nil
+
+  def license_expiry_date(%{expires_at: expires_at}) when is_binary(expires_at) do
+    case DateTime.from_iso8601(expires_at) do
+      {:ok, dt, _} -> format_utc(dt)
+      _ -> expires_at
+    end
+  end
+
+  def license_expiry_date(%{expires_at: %DateTime{} = expires_at}), do: format_utc(expires_at)
+
+  def license_expiry_date(%{expires_at: %Google.Protobuf.Timestamp{} = expires_at}) do
+    case protobuf_timestamp_to_datetime(expires_at) do
+      nil -> nil
+      dt -> format_utc(dt)
+    end
+  end
+
+  def license_expiry_date(_), do: nil
+
+  defp format_utc(dt = %DateTime{}) do
+    dt = DateTime.shift_zone!(dt, "Etc/UTC")
+    "#{dt.year}-#{pad(dt.month)}-#{pad(dt.day)} #{pad(dt.hour)}:#{pad(dt.minute)} UTC"
+  end
+
+  defp pad(n) when is_integer(n) and n < 10, do: "0" <> Integer.to_string(n)
+  defp pad(n), do: Integer.to_string(n)
 end

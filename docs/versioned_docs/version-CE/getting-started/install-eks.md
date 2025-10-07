@@ -4,18 +4,17 @@ description: Install Semaphore on Amazon Elastic Kubernetes (EKS)
 
 # Amazon Elastic Kubernetes Service (EKS)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
 
 This page explains how to create a Kubernetes cluster using [AWS Elastic Kubernetes Service](https://aws.amazon.com/eks/) and install Semaphore Community Edition.
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](/getting-started/quickstart) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -24,6 +23,11 @@ The self-hosted installation is recommended for users and teams familiar with Se
 There is a known issue that blocks Docker on macOS. If you have trouble running Helm and you're using macOS, check the following [outstanding issue](https://github.com/docker/for-mac/issues/7520#issuecomment-2593247448) for a workaround.
 
 :::
+
+## Prerequisites {#prerequisites}
+
+- A DNS domain
+- An Amazon AWS account
 
 ## Step 1 - Install dependencies {#dependencies}
 
@@ -36,12 +40,11 @@ Install the following tools before starting the installation:
 
 In addition, you need to the domain where Semaphore will be installed to [Route53 DNS](https://aws.amazon.com/route53/). Take note of the **hosted Zone ID** for your domain within Route 53, for example, `Z05666441V6R4KFL4MJAA`, since it is used to create Semaphore infrastructure.
 
-
 :::info Important
 
 We highly recommend **installing Semaphore on a subdomain**, e.g. `semaphore.example.com`. Installing Semaphore on your main domain is discouraged as its operation might interfere with other services running on the same domain.
 
-For example, if your domain is `example.com`, consider using the domain `semaphore.example.com`. 
+For example, if your domain is `example.com`, consider using the domain `semaphore.example.com`.
 
 :::
 
@@ -74,7 +77,6 @@ export DOMAIN="<domain-to-install-semaphore>"
 export AWS_REGION="<your-aws-region>"
 export ZONE_ID="<your-route53-zone-id>"
 ```
-
 
 Once you are done with the configuration, it should look like this:
 
@@ -134,7 +136,6 @@ kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext 
 
 ## Step 6 - Install Semaphore {#install}
 
-
 Sanity check that the environment is ready for the installation. The commands should not fail and return valid values:
 
 ```shell
@@ -148,8 +149,8 @@ Install Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
-  --timeout 20m \
+  --version v1.4.0 \
+  --timeout 30m \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
   --set ingress.className=alb \
@@ -166,7 +167,7 @@ To start using the app, go to https://id.semaphore.example.com/login
 
 You can fetch credentials for the login by running this command:
 
-echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 =============================================================================================
 ```
@@ -174,7 +175,7 @@ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email
 Execute the shown command to retrieve the login credentials.
 
 ```shell title="remote shell - get login credentials"
-$ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+$ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 Email: root@example.com
 Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
@@ -209,12 +210,12 @@ Once your have Semaphore up and running, check out the following pages to finish
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
 - [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -233,21 +234,17 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     echo "CERT_NAME=${CERT_NAME}"
     ```
 
-4. Run the following command to upgrade to `v1.1.0`
+4. Run the following command to upgrade to `v1.3.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
+      --version v1.3.0 \
       --timeout 20m \
-      --set global.domain.ip=${IP_ADDRESS} \
-      --set global.domain.name=${DOMAIN} \
-      --set ingress.enabled=true \
-      --set ingress.ssl.enabled=true \
-      --set ingress.className=traefik \
-      --set ingress.ssl.type=custom \
-      --set ingress.ssl.crt=$(cat certs/live/${DOMAIN}/fullchain.pem | base64 -w 0) \
-      --set ingress.ssl.key=$(cat certs/live/${DOMAIN}/privkey.pem | base64 -w 0)
+      --set global.domain.name="${DOMAIN}" \
+      --set ingress.ssl.certName="${CERT_NAME}" \
+      --set ingress.className=alb \
+      --set ssl.type=alb
     ```
 
 </Steps>
@@ -290,11 +287,8 @@ terraform destroy
 
 You will be prompted to confirm the deletion of the AWS resources.
 
-
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

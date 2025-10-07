@@ -118,7 +118,7 @@ defmodule Front.Models.Pipeline.Triggerer do
         {:user, {triggerer.wf_triggerer_user_id, ""}}
 
       :SCHEDULED_RUN ->
-        :none
+        detect_scheduled_run_owner(triggerer)
 
       :SCHEDULED_MANUAL_RUN ->
         {:user, {triggerer.wf_triggerer_user_id, ""}}
@@ -137,6 +137,17 @@ defmodule Front.Models.Pipeline.Triggerer do
     end
   end
 
+  defp detect_scheduled_run_owner(triggerer) do
+    PplTriggeredBy.key(triggerer.ppl_triggered_by)
+    |> case do
+      :PROMOTION ->
+        {:user, {triggerer.ppl_triggerer_user_id, ""}}
+
+      _ ->
+        :none
+    end
+  end
+
   @spec detect_trigger(InternalApi.Plumber.Pipeline.t()) :: {trigger_type(), triggered_by()}
   # # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp detect_trigger(pipeline) do
@@ -145,15 +156,6 @@ defmodule Front.Models.Pipeline.Triggerer do
     ppl_triggered_by = PplTriggeredBy.key(triggerer.ppl_triggered_by)
 
     cond do
-      wf_triggered_by == :API ->
-        {:API, :none}
-
-      wf_triggered_by == :SCHEDULE ->
-        {:SCHEDULED_RUN, {:task, {triggerer.wf_triggerer_id, ""}}}
-
-      wf_triggered_by == :MANUAL_RUN ->
-        {:SCHEDULED_MANUAL_RUN, {:task, {triggerer.wf_triggerer_id, ""}}}
-
       ppl_triggered_by == :PARTIAL_RE_RUN ->
         {:PIPELINE_PARTIAL_RERUN, {:pipeline, triggerer.ppl_triggerer_id}}
 
@@ -165,6 +167,15 @@ defmodule Front.Models.Pipeline.Triggerer do
 
       triggerer.workflow_rerun_of != "" ->
         {:WORKFLOW_RERUN, {:workflow, triggerer.workflow_rerun_of}}
+
+      wf_triggered_by == :API ->
+        {:API, :none}
+
+      wf_triggered_by == :SCHEDULE ->
+        {:SCHEDULED_RUN, {:task, {triggerer.wf_triggerer_id, ""}}}
+
+      wf_triggered_by == :MANUAL_RUN ->
+        {:SCHEDULED_MANUAL_RUN, {:task, {triggerer.wf_triggerer_id, ""}}}
 
       wf_triggered_by == :HOOK && ppl_triggered_by == :WORKFLOW ->
         {:INITIAL_WORKFLOW, {:hook, triggerer.wf_triggerer_id}}
