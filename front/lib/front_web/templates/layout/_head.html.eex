@@ -13,8 +13,8 @@
   <%= social_metatags(@conn) %>
 
   <!-- Semaphore CSS -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20,300,0,0;20,300,1,0;24,400,0,0;24,400,1,0&display=swap"/>
   <link rel="stylesheet" media="screen" href="<%= assets_path() %>/css/app.css" />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
 
   <!-- Favicon -->
   <link rel="alternate icon" class="js-site-favicon" type="image/png" href="<%= assets_path() %>/images/favicon.png" />

@@ -107,40 +107,19 @@ summary.no-expand::marker {
 }
 
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20 !important;
-  font-size: 20px !important;
+  font-variation-settings:
+    'FILL' var(--material-symbol-fill, 0),
+    'wght' var(--material-symbol-weight, 300),
+    'GRAD' var(--material-symbol-grad, 0),
+    'opsz' var(--material-symbol-opsz, 20);
 }
 
-.material-symbols-outlined.f1 {
-  font-size: 3rem;
-}
-
-.material-symbols-outlined.f2 {
-  font-size: 2.25rem;
-}
-
-.material-symbols-outlined.f3 {
-  font-size: 1.5rem;
-}
-
-.material-symbols-outlined.f4 {
-  font-size: 1.25rem;
-}
-
-.material-symbols-outlined.f5 {
-  font-size: 1rem;
-}
-
-.material-symbols-outlined.f6 {
-  font-size: .875rem;
-}
-
-.material-symbols-outlined.f7 {
-  font-size: .75rem;
+.material-symbols-outlined.fill {
+  --material-symbol-fill: 1;
 }
 
 .material-symbols-outlined.b {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+  --material-symbol-weight: 400;
 }
 
 sem-tooltip slot[slot="content"],
@@ -465,25 +444,6 @@ sem-popover {
       -ms-user-select: none;
           user-select: none;
 }
-
-.material-symbols-outlined {
-  font-variation-settings:
-  'FILL' 0,
-  'wght' 300,
-  'GRAD' 0,
-  'opsz' 20
-}
-.material-symbols-outlined.fill {
-  font-variation-settings:
-  'FILL' 1,
-  'wght' 300,
-  'GRAD' 0,
-  'opsz' 20
-}
-.material-symbols-outlined.md-18 { font-size: 18px; }
-.material-symbols-outlined.md-24 { font-size: 24px; }
-.material-symbols-outlined.md-36 { font-size: 36px; }
-.material-symbols-outlined.md-48 { font-size: 48px; }
 
 .gap-1 {
   gap: 0.25rem;
