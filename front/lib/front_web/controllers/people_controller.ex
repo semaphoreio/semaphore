@@ -278,7 +278,7 @@ defmodule FrontWeb.PeopleController do
   @max_people_per_org 2000
   @return_non_members 10
 
-  def index(conn, params) do
+  def index(conn, params = %{"format" => "json"}) do
     Watchman.benchmark("people.index.duration", fn ->
       org_id = conn.assigns.organization_id
       # Sanitize inputs

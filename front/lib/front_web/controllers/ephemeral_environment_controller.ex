@@ -99,19 +99,10 @@ defmodule FrontWeb.EphemeralEnvironmentController do
 
   def delete(conn, %{"id" => environment_id}) do
     org_id = conn.assigns.organization_id
-    # user_id = conn.assigns.user_id
 
     Models.EphemeralEnvironment.delete(environment_id, org_id)
     |> case do
       :ok ->
-        # conn
-        # |> Audit.new(:EphemeralEnvironment, :Removed)
-        # |> Audit.add(resource_id: environment_id)
-        # |> Audit.add(description: "Ephemeral environment type deleted")
-        # |> Audit.metadata(organization_id: org_id)
-        # |> Audit.metadata(user_id: user_id)
-        # |> Audit.log()
-
         send_resp(conn, :no_content, "")
 
       {:error, message} ->
@@ -123,20 +114,10 @@ defmodule FrontWeb.EphemeralEnvironmentController do
 
   def cordon(conn, %{"id" => environment_id}) do
     org_id = conn.assigns.organization_id
-    # user_id = conn.assigns.user_id
 
     Models.EphemeralEnvironment.cordon(environment_id, org_id)
     |> case do
       {:ok, environment_type} ->
-        # conn
-        # |> Audit.new(:EphemeralEnvironment, :Modified)
-        # |> Audit.add(resource_id: environment_type.id)
-        # |> Audit.add(resource_name: environment_type.name)
-        # |> Audit.add(description: "Ephemeral environment type cordoned")
-        # |> Audit.metadata(organization_id: org_id)
-        # |> Audit.metadata(user_id: user_id)
-        # |> Audit.log()
-
         render(conn, "show.json", environment_type: environment_type)
 
       {:error, message} ->
