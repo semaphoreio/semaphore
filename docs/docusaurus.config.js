@@ -64,8 +64,13 @@ const config = {
               path: '',
               banner: "none",
             },
+            "CE-1.5": {
+              label: 'Community Edition v1.5 (latest)',
+              path: 'CE-1.5',
+              banner: "none"
+            },
             "CE": {
-              label: 'Community Edition v1.4 (latest)',
+              label: 'Community Edition v1.4',
               path: 'CE',
               banner: "none"
             },
@@ -73,8 +78,13 @@ const config = {
               label: 'Community Edition v1.3',
               path: 'CE-1.3',
             },
+            "EE-1.5": {
+              label: 'Enterprise Edition v1.5 (latest)',
+              path: 'EE-1.5',
+              banner: "none"
+            },
             "EE": {
-              label: 'Enterprise Edition v1.4 (latest)',
+              label: 'Enterprise Edition v1.4',
               path: 'EE',
               banner: "none"
             },

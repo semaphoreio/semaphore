@@ -50,7 +50,7 @@ To create a task, open your project and follow these steps. You can create tasks
 
     ![Task creation step 1: name and description](./img/task-create-1.jpg)
 
-5. Type the repository branch and [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that branch. It doesn't need (but it can) to be connected with a promotion to any other pipeline
+5. Type the repository reference (branch or tag) and [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that reference. It doesn't need (but it can) to be connected with a promotion to any other pipeline
 6. Press **Next**
 
     ![Task creation step 2: branch and pipeline](./img/task-create-2.jpg)
@@ -109,6 +109,13 @@ You can add tasks by editing the project using the [Semaphore command line tool]
               - name: CANARY_VERSION
                 required: true
                 default_value: "1.0.0"
+    # task 3 with tag
+        - name: release-deploy
+          reference: 
+            type: tag
+            value: v1.0.0
+          scheduled: false
+          pipeline_file: .semaphore/deploy.yml
     ```
 
 4. Save the file to submit your changes
