@@ -196,8 +196,7 @@ defmodule Front.Models.WorkflowTest do
 
       GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
 
-      found_workflow = Workflow.find(workflow.id)
-
+      Workflow.find(workflow.id)
       {:ok, ttl} = Cacheman.ttl(:front, "workflow:#{workflow.id}")
       # TTL should be approximately 2 hours (7200 seconds), allow some variance
       assert ttl > 7000 and ttl <= 7200
@@ -216,8 +215,7 @@ defmodule Front.Models.WorkflowTest do
 
       GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
 
-      found_workflow = Workflow.find(workflow.id)
-
+      Workflow.find(workflow.id)
       {:ok, ttl} = Cacheman.ttl(:front, "workflow:#{workflow.id}")
       assert ttl == :infinity
     end
