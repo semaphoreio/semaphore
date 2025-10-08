@@ -149,7 +149,7 @@ defmodule PipelinesAPI.Schedules.RunNow.Test do
              post_run_now(params, scheduler.id, 400, false)
   end
 
-  test "POST /schedules/:id/run_now - fails when both reference and branch are missing" do
+  test "POST /schedules/:id/run_now - success when both reference and branch are missing" do
     org = Support.Stubs.Organization.create_default()
     user = Support.Stubs.User.create_default()
     project = Support.Stubs.Project.create(org, user)
@@ -159,8 +159,10 @@ defmodule PipelinesAPI.Schedules.RunNow.Test do
       "pipeline_file" => ".semaphore/semaphore.yml"
     }
 
-    assert "\"Either 'reference' or 'branch' parameter is required\"" =
-             post_run_now(params, scheduler.id, 400, false)
+    assert %{"workflow_id" => workflow_id} = post_run_now(params, scheduler.id, 200)
+    assert {:ok, _} = UUID.info(workflow_id)
+
+    assert Support.Stubs.DB.find_all_by(:triggers, :periodic_id, scheduler.id) |> Enum.count() > 0
   end
 
   test "POST /schedules/:id/run_now - fails with empty reference name" do

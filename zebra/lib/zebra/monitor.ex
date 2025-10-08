@@ -212,6 +212,7 @@ defmodule Zebra.Monitor do
   def stuck_jobs do
     from(j in Job,
       where: j.aasm_state == "started",
+      where: j.started_at > date_add(^Date.utc_today(), -7, "day"),
       where:
         fragment(
           "extract(epoch from ?) + coalesce(?, ?)",
