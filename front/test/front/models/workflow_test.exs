@@ -182,6 +182,66 @@ defmodule Front.Models.WorkflowTest do
     end
   end
 
+  describe "caching with TTL" do
+    test "workflow with active pipelines is cached" do
+      workflow = DB.first(:workflows)
+      Cacheman.delete(:front, "workflow:#{workflow.id}")
+
+      # Stub workflow with a pipeline in RUNNING state
+      pipeline_running = Support.Factories.pipeline(%{state: :RUNNING})
+
+      workflow_with_active =
+        Map.put(workflow.api_model, :pipelines, [pipeline_running])
+
+      workflow_describe_response =
+        InternalApi.PlumberWF.DescribeResponse.new(
+          workflow: workflow_with_active,
+          status: Support.Factories.internal_api_status_ok()
+        )
+
+      GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
+
+      # Find the workflow - should cache it with 2-hour TTL
+      found_workflow = Workflow.find(workflow.id)
+      IO.puts("PIPELINE")
+      IO.inspect(found_workflow)
+
+      # Verify it was cached
+      assert Cacheman.exists?(:front, "workflow:#{workflow.id}")
+      assert found_workflow.id == workflow.id
+      # Verify that the workflow has at least one active pipeline
+      assert Enum.any?(found_workflow.pipelines, &(&1.state == :RUNNING))
+    end
+
+    test "workflow without active pipelines is cached" do
+      workflow = DB.first(:workflows)
+      Cacheman.delete(:front, "workflow:#{workflow.id}")
+
+      # Stub workflow with a pipeline in DONE state
+      pipeline_done = Support.Factories.pipeline(%{state: :DONE})
+
+      workflow_without_active =
+        Map.put(workflow.api_model, :pipelines, [pipeline_done])
+
+      workflow_describe_response =
+        InternalApi.PlumberWF.DescribeResponse.new(
+          workflow: workflow_without_active,
+          status: Support.Factories.internal_api_status_ok()
+        )
+
+      GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
+
+      # Find the workflow - should cache it with infinite TTL
+      found_workflow = Workflow.find(workflow.id)
+
+      # Verify it was cached
+      assert Cacheman.exists?(:front, "workflow:#{workflow.id}")
+      assert found_workflow.id == workflow.id
+      # Verify that the workflow has no active pipelines
+      refute Enum.any?(found_workflow.pipelines, &(&1.state in [:RUNNING, :STOPPING, :PENDING, :QUEUING, :INITIALIZING]))
+    end
+  end
+
   defp sample_hook do
     %InternalApi.RepoProxy.DescribeResponse{
       hook: %InternalApi.RepoProxy.Hook{
