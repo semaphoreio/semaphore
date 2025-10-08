@@ -1838,7 +1838,7 @@ blocks:
         "TaskApiMock: Provision Prod Image",
       ]
     run:
-      when: "change_in('/plumber', {pipeline_file: 'ignore', default_branch: 'main'})"
+      when: "change_in('/plumber', {default_branch: 'main'})"
     task:
       env_vars:
         - name: MIX_ENV
@@ -1849,6 +1849,11 @@ blocks:
         commands:
           - checkout && cd plumber/ppl
           - make build
+      epilogue:
+        always:
+          commands:
+            - test-results resource-metrics resources.md
+            - artifact push job -d .semaphore/REPORT.md resources.md
       jobs:
         - name: "Integration Test"
           commands:
