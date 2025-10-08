@@ -132,10 +132,13 @@ const sidebars = {
           },
         ],
       },
-
       {
         type: 'category',
-        label: 'Containers',
+        label: 'Docker and Containers',
+        link: {
+          type: 'doc',
+          id: 'using-semaphore/containers'
+        },
         collapsed: true,
         items: [
           {
