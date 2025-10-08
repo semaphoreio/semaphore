@@ -182,6 +182,47 @@ defmodule Front.Models.WorkflowTest do
     end
   end
 
+  describe "caching with TTL" do
+    test "sets 2-hour TTL when workflow has active pipelines" do
+      workflow = DB.first(:workflows)
+      Cacheman.delete(:front, "workflow:#{workflow.id}")
+      workflow_with_running_pipeline = %{workflow | state: :RUNNING}
+
+      workflow_describe_response =
+        InternalApi.PlumberWF.DescribeResponse.new(
+          workflow: workflow_with_running_pipeline,
+          status: Support.Factories.internal_api_status_ok()
+        )
+
+      GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
+
+      found_workflow = Workflow.find(workflow.id)
+
+      {:ok, ttl} = Cacheman.ttl(:front, "workflow:#{workflow.id}")
+      # TTL should be approximately 2 hours (7200 seconds), allow some variance
+      assert ttl > 7000 and ttl <= 7200
+    end
+
+    test "sets infinite TTL when workflow has no active pipelines" do
+      workflow = DB.first(:workflows)
+      Cacheman.delete(:front, "workflow:#{workflow.id}")
+      workflow_completed = %{workflow | state: :DONE}
+
+      workflow_describe_response =
+        InternalApi.PlumberWF.DescribeResponse.new(
+          workflow: workflow_completed,
+          status: Support.Factories.internal_api_status_ok()
+        )
+
+      GrpcMock.stub(WorkflowMock, :describe, workflow_describe_response)
+
+      found_workflow = Workflow.find(workflow.id)
+
+      {:ok, ttl} = Cacheman.ttl(:front, "workflow:#{workflow.id}")
+      assert ttl == :infinity
+    end
+  end
+
   defp sample_hook do
     %InternalApi.RepoProxy.DescribeResponse{
       hook: %InternalApi.RepoProxy.Hook{
