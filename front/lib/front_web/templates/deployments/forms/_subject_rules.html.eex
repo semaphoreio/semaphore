@@ -63,7 +63,7 @@
             <div class="bl b--light-gray pv2 ml2 pl3" data-component="user-access-details">
                 <div class="ml2 measure">
                     Advanced user access control for Deployment Targets is available only to
-                    Scaleup plan customers. Please contact our Support for more information.
+                    Enterprise plan customers. Please contact our Support for more information.
                 </div>
             </div>
         </div>
