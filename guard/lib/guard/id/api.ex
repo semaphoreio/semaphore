@@ -120,6 +120,51 @@ defmodule Guard.Id.Api do
   defp map_uid_to_string(uid) when is_integer(uid), do: uid |> Integer.to_string()
   defp map_uid_to_string(uid), do: uid
 
+  # Verifies if the user is allowed to login with OIDC when default login method is SAML
+  # Returns {:ok, boolean, error_message}
+  defp verify_oidc_login_allowed(user_data) do
+    Logger.debug("Verifying if OIDC login is allowed for user_data: #{inspect(user_data)}")
+
+    # If default login method is not SAML, always allow OIDC login
+    if default_login_method() != "saml" do
+      {:ok, true, nil}
+    else
+      verify_oidc_login_allowed_on_saml(user_data)
+    end
+  end
+
+  defp verify_oidc_login_allowed_on_saml(user_data) do
+    Logger.debug("Verifying if OIDC login is allowed for user_data: #{inspect(user_data)}")
+
+    case find_user(user_data) do
+      {:ok, user} ->
+        Logger.debug(
+          "Found user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(user)}"
+        )
+
+        verify_oidc_user_login_allowed_on_saml(user)
+
+      {:error, error} ->
+        Logger.error(
+          "Error finding user with user_data: #{inspect(user_data)} error: #{inspect(error)}"
+        )
+
+        {:ok, false,
+         "Login is not allowed when using SAML as the default authentication method. Please contact your administrator."}
+    end
+  end
+
+  defp verify_oidc_user_login_allowed_on_saml(user) do
+    if user != nil and user.creation_source == nil && !user.single_org_user do
+      {:ok, true, nil}
+    else
+      Logger.warning("OIDC login not allowed for this user")
+
+      {:ok, false,
+       "Login is not allowed when using SAML as the default authentication method. Please contact your administrator."}
+    end
+  end
+
   #
   # Root Login endpoint
   #
@@ -428,6 +473,8 @@ defmodule Guard.Id.Api do
       with :ok <- Guard.OIDC.state_match?(state, callback_state),
            {:ok, {user_data, tokens}} <-
              Guard.OIDC.exchange_code(code, verifier, oidc_callback),
+           {:ok, allowed, error_message} <- verify_oidc_login_allowed(user_data),
+           true <- allowed || {:error, :login_not_allowed, error_message},
            {:ok, user, mode} <- find_or_create_user(user_data),
            {:ok, id_token_enc} <- Guard.OIDC.Token.encrypt(tokens[:id_token], user.id),
            {:ok, refresh_token_enc} <- Guard.OIDC.Token.encrypt(tokens[:refresh_token], user.id),
@@ -453,6 +500,15 @@ defmodule Guard.Id.Api do
           Logger.warning("State mismatch: #{inspect(state)} != #{inspect(callback_state)}")
 
           conn |> Guard.Utils.Http.redirect_to_url(id_page())
+
+        {:error, :login_not_allowed, message} ->
+          Logger.warning("Login not allowed: #{message}")
+
+          conn
+          |> redirect(:noop, %{
+            status: "error",
+            message: message || "Login not allowed. Please contact your administrator."
+          })
 
         {:error, :user_blocked, user} ->
           Logger.warning("User #{user.id} is blocked")
@@ -596,6 +652,33 @@ defmodule Guard.Id.Api do
 
             {:error, :user_creation_error}
         end
+    end
+  end
+
+  defp find_user(user_data) do
+    case Guard.OIDC.User.find_user_by_oidc_id(user_data[:oidc_user_id]) do
+      {:ok, user} ->
+        Logger.debug(
+          "Found user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(user)}"
+        )
+
+        case Guard.Store.User.Front.find(user.id) do
+          {:ok, front_user = %Guard.FrontRepo.User{blocked_at: nil}} ->
+            Logger.debug(
+              "Found front user with oidc_user_id: #{inspect(user_data[:oidc_user_id])}: #{inspect(front_user)}"
+            )
+
+            {:ok, front_user}
+
+          {:ok, _} ->
+            {:error, :user_blocked}
+
+          {:error, :not_found} ->
+            {:error, :user_not_found}
+        end
+
+      {:error, error} ->
+        {:error, error}
     end
   end
 
