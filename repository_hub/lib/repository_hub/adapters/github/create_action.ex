@@ -108,7 +108,6 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GithubAdapter do
          %{user: %{creation_source: :SERVICE_ACCOUNT}},
          _github_token
        ) do
-
     %{"admin" => true, "push" => true}
     |> wrap()
   end
