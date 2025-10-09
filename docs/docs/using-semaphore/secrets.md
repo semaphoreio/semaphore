@@ -144,7 +144,7 @@ To create secrets with the Semaphore API, see the [API reference](../reference/a
 
 <VideoTutorial title="How to configure secret access policy" src="https://www.youtube.com/embed/gB1Oat4HwTo?si=_dvCKllE0bPgtDFe" />
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Access policies allow you to control how and who can use [organization secrets](#org-secrets). 
 
@@ -163,7 +163,7 @@ You can apply a policy at three levels:
 
 ## How to create project secrets {#create-project-secrets}
 
-<Available plans={['Startup']}/>
+<Available plans={['Cloud']}/>
 
 Project secrets are only available to the [project](./projects) they are tied to.
 
