@@ -20,9 +20,9 @@ The only supported value is: `v1alpha`
 
 ## kind {#kind}
 
-Defines the type of resource. 
+Defines the type of resource.
 
-For notification resources use the kind: `Notification` 
+For notification resources use the kind: `Notification`
 
 ## metadata {#metadata}
 
@@ -78,6 +78,7 @@ Each item list in `filter` contains the following properties:
 - [`projects`](#projects-in-filter)
 - [`branches`](#branches-in-filter)
 - [`pipelines`](#pipelines-in-filter)
+- [`tags`](#tags-in-filter)
 
 For a filter to match, all its properties must be evaluated to `true`. If any of the properties have multiple values, at least one of these must match.
 
@@ -95,6 +96,10 @@ Mandatory property. Contains a list of project names where the notification rule
 
 Optional property. Contains a list of Git branches. If specified, the rule can only trigger events that apply to one of the listed branches.
 
+### tags {#tags-in-filter}
+
+Optional property. Contains a list of Git tags. If specified, the rule can only trigger events that apply to one of the listed tags.
+
 #### pipelines {#pipelines-in-filter}
 
 Optional property. A list of pipeline filenames. If specified, the rule can only trigger events originating from one of the listed pipelines.
@@ -110,7 +115,7 @@ This property may contain these sub-properties:
 
 ## slack {#slack-in-notify}
 
-Specifies how to send a notification to Slack. 
+Specifies how to send a notification to Slack.
 
 Supports the following properties:
 
@@ -211,6 +216,8 @@ spec:
       - master
       pipelines:
       - semaphore.yml
+      tags:
+      - /.*-rc$/
     notify:
       webhook:
         endpoint: https://example.org/postreceiver
@@ -218,7 +225,6 @@ spec:
 ```
 
 ## See Also
-
 
 - [Jobs YAML reference](./jobs-yaml)
 - [Pipeline YAML reference](./pipeline-yaml)

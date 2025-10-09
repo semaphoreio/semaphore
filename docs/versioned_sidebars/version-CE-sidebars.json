@@ -124,6 +124,7 @@
       "collapsed": true,
       "items": [
         "using-semaphore/rbac",
+        "using-semaphore/service-accounts",
         "using-semaphore/notifications"
       ]
     },
