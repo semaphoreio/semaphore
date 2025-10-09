@@ -20,10 +20,11 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GithubAdapter do
   import Toolkit
   @impl true
   def execute(adapter, request) do
-    with {:ok, git_repository} <- GitRepository.from_github(request.repository_url),
+    with {:ok, user} <- UserClient.describe(request.user_id),
+         {:ok, git_repository} <- GitRepository.from_github(request.repository_url),
          {:ok, github_token} <- GithubAdapter.token(adapter, request.user_id, git_repository),
          {:ok, github_repository} <- get_github_repository(git_repository, github_token),
-         {:ok, permissions} <- get_permissions(adapter, github_repository, request.user_id, github_token),
+         {:ok, permissions} <- get_permissions(adapter, github_repository, user, github_token),
          {:ok, _} <- valid?(adapter, github_repository, request.only_public, permissions),
          {:ok, repository} <- insert_repository(adapter, request, git_repository, github_repository),
          grpc_repository <- Repositories.to_grpc_model(repository) do
@@ -98,11 +99,22 @@ defimpl RepositoryHub.Server.CreateAction, for: RepositoryHub.GithubAdapter do
     |> wrap()
   end
 
-  defp get_permissions(%{integration_type: "github_oauth_token"}, repo, _, _),
+  defp get_permissions(%{integration_type: "github_oauth_token"}, repo, _user, _github_token),
     do: repo.permissions |> wrap
 
-  defp get_permissions(%{integration_type: "github_app"}, repo, user_id, github_token) do
-    {:ok, [username | _]} = UserClient.get_repository_provider_logins(:GITHUB, user_id)
+  defp get_permissions(
+         %{integration_type: "github_app"},
+         _repo,
+         %{user: %{creation_source: :SERVICE_ACCOUNT}},
+         _github_token
+       ) do
+
+    %{"admin" => true, "push" => true}
+    |> wrap()
+  end
+
+  defp get_permissions(%{integration_type: "github_app"}, repo, user, github_token) do
+    {:ok, [username | _]} = UserClient.get_repository_provider_logins(:GITHUB, user.user_id)
 
     GithubClient.repository_permissions(
       %{
