@@ -1,13 +1,9 @@
 defmodule Guard.Id.OIDCSamlLoginTest do
-  import Tesla.Mock
-
   use Guard.RepoCase, async: false
   doctest Guard.Id.Api, import: true
 
   use Plug.Test
-
-  @port 4003
-  @host "http://localhost:#{@port}"
+  import Support.ApiTestHelpers
 
   setup do
     FunRegistry.clear!()
@@ -51,10 +47,10 @@ defmodule Guard.Id.OIDCSamlLoginTest do
       oidc_user_id = Ecto.UUID.generate()
 
       # Register the user in OIDC
-      {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user_id, oidc_user_id)
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user_id, oidc_user_id)
 
       # Create front repo user with root attributes
-      {:ok, front_user} =
+      {:ok, _front_user} =
         Support.Members.insert_user(
           id: user_id,
           email: user.email,
@@ -124,10 +120,10 @@ defmodule Guard.Id.OIDCSamlLoginTest do
       oidc_user_id = Ecto.UUID.generate()
 
       # Register the user in OIDC
-      {:ok, oidc_user} = Support.Factories.OIDCUser.insert(user_id, oidc_user_id)
+      {:ok, _oidc_user} = Support.Factories.OIDCUser.insert(user_id, oidc_user_id)
 
       # Create front repo user with non-root attributes
-      {:ok, front_user} =
+      {:ok, _front_user} =
         Support.Members.insert_user(
           id: user_id,
           email: user.email,
@@ -257,19 +253,4 @@ defmodule Guard.Id.OIDCSamlLoginTest do
       %{"state" => state} -> {:ok, state}
     end
   end
-
-  defp send_login_request(params \\ []) do
-    query_string = parse_query_params(params[:query])
-    path = params[:path] || "/login"
-
-    headers =
-      (params[:headers] || []) ++ [{"x-forwarded-proto", "https"}, {"user-agent", "test-agent"}]
-
-    "#{@host}/#{path}#{query_string}"
-    |> URI.encode()
-    |> HTTPoison.get(headers)
-  end
-
-  defp parse_query_params(nil), do: ""
-  defp parse_query_params(params), do: "?#{URI.encode_query(params)}"
 end
