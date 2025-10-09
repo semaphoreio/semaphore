@@ -127,7 +127,7 @@ See [organization roles](./rbac#org) to learn what roles are available.
 
 ### How to create groups {#add-groups}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 User groups streamline user management by allowing bulk actions. After creating a group, you can:
 
@@ -196,7 +196,7 @@ The actions with enabled checkbox are allowed for that role.
 
 ### How to create custom roles {#custom}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Create custom roles to give your users the precise permissions they need. 
 
@@ -269,7 +269,7 @@ If you experience errors during initialization, see the [initialization job logs
 
 ### Okta integration {#okta-integration}
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 Integration with Okta allows you to automate user management within your Semaphore organization, as well as to use Okta apps for Single Sign On.
 
@@ -289,7 +289,7 @@ In this section, you can add contact details in case the Semaphore Support Team 
 
 <VideoTutorial title="How to view audit logs" src="https://www.youtube.com/embed/o5yXSvjcz7s"/>
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your organization, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
 
@@ -303,7 +303,7 @@ The audit logs shows all the [audited events](../reference/audit-events) in reve
 
 ### How to export audit logs {#audit-export}
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 Audit logs can be exported in two ways:
 
