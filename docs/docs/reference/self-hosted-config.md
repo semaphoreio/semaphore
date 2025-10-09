@@ -4,7 +4,7 @@ description: Self-hosted agents configuration reference
 
 # Self-hosted Agents Settings
 
-<Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
+<Available plans={['Hybrid', 'Enterprise']}/>
 
 This page describes all the settings available to configure [self-hosted agents](../using-semaphore/self-hosted).
 
