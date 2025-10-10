@@ -14,6 +14,13 @@ defmodule RepositoryHub.Server.Github.ListAccessibleRepositoriesActionTest do
     setup_with_mocks([
       {RepositoryHub.UserClient, [],
        [
+         describe: fn user_id ->
+           {:ok,
+            %{
+              user_id: user_id,
+              user: %{creation_source: :NOT_SET}
+            }}
+         end,
          get_repository_token: fn integration_type, user_id ->
            token = "#{user_id}-#{integration_type}-token"
            expires_at = %Google.Protobuf.Timestamp{seconds: 0, nanos: 0}
