@@ -386,7 +386,7 @@ Once you have Semaphore up and running, check out the following pages to finish 
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
 - [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
-- [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
+- [Invite users](../using-semaphore/user-management#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
 ## How to Upgrade Semaphore {#upgrade}

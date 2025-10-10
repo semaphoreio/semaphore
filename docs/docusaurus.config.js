@@ -78,12 +78,12 @@ const config = {
             },
             "EE": {
               label: 'Enterprise Edition v1.5 (latest)',
-              path: 'EE-1.5',
+              path: 'EE',
               banner: "none"
             },
             "EE-1.4": {
               label: 'Enterprise Edition v1.4',
-              path: 'EE',
+              path: 'EE-1.4',
             },
           },
 

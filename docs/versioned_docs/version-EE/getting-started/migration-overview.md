@@ -64,7 +64,7 @@ Here is the recommended plan to migrate from any CI provider to Semaphore.
     Once satisfied with your CI workflow it's time to onboard the rest of your team:
 
         - Begin by [adding the core developer team](../using-semaphore/projects#people) and letting them familiarize with Semaphore 
-        - Then, [invite to your server](../using-semaphore/organizations#people) the rest of the team 
+        - Then, [invite to your server](../using-semaphore/user-management#people) the rest of the team 
         - Assign [roles](../using-semaphore/rbac) to ensure everyone has the permissions needed to fulfill their responsabilities
         
 

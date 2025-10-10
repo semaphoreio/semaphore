@@ -18,7 +18,7 @@ To create a service account, follow these steps:
 
 <Steps>
 
-1. Open the [Organization Menu](./organizations#people) on the top-right corner
+1. Open the [Organization Menu](./user-management#people) on the top-right corner
 2. Select **People**
 3. Press **Create Service Account**
 
@@ -52,7 +52,7 @@ To edit a service account's details, follow these steps:
 
 <Steps>
 
-1. Open the [Organization Menu](./organizations#people) on the top-right corner
+1. Open the [Organization Menu](./user-management#people) on the top-right corner
 2. Select **People**
 3. Press the **Edit** button next to the service account you want to edit
 
@@ -78,7 +78,7 @@ To reset a service account token, follow these steps.
 
 <Steps>
 
-1. Open the [Organization Menu](./organizations#people) on the top-right corner
+1. Open the [Organization Menu](./user-management#people) on the top-right corner
 2. Select **People**
 3. Press the **Refresh** button next to the service account you want to reset
 
@@ -102,7 +102,7 @@ To delete a service account, follow these steps.
 
 <Steps>
 
-1. Open the [Organization Menu](./organizations#people) on the top-right corner
+1. Open the [Organization Menu](./user-management#people) on the top-right corner
 2. Select **People**
 3. Press the red **X** (cross) button next to the service account you want to delete
 
@@ -116,4 +116,4 @@ To delete a service account, follow these steps.
 
 - [Semaphore API reference](../reference/api)
 - [Role-Based Access Controls](./rbac)
-- [How to manage Semaphore users](./organizations#people)
+- [How to manage Semaphore users](./user-management#people)
