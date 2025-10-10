@@ -144,7 +144,7 @@ To create secrets with the Semaphore API, see the [API reference](../reference/a
 
 ## How to create project secrets {#create-project-secrets}
 
-<Available plans={['Startup']}/>
+<Available plans={['Cloud']}/>
 
 Project secrets are only available to the [project](./projects) they are tied to.
 

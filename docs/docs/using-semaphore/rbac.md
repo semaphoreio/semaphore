@@ -86,7 +86,7 @@ To remove an owner, see [how to remove an owner](https://docs.semaphore.io/using
 
 ### Organization groups {#org-groups}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Your organization can have any number of groups. A group can have exactly one role directly assigned.
 
@@ -145,7 +145,7 @@ Admins have the authority to modify any setting within the projects, including t
 
 ## Custom roles {#custom-roles}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 In addition to the pre-defined roles provided by Semaphore, you can create your own custom roles. Custom roles let you follow the principle of least privilege when managing using permissions.
 
