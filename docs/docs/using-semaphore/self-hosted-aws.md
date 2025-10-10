@@ -4,7 +4,7 @@ description: Deploy an autoscaling fleet of self-hosted agents in AWS
 
 # Autoscaling with AWS
 
-<Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
+<Available plans={['Hybrid', 'Enterprise']}/>
 
 Semaphore provides the open-source [AWS agent stack](https://github.com/renderedtext/agent-aws-stack) to help you deploy an autoscaling fleet of self-hosted agents in AWS.
 

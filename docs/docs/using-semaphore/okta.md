@@ -10,7 +10,7 @@ Use Okta to provision, manage your user, and provide Single Sign On (SSO) to you
 
 ## Overview
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 [Okta](https://okta.com) is an enterprise identity management platform. It provides a centralized place to manage your users and groups across different products. You can integrate Okta with Semaphore to manage your users from the Okta application.
 
