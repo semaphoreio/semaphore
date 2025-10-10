@@ -93,17 +93,39 @@
 </style>
 
 <div class="overlay" id="modal_overlay" style="display: none;">
-  <div class="bg-white popup w-40 br3 pa3 tl" style="min-width: 500px;">
-    <h3 class="mb0">Add New Users</h3>
-    <p class="measure-wide mb0">Ensure that the user is a part of your organization before trying to add them to the project. Go to <%= link "organization/people", to: people_path(@conn, :organization) %> to invite users to the organization.</p>
+  <div
+    class="bg-white popup w-40 br3 pa3 tl"
+    style="min-width: 500px;"
+    data-title-user="Add New Users"
+    data-title-group="Add New Groups"
+    data-title-service_account="Add New Service Accounts"
+    data-subject-plural-user="users"
+    data-subject-plural-group="groups"
+    data-subject-plural-service_account="service accounts"
+    data-placeholder-user="<%= if Front.ce?(), do: "Search users to add to project", else: "Search users and groups to add to project" %>"
+    data-placeholder-group="Search groups to add to project"
+    data-placeholder-service_account="Search service accounts to add to project"
+  >
+    <h3 class="mb0" data-modal-title>Add New Users</h3>
+    <p class="measure-wide mb0" data-modal-description>
+      Ensure that
+      <span data-modal-subject-plural>users</span>
+      are part of your organization before trying to add them to the project. Manage
+      <span data-modal-subject-plural>users</span>
+      on the
+      <%= link "organization/people", to: people_path(@conn, :organization) %>
+      page.
+    </p>
 
     <div class="flex items-center mv3 justify-between">
         <div class="project-jumpto w-100 filters-group flex">
           <input type="hidden">
           <input
             type="text"
+            class="form-control w-100 mr2"
+            data-modal-search
             placeholder="<%= if Front.ce?(), do: "Search users to add to project", else: "Search users and groups to add to project" %>"
-            class="form-control w-100 mr2" >
+          >
           <div class="jumpto-results"></div>
         </div>
     </div>

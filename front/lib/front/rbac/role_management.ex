@@ -212,7 +212,7 @@ defmodule Front.RBAC.RoleManagement do
             InternalApi.RBAC.SubjectType.value(:USER)
         end
 
-      subject = RBAC.Subject.new(subject_id: subject_id, type: subject_type)
+      subject = RBAC.Subject.new(subject_id: subject_id, subject_type: subject_type)
 
       req =
         RBAC.AssignRoleRequest.new(
