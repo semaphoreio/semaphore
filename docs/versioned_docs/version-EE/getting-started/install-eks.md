@@ -151,7 +151,7 @@ Finally, install Semaphore with Helm. This step assumes that you have copied you
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.4.0 \
+  --version v1.5.0 \
   --timeout 30m \
   --set global.edition=ee \
   --set global.license=$(cat path/to/license-file.txt) \

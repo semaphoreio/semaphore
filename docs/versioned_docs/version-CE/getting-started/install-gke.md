@@ -411,7 +411,7 @@ To upgrade Semaphore, follow these steps:
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.4.0 \
+      --version v1.5.0 \
       --timeout 30m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \

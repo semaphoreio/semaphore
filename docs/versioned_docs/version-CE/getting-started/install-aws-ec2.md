@@ -4,13 +4,6 @@ description: Install Semaphore on AWS EC2 Instance (VM)
 
 # AWS Compute Instance (EC2)
 
-
-
-
-
-
-
-
 This page explains how to install Semaphore Community Edition on a [AWS Elastic Compute Cloud (EC2)](https://aws.amazon.com/ec2/).
 
 ## Overview
@@ -326,7 +319,7 @@ Finally, install the Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.4.0 \
+  --version v1.5.0 \
   --timeout 30m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
