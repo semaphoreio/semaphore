@@ -17,7 +17,26 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
       [
         {RepositoryHub.UserClient, [:passthrough],
          [
-           get_repository_provider_logins: fn _, _ -> {:ok, ["radwo"]} end
+           describe: fn user_id ->
+             # Return regular user by default, service account for specific test user
+             if user_id == "service-account-user-id" do
+               {:ok,
+                %{
+                  user_id: user_id,
+                  user: %{creation_source: :SERVICE_ACCOUNT}
+                }}
+             else
+               {:ok,
+                %{
+                  user_id: user_id,
+                  user: %{creation_source: :NOT_SET}
+                }}
+             end
+           end,
+           get_repository_provider_logins: fn _, _ -> {:ok, ["radwo"]} end,
+           get_repository_token: fn _integration_type, _user_id ->
+             {:ok, "mock-oauth-token"}
+           end
          ]}
       ]
   ) do
@@ -103,6 +122,29 @@ defmodule RepositoryHub.Server.Github.CreateActionTest do
           "should fail validation when given #{inspect(params)}"
         )
       end
+    end
+
+    test "should succeed for service account with github_app integration", %{github_app_adapter: adapter} do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_APP,
+          user_id: "service-account-user-id"
+        )
+
+      assert {:ok, %CreateResponse{repository: _repository}} = CreateAction.execute(adapter, request)
+    end
+
+    test "should fail with clear error for service account with github_oauth_token", %{
+      github_oauth_adapter: adapter
+    } do
+      request =
+        InternalApiFactory.create_request(
+          integration_type: :GITHUB_OAUTH_TOKEN,
+          user_id: "service-account-user-id"
+        )
+
+      assert {:error, error_message} = CreateAction.execute(adapter, request)
+      assert error_message =~ "Service accounts cannot use GitHub OAuth tokens"
     end
   end
 end
