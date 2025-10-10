@@ -49,7 +49,7 @@ defmodule Front.Browser.ProjectDeploymentsTest do
 
       message =
         "Connect your servers and model the interaction " <>
-          "between your continious delivery pipeline and your deployment environments."
+          "between your continuous delivery pipeline and your deployment environments."
 
       page |> assert_has(Query.text(message))
     end
