@@ -41,6 +41,10 @@ defmodule E2E.UI.LoginTest do
         |> assert_has(Query.css("#kc-login[type='submit'][value='Sign In']"))
         |> fill_in(Query.text_field("username"), with: root_email)
         |> fill_in(Query.text_field("password"), with: root_password)
+        |> then(fn s ->
+          s |> find(Query.css("#kc-form-buttons"))
+          s
+        end)
         |> click(Query.css("#kc-login"))
         |> assert_has(
           Query.css("h1.f2.f1-m.lh-title.mb1",
