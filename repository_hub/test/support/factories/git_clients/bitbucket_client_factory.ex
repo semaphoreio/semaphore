@@ -20,6 +20,19 @@ defmodule RepositoryHub.BitbucketClientFactory do
          remove_deploy_key: &remove_deploy_key_mock/2,
          create_webhook: &create_webhook_mock/2,
          remove_webhook: &remove_webhook_mock/2
+       ]},
+      {RepositoryHub.UserClient, [:passthrough],
+       [
+         describe: fn user_id ->
+           {:ok,
+            %{
+              user_id: user_id,
+              user: %{creation_source: :NOT_SET}
+            }}
+         end,
+         get_repository_token: fn _integration_type, _user_id ->
+           {:ok, "mock-bitbucket-token"}
+         end
        ]}
     ]
   end
