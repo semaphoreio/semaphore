@@ -26,6 +26,19 @@ defmodule RepositoryHub.GitlabClientFactory do
          find_webhook: &find_webhook_mock/2,
          find_user: &find_user_mock/2,
          fork: &fork_mock/2
+       ]},
+      {RepositoryHub.UserClient, [:passthrough],
+       [
+         describe: fn user_id ->
+           {:ok,
+            %{
+              user_id: user_id,
+              user: %{creation_source: :NOT_SET}
+            }}
+         end,
+         get_repository_token: fn _integration_type, _user_id ->
+           {:ok, "mock-gitlab-token"}
+         end
        ]}
     ]
   end
