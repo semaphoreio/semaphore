@@ -387,6 +387,15 @@ You should be greeted with the onboarding guide.
 
 ![Onboarding guide screen](./img/on-boarding-guide.jpg)
 
+## Step 12 - Set the initialization agent
+
+Define the agent type that handles pipeline initialization:
+
+1. Open the [server settings menu](../using-semaphore/organizations#org-settings)
+2. Select **Initialization jobs**
+3. Select one agent from the list
+4. Press **Save Changes**, *you must save changes even if the correct option was already selected*
+
 ## Post installation tasks
 
 Once your have Semaphore up and running, check out the following pages to finish setting up:
