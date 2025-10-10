@@ -111,7 +111,7 @@ export var ManageSecret = {
         </div>
       </div>`
 
-    return [element, secretUploadLinkId, secretUploadId, fileContentId, fileDivId, secretInputId, fileDeleteLink, fileMd5Id, fileMd5PresentId, fileImageId];
+    return [element, secretUploadLinkId, secretUploadId, fileContentId, fileDivId, secretInputId, fileDeleteLink, fileMd5Id, fileMd5PresentId, fileImageId, filePathId];
   },
 
   showEnvVars: function() {
@@ -134,16 +134,16 @@ export var ManageSecret = {
     document.getElementById("files-input").innerHTML = "";
 
     this.files.forEach(function(file, index) {
-      let [element, fileUploadLink, fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, md5Id, fileMd5PresentId, fileImageId] =
+      let [element, fileUploadLink, fileUpload, fileContent, fileDiv, fileInputContainer, fileDeleteLink, md5Id, fileMd5PresentId, fileImageId, filePathInput] =
         secretEditor.fileElement(file, index);
 
       document.getElementById("files-input").insertAdjacentHTML("beforeend", element);
 
       secretEditor.browseFilesOnClick(fileUploadLink, fileUpload);
-      secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, fileMd5PresentId, fileImageId);
-      secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInput, fileContent, md5Id);
+      secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInputContainer, fileDeleteLink, fileMd5PresentId, fileImageId);
+      secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInputContainer, fileContent, md5Id);
       // Attach trimming handler for the file path input
-      secretEditor.attachFilePathTrimmer(fileInput);
+      secretEditor.attachFilePathTrimmer(filePathInput);
     });
   },
 
@@ -175,16 +175,16 @@ export var ManageSecret = {
 
       let fileIndex = secretEditor.files.length - 1;
       let file = secretEditor.files[fileIndex];
-      let [element, fileUploadLink, fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, md5Id, fileMd5PresentId, fileImageId] =
+      let [element, fileUploadLink, fileUpload, fileContent, fileDiv, fileInputContainer, fileDeleteLink, md5Id, fileMd5PresentId, fileImageId, filePathInput] =
         secretEditor.fileElement(file, fileIndex);
 
       document.getElementById("files-input").insertAdjacentHTML("beforeend", element);
 
       secretEditor.browseFilesOnClick(fileUploadLink, fileUpload);
-      secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInput, fileDeleteLink, fileMd5PresentId, fileImageId);
-      secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInput, fileContent, md5Id);
+      secretEditor.formatUploadedFile(fileUpload, fileContent, fileDiv, fileInputContainer, fileDeleteLink, fileMd5PresentId, fileImageId);
+      secretEditor.activateFilesDeleteLink(fileDeleteLink, fileDiv, fileInputContainer, fileContent, md5Id);
       // Attach trimming handler for newly cloned file path input
-      secretEditor.attachFilePathTrimmer(fileInput);
+      secretEditor.attachFilePathTrimmer(filePathInput);
 
       return false;
     });
@@ -192,7 +192,7 @@ export var ManageSecret = {
 
   attachFilePathTrimmer: function(fileInputId) {
     // fileInputId is the id of the visible text input for the file path (e.g. files_0_path)
-    $("body").on("change blur input", "#" + fileInputId, function() {
+    $("body").on("change input", "#" + fileInputId, function() {
       let raw = $(this).val();
       let trimmed = raw !== undefined && raw !== null ? raw.trim() : raw;
       if (raw !== trimmed) {
@@ -204,8 +204,8 @@ export var ManageSecret = {
   activateEnvVarValidation: function (selector) {
     let secretEditor = this;
     // Validate on input and change, but always validate the trimmed value.
-    $("body").on("change textInput input blur", "#" + selector, function () {
-  const valid_name_regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+    $("body").on("change textInput input", "#" + selector, function () {
+      const valid_name_regex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
       // Trim whitespace from the input value (leading/trailing) and update the field on blur/change
       let raw = $(this).val();
       let name = raw !== undefined && raw !== null ? raw.trim() : raw;
