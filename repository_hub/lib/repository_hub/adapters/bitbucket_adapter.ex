@@ -81,11 +81,20 @@ defmodule RepositoryHub.BitbucketAdapter do
   end
 
   def fetch_token(user_id) do
-    [integration_type] = integration_types()
+    with {:ok, user} <- UserClient.describe(user_id),
+         :ok <- validate_not_service_account(user, "Bitbucket") do
+      [integration_type] = integration_types()
 
-    integration_type
-    |> UserClient.get_repository_token(user_id)
+      integration_type
+      |> UserClient.get_repository_token(user_id)
+    end
   end
+
+  defp validate_not_service_account(%{user: %{creation_source: :SERVICE_ACCOUNT}}, provider_name) do
+    error("Service accounts cannot use #{provider_name} OAuth tokens.")
+  end
+
+  defp validate_not_service_account(_user, _provider_name), do: :ok
 
   def context(_adapter, repository_id, stream \\ nil) do
     with {:ok, context} <- UniversalAdapter.context(repository_id, stream),
