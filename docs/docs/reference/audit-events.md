@@ -4,7 +4,7 @@ description: Audit log events reference
 
 # Audit Log Events Reference
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Each audit log entry shows applicable information about an event, such as:
 

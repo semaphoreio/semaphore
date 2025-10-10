@@ -5,7 +5,7 @@ title: Preflight Checks
 
 # Preflight Checks for Organizations
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Pre-flight checks are user-defined commands executed before the pipeline begins as part of the [pipeline initialization job](./pipelines#init-job). This page explains how to use this feature and shows some examples.
 

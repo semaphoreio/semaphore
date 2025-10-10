@@ -14,7 +14,7 @@ OpenID Connect (OIDC) allows you to establish a more secure trust relationship b
 
 ## Overview
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Semaphore users traditionally use [secrets](./secrets) to inject credentials or API keys in jobs that need to interact with cloud providers. Every time the CI pipeline needs to deploy an application or fetch resources from a Docker registry or S3 bucket, we need to supply a secret to authorize Semaphore to access your cloud.
 

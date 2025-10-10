@@ -6,7 +6,7 @@ description: Overview of all your projects
 
 <VideoTutorial title="How to use Organization Health dashboard" src="https://www.youtube.com/embed/2JVsH3DJccE?si=Xq_U0yWhryBsioDv" />
 
-<Available plans={['ScaleUp']} />
+<Available plans={['Enterprise']} />
 
 The Organization Health dashboard summarizes all your [Project Insights](./insights) in a single place.
 

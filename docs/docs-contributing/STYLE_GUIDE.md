@@ -299,7 +299,7 @@ You can pass an array of plans instead.
 
 ```js
 // Renders as: Available on Semaphore Cloud: Startup Scalup
-<Available  plans={['Startup','Scaleup']}/>
+<Available  plans={['Cloud','Enterprise']}/>
 ```
 
 ### Toggleable content
