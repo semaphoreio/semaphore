@@ -129,7 +129,8 @@ const FilterInfo = (state: { suites: types.Suite[], filteredSuites: types.Suite[
     return sum.add(suite.summary);
   }, types.Summary.empty());
 
-  const filteredSuiteSummary = filteredSuites.reduce((sum, suite) => {
+  // We need to use cloneDeep because syncSummary mutates the suite
+  const filteredSuiteSummary = _.cloneDeep(filteredSuites).reduce((sum, suite) => {
     suite.syncSummary();
     return sum.add(suite.summary);
   }, types.Summary.empty());
