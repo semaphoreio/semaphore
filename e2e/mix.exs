@@ -24,15 +24,19 @@ defmodule E2E.MixProject do
     if System.get_env("START_WALLABY") do
       base
     else
-      # Exclude ui_test_case.ex if Wallaby is not available
+      ui_test_files = [
+        "test/support/ui_test_case.ex",
+        "test/support/user_action.ex"
+      ]
+
       ["lib", "test/support"]
-      |> Enum.flat_map(fn path ->
-        if path == "test/support" do
+      |> Enum.flat_map(fn
+        "test/support" ->
           Path.wildcard("test/support/*.ex")
-          |> Enum.reject(&(&1 =~ "ui_test_case.ex"))
-        else
+          |> Enum.reject(&(&1 in ui_test_files))
+
+        path ->
           [path]
-        end
       end)
     end
   end
