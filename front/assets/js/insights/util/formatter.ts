@@ -32,33 +32,17 @@ export const Formatter = {
       return `N/A`;
     }
 
-    // Use arithmetic-based formatting (days/hours/minutes/seconds) to avoid
-    // timezone-dependent behavior of `moment.unix(...).format(...)`.
-    const secondsInDay = 24 * 3600;
-    const secondsInHour = 3600;
-    const secondsInMinute = 60;
-
-    let remaining = Math.floor(secs);
-    const days = Math.floor(remaining / secondsInDay);
-    remaining = remaining % secondsInDay;
-    const hours = Math.floor(remaining / secondsInHour);
-    remaining = remaining % secondsInHour;
-    const minutes = Math.floor(remaining / secondsInMinute);
-    const seconds = remaining % secondsInMinute;
-
-    if (days > 0) {
-      return `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if (secs >= 3600 * 24) {
+      const fullDays = Math.floor(secs / (3600 * 24));
+      return moment.unix(secs).format(`${fullDays}[d] H[h] m[m] s[s]`);
+    } else if (secs >= 3600) {
+      const duration = moment.duration(secs, `seconds`);
+      return `${duration.hours()}h ${duration.minutes()}m ${duration.seconds()}s`;
+    } else if (secs >= 60) {
+      return moment.unix(secs).format(`m[m] s[s]`);
+    } else {
+      return moment.unix(secs).format(`s[s]`);
     }
-
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s`;
-    }
-
-    if (minutes > 0) {
-      return `${minutes}m ${seconds}s`;
-    }
-
-    return `${seconds}s`;
   },
 
   percentage: (percentage: number): string => {
