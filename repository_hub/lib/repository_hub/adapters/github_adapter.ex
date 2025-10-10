@@ -70,9 +70,18 @@ defmodule RepositoryHub.GithubAdapter do
   end
 
   def fetch_token_by_user_id(adapter, user_id) do
-    adapter.integration_type
-    |> UserClient.get_repository_token(user_id)
+    with {:ok, user} <- UserClient.describe(user_id),
+         :ok <- validate_not_service_account(user, "GitHub") do
+      adapter.integration_type
+      |> UserClient.get_repository_token(user_id)
+    end
   end
+
+  defp validate_not_service_account(%{user: %{creation_source: :SERVICE_ACCOUNT}}, provider_name) do
+    error("Service accounts cannot use #{provider_name} OAuth tokens. Please use the appropriate integration type.")
+  end
+
+  defp validate_not_service_account(_user, _provider_name), do: :ok
 
   def fetch_token_by_slug(adapter, slug) do
     adapter.integration_type
