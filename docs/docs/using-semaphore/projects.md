@@ -193,9 +193,9 @@ Users can be granted access and permissions on a project by different means:
 
 ### How to manually add/remove members to projects {#manual}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
-Scaleup plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
+Enterprise plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
 
 <Steps>
 
@@ -212,7 +212,7 @@ See [project roles](./rbac#project) for more information on what actions can eac
 
 ### How to change permissions {#people-roles}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Open your project and go to the **People** tab
 
@@ -243,7 +243,7 @@ The actions with enabled checkbox are allowed for that role.
 
 ### How to create custom roles {#custom-roles}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Create custom roles to give your users the precise permissions they need. 
 
@@ -387,7 +387,7 @@ To learn more, see the [artifacts retention page](./artifacts#retention)
 
 ## Pre-flight checks {#preflight}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Pre-flight checks are user-defined commands executed before the pipeline begins as part of the pipeline [initialization job](./pipelines#init-job). These checks allow you to define the type of agent running the initialization job and to manually run commands before a pipeline starts.
 

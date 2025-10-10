@@ -6,7 +6,7 @@ description: OpenID Connect (OIDC) token reference
 
 This page describes how [OpenID Connect (OIDC)](../using-semaphore/openid) tokens are generated.
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 ## Reference
 
