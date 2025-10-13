@@ -183,3 +183,12 @@ config :front,
        System.get_env("SINGLE_TENANT") == "true"
 
 config :front, :edition, edition
+
+# Configure additional domains allowed in Content-Security-Policy connect-src directive
+# Format: comma-separated list of domains, e.g. "*.example.com,*.example2.com"
+csp_additional_domains =
+  System.get_env("CSP_ADDITIONAL_CONNECT_DOMAINS", "")
+  |> String.split(",", trim: true)
+  |> Enum.map(&String.trim/1)
+
+config :front, :csp_additional_connect_domains, csp_additional_domains
