@@ -84,7 +84,7 @@ defmodule FrontWeb.OrganizationOktaController do
           with {:ok, model} <- create_integration(org_id, user_id, integration),
                {:ok, token} <- gen_token(model) do
             Watchman.increment(watchman_name(:create, :success))
-            if Front.os?(), do: log_create(conn, user_id, model)
+            if !Front.saas?(), do: log_create(conn, user_id, model)
 
             conn
             |> put_flash(:notice, "Success: Your organization is connected with Okta")
