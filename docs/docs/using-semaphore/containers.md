@@ -2,7 +2,7 @@
 description: Using Docker and Containers in Semaphore
 ---
 
-# Docker and Containers
+# Use Docker for Running Jobs
 
 Run jobs inside Docker containers orchestrated by Semaphore.
 
@@ -24,7 +24,7 @@ To run the job inside a Docker container you must define at a Docker image in yo
 
 The following example shows how to set up two containers:
 
-- main: where the commands of the job are executed. The container is running an Ubuntu 20.22 container. The image is pulled from the [Semaphore Container Registry](./containers/container-registry)
+- main: where the commands of the job are executed. The container is running an Ubuntu 20.04 container. The image is pulled from the [Semaphore Container Registry](./containers/container-registry)
 - web: runs an nginx container and attaches it to the same network as the main container
 
 <Tabs groupId="editor-yaml">
