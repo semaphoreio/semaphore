@@ -2,7 +2,7 @@
 description: Using Docker and Containers in Semaphore
 ---
 
-# Use Docker for Running Jobs
+# Running Jobs in Docker Containers
 
 Run jobs inside Docker containers orchestrated by Semaphore.
 

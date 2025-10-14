@@ -205,7 +205,7 @@ blocks:
 
 ### Docker containers {#docker-environments}
 
-The [Docker and Containers page](./containers) shows how to use Docker environments in your jobs.
+The [Running Jobs in Docker Containers page](./containers) shows how to use Docker environments in your jobs.
 
 ### Prologue {#prologue}
 

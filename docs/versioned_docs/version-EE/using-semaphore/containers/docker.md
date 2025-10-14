@@ -9,7 +9,7 @@ Use Semaphore to build, test, store, and deploy Docker images to production. Thi
 
 :::tip
 
-This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see the [Docker and Containers](../containers).
+This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see [Running Jobs in Docker Containers](../containers).
 
 :::
 
