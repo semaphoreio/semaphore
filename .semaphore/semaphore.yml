@@ -2692,7 +2692,11 @@ blocks:
       jobs:
         - name: "Test"
           commands:
+            - make test.setup
             - make test
+        - name: "Lint"
+          commands:
+            - make lint
   # Encryptor
   - name: "Encryptor: Provision Prod Image"
     dependencies: []

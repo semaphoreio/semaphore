@@ -1,37 +1,41 @@
 ARG GO_VERSION=1.23.8
 ARG ALPINE_VERSION=3.20
 
-FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS builder
+FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS base
+ARG APP_NAME
+ARG BUILD_ENV
 WORKDIR /app
 
-# Allow matching version of Go tools inside container.
 ENV CGO_ENABLED=0 \
     GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 
-# Copy module manifests and download dependencies.
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go mod download
 
-# Copy source code.
 COPY cmd ./cmd
 COPY pkg ./pkg
 
-# Build the server binary.
+FROM base AS dev
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /bin/mcp_server ./cmd/mcp_server
+    go build ./cmd/mcp_server
+CMD ["sh", "-c", "while sleep 1000; do :; done"]
 
-FROM alpine:${ALPINE_VERSION}
+FROM base AS builder
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    go build -o /tmp/mcp_server ./cmd/mcp_server
+
+FROM alpine:${ALPINE_VERSION} AS runner
 RUN adduser -D -H -s /sbin/nologin appuser
 USER appuser
 WORKDIR /app
 
-COPY --from=builder /bin/mcp_server /usr/local/bin/mcp_server
+COPY --from=builder /tmp/mcp_server /usr/local/bin/mcp_server
 
-EXPOSE 8080
+EXPOSE 3001
 
 ENTRYPOINT ["/usr/local/bin/mcp_server"]
-CMD ["-http", ":8080"]
+CMD ["-http", ":3001"]
