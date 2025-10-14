@@ -5,17 +5,11 @@ sidebar_position: 5
 
 # Building Docker Images
 
-
-
-
-
-
-
 Use Semaphore to build, test, store, and deploy Docker images to production. This page explains how to use Docker inside Semaphore.
 
 :::tip
 
-This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see the [Docker environments page](../pipelines#docker-environments).
+This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see the [Running Jobs in Docker Containers page](../containers).
 
 :::
 
@@ -73,7 +67,7 @@ Due to the introduction of [Docker Hub rate limits](https://www.docker.com/incre
 
 ### Docker layer caching {#caching}
 
-Docker images are organized as layers, which you can leverage to speed up the build process on large images. 
+Docker images are organized as layers, which you can leverage to speed up the build process on large images.
 
 In order to leverage layer caching you can modify your Docker build job as follows
 
@@ -90,7 +84,6 @@ In order to leverage layer caching you can modify your Docker build job as follo
     ```shell
     docker pull "$DOCKER_USERNAME"/my-image-name:latest
     ```
-
 
 3. Add the `--cache-from` argument to the build command
 
