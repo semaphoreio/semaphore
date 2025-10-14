@@ -5,11 +5,6 @@ sidebar_position: 6
 
 # Semaphore Container Registry
 
-
-
-
-
-
 Semaphore provides an public Docker Container Registry to pull popular images faster into your jobs.
 
 ## Overview
@@ -641,5 +636,6 @@ These are cached images of [Dockerized Unity Editor](https://hub.docker.com/r/un
 
 ## See also
 
-- [How to run jobs inside Docker containers](../pipelines#docker-environments)
-- [How to work with Docker](./docker)
+- [Running jobs in Docker containers](../containers)
+- [Building Docker images in Semaphore](./docker)
+- [Pipeline YAML for containers](../../reference/pipeline-yaml#containers)
