@@ -121,6 +121,10 @@ defmodule Rbac.Application do
       %{
         worker: {Rbac.Okta.Scim.Provisioner, []},
         active: System.get_env("START_RBAC_WORKERS") == "true"
+      },
+      %{
+        worker: {Rbac.Workers.SyncOidcUsers, []},
+        active: System.get_env("START_SYNC_OIDC_USERS_WORKER") == "true"
       }
     ])
   end
