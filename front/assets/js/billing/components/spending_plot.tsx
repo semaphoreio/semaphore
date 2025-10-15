@@ -157,7 +157,7 @@ const AxisX = ({ translation, xScale }: AxisXProps) => {
 };
 
 
-export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode, }) => {
+export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode }) => {
   const adjustedLeft = (left: number) => {
     if (left < 2 * width) {
       left += 25;

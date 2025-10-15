@@ -12,7 +12,7 @@ import { Headers } from "../network/request";
 import * as marked from "marked";
 import DOMPurify from "dompurify";
 
-export const Actions = ({ item }: { item: FlakyTestItem, }) => {
+export const Actions = ({ item }: { item: FlakyTestItem }) => {
   const config = useContext(stores.Config.Context);
   const [resolved, setResolved] = useState(item.resolved);
 
@@ -50,7 +50,7 @@ export const Actions = ({ item }: { item: FlakyTestItem, }) => {
 };
 
 
-const TicketAction = ({ item }: { item: FlakyTestItem, }) => {
+const TicketAction = ({ item }: { item: FlakyTestItem }) => {
   const hasTicketUrl = item.ticketUrl?.length > 0;
   const tippyContent = hasTicketUrl ? `Ticket has been created for this test` :
     `Create a ticket for this test`;
@@ -214,7 +214,7 @@ const TicketDetail = (props: TicketDetailProps) => {
 };
 
 
-const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: Dispatch<StateUpdater<boolean>>, }) => {
+const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: Dispatch<StateUpdater<boolean>> }) => {
   const onClick = () => {
     if (resolved) {
       setResolved(!resolved);

@@ -212,7 +212,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
   );
 }
 
-const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.State, metrics: types.Chart.Metric[], }) => {
+const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.State, metrics: types.Chart.Metric[] }) => {
   const Overlay = () => {
     return (
       <div className="bg-white o-80 mt2" style={{ width: `100%`, height: `95%`, position: `absolute`, zIndex: `1` }}>
@@ -275,7 +275,7 @@ const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.S
   );
 };
 
-const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number>, }) => {
+const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number> }) => {
   const xScaleRef = createRef<SVGGElement>();
   useEffect(() => {
     if(xScaleRef.current) {

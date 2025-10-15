@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import * as stores from "js/agents/stores";
 import * as pages from "js/agents/pages";
 
-export default function ({ dom, config }: { dom: HTMLElement, config: any, }) {
+export default function ({ dom, config }: { dom: HTMLElement, config: any }) {
   const configState = stores.Config.State.fromJSON(config);
   render(
     <BrowserRouter basename={config.baseUrl}>

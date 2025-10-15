@@ -2,7 +2,7 @@ import { createContext } from "preact";
 import { Tests } from "../types";
 
 export type Action =
-  | { type: `SET_TEST`, value: Tests.FlakyDetail, }
+  | { type: `SET_TEST`, value: Tests.FlakyDetail }
   ;
 
 export interface State {
@@ -22,4 +22,4 @@ export const EmptyState: State = {
   test: null,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

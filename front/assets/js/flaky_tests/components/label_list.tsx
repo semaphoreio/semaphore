@@ -10,7 +10,7 @@ import * as toolbox from "js/toolbox";
 import styled from "styled-components";
 
 
-export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-center mt1` }: { testId: string, labels: string[], setLabels: any, labelClass?: string, }) => {
+export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-center mt1` }: { testId: string, labels: string[], setLabels: any, labelClass?: string }) => {
   const config = useContext(stores.Config.Context);
   const { state: filterState, dispatch: dispatchFilter } = useContext(stores.Filter.Context);
 
@@ -78,16 +78,16 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
     setQuery(newQuery);
   };
 
-  const LabelLink = styled.a<{ $label: string, }>`
-    background-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 30) };
-    border-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 60) };
+  const LabelLink = styled.a<{ $label: string }>`
+    background-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 30) };
+    border-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 60) };
 
     &:hover {
-      background-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 60) };
+      background-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 60) };
     }
   `;
 
-  const TagLink = ({ label }: { label: string, }) => {
+  const TagLink = ({ label }: { label: string }) => {
     return (
       <div className={labelClass}>
         <LabelLink $label={label} className="link black ba ph2 pointer br3 br--left" onClick={() => { filterByLabel(label); }}>{label}</LabelLink>
@@ -108,7 +108,7 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
   );
 };
 
-const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
+const CreateLabel = ({ onCreate }: { onCreate: any } ) => {
   const inputRef = useRef<HTMLInputElement>();
 
   const [label, setLabel] = useState(``);

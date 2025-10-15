@@ -2,7 +2,7 @@ import { Fragment, VNode } from "preact";
 import * as Loading from "../stores/loading";
 import { Asset } from "js/toolbox";
 
-export const Loader = ({ loadingState, children }: { loadingState: Loading.State, children?: VNode<any>[] | VNode<any>, }) => {
+export const Loader = ({ loadingState, children }: { loadingState: Loading.State, children?: VNode<any>[] | VNode<any> }) => {
   const {
     loading,
     errors

@@ -14,7 +14,7 @@ export const GroupTooltip = (props: GroupTooltipProps) => {
   />;
 };
 
-const GroupDescription = ({ group }: { group: types.Spendings.Group, }) => {
+const GroupDescription = ({ group }: { group: types.Spendings.Group }) => {
   switch (group.type) {
     case types.Spendings.GroupType.MachineCapacity:
       return (

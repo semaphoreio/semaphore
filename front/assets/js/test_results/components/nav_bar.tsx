@@ -6,18 +6,18 @@ import { useContext, useEffect } from "preact/hooks";
 import { FilterStore, NavigationStore, ReportStore } from "../stores";
 import { Inflector } from "../util";
 
-export const NavBar = ({ className }: { className?: string, }) => {
+export const NavBar = ({ className }: { className?: string }) => {
   const reports = useContext(ReportStore.Context);
   const navigation = useContext(NavigationStore.Context);
 
   useEffect(() => {
-    if(!navigation.state.activeReportId) {
+    if (!navigation.state.activeReportId) {
       return;
     }
 
-    const currentReport: Report = reports.state.items.find(report => report.id === navigation.state.activeReportId);
+    const currentReport: Report = reports.state.items.find((report) => report.id === navigation.state.activeReportId);
 
-    if(!currentReport) {
+    if (!currentReport) {
       return;
     }
 
@@ -28,17 +28,13 @@ export const NavBar = ({ className }: { className?: string, }) => {
     <div className={className}>
       <div className="pa2 gray">{Inflector.pluralize(reports.state.items.length, `test report`)}</div>
       {reports.state.items.map((report) => {
-        return <NavBarItem
-          className="pl2 pr3 pv1 mb2 pointer br2 br--left"
-          report={report}
-          key={report.id}
-        />;
+        return <NavBarItem className="pl2 pr3 pv1 mb2 pointer br2 br--left" report={report} key={report.id}/>;
       })}
     </div>
   );
 };
 
-const NavBarItem = ({ className, report }: { className?: string, report: Report, }) => {
+const NavBarItem = ({ className, report }: { className?: string, report: Report }) => {
   const navigation = useContext(NavigationStore.Context);
   const filter = useContext(FilterStore.Context);
   const { summary } = report;
@@ -63,13 +59,12 @@ const NavBarItem = ({ className, report }: { className?: string, report: Report,
         [State.PASSED]: `green`,
         [State.SKIPPED]: `gray`,
         [State.EMPTY]: `green`,
-      }
-    }
+      },
+    },
   };
 
-
   const itemClass = (summary: Summary): string => {
-    if(navigation.state.activeReportId == report.id) {
+    if (navigation.state.activeReportId == report.id) {
       return `${palette.item.focusClass[summary.state]}`;
     } else {
       return `${palette.item.class[summary.state]}`;
@@ -88,7 +83,6 @@ const NavBarItem = ({ className, report }: { className?: string, report: Report,
     navigation.dispatch({ type: `SET_ACTIVE_REPORT`, reportId: report.id });
   };
 
-
   return (
     <div className={className + ` ${itemClass(summary)}`} onClick={setActiveReport}>
       <div className={`b word-wrap ${shouldTruncate() ? `truncate` : ``}`}>
@@ -96,7 +90,9 @@ const NavBarItem = ({ className, report }: { className?: string, report: Report,
         {report.name}
       </div>
       <div className="f6">{report.summary.formattedResults()}</div>
-      <div className="f6">Duration: <Duration duration={summary.duration}/></div>
+      <div className="f6">
+        Duration: <Duration duration={summary.duration}/>
+      </div>
     </div>
   );
 };

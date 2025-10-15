@@ -52,7 +52,7 @@ export const Button = () => {
   const roleChanged = defaultRole != selectedRole;
   const emailChanged = defaultEmail != email;
 
-  const ResponseHandler = (props: { response: Response, }) => {
+  const ResponseHandler = (props: { response: Response }) => {
     return (
       <div
         className={`f6 tr mt2 ${
@@ -416,8 +416,8 @@ class User {
   memberType: string;
 
   roles: UserRole[] = [];
-  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string, }>;
-  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string, }>;
+  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string }>;
+  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string }>;
   resetPasswordUrl: toolbox.APIRequest.Url<{
     password: string;
     message: string;

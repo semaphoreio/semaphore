@@ -2,8 +2,8 @@ import { createContext } from "preact";
 import { Report } from "../types/report";
 
 export type Action =
-  | { type: `SET_ITEMS`, items: Report[], }
-  | { type: `SELECT_ITEM`, item: Report, }
+  | { type: `SET_ITEMS`, items: Report[] }
+  | { type: `SELECT_ITEM`, item: Report }
   ;
 
 export interface State {
@@ -28,4 +28,4 @@ export const EmptyState: State = {
   isEmpty: false
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

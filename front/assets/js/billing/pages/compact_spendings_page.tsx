@@ -35,7 +35,7 @@ export const CompactSpendingsPage = () => {
   );
 };
 
-const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }
@@ -110,7 +110,7 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
   );
 };
 
-const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean, }) => {
+const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean }) => {
   return (
     <div className={`hover-bg-washed-gray ${lastItem ? `` : `bb b--black-075`}`}>
       <div className="ph4 pv2">
@@ -130,7 +130,7 @@ const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, las
   );
 };
 
-const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }

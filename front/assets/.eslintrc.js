@@ -26,7 +26,7 @@ module.exports = {
   },
   ignorePatterns: ["*.js", "*.json"],
   rules: {},
- overrides: [
+  overrides: [
     {
       files: ["js/**/*.spec.js"],
       env: {
@@ -86,7 +86,8 @@ module.exports = {
             },
           },
         ],
-        "no-console": 1,
+        "no-console": ["error", { allow: ["warn", "error"] }],
+        "max-len": ["error", {"code": 140, "ignoreComments": true, "ignoreStrings": true, "ignoreTemplateLiterals": true}],
         "no-multi-spaces": "error",
         "@typescript-eslint/member-delimiter-style": [
           "warn",
@@ -97,13 +98,14 @@ module.exports = {
             },
             singleline: {
               delimiter: "comma",
-              requireLast: true,
+              requireLast: false,
             },
           },
         ],
         "semi-spacing": ["error", {"before": false, "after": true}],
         "react/jsx-uses-react": "off",
         "react/react-in-jsx-scope": "off",
+        // "react/jsx-one-expression-per-line": ["error", { "allow": "single-child" }],
         "react/display-name": "off",
         "react/jsx-tag-spacing": [
           "error",
@@ -114,6 +116,12 @@ module.exports = {
             beforeClosing: "never",
           },
         ],
+        "@typescript-eslint/no-misused-promises": [
+          "error",
+          {
+            "checksVoidReturn": false
+          }
+        ]
       },
     },
   ],

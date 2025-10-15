@@ -21,7 +21,7 @@ const DefaultPlotState: PlotState = {
   width: 0,
 };
 
-const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[], }>({
+const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[] }>({
   plotState: DefaultPlotState,
   plotData: [],
 });

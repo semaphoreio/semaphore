@@ -45,24 +45,24 @@ interface RepositoryState {
 }
 
 type RepositoryAction =
-  | { type: `SELECT_REPOSITORY`, payload: Repository | null, }
-  | { type: `SET_PROJECT_NAME`, payload: string, }
-  | { type: `START_DUPLICATE_CHECK`, }
+  | { type: `SELECT_REPOSITORY`, payload: Repository | null }
+  | { type: `SET_PROJECT_NAME`, payload: string }
+  | { type: `START_DUPLICATE_CHECK` }
   | {
     type: `FINISH_DUPLICATE_CHECK`; payload: {
-      connected_projects?: Array<{ name: string, url: string, }>;
+      connected_projects?: Array<{ name: string, url: string }>;
       next_iteration_name?: string;
     };
   }
-  | { type: `ENABLE_DUPLICATE_MODE`, }
-  | { type: `START_PROJECT_CREATION`, }
-  | { type: `SET_PROJECT_CHECK_URL`, payload: string, }
-  | { type: `SET_REPO_CONNECTION_URL`, payload: string, }
-  | { type: `SET_CREATED_PROJECT_NAME`, payload: string, }
-  | { type: `SET_SKIP_ONBOARDING_URL`, payload: string, }
+  | { type: `ENABLE_DUPLICATE_MODE` }
+  | { type: `START_PROJECT_CREATION` }
+  | { type: `SET_PROJECT_CHECK_URL`, payload: string }
+  | { type: `SET_REPO_CONNECTION_URL`, payload: string }
+  | { type: `SET_CREATED_PROJECT_NAME`, payload: string }
+  | { type: `SET_SKIP_ONBOARDING_URL`, payload: string }
   | {
     type: `UPDATE_PROJECT_STATUS`; payload: {
-      steps: Array<{ id: string, label: string, completed: boolean, }>;
+      steps: Array<{ id: string, label: string, completed: boolean }>;
       isComplete: boolean;
       error?: string;
       waitingMessage?: string;
@@ -71,8 +71,8 @@ type RepositoryAction =
       nextScreenUrl?: string;
     };
   }
-  | { type: `FINISH_PROJECT_CREATION`, success: boolean, }
-  | { type: `RESET`, };
+  | { type: `FINISH_PROJECT_CREATION`, success: boolean }
+  | { type: `RESET` };
 
 const initialState: RepositoryState = {
   selectedRepo: null,
@@ -224,7 +224,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
 
         let connected_projects;
         if (data.projects) {
-          connected_projects = data.projects.map((project: { name: string, path: string, }) => ({
+          connected_projects = data.projects.map((project: { name: string, path: string }) => ({
             name: project.name,
             url: project.path
           }));

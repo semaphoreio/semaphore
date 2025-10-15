@@ -23,7 +23,7 @@ export const ClassicSpendingsPage = () => {
   );
 };
 
-const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   const config = useContext(stores.Config.Context);
 
   if (!spending) {
