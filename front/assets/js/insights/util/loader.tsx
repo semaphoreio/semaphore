@@ -1,11 +1,12 @@
-import { Fragment, VNode } from "preact";
-import * as Loading from "../stores/loading";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
+import type * as Loading from "../stores/loading";
 import { Asset } from "js/toolbox";
 
-export const Loader = ({ loadingState, children }: { loadingState: Loading.State, children?: VNode<any>[] | VNode<any>, }) => {
+export const Loader = ({ loadingState, children }: { loadingState: Loading.State, children?: VNode<any>[] | VNode<any> }) => {
   const {
     loading,
-    errors
+    errors,
   } = loadingState;
 
   const containerStyle = { };
@@ -31,7 +32,11 @@ export const Loader = ({ loadingState, children }: { loadingState: Loading.State
       <Fragment>
         <div className="flex items-center justify-center br3 mt4" style={containerStyle}>
           <div className="flex items-center">
-            <Asset path="images/spinner-2.svg" width="20" height="20"/>
+            <Asset
+              path="images/spinner-2.svg"
+              width="20"
+              height="20"
+            />
             <span className="ml1 gray">Loading data, please wait&hellip;</span>
           </div>
         </div>

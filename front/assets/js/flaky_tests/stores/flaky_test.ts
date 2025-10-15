@@ -1,27 +1,27 @@
-import { HistoryItem, FlakyTestItem } from "../types/flaky_test_item";
+import type { HistoryItem, FlakyTestItem } from "../types/flaky_test_item";
 import { Status } from "../types";
 import { createContext } from "preact";
-import { FlakyTestsFilter } from "../types/flaky_tests_filter";
-import { StateUpdater } from "preact/hooks";
+import type { FlakyTestsFilter } from "../types/flaky_tests_filter";
+import type { StateUpdater } from "preact/hooks";
 
 export type Action =
-    | { type: `SET_FLAKY_URL`, value: string, }
-    | { type: `SET_FLAKY`, value: FlakyTestItem[], }
-    | { type: `SET_STATUS`, status: Status, }
-    | { type: `SET_DISRUPTION_HISTORY`, value: HistoryItem[], }
-    | { type: `SET_DISRUPTION_CHART_STATUS`, status: Status, }
-    | { type: `SET_FLAKY_HISTORY`, value: HistoryItem[], }
-    | { type: `SET_FLAKY_CHART_STATUS`, status: Status, }
-    | { type: `SET_FLAKY_COUNT`, value: number, }
-    | { type: `SET_SORT_ORDER`, value: string[], }
-    | { type: `SET_SEARCH_FILTER`, value: string, }
-    | { type: `SET_FLAKY_FILTER_LIST`, value: FlakyTestsFilter[], }
-    | { type: `SET_FILTER_STATUS`, status: Status, }
-    | { type: `DELETE_FILTER`, value: FlakyTestsFilter, }
-    | { type: `CREATE_FILTER`, value: FlakyTestsFilter, }
-    | { type: `UPDATE_FILTER`, value: FlakyTestsFilter[], }
-    | { type: `LOAD_PAGE`, page: number, }
-    | { type: `SET_TOTAL_PAGES`, value: number, }
+    | { type: `SET_FLAKY_URL`, value: string }
+    | { type: `SET_FLAKY`, value: FlakyTestItem[] }
+    | { type: `SET_STATUS`, status: Status }
+    | { type: `SET_DISRUPTION_HISTORY`, value: HistoryItem[] }
+    | { type: `SET_DISRUPTION_CHART_STATUS`, status: Status }
+    | { type: `SET_FLAKY_HISTORY`, value: HistoryItem[] }
+    | { type: `SET_FLAKY_CHART_STATUS`, status: Status }
+    | { type: `SET_FLAKY_COUNT`, value: number }
+    | { type: `SET_SORT_ORDER`, value: string[] }
+    | { type: `SET_SEARCH_FILTER`, value: string }
+    | { type: `SET_FLAKY_FILTER_LIST`, value: FlakyTestsFilter[] }
+    | { type: `SET_FILTER_STATUS`, status: Status }
+    | { type: `DELETE_FILTER`, value: FlakyTestsFilter }
+    | { type: `CREATE_FILTER`, value: FlakyTestsFilter }
+    | { type: `UPDATE_FILTER`, value: FlakyTestsFilter[] }
+    | { type: `LOAD_PAGE`, page: number }
+    | { type: `SET_TOTAL_PAGES`, value: number }
     ;
 
 export interface State {
@@ -164,4 +164,4 @@ export const EmptyState: State = {
   totalPages: 1,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, query: string, setQuery: StateUpdater<string>, }>({ state: EmptyState, dispatch: () => undefined, query: ``, setQuery: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void, query: string, setQuery: StateUpdater<string> }>({ state: EmptyState, dispatch: () => undefined, query: ``, setQuery: () => undefined });

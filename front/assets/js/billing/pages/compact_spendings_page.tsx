@@ -35,7 +35,7 @@ export const CompactSpendingsPage = () => {
   );
 };
 
-const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }
@@ -79,7 +79,11 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className={ isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
@@ -105,12 +109,16 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => 
         </div>
       </div>
       {sortedItems.length == 0 && <div className="pa3 tc">No machines available</div>}
-      {sortedItems.map((machine, idx) => <MachineItem machine={machine} lastItem={ idx == sortedItems.length - 1 } key={idx}/>)}
+      {sortedItems.map((machine, idx) => <MachineItem
+        machine={machine}
+        lastItem={ idx == sortedItems.length - 1 }
+        key={idx}
+      />)}
     </Fragment>
   );
 };
 
-const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean, }) => {
+const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, lastItem?: boolean }) => {
   return (
     <div className={`hover-bg-washed-gray ${lastItem ? `` : `bb b--black-075`}`}>
       <div className="ph4 pv2">
@@ -130,7 +138,7 @@ const MachineItem = ({ machine, lastItem }: { machine: types.Spendings.Item, las
   );
 };
 
-const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   if (!spending) {
     return null;
   }

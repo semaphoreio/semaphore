@@ -15,7 +15,12 @@ export const TokenDisplay = ({ token, onClose }: TokenDisplayProps) => {
         </p>
       </div>
 
-      <Box type="info" className="mb3" showCopy={true} copyContent={token}>
+      <Box
+        type="info"
+        className="mb3"
+        showCopy={true}
+        copyContent={token}
+      >
         {token}
       </Box>
 

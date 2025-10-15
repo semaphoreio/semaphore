@@ -3,7 +3,7 @@ import { useSteps } from "../stores/create/steps";
 
 
 export const ProgressBar = () => {
-  const { state } = useSteps<{ id: string, title: string, }>();
+  const { state } = useSteps<{ id: string, title: string }>();
 
   const steps = state?.steps || [];
 

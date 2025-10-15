@@ -1,9 +1,11 @@
-import Popper, { createPopper } from "@popperjs/core";
-import { VNode, h, Fragment } from "preact";
+import type Popper from "@popperjs/core";
+import { createPopper } from "@popperjs/core";
+import type { VNode, h } from "preact";
+import { Fragment } from "preact";
 import { createPortal } from "preact/compat";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { define } from "preactement";
-import { Placement } from "tippy.js";
+import type { Placement } from "tippy.js";
 
 interface TooltipProps extends h.JSX.HTMLAttributes {
   anchor: VNode<any>;
@@ -59,28 +61,24 @@ export const Tooltip = (props: TooltipProps) => {
 
   useEffect(() => {
     if (!anchorEl.current || !tooltipEl.current) return;
-    const instance = createPopper(
-      anchorEl.current as Element,
-      tooltipEl.current as HTMLElement,
-      {
-        placement: props.placement,
-        strategy: `fixed`,
-        modifiers: [
-          {
-            name: `arrow`,
-            options: {
-              element: tooltipArrowEl.current,
-            },
+    const instance = createPopper(anchorEl.current as Element, tooltipEl.current as HTMLElement, {
+      placement: props.placement,
+      strategy: `fixed`,
+      modifiers: [
+        {
+          name: `arrow`,
+          options: {
+            element: tooltipArrowEl.current,
           },
-          {
-            name: `offset`,
-            options: {
-              offset: [0, 12],
-            },
+        },
+        {
+          name: `offset`,
+          options: {
+            offset: [0, 12],
           },
-        ],
-      }
-    );
+        },
+      ],
+    });
 
     setPopper(instance);
 

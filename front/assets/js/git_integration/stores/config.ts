@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Integration } from "../types";
+import type { Integration } from "../types";
 
 export interface State {
   baseUrl: string;
@@ -17,5 +17,5 @@ export const Context = createContext<State>({
   orgId: ``,
   orgUsername: ``,
   domain: ``,
-  csrfTokenCookieKey: `githubAppInstallStatusToken`
+  csrfTokenCookieKey: `githubAppInstallStatusToken`,
 });

@@ -5,7 +5,7 @@ import * as stores from "../../stores";
 import * as components from "../../components";
 import * as toolbox from "js/toolbox";
 import { useNavigate, useParams } from "react-router-dom";
-import { IntegrationType } from "../../types/provider";
+import type { IntegrationType } from "../../types/provider";
 import { useSteps } from "../../stores/create/steps";
 
 export const ChooseRepo = () => {
@@ -81,7 +81,8 @@ const ChooseRepoContent = () => {
         svgPath="images/ill-girl-looking-down.svg"
         title="Connect repository"
         subtitle="Configure repository access and integration settings."
-        additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."/>
+        additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."
+      />
       {/* <!-- RIGHT SIDE --> */}
       <div className="w-two-thirds">
 

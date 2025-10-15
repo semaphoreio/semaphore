@@ -1,4 +1,5 @@
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import * as stores from "../../stores";
 import * as components from "../";
 import { useContext } from "preact/hooks";
@@ -18,7 +19,11 @@ export const Component = (): VNode => {
           <li>
             <div className="mb2">
               Install{` `}
-              <a href="https://helm.sh/" target="_blank" rel="noreferrer">
+              <a
+                href="https://helm.sh/"
+                target="_blank"
+                rel="noreferrer"
+              >
                 helm
               </a>
             </div>

@@ -16,14 +16,15 @@ export const ClassicSpendingsPage = () => {
         group={state.selectedSpending.getGroup(types.Spendings.GroupType.MachineCapacity)}
         footer={<div>Monthly price for boxes:</div>}
       />
-      <components.SpendingGroup group={state.selectedSpending.getGroup(types.Spendings.GroupType.Storage)}
+      <components.SpendingGroup
+        group={state.selectedSpending.getGroup(types.Spendings.GroupType.Storage)}
         footer={<div>Spending for artifacts:</div>}
       />
     </div>
   );
 };
 
-const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
+const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
   const config = useContext(stores.Config.Context);
 
   if (!spending) {
@@ -44,7 +45,11 @@ const PlanInfo = ({ spending }: { spending?: types.Spendings.Spending, }) => {
       <div>
         <div className="inline-flex items-center">
           {(plan.requiresCreditCard() || (!plan.isTrial() && plan.isFlat()) || (plan.isTrial() && !plan.isFlat())) && showPaymentMethodLink
-            && <a href={plan.paymentMethodUrl} target="_blank" rel="noreferrer">
+            && <a
+              href={plan.paymentMethodUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
               {noPaymentMethod && `Set credit card ↗`}
               {!noPaymentMethod && `Update credit card ↗`}
             </a>}

@@ -1,7 +1,7 @@
 import { createContext } from "preact";
 
 export type Action =
-  | { type: `SET_URL`, url: string, }
+  | { type: `SET_URL`, url: string }
   ;
 
 
@@ -21,7 +21,7 @@ export const Reducer = (state: State, action: Action): State => {
 export type Dispatcher = (action: Action) => void;
 
 export const EmptyState: State = {
-  url: ``
+  url: ``,
 };
 
 interface ContextInterface {
@@ -31,5 +31,5 @@ interface ContextInterface {
 
 export const Context = createContext<ContextInterface>({
   state: EmptyState,
-  dispatch: () => undefined
+  dispatch: () => undefined,
 });

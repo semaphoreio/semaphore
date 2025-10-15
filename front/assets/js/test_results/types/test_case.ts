@@ -1,6 +1,7 @@
-import { FilterStore } from "../stores";
-import { GetState, State, Stateful } from "../util/stateful";
-import { JSONTestCase, JSONFailure } from "./json_types";
+import type { FilterStore } from "../stores";
+import type { Stateful } from "../util/stateful";
+import { GetState, State } from "../util/stateful";
+import type { JSONTestCase, JSONFailure } from "./json_types";
 
 function parseState(state: string): State {
   switch (state) {
