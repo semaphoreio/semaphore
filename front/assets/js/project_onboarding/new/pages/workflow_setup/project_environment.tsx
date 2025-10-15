@@ -28,7 +28,8 @@ const AgentCard = ({ agent, isCloud, isSelected, onClick }: AgentCardProps) => {
           <toolbox.Asset
             path={isCloud ? `images/icn-cloud.svg` : `images/icn-self-hosted.svg`}
             className="db mr2"
-            style="width: 26px; height:26px;"/>
+            style="width: 26px; height:26px;"
+          />
           <span className="f4 b truncate">{agent.type}</span>
         </div>
       </button>
@@ -47,14 +48,17 @@ export const Projectenvironment = () => {
     dispatch([`SET_CURRENT`, `select-environment`]);
   }, []);
 
-  const handleAgentSelect = useCallback((agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType) => {
-    const isCloudAgent = `available_os_images` in agent;
+  const handleAgentSelect = useCallback(
+    (agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType) => {
+      const isCloudAgent = `available_os_images` in agent;
 
-    setSelectedAgentType({
-      type: agent.type,
-      available_os_images: isCloudAgent ? agent.available_os_images : undefined
-    });
-  }, [setSelectedAgentType]);
+      setSelectedAgentType({
+        type: agent.type,
+        available_os_images: isCloudAgent ? agent.available_os_images : undefined,
+      });
+    },
+    [setSelectedAgentType]
+  );
 
   useEffect(() => {
     // Only select if no agent is currently selected
@@ -77,12 +81,12 @@ export const Projectenvironment = () => {
       const response = await fetch(configState.updateProjectUrl, {
         method: `PUT`,
         headers: {
-          'Content-Type': `application/json`,
-          'x-csrf-token': configState.csrfToken,
+          "Content-Type": `application/json`,
+          "x-csrf-token": configState.csrfToken,
         },
         body: JSON.stringify({
-          initial_pipeline_file: envState.yamlPath
-        })
+          initial_pipeline_file: envState.yamlPath,
+        }),
       });
 
       if (!response.ok) {
@@ -98,11 +102,11 @@ export const Projectenvironment = () => {
 
   const onSkipOnboarding = (e: Event) => {
     e.preventDefault();
-    
+
     void handleSkipOnboarding({
       skipOnboardingUrl: configState.skipOnboardingUrl,
       csrfToken: configState.csrfToken,
-      projectUrl: configState.projectUrl
+      projectUrl: configState.projectUrl,
     });
   };
 
@@ -112,8 +116,10 @@ export const Projectenvironment = () => {
         <div className="flex-l">
           <components.InfoPanel
             svgPath="images/ill-girl-finger-up.svg"
-            title="Select agent" subtitle="Choose the execution environment for your pipeline jobs."
-            additionalInfo="Agents determine where your pipeline jobs run. Select a machine type that matches your project's requirements."/>
+            title="Select agent"
+            subtitle="Choose the execution environment for your pipeline jobs."
+            additionalInfo="Agents determine where your pipeline jobs run. Select a machine type that matches your project's requirements."
+          />
           <div className="flex-auto w-two-thirds">
             <div className="pb3 mb3 bb b--black-10">
               <div className="flex justify-between items-center">
@@ -127,7 +133,11 @@ export const Projectenvironment = () => {
               <p className="f4 f3-m mb0">Configuration Location</p>
               <p className="f6 gray mb1">Specify the path for the pipeline configuration YAML file in your repository.</p>
               <div className="relative flex items-center ba b--black-20 br2 bg-white">
-                <toolbox.Asset path="images/icn-file.svg" className="flex-shrink-0 mh2" style="width: 16px; height: 16px;"/>
+                <toolbox.Asset
+                  path="images/icn-file.svg"
+                  className="flex-shrink-0 mh2"
+                  style="width: 16px; height: 16px;"
+                />
                 <input
                   type="text"
                   id="yaml-path"
@@ -150,7 +160,11 @@ export const Projectenvironment = () => {
                     {configState.agentTypes?.cloud.map((agent) => (
                       <Tippy
                         key={agent.type}
-                        content={<div>{agent.vcpu} vCPU, {agent.ram} GB RAM, {agent.disk} GB SSD</div>}
+                        content={
+                          <div>
+                            {agent.vcpu} vCPU, {agent.ram} GB RAM, {agent.disk} GB SSD
+                          </div>
+                        }
                         placement="top"
                         trigger="mouseenter"
                       >
@@ -184,13 +198,8 @@ export const Projectenvironment = () => {
                       </div>
                     ))}
                     {/* button for create new agent. */}
-                    <div
-                      className={`w-third pa2`}
-                    >
-                      <a
-                        href={configState.createSelfHostedAgentUrl}
-                        className={`link db btn btn-primary pa3 br3`}
-                      >
+                    <div className={`w-third pa2`}>
+                      <a href={configState.createSelfHostedAgentUrl} className={`link db btn btn-primary pa3 br3`}>
                         <div className="flex items-center">
                           <span className="material-symbols-outlined mr2 b">add</span>
                           <span className="f4 truncate">Create new</span>
@@ -201,17 +210,21 @@ export const Projectenvironment = () => {
                 </div>
               )}
 
-              {(!configState.agentTypes?.cloud.length && !configState.agentTypes?.selfHosted.length) && (
-                <div className="pa3 bg-lightest-silver br2 gray tc">
-                  No machine types available at the moment
-                </div>
+              {!configState.agentTypes?.cloud.length && !configState.agentTypes?.selfHosted.length && (
+                <div className="pa3 bg-lightest-silver br2 gray tc">No machine types available at the moment</div>
               )}
             </div>
 
             <div className="mt3">
               <p className="f4 f3-m mb0">Initial Pipeline Configuration</p>
-              <p className="f6 gray mb1">Base YAML configuration with selected agent. The rest of the pipeline will be configured in the next step.</p>
-              <toolbox.YamlEditor value={envState.yamlContent} readOnly={true} height="208px"/>
+              <p className="f6 gray mb1">
+                Base YAML configuration with selected agent. The rest of the pipeline will be configured in the next step.
+              </p>
+              <toolbox.YamlEditor
+                value={envState.yamlContent}
+                readOnly={true}
+                height="208px"
+              />
             </div>
             <div className="mt3">
               <div className="flex justify-between items-center">
@@ -229,14 +242,15 @@ export const Projectenvironment = () => {
                 <Tippy
                   placement="top"
                   content="Select an agent type to continue"
-                  visible={envState.selectedAgentType ? false : true}>
+                  visible={envState.selectedAgentType ? false : true}
+                >
                   <div>
                     <button
                       onClick={() => void handleContinue()}
                       className={`btn ${envState.selectedAgentType ? `btn-primary` : `btn-disabled`}`}
                       disabled={!envState.selectedAgentType}
                     >
-                    Continue
+                      Continue
                     </button>
                   </div>
                 </Tippy>

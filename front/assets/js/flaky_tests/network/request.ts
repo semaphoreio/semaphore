@@ -24,7 +24,7 @@ export async function RemoveData(url: URL): Promise<RemoveResponse> {
   const res = await fetch(url, {
     method: `DELETE`,
     credentials: `same-origin`,
-    headers:  Headers()
+    headers:  Headers(),
   });
   let status = RequestStatus.Success;
   const response = new RemoveResponse();
@@ -43,7 +43,7 @@ export async function PostData<T>(url: URL, body: any): Promise<FetchResponse<T>
     method: `POST`,
     credentials: `same-origin`,
     body: JSON.stringify(body),
-    headers: Headers( `application/json`)
+    headers: Headers( `application/json`),
   });
   return readResponse<T>(res);
 }
@@ -53,7 +53,7 @@ export async function PutData<T>(url: URL, body: any): Promise<FetchResponse<T>>
     method: `PUT`,
     credentials: `same-origin`,
     body: JSON.stringify(body),
-    headers: Headers(`application/json`)
+    headers: Headers(`application/json`),
   });
   return readResponse<T>(res);
 }
@@ -77,6 +77,6 @@ export const Headers = (contentType = `application/x-www-form-urlencoded`) => {
   return {
     'Content-Type': contentType,
     'Idempotency-Key': uuid(),
-    'X-CSRF-Token': $(`meta[name='csrf-token']`).attr(`content`)
+    'X-CSRF-Token': $(`meta[name='csrf-token']`).attr(`content`),
   };
 };

@@ -1,4 +1,5 @@
-import { createRef, VNode } from "preact";
+import type { VNode } from "preact";
+import { createRef } from "preact";
 import { useEffect, useState, useLayoutEffect } from "preact/hooks";
 import _ from "lodash";
 import * as d3 from "d3";
@@ -52,7 +53,7 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
     },
     xScale: d3.scaleTime(),
     yScale: d3.scaleLinear(),
-    width: 0
+    width: 0,
   });
 
 
@@ -109,8 +110,18 @@ export const Plot = ({ domain, metrics }: PlotProps) => {
         height={state.height}
       >
         <AxisX xScale={state.xScale} translation={yTranslation}/>
-        <Count yScale={state.yScale} translation={xTranslation} metrics={metrics}/>
-        <StackedBar setTooltip={setTooltip} tooltip={tooltip} metrics={metrics} xScale={state.xScale} yScale={state.yScale}/>
+        <Count
+          yScale={state.yScale}
+          translation={xTranslation}
+          metrics={metrics}
+        />
+        <StackedBar
+          setTooltip={setTooltip}
+          tooltip={tooltip}
+          metrics={metrics}
+          xScale={state.xScale}
+          yScale={state.yScale}
+        />
       </svg>
 
       {!tooltip.hidden && <Tooltip
@@ -152,12 +163,17 @@ const AxisX = ({ translation, xScale }: AxisXProps) => {
   }, [translation, xScale]);
 
   return (
-    <g className="x axis" style={{ cursor: `default` }} ref={xScaleRef} transform={`translate(0 ${translation})`}></g>
+    <g
+      className="x axis"
+      style={{ cursor: `default` }}
+      ref={xScaleRef}
+      transform={`translate(0 ${translation})`}
+    ></g>
   );
 };
 
 
-export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode, }) => {
+export const Tooltip = ({ top, left, content }: { top: number, left: number, content: VNode }) => {
   const adjustedLeft = (left: number) => {
     if (left < 2 * width) {
       left += 25;
@@ -179,7 +195,7 @@ export const Tooltip = ({ top, left, content }: { top: number, left: number, con
         "top": top,
         "left": left,
         "width": width,
-        "z-index": `3`
+        "z-index": `3`,
       }}
     >
       {content}
@@ -224,7 +240,7 @@ const Count = ({ yScale, translation, metrics }: CountProps) => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
 
@@ -234,7 +250,12 @@ const Count = ({ yScale, translation, metrics }: CountProps) => {
   }, [yScale, translation, metrics]);
 
   return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>
+    <g
+      className="y axis"
+      style={{ cursor: `default` }}
+      ref={yScaleRef}
+      transform={`translate(50 0)`}
+    ></g>
   );
 };
 
@@ -388,7 +409,7 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
             <br/>
             {toolbox.Formatter.humanize(subgroupName)}: {toolbox.Formatter.toMoney(subgroupValue)}
           </div>
-        </div>
+        </div>,
       });
 
       d3.selectAll(`.chart-rect`).style(`opacity`, 0.2);
@@ -399,7 +420,7 @@ const StackedBar = ({ xScale, yScale, metrics, tooltip, setTooltip }: StackedBar
       setTooltip({
         ...tooltip,
         hidden: true,
-        content: undefined
+        content: undefined,
       });
 
       d3.selectAll(`.chart-rect`).style(`opacity`,0.7);

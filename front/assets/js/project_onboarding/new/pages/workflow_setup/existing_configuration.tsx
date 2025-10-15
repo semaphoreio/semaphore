@@ -22,7 +22,7 @@ export const ExistingConfiguration = () => {
     void handleSkipOnboarding({
       skipOnboardingUrl: configState.skipOnboardingUrl,
       csrfToken: configState.csrfToken,
-      projectUrl: configState.projectUrl
+      projectUrl: configState.projectUrl,
     });
   };
 
@@ -39,7 +39,8 @@ export const ExistingConfiguration = () => {
             svgPath="images/ill-girl-looking-down.svg"
             title="Connect repository"
             subtitle="Configure repository access and integration settings."
-            additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."/>
+            additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."
+          />
 
           {/* LEFT SIDE */}
           <div className="flex-auto w-two-thirds">

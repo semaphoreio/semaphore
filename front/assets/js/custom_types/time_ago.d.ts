@@ -1,6 +1,6 @@
 // eslint-disable-next-line
 import * as preact from "preact";
-import { h } from "preact";
+import type { h } from "preact";
 // In place for time-ago element defined in /assets/time_ago.js. Without these definitions relative-time element will not be visible for JSX.
 
 interface TimeAgoProps extends h.JSX.HTMLAttributes<HTMLElement> {

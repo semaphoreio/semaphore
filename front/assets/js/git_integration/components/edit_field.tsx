@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
-import * as types from "../types";
+import type * as types from "../types";
 import { LockIcon } from "./lock_icon";
 
 interface EditFieldProps {
@@ -19,7 +19,7 @@ export const EditField = ({
   value,
   editKey,
   editUrl,
-  isPrivate
+  isPrivate,
 }: EditFieldProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(value);

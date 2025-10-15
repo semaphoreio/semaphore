@@ -1,4 +1,4 @@
-import { h } from "preact";
+import type { h } from "preact";
 import * as toolbox from "js/toolbox";
 import { useState } from "preact/hooks";
 import dedent from "dedent";

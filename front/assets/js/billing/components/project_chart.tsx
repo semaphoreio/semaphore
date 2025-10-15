@@ -1,9 +1,10 @@
 
-import { Spendings } from "../types";
+import type { Spendings } from "../types";
 import * as components from "../components";
-import * as types from "../types";
+import type * as types from "../types";
 import * as stores from "../stores";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import _ from "lodash";
 import { Formatter } from "js/toolbox";
 import moment from "moment";
@@ -11,7 +12,7 @@ import * as d3 from "d3";
 
 enum AggregationType {
   Daily = `daily`,
-  Cumulative = `cumulative`
+  Cumulative = `cumulative`,
 }
 
 interface Props {
@@ -28,7 +29,7 @@ export const ProjectChart = (props: Props) => {
   const [groupTypes, setGroupTypes] = useState<types.Spendings.GroupType[]>([props.project.cost.groups[0].type]);
 
   const [tooltipState, dispatchTooltip] = useReducer(stores.Tooltip.Reducer, {
-    ...stores.Tooltip.EmptyState
+    ...stores.Tooltip.EmptyState,
   });
 
   const [colorScale, setColorScale] = useState<(arg0: string) => string>(() => d3.scaleOrdinal(d3.schemeTableau10));
@@ -125,7 +126,11 @@ export const ProjectChart = (props: Props) => {
           <components.Charts.DateAxisX/>
           <components.Charts.MoneyScaleY/>
           <components.Charts.TooltipLine/>
-          <components.Charts.StackedBar plotData={currentPlotData} colorScale={colorScale} selectedMetric={selectedMetric}/>
+          <components.Charts.StackedBar
+            plotData={currentPlotData}
+            colorScale={colorScale}
+            selectedMetric={selectedMetric}
+          />
           <components.Charts.LineChartLeft plotData={workflowPlotData}/>
         </components.Charts.Plot>
         <Legend
@@ -186,7 +191,7 @@ const Tooltip = (props: TooltipProps) => {
         "top": tooltip.y,
         "left": left,
         "width": width,
-        "z-index": `3`
+        "z-index": `3`,
       }}
     >
       <div className="f6">
@@ -265,14 +270,22 @@ const Legend = (props: LegendProps) => {
     <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
       <div className="flex items-center">
         <label className="mr2">Show</label>
-        <select className="db form-control mb3 mb0-m mr2 form-control-tiny" value={props.aggregationType} onChange={ setAggregationFromEvent }>
+        <select
+          className="db form-control mb3 mb0-m mr2 form-control-tiny"
+          value={props.aggregationType}
+          onChange={ setAggregationFromEvent }
+        >
           <option value={AggregationType.Cumulative}>Cumulative</option>
           <option value={AggregationType.Daily}>Daily</option>
         </select>
         <span className="mr2">for</span>
         {props.project.cost.groups.map((group, idx) => (
           <label className="flex items-center" key={idx}>
-            <input type="checkbox" checked={props.groupTypes.includes(group.type)} onClick={ () => setGroup(group.type) }/>
+            <input
+              type="checkbox"
+              checked={props.groupTypes.includes(group.type)}
+              onClick={ () => setGroup(group.type) }
+            />
             <span className="ml1 mr2">{ group.name }</span>
           </label>
         ))}
@@ -287,7 +300,11 @@ const Legend = (props: LegendProps) => {
               classes += `o-50`;
             }
 
-            return <div key={idx} className={`inline-flex items-center ${classes}`} onClick={() => selectMetric(label)}>
+            return <div
+              key={idx}
+              className={`inline-flex items-center ${classes}`}
+              onClick={() => selectMetric(label)}
+            >
               <span className="mr2 ml3 dib" style={`width: 10px; height: 10px; background: ${props.colorScale(label)};`}></span>
               <span className="">{label}</span>
             </div>;

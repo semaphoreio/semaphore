@@ -7,5 +7,5 @@ export {
   FlakyTestItem,
   Status,
   RequestStatus,
-  Tests
+  Tests,
 };

@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
 import * as components from "../../components";
-import * as types from "../../types";
+import type * as types from "../../types";
 
 interface Props {
   integration: types.Integration.GithubIntegration;
@@ -41,7 +41,11 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
           to ensure a working connection.
         </p>
 
-        <a href={integration.htmlUrl} target="_blank" rel="noreferrer">
+        <a
+          href={integration.htmlUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
           Configure GitHub App Settings ↗
         </a>
 
@@ -88,8 +92,16 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
               method="post"
               action={integration.deleteUrl}
             >
-              <input type="hidden" name="_csrf_token" value={csrfToken}/>
-              <input type="hidden" name="type" value="github_app"/>
+              <input
+                type="hidden"
+                name="_csrf_token"
+                value={csrfToken}
+              />
+              <input
+                type="hidden"
+                name="type"
+                value="github_app"
+              />
               <input
                 type="text"
                 className="form-control w-100"
@@ -111,7 +123,7 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
   );
 };
 
-const EditFields = ({ integration }: { integration: types.Integration.GithubIntegration, }) => {
+const EditFields = ({ integration }: { integration: types.Integration.GithubIntegration }) => {
   return (
     <Fragment>
       <components.EditField
@@ -171,7 +183,7 @@ const EditFields = ({ integration }: { integration: types.Integration.GithubInte
   );
 };
 
-const CopyFields = ({ integration }: { integration: types.Integration.GithubIntegration, }) => {
+const CopyFields = ({ integration }: { integration: types.Integration.GithubIntegration }) => {
   const manifest = integration.manifest as {
     callback_urls: string;
     setup_url: string;

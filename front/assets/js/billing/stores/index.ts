@@ -15,5 +15,5 @@ export {
   Prices,
   Credits,
   Request,
-  Tooltip
+  Tooltip,
 };

@@ -73,21 +73,25 @@ export const DashboardItemForm = ({ toggle, saveHandler }: Props) => {
 
         <div className="mb3">
           <label className="db mb1 f6" htmlFor="name">Name</label>
-          <input id="name"
+          <input
+            id="name"
             style="max-width: 276px;"
             className="w-100 form-control"
             placeholder="ex. Duration"
             value={state.dashboardName}
-            onInput={onInputName}/>
+            onInput={onInputName}
+          />
         </div>
 
         <div className="mb3">
           <label className="db mb1 f6" htmlFor="metric">Metric</label>
-          <select id="metric"
+          <select
+            id="metric"
             style="max-width: 296px;"
             value={state.metric}
             onChange={onChangeMetric}
-            className="w-100 form-control">
+            className="w-100 form-control"
+          >
             <option value="">Select a metric</option>
             <option value="1">Pipeline Performance</option>
             <option value="2">Pipeline Frequency</option>
@@ -97,35 +101,48 @@ export const DashboardItemForm = ({ toggle, saveHandler }: Props) => {
 
         <div className="mb3" hidden={state.metric.length === 0}>
           <label className="db mb1 f6" htmlFor="branch_name">Branch Name</label>
-          <input id="branch_name" className="w-100 form-control"
+          <input
+            id="branch_name"
+            className="w-100 form-control"
             placeholder="ex. main"
             style="max-width: 276px;"
             value={state.branchName}
-            onInput={onInputBranch}/>
+            onInput={onInputBranch}
+          />
         </div>
 
         <div className="mb3" hidden={state.metric.length === 0}>
           <label className="db mb1 f6" htmlFor="pipeline_file_name">Pipeline Path</label>
-          <input id="pipeline_file_name" className="w-100 form-control"
+          <input
+            id="pipeline_file_name"
+            className="w-100 form-control"
             placeholder=".semaphore/semaphore.yml"
             style="max-width: 276px;"
             value={state.pipelineFileName}
-            onInput={onInputPipeline}/>
+            onInput={onInputPipeline}
+          />
         </div>
 
         <div className="mb3" hidden={state.metric.length === 0}>
           <label className="db mb1 f6" htmlFor="notes">Description <span className="normal black-60">(optional)</span></label>
-          <textarea id="notes" className="w-100 form-control"
+          <textarea
+            id="notes"
+            className="w-100 form-control"
             rows={5}
             cols={30}
             placeholder="This metric is used to measure..."
             value={state.notes}
-            onInput={onInputNotes}/>
+            onInput={onInputNotes}
+          />
         </div>
 
         <div className="flex mt4">
           <button className="btn btn-primary" type="submit">Save</button>
-          <button className="btn btn-secondary ml2" type="reset" onClick={toggle}>Cancel</button>
+          <button
+            className="btn btn-secondary ml2"
+            type="reset"
+            onClick={toggle}
+          >Cancel</button>
         </div>
       </div>
     </form>

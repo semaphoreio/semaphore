@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { DateRangeItem } from "../types";
+import type { DateRangeItem } from "../types";
 
 export interface State {
   baseUrl: string;

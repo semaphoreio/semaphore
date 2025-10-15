@@ -9,7 +9,7 @@ import { Inflector } from "../util";
 import { State } from "../util/stateful";
 import $ from "jquery";
 
-export const TestExplorer = ({ className }: { className: string, }) => {
+export const TestExplorer = ({ className }: { className: string }) => {
   const filter = useContext(FilterStore.Context);
   const report = useContext(ReportStore.Context);
   const navigation = useContext(NavigationStore.Context);
@@ -19,23 +19,19 @@ export const TestExplorer = ({ className }: { className: string, }) => {
   const el = createRef();
 
   const sortSuites = (suites: types.Suite[], sort: FilterStore.SortOrder) => {
-    switch(sort) {
+    switch (sort) {
       case `alphabetical`:
-        suites
-          .sort((a, b) => a.name.localeCompare(b.name));
+        suites.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case `failed-first`:
-        suites
-          .sort((a, b) => b.summary.failed - a.summary.failed);
+        suites.sort((a, b) => b.summary.failed - a.summary.failed);
         break;
       case `slowest-first`:
-        suites
-          .sort((a, b) => b.summary.duration - a.summary.duration);
+        suites.sort((a, b) => b.summary.duration - a.summary.duration);
         break;
     }
     return suites;
   };
-
 
   useEffect(() => {
     let suites = _.cloneDeep(activeReport.suites);
@@ -55,8 +51,8 @@ export const TestExplorer = ({ className }: { className: string, }) => {
 
   useEffect(() => {
     const failedSuites = activeReport.suites.filter((suite) => suite.state == State.FAILED);
-    if(failedSuites.length > 0) {
-      if(navigation.state.activeSuiteId != `` && !failedSuites.find((suite) => navigation.state.activeSuiteId == suite.id)) {
+    if (failedSuites.length > 0) {
+      if (navigation.state.activeSuiteId != `` && !failedSuites.find((suite) => navigation.state.activeSuiteId == suite.id)) {
         return;
       }
       setExpandedSuiteIds(failedSuites.map((suite) => suite.id));
@@ -66,9 +62,8 @@ export const TestExplorer = ({ className }: { className: string, }) => {
     }
   }, [activeReport]);
 
-
   useLayoutEffect(() => {
-    if(navigation.state.activeReportId != `` && el.current && navigation.state.activeSuiteId == ``) {
+    if (navigation.state.activeReportId != `` && el.current && navigation.state.activeSuiteId == ``) {
       const currentEl = el.current as HTMLElement;
       $(`html`).animate({ scrollTop: currentEl.offsetTop - 100 }, 200);
     }
@@ -82,24 +77,22 @@ export const TestExplorer = ({ className }: { className: string, }) => {
       <Filters/>
       {filter.state.query != `` && <SearchResults filteredSuites={filteredSuites}/>}
       {filteredSuites.map((suite) => {
-        return <TestSuite
-          key={suite.id}
-          suite={suite}
-          startExpanded={expandedSuiteIds.includes(suite.id)}
-          className="flex justify-between mv1"
-        />;
+        return (
+          <TestSuite
+            key={suite.id}
+            suite={suite}
+            startExpanded={expandedSuiteIds.includes(suite.id)}
+            className="flex justify-between mv1"
+          />
+        );
       })}
-      {activeReport.isEmpty() &&
-        <div className="tc">
-          It looks like this report is empty.
-        </div>
-      }
+      {activeReport.isEmpty() && <div className="tc">It looks like this report is empty.</div>}
       {filter.state.excludedStates.length != 0 && <FilterInfo suites={activeReport.suites} filteredSuites={filteredSuites}/>}
     </div>
   );
 };
 
-const SearchResults = (state: { filteredSuites: types.Suite[], }) => {
+const SearchResults = (state: { filteredSuites: types.Suite[] }) => {
   const filter = useContext(FilterStore.Context);
 
   const { filteredSuites } = state;
@@ -112,7 +105,7 @@ const SearchResults = (state: { filteredSuites: types.Suite[], }) => {
         </span>
         <br/>
         <span>
-          <a className="gray hover-dark-gray underline pointer h7" onClick={() => filter.dispatch({ "type": `SET_QUERY`, query: `` })}>
+          <a className="gray hover-dark-gray underline pointer h7" onClick={() => filter.dispatch({ type: `SET_QUERY`, query: `` })}>
             Clear search
           </a>
         </span>
@@ -121,7 +114,7 @@ const SearchResults = (state: { filteredSuites: types.Suite[], }) => {
   );
 };
 
-const FilterInfo = (state: { suites: types.Suite[], filteredSuites: types.Suite[], }) => {
+const FilterInfo = (state: { suites: types.Suite[], filteredSuites: types.Suite[] }) => {
   const filter = useContext(FilterStore.Context);
   const { suites, filteredSuites } = state;
 
@@ -160,7 +153,6 @@ const FilterInfo = (state: { suites: types.Suite[], filteredSuites: types.Suite[
         return Inflector.pluralize(result.count, result.label);
       })
       .join(`, `);
-
   };
 
   const displayAll = () => {
@@ -169,13 +161,17 @@ const FilterInfo = (state: { suites: types.Suite[], filteredSuites: types.Suite[
 
   const results = formatResults(resultSummary);
 
-  if(results.length == 0) {
+  if (results.length == 0) {
     return;
   } else {
     return (
       <div className="mv4 f6 tc">
         <p className="gray mb0">Hidden: {formatResults(resultSummary)}</p>
-        <p><span className="gray hover-dark-gray underline pointer" onClick={displayAll}>Show everything</span></p>
+        <p>
+          <span className="gray hover-dark-gray underline pointer" onClick={displayAll}>
+            Show everything
+          </span>
+        </p>
       </div>
     );
   }
