@@ -1,6 +1,7 @@
 import { render } from "preact";
 
-import MarkdownIt, { PluginSimple } from "markdown-it";
+import type { PluginSimple } from "markdown-it";
+import MarkdownIt from "markdown-it";
 import markdownItTextualUml from "markdown-it-textual-uml";
 import Mermaid from "mermaid";
 import "github-markdown-css/github-markdown-light.css";

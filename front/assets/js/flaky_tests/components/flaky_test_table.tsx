@@ -5,7 +5,7 @@ import { TableHeaders } from "./table_headers";
 import { LoadingIndicator } from "./loading_indicator";
 import { useContext } from "preact/hooks";
 import * as store from "../stores";
-import { FlakyTestItem } from "../types/flaky_test_item";
+import type { FlakyTestItem } from "../types/flaky_test_item";
 
 export const FlakyTestTable = () => {
   const { state } = useContext(store.FlakyTest.Context);

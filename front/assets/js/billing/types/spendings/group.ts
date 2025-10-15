@@ -1,5 +1,5 @@
-import { DailySpending } from "./spending";
-import * as metric from "../metric";
+import type { DailySpending } from "./spending";
+import type * as metric from "../metric";
 import { Formatter } from "js/toolbox";
 
 

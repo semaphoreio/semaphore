@@ -2,7 +2,7 @@ import { Fragment } from "preact";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
 import * as components from "../../components";
-import * as types from "../../types";
+import type * as types from "../../types";
 
 interface Props {
   integration: types.Integration.GithubIntegration;

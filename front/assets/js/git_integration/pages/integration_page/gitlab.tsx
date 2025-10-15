@@ -3,7 +3,7 @@ import { useContext } from "preact/hooks";
 import { NavLink } from "react-router-dom";
 import { useState } from "preact/hooks";
 import * as components from "../../components";
-import * as types from "../../types";
+import type * as types from "../../types";
 import * as stores from "../../stores";
 import * as utils from "../../utils";
 

@@ -1,4 +1,5 @@
-import { createRef, VNode } from "preact";
+import type { VNode } from "preact";
+import { createRef } from "preact";
 import { useEffect, useState, useLayoutEffect } from "preact/hooks";
 import _ from "lodash";
 import * as d3 from "d3";

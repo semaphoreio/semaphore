@@ -1,5 +1,5 @@
-import { Report } from "../types/report";
-import { Summary } from "../types/summary";
+import type { Report } from "../types/report";
+import type { Summary } from "../types/summary";
 import { Duration } from "./duration";
 import { State } from "../util/stateful";
 import { useContext, useEffect } from "preact/hooks";

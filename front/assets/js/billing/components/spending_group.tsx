@@ -1,9 +1,10 @@
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import { useState, useLayoutEffect } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import * as types from "../types";
 import * as components from "../components";
-import { Item } from "../types/spendings";
+import type { Item } from "../types/spendings";
 
 interface SpendingGroupProps {
   group: types.Spendings.Group;

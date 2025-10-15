@@ -1,9 +1,11 @@
-import Popper, { createPopper } from "@popperjs/core";
+import type Popper from "@popperjs/core";
+import { createPopper } from "@popperjs/core";
 import { isFunction } from "lodash";
-import { VNode, Fragment } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { define } from "preactement";
-import { Placement } from "tippy.js";
+import type { Placement } from "tippy.js";
 
 interface PopoverProps {
   anchor: VNode<any>;

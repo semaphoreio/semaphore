@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Tests } from "../types";
+import type { Tests } from "../types";
 
 export type Action =
   | { type: `SET_TEST`, value: Tests.FlakyDetail }

@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { MetricDateRange } from "../types/metric_date_range";
+import type { MetricDateRange } from "../types/metric_date_range";
 
 export type Action =
     | { type: `SET_METRIC_DATE_RANGES`, value: MetricDateRange[] }

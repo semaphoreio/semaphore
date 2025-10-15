@@ -2,7 +2,7 @@ import { useState, useContext, useEffect } from "preact/hooks";
 import { Modal } from "js/toolbox";
 import { ConfigContext } from "../config";
 import { ServiceAccountsAPI } from "../utils/api";
-import { ServiceAccount } from "../types";
+import type { ServiceAccount } from "../types";
 import * as toolbox from "js/toolbox";
 
 interface EditServiceAccountProps {

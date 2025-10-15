@@ -1,5 +1,6 @@
 
-import { Fragment, VNode, createRef } from "preact";
+import type { VNode } from "preact";
+import { Fragment, createRef } from "preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import styled, { css } from "styled-components";
 

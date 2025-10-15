@@ -118,6 +118,7 @@ module.exports = {
             beforeClosing: "never",
           },
         ],
+        "comma-dangle": "off",
         "@typescript-eslint/comma-dangle": [
           "error",
           {
@@ -131,6 +132,7 @@ module.exports = {
             tuples: "always-multiline"
           }
         ],
+        "@typescript-eslint/consistent-type-imports": ["warn", { prefer: "type-imports" }],
         "@typescript-eslint/no-misused-promises": [
           "error",
           {

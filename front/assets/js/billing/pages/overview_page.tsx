@@ -4,7 +4,8 @@ import * as stores from "../stores";
 import * as components from "../components";
 import * as types from "../types";
 import $ from "jquery";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";

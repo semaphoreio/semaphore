@@ -1,4 +1,5 @@
-import { Fragment, h, VNode } from "preact";
+import type { h, VNode } from "preact";
+import { Fragment } from "preact";
 import * as stores from "../../stores";
 import * as components from "../";
 import { useContext, useState } from "preact/hooks";

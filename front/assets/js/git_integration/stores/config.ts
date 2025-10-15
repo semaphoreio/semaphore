@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Integration } from "../types";
+import type { Integration } from "../types";
 
 export interface State {
   baseUrl: string;

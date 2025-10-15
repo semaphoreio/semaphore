@@ -1,4 +1,4 @@
-import { DashboardItem } from '../types/dashboard';
+import type { DashboardItem } from '../types/dashboard';
 import { InsightsType, typeByMetric } from '../types/insights_type';
 import * as customCharts from './custom_charts';
 import Tippy from '@tippyjs/react';

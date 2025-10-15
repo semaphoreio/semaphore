@@ -1,5 +1,5 @@
 import { createPortal, useEffect, useRef } from "preact/compat";
-import { h } from "preact";
+import type { h } from "preact";
 
 interface ModalProps extends h.JSX.HTMLAttributes<HTMLDivElement> {
   isOpen: boolean;

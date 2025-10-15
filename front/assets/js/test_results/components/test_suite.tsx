@@ -1,10 +1,10 @@
 import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { NavigationStore, FilterStore } from "../stores";
-import { Suite } from "../types/suite";
+import type { Suite } from "../types/suite";
 import { Duration } from "./duration";
 import { Test } from "./test";
-import * as types from "../types";
+import type * as types from "../types";
 import { State } from "../util/stateful";
 import $ from "jquery";
 

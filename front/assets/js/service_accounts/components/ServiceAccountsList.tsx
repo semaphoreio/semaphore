@@ -1,5 +1,5 @@
 import { useContext } from "preact/hooks";
-import { ServiceAccount } from "../types";
+import type { ServiceAccount } from "../types";
 import { ConfigContext } from "../config";
 import * as toolbox from "js/toolbox";
 

@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
 import { useState } from "preact/hooks";
-import * as types from "../types";
+import type * as types from "../types";
 import { LockIcon } from "./lock_icon";
 
 interface EditFieldProps {

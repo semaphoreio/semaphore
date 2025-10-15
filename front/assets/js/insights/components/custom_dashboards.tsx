@@ -1,14 +1,14 @@
 import { useNavigate, useParams } from 'react-router-dom';
 import { useContext, useLayoutEffect, useState } from 'preact/hooks';
-import { Dashboard, DashboardItem } from '../types/dashboard';
+import type { Dashboard, DashboardItem } from '../types/dashboard';
 import { DashboardItemForm } from './forms/dashboard_item_form';
 import * as types from '../types';
 import * as util from '../util';
 import { useToggle } from '../util';
-import { CreateDashboardItem } from '../types/json_interface';
+import type { CreateDashboardItem } from '../types/json_interface';
 import { Config } from '../app';
-import { State as DState } from '../stores/dashboards';
-import { State as DRState } from '../stores/metric_date_range';
+import type { State as DState } from '../stores/dashboards';
+import type { State as DRState } from '../stores/metric_date_range';
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from '../../notice';

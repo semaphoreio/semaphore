@@ -1,10 +1,11 @@
-import { cloneElement, createRef, Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { cloneElement, createRef, Fragment } from "preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import _ from "lodash";
 
 import * as d3 from "d3";
-import * as stores from "../../stores";
-import * as types from "../../types";
+import type * as stores from "../../stores";
+import type * as types from "../../types";
 import * as chart from "./index";
 
 interface Props {

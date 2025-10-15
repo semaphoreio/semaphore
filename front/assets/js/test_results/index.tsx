@@ -1,4 +1,5 @@
-import { render, ComponentChildren } from "preact";
+import type { ComponentChildren } from "preact";
+import { render } from "preact";
 import { useReducer } from "preact/hooks";
 import { ReportStore, FilterStore, NavigationStore, UrlStore } from "./stores";
 import { TestResults } from "./components/test_results";

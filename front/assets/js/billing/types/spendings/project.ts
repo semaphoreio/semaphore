@@ -1,6 +1,6 @@
 import { Formatter } from "js/toolbox";
 import { Group, GroupType, Trend } from "./group";
-import * as components from "../../components";
+import type * as components from "../../components";
 import moment from "moment";
 import _ from "lodash";
 

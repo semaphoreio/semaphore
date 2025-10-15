@@ -2,7 +2,7 @@ import { Fragment, render } from "preact";
 import { useState, useContext, useEffect, useCallback } from "preact/hooks";
 import { Modal, Box } from "js/toolbox";
 import { AppConfig, ConfigContext } from "./config";
-import { ServiceAccount, AppState } from "./types";
+import type { ServiceAccount, AppState } from "./types";
 import { ServiceAccountsAPI } from "./utils/api";
 import { ServiceAccountsList } from "./components/ServiceAccountsList";
 import { CreateServiceAccount } from "./components/CreateServiceAccount";

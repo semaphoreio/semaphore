@@ -1,9 +1,9 @@
 
 import { createRef } from "preact";
 import { useEffect } from "preact/hooks";
-import * as types from "../../../types";
+import type * as types from "../../../types";
 import * as d3 from "d3";
-import { ChartInterface } from "./type";
+import type { ChartInterface } from "./type";
 
 
 interface Props extends ChartInterface{

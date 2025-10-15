@@ -1,6 +1,6 @@
 import { Fragment, createRef } from "preact";
 import bb, { bar } from "billboard.js";
-import { HistoryItem } from "../types/flaky_test_item";
+import type { HistoryItem } from "../types/flaky_test_item";
 import { useEffect } from "preact/hooks";
 import { ChartHelpers } from "js/toolbox";
 import * as toolbox from "js/toolbox";

@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Report } from "../types/report";
+import type { Report } from "../types/report";
 
 export type Action =
   | { type: `SET_ITEMS`, items: Report[] }

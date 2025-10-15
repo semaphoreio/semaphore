@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import * as tests from "../types/tests";
+import type * as tests from "../types/tests";
 import moment from "moment";
 
 export type Action =

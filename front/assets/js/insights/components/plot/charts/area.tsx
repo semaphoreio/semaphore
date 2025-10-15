@@ -1,5 +1,5 @@
-import { ChartInterface } from './type';
-import * as types from '../../../types';
+import type { ChartInterface } from './type';
+import type * as types from '../../../types';
 import { createRef } from 'preact';
 import { useEffect } from 'preact/hooks';
 import * as d3 from 'd3';

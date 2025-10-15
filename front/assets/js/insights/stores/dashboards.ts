@@ -1,5 +1,5 @@
-import { Dashboard, DashboardItem } from '../types/dashboard';
-import { Metric } from '../types/chart';
+import type { Dashboard, DashboardItem } from '../types/dashboard';
+import type { Metric } from '../types/chart';
 
 export type Action =
   | { type: `SET_STATE`, state: Dashboard[] }

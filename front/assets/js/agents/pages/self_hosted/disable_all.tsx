@@ -6,7 +6,7 @@ import * as stores from "js/agents/stores";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "js/notice";
-import { TargetedEvent } from "preact/compat";
+import type { TargetedEvent } from "preact/compat";
 
 export const DisableAll = () => {
   const navigate = useNavigate();

@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { PlotData } from "../components/charts";
+import type { PlotData } from "../components/charts";
 
 export type Action =
   | { type: `SET_X`, value: number }

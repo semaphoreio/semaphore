@@ -1,9 +1,10 @@
 
-import { Spendings } from "../types";
+import type { Spendings } from "../types";
 import * as components from "../components";
-import * as types from "../types";
+import type * as types from "../types";
 import * as stores from "../stores";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import _ from "lodash";
 import { Formatter } from "js/toolbox";
 import moment from "moment";

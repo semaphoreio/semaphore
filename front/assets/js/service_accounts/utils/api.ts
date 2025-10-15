@@ -1,5 +1,5 @@
 import * as toolbox from "js/toolbox";
-import {
+import type {
   Config,
   ServiceAccount,
   ServiceAccountWithToken,

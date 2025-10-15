@@ -17,7 +17,7 @@ import * as types from "../types";
 import * as stores from "../stores";
 import * as util from "../util";
 import * as components from "./index";
-import { CreateDashboard } from "../types/json_interface";
+import type { CreateDashboard } from "../types/json_interface";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { Notice } from "../../notice";

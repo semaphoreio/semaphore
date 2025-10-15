@@ -1,5 +1,6 @@
 import { createContext } from "preact";
-import { BranchType, BuildStatus, ProjectHealth, Status } from "../types";
+import type { ProjectHealth } from "../types";
+import { BranchType, BuildStatus, Status } from "../types";
 
 
 export type Action =

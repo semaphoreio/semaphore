@@ -1,6 +1,7 @@
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { FilterStore, NavigationStore } from "../stores";
-import Popper, { createPopper } from "@popperjs/core";
+import type Popper from "@popperjs/core";
+import { createPopper } from "@popperjs/core";
 import { State } from "../util/stateful";
 import _ from "lodash";
 import Icon from "../util/icon";

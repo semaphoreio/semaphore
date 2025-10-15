@@ -2,7 +2,7 @@ import { Fragment, render, createContext } from "preact";
 import { useContext, useState } from "preact/hooks";
 
 import * as toolbox from "js/toolbox";
-import { ChangeEvent } from "react-dom/src";
+import type { ChangeEvent } from "react-dom/src";
 
 export default function ({
   dom,

@@ -2,10 +2,12 @@ import { Routes, Route, useNavigate, useParams, Outlet } from "react-router-dom"
 import * as stores from "../stores";
 import * as types from "../types";
 import { useSteps } from "../stores/create/steps";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 
 import * as toolbox from "js/toolbox";
-import { createContext, h } from "preact";
+import type { h } from "preact";
+import { createContext } from "preact";
 
 import Editor from "@monaco-editor/react";
 import dedent from "dedent";

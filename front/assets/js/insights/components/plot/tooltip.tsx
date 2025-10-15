@@ -1,5 +1,6 @@
-import { cloneElement, VNode } from "preact";
-import * as types from "../../types";
+import type { VNode } from "preact";
+import { cloneElement } from "preact";
+import type * as types from "../../types";
 
 interface Props {
   top: number;

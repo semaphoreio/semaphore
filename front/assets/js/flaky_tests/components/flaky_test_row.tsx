@@ -1,7 +1,7 @@
 import { Fragment } from "preact";
 import * as util from "../../insights/util";
 import { DisruptionHistoryChart } from "./index";
-import { FlakyTestItem } from "../types/flaky_test_item";
+import type { FlakyTestItem } from "../types/flaky_test_item";
 import { useContext, useEffect, useState } from "preact/hooks";
 import { Link } from "react-router-dom";
 import * as stores from "../stores";

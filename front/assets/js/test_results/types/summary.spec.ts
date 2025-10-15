@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { describe, test } from "mocha";
-import { JSONSummary } from "./json_types";
+import type { JSONSummary } from "./json_types";
 import { Summary } from "./summary";
 
 describe(`Summary constructor`, () => {

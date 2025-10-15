@@ -1,12 +1,15 @@
-import { Fragment, render, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment, render } from "preact";
 import { Modal } from "js/toolbox";
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import _ from "lodash";
-import { ChangeEvent } from "react-dom/src";
+import type { ChangeEvent } from "react-dom/src";
 import styled from "styled-components";
-import { Config, AppConfig, RawConfig } from "./config";
-import { AddPeopleState, AvailableProviderTypes, Collaborator, PeopleStateReducer, Person, PersonState, UserProvider } from "./types";
+import type { RawConfig } from "./config";
+import { Config, AppConfig } from "./config";
+import type { Person } from "./types";
+import { AddPeopleState, AvailableProviderTypes, Collaborator, PeopleStateReducer, PersonState, UserProvider } from "./types";
 
 export default function ({
   dom,

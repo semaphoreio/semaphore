@@ -1,4 +1,5 @@
-import { cloneElement, Fragment, VNode } from 'preact';
+import type { VNode } from 'preact';
+import { cloneElement, Fragment } from 'preact';
 import { useContext, useEffect, useLayoutEffect, useReducer, useState } from 'preact/hooks';
 import { useSearchParams } from 'react-router-dom';
 import { Config } from '../app';

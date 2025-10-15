@@ -1,7 +1,7 @@
 import { createRef, Fragment } from "preact";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import { FilterStore, NavigationStore } from "../stores";
-import { TestCase } from "../types/test_case";
+import type { TestCase } from "../types/test_case";
 import { State } from "../util/stateful";
 import { Duration } from "./duration";
 import $ from "jquery";

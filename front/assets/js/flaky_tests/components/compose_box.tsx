@@ -1,6 +1,8 @@
 import { Component, h } from "preact";
-import { MutableRef, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import { AutocompletePropGetters, AutocompleteScopeApi, BaseItem, createAutocomplete } from "@algolia/autocomplete-core";
+import type { MutableRef } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import type { AutocompletePropGetters, AutocompleteScopeApi, BaseItem } from "@algolia/autocomplete-core";
+import { createAutocomplete } from "@algolia/autocomplete-core";
 
 // Create a global variable 'React' that points to Preact (because autocomplete-core expects it)
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

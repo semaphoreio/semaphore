@@ -1,5 +1,5 @@
 import * as toolbox from "js/toolbox";
-import * as types from "../types";
+import type * as types from "../types";
 import * as stores from "../stores";
 import { useContext } from "preact/hooks";
 

@@ -1,8 +1,8 @@
-import { VNode } from 'preact';
+import type { VNode } from 'preact';
 import { useContext, useState } from 'preact/hooks';
 import { NavLink } from 'react-router-dom';
 import * as stores from '../stores';
-import { State } from '../stores/dashboards';
+import type { State } from '../stores/dashboards';
 import Tippy from '@tippyjs/react';
 
 

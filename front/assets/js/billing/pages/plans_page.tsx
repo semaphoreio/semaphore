@@ -1,7 +1,8 @@
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
-import { Plans } from "../types";
+import type { Plans } from "../types";
 import * as stores from "../stores";
 import { useSignal } from "@preact/signals";
 import { useNavigate } from "react-router-dom";

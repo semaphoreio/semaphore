@@ -1,8 +1,9 @@
 import * as plot from '../plot';
-import { cloneElement, Fragment, VNode } from 'preact';
+import type { VNode } from 'preact';
+import { cloneElement, Fragment } from 'preact';
 import { useContext, useState } from "preact/hooks";
 import { useSearchParams } from "react-router-dom";
-import { DashboardItem } from "../../types/dashboard";
+import type { DashboardItem } from "../../types/dashboard";
 import * as stores from "../../stores";
 import moment from "moment";
 

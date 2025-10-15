@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import * as types from "../types";
+import type * as types from "../types";
 
 export type Action =
   | { type: `SET_AGENT_TYPE`, value: types.SelfHosted.AgentType }

@@ -1,5 +1,6 @@
-import { FlakyTestItem } from "../types/flaky_test_item";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import type { FlakyTestItem } from "../types/flaky_test_item";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import * as stores from "../stores";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

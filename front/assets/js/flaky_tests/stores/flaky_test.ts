@@ -1,8 +1,8 @@
-import { HistoryItem, FlakyTestItem } from "../types/flaky_test_item";
+import type { HistoryItem, FlakyTestItem } from "../types/flaky_test_item";
 import { Status } from "../types";
 import { createContext } from "preact";
-import { FlakyTestsFilter } from "../types/flaky_tests_filter";
-import { StateUpdater } from "preact/hooks";
+import type { FlakyTestsFilter } from "../types/flaky_tests_filter";
+import type { StateUpdater } from "preact/hooks";
 
 export type Action =
     | { type: `SET_FLAKY_URL`, value: string }

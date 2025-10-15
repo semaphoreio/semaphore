@@ -1,4 +1,4 @@
-import { HTMLAttributes } from "preact/compat";
+import type { HTMLAttributes } from "preact/compat";
 
 export default function ({
   name: name,

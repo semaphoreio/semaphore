@@ -1,4 +1,4 @@
-import { JSONFailure, JSONTestCase, JSONSuite, JSONSummary, JSONReport } from './json_types';
+import type { JSONFailure, JSONTestCase, JSONSuite, JSONSummary, JSONReport } from './json_types';
 import { faker } from '@faker-js/faker';
 
 export namespace JSONTypes.Fixture {

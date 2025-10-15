@@ -1,6 +1,6 @@
 import { createContext } from "preact";
 import { useReducer } from "preact/hooks";
-import { Provider } from "../../types";
+import type { Provider } from "../../types";
 
 export interface State {
   selectedProvider: Provider.Provider;

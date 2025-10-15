@@ -1,5 +1,5 @@
 import { Fragment } from "preact";
-import * as types from "../../../types";
+import type * as types from "../../../types";
 import * as util from "../../../util";
 
 const Summary = ({ metric }: { metric: types.PipelinePerformance.Metric }) => {

@@ -1,8 +1,9 @@
-import { Spendings } from "../types";
+import type { Spendings } from "../types";
 import * as stores from "../stores";
 import * as components from "../components";
 import * as types from "../types";
-import { Dispatch, StateUpdater, useContext, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import _ from "lodash";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore

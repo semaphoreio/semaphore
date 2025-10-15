@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Spendings } from "../types";
+import type { Spendings } from "../types";
 
 export type Action =
   | { type: `SET_RESULT`, value: Spendings.Spending[] }
