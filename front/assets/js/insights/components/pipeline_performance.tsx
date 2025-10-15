@@ -136,14 +136,18 @@ export const PipelinePerformance = () => {
       <div className="pa4 pt4">
         <div className="inline-flex items-center w-80">
           <p className="mb0">CI Performance &mdash; {projectSummary.defaultBranch.pipelinePerformanceP50}</p>
-          <a className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
-            data-tippy-content="Change how Semaphore calculates CI Performance">
+          <a
+            className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
+            data-tippy-content="Change how Semaphore calculates CI Performance"
+          >
           </a>
         </div>
         <div className="fr">
-          <select className="form-control mw5 form-control-tiny"
+          <select
+            className="form-control mw5 form-control-tiny"
             onChange={handleMetricDatePickerChanged(dateRangeStore.dispatch)}
-            value={dateRangeState.selectedMetricDateRangeLabel}>
+            value={dateRangeState.selectedMetricDateRangeLabel}
+          >
             {dateRangeState.dateRanges.map(d =>
               <option key={d.label} value={d.label}>{d.label}</option>
             )}
@@ -196,14 +200,18 @@ export const PipelinePerformance = () => {
                   showChart(`duration`) ?
                     <plot.charts.Line metrics={selectedMetrics} key="duration"/> : <Fragment/>,
                   showChart(`stdDev`) ?
-                    <plot.charts.StdDev metrics={selectedMetrics} height={300} key="stdDev"/> :
-                    <Fragment/>
+                    <plot.charts.StdDev
+                      metrics={selectedMetrics}
+                      height={300}
+                      key="stdDev"
+                    /> :
+                    <Fragment/>,
                 ]}
                 tooltip={<plot.tooltips.Performance/>}
                 axisY={<plot.yAxis.Duration/>}
                 focus={[
                   <plot.focus.Line color="#8658d6" key="line"/>,
-                  <plot.focus.Dot color="#8658d6" key="dot"/>
+                  <plot.focus.Dot color="#8658d6" key="dot"/>,
                 ]}
                 xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}
                 xDomainTo={moment(dateRangeState.selectedMetricDateRange.to).toDate()}
@@ -215,9 +223,11 @@ export const PipelinePerformance = () => {
                 <div className="flex items-center">
                   <label className="mr2">Show</label>
 
-                  <select className="form-control w-100 mw5 form-control-tiny"
+                  <select
+                    className="form-control w-100 mw5 form-control-tiny"
                     onChange={handleBranchChanged(branchState, dispatchBranches)}
-                    value={branchState.activeBranch?.value}>
+                    value={branchState.activeBranch?.value}
+                  >
                     {branchState.branches.map(branch =>
                       <option key={branch.value} value={branch.value}>{branch.label}</option>
                     )}
@@ -226,7 +236,11 @@ export const PipelinePerformance = () => {
 
                 <div className="ml3">
                   <label className="flex items-center">
-                    <input type="checkbox" checked={onlyPassed} onClick={() => toggleOnlyPassed()}/>
+                    <input
+                      type="checkbox"
+                      checked={onlyPassed}
+                      onClick={() => toggleOnlyPassed()}
+                    />
                     <span className="ml2">Passed only</span>
                   </label>
                 </div>
@@ -234,21 +248,29 @@ export const PipelinePerformance = () => {
 
               <div className="gray f6 pointer">
                 <div className="tr inline-flex items-center">
-                  <div className="inline-flex items-center"
-                    onClick={() => toggleActiveChart(`duration`)}>
+                  <div
+                    className="inline-flex items-center"
+                    onClick={() => toggleActiveChart(`duration`)}
+                  >
                     <Legend
-                      icon={<span className="bg-purple mr2 dib"
-                        style="width:10px; height: 3px;"></span>}
+                      icon={<span
+                        className="bg-purple mr2 dib"
+                        style="width:10px; height: 3px;"
+                      ></span>}
                       label={<span>Duration</span>}
                       isActive={showChart(`duration`)}
                     />
                   </div>
 
-                  <div className="inline-flex items-center"
-                    onClick={() => toggleActiveChart(`stdDev`)}>
+                  <div
+                    className="inline-flex items-center"
+                    onClick={() => toggleActiveChart(`stdDev`)}
+                  >
                     <Legend
-                      icon={<span className="bg-washed-purple mr2 ml3 dib"
-                        style="width:10px; height: 10px;"></span>}
+                      icon={<span
+                        className="bg-washed-purple mr2 ml3 dib"
+                        style="width:10px; height: 10px;"
+                      ></span>}
                       label={<span>Std Dev</span>}
                       isActive={showChart(`stdDev`)}
                     />
@@ -262,8 +284,10 @@ export const PipelinePerformance = () => {
 
           <div className="inline-flex items-center mt4">
             <p className="mb0">CD Performance &mdash; {projectSummary.cdSummary.pipelinePerformanceP50}</p>
-            <a className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
-              data-tippy-content="Change how Semaphore calculates CI Performance">
+            <a
+              className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
+              data-tippy-content="Change how Semaphore calculates CI Performance"
+            >
             </a>
           </div>
 
@@ -300,14 +324,18 @@ export const PipelinePerformance = () => {
                   showCdChart(`duration`) ?
                     <plot.charts.Line metrics={cdMetrics.all} key="duration"/> : <Fragment/>,
                   showCdChart(`stdDev`) ?
-                    <plot.charts.StdDev metrics={cdMetrics.all} height={300} key="stdDev"/> :
-                    <Fragment/>
+                    <plot.charts.StdDev
+                      metrics={cdMetrics.all}
+                      height={300}
+                      key="stdDev"
+                    /> :
+                    <Fragment/>,
                 ]}
                 tooltip={<plot.tooltips.Performance/>}
                 axisY={<plot.yAxis.Duration/>}
                 focus={[
                   <plot.focus.Line color="#8658d6" key="line"/>,
-                  <plot.focus.Dot color="#8658d6" key="dot"/>
+                  <plot.focus.Dot color="#8658d6" key="dot"/>,
                 ]}
                 xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}
                 xDomainTo={moment(dateRangeState.selectedMetricDateRange.to).toDate()}
@@ -319,21 +347,29 @@ export const PipelinePerformance = () => {
 
               <div className="gray f6 pointer">
                 <div className="tr inline-flex items-center">
-                  <div className="inline-flex items-center"
-                    onClick={() => toggleActiveCdChart(`duration`)}>
+                  <div
+                    className="inline-flex items-center"
+                    onClick={() => toggleActiveCdChart(`duration`)}
+                  >
                     <Legend
-                      icon={<span className="bg-purple mr2 dib"
-                        style="width:10px; height: 3px;"></span>}
+                      icon={<span
+                        className="bg-purple mr2 dib"
+                        style="width:10px; height: 3px;"
+                      ></span>}
                       label={<span>Duration</span>}
                       isActive={showCdChart(`duration`)}
                     />
                   </div>
 
-                  <div className="inline-flex items-center"
-                    onClick={() => toggleActiveCdChart(`stdDev`)}>
+                  <div
+                    className="inline-flex items-center"
+                    onClick={() => toggleActiveCdChart(`stdDev`)}
+                  >
                     <Legend
-                      icon={<span className="bg-washed-purple mr2 ml3 dib"
-                        style="width:10px; height: 10px;"></span>}
+                      icon={<span
+                        className="bg-washed-purple mr2 ml3 dib"
+                        style="width:10px; height: 10px;"
+                      ></span>}
                       label={<span>Std Dev</span>}
                       isActive={showCdChart(`stdDev`)}
                     />
@@ -351,8 +387,8 @@ export const PipelinePerformance = () => {
 const Legend = ({
   icon,
   label,
-  isActive
-}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean, }) => {
+  isActive,
+}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean }) => {
   let className = `o-30`;
   if (isActive) {
     className = ``;

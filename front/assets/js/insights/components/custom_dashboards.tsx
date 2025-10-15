@@ -76,7 +76,7 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       const response = await fetch(`${url}/${dashboardId}/${id}`, {
         method: `PUT`,
         headers: util.Headers(),
-        body: `name=${name}`
+        body: `name=${name}`,
       });
 
       if (response.ok) {
@@ -99,7 +99,7 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       const response = await fetch(`${url}/${dashboardId}/${id}/description`, {
         method: `PUT`,
         headers: util.Headers(),
-        body: `description=${description}`
+        body: `description=${description}`,
       });
 
       if (response.ok) {
@@ -145,7 +145,7 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       const response = await fetch(`${url}/${dashboardId}`, {
         method: `POST`,
         headers: util.Headers(`application/json`),
-        body: JSON.stringify(item)
+        body: JSON.stringify(item),
       });
       const data: CreateDashboardItem = await response.json();
       const dashboardItem = types.Dashboard.DashboardItem.fromJSON(data.item);
@@ -208,29 +208,42 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
             <form onSubmit={onSubmit}>
               <div className="f5 pa1">
                 <div className="b mb1">Dashboard name</div>
-                <input value={dashboard.name} onInput={onInputNameChange}
-                  className="x-select-on-click form-control w-90 mb1"/>
+                <input
+                  value={dashboard.name}
+                  onInput={onInputNameChange}
+                  className="x-select-on-click form-control w-90 mb1"
+                />
                 <div className="mt3">
-                  <button className="btn btn-primary btn-small"
+                  <button
+                    className="btn btn-primary btn-small"
                     onClick={hideTippy}
-                    type="submit">Save</button>
-                  <button className="btn btn-secondary ml2 btn-small"
+                    type="submit"
+                  >Save</button>
+                  <button
+                    className="btn btn-secondary ml2 btn-small"
                     type="reset"
-                    onClick={hideTippy}>Cancel</button>
+                    onClick={hideTippy}
+                  >Cancel</button>
                 </div>
                 <div className="mt2 bt b--lighter-gray pt2">
-                  <button className="link"
+                  <button
+                    className="link"
                     onClick={() => confirmDeletion(deleteHandler, id)}
-                    type="reset">Delete</button>
+                    type="reset"
+                  >Delete</button>
                 </div>
               </div>
             </form>
-          }>
+          }
+        >
           <button className="btn btn-secondary btn-tiny" onClick={visible ? hideTippy : showTippy}>Edit</button>
         </Tippy>
         <div className="ml-auto">
-          <select className="form-control mw5 form-control-tiny" onChange={handleMetricDatePickerChanged(dateRangeStore.dispatch)}
-            value={dateRangeState.selectedMetricDateRangeLabel}>
+          <select
+            className="form-control mw5 form-control-tiny"
+            onChange={handleMetricDatePickerChanged(dateRangeStore.dispatch)}
+            value={dateRangeState.selectedMetricDateRangeLabel}
+          >
             {dateRangeState.dateRanges.map(d =>
               <option key={d.label} value={d.label}>{d.label}</option>
             )}
@@ -244,7 +257,8 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       </div>
       <div hidden={isEmpty(dashboard)}>
         {dashboard.items?.map((item: DashboardItem) =>
-          <DashboardItemCard key={item.id}
+          <DashboardItemCard
+            key={item.id}
             item={item}
             metrics={state.metrics.get(item.id)}
             renameHandler={updateDashboardItemHandler}
@@ -253,7 +267,11 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
           />)
         }
         <div className="mt3">
-          <button className="btn btn-primary mb2" hidden={show} onClick={scrollToForm}>Add New Metric</button>
+          <button
+            className="btn btn-primary mb2"
+            hidden={show}
+            onClick={scrollToForm}
+          >Add New Metric</button>
         </div>
       </div>
 

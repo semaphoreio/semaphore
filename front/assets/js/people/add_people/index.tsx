@@ -44,14 +44,19 @@ export const App = () => {
         <span className="material-symbols-outlined mr2">person_add</span>
         {`Add people`}
       </button>
-      <Modal isOpen={isOpen} close={() => close(false)} title="Add new people" width="w-70-m">
+      <Modal
+        isOpen={isOpen}
+        close={() => close(false)}
+        title="Add new people"
+        width="w-70-m"
+      >
         <AddNewUsers close={close}/>
       </Modal>
     </Fragment>
   );
 };
 
-const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
+const AddNewUsers = (props: { close: (reload: boolean) => void }) => {
   const config = useContext(Config);
 
   const userProviders = AvailableProviderTypes.filter((type) =>
@@ -82,7 +87,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
   }, []);
 
   const userProviderBox = (provider: UserProvider) => {
-    const Link = (props: { icon: VNode, title: string, }) => {
+    const Link = (props: { icon: VNode, title: string }) => {
       return (
         <ActiveShadowLink
           className={`flex-grow-1 btn btn-secondary ${

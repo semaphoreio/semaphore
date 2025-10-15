@@ -1,8 +1,8 @@
 export type Action =
-  | { type: `LOADING`, }
-  | { type: `ADD_ERROR`, error: string, }
-  | { type: `RESET`, }
-  | { type: `LOADED`, }
+  | { type: `LOADING` }
+  | { type: `ADD_ERROR`, error: string }
+  | { type: `RESET` }
+  | { type: `LOADED` }
   ;
 
 

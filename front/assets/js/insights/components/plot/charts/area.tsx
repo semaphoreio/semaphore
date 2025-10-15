@@ -7,7 +7,7 @@ import * as d3 from 'd3';
 interface Props extends ChartInterface {
   height: number;
   metrics: types.Chart.Metric[];
-  calculateOptimalRange: (metrics: types.Chart.Metric[]) => { min: number, max: number, };
+  calculateOptimalRange: (metrics: types.Chart.Metric[]) => { min: number, max: number };
 }
 
 export default ({ xScale, yScale, height, metrics, calculateOptimalRange }: Props) => {

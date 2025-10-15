@@ -71,6 +71,10 @@ export default ({ yScale, translation, metrics }: Props) => {
   }, [yScale, translation, metrics]);
 
   return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef}></g>
+    <g
+      className="y axis"
+      style={{ cursor: `default` }}
+      ref={yScaleRef}
+    ></g>
   );
 };

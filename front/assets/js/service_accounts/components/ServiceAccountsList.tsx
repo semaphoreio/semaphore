@@ -23,7 +23,7 @@ export const ServiceAccountsList = ({
   onRegenerateToken,
   onLoadMore,
   hasMore,
-  onCreateNew
+  onCreateNew,
 }: ServiceAccountsListProps) => {
   const config = useContext(ConfigContext);
 
@@ -32,7 +32,7 @@ export const ServiceAccountsList = ({
     return date.toLocaleDateString(`en-US`, {
       year: `numeric`,
       month: `short`,
-      day: `numeric`
+      day: `numeric`,
     });
   };
 

@@ -60,7 +60,7 @@ export function createEnvironmentStore(): Store {
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => listeners.delete(listener);
-    }
+    },
   };
 
   return store;

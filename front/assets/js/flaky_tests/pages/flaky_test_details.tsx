@@ -133,7 +133,7 @@ const BranchSelector = ({ selectedBranch, setSelectedBranch }: BranchSelectorPro
           <span className="material-symbols-outlined mr1" style="font-size: 1.5em;">fork_right</span>
           {c == selectedBranch ? <b>{c}</b> : c}
         </div>,
-        value: c
+        value: c,
       };
     });
     branches.unshift({ label: <span>All branches</span>, value: `` });
@@ -175,7 +175,12 @@ const Info = () => {
       </span>
 
       <div className="flex items-center">
-        <components.LabelList testId={test.id} labels={labels} setLabels={setLabels} labelClass="flex items-center mr2"/>
+        <components.LabelList
+          testId={test.id}
+          labels={labels}
+          setLabels={setLabels}
+          labelClass="flex items-center mr2"
+        />
       </div>
     </Fragment>
   );
@@ -308,35 +313,55 @@ const Metrics = () => {
             <MetricWithTrend data={test.totalCounts} formatValue={formatRuns}/>
           </Metric>
 
-          <Metric title={
-            <div className="flex flex-center justify-center items-center">
+          <Metric
+            title={
+              <div className="flex flex-center justify-center items-center">
               Disruptions
-              <toolbox.Tooltip
-                anchor={<span className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">info</span>}
-                content={<div className="f4">Affected {test.hashes.length} commits across {test.contexts.length} branches.</div>}
-                placement="top"
-              />
-            </div>
-          }>
-            <MetricWithTrend data={test.disruptionCount} formatValue={formatDisruptions} reverseTrend={true}/>
+                <toolbox.Tooltip
+                  anchor={<span className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">info</span>}
+                  content={<div className="f4">Affected {test.hashes.length} commits across {test.contexts.length} branches.</div>}
+                  placement="top"
+                />
+              </div>
+            }
+          >
+            <MetricWithTrend
+              data={test.disruptionCount}
+              formatValue={formatDisruptions}
+              reverseTrend={true}
+            />
           </Metric>
-          <Metric title={
-            <div className="flex flex-center justify-center items-center">
+          <Metric
+            title={
+              <div className="flex flex-center justify-center items-center">
               Impact
-              <toolbox.Tooltip
-                anchor={<div className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">help</div>}
-                content={<div className="f4">Percentage of test runs disrupted by this test.</div>}
-                placement="top"
-              />
-            </div>
-          }>
-            <MetricWithTrend data={test.impacts} formatValue={formatPercentage} reverseTrend={true}/>
+                <toolbox.Tooltip
+                  anchor={<div className="material-symbols-outlined f5 pointer ml1" style="font-size: 1rem;">help</div>}
+                  content={<div className="f4">Percentage of test runs disrupted by this test.</div>}
+                  placement="top"
+                />
+              </div>
+            }
+          >
+            <MetricWithTrend
+              data={test.impacts}
+              formatValue={formatPercentage}
+              reverseTrend={true}
+            />
           </Metric>
           <Metric title="Pass rate">
-            <MetricWithTrend data={test.passRates} formatValue={formatPercentage} reverseTrend={false}/>
+            <MetricWithTrend
+              data={test.passRates}
+              formatValue={formatPercentage}
+              reverseTrend={false}
+            />
           </Metric>
           <Metric title="Duration (p95)" lastElement={true}>
-            <MetricWithTrend data={test.p95Durations} formatValue={toolbox.Formatter.formatTestDuration} reverseTrend={true}/>
+            <MetricWithTrend
+              data={test.p95Durations}
+              formatValue={toolbox.Formatter.formatTestDuration}
+              reverseTrend={true}
+            />
           </Metric>
         </div>
       </div>
@@ -420,14 +445,20 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
     dispatchRequest({ type: `FETCH` });
   };
 
-  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence, }) => {
+  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence }) => {
     const humanizedDate = moment(item.timestamp).from(moment());
     return (
       <div className="flex items-center">
         <span className="material-symbols-outlined f5 mr1">fork_right</span>
         <span>{item.context}</span>
         <span className="material-symbols-outlined f5 b mh2">commit</span>
-        <a href={item.url} className="measure truncate" title={item.workflowName} target="_blank" rel="noreferrer">{item.workflowName}</a>
+        <a
+          href={item.url}
+          className="measure truncate"
+          title={item.workflowName}
+          target="_blank"
+          rel="noreferrer"
+        >{item.workflowName}</a>
         <span className="ml1" title={item.timestamp?.toString()}>· {humanizedDate}, by {item.requester}</span>
       </div>
     );
@@ -485,7 +516,13 @@ const DisruptionHistory = () => {
           />
         </div>
       </div>
-      <components.HistoryChart history={test.disruptionHistory} cummulative={cummulative} color="#E53935" tooltipTitle="Broken builds" tickTitle="fail"/>
+      <components.HistoryChart
+        history={test.disruptionHistory}
+        cummulative={cummulative}
+        color="#E53935"
+        tooltipTitle="Broken builds"
+        tickTitle="fail"
+      />
     </Fragment>
   );
 };

@@ -64,7 +64,7 @@ export const OverviewPage = () => {
   );
 };
 
-const PlanOverview = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const PlanOverview = ({ plan }: { plan: types.Spendings.Plan }) => {
   return (
     <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
       <div className="flex items-center justify-between ph3 pv2 bb bw1 b--black-075 br3 br--top">
@@ -104,7 +104,7 @@ enum PaymentDetailModes {
   EditCreditCard,
 }
 
-const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const Payments = ({ plan }: { plan: types.Spendings.Plan }) => {
   const [mode, setMode] = useState<PaymentDetailModes>(PaymentDetailModes.Display);
   const [budget, setBudget] = useState<types.Spendings.Budget>(new types.Spendings.Budget());
   const config = useContext(stores.Config.Context);
@@ -131,14 +131,26 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
 
   return (
     <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
-      {isPrepaid && mode === PaymentDetailModes.Display && <PrepaidPaymentDetails budget={budget} plan={plan} setMode={setMode}/>}
-      {!isPrepaid && mode === PaymentDetailModes.Display && <PaymentDetails plan={plan} budget={budget} setMode={setMode}/>}
-      {mode === PaymentDetailModes.EditBudget && <EditBudget setMode={setMode} budget={budget} setBudget={setBudget}/>}
+      {isPrepaid && mode === PaymentDetailModes.Display && <PrepaidPaymentDetails
+        budget={budget}
+        plan={plan}
+        setMode={setMode}
+      />}
+      {!isPrepaid && mode === PaymentDetailModes.Display && <PaymentDetails
+        plan={plan}
+        budget={budget}
+        setMode={setMode}
+      />}
+      {mode === PaymentDetailModes.EditBudget && <EditBudget
+        setMode={setMode}
+        budget={budget}
+        setBudget={setBudget}
+      />}
     </div>
   );
 };
 
-const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
@@ -173,7 +185,7 @@ const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary, }) => {
   );
 };
 
-const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: types.Spendings.Plan, }) => {
+const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: types.Spendings.Plan }) => {
   const showSummaryHelp = summary.hasSubscription() || plan.isTrial();
 
   const WithCreditsTooltip = () => {
@@ -240,7 +252,11 @@ const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: ty
                   <toolbox.Tooltip
                     stickable={true}
                     anchor={
-                      <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                      <span
+                        className="pointer material-symbols-outlined"
+                        style="font-size: 1em;"
+                        aria-expanded="false"
+                      >
                         help
                       </span>
                     }
@@ -264,7 +280,11 @@ const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: ty
                     <toolbox.Tooltip
                       stickable={true}
                       anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        <span
+                          className="pointer material-symbols-outlined"
+                          style="font-size: 1em;"
+                          aria-expanded="false"
+                        >
                           help
                         </span>
                       }
@@ -450,7 +470,11 @@ const EditBudget = ({
           </div>
         </div>
         <div className="ph3 pv2 tl">
-          <button type="submit" className="btn btn-tiny btn-primary tl mr2" disabled={insufficientPermissions}>
+          <button
+            type="submit"
+            className="btn btn-tiny btn-primary tl mr2"
+            disabled={insufficientPermissions}
+          >
             Update
           </button>
           <a className="btn btn-tiny btn-secondary" onClick={() => void setMode(PaymentDetailModes.Display)}>
@@ -480,7 +504,11 @@ const PaymentDetails = ({
     return (
       <Fragment>
         {showLink && (
-          <a href={plan.paymentMethodUrl} target="_blank" rel="noreferrer">
+          <a
+            href={plan.paymentMethodUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
             {withoutPaymentMethod && `Set ↗`}
             {!withoutPaymentMethod && `Update ↗`}
           </a>
@@ -633,7 +661,7 @@ const PrepaidPaymentDetails = ({
   );
 };
 
-const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
@@ -654,7 +682,7 @@ const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary, }) => {
   );
 };
 
-const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
@@ -668,7 +696,11 @@ const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summar
                     <toolbox.Tooltip
                       stickable={true}
                       anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        <span
+                          className="pointer material-symbols-outlined"
+                          style="font-size: 1em;"
+                          aria-expanded="false"
+                        >
                           help
                         </span>
                       }

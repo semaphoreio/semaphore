@@ -1,7 +1,7 @@
 import { render } from "preact";
 import * as toolbox from "js/toolbox";
 
-export function DeployKeyConfig({ config, dom }: { dom: HTMLElement, config: DOMStringMap, }) {
+export function DeployKeyConfig({ config, dom }: { dom: HTMLElement, config: DOMStringMap }) {
   const appWrapper = document.createElement(`div`);
   render(<App config={parseConfig(config)}/>, appWrapper);
   dom.replaceWith(...appWrapper.childNodes);
@@ -15,7 +15,7 @@ const parseConfig = (config: DOMStringMap): Config => {
     fingerprint: parsedConfig.fingerprint,
     createdAt: parsedConfig.created_at,
     message: parsedConfig.message,
-    regenerateUrl: parsedConfig.regenerate_url
+    regenerateUrl: parsedConfig.regenerate_url,
   };
 };
 
@@ -28,7 +28,7 @@ interface Config {
   regenerateUrl: string;
 }
 
-const App = (props: { config: Config, }) => {
+const App = (props: { config: Config }) => {
   const deployKey = props.config;
   const withProblem = deployKey.message.length > 0;
   const canRegenerate = deployKey.regenerateUrl != ``;
@@ -36,7 +36,7 @@ const App = (props: { config: Config, }) => {
   const regenerate = () => {
     const confirmed = confirm(`Are you sure? This will regenerate a Deployment Key on Repository.`);
     if (confirmed) {
-      const url = new toolbox.APIRequest.Url( `post`, deployKey.regenerateUrl);
+      const url = new toolbox.APIRequest.Url(`post`, deployKey.regenerateUrl);
       void url.call().then(() => {
         window.location.reload();
       });
@@ -50,18 +50,22 @@ const App = (props: { config: Config, }) => {
           <label className="b mr1">Deploy Key</label>
           {withProblem && <toolbox.Asset path="images/icn-failed.svg" className="v-mid"/>}
           {!withProblem && <toolbox.Asset path="images/icn-passed.svg" className="v-mid"/>}
-          {canRegenerate && <span className="f5 fw5">
-            <span className="mh1">·</span>
-            <a className="pointer underline" onClick={regenerate}>Regenerate</a>
-          </span>
-          }
+          {canRegenerate && (
+            <span className="f5 fw5">
+              <span className="mh1">·</span>
+              <a className="pointer underline" onClick={regenerate}>
+                Regenerate
+              </a>
+            </span>
+          )}
         </div>
 
         <div>
           <toolbox.Popover
             content={
               <div className="f6">
-                Semaphore uses this SSH key to securely access your repository. Keep it private and only regenerate it if absolutely necessary to maintain security.
+                Semaphore uses this SSH key to securely access your repository. Keep it private and only regenerate it if absolutely
+                necessary to maintain security.
               </div>
             }
             anchor={<toolbox.Asset className="pointer" path="images/icn-info-15.svg"/>}

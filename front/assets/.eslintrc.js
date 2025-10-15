@@ -26,7 +26,7 @@ module.exports = {
   },
   ignorePatterns: ["*.js", "*.json"],
   rules: {},
- overrides: [
+  overrides: [
     {
       files: ["js/**/*.spec.js"],
       env: {
@@ -86,7 +86,8 @@ module.exports = {
             },
           },
         ],
-        "no-console": 1,
+        "no-console": ["error", { allow: ["warn", "error"] }],
+        "max-len": ["error", {"code": 140, "ignoreComments": true, "ignoreStrings": true, "ignoreTemplateLiterals": true}],
         "no-multi-spaces": "error",
         "@typescript-eslint/member-delimiter-style": [
           "warn",
@@ -97,7 +98,7 @@ module.exports = {
             },
             singleline: {
               delimiter: "comma",
-              requireLast: true,
+              requireLast: false,
             },
           },
         ],
@@ -105,6 +106,9 @@ module.exports = {
         "react/jsx-uses-react": "off",
         "react/react-in-jsx-scope": "off",
         "react/display-name": "off",
+        "react/jsx-first-prop-new-line": ["error", "multiline"],
+        "react/jsx-max-props-per-line": ["error", { maximum: {single: 2, multi: 1} }],
+        "react/jsx-closing-bracket-location": ["error", { selfClosing: "line-aligned", nonEmpty: "line-aligned" }],
         "react/jsx-tag-spacing": [
           "error",
           {
@@ -114,6 +118,25 @@ module.exports = {
             beforeClosing: "never",
           },
         ],
+        "@typescript-eslint/comma-dangle": [
+          "error",
+          {
+            arrays: "always-multiline",
+            objects: "always-multiline",
+            imports: "always-multiline",
+            exports: "always-multiline",
+            functions: "never",
+            enums: "always-multiline",
+            generics: "always-multiline",
+            tuples: "always-multiline"
+          }
+        ],
+        "@typescript-eslint/no-misused-promises": [
+          "error",
+          {
+            "checksVoidReturn": false
+          }
+        ]
       },
     },
   ],

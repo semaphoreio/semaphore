@@ -47,14 +47,16 @@ export const Modal = (props: ModalProps) => {
         zIndex: 1000,
         backgroundColor: `rgba(0, 0, 0, 0.5)`,
         left: 0,
-        top: 0
+        top: 0,
       }}
       onClick={close}
     >
-      <div className={`bg-white br3 shadow-1 w-90 ${props.width || `w-50-m`} mw6 relative`}
+      <div
+        className={`bg-white br3 shadow-1 w-90 ${props.width || `w-50-m`} mw6 relative`}
         style={{
-          top: `20vh`
-        }}>
+          top: `20vh`,
+        }}
+      >
         {props.title && (
           <div className="pa3 bb b--black-10">
             <h2 className="f3 mb0">{props.title}</h2>

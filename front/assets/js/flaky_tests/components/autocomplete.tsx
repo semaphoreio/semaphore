@@ -14,7 +14,7 @@ interface AutocompleteProps {
 }
 
 
-const List = styled.ul<{ $height: number, $width: number, }>`
+const List = styled.ul<{ $height: number, $width: number }>`
   box-shadow: 0 0 0 1px rgba(0,0,0,0.2), 0 0px 1px 0 #e5e8ea;
   list-style: none;
   margin-top: 0;
@@ -46,7 +46,7 @@ const List = styled.ul<{ $height: number, $width: number, }>`
   }
 `;
 
-const SearchInput = styled.input<{ $active?: boolean, }>`
+const SearchInput = styled.input<{ $active?: boolean }>`
   z-index: 99;
   ${(props) => {
     switch (props.$active) {
@@ -115,11 +115,29 @@ export const Autocomplete = (props: AutocompleteProps) => {
 
   return (
     <Fragment>
-      <div ref={ref} className="" style="position: relative;">
-        <SearchInput ref={inputRef} value={searchString} onInput={onInput} $active={active} type="text" className="form-control form-control-tiny" placeholder="search" onFocusIn={onFocus} onFocusOut={onFocus}/>
+      <div
+        ref={ref}
+        className=""
+        style="position: relative;"
+      >
+        <SearchInput
+          ref={inputRef}
+          value={searchString}
+          onInput={onInput}
+          $active={active}
+          type="text"
+          className="form-control form-control-tiny"
+          placeholder="search"
+          onFocusIn={onFocus}
+          onFocusOut={onFocus}
+        />
         {active && <List $height={height} $width={width}>
           {items.map((item, idx) =>
-            <li className="f6" onClick={(e) => {e.preventDefault(); props.onChange(item.value); }} key={idx}>
+            <li
+              className="f6"
+              onClick={(e) => {e.preventDefault(); props.onChange(item.value); }}
+              key={idx}
+            >
               {item.label}
             </li>
           )}

@@ -2,8 +2,8 @@ import { createContext } from "preact";
 import * as types from "../types";
 
 export type Action =
-  | { type: `SET_LEARN`, value: types.Onboarding.Learn, }
-  | { type: `SELECT_TASK`, value: string, };
+  | { type: `SET_LEARN`, value: types.Onboarding.Learn }
+  | { type: `SELECT_TASK`, value: string };
 
 export interface State {
   currentTask?: types.Onboarding.Task;
