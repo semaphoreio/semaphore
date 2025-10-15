@@ -135,7 +135,7 @@ export const ProjectList = () => {
   }, [projectNameFilter, orderBy, orderByDir, projects]);
 
 
-  const RequestSorter = ({ name, label, className }: { name: string, label: string, className?: string, } ) => {
+  const RequestSorter = ({ name, label, className }: { name: string, label: string, className?: string } ) => {
     const isAsc = orderBy == name && orderByDir == `asc`;
     const isDesc = orderBy == name && orderByDir == `desc`;
     const isNone = !isAsc && !isDesc;
@@ -184,12 +184,23 @@ export const ProjectList = () => {
         <div className="flex items-center justify-between pa3 bb bw1 b--black-075 br3 br--top">
           <div>
             <div className="flex items-center">
-              <toolbox.Asset path="images/icn-project-nav.svg" className="pa1 mr2" width="16" height="16"/>
+              <toolbox.Asset
+                path="images/icn-project-nav.svg"
+                className="pa1 mr2"
+                width="16"
+                height="16"
+              />
               <div className="b">Projects spending</div>
             </div>
           </div>
           <div className="flex items-center">
-            <input type="text" className="form-control mr2" value={projectNameFilter} onInput={onProjectNameInput()} placeholder="Search for a project..."/>
+            <input
+              type="text"
+              className="form-control mr2"
+              value={projectNameFilter}
+              onInput={onProjectNameInput()}
+              placeholder="Search for a project..."
+            />
             <a className="btn btn-secondary" href={csvUrl.toString()}>Download .csv</a>
           </div>
         </div>
@@ -204,19 +215,39 @@ export const ProjectList = () => {
                 <div className="w-100 pv2 ph3">
                   <div className="flex items-center">
                     <div className="w-40 gray f5">
-                      <RequestSorter name="name" label={`Name`} className={`justify-start`}/>
+                      <RequestSorter
+                        name="name"
+                        label={`Name`}
+                        className={`justify-start`}
+                      />
                     </div>
                     <div className="w-20 tr gray f5">
-                      <RequestSorter name="workflowCount" label={`Workflows`} className={`justify-end`}/>
+                      <RequestSorter
+                        name="workflowCount"
+                        label={`Workflows`}
+                        className={`justify-end`}
+                      />
                     </div>
                     <div className="w-20 tr gray f5">
-                      <RequestSorter name="machineTimePriceRaw" label={`Machines usage`} className={`justify-end`}/>
+                      <RequestSorter
+                        name="machineTimePriceRaw"
+                        label={`Machines usage`}
+                        className={`justify-end`}
+                      />
                     </div>
                     <div className="w-20 tr gray f5">
-                      <RequestSorter name="storagePriceRaw" label={`Storage & Egress`} className={`justify-end`}/>
+                      <RequestSorter
+                        name="storagePriceRaw"
+                        label={`Storage & Egress`}
+                        className={`justify-end`}
+                      />
                     </div>
                     <div className="w-20 tr gray f5">
-                      <RequestSorter name="priceRaw" label={`Total ($)`} className={`justify-end`}/>
+                      <RequestSorter
+                        name="priceRaw"
+                        label={`Total ($)`}
+                        className={`justify-end`}
+                      />
                     </div>
                   </div>
                 </div>
@@ -224,7 +255,11 @@ export const ProjectList = () => {
             </div>
             {projects.length == 0 ? <div className="tc pv3">No projects found</div> : null}
             {projects.length != 0 && filteredProjects.length == 0 ? <div className="tc pv3">No projects match your criteria</div> : null}
-            {filteredProjects.map((project, idx) => <ProjectRow key={project.id} idx={idx} project={project}/>)}
+            {filteredProjects.map((project, idx) => <ProjectRow
+              key={project.id}
+              idx={idx}
+              project={project}
+            />)}
           </div>
         </components.Loader.Container>
       </div>
@@ -232,7 +267,7 @@ export const ProjectList = () => {
   );
 };
 
-const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: number, }) => {
+const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: number }) => {
   const { search } = useLocation();
 
   return (
@@ -271,11 +306,15 @@ const ProjectRow = ({ project, idx }: { project: types.Spendings.Project, idx: n
   );
 };
 
-export const Loader = ({ status, children }: { status: types.RequestStatus, children?: VNode<any>[] | VNode<any>, }) => {
+export const Loader = ({ status, children }: { status: types.RequestStatus, children?: VNode<any>[] | VNode<any> }) => {
   switch(status) {
     case types.RequestStatus.Loading:
       return <div className="pv2 flex items-center justify-center">
-        <toolbox.Asset path="images/spinner-2.svg" width="20" height="20"/>
+        <toolbox.Asset
+          path="images/spinner-2.svg"
+          width="20"
+          height="20"
+        />
         <div className="ml1 gray">Loading projects&hellip;</div>
       </div>;
     case types.RequestStatus.Error:

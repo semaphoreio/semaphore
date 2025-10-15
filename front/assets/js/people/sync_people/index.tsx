@@ -19,7 +19,7 @@ export default function ({
     <Config.Provider value={ConfigState.fromJSON(jsonConfig as RawConfig)}>
       <Button/>
     </Config.Provider>,
-    buttonContainer
+    buttonContainer,
   );
 
   dom.replaceWith(...buttonContainer.childNodes);
@@ -48,7 +48,11 @@ const Button = () => {
     <Fragment>
       <toolbox.Tooltip
         anchor={
-          <button className="pointer flex items-center btn-secondary btn nowrap" onClick={refreshPeople} disabled={syncing}>
+          <button
+            className="pointer flex items-center btn-secondary btn nowrap"
+            onClick={refreshPeople}
+            disabled={syncing}
+          >
             <Spinner className={`material-symbols-outlined mr1 ${syncing ? `active` : ``}`}>
               sync
             </Spinner>

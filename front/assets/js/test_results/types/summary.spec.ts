@@ -11,7 +11,7 @@ describe(`Summary constructor`, () => {
       skipped: 3,
       error: 4,
       failed: 5,
-      duration: 12345
+      duration: 12345,
     };
 
     const summary = Summary.fromJSON(json);

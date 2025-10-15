@@ -17,7 +17,7 @@ export default function ({
     <Config.Provider value={State.fromJSON(jsonConfig as DOMStringMap)}>
       <Button/>
     </Config.Provider>,
-    buttonContainer
+    buttonContainer,
   );
 
   dom.replaceWith(...buttonContainer.childNodes);
@@ -34,7 +34,7 @@ export const Button = () => {
   const [changed, setChanged] = useState(false);
 
   const [defaultRole, setDefaultRole] = useState<UserRole>(
-    user.roles.find((role) => role.isSelected)
+    user.roles.find((role) => role.isSelected),
   );
   const [selectedRole, setSelectedRole] = useState<UserRole>(defaultRole);
   const [roleResponse, setRoleResponse] = useState<Response>({
@@ -52,7 +52,7 @@ export const Button = () => {
   const roleChanged = defaultRole != selectedRole;
   const emailChanged = defaultEmail != email;
 
-  const ResponseHandler = (props: { response: Response, }) => {
+  const ResponseHandler = (props: { response: Response }) => {
     return (
       <div
         className={`f6 tr mt2 ${
@@ -163,7 +163,11 @@ export const Button = () => {
         <span className="material-symbols-outlined mr1">manage_accounts</span>
         <span>Edit</span>
       </button>
-      <toolbox.Modal isOpen={isOpen} close={close} title="Edit user">
+      <toolbox.Modal
+        isOpen={isOpen}
+        close={close}
+        title="Edit user"
+      >
         <div className="pa3">
           <div className="mb3">
             <label className="db mb2 b">Email address</label>
@@ -262,7 +266,7 @@ const PasswordReset = (props: PasswordResetProps) => {
   const [loading, setLoading] = useState(false);
   const [tempPassword, setTempPassword] = useState(``);
   const [state, setState] = useState<PasswordResetState>(
-    PasswordResetState.Start
+    PasswordResetState.Start,
   );
 
   const [copied, setCopied] = useState(false);
@@ -368,10 +372,10 @@ export class State {
 
     config.user = User.fromJSON(json.user);
     config.featureProvider = toolbox.FeatureProvider.fromJSON(
-      json.meta.features
+      json.meta.features,
     );
     config.accessProvider = toolbox.AccessProvider.fromJSON(
-      json.meta.permissions
+      json.meta.permissions,
     );
 
     return config;
@@ -416,8 +420,8 @@ class User {
   memberType: string;
 
   roles: UserRole[] = [];
-  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string, }>;
-  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string, }>;
+  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string }>;
+  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string }>;
   resetPasswordUrl: toolbox.APIRequest.Url<{
     password: string;
     message: string;
@@ -440,10 +444,10 @@ class User {
 
     user.assignRoleUrl = toolbox.APIRequest.Url.fromJSON(json.assign_role_url);
     user.changeEmailUrl = toolbox.APIRequest.Url.fromJSON(
-      json.change_email_url
+      json.change_email_url,
     );
     user.resetPasswordUrl = toolbox.APIRequest.Url.fromJSON(
-      json.reset_password_url
+      json.reset_password_url,
     );
 
     return user;

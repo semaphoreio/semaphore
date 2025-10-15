@@ -22,14 +22,18 @@ export const Container = (props: Props) => {
   }
 };
 
-export const LoadingSpinner = ({ text }: { text: string, }) => {
+export const LoadingSpinner = ({ text }: { text: string }) => {
   return (<div className="pv2 flex items-center justify-center">
-    <toolbox.Asset path="images/spinner-2.svg" width="20" height="20"/>
+    <toolbox.Asset
+      path="images/spinner-2.svg"
+      width="20"
+      height="20"
+    />
     <div className="ml1 gray">{text}</div>
   </div>);
 };
 
-export const LoadingFailed = ({ text, retry }: { text: string, retry?: boolean, }) => {
+export const LoadingFailed = ({ text, retry }: { text: string, retry?: boolean }) => {
 
   const { dispatch: dispatchRequest } = useContext(stores.Request.Context);
   if(retry) {

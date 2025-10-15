@@ -21,7 +21,7 @@ export const CopyField = ({ title, url }: CopyFieldProps) => {
       },
       () => {
         return;
-      }
+      },
     );
   };
 

@@ -33,7 +33,7 @@ export class DetailedProject extends Project {
     detailedProject.cost = ProjectCost.fromJSON(json.project.cost);
 
     const nonEmptyGroups = detailedProject.cost.groups.filter(
-      (group) => group.items.length != 0
+      (group) => group.items.length != 0,
     );
     detailedProject.cost.groups = nonEmptyGroups;
 
@@ -54,7 +54,7 @@ export class DetailedProject extends Project {
 
   findCostAt(date: Date) {
     return this.periodicCosts.find((cost) =>
-      moment(cost.fromDate).isSame(date, `day`)
+      moment(cost.fromDate).isSame(date, `day`),
     );
   }
 
@@ -76,7 +76,7 @@ export class DetailedProject extends Project {
     let currentDate = fromDate.clone();
     while (currentDate.isBefore(toDate)) {
       const cost = costs.find((c) =>
-        moment(c.fromDate).isSame(currentDate, `day`)
+        moment(c.fromDate).isSame(currentDate, `day`),
       );
       if (!cost) {
         const projectCost = ProjectCost.Empty;
@@ -122,7 +122,7 @@ export class DetailedProject extends Project {
           acc[group.type as string] = group.rawPrice;
           return acc;
         },
-        {}
+        {},
       );
 
       return {
@@ -160,7 +160,7 @@ export class DetailedProject extends Project {
             total += item.rawPrice;
             return acc;
           },
-          {}
+          {},
         );
 
         return {
@@ -176,7 +176,7 @@ export class DetailedProject extends Project {
   get periodicCostsBeforeToday(): ProjectCost[] {
     const today = moment.utc().startOf(`day`);
     return this.periodicCosts.filter((cost) =>
-      moment(cost.fromDate).isBefore(today)
+      moment(cost.fromDate).isBefore(today),
     );
   }
 
@@ -229,7 +229,7 @@ export class ProjectCost {
       .filter((group) => group)
       .sort(
         (a, b) =>
-          groupSortOrder.indexOf(a.type) - groupSortOrder.indexOf(b.type)
+          groupSortOrder.indexOf(a.type) - groupSortOrder.indexOf(b.type),
       );
 
     projectCost.workflowCount = json.workflow_count as number;

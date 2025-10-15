@@ -2,10 +2,10 @@ import { createContext } from "preact";
 import * as types from "../types";
 
 export type Action =
-  | { type: `SET_STATUS`, value: types.RequestStatus, }
-  | { type: `SET_PARAM`, name: string, value: string, }
-  | { type: `FETCH`, }
-  | { type: `CLEAR_PARAMS`, };
+  | { type: `SET_STATUS`, value: types.RequestStatus }
+  | { type: `SET_PARAM`, name: string, value: string }
+  | { type: `FETCH` }
+  | { type: `CLEAR_PARAMS` };
 
 export interface State {
   url: URL;

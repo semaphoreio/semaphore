@@ -28,15 +28,15 @@ export const Insights = () => {
 
   const [loading, dispatchLoading] = useReducer(
     stores.Loading.Reducer,
-    stores.Loading.EmptyState
+    stores.Loading.EmptyState,
   );
   const [summary, dispatchSummary] = useReducer(
     stores.Summary.Reducer,
-    stores.Summary.EmptyState
+    stores.Summary.EmptyState,
   );
   const [metricDateRange, dispatchMetricDateRange] = useReducer(
     stores.MetricDateRange.Reducer,
-    stores.MetricDateRange.EmptyState
+    stores.MetricDateRange.EmptyState,
   );
 
 
@@ -98,7 +98,7 @@ export const Insights = () => {
         const summary = types.Summary.Project.fromJSON(
           defaultBranch,
           allBranches,
-          cdSummary
+          cdSummary,
         );
 
         dispatchSummary({ type: `SET_SUMMARY`, summary });
@@ -114,7 +114,7 @@ export const Insights = () => {
   const navigate = useNavigate();
   const [dashboards, dispatchDashboards] = useReducer(
     stores.Dashboards.Reducer,
-    stores.Dashboards.EmptyState
+    stores.Dashboards.EmptyState,
   );
   const { dashboardsUrl } = useContext(Config);
 

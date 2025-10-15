@@ -17,5 +17,5 @@ export const Context = createContext<State>({
   orgId: ``,
   orgUsername: ``,
   domain: ``,
-  csrfTokenCookieKey: `githubAppInstallStatusToken`
+  csrfTokenCookieKey: `githubAppInstallStatusToken`,
 });

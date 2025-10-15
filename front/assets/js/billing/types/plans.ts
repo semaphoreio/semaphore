@@ -35,7 +35,7 @@ export class Features {
     f.parallelism = numberOrInfinity(json.parallelism as number);
     f.maxUsers = numberOrInfinity(json.max_users as number);
     f.maxSelfHostedAgents = numberOrInfinity(
-      json.max_self_hosted_agents as number
+      json.max_self_hosted_agents as number,
     );
     f.cloudMinutes = numberOrInfinity(json.cloud_minutes as number);
 

@@ -15,7 +15,7 @@ export const New = () => {
   const [loading, setLoading] = useState(false);
   const config = useContext(stores.Config.Context);
   const { dispatch: dispatchSelfHostedAgent } = useContext(
-    stores.SelfHostedAgent.Context
+    stores.SelfHostedAgent.Context,
   );
 
   const createAgent = () => {
@@ -114,7 +114,7 @@ export const NewAgentPage = () => {
   const [loading, setLoading] = useState(false);
   const config = useContext(stores.Config.Context);
   const { dispatch: dispatchSelfHostedAgent } = useContext(
-    stores.SelfHostedAgent.Context
+    stores.SelfHostedAgent.Context,
   );
 
   const createAgent = () => {

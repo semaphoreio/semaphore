@@ -6,7 +6,7 @@ export const decimalThousands = (value: number): string => {
 
 export const decimalThousandsWithPrecision = (
   value: number,
-  precision: number
+  precision: number,
 ): string => {
   // format the value with the given precision
   value = parseFloat(value.toFixed(precision));

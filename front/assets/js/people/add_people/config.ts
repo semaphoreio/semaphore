@@ -17,8 +17,8 @@ interface ParsedConfig {
 }
 
 export class AppConfig {
-  collaboratorListUrl: APIRequest.Url<{ collaborators: any, }>;
-  inviteMemberUrl: APIRequest.Url<{ message: string, }>;
+  collaboratorListUrl: APIRequest.Url<{ collaborators: any }>;
+  inviteMemberUrl: APIRequest.Url<{ message: string }>;
   createMemberUrl: APIRequest.Url<{
     password: string;
     message: string;
@@ -32,7 +32,7 @@ export class AppConfig {
     const json: ParsedConfig = JSON.parse(rawJson.config);
 
     config.collaboratorListUrl = APIRequest.Url.fromJSON(
-      json.users.collaborators_url
+      json.users.collaborators_url,
     );
     config.createMemberUrl = APIRequest.Url.fromJSON(json.users.create_url);
     config.inviteMemberUrl = APIRequest.Url.fromJSON(json.users.invite_url);

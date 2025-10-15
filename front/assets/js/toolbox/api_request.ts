@@ -26,7 +26,7 @@ const getHeaders = () => {
 
 async function apiRequest<T>(
   url: string | URL,
-  options: RequestOptions
+  options: RequestOptions,
 ): Promise<ApiResponse<T>> {
   const defaultHeaders = getHeaders();
 
@@ -86,28 +86,28 @@ export const get = <T>(
   url: string | URL,
   body?: any,
   headers?: HeadersInit,
-  transform?: (data: any) => T
+  transform?: (data: any) => T,
 ) => apiRequest<T>(url, { method: `GET`, headers, transform });
 
 export const post = <T>(
   url: string | URL,
   body?: any,
   headers?: HeadersInit,
-  transform?: (data: any) => T
+  transform?: (data: any) => T,
 ) => apiRequest<T>(url, { method: `POST`, body, headers, transform });
 
 export const put = <T>(
   url: string | URL,
   body?: any,
   headers?: HeadersInit,
-  transform?: (data: any) => T
+  transform?: (data: any) => T,
 ) => apiRequest<T>(url, { method: `PUT`, body, headers, transform });
 
 export const del = <T>(
   url: string | URL,
   body?: any,
   headers?: HeadersInit,
-  transform?: (data: any) => T
+  transform?: (data: any) => T,
 ) => apiRequest<T>(url, { method: `DELETE`, headers, transform });
 
 export type Method = `get` | `post` | `put` | `delete`;
@@ -119,7 +119,7 @@ export const callApi = async <T>(
     body,
     headers,
     transform,
-  }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T, }
+  }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T },
 ): Promise<ApiResponse<T>> => {
   switch (method) {
     case `post`:
@@ -143,7 +143,7 @@ export class Url<T> {
       body?: any;
       headers?: HeadersInit;
       transform?: (data: any) => T;
-    } = {}
+    } = {},
   ): Promise<ApiResponse<T>> {
     return callApi<T>(this.method, this.path, {
       body: props.body,

@@ -48,7 +48,7 @@ const Integrations = () => {
                 connectionStatus={integration.connectionStatus}
                 integrationType={integration.type}
               />
-            )
+            ),
           )}
         </Box>
       )}
@@ -76,7 +76,7 @@ const AddNewIntegration = () => {
                 connectButtonUrl={integration.connectUrl}
                 internalSetup={integration.internalSetup}
               />
-            )
+            ),
           )}
         </Box>
       )}

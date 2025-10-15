@@ -54,14 +54,14 @@ export const InvoiceList = () => {
             invoice={invoice}
             key={i}
             lastItem={i == state.invoices.length - 1}
-          />
+          />,
         )}
       </div>
     </div>
   );
 };
 
-const Invoice = ({ invoice, lastItem }: { invoice: types.Spendings.Invoice, lastItem?: boolean, }) => {
+const Invoice = ({ invoice, lastItem }: { invoice: types.Spendings.Invoice, lastItem?: boolean }) => {
   return (
     <div className={ lastItem ? `` : `b--black-075 bb`}>
       <div className="ph3 pv2">

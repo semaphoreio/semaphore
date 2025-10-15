@@ -23,18 +23,15 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
   const el = createRef();
 
   const sortTests = (suites: types.TestCase[], sort: FilterStore.SortOrder) => {
-    switch(sort) {
+    switch (sort) {
       case `alphabetical`:
-        suites
-          .sort((a, b) => a.name.localeCompare(b.name));
+        suites.sort((a, b) => a.name.localeCompare(b.name));
         break;
       case `failed-first`:
-        suites
-          .sort((a, b) => b.state.valueOf() - a.state.valueOf());
+        suites.sort((a, b) => b.state.valueOf() - a.state.valueOf());
         break;
       case `slowest-first`:
-        suites
-          .sort((a, b) => b.duration - a.duration);
+        suites.sort((a, b) => b.duration - a.duration);
         break;
     }
     return suites;
@@ -46,14 +43,14 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
       [State.FAILED]: `red`,
       [State.SKIPPED]: `gray`,
       [State.EMPTY]: `green`,
-    }
+    },
   };
 
   useLayoutEffect(() => {
-    if(navigation.state.activeTestId != ``) {
+    if (navigation.state.activeTestId != ``) {
       return;
     }
-    if(navigation.state.activeSuiteId == suite.id) {
+    if (navigation.state.activeSuiteId == suite.id) {
       const currentEl = el.current as HTMLElement;
       $(`html`).animate({ scrollTop: currentEl.offsetTop - 100 }, 200);
     }
@@ -72,30 +69,33 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
   }, [filter.state.toggleAll]);
 
   useEffect(() => {
-    if(startExpanded) {
+    if (startExpanded) {
       setExpanded(startExpanded);
     }
   }, [startExpanded]);
 
   useEffect(() => {
-    if(navigation.state.activeSuiteId == suite.id) {
+    if (navigation.state.activeSuiteId == suite.id) {
       setExpanded(true);
     }
   }, [navigation.state.activeSuiteId]);
 
   const toggleExpand = () => {
-    if(expanded) {
+    if (expanded) {
       navigation.dispatch({ type: `SET_ACTIVE_SUITE`, suiteId: `` });
       setExpanded(false);
-    }
-    else {
+    } else {
       navigation.dispatch({ type: `SET_ACTIVE_SUITE`, suiteId: suite.id });
     }
   };
 
   return (
     <Fragment key={suite.id}>
-      <div className={className} onClick={toggleExpand} ref={el}>
+      <div
+        className={className}
+        onClick={toggleExpand}
+        ref={el}
+      >
         <h4 className="f4 mb0 pointer">
           <span className={`mr1 ${classPalette.dot[suite.state]} select-none`}>●</span>
           {suite.name}
@@ -105,14 +105,13 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
           <Duration duration={suite.summary.duration} className="f7 code"/>
         </div>
       </div>
-      {expanded &&
+      {expanded && (
         <div className="bl b--lighter-gray pl3 ml1">
           {filteredTests.map((test) => {
             return <Test test={test} key={test.id}/>;
-          }
-          )}
+          })}
         </div>
-      }
+      )}
     </Fragment>
   );
 };

@@ -18,7 +18,7 @@ export const Layout = () => {
 
   const [selfHostedAgent, dispatchSelfHostedAgent] = useReducer(
     stores.SelfHostedAgent.Reducer,
-    stores.SelfHostedAgent.EmptyState
+    stores.SelfHostedAgent.EmptyState,
   );
 
   useEffect(() => {

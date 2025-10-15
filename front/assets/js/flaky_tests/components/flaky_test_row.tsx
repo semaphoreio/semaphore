@@ -8,7 +8,7 @@ import * as stores from "../stores";
 import * as components from "../components";
 
 
-export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
+export const FlakyTestRow = ({ item }: { item: FlakyTestItem }) => {
   const [labels, setLabels] = useState([``]);
   useEffect(() => {
     const labels = item.labels.map((label) => {
@@ -26,7 +26,11 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
 
     {/*  Labels */}
     <div className="w-10-m flex flex-column items-center justify-center">
-      <components.LabelList testId={item.testId} labels={labels} setLabels={setLabels}/>
+      <components.LabelList
+        testId={item.testId}
+        labels={labels}
+        setLabels={setLabels}
+      />
     </div>
 
     {/* Age */}
@@ -58,7 +62,7 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
   </div>;
 };
 
-const Name = ({ item }: { item: FlakyTestItem, }) => {
+const Name = ({ item }: { item: FlakyTestItem }) => {
   const { state: filterState, dispatch: dispatchFilter } = useContext(stores.Filter.Context);
 
 
@@ -86,15 +90,25 @@ const Name = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem, }) => {
+const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem }) => {
   return (
     <Fragment>
       <div title={util.Formatter.dateTime(item.latestDisruptionTimestamp)}>
-        <a href={item.latestDisruptionJobUrl} className="link gray underline-hover" target="_blank" rel="noreferrer">{util.Formatter.dateDiff(item.latestDisruptionTimestamp, new Date())}</a>
+        <a
+          href={item.latestDisruptionJobUrl}
+          className="link gray underline-hover"
+          target="_blank"
+          rel="noreferrer"
+        >{util.Formatter.dateDiff(item.latestDisruptionTimestamp, new Date())}</a>
       </div>
       <div className="flex items-center ph2">
         <span className="material-symbols-outlined b f4 db mr2 gray">commit</span>
-        <a href={item.latestDisruptionJobUrl} className="link gray underline-hover" target="_blank" rel="noreferrer">{item.latestDisruptionHash.slice(0, 7)}</a>
+        <a
+          href={item.latestDisruptionJobUrl}
+          className="link gray underline-hover"
+          target="_blank"
+          rel="noreferrer"
+        >{item.latestDisruptionHash.slice(0, 7)}</a>
       </div>
     </Fragment>
   );

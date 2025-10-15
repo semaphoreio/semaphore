@@ -11,7 +11,7 @@ interface SkipOnboardingOptions {
 export const handleSkipOnboarding = async ({ 
   skipOnboardingUrl, 
   csrfToken, 
-  projectUrl 
+  projectUrl, 
 }: SkipOnboardingOptions): Promise<void> => {
   try {
     const response = await fetch(skipOnboardingUrl, {
@@ -20,7 +20,7 @@ export const handleSkipOnboarding = async ({
         'Content-Type': `application/json`,
         'X-CSRF-Token': csrfToken,
       },
-      credentials: `same-origin`
+      credentials: `same-origin`,
     });
 
     const data = await response.json();

@@ -99,8 +99,16 @@ export const GitlabIntegration = ({ integration, csrfToken, orgUsername }: Props
                 method="post"
                 action={integration.deleteUrl}
               >
-                <input type="hidden" name="_csrf_token" value={csrfToken}/>
-                <input type="hidden" name="type" value="gitlab"/>
+                <input
+                  type="hidden"
+                  name="_csrf_token"
+                  value={csrfToken}
+                />
+                <input
+                  type="hidden"
+                  name="type"
+                  value="gitlab"
+                />
                 <input
                   type="text"
                   className="form-control w-100"
@@ -123,7 +131,7 @@ export const GitlabIntegration = ({ integration, csrfToken, orgUsername }: Props
   );
 };
 
-const EditFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
+const EditFields = ({ integration }: { integration: types.Integration.GitlabIntegration }) => {
   const [clientId, setClientId] = useState(``);
   const [clientSecret, setClientSecret] = useState(``);
   const config = useContext(stores.Config.Context);
@@ -139,9 +147,21 @@ const EditFields = ({ integration }: { integration: types.Integration.GitlabInte
           action={integration.connectUrl}
           className="mb3"
         >
-          <input type="hidden" name="_csrf_token" value={csrfToken}/>
-          <input type="hidden" name="type" value="gitlab"/>
-          <input type="hidden" name="redirect_to" value={config.redirectToAfterSetup}/>
+          <input
+            type="hidden"
+            name="_csrf_token"
+            value={csrfToken}
+          />
+          <input
+            type="hidden"
+            name="type"
+            value="gitlab"
+          />
+          <input
+            type="hidden"
+            name="redirect_to"
+            value={config.redirectToAfterSetup}
+          />
 
           <div className="mb3">
             <label className="db mb2">Application ID</label>
@@ -206,7 +226,7 @@ const manifestPermissionsOrder = [
 
 const permissionsOrderMap = utils.createOrderMap(manifestPermissionsOrder);
 
-const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
+const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration }) => {
   const manifest = integration.manifest as {
     permissions: string;
     redirect_urls: string;

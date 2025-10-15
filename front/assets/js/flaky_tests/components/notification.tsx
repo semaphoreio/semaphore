@@ -31,7 +31,7 @@ export const Notification = (props: NotificationProps) => {
   });
 
   const [settings, setSettings] = useState<WebhookSettings>(
-    new WebhookSettings()
+    new WebhookSettings(),
   );
   const [active, setActive] = useState<boolean>(false);
 
@@ -213,7 +213,7 @@ export const Notification = (props: NotificationProps) => {
 
   const onActiveClick = () => {
     const result = confirm(
-      `"You're about to activate this Notification. Are you sure?"`
+      `"You're about to activate this Notification. Are you sure?"`,
     );
     if (result) {
       setActive(true);
@@ -224,7 +224,7 @@ export const Notification = (props: NotificationProps) => {
 
   const onDeactivateClick = () => {
     const result = confirm(
-      `You're about to deactivate this Notification. Are you sure?`
+      `You're about to deactivate this Notification. Are you sure?`,
     );
     if (result) {
       setActive(false);

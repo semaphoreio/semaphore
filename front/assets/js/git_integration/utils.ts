@@ -10,6 +10,6 @@ export const sortByOrder = <T extends PropertyKey>(items: T[], orderMap: Record<
 export const sortObjectByOrder = <T extends Record<string, any>>(
   items: T[],
   orderMap: Record<PropertyKey, number>,
-  key: keyof T
+  key: keyof T,
 ) =>
   [...items].sort((a, b) => (orderMap[a[key]] ?? Infinity) - (orderMap[b[key]] ?? Infinity));

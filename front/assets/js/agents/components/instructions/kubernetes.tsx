@@ -18,7 +18,11 @@ export const Component = (): VNode => {
           <li>
             <div className="mb2">
               Install{` `}
-              <a href="https://helm.sh/" target="_blank" rel="noreferrer">
+              <a
+                href="https://helm.sh/"
+                target="_blank"
+                rel="noreferrer"
+              >
                 helm
               </a>
             </div>

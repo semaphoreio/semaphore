@@ -555,7 +555,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
           allowed: data.allowed,
           errors: myErrors,
         };
-      }
+      },
     );
     isLoading.value = false;
     if (error) {
@@ -591,7 +591,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
                   </a>
                   page and remove some of the users.
                 </span>
-              </li>
+              </li>,
             );
             break;
 
@@ -611,7 +611,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
                   </a>
                   page and remove some of the agents.
                 </span>
-              </li>
+              </li>,
             );
             break;
 
@@ -665,7 +665,7 @@ const PlanDescription = (props: {
   );
 };
 
-const PlanParallelism = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanParallelism = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const parallelism = plan.features.parallelism;
   return (
@@ -683,7 +683,7 @@ const PlanParallelism = (props: { plan: Plans.Plan, className?: string, }) => {
   );
 };
 
-const PlanMaxUsers = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanMaxUsers = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const maxUsers = plan.features.maxUsers;
   return (
@@ -731,7 +731,7 @@ const PlanSelfHostedAgents = (props: {
   );
 };
 
-const PlanSeatCost = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanSeatCost = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   return (
     <div className={`pv1 bb b--black-10 ph3 ${props.className}`}>
@@ -740,7 +740,7 @@ const PlanSeatCost = (props: { plan: Plans.Plan, className?: string, }) => {
   );
 };
 
-const PlanCloudMachines = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanCloudMachines = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const cloudMachinesCount = (cloudMachines: number) => {
     switch (cloudMachines) {

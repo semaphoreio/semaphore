@@ -2,8 +2,8 @@ import { createContext } from "preact";
 import { Report } from "../types/report";
 
 export type Action =
-  | { type: `SET_ITEMS`, items: Report[], }
-  | { type: `SELECT_ITEM`, item: Report, }
+  | { type: `SET_ITEMS`, items: Report[] }
+  | { type: `SELECT_ITEM`, item: Report }
   ;
 
 export interface State {
@@ -25,7 +25,7 @@ export const Reducer = (state: State, action: Action): State => {
 
 export const EmptyState: State = {
   items: [] as Report[],
-  isEmpty: false
+  isEmpty: false,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

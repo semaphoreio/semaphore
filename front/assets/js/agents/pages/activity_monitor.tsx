@@ -13,19 +13,19 @@ export const Page = () => {
   const [activity, dispatchActivity] = useReducer(stores.Activity.Reducer, {
     ...stores.Activity.EmptyState,
     hostedAgents: config.activity.agent_stats.agent_types.map(
-      stores.Activity.Agent.fromJSON
+      stores.Activity.Agent.fromJSON,
     ),
     selfHostedAgents: config.activity.agent_stats.self_hosted_agent_types.map(
-      stores.Activity.Agent.fromJSON
+      stores.Activity.Agent.fromJSON,
     ),
     waitingItems: config.activity.items.waiting.items.map(
-      stores.Activity.Item.fromJSON
+      stores.Activity.Item.fromJSON,
     ),
     runningItems: config.activity.items.running.items.map(
-      stores.Activity.Item.fromJSON
+      stores.Activity.Item.fromJSON,
     ),
     lobbyItems: config.activity.items.lobby.items.map(
-      stores.Activity.Item.fromJSON
+      stores.Activity.Item.fromJSON,
     ),
   });
 
@@ -44,7 +44,7 @@ export const Page = () => {
       dispatchActivity({
         type: `SET_SELF_HOSTED_AGENTS`,
         value: agent_stats.self_hosted_agent_types.map(
-          stores.Activity.Agent.fromJSON
+          stores.Activity.Agent.fromJSON,
         ),
       });
 

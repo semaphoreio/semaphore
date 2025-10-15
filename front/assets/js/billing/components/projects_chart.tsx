@@ -13,7 +13,7 @@ import * as d3 from "d3";
 
 enum AggregationType {
   Daily = `daily`,
-  Cumulative = `cumulative`
+  Cumulative = `cumulative`,
 }
 
 export const ProjectsChart = () => {
@@ -25,13 +25,11 @@ export const ProjectsChart = () => {
   });
   const [projects, setProjects] = useState<types.Spendings.DetailedProject[]>([]);
 
-
   const spending = spendings.state.selectedSpending;
-  if(!spending)
-    return;
+  if (!spending) return;
 
   useLayoutEffect(() => {
-    if(spendings.state.selectedSpending) {
+    if (spendings.state.selectedSpending) {
       dispatchRequest({ type: `SET_PARAM`, name: `spending_id`, value: spendings.state.selectedSpendingId });
       dispatchRequest({ type: `FETCH` });
 
@@ -39,10 +37,8 @@ export const ProjectsChart = () => {
     }
   }, [spendings.state.selectedSpending]);
 
-
   useLayoutEffect(() => {
-    if(request.status == types.RequestStatus.Fetch) {
-
+    if (request.status == types.RequestStatus.Fetch) {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       fetch(request.url)
         .then((response) => response.json())
@@ -80,23 +76,22 @@ const Chart = (props: ChartProps) => {
   const [selectedProject, setSelectedProject] = useState(``);
   const [domain, setDomain] = useState<[Date, Date]>([new Date(), new Date()]);
   const [tooltipState, dispatchTooltip] = useReducer(stores.Tooltip.Reducer, {
-    ...stores.Tooltip.EmptyState
+    ...stores.Tooltip.EmptyState,
   });
 
   useLayoutEffect(() => {
-    if(!projects.length)
-      return;
+    if (!projects.length) return;
 
     // aggregate the data according to the aggregation type. We need aggregated plot data to properly calculate the scales
     const aggregatedPlotData = _.chain(projects)
       .map<components.Charts.PlotData[]>((project) => project.plotData)
-      .map<components.Charts.PlotData[]>((plotData) => aggregatePlotData(plotData, aggregationType) )
+      .map<components.Charts.PlotData[]>((plotData) => aggregatePlotData(plotData, aggregationType))
       .flatten()
       .value();
 
     const dates = _.map(projects, (project) => project.plotDomain);
-    const minDate = _.minBy(dates, d => d[0]);
-    const maxDate = _.maxBy(dates, d => d[1]);
+    const minDate = _.minBy(dates, (d) => d[0]);
+    const maxDate = _.maxBy(dates, (d) => d[1]);
 
     setDomain([minDate ? minDate[0] : new Date(), maxDate ? maxDate[1] : new Date()]);
 
@@ -106,8 +101,8 @@ const Chart = (props: ChartProps) => {
   const aggregatePlotData = (plotData: components.Charts.PlotData[], aggregationType: AggregationType): components.Charts.PlotData[] => {
     let value = 0;
     return _.chain(plotData)
-      .map(plotData => {
-        switch(aggregationType) {
+      .map((plotData) => {
+        switch (aggregationType) {
           case AggregationType.Cumulative:
             value += plotData.value;
             return { ...plotData, value } as components.Charts.PlotData;
@@ -120,8 +115,9 @@ const Chart = (props: ChartProps) => {
       .value();
   };
 
-  const colorScale = d3.scaleOrdinal<string, string>()
-    .domain(props.projects.map((project)=> project.name))
+  const colorScale = d3
+    .scaleOrdinal<string, string>()
+    .domain(props.projects.map((project) => project.name))
     .range(d3.schemeTableau10);
 
   return (
@@ -137,17 +133,25 @@ const Chart = (props: ChartProps) => {
             <components.Charts.TooltipLine/>
             <>
               {projects.map((project, idx) => {
-                const projectSelected = (project.name == selectedProject) || (selectedProject == ``);
-                return <components.Charts.LineChart
-                  key={idx}
-                  colorScale={colorScale}
-                  plotData={aggregatePlotData(project.plotDataBeforeToday, aggregationType)}
-                  style={projectSelected ? `opacity: 1;` : `opacity: 0.2;`}
-                />;
+                const projectSelected = project.name == selectedProject || selectedProject == ``;
+                return (
+                  <components.Charts.LineChart
+                    key={idx}
+                    colorScale={colorScale}
+                    plotData={aggregatePlotData(project.plotDataBeforeToday, aggregationType)}
+                    style={projectSelected ? `opacity: 1;` : `opacity: 0.2;`}
+                  />
+                );
               })}
             </>
           </components.Charts.Plot>
-          <Legend aggregationType={aggregationType} setAggregationType={setAggregationType} projects={projects} selectedProject={selectedProject} setSelectedProject={setSelectedProject}/>
+          <Legend
+            aggregationType={aggregationType}
+            setAggregationType={setAggregationType}
+            projects={projects}
+            selectedProject={selectedProject}
+            setSelectedProject={setSelectedProject}
+          />
           <Tooltip/>
         </stores.Tooltip.Context.Provider>
       </components.Loader.Container>
@@ -155,23 +159,20 @@ const Chart = (props: ChartProps) => {
   );
 };
 
-
 const Tooltip = () => {
   const { state: tooltip } = useContext(stores.Tooltip.Context);
-  if(tooltip.hidden && !tooltip.focus)
-    return;
+  if (tooltip.hidden && !tooltip.focus) return;
   const adjustedLeft = (left: number) => {
     if (left < 2 * width) {
       left += 25;
     } else {
-      left -= (width + 25);
+      left -= width + 25;
     }
 
     return left;
   };
 
-  if(!tooltip.tooltipMetrics)
-    return;
+  if (!tooltip.tooltipMetrics) return;
 
   const width = 250;
   const left = adjustedLeft(tooltip.x);
@@ -182,27 +183,28 @@ const Tooltip = () => {
     <div
       className="tooltip"
       style={{
-        "position": `absolute`,
-        "top": tooltip.y,
-        "left": left,
-        "width": width,
-        "z-index": `3`
+        position: `absolute`,
+        top: tooltip.y,
+        left: left,
+        width: width,
+        "z-index": `3`,
       }}
     >
       <div className="f6">
         <b>{moment(firstMetric.day).format(`MMMM Do`)}</b>
         <br/>
         {metrics.map((metric, idx) => {
-          return <div className={`flex justify-between`} key={idx}>
-            <div>{metric.name}</div>
-            <div>{Formatter.toMoney(metric.value)}</div>
-          </div>;
+          return (
+            <div className={`flex justify-between`} key={idx}>
+              <div>{metric.name}</div>
+              <div>{Formatter.toMoney(metric.value)}</div>
+            </div>
+          );
         })}
       </div>
     </div>
   );
 };
-
 
 interface LegendProps {
   aggregationType: AggregationType;
@@ -213,7 +215,7 @@ interface LegendProps {
 }
 const Legend = (props: LegendProps) => {
   const selectProject = (project: types.Spendings.Project) => () => {
-    if(project.name == props.selectedProject) {
+    if (project.name == props.selectedProject) {
       props.setSelectedProject(``);
     } else {
       props.setSelectedProject(project.name);
@@ -226,15 +228,20 @@ const Legend = (props: LegendProps) => {
     props.setAggregationType(aggregate);
   };
 
-  const colorScale = d3.scaleOrdinal<string, string>()
-    .domain(props.projects.map((project)=> project.name))
+  const colorScale = d3
+    .scaleOrdinal<string, string>()
+    .domain(props.projects.map((project) => project.name))
     .range(d3.schemeTableau10);
 
   return (
     <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
       <div className="flex items-center">
         <label className="mr2">Show</label>
-        <select className="db form-control mb3 mb0-m mr2 form-control-tiny" value={props.aggregationType} onChange={ setAggregationFromEvent }>
+        <select
+          className="db form-control mb3 mb0-m mr2 form-control-tiny"
+          value={props.aggregationType}
+          onChange={setAggregationFromEvent}
+        >
           <option value={AggregationType.Cumulative}>Cumulative</option>
           <option value={AggregationType.Daily}>Daily</option>
         </select>
@@ -243,16 +250,22 @@ const Legend = (props: LegendProps) => {
         <div className="tr inline-flex items-center">
           {props.projects.map((project, idx) => {
             let classes = ``;
-            if(props.selectedProject == project.name || props.selectedProject == ``) {
+            if (props.selectedProject == project.name || props.selectedProject == ``) {
               classes += `o-100`;
             } else {
               classes += `o-50`;
             }
 
-            return <div key={idx} className={`inline-flex items-center ${classes}`} onClick={selectProject(project)}>
-              <span className="mr2 ml3 dib" style={`width: 10px; height: 10px; background: ${colorScale(project.name)};`}></span>
-              <span className="">{project.name}</span>
-            </div>;
+            return (
+              <div
+                key={idx}
+                className={`inline-flex items-center ${classes}`}
+                onClick={selectProject(project)}
+              >
+                <span className="mr2 ml3 dib" style={`width: 10px; height: 10px; background: ${colorScale(project.name)};`}></span>
+                <span className="">{project.name}</span>
+              </div>
+            );
           })}
         </div>
       </div>

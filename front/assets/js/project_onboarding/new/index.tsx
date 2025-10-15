@@ -4,8 +4,8 @@ import { WorkflowSetupApp } from "./workflow_setup";
 import { BrowserRouter } from "react-router-dom";
 import * as stores from "./stores";
 
-export function ProjectOnboardingCreate({ config, dom }: { dom: HTMLElement, config: stores.Create.Config.State, }) {
-  const ConfigProvider = ({ config, children }: { config: stores.Create.Config.State, children: any, }) => {
+export function ProjectOnboardingCreate({ config, dom }: { dom: HTMLElement, config: stores.Create.Config.State }) {
+  const ConfigProvider = ({ config, children }: { config: stores.Create.Config.State, children: any }) => {
     const csrfToken = document.querySelector(`meta[name="csrf-token"]`)?.getAttribute(`content`) || ``;
     const configStore = {
       csrfToken,
@@ -30,13 +30,13 @@ export function ProjectOnboardingCreate({ config, dom }: { dom: HTMLElement, con
 }
 
 
-export function ProjectOnboardingWorkflowSetup({ config, dom }: { dom: HTMLElement, config: stores.WorkflowSetup.Config.Config, }) {
+export function ProjectOnboardingWorkflowSetup({ config, dom }: { dom: HTMLElement, config: stores.WorkflowSetup.Config.Config }) {
   const csrfToken = document.querySelector(`meta[name="csrf-token"]`)?.getAttribute(`content`) || ``;
   const configStore = {
     state: {
       csrfToken,
       ...config,
-    }
+    },
   };
 
   render(

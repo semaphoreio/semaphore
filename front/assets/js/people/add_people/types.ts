@@ -93,13 +93,13 @@ export class AddPeopleState {
 }
 
 export type AddPeopleAction =
-  | { type: `UPDATE_PERSON`, id: string, value: Person, }
-  | { type: `REMOVE_PERSON`, id: string, }
-  | { type: `RESET`, };
+  | { type: `UPDATE_PERSON`, id: string, value: Person }
+  | { type: `REMOVE_PERSON`, id: string }
+  | { type: `RESET` };
 
 export const PeopleStateReducer = (
   state: AddPeopleState,
-  action: AddPeopleAction
+  action: AddPeopleAction,
 ) => {
   switch (action.type) {
     case `UPDATE_PERSON`: {

@@ -127,7 +127,7 @@ export class AgentType {
         const agentType = AgentType.fromJSON(agent_type);
         agentType.token = token;
         return agentType;
-      }
+      },
     );
   }
 
@@ -137,7 +137,7 @@ export class AgentType {
         if (res.error) {
           throw res.error;
         }
-      }
+      },
     );
   }
 
@@ -153,7 +153,7 @@ export class AgentType {
 
     return toolbox.APIRequest.put(
       `${url}/${this.name}?format=json`,
-      request
+      request,
     ).then((res) => {
       if (res.error) {
         throw res.error;
@@ -172,7 +172,7 @@ export class AgentType {
 
     return toolbox.APIRequest.post(
       `${url}/${this.name}/disable_all_agents?format=json`,
-      request
+      request,
     ).then((res) => {
       if (res.error) {
         throw res.error;
@@ -185,14 +185,14 @@ export class AgentType {
 
   async resetToken(
     url: string,
-    disconnectRunningAgents: boolean
+    disconnectRunningAgents: boolean,
   ): Promise<string> {
     const request = {
       disconnect_running_agents: disconnectRunningAgents ? `true` : `false`,
     };
     return toolbox.APIRequest.post(
       `${url}/${this.name}/reset_token?format=json`,
-      request
+      request,
     ).then((res) => {
       if (res.error) {
         throw res.error;
