@@ -1,6 +1,7 @@
 import { render } from "preact";
-import { App, AppConfig } from "./app";
+import type { AppConfig } from "./app";
+import { App } from "./app";
 
-export default function ({ dom, config }: { dom: HTMLElement, config: AppConfig, }) {
+export default function ({ dom, config }: { dom: HTMLElement, config: AppConfig }) {
   render(<App config={config}/>, dom);
 }

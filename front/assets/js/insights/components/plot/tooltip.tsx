@@ -1,5 +1,6 @@
-import { cloneElement, VNode } from "preact";
-import * as types from "../../types";
+import type { VNode } from "preact";
+import { cloneElement } from "preact";
+import type * as types from "../../types";
 
 interface Props {
   top: number;
@@ -30,7 +31,7 @@ export const Tooltip = ({ top, left, content, activeMetric }: Props) => {
         "top": top,
         "left": left,
         "width": width,
-        "z-index": `3`
+        "z-index": `3`,
       }}
     >
       {cloneElement(content, { activeMetric })}

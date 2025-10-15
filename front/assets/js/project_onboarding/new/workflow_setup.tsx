@@ -25,11 +25,14 @@ export const WorkflowSetupApp = () => {
           style="min-height: calc(100vh - 184px)"
         >
           <Routes>
-            <Route path="/" element={
-              configState.hasPipeline
-                ? <Navigate to="/existing_configuration" replace/>
-                : <Navigate to="/environment" replace/>
-            }/>
+            <Route
+              path="/"
+              element={
+                configState.hasPipeline
+                  ? <Navigate to="/existing_configuration" replace/>
+                  : <Navigate to="/environment" replace/>
+              }
+            />
             <Route path="/existing_configuration" element={<pages.WorkflowSetup.ExistingConfiguration/>}/>
             <Route path="/environment" element={<pages.WorkflowSetup.Projectenvironment/>}/>
             <Route path="/starter_template" element={<pages.WorkflowSetup.StarterWorkflowTemplate/>}/>

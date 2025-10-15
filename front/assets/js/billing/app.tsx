@@ -1,4 +1,5 @@
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import * as pages from "./pages";
 import * as components from "./components";
 import * as stores from "./stores";

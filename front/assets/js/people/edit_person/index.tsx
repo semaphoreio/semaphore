@@ -2,7 +2,7 @@ import { Fragment, render, createContext } from "preact";
 import { useContext, useState } from "preact/hooks";
 
 import * as toolbox from "js/toolbox";
-import { ChangeEvent } from "react-dom/src";
+import type { ChangeEvent } from "react-dom/src";
 
 export default function ({
   dom,
@@ -52,7 +52,7 @@ export const Button = () => {
   const roleChanged = defaultRole != selectedRole;
   const emailChanged = defaultEmail != email;
 
-  const ResponseHandler = (props: { response: Response, }) => {
+  const ResponseHandler = (props: { response: Response }) => {
     return (
       <div
         className={`f6 tr mt2 ${
@@ -163,7 +163,11 @@ export const Button = () => {
         <span className="material-symbols-outlined mr1">manage_accounts</span>
         <span>Edit</span>
       </button>
-      <toolbox.Modal isOpen={isOpen} close={close} title="Edit user">
+      <toolbox.Modal
+        isOpen={isOpen}
+        close={close}
+        title="Edit user"
+      >
         <div className="pa3">
           <div className="mb3">
             <label className="db mb2 b">Email address</label>
@@ -416,8 +420,8 @@ class User {
   memberType: string;
 
   roles: UserRole[] = [];
-  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string, }>;
-  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string, }>;
+  changeEmailUrl: toolbox.APIRequest.Url<{ email: string, message: string }>;
+  assignRoleUrl: toolbox.APIRequest.Url<{ password: string, message: string }>;
   resetPasswordUrl: toolbox.APIRequest.Url<{
     password: string;
     message: string;

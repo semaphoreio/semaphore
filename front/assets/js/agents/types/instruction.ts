@@ -1,4 +1,4 @@
-import { VNode } from "preact";
+import type { VNode } from "preact";
 
 export default interface Instruction {
   name: string;

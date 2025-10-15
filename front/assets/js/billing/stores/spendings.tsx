@@ -1,10 +1,10 @@
 import { createContext } from "preact";
-import { Spendings } from "../types";
+import type { Spendings } from "../types";
 
 export type Action =
-  | { type: `SET_RESULT`, value: Spendings.Spending[], }
-  | { type: `SELECT_SPENDING`, value: string, }
-  | { type: `SET_CURRENT_SPENDING`, value: Spendings.Spending, }
+  | { type: `SET_RESULT`, value: Spendings.Spending[] }
+  | { type: `SELECT_SPENDING`, value: string }
+  | { type: `SET_CURRENT_SPENDING`, value: Spendings.Spending }
   ;
 
 export interface State {
@@ -39,4 +39,4 @@ export const EmptyState: State = {
   selectedSpendingId: ``,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

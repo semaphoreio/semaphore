@@ -136,25 +136,39 @@ export const Header = () => {
       <div className="flex items-center mv1 w-100 justify-between">
         <div className="flex items-center mv1">
           <components.DateSelect items={config.dateRange}/>
-          <select className="db form-control mr2" value={state.filters.branchType} onChange={setBranchSelectFromEvent}>
+          <select
+            className="db form-control mr2"
+            value={state.filters.branchType}
+            onChange={setBranchSelectFromEvent}
+          >
             <option value="all">All branches</option>
             <option value="default">Default branch only</option>
           </select>
-          <select className="db form-control mr2" value={state.filters.buildStatus} onChange={setBuildSelectFromEvent}>
+          <select
+            className="db form-control mr2"
+            value={state.filters.buildStatus}
+            onChange={setBuildSelectFromEvent}
+          >
             <option value="all">All builds</option>
             <option value="success">Green builds only</option>
           </select>
           <div className="branch-jumpto">
-            <input type="text"
+            <input
+              type="text"
               className="form-control mr2"
               placeholder="Find by project name…"
               value={state.filters.projectName}
               onInput={debouncedProjectNameFromEvent}
-              aria-expanded="false"></input>
+              aria-expanded="false"
+            ></input>
           </div>
 
         </div>
-        <button className="btn btn-secondary" onClick={handleExportToCsv} disabled={state.orgHealth.length === 0}>Download .csv</button>
+        <button
+          className="btn btn-secondary"
+          onClick={handleExportToCsv}
+          disabled={state.orgHealth.length === 0}
+        >Download .csv</button>
       </div>
 
     </div>
@@ -162,7 +176,7 @@ export const Header = () => {
 };
 
 
-export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[], }) => {
+export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[] }) => {
   const store = useContext(stores.OrganizationHealth.Context);
   const state = store.state;
 
@@ -179,7 +193,7 @@ export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[], }) 
   );
 };
 
-export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
+export const Items = ({ items }: { items: types.ProjectHealth[] }) => {
   const [sortedItems, setSortedItems] = useState([...items]);
   const [sortOrder, setSortOrder] = useState([`performance`, `desc`]);
 
@@ -225,7 +239,11 @@ export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className="b">{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
@@ -246,7 +264,12 @@ export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
                 <div className="w-40-ns b">
                   <div>
                     <div className="flex items-center">
-                      <toolbox.Asset path="images/icn-project-nav.svg" className="pa1 mr2" width="16" height="16"/>
+                      <toolbox.Asset
+                        path="images/icn-project-nav.svg"
+                        className="pa1 mr2"
+                        width="16"
+                        height="16"
+                      />
                       <div className="b">Project</div>
                     </div>
                   </div>
@@ -270,14 +293,18 @@ export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
         </div>
       </div>
       {sortedItems.map((item, index) =>
-        <ProjectHealthItem key={item.projectId} item={item} isLast={index === lastItemIndex}/>
+        <ProjectHealthItem
+          key={item.projectId}
+          item={item}
+          isLast={index === lastItemIndex}
+        />
       )}
     </Fragment>
   );
 };
 
 
-export const ProjectHealthItem = ({ item, isLast }: { item: types.ProjectHealth, isLast: boolean, }) => {
+export const ProjectHealthItem = ({ item, isLast }: { item: types.ProjectHealth, isLast: boolean }) => {
   const config = useContext(stores.Config.Context);
   const store = useContext(stores.OrganizationHealth.Context);
   const state = store.state;

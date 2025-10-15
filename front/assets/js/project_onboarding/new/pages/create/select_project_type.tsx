@@ -24,7 +24,8 @@ export const SelectProjectType = () => {
         title="Project type"
         subtitle="Select how to start your project configuration."
         additionalInfo="Each project is linked to a single repository for streamlined CI/CD management."
-        svgPath="images/ill-girl-showing-continue.svg"/>
+        svgPath="images/ill-girl-showing-continue.svg"
+      />
       {/* <!-- RIGHT SIDE --> */}
       <Providers/>
     </div>

@@ -2,9 +2,9 @@ import { createContext } from "preact";
 import { UrlState } from "../util";
 
 export type Action =
-  | { type: `SET_ACTIVE_REPORT`, reportId: string, }
-  | { type: `SET_ACTIVE_SUITE`, suiteId: string, }
-  | { type: `SET_ACTIVE_TEST`, testId: string, }
+  | { type: `SET_ACTIVE_REPORT`, reportId: string }
+  | { type: `SET_ACTIVE_SUITE`, suiteId: string }
+  | { type: `SET_ACTIVE_TEST`, testId: string }
   ;
 
 export interface State {
@@ -51,4 +51,4 @@ export const EmptyState: State = {
   activeTestId: ``,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

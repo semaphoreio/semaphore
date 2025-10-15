@@ -1,4 +1,3 @@
-
 import { useNavigate, useParams } from "react-router-dom";
 import { useContext } from "preact/hooks";
 import * as stores from "js/agents/stores";
@@ -36,16 +35,10 @@ export const Delete = () => {
         </ul>
         <div className="mw6">
           <div className="mt3">
-            <button
-              className="btn btn-danger mr2"
-              onClick={() => void deleteAgent()}
-            >
+            <button className="btn btn-danger mr2" onClick={() => void deleteAgent()}>
               Delete
             </button>
-            <a
-              className="btn btn-secondary pointer"
-              onClick={() => navigate(`..`)}
-            >
+            <a className="btn btn-secondary pointer" onClick={() => navigate(`..`)}>
               Nevermind
             </a>
           </div>

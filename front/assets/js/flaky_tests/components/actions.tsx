@@ -1,5 +1,6 @@
-import { FlakyTestItem } from "../types/flaky_test_item";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
+import type { FlakyTestItem } from "../types/flaky_test_item";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useReducer, useState } from "preact/hooks";
 import * as stores from "../stores";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -12,7 +13,7 @@ import { Headers } from "../network/request";
 import * as marked from "marked";
 import DOMPurify from "dompurify";
 
-export const Actions = ({ item }: { item: FlakyTestItem, }) => {
+export const Actions = ({ item }: { item: FlakyTestItem }) => {
   const config = useContext(stores.Config.Context);
   const [resolved, setResolved] = useState(item.resolved);
 
@@ -27,18 +28,18 @@ export const Actions = ({ item }: { item: FlakyTestItem, }) => {
     fetch(url, {
       credentials: `same-origin`,
       method: `POST`,
-      headers: Headers(`application/json`)
-    }).then((response) => {
-      if (response.status === 200) {
-        return response;
-      } else {
-        throw new Error(`Failed to take action.`);
-      }
+      headers: Headers(`application/json`),
     })
+      .then((response) => {
+        if (response.status === 200) {
+          return response;
+        } else {
+          throw new Error(`Failed to take action.`);
+        }
+      })
       .catch(() => {
         Notice.error(`Failed to ${action} test.`);
       });
-
   }, [resolved]);
   //  dark-brown
   return (
@@ -49,29 +50,24 @@ export const Actions = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-
-const TicketAction = ({ item }: { item: FlakyTestItem, }) => {
+const TicketAction = ({ item }: { item: FlakyTestItem }) => {
   const hasTicketUrl = item.ticketUrl?.length > 0;
-  const tippyContent = hasTicketUrl ? `Ticket has been created for this test` :
-    `Create a ticket for this test`;
+  const tippyContent = hasTicketUrl ? `Ticket has been created for this test` : `Create a ticket for this test`;
   const className = `material-symbols-outlined mr1 pointer b`;
   return (
     <toolbox.Popover
       maxWidth={500}
       anchor={
-        <span className={`${className} ${hasTicketUrl ? `dark-brown` : `gray hover-black`}`}
-          data-tippy-content={tippyContent}>assignment_turned_in</span>
+        <span className={`${className} ${hasTicketUrl ? `dark-brown` : `gray hover-black`}`} data-tippy-content={tippyContent}>
+          assignment_turned_in
+        </span>
       }
-      content={
-        ({ setVisible }) =>
-          <TicketDetail item={item} whenDone={() => setVisible(false)}/>
-      }
+      content={({ setVisible }) => <TicketDetail item={item} whenDone={() => setVisible(false)}/>}
       className=""
       placement="bottom-start"
     />
   );
 };
-
 
 interface TicketDetailProps {
   whenDone: () => void;
@@ -110,7 +106,7 @@ const TicketDetail = (props: TicketDetailProps) => {
       method: request.method,
       credentials: `same-origin`,
       body: request.body,
-      headers: Headers(`application/json`)
+      headers: Headers(`application/json`),
     })
       .then((response) => response.json())
       .then(() => {
@@ -130,10 +126,9 @@ const TicketDetail = (props: TicketDetailProps) => {
       dispatchRequest({ type: `SET_STATUS`, value: types.RequestStatus.Loading });
       switch (request.method) {
         case `POST`:
-          post()
-            .catch(() => {
-              Notice.error(`Failed save changes.`);
-            });
+          post().catch(() => {
+            Notice.error(`Failed save changes.`);
+          });
           break;
       }
     }
@@ -162,15 +157,28 @@ const TicketDetail = (props: TicketDetailProps) => {
     const rawHtml = marked.parse(markdown);
     return DOMPurify.sanitize(rawHtml, {
       ALLOWED_TAGS: [
-        `h1`, `h2`, `h3`, `h4`, `h5`, `h6`,
-        `p`, `br`, `strong`, `em`, `u`, `strike`,
-        `ul`, `ol`, `li`,
-        `blockquote`, `code`, `pre`
+        `h1`,
+        `h2`,
+        `h3`,
+        `h4`,
+        `h5`,
+        `h6`,
+        `p`,
+        `br`,
+        `strong`,
+        `em`,
+        `u`,
+        `strike`,
+        `ul`,
+        `ol`,
+        `li`,
+        `blockquote`,
+        `code`,
+        `pre`,
       ],
-      ALLOWED_ATTR: [`title`]
+      ALLOWED_ATTR: [`title`],
     });
   };
-
 
   useLayoutEffect(() => {
     document.getElementById(markdownContentId).innerHTML = createMarkdown();
@@ -185,36 +193,60 @@ const TicketDetail = (props: TicketDetailProps) => {
         <div className="flex justify-between">
           <h3 className="mb0">Create a ticket</h3>
           <toolbox.Tooltip
-            content={<span id={copyId} className="f6">Copy</span>}
-            anchor={<button className="material-symbols-outlined f5 b pointer mr2"
-              onClick={() => copyToClipboard(document.getElementById(markdownContentId))}>content_copy</button>}
+            content={
+              <span id={copyId} className="f6">
+                Copy
+              </span>
+            }
+            anchor={
+              <button
+                className="material-symbols-outlined f5 b pointer mr2"
+                onClick={() => copyToClipboard(document.getElementById(markdownContentId))}
+              >
+                content_copy
+              </button>
+            }
             placement="top"
           />
         </div>
-        <div id={markdownContentId} className="code-block bg-washed-gray ma2" style={{ overflow: auto }}>
-        </div>
-        <small className="f6 db black-60 mb2">Use provided markdown data to create a ticket in the tool of your
-                    choice.</small>
+        <div
+          id={markdownContentId}
+          className="code-block bg-washed-gray ma2"
+          style={{ overflow: auto }}
+        ></div>
+        <small className="f6 db black-60 mb2">Use provided markdown data to create a ticket in the tool of your choice.</small>
         <div className="measure">
-          <label htmlFor="ticket-url" className="f6 b db mb2">Ticket URL</label>
-          <input id="ticket-url" className="input-reset ba b--black-20 pa2 mb2 db w-100 br3" type="text"
+          <label htmlFor="ticket-url" className="f6 b db mb2">
+            Ticket URL
+          </label>
+          <input
+            id="ticket-url"
+            className="input-reset ba b--black-20 pa2 mb2 db w-100 br3"
+            type="text"
             value={ticketUrl}
-            onInput={onTicketUrlInput}/>
-          <small id="ticket-url-desc" className="f6 black-60 db mb2">Please provide ticket URL.</small>
+            onInput={onTicketUrlInput}
+          />
+          <small id="ticket-url-desc" className="f6 black-60 db mb2">
+            Please provide ticket URL.
+          </small>
         </div>
         <div className="mt3 button-group">
-          <button className="btn btn-danger btn-small" onClick={unlinkTicketUrl}>Unlink</button>
-          <button className="btn btn-primary btn-small" onClick={onSaveTicketUrl}>Save</button>
-          <button className="btn btn-secondary btn-small" onClick={() => props.whenDone()}>Close</button>
+          <button className="btn btn-danger btn-small" onClick={unlinkTicketUrl}>
+            Unlink
+          </button>
+          <button className="btn btn-primary btn-small" onClick={onSaveTicketUrl}>
+            Save
+          </button>
+          <button className="btn btn-secondary btn-small" onClick={() => props.whenDone()}>
+            Close
+          </button>
         </div>
       </div>
-
     </div>
   );
 };
 
-
-const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: Dispatch<StateUpdater<boolean>>, }) => {
+const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolved: Dispatch<StateUpdater<boolean>> }) => {
   const onClick = () => {
     if (resolved) {
       setResolved(!resolved);
@@ -230,7 +262,12 @@ const ResolveAction = ({ resolved, setResolved }: { resolved: boolean, setResolv
   const tippyContent = resolved ? `This test was marked as resolved` : `Mark this test as resolved`;
 
   return (
-    <span className={`${className} ${resolved ? `green` : `gray hover-black`}`}
-      data-tippy-content={tippyContent} onClick={onClick}>done_all</span>
+    <span
+      className={`${className} ${resolved ? `green` : `gray hover-black`}`}
+      data-tippy-content={tippyContent}
+      onClick={onClick}
+    >
+      done_all
+    </span>
   );
 };

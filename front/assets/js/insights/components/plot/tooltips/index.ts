@@ -7,5 +7,5 @@ export {
   Performance,
   Frequency,
   Reliability,
-  Dynamic
+  Dynamic,
 };

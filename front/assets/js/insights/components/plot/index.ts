@@ -12,5 +12,5 @@ export {
   tooltips,
   charts,
   focus,
-  yAxis
+  yAxis,
 };

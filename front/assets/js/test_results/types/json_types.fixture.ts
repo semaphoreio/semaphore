@@ -1,4 +1,4 @@
-import { JSONFailure, JSONTestCase, JSONSuite, JSONSummary, JSONReport } from './json_types';
+import type { JSONFailure, JSONTestCase, JSONSuite, JSONSummary, JSONReport } from './json_types';
 import { faker } from '@faker-js/faker';
 
 export namespace JSONTypes.Fixture {
@@ -10,7 +10,7 @@ export namespace JSONTypes.Fixture {
       error: faker.mersenne.rand(),
       failed: faker.mersenne.rand(),
       duration: faker.mersenne.rand(),
-      ...json
+      ...json,
     };
   };
 
@@ -19,7 +19,7 @@ export namespace JSONTypes.Fixture {
       message: faker.lorem.sentence(),
       type: faker.random.word(),
       body: faker.lorem.paragraph(),
-      ...json
+      ...json,
     };
   };
 
@@ -47,7 +47,7 @@ export namespace JSONTypes.Fixture {
       systemErr: ``,
       failure: failure,
       error: error,
-      ...json
+      ...json,
     };
   };
 
@@ -66,7 +66,7 @@ export namespace JSONTypes.Fixture {
       systemOut: faker.lorem.paragraph(),
       summary: Summary(json?.summary),
       tests: tests,
-      ...json
+      ...json,
     };
   };
 
@@ -81,7 +81,7 @@ export namespace JSONTypes.Fixture {
       isDisabled: faker.datatype.boolean(),
       summary: Summary(json?.summary),
       suites: suites,
-      ...json
+      ...json,
     };
   };
 }

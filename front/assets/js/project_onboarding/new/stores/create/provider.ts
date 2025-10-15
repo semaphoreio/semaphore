@@ -1,16 +1,16 @@
 import { createContext } from "preact";
 import { useReducer } from "preact/hooks";
-import { Provider } from "../../types";
+import type { Provider } from "../../types";
 
 export interface State {
   selectedProvider: Provider.Provider;
 }
 
 type ProviderAction = 
-  | { type: `SET_PROVIDER`, payload: Provider.Provider, };
+  | { type: `SET_PROVIDER`, payload: Provider.Provider };
 
 const defaultState: State = {
-  selectedProvider: null as unknown as Provider.Provider
+  selectedProvider: null as unknown as Provider.Provider,
 };
 
 const providerReducer = (state: State, action: ProviderAction): State => {
@@ -18,7 +18,7 @@ const providerReducer = (state: State, action: ProviderAction): State => {
     case `SET_PROVIDER`:
       return {
         ...state,
-        selectedProvider: action.payload
+        selectedProvider: action.payload,
       };
     default:
       return state;

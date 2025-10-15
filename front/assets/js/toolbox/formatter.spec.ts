@@ -137,12 +137,12 @@ describe(`Formatter.toMoney`, () => {
   }
   test(`should format data properly`, () => {
     const specs = [
-      { input: 23.00, output: `$23.00`, },
-      { input: 0.00, output: `$0.00`, },
-      { input: 11.23, output: `$11.23`, },
-      { input: 123000, output: `$123,000.00`, },
-      { input: 12345.67, output: `$12,345.67`, },
-      { input: 0.01, output: `$0.01`, },
+      { input: 23.00, output: `$23.00` },
+      { input: 0.00, output: `$0.00` },
+      { input: 11.23, output: `$11.23` },
+      { input: 123000, output: `$123,000.00` },
+      { input: 12345.67, output: `$12,345.67` },
+      { input: 0.01, output: `$0.01` },
     ] as spec[];
 
     specs.forEach((spec) => {
