@@ -99,7 +99,7 @@ export type AddPeopleAction =
 
 export const PeopleStateReducer = (
   state: AddPeopleState,
-  action: AddPeopleAction
+  action: AddPeopleAction,
 ) => {
   switch (action.type) {
     case `UPDATE_PERSON`: {

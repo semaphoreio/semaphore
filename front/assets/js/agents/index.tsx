@@ -35,6 +35,6 @@ export default function ({ dom, config }: { dom: HTMLElement, config: any }) {
         </Routes>
       </stores.Config.Context.Provider>
     </BrowserRouter>,
-    dom
+    dom,
   );
 }

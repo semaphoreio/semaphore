@@ -83,22 +83,40 @@ export const SpendingChart = () => {
 
       <div className="flex bb b--black-075">
         {groups.map((group, idx) => (
-          <SpendingGroup group={group} price={lastPriceInGroup(group.type)} lastItem={idx + 1 == groups.length} key={idx}/>
+          <SpendingGroup
+            group={group}
+            price={lastPriceInGroup(group.type)}
+            lastItem={idx + 1 == groups.length}
+            key={idx}
+          />
         ))}
       </div>
-      <Chart costs={state.prices} spending={spending} aggregate={aggregate} groupTypes={groupTypes}/>
+      <Chart
+        costs={state.prices}
+        spending={spending}
+        aggregate={aggregate}
+        groupTypes={groupTypes}
+      />
 
       <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
         <div className="flex items-center">
           <label className="mr2">Show</label>
-          <select className="db form-control mb3 mb0-m mr2 form-control-tiny" value={aggregate} onChange={setAggregateFromEvent}>
+          <select
+            className="db form-control mb3 mb0-m mr2 form-control-tiny"
+            value={aggregate}
+            onChange={setAggregateFromEvent}
+          >
             <option value="cumulative">Cumulative</option>
             <option value="normal">Daily</option>
           </select>
           <span className="mr2">for</span>
           {groups.map((group, idx) => (
             <label className="flex items-center" key={idx}>
-              <input type="checkbox" checked={groupTypes.includes(group.type)} onClick={() => setGroup(group.type)}/>
+              <input
+                type="checkbox"
+                checked={groupTypes.includes(group.type)}
+                onClick={() => setGroup(group.type)}
+              />
               <span className="ml1 mr2">{group.name}</span>
             </label>
           ))}

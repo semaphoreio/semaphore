@@ -20,7 +20,7 @@ export const Component = (): VNode => {
     active: boolean;
   }
   const SubOS = (
-    props: SubOSProps
+    props: SubOSProps,
   ) => {
     const ButtonEl = styled.button`
       &:hover,

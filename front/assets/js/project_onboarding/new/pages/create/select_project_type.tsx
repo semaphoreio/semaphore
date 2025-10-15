@@ -24,7 +24,8 @@ export const SelectProjectType = () => {
         title="Project type"
         subtitle="Select how to start your project configuration."
         additionalInfo="Each project is linked to a single repository for streamlined CI/CD management."
-        svgPath="images/ill-girl-showing-continue.svg"/>
+        svgPath="images/ill-girl-showing-continue.svg"
+      />
       {/* <!-- RIGHT SIDE --> */}
       <Providers/>
     </div>
@@ -40,7 +41,7 @@ const Providers = () => {
   // If we have a primary provider, move it to the front
   if (config.primaryProvider) {
     const primaryIndex = sortedProviders.findIndex(
-      (p) => p.type === config.primaryProvider.type
+      (p) => p.type === config.primaryProvider.type,
     );
 
     if (primaryIndex > -1) {

@@ -264,7 +264,7 @@ const JobSummary = (props: JobSummaryProps) => {
       labels.push(
         <span className="fw5 bg-green white ph1 br1 mr1">
           {jobPlural(runningCount)} running
-        </span>
+        </span>,
       );
     }
 
@@ -273,7 +273,7 @@ const JobSummary = (props: JobSummaryProps) => {
       labels.push(
         <span className="fw5 bg-yellow black-60 ph1 br1 mr1">
           {showLabel ? jobPlural(waitingCount) : waitingCount} waiting
-        </span>
+        </span>,
       );
     }
 
@@ -282,7 +282,7 @@ const JobSummary = (props: JobSummaryProps) => {
       labels.push(
         <span className="fw5 bg-mid-gray white ph1 br1 mr1">
           {showLabel ? jobPlural(leftCount) : leftCount} left
-        </span>
+        </span>,
       );
     }
 
@@ -301,7 +301,7 @@ const JobSummary = (props: JobSummaryProps) => {
 
       if (waitingCount > 0 && runningCount > 0) {
         descriptionItems.push(
-          `${type} (${runningCount} running, ${waitingCount} waiting)`
+          `${type} (${runningCount} running, ${waitingCount} waiting)`,
         );
         continue;
       }

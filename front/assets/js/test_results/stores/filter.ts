@@ -63,7 +63,7 @@ export const EmptyState: State = {
   trimReportName: JSON.parse(localStorage.getItem(`TR_TRIM_REPORT_NAME`) || `false`),
   toggleAll: false,
   sort: `failed-first`,
-  excludedStates:  [Stateful.State.EMPTY] as Stateful.State[]
+  excludedStates:  [Stateful.State.EMPTY] as Stateful.State[],
 };
 
 export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

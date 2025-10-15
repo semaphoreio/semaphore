@@ -19,7 +19,7 @@ export const EditField = ({
   value,
   editKey,
   editUrl,
-  isPrivate
+  isPrivate,
 }: EditFieldProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(value);
@@ -51,7 +51,7 @@ export const EditField = ({
       .catch((err) => {
         setInputValue(value);
         setError(
-          err instanceof Error ? err.message : `Failed to save. Please try again.`
+          err instanceof Error ? err.message : `Failed to save. Please try again.`,
         );
       });
   };

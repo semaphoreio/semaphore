@@ -19,7 +19,7 @@ export default function ({
     <Config.Provider value={AppConfig.fromJSON(jsonConfig)}>
       <App/>
     </Config.Provider>,
-    dom
+    dom,
   );
 }
 
@@ -44,7 +44,12 @@ export const App = () => {
         <span className="material-symbols-outlined mr2">person_add</span>
         {`Add people`}
       </button>
-      <Modal isOpen={isOpen} close={() => close(false)} title="Add new people" width="w-70-m">
+      <Modal
+        isOpen={isOpen}
+        close={() => close(false)}
+        title="Add new people"
+        width="w-70-m"
+      >
         <AddNewUsers close={close}/>
       </Modal>
     </Fragment>
@@ -55,11 +60,11 @@ const AddNewUsers = (props: { close: (reload: boolean) => void }) => {
   const config = useContext(Config);
 
   const userProviders = AvailableProviderTypes.filter((type) =>
-    config.allowedProviders.includes(type)
+    config.allowedProviders.includes(type),
   );
 
   const [currentProvider, setCurrentProvider] = useState<UserProvider>(
-    userProviders[0]
+    userProviders[0],
   );
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
 
@@ -71,7 +76,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void }) => {
       .call()
       .then((resp) => {
         const collaborators = (resp.data.collaborators as any[]).map(
-          Collaborator.fromJSON
+          Collaborator.fromJSON,
         );
 
         setCollaborators(collaborators);
@@ -186,8 +191,8 @@ const ProvideVia = (props: ProvideViaProps) => {
 
   const [collaborators, setCollaborators] = useState<Collaborator[]>(
     props.collaborators.filter(
-      (collaborator) => collaborator.provider === props.provider.toLowerCase()
-    )
+      (collaborator) => collaborator.provider === props.provider.toLowerCase(),
+    ),
   );
 
   const [selectedCollaborators, setSelectedCollaborators] = useState<Collaborator[]>([]);
@@ -195,7 +200,7 @@ const ProvideVia = (props: ProvideViaProps) => {
   const toggleCollaborator = (collaborator: Collaborator) => {
     if (selectedCollaborators.includes(collaborator)) {
       setSelectedCollaborators(
-        selectedCollaborators.filter((c) => c !== collaborator)
+        selectedCollaborators.filter((c) => c !== collaborator),
       );
     } else {
       setSelectedCollaborators([...selectedCollaborators, collaborator]);
@@ -408,7 +413,7 @@ interface ProvideViaEmailProps {
 const ProvideViaEmail = (props: ProvideViaEmailProps) => {
   const [state, dispatch] = useReducer(
     PeopleStateReducer,
-    new AddPeopleState()
+    new AddPeopleState(),
   );
   const config = useContext(Config);
 

@@ -98,7 +98,11 @@ export const TestResults = (props: Props) => {
   }, [api.state.url]);
 
   return (
-    <Loader state={loadingState} encodedEmail={props.encodedEmail} reportState={reports.state}>
+    <Loader
+      state={loadingState}
+      encodedEmail={props.encodedEmail}
+      reportState={reports.state}
+    >
       <div className={props.className}>
         <NavBar className="w5-l flex-shrink-0 mb3 br-l b--lighter-gray"/>
         {reports.state.selectedItem && <TestExplorer className="flex-auto pl4-l"/>}
@@ -122,7 +126,12 @@ const Loader = ({
     return (
       <div className="flex items-center justify-center br3" style={{ height: 300 }}>
         <div className="flex items-center">
-          <Icon path="images/spinner-2.svg" alt="spinner" width="20" height="20"/>
+          <Icon
+            path="images/spinner-2.svg"
+            alt="spinner"
+            width="20"
+            height="20"
+          />
           <span className="ml1 gray">Loading test reports...</span>
         </div>
       </div>

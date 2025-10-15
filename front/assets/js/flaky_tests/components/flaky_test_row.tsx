@@ -26,7 +26,11 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem }) => {
 
     {/*  Labels */}
     <div className="w-10-m flex flex-column items-center justify-center">
-      <components.LabelList testId={item.testId} labels={labels} setLabels={setLabels}/>
+      <components.LabelList
+        testId={item.testId}
+        labels={labels}
+        setLabels={setLabels}
+      />
     </div>
 
     {/* Age */}
@@ -90,11 +94,21 @@ const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem }) => {
   return (
     <Fragment>
       <div title={util.Formatter.dateTime(item.latestDisruptionTimestamp)}>
-        <a href={item.latestDisruptionJobUrl} className="link gray underline-hover" target="_blank" rel="noreferrer">{util.Formatter.dateDiff(item.latestDisruptionTimestamp, new Date())}</a>
+        <a
+          href={item.latestDisruptionJobUrl}
+          className="link gray underline-hover"
+          target="_blank"
+          rel="noreferrer"
+        >{util.Formatter.dateDiff(item.latestDisruptionTimestamp, new Date())}</a>
       </div>
       <div className="flex items-center ph2">
         <span className="material-symbols-outlined b f4 db mr2 gray">commit</span>
-        <a href={item.latestDisruptionJobUrl} className="link gray underline-hover" target="_blank" rel="noreferrer">{item.latestDisruptionHash.slice(0, 7)}</a>
+        <a
+          href={item.latestDisruptionJobUrl}
+          className="link gray underline-hover"
+          target="_blank"
+          rel="noreferrer"
+        >{item.latestDisruptionHash.slice(0, 7)}</a>
       </div>
     </Fragment>
   );

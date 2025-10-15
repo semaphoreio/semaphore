@@ -13,7 +13,7 @@ interface Props extends ChartInterface{
 }
 
 
-export default({ metrics, height, xScale, yScale, }: Props) => {
+export default({ metrics, height, xScale, yScale }: Props) => {
   const deviationRef = createRef<SVGPathElement>();
   useEffect(() => {
     if(metrics.length == 0) {

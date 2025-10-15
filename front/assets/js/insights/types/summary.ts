@@ -10,16 +10,16 @@ class Branch {
   static fromJSON(json: types.JSONInterface.Summary): Branch {
     const summary = new Branch();
     summary.pipelinePerformance = types.PipelinePerformance.Summary.fromJSON(
-      json.performance
+      json.performance,
     );
     summary.pipelineReliability = types.PipelineReliability.Summary.fromJSON(
-      json.reliability
+      json.reliability,
     );
     summary.pipelineFrequency = types.PipelineFrequency.Summary.fromJSON(
-      json.frequency
+      json.frequency,
     );
     summary.projectPerformance = types.ProjectPerformance.Summary.fromJSON(
-      json.project
+      json.project,
     );
     return summary;
   }
@@ -31,7 +31,7 @@ class Branch {
   get lastSuccessfulRun(): string {
     return util.Formatter.dateDiff(
       this.projectPerformance.lastSuccessfulRunAt,
-      new Date()
+      new Date(),
     );
   }
 
@@ -46,7 +46,7 @@ class Branch {
   get pipelineFrequencyDailyCount(): string {
     return util.Formatter.dailyRate(
       this.pipelineFrequency.count,
-      this.pipelineFrequency.daysDiff
+      this.pipelineFrequency.daysDiff,
     );
   }
 
@@ -66,7 +66,7 @@ export class Project {
   static fromJSON(
     defaultBranch: types.JSONInterface.Summary,
     allBranches: types.JSONInterface.Summary,
-    cdSummary: types.JSONInterface.Summary
+    cdSummary: types.JSONInterface.Summary,
   ): Project {
     const summary = new Project();
     summary.defaultBranch = Branch.fromJSON(defaultBranch);

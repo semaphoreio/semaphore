@@ -38,7 +38,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
     if (!template.template_content || !selectedAgentType) return ``;
     let content = template.template_content.replace(
       /type: \{\{ machine_type \}\}/g,
-      `type: ${selectedAgentType.type}`
+      `type: ${selectedAgentType.type}`,
     );
 
     // Replace os_image template value
@@ -71,7 +71,7 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
       ...(includeTemplate && template ? {
         template_title: template.title,
         template_path: template.template_path,
-      } : {})
+      } : {}),
     };
 
     Object.entries(fields).forEach(([name, value]) => {
@@ -92,11 +92,18 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
       <div className="flex items-start justify-between mb3">
         <div>
           <h2 className="f3 f2-m mb0">{template.title}</h2>
-          <div className="gray measure-wide mb2" dangerouslySetInnerHTML={{
-            __html: template.description,
-          }}></div>
+          <div
+            className="gray measure-wide mb2"
+            dangerouslySetInnerHTML={{
+              __html: template.description,
+            }}
+          ></div>
         </div>
-        <toolbox.Asset path={`images/${template.icon}`} style={{ width: `28px` }} className="mb2"/>
+        <toolbox.Asset
+          path={`images/${template.icon}`}
+          style={{ width: `28px` }}
+          className="mb2"
+        />
       </div>
 
       <div className="flex items-center justify-between mb2" style="margin-top: -1rem; position: relative; z-index: 1;">
@@ -111,7 +118,8 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
             placement="top"
             content="Check the code in the YAML view"
             trigger="mouseenter"
-            visible={activeTab === `visual` && !hasVisitedYaml}>
+            visible={activeTab === `visual` && !hasVisitedYaml}
+          >
             <button
               className={`btn btn-small material-symbols-outlined f5 b ${activeTab === `yaml` ? `btn-primary` : `btn-secondary`}`}
               onClick={() => handleTabClick(`yaml`)}
@@ -127,7 +135,15 @@ export const PreviewPanel = ({ template }: PreviewPanelProps) => {
           <PipelinePreview yamlContent={getTemplateContent()} previewVisible={activeTab == `visual`}/>
         </div>
         <p className="pt3 mb0">
-          <a href="#" onClick={(e) => handleSubmit(e)} className="mt3 mb1">Customize</a> this workflow, or <a href="#" onClick={(e) => handleSubmit(e, false)} className="mt3 mb1">Design from scratch</a>
+          <a
+            href="#"
+            onClick={(e) => handleSubmit(e)}
+            className="mt3 mb1"
+          >Customize</a> this workflow, or <a
+            href="#"
+            onClick={(e) => handleSubmit(e, false)}
+            className="mt3 mb1"
+          >Design from scratch</a>
         </p>
       </div>
 

@@ -101,8 +101,16 @@ export const BitbucketIntegration = ({ integration, csrfToken, orgUsername }: Pr
                 method="post"
                 action={integration.deleteUrl}
               >
-                <input type="hidden" name="_csrf_token" value={csrfToken}/>
-                <input type="hidden" name="type" value="bitbucket"/>
+                <input
+                  type="hidden"
+                  name="_csrf_token"
+                  value={csrfToken}
+                />
+                <input
+                  type="hidden"
+                  name="type"
+                  value="bitbucket"
+                />
                 <input
                   type="text"
                   className="form-control w-100"
@@ -141,9 +149,21 @@ const EditFields = ({ integration }: { integration: types.Integration.BitbucketI
           action={integration.connectUrl}
           className="mb3"
         >
-          <input type="hidden" name="_csrf_token" value={csrfToken}/>
-          <input type="hidden" name="type" value="bitbucket"/>
-          <input type="hidden" name="redirect_to" value={config.redirectToAfterSetup}/>
+          <input
+            type="hidden"
+            name="_csrf_token"
+            value={csrfToken}
+          />
+          <input
+            type="hidden"
+            name="type"
+            value="bitbucket"
+          />
+          <input
+            type="hidden"
+            name="redirect_to"
+            value={config.redirectToAfterSetup}
+          />
 
           <div className="mb3">
             <label className="db mb2">Key</label>

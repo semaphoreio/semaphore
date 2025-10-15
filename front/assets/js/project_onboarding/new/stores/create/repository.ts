@@ -88,10 +88,10 @@ const initialState: RepositoryState = {
       { id: `setup-permissions`, label: `Configuring project permissions`, completed: false },
       { id: `connect-repository`, label: `Setting up repository hooks`, completed: false },
       { id: `connect-cache`, label: `Configuring build cache`, completed: false },
-      { id: `connect-artifacts`, label: `Setting up artifact storage`, completed: false }
+      { id: `connect-artifacts`, label: `Setting up artifact storage`, completed: false },
     ],
     isComplete: false,
-    waitingMessage: `Please wait while we set up your project...`
+    waitingMessage: `Please wait while we set up your project...`,
   },
 };
 
@@ -104,24 +104,24 @@ function repositoryReducer(state: RepositoryState, action: RepositoryAction): Re
         projectName: action.payload?.name || ``,
         isDuplicate: false,
         isCheckingDuplicates: Boolean(action.payload),
-        nextIterationName: undefined
+        nextIterationName: undefined,
       };
     case `SET_PROJECT_NAME`:
       return {
         ...state,
-        projectName: action.payload
+        projectName: action.payload,
       };
     case `START_DUPLICATE_CHECK`:
       return {
         ...state,
-        isCheckingDuplicates: true
+        isCheckingDuplicates: true,
       };
     case `FINISH_DUPLICATE_CHECK`: {
       if (!state.selectedRepo) return state;
 
       const updatedRepo = {
         ...state.selectedRepo,
-        connected_projects: action.payload.connected_projects
+        connected_projects: action.payload.connected_projects,
       };
 
       return {
@@ -129,14 +129,14 @@ function repositoryReducer(state: RepositoryState, action: RepositoryAction): Re
         selectedRepo: updatedRepo,
         isDuplicate: Boolean(action.payload.connected_projects?.length),
         isCheckingDuplicates: false,
-        nextIterationName: action.payload.next_iteration_name
+        nextIterationName: action.payload.next_iteration_name,
       };
     }
     case `ENABLE_DUPLICATE_MODE`:
       return {
         ...state,
         isDuplicate: false,
-        projectName: state.nextIterationName || state.selectedRepo?.name || ``
+        projectName: state.nextIterationName || state.selectedRepo?.name || ``,
       };
     case `START_PROJECT_CREATION`:
       return {
@@ -148,31 +148,31 @@ function repositoryReducer(state: RepositoryState, action: RepositoryAction): Re
           isComplete: false,
           error: undefined,
           errorMessage: undefined,
-          waitingMessage: `Please wait while we set up your project...`
-        }
+          waitingMessage: `Please wait while we set up your project...`,
+        },
       };
     case `SET_PROJECT_CHECK_URL`:
       return {
         ...state,
         projectCreationStatus: {
           ...state.projectCreationStatus,
-          checkUrl: action.payload
-        }
+          checkUrl: action.payload,
+        },
       };
     case `SET_REPO_CONNECTION_URL`:
       return {
         ...state,
-        repoConnectionUrl: action.payload
+        repoConnectionUrl: action.payload,
       };
     case `SET_CREATED_PROJECT_NAME`:
       return {
         ...state,
-        createdProjectName: action.payload
+        createdProjectName: action.payload,
       };
     case `SET_SKIP_ONBOARDING_URL`:
       return {
         ...state,
-        skipOnboardingUrl: action.payload
+        skipOnboardingUrl: action.payload,
       };
     case `UPDATE_PROJECT_STATUS`:
       return {
@@ -191,7 +191,7 @@ function repositoryReducer(state: RepositoryState, action: RepositoryAction): Re
     case `FINISH_PROJECT_CREATION`:
       return {
         ...state,
-        isCreatingProject: false
+        isCreatingProject: false,
       };
     case `RESET`:
       return initialState;
@@ -216,8 +216,8 @@ export function useRepositoryStore(configState: stores.Config.State) {
           },
           body: JSON.stringify({
             url: repo.url,
-            name: repo.name
-          })
+            name: repo.name,
+          }),
         });
 
         const data = await response.json();
@@ -226,7 +226,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
         if (data.projects) {
           connected_projects = data.projects.map((project: { name: string, path: string }) => ({
             name: project.name,
-            url: project.path
+            url: project.path,
           }));
         }
 
@@ -235,8 +235,8 @@ export function useRepositoryStore(configState: stores.Config.State) {
           type: `FINISH_DUPLICATE_CHECK`,
           payload: {
             connected_projects,
-            next_iteration_name: data.next_iteration_name
-          }
+            next_iteration_name: data.next_iteration_name,
+          },
         });
 
       } catch (error) {
@@ -245,8 +245,8 @@ export function useRepositoryStore(configState: stores.Config.State) {
           type: `FINISH_DUPLICATE_CHECK`,
           payload: {
             connected_projects: undefined,
-            next_iteration_name: undefined
-          }
+            next_iteration_name: undefined,
+          },
         });
       }
     }
@@ -292,7 +292,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
         }
         return {
           ...step,
-          completed
+          completed,
         };
       });
 
@@ -306,7 +306,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
           errorMessage: data.error_message,
           ready: data.ready,
           nextScreenUrl: data.next_screen_url,
-        }
+        },
       });
 
       // If not complete and no error, schedule next check
@@ -321,8 +321,8 @@ export function useRepositoryStore(configState: stores.Config.State) {
         payload: {
           steps: state.projectCreationStatus.steps,
           isComplete: false,
-          error: `Failed to check project creation status`
-        }
+          error: `Failed to check project creation status`,
+        },
       });
     }
   }, [state.projectCreationStatus.steps]);
@@ -341,14 +341,14 @@ export function useRepositoryStore(configState: stores.Config.State) {
         method: `POST`,
         headers: {
           'Content-Type': `application/json`,
-          'X-CSRF-Token': configState.csrfToken
+          'X-CSRF-Token': configState.csrfToken,
         },
         body: JSON.stringify({
           integration_type: providerState.state.selectedProvider?.type,
           duplicate: `true`,
           name: state.projectName,
-          url: state.selectedRepo.url || ``
-        })
+          url: state.selectedRepo.url || ``,
+        }),
       });
 
       if (!response.ok) {
@@ -383,7 +383,7 @@ export function useRepositoryStore(configState: stores.Config.State) {
     setProjectName,
     enableDuplicateMode,
     createProject,
-    reset
+    reset,
   };
 }
 
@@ -412,5 +412,5 @@ export const Context = createContext<RepositoryContextType>({
   },
   reset: () => { 
     throw new Error(`Repository context not initialized: reset`);
-  }
+  },
 });

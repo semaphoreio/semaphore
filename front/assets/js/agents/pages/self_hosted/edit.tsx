@@ -225,7 +225,7 @@ export const Edit = () => {
                             value={agentType.settings.nameReleaseAfter}
                             onChange={(e) =>
                               setAgentNameRelease(
-                                parseInt(e.currentTarget.value)
+                                parseInt(e.currentTarget.value),
                               )
                             }
                           />

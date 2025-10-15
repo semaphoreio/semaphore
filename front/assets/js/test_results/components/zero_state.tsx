@@ -81,7 +81,12 @@ export const ZeroState = () => {
 
         <div className="flex-m">
           <div className="flex-shrink-0 dn db-m nl4 pr4">
-            <Icon path="images/ill-curious-girl.svg" alt="curious girl" width="74" height="108"/>
+            <Icon
+              path="images/ill-curious-girl.svg"
+              alt="curious girl"
+              width="74"
+              height="108"
+            />
           </div>
           <div className="flex-auto pl2-m">
             <div>

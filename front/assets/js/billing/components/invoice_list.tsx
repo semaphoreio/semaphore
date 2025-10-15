@@ -54,7 +54,7 @@ export const InvoiceList = () => {
             invoice={invoice}
             key={i}
             lastItem={i == state.invoices.length - 1}
-          />
+          />,
         )}
       </div>
     </div>

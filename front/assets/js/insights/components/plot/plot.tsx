@@ -57,7 +57,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
     },
     xScale: d3.scaleTime(),
     yScale: d3.scaleLinear(),
-    width: 0
+    width: 0,
   });
 
   useLayoutEffect(() => {
@@ -159,7 +159,11 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
 
 
   return (
-    <div ref={chartContainerRef} onMouseLeave={hideTooltip} onMouseEnter={showTooltip}>
+    <div
+      ref={chartContainerRef}
+      onMouseLeave={hideTooltip}
+      onMouseEnter={showTooltip}
+    >
       {isTooltipVisible() &&
         <chart.Tooltip
           top={state.margin.top}
@@ -182,7 +186,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
           {cloneElement(axisY, {
             translation: state.width - state.margin.left - state.margin.right,
             yScale: state.yScale,
-            metrics: metrics
+            metrics: metrics,
           })}
 
           {charts.map((chart) => {
@@ -291,6 +295,11 @@ const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleT
   }, [translation, xScale]);
 
   return (
-    <g className="x axis" style={{ cursor: `default` }} ref={xScaleRef} transform={`translate(0, ${translation})`}></g>
+    <g
+      className="x axis"
+      style={{ cursor: `default` }}
+      ref={xScaleRef}
+      transform={`translate(0, ${translation})`}
+    ></g>
   );
 };

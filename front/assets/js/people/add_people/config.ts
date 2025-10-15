@@ -32,7 +32,7 @@ export class AppConfig {
     const json: ParsedConfig = JSON.parse(rawJson.config);
 
     config.collaboratorListUrl = APIRequest.Url.fromJSON(
-      json.users.collaborators_url
+      json.users.collaborators_url,
     );
     config.createMemberUrl = APIRequest.Url.fromJSON(json.users.create_url);
     config.inviteMemberUrl = APIRequest.Url.fromJSON(json.users.invite_url);

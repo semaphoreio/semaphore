@@ -70,20 +70,20 @@ Prism.languages.query = {
     inside: {
       'keyword': {
         pattern: permittedKeywordPattern,
-        greedy: false
+        greedy: false,
       },
       'value': {
         pattern: /:("[^"]*"?|[^:\s]+)/,
         greedy: true,
         inside: {
-          'operator': /%|=|>|<=|!=|>|</
-        }
-      }
-    }
+          'operator': /%|=|>|<=|!=|>|</,
+        },
+      },
+    },
   },
   'keyword': {
     pattern: permittedKeywordPattern,
-    greedy: false
+    greedy: false,
   },
 };
 
@@ -131,7 +131,7 @@ export const Highlight = (props: HighlightProps) => {
 
   const getTextNodeAtPosition = (
     root: Node,
-    index: number
+    index: number,
   ): { node: Node, position: number } => {
     const NODE_TYPE = NodeFilter.SHOW_TEXT;
     const treeWalker = document.createTreeWalker(root, NODE_TYPE, function next(elem) {
@@ -144,7 +144,7 @@ export const Highlight = (props: HighlightProps) => {
     const c = treeWalker.nextNode();
     return {
       node: c ? c : root,
-      position: index
+      position: index,
     };
   };
 

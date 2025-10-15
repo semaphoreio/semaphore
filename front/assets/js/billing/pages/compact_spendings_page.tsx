@@ -79,7 +79,11 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className={ isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
@@ -105,7 +109,11 @@ const MachineInfo = ({ spending }: { spending?: types.Spendings.Spending }) => {
         </div>
       </div>
       {sortedItems.length == 0 && <div className="pa3 tc">No machines available</div>}
-      {sortedItems.map((machine, idx) => <MachineItem machine={machine} lastItem={ idx == sortedItems.length - 1 } key={idx}/>)}
+      {sortedItems.map((machine, idx) => <MachineItem
+        machine={machine}
+        lastItem={ idx == sortedItems.length - 1 }
+        key={idx}
+      />)}
     </Fragment>
   );
 };

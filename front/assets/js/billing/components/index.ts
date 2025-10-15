@@ -29,5 +29,5 @@ export {
   ProjectChart,
   SpendingGroup,
   Charts,
-  Loader
+  Loader,
 };

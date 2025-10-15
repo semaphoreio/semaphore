@@ -101,7 +101,11 @@ const Items = (props: ItemsProps) => {
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className={isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
@@ -223,7 +227,11 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className={isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
@@ -254,7 +262,12 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
         </div>
       </div>
       {sortedItems.map((item, idx) => (
-        <SpendingGroupItem group={group} item={item} key={item.name} lastItem={idx == lastItemIdx}/>
+        <SpendingGroupItem
+          group={group}
+          item={item}
+          key={item.name}
+          lastItem={idx == lastItemIdx}
+        />
       ))}
       <div className="pa3 bt bw1 b--black-075 w-100">
         <div className="flex items-center">
@@ -289,7 +302,11 @@ const ItemsWithZeroState = ({ group }: ItemsProps) => {
       case types.Spendings.GroupType.Addon:
         return (
           <Fragment>
-            <toolbox.Asset path={`images/ill-curious-girl.svg`} width={`64`} height={`94`}/>
+            <toolbox.Asset
+              path={`images/ill-curious-girl.svg`}
+              width={`64`}
+              height={`94`}
+            />
             <h4 className="f4 mt2 mb0">No active add-ons</h4>
             <p className="f4 mb0 measure center">
               Contact <a href="/support">support</a> to learn more about add-ons.
@@ -299,7 +316,11 @@ const ItemsWithZeroState = ({ group }: ItemsProps) => {
       default:
         return (
           <Fragment>
-            <toolbox.Asset path={`images/ill-curious-girl.svg`} width={`64`} height={`94`}/>
+            <toolbox.Asset
+              path={`images/ill-curious-girl.svg`}
+              width={`64`}
+              height={`94`}
+            />
             <h4 className="f4 mt2 mb0">No active {group.name}</h4>
           </Fragment>
         );

@@ -555,7 +555,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
           allowed: data.allowed,
           errors: myErrors,
         };
-      }
+      },
     );
     isLoading.value = false;
     if (error) {
@@ -591,7 +591,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
                   </a>
                   page and remove some of the users.
                 </span>
-              </li>
+              </li>,
             );
             break;
 
@@ -611,7 +611,7 @@ const VerfiyPlanUpgrade = (props: VerifyPlanUpgradeProps) => {
                   </a>
                   page and remove some of the agents.
                 </span>
-              </li>
+              </li>,
             );
             break;
 

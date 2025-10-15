@@ -6,5 +6,5 @@ import { Reliability } from './reliability';
 export {
   Performance,
   Frequency,
-  Reliability
+  Reliability,
 };

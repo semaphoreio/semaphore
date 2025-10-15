@@ -36,7 +36,7 @@ export function ProjectOnboardingWorkflowSetup({ config, dom }: { dom: HTMLEleme
     state: {
       csrfToken,
       ...config,
-    }
+    },
   };
 
   render(

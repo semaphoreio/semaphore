@@ -202,7 +202,12 @@ export const DateAxisX = () => {
   }, [yTranslation, plotState.xScale]);
 
   return (
-    <g className="x axis" style={{ cursor: `default` }} ref={xScaleRef} transform={`translate(0 ${yTranslation})`}></g>
+    <g
+      className="x axis"
+      style={{ cursor: `default` }}
+      ref={xScaleRef}
+      transform={`translate(0 ${yTranslation})`}
+    ></g>
   );
 };
 
@@ -254,7 +259,7 @@ export const LineChartLeft = (props: YScaleProps) => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
     d3.select(yScaleRef.current)
@@ -264,7 +269,12 @@ export const LineChartLeft = (props: YScaleProps) => {
 
   return (
     <Fragment>
-      <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(${plotState.width - 30} 0)`}></g>
+      <g
+        className="y axis"
+        style={{ cursor: `default` }}
+        ref={yScaleRef}
+        transform={`translate(${plotState.width - 30} 0)`}
+      ></g>
       <LineChart plotData={plotData} yScale={yScale}/>
     </Fragment>
   );
@@ -302,7 +312,7 @@ export const MoneyScaleY = () => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
 
@@ -312,7 +322,12 @@ export const MoneyScaleY = () => {
   }, [plotState.yScale, plotState.width, plotData]);
 
   return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>
+    <g
+      className="y axis"
+      style={{ cursor: `default` }}
+      ref={yScaleRef}
+      transform={`translate(50 0)`}
+    ></g>
   );
 };
 
@@ -359,7 +374,7 @@ export const LineChart = (props: ChartProps) => {
         .x((d) => plotState.xScale(d.day) || 0)
         .y((d) => {
           return yScale(d.value) || 0;
-        })
+        }),
       );
 
     d3.select(dotRef.current)
@@ -377,8 +392,16 @@ export const LineChart = (props: ChartProps) => {
 
   return (
     <Fragment>
-      <g ref={lineChartRef} className={props.className} style={props.style}/>
-      <g ref={dotRef} className={props.className} style={props.style}/>
+      <g
+        ref={lineChartRef}
+        className={props.className}
+        style={props.style}
+      />
+      <g
+        ref={dotRef}
+        className={props.className}
+        style={props.style}
+      />
     </Fragment>
   );
 };

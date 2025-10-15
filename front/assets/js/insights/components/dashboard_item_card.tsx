@@ -83,39 +83,53 @@ export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler,
               <form onSubmit={onSubmit} style="width: 300px;">
                 <div className="f5 pa1">
                   <div className="b mb1">Metric name</div>
-                  <input value={item.name} onInput={onInputNameChange}
-                    className="x-select-on-click form-control w-90 mb1"/>
+                  <input
+                    value={item.name}
+                    onInput={onInputNameChange}
+                    className="x-select-on-click form-control w-90 mb1"
+                  />
 
                   <div className="b mb1">Description</div>
-                  <textarea id="notes"
+                  <textarea
+                    id="notes"
                     style="max-width: 282px;"
                     className="x-select-on-click form-control mb1 w-100"
                     rows={5}
                     placeholder="This metric is used to measure..."
                     value={item.notes}
-                    onInput={onInputDescriptionChange}/>
+                    onInput={onInputDescriptionChange}
+                  />
                   <div className="mt3">
-                    <button className="btn btn-primary btn-small"
+                    <button
+                      className="btn btn-primary btn-small"
                       onClick={hideTippy}
-                      type="submit">Save</button>
-                    <button type="reset"
+                      type="submit"
+                    >Save</button>
+                    <button
+                      type="reset"
                       className="btn btn-secondary ml2 btn-small"
-                      onClick={hideTippy}>Cancel</button>
+                      onClick={hideTippy}
+                    >Cancel</button>
                   </div>
                   <div className="mt2 bt b--lighter-gray pt2">
-                    <button className="link"
+                    <button
+                      className="link"
                       onClick={() => {
                         confirmDeletion(deleteHandler, item.id);
                         hideTippy();
                       }}
-                      type="reset">Delete</button>
+                      type="reset"
+                    >Delete</button>
                   </div>
                 </div>
               </form>
-            }>
-            <button className="btn btn-secondary btn-tiny"
+            }
+          >
+            <button
+              className="btn btn-secondary btn-tiny"
               style="height: 21px; margin-top: 2px;"
-              onClick={visible ? hideTippy : showTippy}>Edit</button>
+              onClick={visible ? hideTippy : showTippy}
+            >Edit</button>
           </Tippy>
         </div>
       </div>

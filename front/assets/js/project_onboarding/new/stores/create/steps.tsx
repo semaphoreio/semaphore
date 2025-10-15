@@ -19,7 +19,7 @@ export function Reducer<T extends Step>(state: State<T>, action: Action<T>): Sta
   switch (action[0]) {
     case `SET_CURRENT`: {
       const stepIdx = state.steps.findIndex(
-        (predicate) => predicate.id === action[1]
+        (predicate) => predicate.id === action[1],
       );
 
       if (stepIdx === -1) {

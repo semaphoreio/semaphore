@@ -9,7 +9,7 @@ export const icon = `images/icn-os-mac.svg`;
 
 export const Component = (): VNode => {
   const [selectedOs, setSelectedOs] = useState<`macos` | `homebrew`>(
-    `homebrew`
+    `homebrew`,
   );
 
   interface SubOsProps extends h.JSX.HTMLAttributes {
@@ -17,7 +17,7 @@ export const Component = (): VNode => {
     active: boolean;
   }
   const SubOS = (
-    props: SubOsProps
+    props: SubOsProps,
   ) => {
     const ButtonEl = styled.button`
       &:hover,
@@ -182,7 +182,11 @@ export const HomebrewInstructions = () => {
           <li>
             <div className="mb2">
               Install{` `}
-              <a href="https://brew.sh/" target="_blank" rel="noreferrer">
+              <a
+                href="https://brew.sh/"
+                target="_blank"
+                rel="noreferrer"
+              >
                 Homebrew
               </a>
             </div>

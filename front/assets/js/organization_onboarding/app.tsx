@@ -7,7 +7,7 @@ import { TargetedEvent } from "preact/compat";
 export const App = () => {
   const [onboardingState, onboardingDispatch] = useReducer(
     Store.Request.Reducer,
-    Store.Request.EmptyState
+    Store.Request.EmptyState,
   );
 
   const [waitUrl, setWaitUrl] = useState(``);
@@ -95,7 +95,7 @@ interface OnboardingPageProps {
 
 const OnboardingPage = (props: OnboardingPageProps) => {
   const { state, dispatch: requestDispatch } = useContext(
-    Store.Request.Context
+    Store.Request.Context,
   );
   const { config } = useContext(Store.Config.Context);
   const [organizationUrl, setOrganizationUrl] = useState(``);
@@ -111,7 +111,7 @@ const OnboardingPage = (props: OnboardingPageProps) => {
     requestDispatch({ type: `SET_LOADING` });
     const { data, error } = await toolbox.APIRequest.post<Request>(
       config.createOrganizationURL,
-      { url: organizationUrl }
+      { url: organizationUrl },
     );
     if (error) {
       requestDispatch({ type: `SET_ERROR` });

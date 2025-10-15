@@ -30,7 +30,7 @@ export const Tooltip = ({ top, left, content, activeMetric }: Props) => {
         "top": top,
         "left": left,
         "width": width,
-        "z-index": `3`
+        "z-index": `3`,
       }}
     >
       {cloneElement(content, { activeMetric })}

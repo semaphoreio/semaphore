@@ -10,7 +10,7 @@ export class ServiceAccountsAPI {
   constructor(private config: Config) {}
 
   async list(
-    page?: number
+    page?: number,
   ): Promise<
     toolbox.APIRequest.ApiResponse<PaginatedResponse<ServiceAccount>>
     > {
@@ -18,7 +18,7 @@ export class ServiceAccountsAPI {
     if (page) params.append(`page`, `${page}`);
 
     const response = await toolbox.APIRequest.get<any>(
-      `${this.config.urls.list}?${params.toString()}`
+      `${this.config.urls.list}?${params.toString()}`,
     );
 
     if (response.error) {
@@ -41,11 +41,11 @@ export class ServiceAccountsAPI {
   async create(
     name: string,
     description: string,
-    roleId: string
+    roleId: string,
   ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccountWithToken>> {
     return toolbox.APIRequest.post<ServiceAccountWithToken>(
       this.config.urls.create,
-      { name, description, role_id: roleId }
+      { name, description, role_id: roleId },
     );
   }
 
@@ -53,7 +53,7 @@ export class ServiceAccountsAPI {
     id: string,
     name: string,
     description: string,
-    role_id: string
+    role_id: string,
   ): Promise<toolbox.APIRequest.ApiResponse<ServiceAccount>> {
     return toolbox.APIRequest.put<ServiceAccount>(this.config.urls.update(id), {
       name,
@@ -67,10 +67,10 @@ export class ServiceAccountsAPI {
   }
 
   async regenerateToken(
-    id: string
+    id: string,
   ): Promise<toolbox.APIRequest.ApiResponse<{ api_token: string }>> {
     return toolbox.APIRequest.post<{ api_token: string }>(
-      this.config.urls.regenerateToken(id)
+      this.config.urls.regenerateToken(id),
     );
   }
 }

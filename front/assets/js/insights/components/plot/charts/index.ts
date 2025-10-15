@@ -7,5 +7,5 @@ export {
   Bar,
   Line,
   StdDev,
-  Area
+  Area,
 };

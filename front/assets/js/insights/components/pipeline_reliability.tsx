@@ -139,7 +139,12 @@ export const PipelineReliability = () => {
                 axisY={<plot.yAxis.Percent/>}
                 tooltip={<plot.tooltips.Reliability/>}
                 charts={[
-                  <plot.charts.Area metrics={metrics} height={300} calculateOptimalRange={percent.calculateOptimalRange} key="bar"/>,
+                  <plot.charts.Area
+                    metrics={metrics}
+                    height={300}
+                    calculateOptimalRange={percent.calculateOptimalRange}
+                    key="bar"
+                  />,
                 ]}
                 focus={[<plot.focus.Line color="#00a569" key="line"/>, <plot.focus.Dot color="#00a569" key="dot"/>]}
                 xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}

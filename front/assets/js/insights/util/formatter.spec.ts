@@ -36,7 +36,7 @@ describe(`Formatter.dailyRate`, () => {
     specs.forEach((spec) => {
       expect(
         Formatter.dailyRate(spec.total, spec.days),
-        `${spec.total} build / ${spec.days} days should format to ${spec.expected}`
+        `${spec.total} build / ${spec.days} days should format to ${spec.expected}`,
       ).to.eq(spec.expected);
     });
   });
@@ -70,7 +70,7 @@ describe(`Formatter.dateDiff`, () => {
     specs.forEach((spec) => {
       expect(
         Formatter.dateDiff(spec.start, spec.end),
-        `${spec.start.toDateString()} => ${spec.end.toDateString()} should format to ${spec.expected}`
+        `${spec.start.toDateString()} => ${spec.end.toDateString()} should format to ${spec.expected}`,
       ).to.eq(spec.expected);
     });
   });
@@ -108,7 +108,7 @@ describe(`Formatter.duration`, () => {
     specs.forEach((spec) => {
       expect(
         Formatter.duration(spec.seconds),
-        `${spec.seconds} seconds should format to ${spec.expected}`
+        `${spec.seconds} seconds should format to ${spec.expected}`,
       ).to.eq(spec.expected);
     });
   });

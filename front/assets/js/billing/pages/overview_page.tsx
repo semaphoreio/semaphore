@@ -131,9 +131,21 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan }) => {
 
   return (
     <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
-      {isPrepaid && mode === PaymentDetailModes.Display && <PrepaidPaymentDetails budget={budget} plan={plan} setMode={setMode}/>}
-      {!isPrepaid && mode === PaymentDetailModes.Display && <PaymentDetails plan={plan} budget={budget} setMode={setMode}/>}
-      {mode === PaymentDetailModes.EditBudget && <EditBudget setMode={setMode} budget={budget} setBudget={setBudget}/>}
+      {isPrepaid && mode === PaymentDetailModes.Display && <PrepaidPaymentDetails
+        budget={budget}
+        plan={plan}
+        setMode={setMode}
+      />}
+      {!isPrepaid && mode === PaymentDetailModes.Display && <PaymentDetails
+        plan={plan}
+        budget={budget}
+        setMode={setMode}
+      />}
+      {mode === PaymentDetailModes.EditBudget && <EditBudget
+        setMode={setMode}
+        budget={budget}
+        setBudget={setBudget}
+      />}
     </div>
   );
 };
@@ -240,7 +252,11 @@ const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: ty
                   <toolbox.Tooltip
                     stickable={true}
                     anchor={
-                      <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                      <span
+                        className="pointer material-symbols-outlined"
+                        style="font-size: 1em;"
+                        aria-expanded="false"
+                      >
                         help
                       </span>
                     }
@@ -264,7 +280,11 @@ const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: ty
                     <toolbox.Tooltip
                       stickable={true}
                       anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        <span
+                          className="pointer material-symbols-outlined"
+                          style="font-size: 1em;"
+                          aria-expanded="false"
+                        >
                           help
                         </span>
                       }
@@ -450,7 +470,11 @@ const EditBudget = ({
           </div>
         </div>
         <div className="ph3 pv2 tl">
-          <button type="submit" className="btn btn-tiny btn-primary tl mr2" disabled={insufficientPermissions}>
+          <button
+            type="submit"
+            className="btn btn-tiny btn-primary tl mr2"
+            disabled={insufficientPermissions}
+          >
             Update
           </button>
           <a className="btn btn-tiny btn-secondary" onClick={() => void setMode(PaymentDetailModes.Display)}>
@@ -480,7 +504,11 @@ const PaymentDetails = ({
     return (
       <Fragment>
         {showLink && (
-          <a href={plan.paymentMethodUrl} target="_blank" rel="noreferrer">
+          <a
+            href={plan.paymentMethodUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
             {withoutPaymentMethod && `Set ↗`}
             {!withoutPaymentMethod && `Update ↗`}
           </a>
@@ -668,7 +696,11 @@ const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summar
                     <toolbox.Tooltip
                       stickable={true}
                       anchor={
-                        <span className="pointer material-symbols-outlined" style="font-size: 1em;" aria-expanded="false">
+                        <span
+                          className="pointer material-symbols-outlined"
+                          style="font-size: 1em;"
+                          aria-expanded="false"
+                        >
                           help
                         </span>
                       }

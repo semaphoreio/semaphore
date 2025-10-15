@@ -104,7 +104,11 @@ export const HistoryChart = ({
           }
         `}
       </style>
-      <div ref={ref} className="c3" style="max-height: 200px; position: relative; border-bottom: none;"></div>
+      <div
+        ref={ref}
+        className="c3"
+        style="max-height: 200px; position: relative; border-bottom: none;"
+      ></div>
     </Fragment>
   );
 };

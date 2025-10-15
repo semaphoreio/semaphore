@@ -8,7 +8,7 @@ import { useSignal } from "@preact/signals";
 
 export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
   const availablePlans = config.availablePlans.map((plan: any) =>
-    types.Plans.Plan.fromJSON(plan)
+    types.Plans.Plan.fromJSON(plan),
   );
 
   render(
@@ -17,7 +17,7 @@ export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
         <App config={config}/>
       </stores.Config.Context.Provider>
     </BrowserRouter>,
-    dom
+    dom,
   );
 }
 
@@ -33,7 +33,7 @@ export function TrialOverlay({
       ackUrl={config.acknowledgePlanChangeUrl as string}
       billingUrl={config.billingUrl as string}
     />,
-    dom
+    dom,
   );
 }
 interface TrialProps {

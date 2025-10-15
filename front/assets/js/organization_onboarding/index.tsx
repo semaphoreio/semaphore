@@ -7,6 +7,6 @@ export default function ({ dom, config }: { dom: HTMLElement, config: any }) {
     <Store.Config.Context.Provider value={{ config }}>
       <App/>
     </Store.Config.Context.Provider>,
-    dom
+    dom,
   );
 }

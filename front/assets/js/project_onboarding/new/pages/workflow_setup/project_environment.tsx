@@ -57,7 +57,7 @@ export const Projectenvironment = () => {
         available_os_images: isCloudAgent ? agent.available_os_images : undefined,
       });
     },
-    [setSelectedAgentType]
+    [setSelectedAgentType],
   );
 
   useEffect(() => {
@@ -133,7 +133,11 @@ export const Projectenvironment = () => {
               <p className="f4 f3-m mb0">Configuration Location</p>
               <p className="f6 gray mb1">Specify the path for the pipeline configuration YAML file in your repository.</p>
               <div className="relative flex items-center ba b--black-20 br2 bg-white">
-                <toolbox.Asset path="images/icn-file.svg" className="flex-shrink-0 mh2" style="width: 16px; height: 16px;"/>
+                <toolbox.Asset
+                  path="images/icn-file.svg"
+                  className="flex-shrink-0 mh2"
+                  style="width: 16px; height: 16px;"
+                />
                 <input
                   type="text"
                   id="yaml-path"
@@ -216,7 +220,11 @@ export const Projectenvironment = () => {
               <p className="f6 gray mb1">
                 Base YAML configuration with selected agent. The rest of the pipeline will be configured in the next step.
               </p>
-              <toolbox.YamlEditor value={envState.yamlContent} readOnly={true} height="208px"/>
+              <toolbox.YamlEditor
+                value={envState.yamlContent}
+                readOnly={true}
+                height="208px"
+              />
             </div>
             <div className="mt3">
               <div className="flex justify-between items-center">
@@ -231,7 +239,11 @@ export const Projectenvironment = () => {
                     skip onboarding
                   </a>
                 </div>
-                <Tippy placement="top" content="Select an agent type to continue" visible={envState.selectedAgentType ? false : true}>
+                <Tippy
+                  placement="top"
+                  content="Select an agent type to continue"
+                  visible={envState.selectedAgentType ? false : true}
+                >
                   <div>
                     <button
                       onClick={() => void handleContinue()}

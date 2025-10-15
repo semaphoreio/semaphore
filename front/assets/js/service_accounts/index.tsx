@@ -20,7 +20,7 @@ export default function ({
     <ConfigContext.Provider value={AppConfig.fromJSON(jsonConfig)}>
       <App/>
     </ConfigContext.Provider>,
-    dom
+    dom,
   );
 }
 
@@ -52,7 +52,7 @@ const App = () => {
       setState(prev => ({
         ...prev,
         loading: false,
-        error: response.error || `Failed to load service accounts`
+        error: response.error || `Failed to load service accounts`,
       }));
     } else if (response.data) {
       setState(prev => ({

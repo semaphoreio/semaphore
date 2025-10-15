@@ -160,7 +160,7 @@ export const Reducer = (state: State, action: Action): State => {
       return {
         ...state,
         selfHostedAgents: state.selfHostedAgents.filter(
-          (agent) => agent.name !== action.value
+          (agent) => agent.name !== action.value,
         ),
       };
 

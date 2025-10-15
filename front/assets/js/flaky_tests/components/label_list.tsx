@@ -54,7 +54,7 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
       headers: {
         "Content-Type": `application/json`,
         "X-CSRF-Token": $(`meta[name='csrf-token']`).attr(`content`),
-      }
+      },
     }).then((response) => {
       if (response.status === 204) {
         return response;
@@ -90,7 +90,11 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
   const TagLink = ({ label }: { label: string }) => {
     return (
       <div className={labelClass}>
-        <LabelLink $label={label} className="link black ba ph2 pointer br3 br--left" onClick={() => { filterByLabel(label); }}>{label}</LabelLink>
+        <LabelLink
+          $label={label}
+          className="link black ba ph2 pointer br3 br--left"
+          onClick={() => { filterByLabel(label); }}
+        >{label}</LabelLink>
         <span className="self-stretch pointer material-symbols-outlined bg-washed-gray b--lightest-gray hover-bg-washed-red bt bb br b--gray br3 br--right" onClick={() => onDelete(label)}>
           close
         </span>
@@ -140,7 +144,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any } ) => {
     hide();
   };
 
-  return <Tippy placement="right"
+  return <Tippy
+    placement="right"
     allowHTML={true}
     interactive={true}
     theme="light"
@@ -149,7 +154,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any } ) => {
     onClickOutside={hide}
     content={
       <div className="flex items-center justify-between pa2">
-        <input ref={inputRef}
+        <input
+          ref={inputRef}
           className="mr1 form-control-sm"
           type="text"
           value={label}
@@ -158,7 +164,12 @@ const CreateLabel = ({ onCreate }: { onCreate: any } ) => {
         />
         <button className="btn btn-tiny btn-primary" onClick={onClick}>OK</button>
       </div>
-    }>
-    <a className="pointer" data-tippy-content="Label this test for easier filtering" onClick={show}>+ add Label</a>
+    }
+  >
+    <a
+      className="pointer"
+      data-tippy-content="Label this test for easier filtering"
+      onClick={show}
+    >+ add Label</a>
   </Tippy>;
 };

@@ -21,7 +21,7 @@ export const App = (props: Props) => {
   const spendings = props.config.spendings.map(Spendings.Spending.fromJSON);
   const selectedSpendingId = props.config.selectedSpendingId;
   const currentSpending = Spendings.Spending.fromJSON(
-    props.config.currentSpending
+    props.config.currentSpending,
   );
 
   return (

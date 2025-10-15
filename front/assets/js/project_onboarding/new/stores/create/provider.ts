@@ -10,7 +10,7 @@ type ProviderAction =
   | { type: `SET_PROVIDER`, payload: Provider.Provider };
 
 const defaultState: State = {
-  selectedProvider: null as unknown as Provider.Provider
+  selectedProvider: null as unknown as Provider.Provider,
 };
 
 const providerReducer = (state: State, action: ProviderAction): State => {
@@ -18,7 +18,7 @@ const providerReducer = (state: State, action: ProviderAction): State => {
     case `SET_PROVIDER`:
       return {
         ...state,
-        selectedProvider: action.payload
+        selectedProvider: action.payload,
       };
     default:
       return state;

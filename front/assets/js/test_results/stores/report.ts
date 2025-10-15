@@ -25,7 +25,7 @@ export const Reducer = (state: State, action: Action): State => {
 
 export const EmptyState: State = {
   items: [] as Report[],
-  isEmpty: false
+  isEmpty: false,
 };
 
 export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

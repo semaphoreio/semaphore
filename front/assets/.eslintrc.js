@@ -105,8 +105,10 @@ module.exports = {
         "semi-spacing": ["error", {"before": false, "after": true}],
         "react/jsx-uses-react": "off",
         "react/react-in-jsx-scope": "off",
-        // "react/jsx-one-expression-per-line": ["error", { "allow": "single-child" }],
         "react/display-name": "off",
+        "react/jsx-first-prop-new-line": ["error", "multiline"],
+        "react/jsx-max-props-per-line": ["error", { maximum: {single: 2, multi: 1} }],
+        "react/jsx-closing-bracket-location": ["error", { selfClosing: "line-aligned", nonEmpty: "line-aligned" }],
         "react/jsx-tag-spacing": [
           "error",
           {
@@ -115,6 +117,20 @@ module.exports = {
             afterOpening: "never",
             beforeClosing: "never",
           },
+        ],
+        "comma-dangle": "off",
+        "@typescript-eslint/comma-dangle": [
+          "error",
+          {
+            arrays: "always-multiline",
+            objects: "always-multiline",
+            imports: "always-multiline",
+            exports: "always-multiline",
+            functions: "always-multiline",
+            enums: "always-multiline",
+            generics: "always-multiline",
+            tuples: "always-multiline"
+          }
         ],
         "@typescript-eslint/no-misused-promises": [
           "error",

@@ -204,7 +204,7 @@ const DetailsZeroState = (props: DetailsZeroStateProps) => {
   const ZeroState = () => {
     const skipGuide = async () => {
       const result = confirm(
-        `Are you sure? The guide will be moved to the main menu`
+        `Are you sure? The guide will be moved to the main menu`,
       );
       if (result) {
         await props.signal(`onboarding.skipped`).then(() => {

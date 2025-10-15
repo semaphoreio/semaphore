@@ -115,13 +115,31 @@ export const Autocomplete = (props: AutocompleteProps) => {
 
   return (
     <Fragment>
-      <div ref={ref} className="" style="position: relative;">
-        <SearchInput ref={inputRef} value={searchString} onInput={onInput} $active={active} type="text" className="form-control form-control-tiny" placeholder="search" onFocusIn={onFocus} onFocusOut={onFocus}/>
+      <div
+        ref={ref}
+        className=""
+        style="position: relative;"
+      >
+        <SearchInput
+          ref={inputRef}
+          value={searchString}
+          onInput={onInput}
+          $active={active}
+          type="text"
+          className="form-control form-control-tiny"
+          placeholder="search"
+          onFocusIn={onFocus}
+          onFocusOut={onFocus}
+        />
         {active && <List $height={height} $width={width}>
           {items.map((item, idx) =>
-            <li className="f6" onClick={(e) => {e.preventDefault(); props.onChange(item.value); }} key={idx}>
+            <li
+              className="f6"
+              onClick={(e) => {e.preventDefault(); props.onChange(item.value); }}
+              key={idx}
+            >
               {item.label}
-            </li>
+            </li>,
           )}
           {items.length == 0 && <li className="f6">No results</li>}
         </List>}

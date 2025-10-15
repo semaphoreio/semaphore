@@ -12,7 +12,7 @@ export const App = () => {
 
   const [onboarding, dispatchOnboarding] = useReducer(
     stores.Onboarding.Reducer,
-    { learn }
+    { learn },
   );
 
   return (
