@@ -35,7 +35,7 @@ export const CalculateOptimalRange = (values: number[]): number[] => {
     min + ((max-min)/5) * 2,
     min + ((max-min)/5) * 3,
     min + ((max-min)/5) * 4,
-    max
+    max,
   ].map(d => Math.floor(d));
 
   return axisValues;

@@ -21,7 +21,7 @@ export const Reducer = (state: State, action: Action): State => {
 export type Dispatcher = (action: Action) => void;
 
 export const EmptyState: State = {
-  url: ``
+  url: ``,
 };
 
 interface ContextInterface {
@@ -31,5 +31,5 @@ interface ContextInterface {
 
 export const Context = createContext<ContextInterface>({
   state: EmptyState,
-  dispatch: () => undefined
+  dispatch: () => undefined,
 });

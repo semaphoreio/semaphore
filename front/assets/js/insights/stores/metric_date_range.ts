@@ -11,7 +11,7 @@ export const Reducer = (state: State, action: Action): State => {
     case `SET_METRIC_DATE_RANGES`:
       return { ...state, dateRanges: action.value,
         selectedMetricDateRangeLabel: action.value[0].label,
-        selectedMetricDateRange: action.value[0]
+        selectedMetricDateRange: action.value[0],
       };
     case `SELECT_METRIC_DATE_RANGE`:
       return {

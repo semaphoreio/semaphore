@@ -81,7 +81,8 @@ const ChooseRepoContent = () => {
         svgPath="images/ill-girl-looking-down.svg"
         title="Connect repository"
         subtitle="Configure repository access and integration settings."
-        additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."/>
+        additionalInfo="Deploy keys enable read-only repository access. Webhooks trigger automated builds on code changes."
+      />
       {/* <!-- RIGHT SIDE --> */}
       <div className="w-two-thirds">
 

@@ -4,5 +4,5 @@ import { Balance, BalanceType } from "./balance";
 export {
   Available,
   Balance,
-  BalanceType
+  BalanceType,
 };

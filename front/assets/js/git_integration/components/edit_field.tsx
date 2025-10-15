@@ -19,7 +19,7 @@ export const EditField = ({
   value,
   editKey,
   editUrl,
-  isPrivate
+  isPrivate,
 }: EditFieldProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState(value);

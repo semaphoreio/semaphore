@@ -58,7 +58,11 @@ export const SearchFilter = () => {
             className=""
             placement="bottom-start"
           />
-          <components.ComposeBox query={query} onQueryChange={setQuery} onSubmit={setSearchFilter}/>
+          <components.ComposeBox
+            query={query}
+            onQueryChange={setQuery}
+            onSubmit={setSearchFilter}
+          />
 
           <toolbox.Tooltip
             anchor={
@@ -160,7 +164,12 @@ const NewFilter = (props: NewFilterProps) => {
   return (
     <Fragment>
       <div className="b mb1">Filter name</div>
-      <input type="text" className="form-control w-100 mb1" value={filterName} onInput={onNameInput}/>
+      <input
+        type="text"
+        className="form-control w-100 mb1"
+        value={filterName}
+        onInput={onNameInput}
+      />
       <div className="mt3 button-group">
         <button className="btn btn-primary btn-small" onClick={onCreateFilter}>
           Save
@@ -197,7 +206,11 @@ const FilterList = ({ whenDone }: FilterListProps) => {
     const valueClassNames = isSelected ? valueSelectedClassNames : valueNormalClassNames;
 
     return (
-      <div className={rootClassNames} onClick={() => selectFilter(filter)} style="height: 57px;">
+      <div
+        className={rootClassNames}
+        onClick={() => selectFilter(filter)}
+        style="height: 57px;"
+      >
         <p className="b f5 mb0 tl">{filter.name}</p>
         <p className={valueClassNames}>{filter.value}</p>
       </div>
@@ -435,7 +448,11 @@ const CurrentFilter = ({ query }: { query: string }) => {
                     )
                   }
                   content={({ setVisible }) => (
-                    <Notification whenDone={() => setVisible(false)} signal={notificationSignal} setSignal={setNotificationSignal}/>
+                    <Notification
+                      whenDone={() => setVisible(false)}
+                      signal={notificationSignal}
+                      setSignal={setNotificationSignal}
+                    />
                   )}
                   placement="bottom"
                 />

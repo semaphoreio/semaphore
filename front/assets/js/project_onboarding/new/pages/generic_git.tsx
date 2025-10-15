@@ -125,7 +125,11 @@ const RepositorySetup = () => {
             <p className="f6 gray mb1">A unique identifier for this project in Semaphore</p>
             <div className="flex items-center">
               <div className="relative flex items-center ba b--black-20 br2 bg-white flex-auto mr2">
-                <toolbox.Asset path="images/icn-project.svg" className="self-center mh2" style={{ width: `16px`, height: `16px` }}/>
+                <toolbox.Asset
+                  path="images/icn-project.svg"
+                  className="self-center mh2"
+                  style={{ width: `16px`, height: `16px` }}
+                />
                 <input
                   type="text"
                   id="project-name"
@@ -136,7 +140,11 @@ const RepositorySetup = () => {
                   onInput={(e) => setProjectName(e.currentTarget.value)}
                 />
               </div>
-              <button className="btn btn-primary flex" onClick={createRepository} disabled={loading}>
+              <button
+                className="btn btn-primary flex"
+                onClick={createRepository}
+                disabled={loading}
+              >
                 {loading && <toolbox.Asset path="images/spinner-2.svg" style={{ width: `20px`, height: `20px`, margin: `0` }}/>}
                 {!loading && <span>✓</span>}
               </button>
@@ -434,7 +442,12 @@ const ConnectRepository = () => {
               <p className="mb0">
                 The initialization job is responsible for setting up the environment for your workflow. Please add an agent configuration in
                 your
-                <a href={`${repository.agentConfigUrl}`} className="ml1 link underline" target="_blank" rel="noreferrer">
+                <a
+                  href={`${repository.agentConfigUrl}`}
+                  className="ml1 link underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   project agent settings
                 </a>
                 .
@@ -454,7 +467,11 @@ const ConnectRepository = () => {
 
           <p className="mb2">
             To authorize access, you need to{` `}
-            <a href="https://git-scm.com/book/en/v2/Git-on-the-Server-Setting-Up-the-Server" target="_blank" rel="noreferrer">
+            <a
+              href="https://git-scm.com/book/en/v2/Git-on-the-Server-Setting-Up-the-Server"
+              target="_blank"
+              rel="noreferrer"
+            >
               add
             </a>{` `}
             the following public key to your Git server.

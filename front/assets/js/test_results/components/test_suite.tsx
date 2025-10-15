@@ -91,7 +91,11 @@ export const TestSuite = ({ className, suite, startExpanded }: TestSuiteProps) =
 
   return (
     <Fragment key={suite.id}>
-      <div className={className} onClick={toggleExpand} ref={el}>
+      <div
+        className={className}
+        onClick={toggleExpand}
+        ref={el}
+      >
         <h4 className="f4 mb0 pointer">
           <span className={`mr1 ${classPalette.dot[suite.state]} select-none`}>●</span>
           {suite.name}

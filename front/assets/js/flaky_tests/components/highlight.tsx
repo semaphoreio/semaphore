@@ -70,20 +70,20 @@ Prism.languages.query = {
     inside: {
       'keyword': {
         pattern: permittedKeywordPattern,
-        greedy: false
+        greedy: false,
       },
       'value': {
         pattern: /:("[^"]*"?|[^:\s]+)/,
         greedy: true,
         inside: {
-          'operator': /%|=|>|<=|!=|>|</
-        }
-      }
-    }
+          'operator': /%|=|>|<=|!=|>|</,
+        },
+      },
+    },
   },
   'keyword': {
     pattern: permittedKeywordPattern,
-    greedy: false
+    greedy: false,
   },
 };
 
@@ -144,7 +144,7 @@ export const Highlight = (props: HighlightProps) => {
     const c = treeWalker.nextNode();
     return {
       node: c ? c : root,
-      position: index
+      position: index,
     };
   };
 

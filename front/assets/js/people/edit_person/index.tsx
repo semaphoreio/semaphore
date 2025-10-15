@@ -163,7 +163,11 @@ export const Button = () => {
         <span className="material-symbols-outlined mr1">manage_accounts</span>
         <span>Edit</span>
       </button>
-      <toolbox.Modal isOpen={isOpen} close={close} title="Edit user">
+      <toolbox.Modal
+        isOpen={isOpen}
+        close={close}
+        title="Edit user"
+      >
         <div className="pa3">
           <div className="mb3">
             <label className="db mb2 b">Email address</label>

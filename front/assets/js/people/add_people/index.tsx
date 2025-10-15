@@ -44,7 +44,12 @@ export const App = () => {
         <span className="material-symbols-outlined mr2">person_add</span>
         {`Add people`}
       </button>
-      <Modal isOpen={isOpen} close={() => close(false)} title="Add new people" width="w-70-m">
+      <Modal
+        isOpen={isOpen}
+        close={() => close(false)}
+        title="Add new people"
+        width="w-70-m"
+      >
         <AddNewUsers close={close}/>
       </Modal>
     </Fragment>

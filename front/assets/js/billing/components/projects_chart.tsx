@@ -257,7 +257,11 @@ const Legend = (props: LegendProps) => {
             }
 
             return (
-              <div key={idx} className={`inline-flex items-center ${classes}`} onClick={selectProject(project)}>
+              <div
+                key={idx}
+                className={`inline-flex items-center ${classes}`}
+                onClick={selectProject(project)}
+              >
                 <span className="mr2 ml3 dib" style={`width: 10px; height: 10px; background: ${colorScale(project.name)};`}></span>
                 <span className="">{project.name}</span>
               </div>

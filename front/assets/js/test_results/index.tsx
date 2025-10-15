@@ -62,7 +62,11 @@ export default function ({
           pipelineStatus={init.pipelineStatus}
         />
       )}
-      <TestResults className="flex-l no-ligatures" scope={scope} encodedEmail={encodedEmail}/>
+      <TestResults
+        className="flex-l no-ligatures"
+        scope={scope}
+        encodedEmail={encodedEmail}
+      />
     </StateContext>,
     dom
   );

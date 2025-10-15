@@ -128,7 +128,11 @@ const Loading = () => {
   return (
     <div className="flex items-center justify-center br3 mt4" style="height: 200px;">
       <div className="flex items-center">
-        <toolbox.Asset path="images/spinner-2.svg" width="20" height="20"/>
+        <toolbox.Asset
+          path="images/spinner-2.svg"
+          width="20"
+          height="20"
+        />
         <span className="ml1 gray">Loading data, please wait&hellip;</span>
       </div>
     </div>
@@ -138,7 +142,11 @@ const Loading = () => {
 const ZeroState = () => {
   return (
     <div className="tc pt5 pb5">
-      <toolbox.Asset path="images/ill-curious-girl.svg" width="60" height="80"/>
+      <toolbox.Asset
+        path="images/ill-curious-girl.svg"
+        width="60"
+        height="80"
+      />
       <h4 className="f4 mt2 mb0">No seats</h4>
       <p className="f4 mb0 measure center">Your organization used no seats in this period</p>
     </div>
@@ -170,7 +178,11 @@ const List = () => {
     }
 
     return (
-      <div onClick={changeOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={changeOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex`}>
           <span className={ isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">arrow_drop_down</i>}
@@ -193,7 +205,11 @@ const List = () => {
           </div>
         </div>
       </div>
-      {seats.map((seat, i) => <SeatItem seat={seat} key={i} lastItem={seats.length == (i + 1)}/>)}
+      {seats.map((seat, i) => <SeatItem
+        seat={seat}
+        key={i}
+        lastItem={seats.length == (i + 1)}
+      />)}
     </div>
   );
 };
@@ -207,7 +223,11 @@ const SeatItem = ({ seat, lastItem }: { seat: Seats.Seat, lastItem: boolean }) =
             <div className="flex-ns items-center">
               <div className="w-60-ns flex items-center b">
                 <div style="width: 26px;" className="mr2 tc flex justify-center content-center">
-                  <toolbox.Asset path={seat.icon} width={`${seat.iconWidth.toString()}`} height={`${seat.iconHeight.toString()}`}/>
+                  <toolbox.Asset
+                    path={seat.icon}
+                    width={`${seat.iconWidth.toString()}`}
+                    height={`${seat.iconHeight.toString()}`}
+                  />
                 </div>
                 <span className="link db dark-gray">{seat.displayName}</span>
               </div>

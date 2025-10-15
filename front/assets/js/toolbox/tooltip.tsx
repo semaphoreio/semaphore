@@ -59,28 +59,24 @@ export const Tooltip = (props: TooltipProps) => {
 
   useEffect(() => {
     if (!anchorEl.current || !tooltipEl.current) return;
-    const instance = createPopper(
-      anchorEl.current as Element,
-      tooltipEl.current as HTMLElement,
-      {
-        placement: props.placement,
-        strategy: `fixed`,
-        modifiers: [
-          {
-            name: `arrow`,
-            options: {
-              element: tooltipArrowEl.current,
-            },
+    const instance = createPopper(anchorEl.current as Element, tooltipEl.current as HTMLElement, {
+      placement: props.placement,
+      strategy: `fixed`,
+      modifiers: [
+        {
+          name: `arrow`,
+          options: {
+            element: tooltipArrowEl.current,
           },
-          {
-            name: `offset`,
-            options: {
-              offset: [0, 12],
-            },
+        },
+        {
+          name: `offset`,
+          options: {
+            offset: [0, 12],
           },
-        ],
-      }
-    );
+        },
+      ],
+    });
 
     setPopper(instance);
 

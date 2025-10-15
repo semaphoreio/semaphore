@@ -80,13 +80,18 @@ export const PipelineFrequency = () => {
       <div className="pa4 pt4">
         <div className="inline-flex items-center">
           <p className="mb0">CI Frequency &mdash; {projectSummary.defaultBranch.pipelineFrequencyDailyCount}</p>
-          <a className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
-            data-tippy-content="Change how Semaphore calculates CI Performance">
+          <a
+            className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
+            data-tippy-content="Change how Semaphore calculates CI Performance"
+          >
           </a>
         </div>
         <div className="fr">
-          <select className="form-control mw5 form-control-tiny" onChange={handleMetricDatePickerChanged(dateRangeStore.dispatch)}
-            value={dateRangeState.selectedMetricDateRangeLabel}>
+          <select
+            className="form-control mw5 form-control-tiny"
+            onChange={handleMetricDatePickerChanged(dateRangeStore.dispatch)}
+            value={dateRangeState.selectedMetricDateRangeLabel}
+          >
             {dateRangeState.dateRanges.map(d =>
               <option key={d.label} value={d.label}>{d.label}</option>
             )}
@@ -123,13 +128,18 @@ export const PipelineFrequency = () => {
                 loadingState={loading}
                 metrics={metrics}
                 charts={[
-                  <plot.charts.Area metrics={metrics} calculateOptimalRange={count.calculateOptimalRange} height={300} key="bar"/>
+                  <plot.charts.Area
+                    metrics={metrics}
+                    calculateOptimalRange={count.calculateOptimalRange}
+                    height={300}
+                    key="bar"
+                  />,
                 ]}
                 tooltip={<plot.tooltips.Frequency/>}
                 axisY={<plot.yAxis.Count/>}
                 focus={[
                   <plot.focus.Line color="#00a569" key="line"/>,
-                  <plot.focus.Dot color="#00a569" key="dot"/>
+                  <plot.focus.Dot color="#00a569" key="dot"/>,
                 ]}
                 xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}
                 xDomainTo={moment(dateRangeState.selectedMetricDateRange.to).toDate()}
@@ -141,8 +151,11 @@ export const PipelineFrequency = () => {
                 <div className="flex items-center">
                   <label className="mr2">Show</label>
 
-                  <select className="form-control w-100 mw5 form-control-tiny" onChange={handleBranchChanged(branchState, dispatchBranches)}
-                    value={branchState.activeBranch?.value}>
+                  <select
+                    className="form-control w-100 mw5 form-control-tiny"
+                    onChange={handleBranchChanged(branchState, dispatchBranches)}
+                    value={branchState.activeBranch?.value}
+                  >
                     {branchState.branches.map(branch =>
                       <option key={branch.value} value={branch.value}>{branch.label}</option>
                     )}
@@ -164,8 +177,10 @@ export const PipelineFrequency = () => {
 
         <div className="inline-flex items-center mt4">
           <p className="mb0">CD Frequency &mdash; {projectSummary.cdSummary.pipelineFrequencyDailyCount}</p>
-          <a className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
-            data-tippy-content="Change how Semaphore calculates CI Performance">
+          <a
+            className="hover-bg-washed-gray br-100 pa1 inline-flex items-center justify-center ml1 nr1 pointer"
+            data-tippy-content="Change how Semaphore calculates CI Performance"
+          >
           </a>
         </div>
 
@@ -191,13 +206,18 @@ export const PipelineFrequency = () => {
               loadingState={loadingCd}
               metrics={cdMetrics.metrics}
               charts={[
-                <plot.charts.Area metrics={cdMetrics.metrics} calculateOptimalRange={count.calculateOptimalRange} height={300} key="bar"/>
+                <plot.charts.Area
+                  metrics={cdMetrics.metrics}
+                  calculateOptimalRange={count.calculateOptimalRange}
+                  height={300}
+                  key="bar"
+                />,
               ]}
               tooltip={<plot.tooltips.Frequency/>}
               axisY={<plot.yAxis.Count/>}
               focus={[
                 <plot.focus.Line color="#00a569" key="line"/>,
-                <plot.focus.Dot color="#00a569" key="dot"/>
+                <plot.focus.Dot color="#00a569" key="dot"/>,
               ]}
               xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}
               xDomainTo={moment(dateRangeState.selectedMetricDateRange.to).toDate()}

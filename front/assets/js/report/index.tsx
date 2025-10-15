@@ -13,7 +13,7 @@ Mermaid.initialize({ startOnLoad: false, theme: `default`, securityLevel: `stric
 const md = MarkdownIt({
   html: true,
   linkify: false,
-  typographer: true
+  typographer: true,
 }).use(markdownItTextualUml as PluginSimple);
 
 export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
@@ -115,7 +115,7 @@ const MarkdownBody = (props: { markdown: string }) => {
       `small`,
       `abbr`,
       // Links (safe with DOMPurify's URL sanitization)
-      `a`
+      `a`,
     ],
     ALLOWED_ATTR: [
       `title`,
@@ -123,14 +123,14 @@ const MarkdownBody = (props: { markdown: string }) => {
       `class`,
       `href`, // DOMPurify by default blocks dangerous protocols (javascript:, data:, vbscript:) and only allows safe ones (http:, https:, mailto:, etc.)
       `target`,
-      `rel`
+      `rel`,
     ],
     // Critical: Keep blocking dangerous tags that were part of the original vulnerability
     FORBID_TAGS: [`img`, `script`, `object`, `embed`, `iframe`, `link`, `form`, `input`, `style`, `meta`, `base`],
     FORBID_ATTR: [`src`, `id`, `style`, `onclick`, `onload`, `onerror`, `action`, `method`],
     ALLOW_DATA_ATTR: false,
     // Force secure link attributes
-    ADD_ATTR: [`target`, `rel`]
+    ADD_ATTR: [`target`, `rel`],
   });
 
   // Clean up the hook after sanitization to avoid memory leaks
@@ -168,7 +168,11 @@ const ReportInstructions = (props: { context: ReportContext }) => {
         </p>
         <div className="flex-m">
           <div className="flex-shrink-0 dn db-m nl4 ph4">
-            <toolbox.Asset path="images/attached-file.svg" width="246" height="200"/>
+            <toolbox.Asset
+              path="images/attached-file.svg"
+              width="246"
+              height="200"
+            />
           </div>
           <div className="flex-auto pl2-m">
             <div>
@@ -231,7 +235,11 @@ const Loader = ({
     return (
       <div className="flex items-center justify-center">
         <span className="f6 gray">Loading report</span>
-        <toolbox.Asset path="images/spinner-2.svg" width="25" height="25"/>
+        <toolbox.Asset
+          path="images/spinner-2.svg"
+          width="25"
+          height="25"
+        />
       </div>
     );
   }

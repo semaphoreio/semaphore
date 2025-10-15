@@ -25,7 +25,7 @@ export function ProjectOnboardingCreate({ config, dom }: { dom: HTMLElement, con
         <CreateApp/>
       </ConfigProvider>
     </BrowserRouter>,
-    dom,
+    dom
   );
 }
 
@@ -36,7 +36,7 @@ export function ProjectOnboardingWorkflowSetup({ config, dom }: { dom: HTMLEleme
     state: {
       csrfToken,
       ...config,
-    }
+    },
   };
 
   render(
@@ -46,6 +46,6 @@ export function ProjectOnboardingWorkflowSetup({ config, dom }: { dom: HTMLEleme
       </stores.WorkflowSetup.Config.Context.Provider>
     </BrowserRouter>
     ,
-    dom,
+    dom
   );
 }

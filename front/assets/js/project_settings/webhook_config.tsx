@@ -88,7 +88,14 @@ const App = (props: { config: Config }) => {
         </div>
       </div>
 
-      <input id="webhook" type="text" className="form-control w-100 mr2" value={hookUrl} readOnly disabled/>
+      <input
+        id="webhook"
+        type="text"
+        className="form-control w-100 mr2"
+        value={hookUrl}
+        readOnly
+        disabled
+      />
       <p className="f6 measure-wide mb3">{webhook.message}</p>
       {secret.length > 0 && <toolbox.PreCopy title="Your webhook signing secret" content={secret}/>}
     </>

@@ -51,9 +51,17 @@ export const IntegrationPage = () => {
     case types.Integration.IntegrationType.GithubApp:
       return <GithubIntegration integration={integration} csrfToken={csrfToken}/>;
     case types.Integration.IntegrationType.Gitlab:
-      return <GitlabIntegration integration={integration} csrfToken={csrfToken} orgUsername={config.orgUsername}/>;
+      return <GitlabIntegration
+        integration={integration}
+        csrfToken={csrfToken}
+        orgUsername={config.orgUsername}
+      />;
     case types.Integration.IntegrationType.BitBucket:
-      return <BitbucketIntegration integration={integration} csrfToken={csrfToken} orgUsername={config.orgUsername}/>;
+      return <BitbucketIntegration
+        integration={integration}
+        csrfToken={csrfToken}
+        orgUsername={config.orgUsername}
+      />;
     default:
       return (
         <Fragment>

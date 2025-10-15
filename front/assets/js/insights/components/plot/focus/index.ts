@@ -5,5 +5,5 @@ import { FocusInterface as Interface } from "./type";
 export {
   Line,
   Dot,
-  Interface
+  Interface,
 };

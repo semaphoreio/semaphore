@@ -28,7 +28,11 @@ export const NavBar = ({ className }: { className?: string }) => {
     <div className={className}>
       <div className="pa2 gray">{Inflector.pluralize(reports.state.items.length, `test report`)}</div>
       {reports.state.items.map((report) => {
-        return <NavBarItem className="pl2 pr3 pv1 mb2 pointer br2 br--left" report={report} key={report.id}/>;
+        return <NavBarItem
+          className="pl2 pr3 pv1 mb2 pointer br2 br--left"
+          report={report}
+          key={report.id}
+        />;
       })}
     </div>
   );

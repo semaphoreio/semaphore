@@ -17,17 +17,11 @@ const getHeaders = () => {
   return {
     "Content-Type": `application/json`,
     "Idempotency-Key": uuid(),
-    "X-CSRF-Token":
-      document
-        .querySelector(`meta[name='csrf-token']`)
-        ?.getAttribute(`content`) || ``,
+    "X-CSRF-Token": document.querySelector(`meta[name='csrf-token']`)?.getAttribute(`content`) || ``,
   };
 };
 
-async function apiRequest<T>(
-  url: string | URL,
-  options: RequestOptions
-): Promise<ApiResponse<T>> {
+async function apiRequest<T>(url: string | URL, options: RequestOptions): Promise<ApiResponse<T>> {
   const defaultHeaders = getHeaders();
 
   try {
@@ -49,10 +43,10 @@ async function apiRequest<T>(
     // Check if response has content
     const contentLength = response.headers.get(`content-length`);
     const hasContent = contentLength !== `0` && response.status !== 204;
-    
+
     let json: any = null;
     let data: T | null = null;
-    
+
     if (hasContent) {
       try {
         json = await response.json();
@@ -82,44 +76,24 @@ async function apiRequest<T>(
   }
 }
 
-export const get = <T>(
-  url: string | URL,
-  body?: any,
-  headers?: HeadersInit,
-  transform?: (data: any) => T
-) => apiRequest<T>(url, { method: `GET`, headers, transform });
+export const get = <T>(url: string | URL, body?: any, headers?: HeadersInit, transform?: (data: any) => T) =>
+  apiRequest<T>(url, { method: `GET`, headers, transform });
 
-export const post = <T>(
-  url: string | URL,
-  body?: any,
-  headers?: HeadersInit,
-  transform?: (data: any) => T
-) => apiRequest<T>(url, { method: `POST`, body, headers, transform });
+export const post = <T>(url: string | URL, body?: any, headers?: HeadersInit, transform?: (data: any) => T) =>
+  apiRequest<T>(url, { method: `POST`, body, headers, transform });
 
-export const put = <T>(
-  url: string | URL,
-  body?: any,
-  headers?: HeadersInit,
-  transform?: (data: any) => T
-) => apiRequest<T>(url, { method: `PUT`, body, headers, transform });
+export const put = <T>(url: string | URL, body?: any, headers?: HeadersInit, transform?: (data: any) => T) =>
+  apiRequest<T>(url, { method: `PUT`, body, headers, transform });
 
-export const del = <T>(
-  url: string | URL,
-  body?: any,
-  headers?: HeadersInit,
-  transform?: (data: any) => T
-) => apiRequest<T>(url, { method: `DELETE`, headers, transform });
+export const del = <T>(url: string | URL, body?: any, headers?: HeadersInit, transform?: (data: any) => T) =>
+  apiRequest<T>(url, { method: `DELETE`, headers, transform });
 
 export type Method = `get` | `post` | `put` | `delete`;
 
 export const callApi = async <T>(
   method: Method,
   url: string,
-  {
-    body,
-    headers,
-    transform,
-  }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T }
+  { body, headers, transform }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T }
 ): Promise<ApiResponse<T>> => {
   switch (method) {
     case `post`:

@@ -71,7 +71,13 @@ export const ProjectPage = () => {
         <Chart project={project}/>
         <Fragment>
           {project.cost.groups.map((group, idx) => (
-            <components.SpendingGroup showItemTotalPriceTrends={true} hideUsage={true} hideUnitPrice={true} group={group} key={idx}/>
+            <components.SpendingGroup
+              showItemTotalPriceTrends={true}
+              hideUsage={true}
+              hideUnitPrice={true}
+              group={group}
+              key={idx}
+            />
           ))}
         </Fragment>
       </components.Loader.Container>
@@ -94,7 +100,12 @@ export const Chart = ({ project }: { project: types.Spendings.DetailedProject })
       <div className="flex bb b--black-075">
         <WorkflowGroup project={project}/>
         {project.cost.groups.map((group, idx) => (
-          <SpendingGroup price={group.price} group={group} lastItem={idx == project.cost.groups.length - 1} key={idx}/>
+          <SpendingGroup
+            price={group.price}
+            group={group}
+            lastItem={idx == project.cost.groups.length - 1}
+            key={idx}
+          />
         ))}
       </div>
 

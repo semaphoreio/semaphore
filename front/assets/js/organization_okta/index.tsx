@@ -60,7 +60,7 @@ export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, 
     <Config.Provider value={State.fromJSON(config)}>
       <App/>
     </Config.Provider>,
-    dom,
+    dom
   );
 }
 
@@ -166,12 +166,12 @@ const App = () => {
   const config = useContext(Config);
   const [groupMappings, setGroupMappings] = useState<Mapping[]>([
     { idpId: ``, semaphoreId: `` },
-    { idpId: ``, semaphoreId: `` }
+    { idpId: ``, semaphoreId: `` },
   ]);
   
   const [roleMappings, setRoleMappings] = useState<Mapping[]>([
     { idpId: ``, semaphoreId: `` },
-    { idpId: ``, semaphoreId: `` }
+    { idpId: ``, semaphoreId: `` },
   ]);
   
   const memberRole = config.roles.find(role => role.name === `Member`);
@@ -182,7 +182,7 @@ const App = () => {
     if (config.groupMapping && config.groupMapping.length > 0) {
       const initialGroupMappings = config.groupMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
-        semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``,
       }));
       setGroupMappings(initialGroupMappings);
     }
@@ -190,7 +190,7 @@ const App = () => {
     if (config.roleMapping && config.roleMapping.length > 0) {
       const initialRoleMappings = config.roleMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
-        semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``,
       }));
       setRoleMappings(initialRoleMappings);
     }

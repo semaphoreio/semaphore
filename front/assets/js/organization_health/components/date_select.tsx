@@ -17,7 +17,11 @@ export const DateSelect = ({ items }: { items: DateRangeItem[] }) => {
   const monthRange = items.filter((item) => item.type == `month`);
 
   return (
-    <select className="db form-control mr2" value={ state.selectedDateIndex} onChange={ setSelectedDateFromEvent }>
+    <select
+      className="db form-control mr2"
+      value={ state.selectedDateIndex}
+      onChange={ setSelectedDateFromEvent }
+    >
       <optgroup label="Per period">
         {periodRange.map((item) => (
           <option key={item.index} value={item.index}>{item.label}</option>

@@ -191,7 +191,11 @@ const Panel = (
                       source,
                     });
                     return (
-                      <li key={item.label} {...itemProps} style={{ listStyleType: `none` }}>
+                      <li
+                        key={item.label}
+                        {...itemProps}
+                        style={{ listStyleType: `none` }}
+                      >
                         <div
                           className={[`autocomplete-item`, itemProps[`aria-selected`] && `autocomplete-item-selected`]
                             .filter(Boolean)
@@ -356,7 +360,11 @@ const replaceAt = (str: string, replacement: string, index: number, length = 0) 
 const AutocompleteSpinner = () => {
   return (
     <div className="autocomplete-loading">
-      <svg className="autocomplete-loading-icon" viewBox="0 0 100 100" fill="currentColor">
+      <svg
+        className="autocomplete-loading-icon"
+        viewBox="0 0 100 100"
+        fill="currentColor"
+      >
         <circle
           cx="50"
           cy="50"

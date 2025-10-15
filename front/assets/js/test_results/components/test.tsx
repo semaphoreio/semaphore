@@ -128,7 +128,11 @@ export const Test = ({ test }: TestProps) => {
         </div>
       </div>
       {expanded && (
-        <TestDetails wrap={filter.state.wrapTestLines} test={test} className={`overflow-auto ph2 pv1 bl br bb bw1 ${detailsClass()}`}/>
+        <TestDetails
+          wrap={filter.state.wrapTestLines}
+          test={test}
+          className={`overflow-auto ph2 pv1 bl br bb bw1 ${detailsClass()}`}
+        />
       )}
     </div>
   );

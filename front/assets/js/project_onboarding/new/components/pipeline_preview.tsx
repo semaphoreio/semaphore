@@ -46,7 +46,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
         align: `UL`,
         ranker: `longest-path`,
         marginx: 10,
-        marginy: 10
+        marginy: 10,
       });
 
       g.setDefaultEdgeLabel(() => ({}));
@@ -79,7 +79,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
       ${String(jobsList)}
     </a>
   </div>`,
-          padding: -10
+          padding: -10,
         });
       });
 
@@ -91,7 +91,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
             g.setEdge(dep, block.name, {
               arrowhead: `undirected`,
               style: `stroke: gray; fill: transparent;`,
-              curve: curveBasis
+              curve: curveBasis,
             });
           });
         } else if (index > 0) {
@@ -100,7 +100,7 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
           g.setEdge(previousBlock.name, block.name, {
             arrowhead: `undirected`,
             style: `stroke: gray; fill: transparent;`,
-            curve: curveBasis
+            curve: curveBasis,
           });
         }
       });
@@ -139,7 +139,11 @@ export const PipelinePreview = ({ yamlContent, previewVisible }: PipelinePreview
   };
 
   return (
-    <div className="dib v-top bg-washed-gray pa3 br3 ba b--black-075 mt-auto mb-auto" style={{ overflow: `auto`, maxWidth: `100%` }} ref={diagramRef}>
+    <div
+      className="dib v-top bg-washed-gray pa3 br3 ba b--black-075 mt-auto mb-auto"
+      style={{ overflow: `auto`, maxWidth: `100%` }}
+      ref={diagramRef}
+    >
       <div className="mb2 pb1 nt1">
         <h3 className="f4 normal gray mb0 pr3">{pipelineName}</h3>
       </div>

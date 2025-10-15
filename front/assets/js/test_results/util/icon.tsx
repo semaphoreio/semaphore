@@ -9,6 +9,12 @@ export default function (props: { path: string, class?: string, width?: string, 
   const alt = props.alt;
 
   return (
-    <img src={url} width={`${width}`} height={`${height}`} className={props.class} alt={alt}/>
+    <img
+      src={url}
+      width={`${width}`}
+      height={`${height}`}
+      className={props.class}
+      alt={alt}
+    />
   );
 }

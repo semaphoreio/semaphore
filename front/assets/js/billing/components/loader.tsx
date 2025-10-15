@@ -24,7 +24,11 @@ export const Container = (props: Props) => {
 
 export const LoadingSpinner = ({ text }: { text: string }) => {
   return (<div className="pv2 flex items-center justify-center">
-    <toolbox.Asset path="images/spinner-2.svg" width="20" height="20"/>
+    <toolbox.Asset
+      path="images/spinner-2.svg"
+      width="20"
+      height="20"
+    />
     <div className="ml1 gray">{text}</div>
   </div>);
 };

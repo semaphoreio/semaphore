@@ -41,7 +41,11 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
           to ensure a working connection.
         </p>
 
-        <a href={integration.htmlUrl} target="_blank" rel="noreferrer">
+        <a
+          href={integration.htmlUrl}
+          target="_blank"
+          rel="noreferrer"
+        >
           Configure GitHub App Settings ↗
         </a>
 
@@ -88,8 +92,16 @@ export const GithubIntegration = ({ integration, csrfToken }: Props) => {
               method="post"
               action={integration.deleteUrl}
             >
-              <input type="hidden" name="_csrf_token" value={csrfToken}/>
-              <input type="hidden" name="type" value="github_app"/>
+              <input
+                type="hidden"
+                name="_csrf_token"
+                value={csrfToken}
+              />
+              <input
+                type="hidden"
+                name="type"
+                value="github_app"
+              />
               <input
                 type="text"
                 className="form-control w-100"
