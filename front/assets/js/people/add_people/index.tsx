@@ -45,7 +45,7 @@ export const App = () => {
     <Fragment>
       <button className="btn btn-primary flex items-center" onClick={open}>
         <span className="material-symbols-outlined mr2">person_add</span>
-        {`Add people`}
+        Add people
       </button>
       <Modal
         isOpen={isOpen}
