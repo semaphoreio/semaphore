@@ -420,7 +420,7 @@ const DisruptionDetails = ({ selectedBranch }: DisruptionDetailsProps) => {
     dispatchRequest({ type: `FETCH` });
   };
 
-  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence, }) => {
+  const DisruptionOccurence = ({ item }: { item: types.Tests.DisruptionOccurence }) => {
     const humanizedDate = moment(item.timestamp).from(moment());
     return (
       <div className="flex items-center">

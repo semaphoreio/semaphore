@@ -119,7 +119,7 @@ export const callApi = async <T>(
     body,
     headers,
     transform,
-  }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T, }
+  }: { body?: any, headers?: HeadersInit, transform?: (data: any) => T }
 ): Promise<ApiResponse<T>> => {
   switch (method) {
     case `post`:

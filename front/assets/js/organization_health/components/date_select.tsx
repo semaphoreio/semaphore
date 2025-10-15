@@ -3,7 +3,7 @@ import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import { DateRangeItem } from "../types";
 
-export const DateSelect = ({ items }: { items: DateRangeItem[], }) => {
+export const DateSelect = ({ items }: { items: DateRangeItem[] }) => {
   const store = useContext(stores.OrganizationHealth.Context);
   const state = store.state;
 

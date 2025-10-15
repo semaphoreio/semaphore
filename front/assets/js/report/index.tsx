@@ -16,7 +16,7 @@ const md = MarkdownIt({
   typographer: true
 }).use(markdownItTextualUml as PluginSimple);
 
-export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
+export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
   render(<App reportUrl={config.reportUrl} context={config.reportContext}/>, dom);
 }
 
@@ -26,7 +26,7 @@ enum ReportContext {
   Project = `project`,
 }
 
-const App = (props: { reportUrl: string, context: ReportContext, }) => {
+const App = (props: { reportUrl: string, context: ReportContext }) => {
   const [markdown, setMarkdown] = useState(``);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(``);
@@ -73,7 +73,7 @@ const App = (props: { reportUrl: string, context: ReportContext, }) => {
   );
 };
 
-const MarkdownBody = (props: { markdown: string, }) => {
+const MarkdownBody = (props: { markdown: string }) => {
   useEffect(() => {
     if (props.markdown) {
       setTimeout(() => {
@@ -144,7 +144,7 @@ const MarkdownBody = (props: { markdown: string, }) => {
   );
 };
 
-const ReportInstructions = (props: { context: ReportContext, }) => {
+const ReportInstructions = (props: { context: ReportContext }) => {
   let command = ``;
 
   switch (props.context) {

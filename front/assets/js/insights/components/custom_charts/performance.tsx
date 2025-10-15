@@ -96,7 +96,7 @@ const Legend = ({
   icon,
   label,
   isActive
-}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean, }) => {
+}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean }) => {
   let className = `o-30`;
   if (isActive) {
     className = ``;

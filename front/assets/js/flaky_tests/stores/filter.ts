@@ -3,12 +3,12 @@ import * as tests from "../types/tests";
 import moment from "moment";
 
 export type Action =
-    | { type: `SET_QUERY`, value: string, }
-    | { type: `SET_FILTERS`, value: tests.Filter[], }
-    | { type: `SET_CURRENT_FILTER`, value: tests.Filter, }
-    | { type: `DELETE_FILTER`, value: string, }
-    | { type: `CREATE_FILTER`, value: tests.Filter, }
-    | { type: `UPDATE_FILTER`, value: tests.Filter, }
+    | { type: `SET_QUERY`, value: string }
+    | { type: `SET_FILTERS`, value: tests.Filter[] }
+    | { type: `SET_CURRENT_FILTER`, value: tests.Filter }
+    | { type: `DELETE_FILTER`, value: string }
+    | { type: `CREATE_FILTER`, value: tests.Filter }
+    | { type: `UPDATE_FILTER`, value: tests.Filter }
     ;
 
 export interface State {
@@ -94,4 +94,4 @@ export const EmptyState: State = {
   query: ``
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

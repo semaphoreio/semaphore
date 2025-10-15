@@ -123,7 +123,7 @@ export const GitlabIntegration = ({ integration, csrfToken, orgUsername }: Props
   );
 };
 
-const EditFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
+const EditFields = ({ integration }: { integration: types.Integration.GitlabIntegration }) => {
   const [clientId, setClientId] = useState(``);
   const [clientSecret, setClientSecret] = useState(``);
   const config = useContext(stores.Config.Context);
@@ -206,7 +206,7 @@ const manifestPermissionsOrder = [
 
 const permissionsOrderMap = utils.createOrderMap(manifestPermissionsOrder);
 
-const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration, }) => {
+const CopyFields = ({ integration }: { integration: types.Integration.GitlabIntegration }) => {
   const manifest = integration.manifest as {
     permissions: string;
     redirect_urls: string;

@@ -2,16 +2,16 @@ import { createContext } from "preact";
 import * as Stateful from "../util/stateful";
 
 export type Action =
-  | { type: `SET_QUERY`, query: string, }
-  | { type: `SET_SORT`, sort: SortOrder, }
-  | { type: `TRIM_REPORT_NAME`, }
-  | { type: `DONT_TRIM_REPORT_NAME`, }
-  | { type: `WRAP_LINES`, }
-  | { type: `DONT_WRAP_LINES`, }
-  | { type: `SET_TOGGLE`, toggle: boolean, }
-  | { type: `REMOVE_EXCLUDED_TEST_STATE`, state: Stateful.State, }
-  | { type: `EXCLUDE_TEST_STATE`, state: Stateful.State, }
-  | { type: `SET_EXCLUDED_TEST_STATE`, states: Stateful.State[], }
+  | { type: `SET_QUERY`, query: string }
+  | { type: `SET_SORT`, sort: SortOrder }
+  | { type: `TRIM_REPORT_NAME` }
+  | { type: `DONT_TRIM_REPORT_NAME` }
+  | { type: `WRAP_LINES` }
+  | { type: `DONT_WRAP_LINES` }
+  | { type: `SET_TOGGLE`, toggle: boolean }
+  | { type: `REMOVE_EXCLUDED_TEST_STATE`, state: Stateful.State }
+  | { type: `EXCLUDE_TEST_STATE`, state: Stateful.State }
+  | { type: `SET_EXCLUDED_TEST_STATE`, states: Stateful.State[] }
   ;
 
 export type SortOrder = `failed-first` | `slowest-first` | `alphabetical`;
@@ -66,4 +66,4 @@ export const EmptyState: State = {
   excludedStates:  [Stateful.State.EMPTY] as Stateful.State[]
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

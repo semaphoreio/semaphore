@@ -64,7 +64,7 @@ export const OverviewPage = () => {
   );
 };
 
-const PlanOverview = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const PlanOverview = ({ plan }: { plan: types.Spendings.Plan }) => {
   return (
     <div className="ml3 bb b--black-075 w-100 mb3 br3 shadow-3 bg-white">
       <div className="flex items-center justify-between ph3 pv2 bb bw1 b--black-075 br3 br--top">
@@ -104,7 +104,7 @@ enum PaymentDetailModes {
   EditCreditCard,
 }
 
-const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
+const Payments = ({ plan }: { plan: types.Spendings.Plan }) => {
   const [mode, setMode] = useState<PaymentDetailModes>(PaymentDetailModes.Display);
   const [budget, setBudget] = useState<types.Spendings.Budget>(new types.Spendings.Budget());
   const config = useContext(stores.Config.Context);
@@ -138,7 +138,7 @@ const Payments = ({ plan }: { plan: types.Spendings.Plan, }) => {
   );
 };
 
-const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
@@ -173,7 +173,7 @@ const PrepaidSummary = ({ summary }: { summary: types.Spendings.Summary, }) => {
   );
 };
 
-const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: types.Spendings.Plan, }) => {
+const Summary = ({ plan, summary }: { summary: types.Spendings.Summary, plan: types.Spendings.Plan }) => {
   const showSummaryHelp = summary.hasSubscription() || plan.isTrial();
 
   const WithCreditsTooltip = () => {
@@ -633,7 +633,7 @@ const PrepaidPaymentDetails = ({
   );
 };
 
-const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
@@ -654,7 +654,7 @@ const TotalSpendings = ({ summary }: { summary: types.Spendings.Summary, }) => {
   );
 };
 
-const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summary, }) => {
+const TotalSpendingsDiscounted = ({ summary }: { summary: types.Spendings.Summary }) => {
   return (
     <Fragment>
       <div className="bb b--black-075 hover-bg-washed-gray">
