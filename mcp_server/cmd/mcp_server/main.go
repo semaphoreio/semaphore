@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -16,6 +17,11 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/echo"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi/stubs"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 )
 
 var (
@@ -40,7 +46,44 @@ func main() {
 	var healthy atomic.Bool
 
 	srv := server.NewMCPServer(*nameFlag, version, server.WithToolCapabilities(true))
+
+	var (
+		provider internalapi.Provider
+		closeFn  func() error
+	)
+
+	if strings.EqualFold(os.Getenv("MCP_USE_STUBS"), "true") {
+		log.Println("mcp_server using stubbed internal API clients (MCP_USE_STUBS=true)")
+		provider = stubs.New()
+	} else {
+		cfg, err := internalapi.LoadConfig()
+		if err != nil {
+			log.Fatalf("failed to load internal API configuration: %v", err)
+		}
+		if err := cfg.Validate(); err != nil {
+			log.Fatalf("invalid internal API configuration: %v", err)
+		}
+
+		manager, err := internalapi.NewManager(ctx, cfg)
+		if err != nil {
+			log.Fatalf("failed to connect to internal APIs: %v", err)
+		}
+		provider = manager
+		closeFn = manager.Close
+	}
+
+	if closeFn != nil {
+		defer func() {
+			if err := closeFn(); err != nil {
+				log.Printf("closing internal API manager: %v", err)
+			}
+		}()
+	}
+
 	echo.Register(srv)
+	workflows.Register(srv, provider)
+	pipelines.Register(srv, provider)
+	jobs.Register(srv, provider)
 
 	mux := http.NewServeMux()
 	streamable := server.NewStreamableHTTPServer(
