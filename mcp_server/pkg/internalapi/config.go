@@ -8,20 +8,36 @@ import (
 )
 
 const (
-	envWorkflowEndpoint = "MCP_WORKFLOW_GRPC_ENDPOINT"
-	envPipelineEndpoint = "MCP_PIPELINE_GRPC_ENDPOINT"
-	envJobEndpoint      = "MCP_JOB_GRPC_ENDPOINT"
-	envLoghubEndpoint   = "MCP_LOGHUB_GRPC_ENDPOINT"
-	envLoghub2Endpoint  = "MCP_LOGHUB2_GRPC_ENDPOINT"
-
-	fallbackWorkflow = "WF_GRPC_URL"
-	fallbackPipeline = "PPL_GRPC_URL"
-	fallbackJob      = "JOBS_API_URL"
-	fallbackLoghub   = "LOGHUB_API_URL"
-	fallbackLoghub2  = "LOGHUB2_API_URL"
-
 	envDialTimeout = "MCP_GRPC_DIAL_TIMEOUT"
 	envCallTimeout = "MCP_GRPC_CALL_TIMEOUT"
+)
+
+var (
+	workflowEndpointEnvs = []string{
+		"INTERNAL_API_URL_PLUMBER",
+		"MCP_WORKFLOW_GRPC_ENDPOINT",
+		"WF_GRPC_URL",
+	}
+	pipelineEndpointEnvs = []string{
+		"INTERNAL_API_URL_PLUMBER",
+		"MCP_PIPELINE_GRPC_ENDPOINT",
+		"PPL_GRPC_URL",
+	}
+	jobEndpointEnvs = []string{
+		"INTERNAL_API_URL_JOB",
+		"MCP_JOB_GRPC_ENDPOINT",
+		"JOBS_API_URL",
+	}
+	loghubEndpointEnvs = []string{
+		"INTERNAL_API_URL_LOGHUB",
+		"MCP_LOGHUB_GRPC_ENDPOINT",
+		"LOGHUB_API_URL",
+	}
+	loghub2EndpointEnvs = []string{
+		"INTERNAL_API_URL_LOGHUB2",
+		"MCP_LOGHUB2_GRPC_ENDPOINT",
+		"LOGHUB2_API_URL",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -48,11 +64,11 @@ func LoadConfig() (Config, error) {
 	}
 
 	cfg := Config{
-		WorkflowEndpoint: endpointFromEnv(envWorkflowEndpoint, fallbackWorkflow),
-		PipelineEndpoint: endpointFromEnv(envPipelineEndpoint, fallbackPipeline),
-		JobEndpoint:      endpointFromEnv(envJobEndpoint, fallbackJob),
-		LoghubEndpoint:   endpointFromEnv(envLoghubEndpoint, fallbackLoghub),
-		Loghub2Endpoint:  endpointFromEnv(envLoghub2Endpoint, fallbackLoghub2),
+		WorkflowEndpoint: endpointFromEnv(workflowEndpointEnvs...),
+		PipelineEndpoint: endpointFromEnv(pipelineEndpointEnvs...),
+		JobEndpoint:      endpointFromEnv(jobEndpointEnvs...),
+		LoghubEndpoint:   endpointFromEnv(loghubEndpointEnvs...),
+		Loghub2Endpoint:  endpointFromEnv(loghub2EndpointEnvs...),
 		DialTimeout:      dialTimeout,
 		CallTimeout:      callTimeout,
 	}
@@ -86,14 +102,16 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func endpointFromEnv(primary, fallback string) string {
-	if v := strings.TrimSpace(os.Getenv(primary)); v != "" {
-		return v
+func endpointFromEnv(keys ...string) string {
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+			return v
+		}
 	}
-	if fallback == "" {
-		return ""
-	}
-	return strings.TrimSpace(os.Getenv(fallback))
+	return ""
 }
 
 func durationFromEnv(key string, def time.Duration) (time.Duration, error) {
