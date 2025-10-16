@@ -43,6 +43,7 @@ Use this file as the high-level triage map for the plumber stack. Each section l
 - Before deleting a file to silence lint/type failures, stop and confirm with the user; adjacent work may be in progress.
 - Keep commits scoped to files you changed; list paths explicitly during `git commit`.
 - When rebasing, avoid editor prompts (`GIT_EDITOR=:` / `--no-edit`) and never amend commits unless the user requests it.
+- After finishing a task, fold any new findings into the relevant `AGENTS.md` or `DOCUMENTATION.md` files—fix mistakes, add context, and preserve useful knowledge while keeping existing valuable guidance intact.
 
 ## Reference Index
 - Pipelines edge + workflows: [doc/ppl/DOCUMENTATION.md](doc/ppl/DOCUMENTATION.md)
