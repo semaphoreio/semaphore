@@ -36,6 +36,14 @@ Use this file as the high-level triage map for the plumber stack. Each section l
 - LogTee tags (`ppl_id`, `block_id`, `task_id`, `request_token`) support cross-service tracing ([doc/ppl/AGENTS.md](doc/ppl/AGENTS.md), [doc/block/AGENTS.md](doc/block/AGENTS.md)).
 - RabbitMQ exchanges: `pipeline_state_exchange`, `pipeline_block_state_exchange`, `after_pipeline_state_exchange`, `task_state_exchange`—confirm bindings when events disappear ([doc/ppl/AGENTS.md](doc/ppl/AGENTS.md), [doc/block/AGENTS.md](doc/block/AGENTS.md)).
 
+## Guard Rails (Destructive Ops)
+- Never run destructive git commands (`git reset --hard`, `git checkout --`, `git restore` on others' work, etc.) without explicit written approval in the task thread.
+- Do not delete or revert files you did not author; coordinate with involved agents first. Moving/renaming is OK after agreement.
+- Treat `.env` and environment files as read-only—only the user may edit them.
+- Before deleting a file to silence lint/type failures, stop and confirm with the user; adjacent work may be in progress.
+- Keep commits scoped to files you changed; list paths explicitly during `git commit`.
+- When rebasing, avoid editor prompts (`GIT_EDITOR=:` / `--no-edit`) and never amend commits unless the user requests it.
+
 ## Reference Index
 - Pipelines edge + workflows: [doc/ppl/DOCUMENTATION.md](doc/ppl/DOCUMENTATION.md)
 - Block service internals: [doc/block/DOCUMENTATION.md](doc/block/DOCUMENTATION.md)
