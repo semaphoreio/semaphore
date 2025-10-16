@@ -144,10 +144,10 @@ defmodule Support.FakeClients.Superjerry do
 
     %FlakyTestItem{
       test_id: Ecto.UUID.generate(),
-      test_name: Faker.Commerce.product_name(),
-      test_group: Faker.Commerce.product_name(),
-      test_runner: Faker.Commerce.product_name(),
-      test_suite: Faker.Commerce.product_name(),
+      test_name: Faker.Lorem.sentence(6..12),
+      test_group: Faker.Lorem.sentence(6..12),
+      test_runner: Faker.Lorem.sentence(6..12),
+      test_suite: Faker.Lorem.sentence(6..12),
       test_file: Faker.File.file_name(),
       disruptions_count: disruption_count,
       pass_rate: Faker.random_between(0, 100),
