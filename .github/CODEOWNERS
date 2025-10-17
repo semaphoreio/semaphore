@@ -1,29 +1,29 @@
 * @DamjanBecirovic @lucaspin @skipi
 /artifacthub/ @lucaspin @dexyk @DamjanBecirovic
-/auth/ @VeljkoMaksimovic @lucaspin @forestileao
-/badge/ @VeljkoMaksimovic @skipi @forestileao
-/bootstrapper/ @VeljkoMaksimovic @lucaspin @forestileao
+/auth/ @hamir-suspect @lucaspin @forestileao
+/badge/ @hamir-suspect @skipi @forestileao
+/bootstrapper/ @skipi @lucaspin @forestileao
 /branch_hub/ @skipi @lucaspin @forestileao
 /dashboardhub/ @hamir-suspect @skipi @forestileao
-/docs/ @TomFern @skipi @hamir-suspect @dexyk @VeljkoMaksimovic @DamjanBecirovic 
+/docs/ @TomFern @skipi @hamir-suspect @dexyk @DamjanBecirovic 
 /ee/audit/ @hamir-suspect @dexyk @lucaspin
 /ee/gofer/ @DamjanBecirovic @dexyk @lucaspin
-/ee/pre_flight_checks/ @DamjanBecirovic @VeljkoMaksimovic @skipi
-/ee/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
+/ee/pre_flight_checks/ @DamjanBecirovic @dexyk @skipi
+/ee/rbac/ @dexyk @forestileao @lucaspin
 /ee/velocity/ @skipi @dexyk @lucaspin
-/encryptor/ @VeljkoMaksimovic @lucaspin @forestileao
-/ephemeral_environment/ @VeljkoMaksimovic @lucaspin @hamir-suspect
+/encryptor/ @DamjanBecirovic @lucaspin @forestileao
+/ephemeral_environment/ @skipi @lucaspin @hamir-suspect
 /feature_provider/ @skipi @hamir-suspect @dexyk
-/front/ @hamir-suspect @skipi @VeljkoMaksimovic @forestileao
-/github_hooks/ @VeljkoMaksimovic @skipi @darkofabijan
-/github_notifier/ @VeljkoMaksimovic @hamir-suspect @skipi
-/guard/ @VeljkoMaksimovic @forestileao @lucaspin
+/front/ @hamir-suspect @skipi @DamjanBecirovic @forestileao
+/github_hooks/ @hamir-suspect @skipi @darkofabijan
+/github_notifier/ @forestileao @hamir-suspect @skipi
+/guard/ @dexyk @forestileao @lucaspin
 /helm-chart/ @lucaspin @dexyk @DamjanBecirovic
 /hooks_processor/ @hamir-suspect @DamjanBecirovic @forestileao
 /hooks_receiver/ @hamir-suspect @DamjanBecirovic @forestileao
-/keycloak/ @skipi @hamir-suspect @VeljkoMaksimovic
+/keycloak/ @skipi @hamir-suspect
 /loghub2/ @lucaspin @hamir-suspect @DamjanBecirovic
-/notifications/ @hamir-suspect @VeljkoMaksimovic @DamjanBecirovic
+/notifications/ @hamir-suspect @dexyk @DamjanBecirovic
 /periodic_scheduler/ @DamjanBecirovic @dexyk @skipi
 /plumber/ @DamjanBecirovic @dexyk @skipi
 /projecthub-rest-api/ @hamir-suspect @lucaspin @forestileao
@@ -31,11 +31,11 @@
 /public-api-gateway/ @hamir-suspect @lucaspin
 /public-api/v2 @hamir-suspect @DamjanBecirovic @dexyk
 /public-api/v1alpha @hamir-suspect @DamjanBecirovic @dexyk
-/rbac/ @VeljkoMaksimovic @forestileao @lucaspin
+/rbac/ @skipi @forestileao @lucaspin
 /repohub/ @skipi @lucaspin @DamjanBecirovic
 /repository_hub/ @skipi @hamir-suspect @forestileao
 /scouter/ @skipi @hamir-suspect @forestileao
-/secrethub/ @hamir-suspect @lucaspin @VeljkoMaksimovic
-/self_hosted_hub/ @lucaspin @dexyk @VeljkoMaksimovic
+/secrethub/ @hamir-suspect @lucaspin @skipi
+/self_hosted_hub/ @lucaspin @dexyk @skipi
 /statsd/ @hamir-suspect @dexyk @DamjanBecirovic
 /zebra/ @lucaspin @hamir-suspect @DamjanBecirovic
