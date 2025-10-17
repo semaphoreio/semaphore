@@ -173,13 +173,15 @@ defmodule FrontWeb.Insights.DashboardsController do
     Watchman.benchmark("insights.dashboards.update_item.duration", fn ->
       item_id = params["item_id"]
       name = conn.body_params["name"]
+      description = conn.body_params["description"]
 
-      case Models.MetricsDashboardItems.update(item_id, name) do
-        {:ok, _} ->
-          log_update_item(conn, item_id, name)
+      with {:ok, _} <- Models.MetricsDashboardItems.update(item_id, name),
+           {:ok, _} <- Models.MetricsDashboardItems.update_description(item_id, description) do
+        log_update_item(conn, item_id, name)
+        log_item_description_change(conn, item_id, description)
 
-          json(conn, %{success: true})
-
+        json(conn, %{success: true})
+      else
         {:error, error} ->
           json(conn, %{error: error})
       end
@@ -193,23 +195,6 @@ defmodule FrontWeb.Insights.DashboardsController do
     |> Audit.add(:description, "Dashboard Item Modified")
     |> Audit.metadata(item_id: item_id)
     |> Audit.log()
-  end
-
-  def update_item_description(conn, params) do
-    Watchman.benchmark("insights.dashboards.update_item_description.duration", fn ->
-      item_id = params["item_id"]
-      description = conn.body_params["description"]
-
-      case Models.MetricsDashboardItems.update_description(item_id, description) do
-        {:ok, _} ->
-          log_item_description_change(conn, item_id, description)
-
-          json(conn, %{success: true})
-
-        {:error, error} ->
-          json(conn, %{error: error})
-      end
-    end)
   end
 
   defp log_item_description_change(conn, item_id, description) do
