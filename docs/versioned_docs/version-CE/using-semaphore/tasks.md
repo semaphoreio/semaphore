@@ -51,7 +51,7 @@ To create a task, open your project and follow these steps. You can create tasks
 
 5. You can run the task on a given branch or tag. Select either **branch** or **tag** and type the desired value.
 
-6. Type the [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that reference. It doesn't need (but it can) to be connected with a promotion to any other pipeline. Press **Next**
+6. Type the [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that reference. It doesn't need to (but it can) to be connected with a promotion to any other pipeline. Press **Next**
 
     ![Task creation step 2: branch and pipeline](./img/task-create-2.jpg)
 
