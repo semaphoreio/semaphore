@@ -156,7 +156,7 @@ See [change detection examples](../using-semaphore/monorepo#examples) for more `
 
 ## Using Parameters in Conditions {#parameters}
 
-If your pipeline is using [parameterized promotions](../using-semaphore/promotions#parameters), you can access the values of the parameters in your conditions using the following syntax:
+If your pipeline is started via [parameterized promotions](../using-semaphore/promotions#parameters) or a parameterized task run, you can access the values of the parameters in your conditions using the following syntax:
 
 ```yaml
 ${{parameters.PARAMETER_NAME}}

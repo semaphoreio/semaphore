@@ -76,11 +76,10 @@ Specifies conditions for the notification to trigger. It consists of a list of r
 Each item list in `filter` contains the following properties:
 
 - [`projects`](#projects-in-filter)
-- [`branches`](#branches-in-filter)
+- [`branches` or `tags`](#branches-in-filter)
 - [`pipelines`](#pipelines-in-filter)
-- [`tags`](#tags-in-filter)
 
-For a filter to match, all its properties must be evaluated to `true`. If any of the properties have multiple values, at least one of these must match.
+For a filter to match, the `projects` property must evaluate to `true`, the `pipelines` property must match when provided, and at least one of the branch or tag constraints needs to be satisfied. When both `branches` and `tags` are present, the rule passes if either a listed branch **or** a listed tag matches the event. If any property contains multiple values, at least one of those values must match.
 
 :::note
 
@@ -92,13 +91,9 @@ You can use regular expressions by wrapping the filtering properties values in s
 
 Mandatory property. Contains a list of project names where the notification rule applies.
 
-### branches {#branches-in-filter}
+### branches or tags {#branches-in-filter}
 
-Optional property. Contains a list of Git branches. If specified, the rule can only trigger events that apply to one of the listed branches.
-
-### tags {#tags-in-filter}
-
-Optional property. Contains a list of Git tags. If specified, the rule can only trigger events that apply to one of the listed tags.
+Optional properties. Use the `branches` list to filter by Git branches and the `tags` list to filter by Git tags. If only one of the lists is defined, the rule requires a match in that list. If both lists are present, the rule passes when either a listed branch or a listed tag matches the event, enabling combinations such as matching the `main` branch or a `v1.0.0` tag with a single rule.
 
 #### pipelines {#pipelines-in-filter}
 
@@ -211,11 +206,11 @@ spec:
       - website
       - /.*-api$/
       - docs
+      pipelines:
+      - semaphore.yml
       branches:
       - /^feature-.*/
       - master
-      pipelines:
-      - semaphore.yml
       tags:
       - /.*-rc$/
     notify:
