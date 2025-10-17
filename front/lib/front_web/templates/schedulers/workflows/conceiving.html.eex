@@ -1,4 +1,4 @@
 <div class="flex flex-row items-center justify-around">
-  <span class="material-symbols-outlined md-36 mr3 dark-indigo">pending</span>
+  <span class="material-symbols-outlined f1 mr3 dark-indigo">pending</span>
   <p class="measure mb0 dark-indigo">Your request is currently being processed and the workflow will start shortly.</p>
 </div>

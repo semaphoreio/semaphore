@@ -1,6 +1,6 @@
-import { Action as MDPAction } from "../stores/metric_date_range";
-import { Action as BAction } from "../stores/branches";
-import { State as BState } from "../stores/branches";
+import type { Action as MDPAction } from "../stores/metric_date_range";
+import type { Action as BAction } from "../stores/branches";
+import type { State as BState } from "../stores/branches";
 import { useSearchParams } from "react-router-dom";
 
 export const handleMetricDatePickerChanged = (dispatch: (action: MDPAction) => void) => {

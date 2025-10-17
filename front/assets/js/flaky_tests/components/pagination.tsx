@@ -12,9 +12,12 @@ export const Pagination = () => {
     <Fragment>
       {!noMorePages && <div className="flex justify-center pt3">
         <div className="">
-          <button className="btn btn-secondary" onClick={() => {
-            dispatch({ type: `LOAD_PAGE`, page: newPage });
-          }}>Load more</button>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              dispatch({ type: `LOAD_PAGE`, page: newPage });
+            }}
+          >Load more</button>
         </div>
       </div>}
     </Fragment>

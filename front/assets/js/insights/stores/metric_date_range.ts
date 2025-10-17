@@ -1,9 +1,9 @@
 import { createContext } from "preact";
-import { MetricDateRange } from "../types/metric_date_range";
+import type { MetricDateRange } from "../types/metric_date_range";
 
 export type Action =
-    | { type: `SET_METRIC_DATE_RANGES`, value: MetricDateRange[], }
-    | { type: `SELECT_METRIC_DATE_RANGE`, value: string, }
+    | { type: `SET_METRIC_DATE_RANGES`, value: MetricDateRange[] }
+    | { type: `SELECT_METRIC_DATE_RANGE`, value: string }
     ;
 
 export const Reducer = (state: State, action: Action): State => {
@@ -11,7 +11,7 @@ export const Reducer = (state: State, action: Action): State => {
     case `SET_METRIC_DATE_RANGES`:
       return { ...state, dateRanges: action.value,
         selectedMetricDateRangeLabel: action.value[0].label,
-        selectedMetricDateRange: action.value[0]
+        selectedMetricDateRange: action.value[0],
       };
     case `SELECT_METRIC_DATE_RANGE`:
       return {
@@ -37,4 +37,4 @@ export const EmptyState: State = {
   selectedMetricDateRangeLabel: ``,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

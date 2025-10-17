@@ -1,8 +1,9 @@
-import { JSONSuite } from "./json_types";
+import type { JSONSuite } from "./json_types";
 import { TestCase } from "./test_case";
 import { Summary } from "./summary";
-import { GetState, State, Stateful } from "../util/stateful";
-import { FilterStore } from "../stores";
+import type { Stateful } from "../util/stateful";
+import { GetState, State } from "../util/stateful";
+import type { FilterStore } from "../stores";
 
 export class Suite implements Stateful {
   id: string;

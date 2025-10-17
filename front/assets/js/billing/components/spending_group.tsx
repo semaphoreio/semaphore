@@ -1,10 +1,10 @@
-
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import { useState, useLayoutEffect } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import * as types from "../types";
 import * as components from "../components";
-import { Item } from "../types/spendings";
+import type { Item } from "../types/spendings";
 
 interface SpendingGroupProps {
   group: types.Spendings.Group;
@@ -20,12 +20,19 @@ export const SpendingGroup = (props: SpendingGroupProps) => {
   const GroupItems = () => {
     if (displayZeroState) {
       return <ItemsWithZeroState group={props.group}/>;
-    }
-    else {
+    } else {
       if (props.group.isCapacityBased()) {
         return <CapacityItems group={props.group} footer={props.footer}/>;
       } else {
-        return <Items group={props.group} footer={props.footer} hideUnitPrice={props.hideUnitPrice} hideUsage={props.hideUsage} showItemTotalPriceTrends={props.showItemTotalPriceTrends}/>;
+        return (
+          <Items
+            group={props.group}
+            footer={props.footer}
+            hideUnitPrice={props.hideUnitPrice}
+            hideUsage={props.hideUsage}
+            showItemTotalPriceTrends={props.showItemTotalPriceTrends}
+          />
+        );
       }
     }
   };
@@ -88,16 +95,20 @@ const Items = (props: ItemsProps) => {
 
     if (isDesc) {
       order = [``, ``];
-    } else if(isAsc) {
+    } else if (isAsc) {
       order = [name, `desc`];
     } else {
       order = [name, `asc`];
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
-          <span className={ isNone ? `` : `b`}>{displayName}</span>
+          <span className={isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
           {isDesc && <i className="material-symbols-outlined">expand_less</i>}
           {isNone && <i className="material-symbols-outlined">unfold_more</i>}
@@ -116,13 +127,17 @@ const Items = (props: ItemsProps) => {
             <div className="w-100">
               <div className="flex-ns items-center">
                 <div className="w-40-ns gray">Type</div>
-                {!props.hideUnitPrice && <div className="w-20-ns tr-ns tnum gray">
-                  <span>{props.group.priceLabel}</span>
-                </div>}
-                {!props.hideUsage && <div className="w-20-ns tr-ns tnum gray">
-                  {sortingEnabled && columnFilter(props.group.usageLabel, `usage`, `justify-end`)}
-                  {!sortingEnabled && props.group.usageLabel}
-                </div>}
+                {!props.hideUnitPrice && (
+                  <div className="w-20-ns tr-ns tnum gray">
+                    <span>{props.group.priceLabel}</span>
+                  </div>
+                )}
+                {!props.hideUsage && (
+                  <div className="w-20-ns tr-ns tnum gray">
+                    {sortingEnabled && columnFilter(props.group.usageLabel, `usage`, `justify-end`)}
+                    {!sortingEnabled && props.group.usageLabel}
+                  </div>
+                )}
                 <div className={`${props.hideUsage ? `w-60-ns` : `w-20-ns`} tr-ns tnum gray`}>
                   {sortingEnabled && columnFilter(`Total`, `price`, `justify-end`)}
                   {!sortingEnabled && `Total`}
@@ -132,33 +147,40 @@ const Items = (props: ItemsProps) => {
           </div>
         </div>
       </div>
-      {sortedItems.map((item, idx) =>
-        <SpendingGroupItem group={props.group} showTotalPriceTrends={props.showItemTotalPriceTrends} item={item} key={item.name} lastItem={ idx == lastItemIdx } hideUnitPrice={props.hideUnitPrice} hideUsage={props.hideUsage}/>
-      )}
+      {sortedItems.map((item, idx) => (
+        <SpendingGroupItem
+          group={props.group}
+          showTotalPriceTrends={props.showItemTotalPriceTrends}
+          item={item}
+          key={item.name}
+          lastItem={idx == lastItemIdx}
+          hideUnitPrice={props.hideUnitPrice}
+          hideUsage={props.hideUsage}
+        />
+      ))}
       <div className="pa3 bt bw1 b--black-075 w-100">
         <div className="flex items-center">
-          <div className="w-60-ns">
-            {props.footer}
-          </div>
-          {props.group.showUsage &&
+          <div className="w-60-ns">{props.footer}</div>
+          {props.group.showUsage && (
             <Fragment>
-              {!props.hideUsage &&
+              {!props.hideUsage && (
                 <div className="w-20-ns tr-ns tnum">
                   <div className="flex items-center justify-end">
                     <span className="b">{toolbox.Formatter.decimalThousands(props.group.usage)}</span>
                     {showTrendInSummary && summaryItem && <components.Trend.UsageTooltip item={props.group}/>}
                   </div>
                 </div>
-              }
+              )}
               <div className={`${props.hideUsage ? `w-40-ns` : `w-20-ns`} tr-ns tnum`}>
                 <div className="b">{props.group.price}</div>
               </div>
-            </Fragment>}
-          {!props.group.showUsage &&
+            </Fragment>
+          )}
+          {!props.group.showUsage && (
             <div className="w-40-ns tr-ns tnum">
               <div className="b">{props.group.price}</div>
             </div>
-          }
+          )}
         </div>
       </div>
     </Fragment>
@@ -199,16 +221,20 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
 
     if (isDesc) {
       order = [``, ``];
-    } else if(isAsc) {
+    } else if (isAsc) {
       order = [name, `desc`];
     } else {
       order = [name, `asc`];
     }
 
     return (
-      <div onClick={() => setSortOrder(order)} className="gray pointer" style="user-select: none;">
+      <div
+        onClick={() => setSortOrder(order)}
+        className="gray pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
-          <span className={ isNone ? `` : `b`}>{displayName}</span>
+          <span className={isNone ? `` : `b`}>{displayName}</span>
           {isAsc && <i className="material-symbols-outlined">expand_more</i>}
           {isDesc && <i className="material-symbols-outlined">expand_less</i>}
           {isNone && <i className="material-symbols-outlined">unfold_more</i>}
@@ -236,15 +262,18 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
           </div>
         </div>
       </div>
-      {sortedItems.map((item, idx) =>
-        <SpendingGroupItem group={group} item={item} key={item.name} lastItem={ idx == lastItemIdx }/>
-      )}
+      {sortedItems.map((item, idx) => (
+        <SpendingGroupItem
+          group={group}
+          item={item}
+          key={item.name}
+          lastItem={idx == lastItemIdx}
+        />
+      ))}
       <div className="pa3 bt bw1 b--black-075 w-100">
         <div className="flex items-center">
-          <div className="w-60-ns">
-            {footer}
-          </div>
-          {group.showUsage &&
+          <div className="w-60-ns">{footer}</div>
+          {group.showUsage && (
             <Fragment>
               <div className="w-20-ns tr-ns tnum">
                 <div className="flex items-center justify-end">
@@ -256,12 +285,12 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
                 <div className="b">{group.price}</div>
               </div>
             </Fragment>
-          }
-          {!group.showUsage &&
+          )}
+          {!group.showUsage && (
             <div className="w-40-ns tr-ns tnum">
               <div className="b">{group.price}</div>
             </div>
-          }
+          )}
         </div>
       </div>
     </Fragment>
@@ -270,30 +299,36 @@ const CapacityItems = ({ group, footer }: ItemsProps) => {
 
 const ItemsWithZeroState = ({ group }: ItemsProps) => {
   const zeroStateContent = () => {
-    switch(group.type) {
+    switch (group.type) {
       case types.Spendings.GroupType.Addon:
         return (
           <Fragment>
-            <toolbox.Asset path={`images/ill-curious-girl.svg`} width={`64`} height={`94`}/>
+            <toolbox.Asset
+              path={`images/ill-curious-girl.svg`}
+              width={`64`}
+              height={`94`}
+            />
             <h4 className="f4 mt2 mb0">No active add-ons</h4>
-            <p className="f4 mb0 measure center">Contact <a href="/support">support</a> to learn more about add-ons.</p>
+            <p className="f4 mb0 measure center">
+              Contact <a href="/support">support</a> to learn more about add-ons.
+            </p>
           </Fragment>
         );
       default:
         return (
           <Fragment>
-            <toolbox.Asset path={`images/ill-curious-girl.svg`} width={`64`} height={`94`}/>
+            <toolbox.Asset
+              path={`images/ill-curious-girl.svg`}
+              width={`64`}
+              height={`94`}
+            />
             <h4 className="f4 mt2 mb0">No active {group.name}</h4>
           </Fragment>
         );
     }
   };
 
-  return (
-    <div className="tc pt5 pb6">
-      {zeroStateContent()}
-    </div>
-  );
+  return <div className="tc pt5 pb6">{zeroStateContent()}</div>;
 };
 
 interface SpendingGroupItemProps {
@@ -305,15 +340,13 @@ interface SpendingGroupItemProps {
   showTotalPriceTrends?: boolean;
 }
 
-
 const SpendingGroupItem = (props: SpendingGroupItemProps) => {
   const { group, item, lastItem, hideUnitPrice, hideUsage } = props;
   const [tiersExpanded, expandTiers] = useState(false);
   const bottomLine = !lastItem || (item.tiers.length > 0 && tiersExpanded);
 
   const ItemData = () => {
-
-    if(group.isCapacityBased()) {
+    if (group.isCapacityBased()) {
       return (
         <Fragment>
           <div className="w-80-ns">
@@ -325,9 +358,7 @@ const SpendingGroupItem = (props: SpendingGroupItemProps) => {
             </div>
           </div>
           <div className="w-20-ns tr-ns tnum">
-            <div className="flex items-center justify-end">
-              {item.usage} x machines
-            </div>
+            <div className="flex items-center justify-end">{item.usage} x machines</div>
           </div>
         </Fragment>
       );
@@ -343,12 +374,14 @@ const SpendingGroupItem = (props: SpendingGroupItemProps) => {
             </div>
           </div>
           {!hideUnitPrice && <div className="w-20-ns tr-ns tnum">{item.unitPrice}</div>}
-          {!hideUsage && <div className="w-20-ns tr-ns tnum">
-            <div className="flex items-center justify-end">
-              {toolbox.Formatter.decimalThousands(item.usage)}
-              {group.showTrends && <components.Trend.UsageTooltip item={item}/>}
+          {!hideUsage && (
+            <div className="w-20-ns tr-ns tnum">
+              <div className="flex items-center justify-end">
+                {toolbox.Formatter.decimalThousands(item.usage)}
+                {group.showTrends && <components.Trend.UsageTooltip item={item}/>}
+              </div>
             </div>
-          </div>}
+          )}
           <div className={`${hideUsage ? `w-60-ns` : `w-20-ns`} tr-ns tnum`}>
             <div className="flex items-center justify-end">
               {item.price}
@@ -358,10 +391,9 @@ const SpendingGroupItem = (props: SpendingGroupItemProps) => {
         </Fragment>
       );
     }
-
   };
 
-  const ItemTierData = ({ tier }: { tier: Item, }) => {
+  const ItemTierData = ({ tier }: { tier: Item }) => {
     return (
       <Fragment>
         <div className="w-40-ns pl3">
@@ -369,11 +401,11 @@ const SpendingGroupItem = (props: SpendingGroupItemProps) => {
           {tier.description != `` && <span className="f6 gray"> · {tier.description}</span>}
         </div>
         {!hideUnitPrice && <div className="w-20-ns tr-ns tnum">{tier.unitPrice}</div>}
-        {!hideUsage && <div className="w-20-ns tr-ns tnum">
-          <div className="flex items-center justify-end">
-            {toolbox.Formatter.decimalThousands(tier.usage)}
+        {!hideUsage && (
+          <div className="w-20-ns tr-ns tnum">
+            <div className="flex items-center justify-end">{toolbox.Formatter.decimalThousands(tier.usage)}</div>
           </div>
-        </div>}
+        )}
         <div className={`${hideUsage ? `w-60-ns` : `w-20-ns`} tr-ns tnum`}>{tier.price}</div>
       </Fragment>
     );
@@ -392,19 +424,20 @@ const SpendingGroupItem = (props: SpendingGroupItemProps) => {
           </div>
         </div>
       </div>
-      {tiersExpanded && item.tiers.map((tier, idx) =>
-        <div className={`b--black-075 ${lastItem && !(item.tiers.length - 1 != idx) ? `` : `bb`}`} key={idx}>
-          <div className={`pv2 ph3`}>
-            <div className="flex items-center-ns">
-              <div className="w-100">
-                <div className="flex-ns items-center">
-                  <ItemTierData tier={tier}/>
+      {tiersExpanded &&
+        item.tiers.map((tier, idx) => (
+          <div className={`b--black-075 ${lastItem && !(item.tiers.length - 1 != idx) ? `` : `bb`}`} key={idx}>
+            <div className={`pv2 ph3`}>
+              <div className="flex items-center-ns">
+                <div className="w-100">
+                  <div className="flex-ns items-center">
+                    <ItemTierData tier={tier}/>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ))}
     </Fragment>
   );
 };

@@ -71,7 +71,13 @@ export const TopFlakyCharts = () => {
           {state.flakyHistoryStatus == Status.Empty &&
                 <div style="height: 200px;"><Message msg="No data available."/></div>}
           {state.flakyHistoryStatus == Status.Error && <div style="height: 200px;"><Message msg="Failed to load chart data."/></div>}
-          {state.flakyHistoryStatus == Status.Loaded && <HistoryChart history={state.flakyHistory} cummulative={flakyCumulative} color="#5122A5" tooltipTitle="New flaky tests" tickTitle="test"/>}
+          {state.flakyHistoryStatus == Status.Loaded && <HistoryChart
+            history={state.flakyHistory}
+            cummulative={flakyCumulative}
+            color="#5122A5"
+            tooltipTitle="New flaky tests"
+            tickTitle="test"
+          />}
         </div>
       </div>
       <div className="ba b--lighter-gray mb3 bg-white br3 pb3" style="width: 49.5%;">
@@ -109,7 +115,13 @@ export const TopFlakyCharts = () => {
                 <div style="height: 200px;"><Message msg="No data available."/></div>}
           {state.disruptionHistoryStatus == Status.Loading && <div style="height: 200px;"><LoadingIndicator/></div>}
           {state.disruptionHistoryStatus == Status.Error && <div style="height: 200px;"><Message msg="Failed to load chart data."/></div>}
-          {state.disruptionHistoryStatus == Status.Loaded && <HistoryChart history={state.disruptionHistory} cummulative={disruptionCumulative} color="#E53935" tooltipTitle="Broken builds" tickTitle="fail"/>}
+          {state.disruptionHistoryStatus == Status.Loaded && <HistoryChart
+            history={state.disruptionHistory}
+            cummulative={disruptionCumulative}
+            color="#E53935"
+            tooltipTitle="Broken builds"
+            tickTitle="fail"
+          />}
         </div>
       </div>
     </div>

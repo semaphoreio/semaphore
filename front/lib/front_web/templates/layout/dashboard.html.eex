@@ -27,7 +27,7 @@
       </a>
       <%= if FeatureProvider.feature_enabled?(:organization_health, param: @conn.assigns[:organization_id]) do %>
         <a href=<%= dashboard_path(@conn, :index, dashboard: "organization-health") %> class="tab <%= if Map.get(assigns, :dashboard) == "organization-health", do: "tab--active" %>">
-            <span class="material-symbols-outlined mr2 md-18">hive</span>
+            <span class="material-symbols-outlined mr2 f3">hive</span>
             <span>Organization Health</span>
         </a>
       <% end %>

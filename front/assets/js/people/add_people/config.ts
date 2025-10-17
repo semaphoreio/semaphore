@@ -17,8 +17,8 @@ interface ParsedConfig {
 }
 
 export class AppConfig {
-  collaboratorListUrl: APIRequest.Url<{ collaborators: any, }>;
-  inviteMemberUrl: APIRequest.Url<{ message: string, }>;
+  collaboratorListUrl: APIRequest.Url<{ collaborators: any }>;
+  inviteMemberUrl: APIRequest.Url<{ message: string }>;
   createMemberUrl: APIRequest.Url<{
     password: string;
     message: string;

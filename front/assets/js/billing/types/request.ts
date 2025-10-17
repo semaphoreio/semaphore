@@ -1,5 +1,5 @@
 import { RequestStatus } from "./request_status";
-import * as stores from "../stores";
+import type * as stores from "../stores";
 
 export class Request {
   url: URL;

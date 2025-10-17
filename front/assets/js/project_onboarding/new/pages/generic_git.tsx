@@ -2,12 +2,14 @@ import { Routes, Route, useNavigate, useParams, Outlet } from "react-router-dom"
 import * as stores from "../stores";
 import * as types from "../types";
 import { useSteps } from "../stores/create/steps";
-import { Dispatch, StateUpdater, useContext, useEffect, useLayoutEffect,useState } from "preact/hooks";
+import type { Dispatch, StateUpdater } from "preact/hooks";
+import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 
 import * as toolbox from "js/toolbox";
-import { createContext, h } from "preact";
+import type { h } from "preact";
+import { createContext } from "preact";
 
-import Editor from '@monaco-editor/react';
+import Editor from "@monaco-editor/react";
 import dedent from "dedent";
 
 enum Step {
@@ -16,7 +18,6 @@ enum Step {
   ConnectRepository = `connect-repository`,
   ConfigureHook = `configure-hook`,
 }
-
 
 export const Page = () => {
   const { dispatch } = useSteps();
@@ -47,7 +48,6 @@ export const Page = () => {
   );
 };
 
-
 const RepositorySetup = () => {
   const { dispatch } = useSteps();
   const { repository, setRepository } = useContext(RepositoryContext);
@@ -64,7 +64,7 @@ const RepositorySetup = () => {
   const setProjectName = (projectName) => setRepository((prev) => ({ ...prev, name: projectName }));
 
   const createRepository = () => {
-    const url = new toolbox.APIRequest.Url<{ project_name: string, error?: string, }>(`post`,config.createProjectUrl );
+    const url = new toolbox.APIRequest.Url<{ project_name: string, error?: string }>(`post`, config.createProjectUrl);
     setLoading(true);
     setError(``);
 
@@ -75,10 +75,10 @@ const RepositorySetup = () => {
           integration_type: types.Provider.IntegrationType.Git,
           name: repository.name,
           duplicate: `true`,
-        }
+        },
       })
       .then((response) => {
-        if(response.error || response.data?.error) {
+        if (response.error || response.data?.error) {
           setError(response.data.error);
           return;
         }
@@ -90,33 +90,23 @@ const RepositorySetup = () => {
           setLoading(false);
         }, 2000);
       });
-
   };
 
   return (
     <div className="flex-l">
       <div className="w-third ph4-l">
         <h1 className="f2 f1-m mb0">Setup project</h1>
-        <p className="mb4 measure">
-          Define how Semaphore should recognize and reference your project.
-        </p>
+        <p className="mb4 measure">Define how Semaphore should recognize and reference your project.</p>
         <div>
-          <toolbox.Asset
-            path="images/ill-girl-looking-down.svg"
-            className="db ml2"
-          />
+          <toolbox.Asset path="images/ill-girl-looking-down.svg" className="db ml2"/>
         </div>
-        <p className="f6 black-60 measure mv3">
-          Semaphore will use this information to set up your project.
-        </p>
+        <p className="f6 black-60 measure mv3">Semaphore will use this information to set up your project.</p>
       </div>
       <div className="w-two-thirds">
         <div className="pb3 mb3 bb b--black-10">
           <div>
             <h2 className="f3 fw6 mb2">Project Information</h2>
-            <p className="black-70 mv0">
-              Provide the repository URL and choose a name for your project.
-            </p>
+            <p className="black-70 mv0">Provide the repository URL and choose a name for your project.</p>
           </div>
         </div>
         <div className="pb3 mb3">
@@ -142,18 +132,22 @@ const RepositorySetup = () => {
                   className="self-center mh2"
                   style={{ width: `16px`, height: `16px` }}
                 />
-                <input type="text"
+                <input
+                  type="text"
                   id="project-name"
                   placeholder="project-name"
-                  className="form-control w-100 bn" style="outline: none; box-shadow: none;"
+                  className="form-control w-100 bn"
+                  style="outline: none; box-shadow: none;"
                   value={repository.name}
-                  onInput={(e) => setProjectName(e.currentTarget.value)}/>
+                  onInput={(e) => setProjectName(e.currentTarget.value)}
+                />
               </div>
-              <button className="btn btn-primary flex" onClick={createRepository} disabled={loading}>
-                {loading && <toolbox.Asset
-                  path="images/spinner-2.svg"
-                  style={{ width: `20px`, height: `20px`, margin: `0` }}
-                />}
+              <button
+                className="btn btn-primary flex"
+                onClick={createRepository}
+                disabled={loading}
+              >
+                {loading && <toolbox.Asset path="images/spinner-2.svg" style={{ width: `20px`, height: `20px`, margin: `0` }}/>}
                 {!loading && <span>✓</span>}
               </button>
             </div>
@@ -174,33 +168,33 @@ const LoadRepository = () => {
     let timeoutId: number;
 
     const fetchRepository = () => {
-      const url = new toolbox.APIRequest.Url<any>(
-        `get`,
-        `/projects/${projectName}/repository_status`
-      );
+      const url = new toolbox.APIRequest.Url<any>(`get`, `/projects/${projectName}/repository_status`);
 
-      void url.call().then((response) => {
-        if (response.error) {
-          throw `oops`;
-        }
+      void url
+        .call()
+        .then((response) => {
+          if (response.error) {
+            throw `oops`;
+          }
 
-        setRepository((prev) => ({
-          ...prev,
-          name: response.data.project_name,
-          connected: response.data.connected,
-          resetWebhookSecretUrl: response.data.reset_webhook_secret_url,
-          agentName: response.data.agent_name,
-          agentConfigUrl: response.data.agent_config_url,
-          publicKey: response.data.deploy_key?.public_key
-        }));
+          setRepository((prev) => ({
+            ...prev,
+            name: response.data.project_name,
+            connected: response.data.connected,
+            resetWebhookSecretUrl: response.data.reset_webhook_secret_url,
+            agentName: response.data.agent_name,
+            agentConfigUrl: response.data.agent_config_url,
+            publicKey: response.data.deploy_key?.public_key,
+          }));
 
-        // Retry if not connected
-        if (!response.data.connected) {
-          timeoutId = window.setTimeout(fetchRepository, 5000);
-        }
-      }).catch(() => {
-        navigate(`/`);
-      });
+          // Retry if not connected
+          if (!response.data.connected) {
+            timeoutId = window.setTimeout(fetchRepository, 5000);
+          }
+        })
+        .catch(() => {
+          navigate(`/`);
+        });
     };
 
     fetchRepository();
@@ -223,10 +217,7 @@ const ConfigureHook = () => {
   }, []);
 
   const generateWebhookSecret = () => {
-    const url = new toolbox.APIRequest.Url<{ secret: string, endpoint: string, }>(
-      `post`,
-      `${repository.resetWebhookSecretUrl}`
-    );
+    const url = new toolbox.APIRequest.Url<{ secret: string, endpoint: string }>(`post`, `${repository.resetWebhookSecretUrl}`);
 
     void url.call().then((response) => {
       if (response.data) {
@@ -238,22 +229,18 @@ const ConfigureHook = () => {
   const GenerateWebhookButton = (props: h.JSX.IntrinsicElements[`button`]) => {
     return (
       <div>
-        {repository.connected &&
+        {repository.connected && (
           <div className="mv3 bg-washed-yellow pa2 br2">
             <p>
               <span>⚠️</span>
               <span className={`ml2`}>Script already generated</span>
             </p>
             <p className="mb0">
-              We see that you&apos;ve already generated a webhook script.
-              If you want to regenerate it - click the button below.
+              We see that you&apos;ve already generated a webhook script. If you want to regenerate it - click the button below.
             </p>
           </div>
-        }
-        <button
-          className={props.className}
-          onClick={generateWebhookSecret}
-        >
+        )}
+        <button className={props.className} onClick={generateWebhookSecret}>
           {repository.connected && `Regenerate Script`}
           {!repository.connected && `Generate Script`}
         </button>
@@ -264,14 +251,8 @@ const ConfigureHook = () => {
   const ConfigureWorkflowButton = () => {
     if (!repository.connected) {
       return (
-        <button
-          className="btn btn-secondary flex"
-          disabled={true}
-        >
-          <toolbox.Asset
-            path="images/spinner-2.svg"
-            style={{ width: `20px`, height: `20px` }}
-          />
+        <button className="btn btn-secondary flex" disabled={true}>
+          <toolbox.Asset path="images/spinner-2.svg" style={{ width: `20px`, height: `20px` }}/>
           Waiting for first webhook
         </button>
       );
@@ -287,43 +268,33 @@ const ConfigureHook = () => {
         </button>
       );
     }
-
   };
 
   return (
     <div className="flex-l">
       <div className="w-third ph4-l">
         <h1 className="f2 f1-m mb0">Install Git Hook</h1>
-        <p className="mb4 measure">
-          Set up an automatic connection between your Git repository and Semaphore.
-        </p>
+        <p className="mb4 measure">Set up an automatic connection between your Git repository and Semaphore.</p>
         <div>
-          <toolbox.Asset
-            path="images/ill-girl-looking-down.svg"
-            className="db ml2"
-          />
+          <toolbox.Asset path="images/ill-girl-looking-down.svg" className="db ml2"/>
         </div>
-        <p className="f6 black-60 measure mv3">
-          Semaphore will use this information to set up your project.
-        </p>
+        <p className="f6 black-60 measure mv3">Semaphore will use this information to set up your project.</p>
       </div>
       <div className="w-two-thirds">
         <div>
           <p>
-            To enable automatic workflow execution on push, Semaphore uses a custom <span className="bg-washed-yellow ph2 ba b--black-075 br3">post-receive</span> Git hook.
-            This hook sends events to Semaphore every time you push new commits.
+            To enable automatic workflow execution on push, Semaphore uses a custom{` `}
+            <span className="bg-washed-yellow ph2 ba b--black-075 br3">post-receive</span> Git hook. This hook sends events to Semaphore
+            every time you push new commits.
           </p>
         </div>
-        {!repository.webhookSecret && (
-          <p>
-            We will generate a script for you, which you can install in your Git repository.
-          </p>
-        )}
+        {!repository.webhookSecret && <p>We will generate a script for you, which you can install in your Git repository.</p>}
         {repository.webhookSecret && (
           <>
             <p>
-              Copy the following <span className="bg-washed-yellow ph2 ba b--black-075 br3">post-receive</span> script into the <span className="bg-washed-yellow ph2 ba b--black-075 br3">hooks</span> directory
-              of your <strong>bare</strong> Git repository:
+              Copy the following <span className="bg-washed-yellow ph2 ba b--black-075 br3">post-receive</span> script into the{` `}
+              <span className="bg-washed-yellow ph2 ba b--black-075 br3">hooks</span> directory of your <strong>bare</strong> Git
+              repository:
             </p>
             <div style="height: 50vh;">
               <ConnectRepositoryEditor/>
@@ -389,27 +360,28 @@ const ConnectRepositoryEditor = () => {
   rm -f "$payload_file"
   `;
 
-  return <Editor
-    height="100%"
-    defaultLanguage="shell"
-    value={dedent(data)}
-    path={`post-receive`}
-    options={{
-      minimap: { enabled: false },
-      scrollBeyondLastLine: false,
-      fontSize: 14,
-      lineNumbers: `on`,
-      renderLineHighlight: `none`,
-      scrollbar: {
-        vertical: `auto`,
-        horizontal: `auto`,
-      },
-      readOnly: true,
-    }}
-    theme="vs-light"
-  />;
+  return (
+    <Editor
+      height="100%"
+      defaultLanguage="shell"
+      value={dedent(data)}
+      path={`post-receive`}
+      options={{
+        minimap: { enabled: false },
+        scrollBeyondLastLine: false,
+        fontSize: 14,
+        lineNumbers: `on`,
+        renderLineHighlight: `none`,
+        scrollbar: {
+          vertical: `auto`,
+          horizontal: `auto`,
+        },
+        readOnly: true,
+      }}
+      theme="vs-light"
+    />
+  );
 };
-
 
 const RepositoryContext = createContext<{
   repository: Repository;
@@ -450,23 +422,15 @@ const ConnectRepository = () => {
 
   const navigate = useNavigate();
 
-
   return (
     <div className="flex-l">
       <div className="w-third ph4-l">
         <h1 className="f2 f1-m mb0">Authorize Semaphore to access your repository</h1>
-        <p className="mb4 measure">
-          To allow Semaphore to access your Git repository we need to set up an SSH key.
-        </p>
+        <p className="mb4 measure">To allow Semaphore to access your Git repository we need to set up an SSH key.</p>
         <div>
-          <toolbox.Asset
-            path="images/ill-girl-looking-down.svg"
-            className="db ml2"
-          />
+          <toolbox.Asset path="images/ill-girl-looking-down.svg" className="db ml2"/>
         </div>
-        <p className="f6 black-60 measure mv3">
-          We&apos;ll use this ssh key to connect to your Git repository
-        </p>
+        <p className="f6 black-60 measure mv3">We&apos;ll use this ssh key to connect to your Git repository</p>
       </div>
       <div className="w-two-thirds">
         {!repository.agentName && (
@@ -478,8 +442,17 @@ const ConnectRepository = () => {
                 <span className={`ml2`}>No agent configuration for initialization job found.</span>
               </p>
               <p className="mb0">
-                The initialization job is responsible for setting up the environment for your workflow. Please add an agent configuration in your
-                <a href={`${repository.agentConfigUrl}`} className="ml1 link underline" target="_blank" rel="noreferrer">project agent settings</a>.
+                The initialization job is responsible for setting up the environment for your workflow. Please add an agent configuration in
+                your
+                <a
+                  href={`${repository.agentConfigUrl}`}
+                  className="ml1 link underline"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  project agent settings
+                </a>
+                .
               </p>
             </div>
           </div>
@@ -494,13 +467,21 @@ const ConnectRepository = () => {
             This key is unique to this project.
           </p>
 
-          <p className="mb2">To authorize access, you need to <a href="https://git-scm.com/book/en/v2/Git-on-the-Server-Setting-Up-the-Server" target="_blank" rel="noreferrer">add</a> the following public key to your Git server.</p>
+          <p className="mb2">
+            To authorize access, you need to{` `}
+            <a
+              href="https://git-scm.com/book/en/v2/Git-on-the-Server-Setting-Up-the-Server"
+              target="_blank"
+              rel="noreferrer"
+            >
+              add
+            </a>{` `}
+            the following public key to your Git server.
+          </p>
           <toolbox.PreCopy content={repository.publicKey || `Loading public key...`} className="pr4"/>
         </div>
         <div className="flex justify-between items-center mt4">
-          <p className="f6 gray mb0">
-            Next we&apos;ll configure the webhook to trigger builds on push.
-          </p>
+          <p className="f6 gray mb0">Next we&apos;ll configure the webhook to trigger builds on push.</p>
           <button
             className="btn btn-primary"
             onClick={() => {

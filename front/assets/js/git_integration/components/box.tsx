@@ -1,4 +1,4 @@
-import { JSX, VNode } from "preact";
+import type { JSX, VNode } from "preact";
 
 interface BoxProps {
   boxIcon: JSX.Element;

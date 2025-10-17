@@ -1,4 +1,4 @@
-import * as types from './index';
+import type * as types from './index';
 
 export class Dashboards {
   dashboards: Dashboard[];

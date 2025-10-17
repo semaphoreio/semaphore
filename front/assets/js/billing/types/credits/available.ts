@@ -5,7 +5,7 @@ export enum CreditType {
   Prepaid = `prepaid`,
   Gift = `gift`,
   Subscription = `subscription`,
-  Educational = `educational`
+  Educational = `educational`,
 }
 
 export class Available {

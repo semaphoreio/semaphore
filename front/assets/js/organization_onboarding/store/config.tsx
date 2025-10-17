@@ -4,7 +4,7 @@ export interface State {
   createOrganizationURL: string;
 }
 
-export const Context = createContext<{ config: State, }>({
+export const Context = createContext<{ config: State }>({
   config: {
     createOrganizationURL: ``,
   },

@@ -16,7 +16,11 @@ export const SpendingSelect = () => {
   return (
     <div className="tr">
       <div className="gray flex items-center flex-row-reverse">
-        <select className="db form-control mb0-m form-control-tiny" value={state.selectedSpendingId} onChange={ setSelectedSpendingFromEvent }>
+        <select
+          className="db form-control mb0-m form-control-tiny"
+          value={state.selectedSpendingId}
+          onChange={ setSelectedSpendingFromEvent }
+        >
           {state.spendings.map((spending, idx) => (
             <option key={idx} value={spending.id}>{spending.name}</option>
           ))}

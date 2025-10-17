@@ -18,7 +18,7 @@
     <%= if Enum.empty?(@page.deployments) do %>
         <div class="pa3 pv2">
             <div class="justify-between tc pa3">
-                <span class="material-symbols-outlined md-36">hourglass_empty</span>
+                <span class="material-symbols-outlined f1">hourglass_empty</span>
                 <div class="flex justify-around">
                     <p class="gray measure">
                         We didn't find any deployments matching your criteria.

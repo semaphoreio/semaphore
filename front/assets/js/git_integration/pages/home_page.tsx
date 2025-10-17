@@ -4,7 +4,7 @@ import { Box, Card } from "../components";
 import { useContext } from "preact/hooks";
 import * as stores from "../stores";
 import { gitSvg, addNewIcon } from "./home_page/icons";
-import { State } from "../stores/config";
+import type { State } from "../stores/config";
 import { Integration } from "../types";
 import * as utils from "../utils";
 

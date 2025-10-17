@@ -1,7 +1,8 @@
 import _ from "lodash";
-import { FilterStore } from "../stores";
-import { JSONReport } from "./json_types";
-import { GetState, State, Stateful } from "../util/stateful";
+import type { FilterStore } from "../stores";
+import type { JSONReport } from "./json_types";
+import type { State, Stateful } from "../util/stateful";
+import { GetState } from "../util/stateful";
 import { Suite } from "./suite";
 import { Summary } from "./summary";
 

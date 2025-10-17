@@ -1,5 +1,5 @@
 
-import { FocusInterface } from "./type";
+import type { FocusInterface } from "./type";
 
 interface Props extends FocusInterface{
   color: string;

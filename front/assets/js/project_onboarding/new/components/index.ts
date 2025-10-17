@@ -21,5 +21,5 @@ export {
   ProgressBar,
   FilterButton,
   PipelinePreview,
-  PreviewPanel
+  PreviewPanel,
 };

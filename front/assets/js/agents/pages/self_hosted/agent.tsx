@@ -12,9 +12,7 @@ import moment from "moment";
 import { Notice } from "js/notice";
 
 export const Agent = () => {
-  const { state, dispatch: dispatchSelfHostedAgent } = useContext(
-    stores.SelfHostedAgent.Context
-  );
+  const { state, dispatch: dispatchSelfHostedAgent } = useContext(stores.SelfHostedAgent.Context);
   const navigate = useNavigate();
   const selfHostedAgent = state.type;
   const [showGuide, setShowGuide] = useState(false);
@@ -29,7 +27,7 @@ export const Agent = () => {
   if (!selfHostedAgent) return;
 
   const { state: locationState } = useLocation();
-  const targetId = (locationState as any)?.targetId as string;
+  const targetId = (locationState )?.targetId as string;
 
   useEffect(() => {
     if (state.type && state.type.totalAgentCount === 0) {
@@ -47,10 +45,7 @@ export const Agent = () => {
   const refreshActivity = async () => {
     setRefreshing(true);
     try {
-      await types.SelfHosted.AgentType.get(
-        config.selfHostedUrl,
-        state.type.name
-      )
+      await types.SelfHosted.AgentType.get(config.selfHostedUrl, state.type.name)
         .then((agentType) => {
           dispatchSelfHostedAgent({
             type: `SET_AGENT_TYPE`,
@@ -84,9 +79,7 @@ export const Agent = () => {
   const EmptyList = () => {
     return (
       <div className="bg-white shadow-1 br3 pa3 pa4-l mb3">
-        <p className="f5 gray mv0">
-          No agents are currently connected to this agent type.
-        </p>
+        <p className="f5 gray mv0">No agents are currently connected to this agent type.</p>
       </div>
     );
   };
@@ -100,28 +93,16 @@ export const Agent = () => {
         </div>
         {config.accessProvider.canManageAgents() && (
           <div>
-            <button
-              onClick={() => navigate(`settings`)}
-              className="btn btn-secondary mr2"
-            >
+            <button onClick={() => navigate(`settings`)} className="btn btn-secondary mr2">
               Settings
             </button>
-            <button
-              onClick={() => navigate(`reset`)}
-              className="btn btn-secondary mr2"
-            >
+            <button onClick={() => navigate(`reset`)} className="btn btn-secondary mr2">
               Reset token
             </button>
-            <button
-              onClick={() => navigate(`disable_all`)}
-              className="btn btn-secondary mr2"
-            >
+            <button onClick={() => navigate(`disable_all`)} className="btn btn-secondary mr2">
               Disable all
             </button>
-            <button
-              onClick={() => navigate(`delete`)}
-              className="btn btn-danger"
-            >
+            <button onClick={() => navigate(`delete`)} className="btn btn-danger">
               Delete
             </button>
           </div>
@@ -169,13 +150,7 @@ export const Agent = () => {
       </div>
       <h2 className="f4 normal gray mb3">
         <span id="self-hosted-agents-count">
-          <span className="green">
-            {toolbox.Pluralize(
-              selfHostedAgent.totalAgentCount,
-              `connected agent`,
-              `connected agents`
-            )}
-          </span>
+          <span className="green">{toolbox.Pluralize(selfHostedAgent.totalAgentCount, `connected agent`, `connected agents`)}</span>
         </span>
         <span className="mh1">&middot;</span>
         <span className="pointer link underline" onClick={toggleInstructions}>
@@ -209,9 +184,7 @@ const ConnectedAgent = (props: ConnectAgentProps) => {
     }
   };
   const disableAgent = async () => {
-    await toolbox.APIRequest.post(
-      `${config.selfHostedUrl}/${selfHostedState.type.name}/agents/${agent.name}/disable?format=json`
-    );
+    await toolbox.APIRequest.post(`${config.selfHostedUrl}/${selfHostedState.type.name}/agents/${agent.name}/disable?format=json`);
   };
 
   const agent = props.agent;
@@ -222,9 +195,7 @@ const ConnectedAgent = (props: ConnectAgentProps) => {
       onMouseOver={() => setShowStop(true)}
       onMouseOut={() => setShowStop(false)}
     >
-      {showStop && (
-        <StopAgent state={transitionState} setState={transitionTo}/>
-      )}
+      {showStop && <StopAgent state={transitionState} setState={transitionTo}/>}
       <div className="pl2-l">
         <div className="flex-l items-center justify-between">
           <h3 className="f4 mb1">
@@ -270,16 +241,10 @@ const StopAgent = (props: StopAgentProps) => {
         return (
           <div className="shadow-1 bg-white f6 br2 pa1">
             <span className="ph1">Are you sure?</span>
-            <button
-              onClick={() => props.setState(`running`)}
-              className="input-reset pv1 ph2 br2 bg-gray white bn pointer mh1"
-            >
+            <button onClick={() => props.setState(`running`)} className="input-reset pv1 ph2 br2 bg-gray white bn pointer mh1">
               Nevermind
             </button>
-            <button
-              onClick={() => props.setState(`stopping`)}
-              className="input-reset pv1 ph2 br2 bg-red white bn pointer"
-            >
+            <button onClick={() => props.setState(`stopping`)} className="input-reset pv1 ph2 br2 bg-red white bn pointer">
               Stop
             </button>
           </div>
@@ -293,7 +258,5 @@ const StopAgent = (props: StopAgentProps) => {
     }
   };
 
-  return (
-    <div className="child absolute top-0 right-0 z-5 nt2 mr3">{content()}</div>
-  );
+  return <div className="child absolute top-0 right-0 z-5 nt2 mr3">{content()}</div>;
 };

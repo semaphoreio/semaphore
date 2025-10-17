@@ -4,6 +4,25 @@ import { TriggerEvent } from "./trigger_event"
 import { Pollman } from "../pollman"
 import { TargetParams } from "./target_params"
 
+const escapeSelector = (value) => {
+  const normalizedValue = String(value ?? "");
+
+  if ($.escapeSelector) {
+    return $.escapeSelector(normalizedValue);
+  }
+
+  if (typeof CSS !== "undefined" && CSS.escape) {
+    return CSS.escape(normalizedValue);
+  }
+
+  return normalizedValue.replace(/(["\\])/g, "\\$1");
+}
+const switchScopeSelector = (switchId) => `[switch="${escapeSelector(switchId)}"]`
+const promotionTargetSelector = (promotionTarget) => `[data-promotion-target="${escapeSelector(promotionTarget)}"]`
+const promotionScopedSelector = (switchId, promotionTarget, extraSelector = "") => {
+  return `${switchScopeSelector(switchId)} ${promotionTargetSelector(promotionTarget)}${extraSelector}`
+}
+
 export var Switch = {
   init: function() {
     this.handlePromoteClicks();
@@ -20,7 +39,7 @@ export var Switch = {
   },
 
   selectedTriggerEvent: function(switchId) {
-    let selectedTriggerEvent = $(`[trigger-event][selected][data-switch='${switchId}']`);
+    let selectedTriggerEvent = $(`[trigger-event][selected][data-switch="${escapeSelector(switchId)}"]`);
 
     if (selectedTriggerEvent.length > 0) {
       return selectedTriggerEvent;
@@ -40,7 +59,7 @@ export var Switch = {
       Switch.askToConfirmPromotion(switchId, promotionTarget);
 
       // Focus on first input or select in the promotion box
-      const promotionForm = $(`[data-promotion-target="${promotionTarget}"]`);
+      const promotionForm = $(promotionTargetSelector(promotionTarget));
       const firstInput = promotionForm.find('input, select').first();
       if (firstInput.length) {
         if (firstInput[0].tomselect) {
@@ -82,8 +101,9 @@ export var Switch = {
         Pollman.start();
         alert("Something went wrong. Please try again.");
 
-        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${parentPromotionTarget}'][promote-button]`).removeAttr("disabled");
-        $(`[switch='${parentPromotionSwitch}'] [data-promotion-target='${parentPromotionTarget}'][promote-button]`).removeClass("btn-working");
+        const promoteButtonSelector = promotionScopedSelector(parentPromotionSwitch, parentPromotionTarget, "[promote-button]");
+        $(promoteButtonSelector).removeAttr("disabled");
+        $(promoteButtonSelector).removeClass("btn-working");
       });
     })
   },
@@ -97,8 +117,10 @@ export var Switch = {
       let promotionTarget = Switch.parentPromotionTarget(target)
       let promotionSwitch = Switch.parentSwitch(target)
 
-      $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).hide();
-      $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).show();
+      const confirmationSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promote-confirmation]");
+      const promoteButtonSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promote-button]");
+      $(confirmationSelector).hide();
+      $(promoteButtonSelector).show();
 
       Pollman.pollNow();
       Pollman.start();
@@ -138,18 +160,22 @@ export var Switch = {
 
   askToConfirmPromotion: function(promotionSwitch, promotionTarget) {
     Switch.hidePromotionBoxElements(promotionSwitch, promotionTarget);
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).show();
+    const confirmationSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promote-confirmation]");
+    $(confirmationSelector).show();
   },
 
   hidePromotionBoxElements: function(promotionSwitch, promotionTarget) {
-    $(`[switch='${promotionSwitch}'] [promotion-box][data-promotion-target='${promotionTarget}']`).children().hide();
+    const promotionBoxSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promotion-box]");
+    $(promotionBoxSelector).children().hide();
   },
 
   showPromotingInProgress(promotionSwitch, promotionTarget) {
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-confirmation]`).hide();
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).show();
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).attr("disabled", "");
-    $(`[switch='${promotionSwitch}'] [data-promotion-target='${promotionTarget}'][promote-button]`).addClass("btn-working");
+    const confirmationSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promote-confirmation]");
+    const promoteButtonSelector = promotionScopedSelector(promotionSwitch, promotionTarget, "[promote-button]");
+    $(confirmationSelector).hide();
+    $(promoteButtonSelector).show();
+    $(promoteButtonSelector).attr("disabled", "");
+    $(promoteButtonSelector).addClass("btn-working");
     Switch.afterResize(promotionSwitch);
   },
 
@@ -167,7 +193,7 @@ export var Switch = {
   },
 
   latestTriggerEvent: function(promotionSwitch, promotionTarget) {
-    return $(`[switch='${promotionSwitch}'] [trigger-event][data-promotion-target='${promotionTarget}']`).first();
+    return $(promotionScopedSelector(promotionSwitch, promotionTarget, "[trigger-event]")).first();
   },
 
   isProcessed: function(triggerEvent) {

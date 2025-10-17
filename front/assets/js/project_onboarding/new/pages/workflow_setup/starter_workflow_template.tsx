@@ -132,7 +132,7 @@ export const StarterWorkflowTemplate = () => {
     // Create an "Other" group if there are ungrouped templates
     const allGroups = [
       ...groups,
-      ...(otherTemplates.length > 0 ? [{ name: `other`, label: `Other` }] : [])
+      ...(otherTemplates.length > 0 ? [{ name: `other`, label: `Other` }] : []),
     ];
 
     // Add other templates to templatesByGroup
@@ -164,7 +164,7 @@ export const StarterWorkflowTemplate = () => {
         method: `POST`,
         headers: {
           'Content-Type': `application/json`,
-          'X-CSRF-Token': state.csrfToken
+          'X-CSRF-Token': state.csrfToken,
         },
         body: JSON.stringify({
           commit_path: yamlPath,
@@ -172,7 +172,7 @@ export const StarterWorkflowTemplate = () => {
           template_path: selectedTemplate.template_path,
           machine_type: selectedAgentType.type,
           os_images: selectedAgentType.available_os_images,
-        })
+        }),
       });
 
       if (!response.ok) {
@@ -304,7 +304,11 @@ export const StarterWorkflowTemplate = () => {
             >
               {isLoading ? (
                 <span className="flex items-center">
-                  <toolbox.Asset path="images/spinner-2.svg" width="20" height="20"/>
+                  <toolbox.Asset
+                    path="images/spinner-2.svg"
+                    width="20"
+                    height="20"
+                  />
                   <span className="ml2">Starting...</span>
                 </span>
               ) : (

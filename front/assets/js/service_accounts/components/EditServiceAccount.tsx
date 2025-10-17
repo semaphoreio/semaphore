@@ -2,7 +2,7 @@ import { useState, useContext, useEffect } from "preact/hooks";
 import { Modal } from "js/toolbox";
 import { ConfigContext } from "../config";
 import { ServiceAccountsAPI } from "../utils/api";
-import { ServiceAccount } from "../types";
+import type { ServiceAccount } from "../types";
 import * as toolbox from "js/toolbox";
 
 interface EditServiceAccountProps {
@@ -16,7 +16,7 @@ export const EditServiceAccount = ({
   serviceAccount,
   isOpen,
   onClose,
-  onUpdated
+  onUpdated,
 }: EditServiceAccountProps) => {
   const config = useContext(ConfigContext);
   const api = new ServiceAccountsAPI(config);
@@ -72,7 +72,11 @@ export const EditServiceAccount = ({
   const selectedRole = config.roles.find((role) => role.id === selectedRoleId);
 
   return (
-    <Modal isOpen={isOpen} close={handleClose} title="Edit Service Account">
+    <Modal
+      isOpen={isOpen}
+      close={handleClose}
+      title="Edit Service Account"
+    >
       <form onSubmit={(e) => void handleSubmit(e)}>
         <div className="pa3">
           <div className="mb3">
@@ -111,7 +115,11 @@ export const EditServiceAccount = ({
             >
               <option value="">Select a role...</option>
               {config.roles.map((role) => (
-                <option key={role.id} value={role.id} title={`${role.name} - ${role.description}`}>
+                <option
+                  key={role.id}
+                  value={role.id}
+                  title={`${role.name} - ${role.description}`}
+                >
                   {role.name}
                 </option>
               ))}

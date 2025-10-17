@@ -1,8 +1,9 @@
 import * as plot from '../plot';
-import { cloneElement, Fragment, VNode } from 'preact';
+import type { VNode } from 'preact';
+import { cloneElement, Fragment } from 'preact';
 import { useContext, useState } from "preact/hooks";
 import { useSearchParams } from "react-router-dom";
-import { DashboardItem } from "../../types/dashboard";
+import type { DashboardItem } from "../../types/dashboard";
 import * as stores from "../../stores";
 import moment from "moment";
 
@@ -41,15 +42,19 @@ export const Performance = ({ metrics, item }: Props) => {
         metrics={metrics}
         charts={[
           showChart(`duration`) ? <plot.charts.Line metrics={metrics} key="duration"/> : <Fragment/>,
-          showChart(`stdDev`) ? <plot.charts.StdDev metrics={metrics} height={300} key="stdDev"/> :
+          showChart(`stdDev`) ? <plot.charts.StdDev
+            metrics={metrics}
+            height={300}
+            key="stdDev"
+          /> :
             <Fragment/>,
-          showChart(`mean`) ? <plot.charts.Line metrics={metrics} key="mean"/> : <Fragment/>
+          showChart(`mean`) ? <plot.charts.Line metrics={metrics} key="mean"/> : <Fragment/>,
         ]}
         tooltip={<plot.tooltips.Dynamic/>}
         axisY={<plot.yAxis.Duration/>}
         focus={[
           <plot.focus.Line color="#8658d6" key="line"/>,
-          <plot.focus.Dot color="#8658d6" key="dot"/>
+          <plot.focus.Dot color="#8658d6" key="dot"/>,
         ]}
         xDomainFrom={moment(dateRangeState.selectedMetricDateRange.from).toDate()}
         xDomainTo={moment(dateRangeState.selectedMetricDateRange.to).toDate()}
@@ -57,14 +62,23 @@ export const Performance = ({ metrics, item }: Props) => {
       <div className="bt b--black-075 gray pv3 ph3 flex items-center justify-between">
         <div className="flex items-center">
           {/*this icon needs to be loaded dynamically */}
-          <img src="/projects/assets/images/icn-branch.svg"
-            className="flex-shrink-0 mr2 dn db-l" width="16" height="16" alt="branch icon"/>
+          <img
+            src="/projects/assets/images/icn-branch.svg"
+            className="flex-shrink-0 mr2 dn db-l"
+            width="16"
+            height="16"
+            alt="branch icon"
+          />
           <label className="mr2">{item.branchName}</label>
 
           {/*this icon needs to be loaded dynamically */}
-          <img src="/projects/assets/images/icn-commit.svg"
+          <img
+            src="/projects/assets/images/icn-commit.svg"
             className="flex-shrink-0 mr2 dn db-l"
-            width="16" height="16" alt="pipeline icon"/>
+            width="16"
+            height="16"
+            alt="pipeline icon"
+          />
           <label className="mr2">{item.pipelineFileName}</label>
         </div>
 
@@ -95,8 +109,8 @@ export const Performance = ({ metrics, item }: Props) => {
 const Legend = ({
   icon,
   label,
-  isActive
-}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean, }) => {
+  isActive,
+}: { icon: VNode<HTMLElement>, label: VNode<HTMLElement>, isActive: boolean }) => {
   let className = `o-30`;
   if (isActive) {
     className = ``;

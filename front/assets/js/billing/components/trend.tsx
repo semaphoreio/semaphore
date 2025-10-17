@@ -1,5 +1,5 @@
 
-import * as types from "../types";
+import type * as types from "../types";
 import * as toolbox from "js/toolbox";
 
 interface Trendable {
@@ -13,7 +13,7 @@ enum TooltipType {
   Price,
 }
 
-const Icon = ({ item, type }: { item: Trendable, type: TooltipType, }) => {
+const Icon = ({ item, type }: { item: Trendable, type: TooltipType }) => {
   const trend = type == TooltipType.Usage ? item.usageTrend : item.priceTrend;
   switch (trend) {
     case `up`:
@@ -70,10 +70,10 @@ const Tooltip = (props: TooltipProps) => {
   return <toolbox.Tooltip anchor={trend} content={trendDetails}/>;
 };
 
-export const PriceTooltip = ({ item }: { item: Trendable, }) => {
+export const PriceTooltip = ({ item }: { item: Trendable }) => {
   return <Tooltip item={item} type={TooltipType.Price}/>;
 };
 
-export const UsageTooltip = ({ item }: { item: Trendable, }) => {
+export const UsageTooltip = ({ item }: { item: Trendable }) => {
   return <Tooltip item={item} type={TooltipType.Usage}/>;
 };

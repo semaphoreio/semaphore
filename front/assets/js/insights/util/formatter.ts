@@ -77,5 +77,5 @@ export const Formatter = {
 
   dateTime: (date: Date): string => {
     return moment(date).utc().format(`DD MMM YYYY HH:mm:ss`);
-  }
+  },
 };

@@ -1,16 +1,16 @@
-import { Dashboard, DashboardItem } from '../types/dashboard';
-import { Metric } from '../types/chart';
+import type { Dashboard, DashboardItem } from '../types/dashboard';
+import type { Metric } from '../types/chart';
 
 export type Action =
-  | { type: `SET_STATE`, state: Dashboard[], }
-  | { type: `DELETE_DASHBOARD`, id: string, }
-  | { type: `ADD_DASHBOARD`, dashboard: Dashboard, }
-  | { type: `UPDATE_DASHBOARD_NAME`, id: string, name: string, }
-  | { type: `ADD_DASHBOARD_ITEM`, dashboardId: string, item: DashboardItem, }
-  | { type: `DELETE_DASHBOARD_ITEM`, dashboardId: string, itemId: string, }
-  | { type: `UPDATE_DASHBOARD_ITEM_NAME`, dashboardId: string, itemId: string, name: string, }
-  | { type: `UPDATE_DASHBOARD_ITEM_DESCRIPTION`, dashboardId: string, itemId: string, description: string, }
-  | { type: `ADD_ITEM_METRICS`, itemId: string, metrics: Metric[], };
+  | { type: `SET_STATE`, state: Dashboard[] }
+  | { type: `DELETE_DASHBOARD`, id: string }
+  | { type: `ADD_DASHBOARD`, dashboard: Dashboard }
+  | { type: `UPDATE_DASHBOARD_NAME`, id: string, name: string }
+  | { type: `ADD_DASHBOARD_ITEM`, dashboardId: string, item: DashboardItem }
+  | { type: `DELETE_DASHBOARD_ITEM`, dashboardId: string, itemId: string }
+  | { type: `UPDATE_DASHBOARD_ITEM_NAME`, dashboardId: string, itemId: string, name: string }
+  | { type: `UPDATE_DASHBOARD_ITEM_DESCRIPTION`, dashboardId: string, itemId: string, description: string }
+  | { type: `ADD_ITEM_METRICS`, itemId: string, metrics: Metric[] };
 
 
 export interface State {

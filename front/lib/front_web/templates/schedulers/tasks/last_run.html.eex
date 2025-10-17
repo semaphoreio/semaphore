@@ -9,7 +9,7 @@
     <% else %>
       <div class="flex items-center justify-between tc pa3">
         <div class="flex items-center justify-around">
-          <span class="material-symbols-outlined md-24 mr3">hourglass_top</span>
+          <span class="material-symbols-outlined f1 mr3">hourglass_top</span>
           <p class="gray measure mb0">
             Waiting for your first task execution.
           </p>

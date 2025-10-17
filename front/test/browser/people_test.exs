@@ -259,7 +259,7 @@ defmodule Front.Browser.PeopleTest do
   defp choose_user(page, name) do
     page
     |> fill_in(Query.text_field("Search users and groups to add to project"), with: name)
-    |> sleep(500)
+    |> sleep(2000)
     |> send_keys([:enter])
     |> click(Query.css("button[id='add_members_btn']"))
   end

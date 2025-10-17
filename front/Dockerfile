@@ -47,9 +47,8 @@ RUN mix sentry_recompile && mix compile --warnings-as-errors
 # -- node stage
 FROM node:16-alpine AS node
 WORKDIR /assets
-COPY front/assets/package.json front/assets/package-lock.json ./
-RUN npm set progress=false && npm install
 COPY front/assets ./
+RUN npm ci --force
 # -- node stage
 
 # -- dev stage - for local development

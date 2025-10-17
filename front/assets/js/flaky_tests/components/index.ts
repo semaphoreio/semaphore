@@ -27,5 +27,5 @@ export {
   LabelList,
   ComposeBox,
   Actions,
-  Notification
+  Notification,
 };

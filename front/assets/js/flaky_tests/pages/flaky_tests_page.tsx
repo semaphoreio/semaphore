@@ -8,7 +8,8 @@ import { Notice } from "js/notice";
 import * as components from "../components";
 import { RequestStatus, Status } from "../types";
 import { FetchData } from "../network/request";
-import { FlakyTestItem, HistoryItem } from "../types/flaky_test_item";
+import type { HistoryItem } from "../types/flaky_test_item";
+import { FlakyTestItem } from "../types/flaky_test_item";
 import tippy from "tippy.js";
 import { useSearchParams } from "react-router-dom";
 

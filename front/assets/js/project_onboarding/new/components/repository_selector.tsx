@@ -281,7 +281,12 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
 
               {isLoading && (
                 <div className="flex items-center justify-center pa3">
-                  <toolbox.Asset path="images/spinner-2.svg" className="mr2" alt="spinner" style={{ width: `20px`, height: `20px` }}/>
+                  <toolbox.Asset
+                    path="images/spinner-2.svg"
+                    className="mr2"
+                    alt="spinner"
+                    style={{ width: `20px`, height: `20px` }}
+                  />
                   <span className="f5 black-60">Loading repositories...</span>
                 </div>
               )}
@@ -293,11 +298,16 @@ export const RepositorySelector = (props: RepositorySelectorProps) => {
             )}
             {providerState.selectedProvider?.type === `github_app` &&
               configState.githubAppInstallationUrl && (
-              <div id="new-project-repositories-button" className="dn" style={{ display: `block` }}>
+              <div
+                id="new-project-repositories-button"
+                className="dn"
+                style={{ display: `block` }}
+              >
                 <a
                   href={configState.githubAppInstallationUrl}
                   target="_blank"
-                  className="link db dark-gray pv3 ph2 bt b--black-10 hide-child hover-bg-row-highlight" rel="noreferrer"
+                  className="link db dark-gray pv3 ph2 bt b--black-10 hide-child hover-bg-row-highlight"
+                  rel="noreferrer"
                 >
                   <div className="flex">
                     <div className="flex-shrink-0 mt1 mr2">

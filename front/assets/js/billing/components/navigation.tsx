@@ -14,7 +14,7 @@ export const Navigation = () => {
   const displayProjects = config.projectSpendings;
   const hasPlans = config.availablePlans.length > 0;
 
-  const className = ({ isActive }: { isActive: boolean, }) => {
+  const className = ({ isActive }: { isActive: boolean }) => {
     return (
       `link db pv1 ph2 br3 ` +
       (isActive ? `white active bg-green` : `dark-gray hover-bg-lightest-gray`)

@@ -1,5 +1,5 @@
 import moment from "moment";
-import * as types from "./index";
+import type * as types from "./index";
 export class Metrics {
   metrics: Metric[];
 

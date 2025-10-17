@@ -1,4 +1,4 @@
-import { h } from "preact";
+import type { h } from "preact";
 import * as components from ".";
 import { useState } from "preact/compat";
 import styled from "styled-components";

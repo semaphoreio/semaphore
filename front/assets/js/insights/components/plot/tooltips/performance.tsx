@@ -1,8 +1,8 @@
 import { Fragment } from "preact";
-import * as types from "../../../types";
+import type * as types from "../../../types";
 import * as util from "../../../util";
 
-const Summary = ({ metric }: { metric: types.PipelinePerformance.Metric, }) => {
+const Summary = ({ metric }: { metric: types.PipelinePerformance.Metric }) => {
   return (
     <Fragment>
       <div className="flex justify-between">

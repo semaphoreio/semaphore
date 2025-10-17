@@ -1,6 +1,7 @@
-import {
+import type {
   Dispatch,
-  StateUpdater,
+  StateUpdater } from "preact/hooks";
+import {
   useContext,
   useEffect,
   useLayoutEffect,

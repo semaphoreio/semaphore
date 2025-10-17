@@ -1,4 +1,5 @@
-import { Fragment, VNode, createContext, createRef } from "preact";
+import type { VNode } from "preact";
+import { Fragment, createContext, createRef } from "preact";
 import * as d3 from "d3";
 import { useContext, useEffect, useLayoutEffect, useState } from "preact/hooks";
 import _ from "lodash";
@@ -21,7 +22,7 @@ const DefaultPlotState: PlotState = {
   width: 0,
 };
 
-const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[], }>({
+const PlotContext = createContext<{ plotState: PlotState, plotData: PlotData[] }>({
   plotState: DefaultPlotState,
   plotData: [],
 });
@@ -202,7 +203,12 @@ export const DateAxisX = () => {
   }, [yTranslation, plotState.xScale]);
 
   return (
-    <g className="x axis" style={{ cursor: `default` }} ref={xScaleRef} transform={`translate(0 ${yTranslation})`}></g>
+    <g
+      className="x axis"
+      style={{ cursor: `default` }}
+      ref={xScaleRef}
+      transform={`translate(0 ${yTranslation})`}
+    ></g>
   );
 };
 
@@ -254,7 +260,7 @@ export const LineChartLeft = (props: YScaleProps) => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
     d3.select(yScaleRef.current)
@@ -264,7 +270,12 @@ export const LineChartLeft = (props: YScaleProps) => {
 
   return (
     <Fragment>
-      <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(${plotState.width - 30} 0)`}></g>
+      <g
+        className="y axis"
+        style={{ cursor: `default` }}
+        ref={yScaleRef}
+        transform={`translate(${plotState.width - 30} 0)`}
+      ></g>
       <LineChart plotData={plotData} yScale={yScale}/>
     </Fragment>
   );
@@ -302,7 +313,7 @@ export const MoneyScaleY = () => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
 
@@ -312,7 +323,12 @@ export const MoneyScaleY = () => {
   }, [plotState.yScale, plotState.width, plotData]);
 
   return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef} transform={`translate(50 0)`}></g>
+    <g
+      className="y axis"
+      style={{ cursor: `default` }}
+      ref={yScaleRef}
+      transform={`translate(50 0)`}
+    ></g>
   );
 };
 
@@ -377,8 +393,16 @@ export const LineChart = (props: ChartProps) => {
 
   return (
     <Fragment>
-      <g ref={lineChartRef} className={props.className} style={props.style}/>
-      <g ref={dotRef} className={props.className} style={props.style}/>
+      <g
+        ref={lineChartRef}
+        className={props.className}
+        style={props.style}
+      />
+      <g
+        ref={dotRef}
+        className={props.className}
+        style={props.style}
+      />
     </Fragment>
   );
 };

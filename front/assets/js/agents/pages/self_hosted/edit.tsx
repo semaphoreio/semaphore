@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
 import * as stores from "js/agents/stores";
-import * as types from "js/agents/types";
-import { TargetedEvent } from "preact/compat";
+import type * as types from "js/agents/types";
+import type { TargetedEvent } from "preact/compat";
 import _ from "lodash";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment

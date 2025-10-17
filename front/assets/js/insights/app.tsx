@@ -28,7 +28,7 @@ export const Config = createContext<AppConfig>({
   availableDatesUrl: ``,
 });
 
-export const App = ({ config }: { config: AppConfig, }) => {
+export const App = ({ config }: { config: AppConfig }) => {
   return (
     <BrowserRouter basename={config.baseUrl}>
       <Config.Provider value={config}>

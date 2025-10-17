@@ -1,5 +1,5 @@
-import { ChartInterface } from './type';
-import * as types from '../../../types';
+import type { ChartInterface } from './type';
+import type * as types from '../../../types';
 import { createRef } from 'preact';
 import { useEffect } from 'preact/hooks';
 import * as d3 from 'd3';
@@ -7,7 +7,7 @@ import * as d3 from 'd3';
 interface Props extends ChartInterface {
   height: number;
   metrics: types.Chart.Metric[];
-  calculateOptimalRange: (metrics: types.Chart.Metric[]) => { min: number, max: number, };
+  calculateOptimalRange: (metrics: types.Chart.Metric[]) => { min: number, max: number };
 }
 
 export default ({ xScale, yScale, height, metrics, calculateOptimalRange }: Props) => {

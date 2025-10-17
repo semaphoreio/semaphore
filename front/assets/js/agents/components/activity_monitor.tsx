@@ -59,7 +59,11 @@ const LobbyItems = () => {
         in their branch, pull request and delivery queue
       </summary>
       {lobbyItems.map((item, idx) => (
-        <ActivityItem item={item} key={idx} inLobby={true}/>
+        <ActivityItem
+          item={item}
+          key={idx}
+          inLobby={true}
+        />
       ))}
     </details>
   );

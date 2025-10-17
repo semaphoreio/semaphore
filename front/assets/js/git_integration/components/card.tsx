@@ -1,5 +1,5 @@
-import { JSX } from "preact";
-import * as types from "../types";
+import type { JSX } from "preact";
+import type * as types from "../types";
 import { NavLink } from "react-router-dom";
 import { IntegrationStarter } from "./integration_starter";
 import { getProviderIcon } from "../../project_onboarding/new/utils/provider";

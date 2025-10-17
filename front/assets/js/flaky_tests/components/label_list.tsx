@@ -10,7 +10,7 @@ import * as toolbox from "js/toolbox";
 import styled from "styled-components";
 
 
-export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-center mt1` }: { testId: string, labels: string[], setLabels: any, labelClass?: string, }) => {
+export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-center mt1` }: { testId: string, labels: string[], setLabels: any, labelClass?: string }) => {
   const config = useContext(stores.Config.Context);
   const { state: filterState, dispatch: dispatchFilter } = useContext(stores.Filter.Context);
 
@@ -54,7 +54,7 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
       headers: {
         "Content-Type": `application/json`,
         "X-CSRF-Token": $(`meta[name='csrf-token']`).attr(`content`),
-      }
+      },
     }).then((response) => {
       if (response.status === 204) {
         return response;
@@ -78,19 +78,23 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
     setQuery(newQuery);
   };
 
-  const LabelLink = styled.a<{ $label: string, }>`
-    background-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 30) };
-    border-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 60) };
+  const LabelLink = styled.a<{ $label: string }>`
+    background-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 30) };
+    border-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 60) };
 
     &:hover {
-      background-color: ${({ $label }: { $label: string, }) => toolbox.Formatter.stringToHexColor($label, 60) };
+      background-color: ${({ $label }: { $label: string }) => toolbox.Formatter.stringToHexColor($label, 60) };
     }
   `;
 
-  const TagLink = ({ label }: { label: string, }) => {
+  const TagLink = ({ label }: { label: string }) => {
     return (
       <div className={labelClass}>
-        <LabelLink $label={label} className="link black ba ph2 pointer br3 br--left" onClick={() => { filterByLabel(label); }}>{label}</LabelLink>
+        <LabelLink
+          $label={label}
+          className="link black ba ph2 pointer br3 br--left"
+          onClick={() => { filterByLabel(label); }}
+        >{label}</LabelLink>
         <span className="self-stretch pointer material-symbols-outlined bg-washed-gray b--lightest-gray hover-bg-washed-red bt bb br b--gray br3 br--right" onClick={() => onDelete(label)}>
           close
         </span>
@@ -108,7 +112,7 @@ export const LabelList = ({ testId, labels, setLabels, labelClass = `flex items-
   );
 };
 
-const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
+const CreateLabel = ({ onCreate }: { onCreate: any } ) => {
   const inputRef = useRef<HTMLInputElement>();
 
   const [label, setLabel] = useState(``);
@@ -140,7 +144,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
     hide();
   };
 
-  return <Tippy placement="right"
+  return <Tippy
+    placement="right"
     allowHTML={true}
     interactive={true}
     theme="light"
@@ -149,7 +154,8 @@ const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
     onClickOutside={hide}
     content={
       <div className="flex items-center justify-between pa2">
-        <input ref={inputRef}
+        <input
+          ref={inputRef}
           className="mr1 form-control-sm"
           type="text"
           value={label}
@@ -158,7 +164,12 @@ const CreateLabel = ({ onCreate }: { onCreate: any, } ) => {
         />
         <button className="btn btn-tiny btn-primary" onClick={onClick}>OK</button>
       </div>
-    }>
-    <a className="pointer" data-tippy-content="Label this test for easier filtering" onClick={show}>+ add Label</a>
+    }
+  >
+    <a
+      className="pointer"
+      data-tippy-content="Label this test for easier filtering"
+      onClick={show}
+    >+ add Label</a>
   </Tippy>;
 };

@@ -86,7 +86,7 @@ export const ProjectStatus = ({
       void handleSkipOnboarding({
         skipOnboardingUrl: skipUrl,
         csrfToken,
-        projectUrl: projUrl
+        projectUrl: projUrl,
       });
     }
   };
@@ -97,7 +97,7 @@ export const ProjectStatus = ({
         const response = await fetch(repoConnectionUrl, {
           headers: {
             'X-CSRF-Token': csrfToken || ``,
-          }
+          },
         });
 
         if (!response.ok) {
@@ -223,8 +223,8 @@ const ProjectConnection = ({ data, onReload, projectName, csrfToken }: ProjectCo
           'X-CSRF-Token': csrfToken || ``,
         },
         body: JSON.stringify({
-          name_or_id: projectName
-        })
+          name_or_id: projectName,
+        }),
       });
 
       if (!response.ok) {
@@ -250,8 +250,8 @@ const ProjectConnection = ({ data, onReload, projectName, csrfToken }: ProjectCo
           'X-CSRF-Token': csrfToken || ``,
         },
         body: JSON.stringify({
-          name_or_id: projectName
-        })
+          name_or_id: projectName,
+        }),
       });
 
       if (!response.ok) {
@@ -276,7 +276,12 @@ const ProjectConnection = ({ data, onReload, projectName, csrfToken }: ProjectCo
             <div className="mb1">
               <label className="b mr1">Deploy Key</label>
               {isRegeneratingDeployKey ? (
-                <toolbox.Asset path="images/spinner-2.svg" width="20" height="20" class="v-mid"/>
+                <toolbox.Asset
+                  path="images/spinner-2.svg"
+                  width="20"
+                  height="20"
+                  class="v-mid"
+                />
               ) : (
                 <toolbox.Asset path="images/icn-passed.svg" class="v-mid"/>
               )}
@@ -312,7 +317,12 @@ const ProjectConnection = ({ data, onReload, projectName, csrfToken }: ProjectCo
             <div className="mb1">
               <label className="b mr1">Webhook</label>
               {isRegeneratingWebhook ? (
-                <toolbox.Asset path="images/spinner-2.svg" width="20" height="20" class="v-mid"/>
+                <toolbox.Asset
+                  path="images/spinner-2.svg"
+                  width="20"
+                  height="20"
+                  class="v-mid"
+                />
               ) : (
                 <toolbox.Asset path="images/icn-passed.svg" class="v-mid"/>
               )}

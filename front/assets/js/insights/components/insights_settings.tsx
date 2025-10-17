@@ -29,7 +29,7 @@ export const InsightsSettings = () => {
       ci_branch_name: branchState.ciBranchName,
       ci_pipeline_file_name: branchState.ciPipelineFileName,
       cd_branch_name: branchState.cdBranchName,
-      cd_pipeline_file_name: branchState.cdPipelineFileName
+      cd_pipeline_file_name: branchState.cdPipelineFileName,
     };
 
 
@@ -44,7 +44,7 @@ export const InsightsSettings = () => {
       method: `POST`,
       credentials: `same-origin`,
       body: JSON.stringify(data),
-      headers: Headers(`application/json`)
+      headers: Headers(`application/json`),
     })
       .then((response) => {
         if (!response.ok) {
@@ -68,7 +68,7 @@ export const InsightsSettings = () => {
           ciBranchName: json.ci_branch_name,
           ciPipelineFileName: json.ci_pipeline_file_name,
           cdBranchName: json.cd_branch_name,
-          cdPipelineFileName: json.cd_pipeline_file_name
+          cdPipelineFileName: json.cd_pipeline_file_name,
         } });
       }).catch((err) => {
         dispatchLoading({ type: `ADD_ERROR`, error: err });
@@ -90,15 +90,24 @@ export const InsightsSettings = () => {
 
             <div className="mt3">
               <label className="db f6">Branch</label>
-              <input type="text" className="form-control w6 mt2"
-                onInput={Setters(`SET_CI_BRANCH_NAME`)} value={branchState.ciBranchName} placeholder="master"/>
+              <input
+                type="text"
+                className="form-control w6 mt2"
+                onInput={Setters(`SET_CI_BRANCH_NAME`)}
+                value={branchState.ciBranchName}
+                placeholder="master"
+              />
             </div>
 
             <div className="mt3 mb2">
               <label className="db f6">Pipeline Path</label>
-              <input type="text" className="form-control w6 mt2"
-                onInput={Setters(`SET_CI_PIPELINE_FILE_NAME`)} value={branchState.ciPipelineFileName}
-                placeholder=".semaphore/semaphore.yml"/>
+              <input
+                type="text"
+                className="form-control w6 mt2"
+                onInput={Setters(`SET_CI_PIPELINE_FILE_NAME`)}
+                value={branchState.ciPipelineFileName}
+                placeholder=".semaphore/semaphore.yml"
+              />
             </div>
 
 
@@ -112,15 +121,24 @@ export const InsightsSettings = () => {
 
             <div className="mt3">
               <label className="db f6">Branch</label>
-              <input type="text" className="form-control w6 mt2"
-                onInput={Setters(`SET_CD_BRANCH_NAME`)} value={branchState.cdBranchName} placeholder="master"/>
+              <input
+                type="text"
+                className="form-control w6 mt2"
+                onInput={Setters(`SET_CD_BRANCH_NAME`)}
+                value={branchState.cdBranchName}
+                placeholder="master"
+              />
             </div>
 
             <div className="mt3">
               <label className="db f6">Pipeline Path</label>
-              <input type="text" className="form-control w6 mt2"
-                onInput={Setters(`SET_CD_PIPELINE_FILE_NAME`)} value={branchState.cdPipelineFileName}
-                placeholder=".semaphore/deployment.yml"/>
+              <input
+                type="text"
+                className="form-control w6 mt2"
+                onInput={Setters(`SET_CD_PIPELINE_FILE_NAME`)}
+                value={branchState.cdPipelineFileName}
+                placeholder=".semaphore/deployment.yml"
+              />
             </div>
           </div>
           <div className="mt3">

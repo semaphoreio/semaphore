@@ -8,12 +8,12 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_STATUS`, value: Status, }
-  | { type: `SET_LOADING`, }
-  | { type: `SET_LOADED`, }
-  | { type: `SET_ERROR`, }
-  | { type: `ADD_ERROR`, value: string, }
-  | { type: `CLEAN`, };
+  | { type: `SET_STATUS`, value: Status }
+  | { type: `SET_LOADING` }
+  | { type: `SET_LOADED` }
+  | { type: `SET_ERROR` }
+  | { type: `ADD_ERROR`, value: string }
+  | { type: `CLEAN` };
 
 export interface State {
   status: Status;

@@ -1,5 +1,5 @@
 import { createContext } from "preact";
-import { Provider } from "../../types";
+import type { Provider } from "../../types";
 
 export interface State {
   baseUrl: string;

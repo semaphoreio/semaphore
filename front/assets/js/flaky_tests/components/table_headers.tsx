@@ -2,7 +2,7 @@
 import { useContext } from "preact/hooks";
 import * as store from "../stores";
 
-export const TableHeaders = ({ tableSize }: { tableSize: number, }) => {
+export const TableHeaders = ({ tableSize }: { tableSize: number }) => {
   const { state, dispatch } = useContext(store.FlakyTest.Context);
   const sortOrder = state.sortOrder;
 
@@ -26,7 +26,11 @@ export const TableHeaders = ({ tableSize }: { tableSize: number, }) => {
     };
 
     return (
-      <div onClick={() => changeOrder(order) } className="pointer" style="user-select: none;">
+      <div
+        onClick={() => changeOrder(order) }
+        className="pointer"
+        style="user-select: none;"
+      >
         <div className={`flex ${className}`}>
           <span className="b">{displayName}</span>
           {isDesc && <i className="material-symbols-outlined">expand_more</i>}

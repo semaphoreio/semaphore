@@ -1,7 +1,8 @@
-import { Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import * as toolbox from "js/toolbox";
 import { useContext, useEffect, useState } from "preact/hooks";
-import { Plans } from "../types";
+import type { Plans } from "../types";
 import * as stores from "../stores";
 import { useSignal } from "@preact/signals";
 import { useNavigate } from "react-router-dom";
@@ -665,7 +666,7 @@ const PlanDescription = (props: {
   );
 };
 
-const PlanParallelism = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanParallelism = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const parallelism = plan.features.parallelism;
   return (
@@ -683,7 +684,7 @@ const PlanParallelism = (props: { plan: Plans.Plan, className?: string, }) => {
   );
 };
 
-const PlanMaxUsers = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanMaxUsers = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const maxUsers = plan.features.maxUsers;
   return (
@@ -731,7 +732,7 @@ const PlanSelfHostedAgents = (props: {
   );
 };
 
-const PlanSeatCost = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanSeatCost = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   return (
     <div className={`pv1 bb b--black-10 ph3 ${props.className}`}>
@@ -740,7 +741,7 @@ const PlanSeatCost = (props: { plan: Plans.Plan, className?: string, }) => {
   );
 };
 
-const PlanCloudMachines = (props: { plan: Plans.Plan, className?: string, }) => {
+const PlanCloudMachines = (props: { plan: Plans.Plan, className?: string }) => {
   const plan = props.plan;
   const cloudMachinesCount = (cloudMachines: number) => {
     switch (cloudMachines) {

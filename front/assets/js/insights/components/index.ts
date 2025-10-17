@@ -15,5 +15,5 @@ export {
   PipelineReliability,
   InsightsSettings,
   CustomDashboards,
-  DashboardItemCard
+  DashboardItemCard,
 };

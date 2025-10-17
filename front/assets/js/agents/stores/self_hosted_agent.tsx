@@ -1,14 +1,14 @@
 import { createContext } from "preact";
-import * as types from "../types";
+import type * as types from "../types";
 
 export type Action =
-  | { type: `SET_AGENT_TYPE`, value: types.SelfHosted.AgentType, }
-  | { type: `SET_AGENTS`, value: types.SelfHosted.Agent[], }
-  | { type: `SET_TOKEN`, value: string, }
-  | { type: `REVEAL_TOKEN`, }
-  | { type: `HIDE_TOKEN`, }
-  | { type: `JUST_CREATED`, }
-  | { type: `JUST_RESET`, };
+  | { type: `SET_AGENT_TYPE`, value: types.SelfHosted.AgentType }
+  | { type: `SET_AGENTS`, value: types.SelfHosted.Agent[] }
+  | { type: `SET_TOKEN`, value: string }
+  | { type: `REVEAL_TOKEN` }
+  | { type: `HIDE_TOKEN` }
+  | { type: `JUST_CREATED` }
+  | { type: `JUST_RESET` };
 
 export interface State {
   token: string;

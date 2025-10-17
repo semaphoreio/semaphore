@@ -1,12 +1,15 @@
-import { Fragment, render, VNode } from "preact";
+import type { VNode } from "preact";
+import { Fragment, render } from "preact";
 import { Modal } from "js/toolbox";
 import { useContext, useEffect, useReducer, useState } from "preact/hooks";
 import * as toolbox from "js/toolbox";
 import _ from "lodash";
-import { ChangeEvent } from "react-dom/src";
+import type { ChangeEvent } from "react-dom/src";
 import styled from "styled-components";
-import { Config, AppConfig, RawConfig } from "./config";
-import { AddPeopleState, AvailableProviderTypes, Collaborator, PeopleStateReducer, Person, PersonState, UserProvider } from "./types";
+import type { RawConfig } from "./config";
+import { Config, AppConfig } from "./config";
+import type { Person } from "./types";
+import { AddPeopleState, AvailableProviderTypes, Collaborator, PeopleStateReducer, PersonState, UserProvider } from "./types";
 
 export default function ({
   dom,
@@ -42,16 +45,21 @@ export const App = () => {
     <Fragment>
       <button className="btn btn-primary flex items-center" onClick={open}>
         <span className="material-symbols-outlined mr2">person_add</span>
-        {`Add people`}
+        Add people
       </button>
-      <Modal isOpen={isOpen} close={() => close(false)} title="Add new people" width="w-70-m">
+      <Modal
+        isOpen={isOpen}
+        close={() => close(false)}
+        title="Add new people"
+        width="w-70-m"
+      >
         <AddNewUsers close={close}/>
       </Modal>
     </Fragment>
   );
 };
 
-const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
+const AddNewUsers = (props: { close: (reload: boolean) => void }) => {
   const config = useContext(Config);
 
   const userProviders = AvailableProviderTypes.filter((type) =>
@@ -82,7 +90,7 @@ const AddNewUsers = (props: { close: (reload: boolean) => void, }) => {
   }, []);
 
   const userProviderBox = (provider: UserProvider) => {
-    const Link = (props: { icon: VNode, title: string, }) => {
+    const Link = (props: { icon: VNode, title: string }) => {
       return (
         <ActiveShadowLink
           className={`flex-grow-1 btn btn-secondary ${

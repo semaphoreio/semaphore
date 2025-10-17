@@ -1,5 +1,5 @@
 import * as toolbox from "js/toolbox";
-import {
+import type {
   Config,
   ServiceAccount,
   ServiceAccountWithToken,
@@ -68,8 +68,8 @@ export class ServiceAccountsAPI {
 
   async regenerateToken(
     id: string
-  ): Promise<toolbox.APIRequest.ApiResponse<{ api_token: string, }>> {
-    return toolbox.APIRequest.post<{ api_token: string, }>(
+  ): Promise<toolbox.APIRequest.ApiResponse<{ api_token: string }>> {
+    return toolbox.APIRequest.post<{ api_token: string }>(
       this.config.urls.regenerateToken(id)
     );
   }

@@ -55,12 +55,12 @@ export class State {
   }
 }
 
-export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, dom: HTMLElement, }) {
+export function OrganizationOktaGroupMappingApp({ config, dom }: { config: any, dom: HTMLElement }) {
   render(
     <Config.Provider value={State.fromJSON(config)}>
       <App/>
     </Config.Provider>,
-    dom,
+    dom
   );
 }
 
@@ -72,7 +72,7 @@ interface Mapping {
 interface MappingSectionProps {
   mappings: Mapping[];
   setMappings: (mappings: Mapping[]) => void;
-  options: { id: string, name: string, }[];
+  options: { id: string, name: string }[];
   leftLabel: string;
   rightLabel: string;
   leftPlaceholder: (index: number) => string;
@@ -166,12 +166,12 @@ const App = () => {
   const config = useContext(Config);
   const [groupMappings, setGroupMappings] = useState<Mapping[]>([
     { idpId: ``, semaphoreId: `` },
-    { idpId: ``, semaphoreId: `` }
+    { idpId: ``, semaphoreId: `` },
   ]);
   
   const [roleMappings, setRoleMappings] = useState<Mapping[]>([
     { idpId: ``, semaphoreId: `` },
-    { idpId: ``, semaphoreId: `` }
+    { idpId: ``, semaphoreId: `` },
   ]);
   
   const memberRole = config.roles.find(role => role.name === `Member`);
@@ -182,7 +182,7 @@ const App = () => {
     if (config.groupMapping && config.groupMapping.length > 0) {
       const initialGroupMappings = config.groupMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
-        semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_group_id || ``,
       }));
       setGroupMappings(initialGroupMappings);
     }
@@ -190,7 +190,7 @@ const App = () => {
     if (config.roleMapping && config.roleMapping.length > 0) {
       const initialRoleMappings = config.roleMapping.map((mapping: any) => ({
         idpId: mapping.okta_id || mapping.okta_group_id || ``,
-        semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``
+        semaphoreId: mapping.semaphore_id || mapping.semaphore_role_id || ``,
       }));
       setRoleMappings(initialRoleMappings);
     }

@@ -1,7 +1,7 @@
-import { h } from "preact";
+import type { h } from "preact";
 import * as components from "../components";
 import { useEffect, useState } from "preact/hooks";
-import * as types from "../types";
+import type * as types from "../types";
 import * as Instructions from "./instructions";
 
 export interface Instruction {

@@ -1,5 +1,5 @@
-import { DailySpending } from "./spending";
-import * as metric from "../metric";
+import type { DailySpending } from "./spending";
+import type * as metric from "../metric";
 import { Formatter } from "js/toolbox";
 
 
@@ -172,7 +172,7 @@ export class Group {
         name: this.name,
         value: spending.price,
         date: spending.day,
-        isEmpty: () => false
+        isEmpty: () => false,
       } as metric.Interface;
     });
 
@@ -184,7 +184,7 @@ export class Group {
         name: this.name,
         value: spending.priceUpToDay,
         date: spending.day,
-        isEmpty: () => false
+        isEmpty: () => false,
       } as metric.Interface;
     });
   }

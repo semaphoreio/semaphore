@@ -5,5 +5,5 @@ import { Summary } from "./summary";
 export {
   Suite,
   TestCase,
-  Summary
+  Summary,
 };

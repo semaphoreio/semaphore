@@ -10,10 +10,10 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_SEATS`, seats: Seats.Seat[], }
-  | { type: `ORDER_BY`, value: string, }
-  | { type: `SET_STATUS`, value: Status, }
-  | { type: `SET_STATUS_MESSAGE`, value: string, }
+  | { type: `SET_SEATS`, seats: Seats.Seat[] }
+  | { type: `ORDER_BY`, value: string }
+  | { type: `SET_STATUS`, value: Status }
+  | { type: `SET_STATUS_MESSAGE`, value: string }
   ;
 
 export interface State {
@@ -47,4 +47,4 @@ export const EmptyState: State = {
   orderBy : ``,
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

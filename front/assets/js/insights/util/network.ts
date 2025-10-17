@@ -14,6 +14,6 @@ export const Headers = (contentType = `application/x-www-form-urlencoded`) => {
   return {
     'Content-Type': contentType,
     'Idempotency-Key': uuid(),
-    'X-CSRF-Token': $(`meta[name='csrf-token']`).attr(`content`)
+    'X-CSRF-Token': $(`meta[name='csrf-token']`).attr(`content`),
   };
 };

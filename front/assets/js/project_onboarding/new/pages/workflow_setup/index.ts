@@ -6,5 +6,5 @@ import { StarterWorkflowTemplate } from "./starter_workflow_template";
 export {
   Projectenvironment,
   ExistingConfiguration,
-  StarterWorkflowTemplate
+  StarterWorkflowTemplate,
 };

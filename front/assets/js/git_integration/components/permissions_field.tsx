@@ -29,7 +29,11 @@ export const PermissionsField = ({ permissions, checkboxPermissions = false }: P
       <div className="f6 bg-washed-yellow mb3 ph3 pv2 ba b--black-075 br3">
         <ul className="list pl0 mb0">
           {permissionsList.map((permission, index) => (
-            <li key={index} className="mv2 ml2" style={{ listStyleType: `disc` }}>
+            <li
+              key={index}
+              className="mv2 ml2"
+              style={{ listStyleType: `disc` }}
+            >
               <span className={checkboxPermissions ? `` : `b`}>{permission.name}</span>
               {!checkboxPermissions && permission.level && (
                 <Fragment>

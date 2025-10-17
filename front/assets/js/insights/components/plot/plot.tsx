@@ -1,10 +1,11 @@
-import { cloneElement, createRef, Fragment, VNode } from "preact";
+import type { VNode } from "preact";
+import { cloneElement, createRef, Fragment } from "preact";
 import { useEffect, useLayoutEffect, useState } from "preact/hooks";
 import _ from "lodash";
 
 import * as d3 from "d3";
-import * as stores from "../../stores";
-import * as types from "../../types";
+import type * as stores from "../../stores";
+import type * as types from "../../types";
 import * as chart from "./index";
 
 interface Props {
@@ -57,7 +58,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
     },
     xScale: d3.scaleTime(),
     yScale: d3.scaleLinear(),
-    width: 0
+    width: 0,
   });
 
   useLayoutEffect(() => {
@@ -159,7 +160,11 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
 
 
   return (
-    <div ref={chartContainerRef} onMouseLeave={hideTooltip} onMouseEnter={showTooltip}>
+    <div
+      ref={chartContainerRef}
+      onMouseLeave={hideTooltip}
+      onMouseEnter={showTooltip}
+    >
       {isTooltipVisible() &&
         <chart.Tooltip
           top={state.margin.top}
@@ -182,7 +187,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
           {cloneElement(axisY, {
             translation: state.width - state.margin.left - state.margin.right,
             yScale: state.yScale,
-            metrics: metrics
+            metrics: metrics,
           })}
 
           {charts.map((chart) => {
@@ -212,7 +217,7 @@ export function Plot({ charts, loadingState, axisY, metrics, tooltip, focus, xDo
   );
 }
 
-const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.State, metrics: types.Chart.Metric[], }) => {
+const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.State, metrics: types.Chart.Metric[] }) => {
   const Overlay = () => {
     return (
       <div className="bg-white o-80 mt2" style={{ width: `100%`, height: `95%`, position: `absolute`, zIndex: `1` }}>
@@ -275,7 +280,7 @@ const ChartLoader = ({ loadingState, metrics }: { loadingState: stores.Loading.S
   );
 };
 
-const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number>, }) => {
+const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleTime<number, number> }) => {
   const xScaleRef = createRef<SVGGElement>();
   useEffect(() => {
     if(xScaleRef.current) {
@@ -291,6 +296,11 @@ const AxisX = ({ translation, xScale }: { translation: number, xScale: d3.ScaleT
   }, [translation, xScale]);
 
   return (
-    <g className="x axis" style={{ cursor: `default` }} ref={xScaleRef} transform={`translate(0, ${translation})`}></g>
+    <g
+      className="x axis"
+      style={{ cursor: `default` }}
+      ref={xScaleRef}
+      transform={`translate(0, ${translation})`}
+    ></g>
   );
 };

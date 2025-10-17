@@ -1,7 +1,7 @@
 import { createRef } from "preact";
 import { useEffect } from "preact/hooks";
 import * as d3 from "d3";
-import * as types from "../../../types";
+import type * as types from "../../../types";
 
 interface Props {
   yScale?: d3.ScaleLinear<number, number>;
@@ -42,7 +42,7 @@ export default({ yScale, translation, metrics }: Props) => {
       middown,
       mid,
       midup,
-      top
+      top,
     ].map(d => Math.floor(d)));
 
 
@@ -52,7 +52,11 @@ export default({ yScale, translation, metrics }: Props) => {
   }, [yScale, translation, metrics]);
 
   return (
-    <g className="y axis" style={{ cursor: `default` }} ref={yScaleRef}></g>
+    <g
+      className="y axis"
+      style={{ cursor: `default` }}
+      ref={yScaleRef}
+    ></g>
   );
 };
 

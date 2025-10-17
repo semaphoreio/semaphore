@@ -83,7 +83,7 @@ const buildOptions = {
 
 if (watch) {
   esbuild.context(buildOptions).then(async context => {
-    context.watch()
+    await context.watch()
     await copyAssets()
 
     const chokidar = require('chokidar')

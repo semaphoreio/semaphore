@@ -10,9 +10,9 @@ export enum Status {
 }
 
 export type Action =
-  | { type: `SET_PRICES`, prices: Spendings.DailySpending[], }
-  | { type: `SET_STATUS`, value: Status, }
-  | { type: `SET_STATUS_MESSAGE`, value: string, }
+  | { type: `SET_PRICES`, prices: Spendings.DailySpending[] }
+  | { type: `SET_STATUS`, value: Status }
+  | { type: `SET_STATUS_MESSAGE`, value: string }
   ;
 
 export interface State {
@@ -42,4 +42,4 @@ export const EmptyState: State = {
   prices: [],
 };
 
-export const Context = createContext<{ state: State, dispatch: (a: Action) => void, }>({ state: EmptyState, dispatch: () => undefined });
+export const Context = createContext<{ state: State, dispatch: (a: Action) => void }>({ state: EmptyState, dispatch: () => undefined });

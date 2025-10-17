@@ -1,13 +1,15 @@
-import Popper, { createPopper } from "@popperjs/core";
+import type Popper from "@popperjs/core";
+import { createPopper } from "@popperjs/core";
 import { isFunction } from "lodash";
-import { VNode, Fragment } from "preact";
+import type { VNode } from "preact";
+import { Fragment } from "preact";
 import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
-import { define } from 'preactement';
-import { Placement } from "tippy.js";
+import { define } from "preactement";
+import type { Placement } from "tippy.js";
 
 interface PopoverProps {
   anchor: VNode<any>;
-  content?: VNode<any> | (({ setVisible }: { setVisible: (visible: boolean) => void, }) => VNode<any>);
+  content?: VNode<any> | (({ setVisible }: { setVisible: (visible: boolean) => void }) => VNode<any>);
   className?: string;
   placement?: Placement;
   maxWidth?: number;
@@ -23,7 +25,8 @@ export const Popover = ({ anchor, content, className = `pa3`, placement = `botto
     const instance = createPopper(anchorEl.current as Element, popoverEl.current as HTMLElement, {
       placement: placement,
       modifiers: [
-        { name: `arrow`,
+        {
+          name: `arrow`,
           options: {
             element: popoverArrowEl.current,
           },
@@ -41,24 +44,23 @@ export const Popover = ({ anchor, content, className = `pa3`, placement = `botto
   }, [anchorEl, popoverEl]);
 
   const shouldClosePopover = (ev: MouseEvent) => {
-    if((popoverEl.current as HTMLElement).contains(ev.target as HTMLElement)) {
+    if ((popoverEl.current as HTMLElement).contains(ev.target as HTMLElement)) {
       return;
     }
 
-    if(anchorEl.current == ev.target) {
+    if (anchorEl.current == ev.target) {
       return;
     }
 
-    if(visible){
+    if (visible) {
       setVisible(false);
     }
   };
 
   useEffect(() => {
-    if(!visible) {
+    if (!visible) {
       popoverEl.current.removeAttribute(`data-show`);
-    }
-    else {
+    } else {
       popoverEl.current.setAttribute(`data-show`, ``);
       popper.forceUpdate();
     }
@@ -68,22 +70,32 @@ export const Popover = ({ anchor, content, className = `pa3`, placement = `botto
   }, [visible]);
 
   const renderContent = () => {
-    if(isFunction(content)) {
+    if (isFunction(content)) {
       return content({ setVisible });
-    }
-    else {
+    } else {
       return content;
     }
   };
 
-
   return (
     <Fragment>
-      <div className="sem-popover-anchor" ref={anchorEl} onClick={() => setVisible(!visible)}>
+      <div
+        className="sem-popover-anchor"
+        ref={anchorEl}
+        onClick={() => setVisible(!visible)}
+      >
         {anchor}
       </div>
-      <div ref={popoverEl} className={`sem-popover bg-white br2 ${className}`} style={{ "maxWidth": maxWidth }}>
-        <div className="sem-popover-arrow" data-popper-arrow ref={popoverArrowEl}></div>
+      <div
+        ref={popoverEl}
+        className={`sem-popover bg-white br2 ${className}`}
+        style={{ maxWidth: maxWidth }}
+      >
+        <div
+          className="sem-popover-arrow"
+          data-popper-arrow
+          ref={popoverArrowEl}
+        ></div>
         {renderContent()}
       </div>
     </Fragment>

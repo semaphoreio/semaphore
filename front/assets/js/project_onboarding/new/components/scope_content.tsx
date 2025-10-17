@@ -1,6 +1,6 @@
 import { Fragment } from "preact";
-import * as types from "../types";
-import * as stores from "../stores";
+import type * as types from "../types";
+import type * as stores from "../stores";
 import * as toolbox from "js/toolbox";
 import { getProviderName, getProviderIcon } from '../utils/provider';
 

@@ -18,12 +18,12 @@
         </div>
         <div class="flex flex-row-reverse items-center">
           <a href="#" aria-label="grid-view" aria-controls="deployments-container" aria-selected="false">
-            <span class="material-symbols-outlined md-36 link-blue mr2" >
+            <span class="material-symbols-outlined f1 link-blue mr2" >
               window
             </span>
           </a>
           <a href="#" aria-label="list-view" aria-controls="deployments-container" aria-selected="true">
-            <span class="material-symbols-outlined md-36 link-blue mr2 fill">
+            <span class="material-symbols-outlined f1 link-blue mr2 fill">
               table_rows
             </span>
           </a>

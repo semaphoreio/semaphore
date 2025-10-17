@@ -1,5 +1,6 @@
-import { JSONSummary } from "./json_types";
-import { GetState, State, Stateful } from "../util/stateful";
+import type { JSONSummary } from "./json_types";
+import type { State, Stateful } from "../util/stateful";
+import { GetState } from "../util/stateful";
 
 export class Summary implements Stateful {
   total: number;

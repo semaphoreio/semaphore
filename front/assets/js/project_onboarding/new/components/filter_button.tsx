@@ -28,7 +28,7 @@ export const FilterButton = ({ className = ``, onFiltersChange }: FilterButtonPr
 
   // Initialize with searchFields instead of labels
   const [selectedFilters, setSelectedFilters] = useState<FilterState>({
-    environment: initialEnvironment
+    environment: initialEnvironment,
   });
 
   useEffect(() => {

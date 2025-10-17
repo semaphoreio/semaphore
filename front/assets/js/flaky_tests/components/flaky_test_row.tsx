@@ -1,13 +1,13 @@
 import { Fragment } from "preact";
 import * as util from "../../insights/util";
 import { DisruptionHistoryChart } from "./index";
-import { FlakyTestItem } from "../types/flaky_test_item";
+import type { FlakyTestItem } from "../types/flaky_test_item";
 import { useContext, useEffect, useState } from "preact/hooks";
 import { Link } from "react-router-dom";
 import * as stores from "../stores";
 import * as components from "../components";
 
-export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
+export const FlakyTestRow = ({ item }: { item: FlakyTestItem }) => {
   const [labels, setLabels] = useState([``]);
   useEffect(() => {
     const labels = item.labels.map((label) => {
@@ -19,7 +19,7 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
   return (
     <div className="flex-m bt b--black-10 pv2 items-center">
       {/*Name*/}
-      <div className="w-25-m" style={{ wordBreak: `break-word` }}>
+      <div className="w-25-m truncate">
         <Name item={item}/>
       </div>
 
@@ -60,15 +60,12 @@ export const FlakyTestRow = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-const Name = ({ item }: { item: FlakyTestItem, }) => {
-  const { state: filterState, dispatch: dispatchFilter } = useContext(
-    stores.Filter.Context
-  );
+const Name = ({ item }: { item: FlakyTestItem }) => {
+  const { state: filterState, dispatch: dispatchFilter } = useContext(stores.Filter.Context);
 
   const onClick = (toAppend: string) => {
     const query = filterState.query;
-    const setQuery = (q: string) =>
-      dispatchFilter({ type: `SET_QUERY`, value: q });
+    const setQuery = (q: string) => dispatchFilter({ type: `SET_QUERY`, value: q });
     if (query.includes(toAppend)) return;
     const q = `${query} ${toAppend}`;
     setQuery(q);
@@ -80,22 +77,13 @@ const Name = ({ item }: { item: FlakyTestItem, }) => {
         <div>
           <Link to={item.testId}>{item.testName}</Link>
         </div>
-        <a
-          className="f5 mt1 black link underline-hover db pointer"
-          onClick={() => onClick(`@test.group:"${item.testGroup}"`)}
-        >
+        <a className="f5 mt1 black link underline-hover db pointer" onClick={() => onClick(`@test.group:"${item.testGroup}"`)}>
           {item.testGroup}
         </a>
-        <a
-          className="f6 gray link underline-hover db pointer"
-          onClick={() => onClick(`@test.runner:"${item.testRunner}"`)}
-        >
+        <a className="f6 gray link underline-hover db pointer" onClick={() => onClick(`@test.runner:"${item.testRunner}"`)}>
           {item.testRunner}
         </a>
-        <a
-          className="f6 gray link underline-hover db pointer"
-          onClick={() => onClick(`@test.suite:"${item.testSuite}"`)}
-        >
+        <a className="f6 gray link underline-hover db pointer" onClick={() => onClick(`@test.suite:"${item.testSuite}"`)}>
           {item.testSuite}
         </a>
       </div>
@@ -103,7 +91,7 @@ const Name = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem, }) => {
+const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem }) => {
   return (
     <Fragment>
       <div title={util.Formatter.dateTime(item.latestDisruptionTimestamp)}>
@@ -117,9 +105,7 @@ const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem, }) => {
         </a>
       </div>
       <div className="flex items-center ph2">
-        <span className="material-symbols-outlined b f4 db mr2 gray">
-          commit
-        </span>
+        <span className="material-symbols-outlined b f4 db mr2 gray">commit</span>
         <a
           href={item.latestDisruptionJobUrl}
           className="link gray underline-hover"

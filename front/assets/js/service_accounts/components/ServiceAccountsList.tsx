@@ -1,5 +1,5 @@
 import { useContext } from "preact/hooks";
-import { ServiceAccount } from "../types";
+import type { ServiceAccount } from "../types";
 import { ConfigContext } from "../config";
 import * as toolbox from "js/toolbox";
 
@@ -23,7 +23,7 @@ export const ServiceAccountsList = ({
   onRegenerateToken,
   onLoadMore,
   hasMore,
-  onCreateNew
+  onCreateNew,
 }: ServiceAccountsListProps) => {
   const config = useContext(ConfigContext);
 
@@ -32,7 +32,7 @@ export const ServiceAccountsList = ({
     return date.toLocaleDateString(`en-US`, {
       year: `numeric`,
       month: `short`,
-      day: `numeric`
+      day: `numeric`,
     });
   };
 

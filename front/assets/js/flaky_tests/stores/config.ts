@@ -25,5 +25,5 @@ export const Context = createContext<State>({
   removeFilterURL: ``,
   createFilterURL: ``,
   updateFilterURL: ``,
-  webhookSettingsURL: ``
+  webhookSettingsURL: ``,
 });

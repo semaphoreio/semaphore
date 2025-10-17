@@ -1,5 +1,5 @@
 export type Action<T> =
-  | { type: `SET_STATE`, state: T, }
+  | { type: `SET_STATE`, state: T }
   ;
 
 export type State<T> = T;
