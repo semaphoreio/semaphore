@@ -9,7 +9,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 )
 
-const describeToolName = "jobs.describe"
+const describeToolName = "jobs_describe"
 
 func newDescribeTool() mcp.Tool {
 	return mcp.NewTool(

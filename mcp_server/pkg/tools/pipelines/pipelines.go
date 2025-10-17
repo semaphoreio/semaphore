@@ -7,15 +7,17 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/sirupsen/logrus"
 
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
 const (
-	listToolName     = "pipelines.list"
-	describeToolName = "pipelines.describe"
+	listToolName     = "pipelines_list"
+	describeToolName = "pipelines_describe"
 	defaultLimit     = 20
 	maxLimit         = 100
 	errNoClient      = "pipeline gRPC endpoint is not configured"
@@ -164,6 +166,16 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		resp, err := client.ListKeyset(callCtx, request)
 		if err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":        "pipeline.ListKeyset",
+					"workflowId": workflowID,
+					"projectId":  request.ProjectId,
+					"limit":      limit,
+					"cursor":     request.PageToken,
+				}).
+				WithError(err).
+				Error("gRPC call failed")
 			return mcp.NewToolResultError(fmt.Sprintf("pipeline list RPC failed: %v", err)), nil
 		}
 
@@ -200,10 +212,26 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		resp, err := client.Describe(callCtx, &pipelinepb.DescribeRequest{PplId: pipelineID, Detailed: detailed})
 		if err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":        "pipeline.Describe",
+					"pipelineId": pipelineID,
+					"detailed":   detailed,
+				}).
+				WithError(err).
+				Error("gRPC call failed")
 			return mcp.NewToolResultError(fmt.Sprintf("pipeline describe RPC failed: %v", err)), nil
 		}
 
 		if status := resp.GetResponseStatus(); status != nil && status.GetCode() != pipelinepb.ResponseStatus_OK {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":        "pipeline.Describe",
+					"pipelineId": pipelineID,
+					"statusCode": status.GetCode(),
+				}).
+				WithField("statusMessage", strings.TrimSpace(status.GetMessage())).
+				Warn("pipeline describe returned non-OK status")
 			return mcp.NewToolResultError(strings.TrimSpace(status.GetMessage())), nil
 		}
 

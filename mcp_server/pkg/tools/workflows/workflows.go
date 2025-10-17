@@ -7,14 +7,16 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/sirupsen/logrus"
 
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
 const (
-	listToolName         = "workflows.list"
+	listToolName         = "workflows_list"
 	defaultLimit         = 20
 	maxLimit             = 100
 	missingWorkflowError = "workflow gRPC endpoint is not configured"
@@ -115,10 +117,28 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		resp, err := client.ListKeyset(callCtx, request)
 		if err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":       "workflow.ListKeyset",
+					"projectId": projectID,
+					"limit":     limit,
+					"cursor":    request.PageToken,
+					"branch":    request.BranchName,
+					"requester": request.RequesterId,
+				}).
+				WithError(err).
+				Error("gRPC call failed")
 			return mcp.NewToolResultError(fmt.Sprintf("workflow list RPC failed: %v", err)), nil
 		}
 
 		if err := shared.CheckStatus(resp.GetStatus()); err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":       "workflow.ListKeyset",
+					"projectId": projectID,
+				}).
+				WithError(err).
+				Warn("workflow list returned non-OK status")
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 

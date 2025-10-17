@@ -8,15 +8,17 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	"github.com/sirupsen/logrus"
 
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
 const (
-	logsToolName         = "jobs.logs"
+	logsToolName         = "jobs_logs"
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
@@ -103,10 +105,24 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 
 	resp, err := client.GetLogEvents(callCtx, request)
 	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":   "loghub.GetLogEvents",
+				"jobId": jobID,
+			}).
+			WithError(err).
+			Error("gRPC call failed")
 		return mcp.NewToolResultError(fmt.Sprintf("loghub RPC failed: %v", err)), nil
 	}
 
 	if err := shared.CheckResponseStatus(resp.GetStatus()); err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":   "loghub.GetLogEvents",
+				"jobId": jobID,
+			}).
+			WithError(err).
+			Warn("loghub returned non-OK status")
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
@@ -142,6 +158,13 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID st
 
 	resp, err := client.GenerateToken(callCtx, request)
 	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":   "loghub2.GenerateToken",
+				"jobId": jobID,
+			}).
+			WithError(err).
+			Error("gRPC call failed")
 		return mcp.NewToolResultError(fmt.Sprintf("loghub2 RPC failed: %v", err)), nil
 	}
 

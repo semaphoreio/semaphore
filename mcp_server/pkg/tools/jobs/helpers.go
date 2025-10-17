@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
@@ -21,10 +24,24 @@ func fetchJob(ctx context.Context, api internalapi.Provider, jobID string) (*job
 
 	resp, err := client.Describe(callCtx, &jobpb.DescribeRequest{JobId: jobID})
 	if err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":   "jobs.Describe",
+				"jobId": jobID,
+			}).
+			WithError(err).
+			Error("gRPC call failed")
 		return nil, fmt.Errorf("describe job RPC failed: %w", err)
 	}
 
 	if err := shared.CheckResponseStatus(resp.GetStatus()); err != nil {
+		logging.ForComponent("rpc").
+			WithFields(logrus.Fields{
+				"rpc":   "jobs.Describe",
+				"jobId": jobID,
+			}).
+			WithError(err).
+			Warn("describe job returned non-OK status")
 		return nil, err
 	}
 
