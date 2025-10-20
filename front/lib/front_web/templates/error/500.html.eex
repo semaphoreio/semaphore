@@ -56,7 +56,7 @@
       <div class="mw6 center br3 shadow-1 pv5 bg-white ph3">
         <h1 class="fw3 lh-solid mb3" style="font-size: 112px">500</h1>
         <h2 class="f4 fw5 black-80 mb0">There’s a problem with Semaphore</h2>
-        <p class="f4 black-80 mb3=0">Try again or check <a href="https://status.<%= Application.fetch_env!(:front, :domain) %>" class="link black-50 hover-black-80">Semaphore Status →</a></p>
+        <p class="f4 black-80 mb3=0">Try again or check <a href="<%= Application.fetch_env!(:front, :status_page_url) %>" class="link black-50 hover-black-80">Semaphore Status →</a></p>
       </div>
     </div>
 
