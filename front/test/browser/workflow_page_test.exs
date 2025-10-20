@@ -42,6 +42,53 @@ defmodule Front.Browser.WorkflowPage do
       assert_text(page, "Staging")
     end
 
+    test "promotions with unicode characters (emoji) are displayed correctly", params do
+      switch = params.switch
+      Support.Stubs.Switch.add_target(switch, name: "Deploy 🚀 Production")
+
+      page = open(params)
+
+      assert_text(page, "Deploy 🚀 Production")
+    end
+
+    test "promotions with accented characters are displayed correctly", params do
+      switch = params.switch
+      Support.Stubs.Switch.add_target(switch, name: "Déploiement Français")
+
+      page = open(params)
+
+      assert_text(page, "Déploiement Français")
+    end
+
+    test "promotions with CJK characters are displayed correctly", params do
+      switch = params.switch
+      Support.Stubs.Switch.add_target(switch, name: "部署到生产环境")
+
+      page = open(params)
+
+      assert_text(page, "部署到生产环境")
+    end
+
+    test "promotions with single quotes are displayed and clickable", params do
+      switch = params.switch
+      Support.Stubs.Switch.add_target(switch, name: "Publish 'my-package' to Production")
+
+      page = open(params)
+
+      assert_text(page, "Publish 'my-package' to Production")
+      assert find(page, Query.button("Publish 'my-package' to Production"))
+    end
+
+    test "promotions with mixed unicode and special characters work correctly", params do
+      switch = params.switch
+      Support.Stubs.Switch.add_target(switch, name: "Deploy 'app' 🎉 to Staging")
+
+      page = open(params)
+
+      assert_text(page, "Deploy 'app' 🎉 to Staging")
+      assert find(page, Query.button("Deploy 'app' 🎉 to Staging"))
+    end
+
     test "If project is public, show blocks, but promotions should be disabled", params do
       Support.Stubs.PermissionPatrol.remove_all_permissions()
 
