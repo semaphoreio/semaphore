@@ -147,12 +147,13 @@ sem create notifications new-releases \
     --slack-channels "#dev-team,#qa-team"
 ```
 
-The `--branches`, `--projects` and `--pipelines` options accept regular expressions. For example:
+The `--branches`, `--tags`, `--projects`, and `--pipelines` options accept regular expressions. For example:
 
 ```shell title="Sending Slack notifications on branches"
 sem create notifications example \
     --projects "/.*api$/" \
     --branches "master,/hotfix\/.*/" \
+    --tags "/-rc$/" \
     --pipelines "/prod-.*/" \
     --slack-endpoint <slack-webhook-endpoint>
 ```
