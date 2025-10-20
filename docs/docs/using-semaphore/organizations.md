@@ -241,9 +241,9 @@ To learn more, see the [notification documentation](./notifications.md)
 
 ### Initialization agent {#init-agent}
 
-Some types of pipelines require [initialization job](./pipelines#init-job) to evaluate and compile the them before the workload beings.
+Some types of pipelines require [initialization job](./pipelines#init-job) to evaluate and compile them before the workload begins.
 
-Semaphore tries to pick the best type of agent automatically but you change it for the whole organization. This is particularly useful when you are using [self-hosted agents](./self-hosted).
+Semaphore tries to pick the best type of agent automatically, but you can change it for the whole organization. This is particularly useful when you are using [self-hosted agents](./self-hosted).
 
 To change the initialization job agent for all your [projects](./projects) in your organization, follow these steps:
 
