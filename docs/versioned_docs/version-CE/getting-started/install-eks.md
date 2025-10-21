@@ -149,7 +149,7 @@ Install Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.4.0 \
+  --version v1.5.0 \
   --timeout 30m \
   --set global.domain.name="${DOMAIN}" \
   --set ingress.ssl.certName="${CERT_NAME}" \
@@ -204,12 +204,21 @@ You should be greeted with the onboarding guide.
 
 ![Onboarding guide screen](./img/on-boarding-guide.jpg)
 
+## Step 8 - Set the initialization agent
+
+Define the agent type that handles pipeline initialization:
+
+1. Open the [server settings menu](../using-semaphore/organizations#org-settings)
+2. Select **Initialization jobs**
+3. Select one agent from the list
+4. Press **Save Changes**, *you must save changes even if the correct option was already selected*
+
 ## Post-installation tasks
 
 Once your have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
+- [Invite users](../using-semaphore/user-management#people): invite users to your instance so they can start working on projects
 - [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 

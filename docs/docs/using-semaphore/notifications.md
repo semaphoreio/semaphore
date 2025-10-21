@@ -8,7 +8,7 @@ Get notified via Slack or any other webhook-based service when important things 
 
 ## Slack and webhook notifications {#slack-notifications}
 
-Send notifications to Slack and other webhook-based services. Notifications are sent when a pipeline finishes running so your team get instant feedback on the result. 
+Send notifications to Slack and other webhook-based services. Notifications are sent when a pipeline finishes running so your team get instant feedback on the result.
 
 To set up a Slack notification, first you need to configure an [incoming webhook](https://slack.com/apps/A0F7XDUAZ-incoming-webhooks) in your Slack workspace.
 
@@ -31,11 +31,12 @@ Notifications are only be sent to people with access to the project. If you are 
 
 <Steps>
 
-1. Type the name of the notification
-2. Type the name of the rule to fires the notification
+1. Type a name for your notification
+2. Define the name of a rule that fires the notification
 3. You can supply optional filters for this rule:
    - **Projects**: comma-separated list of [projects](./projects) where it applies
    - **Branches**: comma-separated list of Git branches
+   - **Tags**: comma-separated list of Git tags
    - **Pipelines**: comma-separated list [pipeline](./pipelines) YAML files that need to run in order to fire the notification
    - **Results**: comma-separated list of results. Valid values are: "passed", "failed", "stopped", or "canceled"
 
@@ -50,10 +51,9 @@ Notifications are only be sent to people with access to the project. If you are 
 
 </Steps>
 
-
 :::note
 
-Regular expressions must wrapped in forward slashes, e.g. `/.*/` matches all values. You can use regular expressions in Projects, Branches, and Pipelines.
+Regular expressions must wrapped in forward slashes, e.g. `/.*/` matches all values. You can use regular expressions in Projects, Branches, Tags, and Pipelines.
 
 :::
 
@@ -74,7 +74,6 @@ To send Slack notifications:
 </Steps>
 
 To send notifications to other webhook-based services:
-
 
 <Steps>
 
@@ -97,7 +96,6 @@ The value contained in the secret is sent along with the payload on notification
 
 :::
 
-
 At this point, you can create additional rules or save the changes by pressing **Save Notification**.
 
 </TabItem>
@@ -117,17 +115,16 @@ sem create notification <name> \
     --slack-endpoint <slack-webhook-endpoint>
 ```
 
-
 Use the [Slack webhook](https://slack.com/help/articles/360041352714-Build-a-workflow--Create-a-workflow-that-starts-outside-of-Slack) for your Slack Workspace
 
-For example, to create a notification on the "web", "cli", and "api" projects on the "master" branch:
-
+For example, to create a notification on the "web", "cli", and "api" projects on the "master" branch **or** on tags ending with "-rc" (like "v1.0-rc")
 
 ```shell title="Sending Slack notifications on a list of projects"
 sem create notification master-pipelines \
     --projects "web,cli,api" \
     --branches master \
-    --slack-endpoint <slack-webhook-endpoint>
+    --tag "/-rc$/" \
+    --slack-cndpoint <slack-webhook-endpoint>
 ```
 
 You can enable notifications only for a subset of the [pipelines](./pipelines):
@@ -150,12 +147,13 @@ sem create notifications new-releases \
     --slack-channels "#dev-team,#qa-team"
 ```
 
-The `--branches`, `--projects` and `--pipelines` options accept regular expressions. For example:
+The `--branches`, `--tags`, `--projects`, and `--pipelines` options accept regular expressions. For example:
 
 ```shell title="Sending Slack notifications on branches"
 sem create notifications example \
     --projects "/.*api$/" \
     --branches "master,/hotfix\/.*/" \
+    --tags "/-rc$/" \
     --pipelines "/prod-.*/" \
     --slack-endpoint <slack-webhook-endpoint>
 ```
@@ -174,15 +172,15 @@ sem create notification <name> \
     --webhook-endpoint <webhook-endpoint>
 ```
 
-You can secure the notification by adding a secret. That way, the receiving endpoint can validate the payload. 
+You can secure the notification by adding a secret. That way, the receiving endpoint can validate the payload.
 
 To add a password to your notification:
-
 
 <Steps>
 
 1. Create a organization [secret](./secrets#org-secrets) containing the environment variable `WEBHOOK_SECRET` and a secret value. Remember the name of this secret, e.g. "mywebhook-secret"
 2. Add `--webhook-secret` to the command:
+
     ```shell title="Securing a webhook-based notification"
     sem create notifications <name> \
         --webhook-endpoint <webhook-endpoint> \
@@ -197,11 +195,8 @@ Semaphore includes the signature in the `X-Semaphore-Signature-256` header when 
 
 :::
 
-
 </TabItem>
 </Tabs>
-
-
 
 ## Manage notifications from the CLI
 

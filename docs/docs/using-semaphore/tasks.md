@@ -20,7 +20,6 @@ The main use cases for tasks are to:
 - Execute maintenance chores such as such database backups
 - Running exceptional corrective actions such as pruning the [cache](./jobs#cache)
 
-
 ## Limitations {#limitations}
 
 Scheduled tasks have some limitations:
@@ -50,21 +49,21 @@ To create a task, open your project and follow these steps. You can create tasks
 
     ![Task creation step 1: name and description](./img/task-create-1.jpg)
 
-5. Type the repository branch and [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that branch. It doesn't need (but it can) to be connected with a promotion to any other pipeline
-6. Press **Next**
+5. You can run the task on a given branch or tag. Select either **branch** or **tag** and type the desired value.
+
+6. Type the [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that reference. It doesn't need to (but it can) to be connected with a promotion to any other pipeline. Press **Next**
 
     ![Task creation step 2: branch and pipeline](./img/task-create-2.jpg)
 
-7. Optionally, you can add parameters. These work exactly the same as [parameterized promotions](./promotions#parameters)
+7. Optionally, you can add parameters. If your pipeline uses [parameters](./promotions#parameters), you can define their values for the task execution. Press **Next**
 
     ![Task creation step 3: parameters](./img/task-create-3.jpg)
 
-8. Press **Next**
-9. Define the schedule using [crontab syntax](https://crontab.guru/). The example below is running Check the option "Unscheduled" if you want to only run the task manually
+8. Define the schedule using [crontab syntax](https://crontab.guru/). The example below is running Check the option "Unscheduled" if you want to only run the task manually
 
     ![Task creation step 4: schedule](./img/task-create-4.jpg)
 
-10. Press **Next** and **Create**
+9. Press **Next** and **Create**
 
 </Steps>
 
@@ -87,6 +86,7 @@ You can add tasks by editing the project using the [Semaphore command line tool]
       description: "This is a test project"
     # ...
     ```
+
 3. Add a `task` section. Each item in the list is a task. The example below shows two tasks:
    - Task "nightly-deploys" runs the `nighthly-deploys.yml` on "master" branch pipeline at 12:15 am every day.
    - Task "canary-setup" runs the same pipeline in "develop" branch with [parameters](./promotions#parameters)
@@ -109,6 +109,13 @@ You can add tasks by editing the project using the [Semaphore command line tool]
               - name: CANARY_VERSION
                 required: true
                 default_value: "1.0.0"
+    # task 3 with tag
+        - name: release-deploy
+          reference: 
+            type: tag
+            value: v1.0.0
+          scheduled: false
+          pipeline_file: .semaphore/deploy.yml
     ```
 
 4. Save the file to submit your changes
@@ -127,7 +134,6 @@ Go to the **Tasks** tab in your project to view the configured tasks.
 Press the **View** button to view the execution log for this task.
 
 ![Viewing the task history](./img/view-task.jpg)
-
 
 ## How to run tasks manually {#run-tasks}
 

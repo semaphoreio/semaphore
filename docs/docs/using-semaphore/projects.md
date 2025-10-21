@@ -39,7 +39,7 @@ Go to Semaphore, press **+Create New** and then press **Choose repository**
     </div>
     </details>
 
-3. Optionally, [add people](./organizations#people) to the project. Press **Continue**
+3. Optionally, [add people](./user-management#people) to the project. Press **Continue**
 
     <details>
     <summary>Show me</summary>
@@ -262,7 +262,7 @@ Create custom roles to give your users the precise permissions they need.
 
 ### How to change the project's owner {#owner-change}
 
-Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the organization](./organizations#add-people).
+Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the organization](./user-management#add-people).
 
 ![Changing project owner](./img/change-project-owner.jpg)
 

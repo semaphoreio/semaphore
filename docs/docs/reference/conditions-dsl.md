@@ -154,6 +154,32 @@ See [change detection strategy](../using-semaphore/monorepo#strategies) to learn
 
 See [change detection examples](../using-semaphore/monorepo#examples) for more `change_in` examples.
 
+## Using Parameters in Conditions {#parameters}
+
+If your pipeline is started via [parameterized promotions](../using-semaphore/promotions#parameters) or a parameterized task run, you can access the values of the parameters in your conditions using the following syntax:
+
+```yaml
+${{parameters.PARAMETER_NAME}}
+```
+
+Using parameters in your conditions allows things such as running a job when the environment is production:
+
+```yaml
+  run:
+    when: "'${{parameters.ENV}}' = 'prod' AND branch = 'master'"
+```
+
+Or even [auto-promoting](../using-semaphore/promotions#automatic-promotions). This example only start a pipeline called `deploy.yml` when the variable `DEPLOY` is true:
+
+```yaml
+promotions:
+  - name: Deploy
+    pipeline_file: deploy.yml
+  auto_promote:
+    when: "'${{parameters.DEPLOY}}' = 'true'"
+```
+
+
 ## Formal syntax definition {#definition}
 
 This section shows the formal language definition for conditions using the [Extended Backus-Naur Form](https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form) (EBNF) notation.
