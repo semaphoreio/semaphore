@@ -310,21 +310,13 @@ export var App = {
 
     const syncPeopleEl = document.querySelector(".app-sync-people");
     if (syncPeopleEl) {
-      const config = JSON.parse(syncPeopleEl.dataset.config);
-      SyncPeople({ dom: syncPeopleEl, config });
+      SyncPeople({ dom: syncPeopleEl, config: syncPeopleEl.dataset });
     }
 
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
       EditPerson({
         dom: editPersonAppRoot,
         config: editPersonAppRoot.dataset
-      })
-    });
-
-    document.querySelectorAll(".app-sync-people").forEach((syncPeopleAppRoot) => {
-      SyncPeople({
-        dom: syncPeopleAppRoot,
-        config: syncPeopleAppRoot.dataset
       })
     });
   },
