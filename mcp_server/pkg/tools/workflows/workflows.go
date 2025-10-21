@@ -16,43 +16,84 @@ import (
 )
 
 const (
-	listToolName         = "workflows_list"
+	searchToolName       = "project_workflows_search"
+	legacyListToolName   = "workflows_list"
 	defaultLimit         = 20
 	maxLimit             = 100
 	missingWorkflowError = "workflow gRPC endpoint is not configured"
 )
 
+const (
+	searchToolDescription = `Search recent workflows for a project (most recent first).
+
+Use this when you need to answer:
+- "Show the last N workflows for project X"
+- "List failed workflows on the main branch"
+- "Who triggered the latest deployment workflow?"
+
+- organization_id: identify which organization’s project you are querying (required)
+- branch: limit results to a specific branch (e.g., "main" or "release/*")
+- cursor: paginate through older results using the previous response's nextCursor
+- limit: number of workflows to return (default 20, max 100)
+- All results are scoped to the authenticated user (from the X-Semaphore-User-ID header)
+
+Response modes:
+- summary (default): workflow ID, branch, triggered by, commit SHA, created time
+- detailed: adds pipeline IDs, rerun metadata, and repository IDs
+
+Examples:
+- project_workflows_search(project_id="...", organization_id="...", limit=10)
+- project_workflows_search(project_id="...", organization_id="...", branch="main", mode="detailed")
+- project_workflows_search(project_id="...", organization_id="...", cursor="opaque-token-from-previous-call")
+
+Next steps:
+- Call jobs_logs_tail(job_id="...") after identifying failing jobs
+- Use project_workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
+
+	legacyToolDescription = `Legacy alias for project_workflows_search. Prefer project_workflows_search for up-to-date documentation, filters, and response formatting.`
+)
+
 // Register wires the workflows tool into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
-	s.AddTool(newListTool(), listHandler(api))
+	handler := listHandler(api)
+	s.AddTool(newTool(searchToolName, searchToolDescription), handler)
+	s.AddTool(newTool(legacyListToolName, legacyToolDescription), handler)
 }
 
-func newListTool() mcp.Tool {
+func newTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
-		listToolName,
-		mcp.WithDescription("List workflows for a project."),
+		name,
+		mcp.WithDescription(description),
 		mcp.WithString("project_id",
 			mcp.Required(),
-			mcp.Description("Project UUID to scope the workflow search."),
+			mcp.Description("Project UUID that scopes the workflow search. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithString("organization_id",
-			mcp.Description("Optional organization UUID filter."),
+			mcp.Required(),
+			mcp.Description("Organization UUID associated with the project. Keep this consistent across subsequent tool calls."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithString("branch",
-			mcp.Description("Filter workflows by branch name."),
-		),
-		mcp.WithString("requester_id",
-			mcp.Description("Filter workflows by the originating requester."),
+			mcp.Description("Optional branch filter. Supports exact matches (e.g., \"main\")."),
 		),
 		mcp.WithString("cursor",
-			mcp.Description("Opaque pagination cursor returned by previous calls."),
+			mcp.Description("Pagination token from a prior call's nextCursor. Use to fetch older workflows."),
 		),
 		mcp.WithNumber("limit",
-			mcp.Description("Maximum number of workflows to return."),
+			mcp.Description("Number of workflows to return (1-100). Defaults to 20."),
 			mcp.Min(1),
 			mcp.Max(maxLimit),
 			mcp.DefaultNumber(defaultLimit),
 		),
+		mcp.WithString("mode",
+			mcp.Description("Response detail. Use 'summary' for compact output; 'detailed' adds pipeline IDs and rerun metadata."),
+			mcp.Enum("summary", "detailed"),
+			mcp.DefaultString("summary"),
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithIdempotentHintAnnotation(true),
+		mcp.WithOpenWorldHintAnnotation(true),
 	)
 }
 
@@ -82,9 +123,42 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(missingWorkflowError), nil
 		}
 
-		projectID, err := req.RequireString("project_id")
+		projectIDRaw, err := req.RequireString("project_id")
 		if err != nil {
+			return mcp.NewToolResultError(`Missing required argument: project_id. Provide the project UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).`), nil
+		}
+		projectID := strings.TrimSpace(projectIDRaw)
+		if err := shared.ValidateUUID(projectID, "project_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		orgIDRaw, err := req.RequireString("organization_id")
+		if err != nil {
+			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by core_organizations_list.`), nil
+		}
+		orgID := strings.TrimSpace(orgIDRaw)
+		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
+		}
+
+		branch := strings.TrimSpace(req.GetString("branch", ""))
+		cursor := strings.TrimSpace(req.GetString("cursor", ""))
+
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`%v
+
+The authentication layer must inject the X-Semaphore-User-ID header so we can scope workflow searches to the authenticated caller.
+
+Troubleshooting:
+- Ensure requests pass through the auth proxy
+- Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Retry once the header is present`, err)), nil
 		}
 
 		limit := req.GetInt("limit", defaultLimit)
@@ -97,20 +171,16 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		request := &workflowpb.ListKeysetRequest{
 			ProjectId: projectID,
 			PageSize:  int32(limit),
-			PageToken: strings.TrimSpace(req.GetString("cursor", "")),
+			PageToken: cursor,
 			Order:     workflowpb.ListKeysetRequest_BY_CREATION_TIME_DESC,
 			Direction: workflowpb.ListKeysetRequest_NEXT,
 		}
 
-		if org := strings.TrimSpace(req.GetString("organization_id", "")); org != "" {
-			request.OrganizationId = org
-		}
-		if branch := strings.TrimSpace(req.GetString("branch", "")); branch != "" {
+		request.OrganizationId = orgID
+		if branch != "" {
 			request.BranchName = branch
 		}
-		if requester := strings.TrimSpace(req.GetString("requester_id", "")); requester != "" {
-			request.RequesterId = requester
-		}
+		request.RequesterId = userID
 
 		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
 		defer cancel()
@@ -119,16 +189,26 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":       "workflow.ListKeyset",
-					"projectId": projectID,
-					"limit":     limit,
-					"cursor":    request.PageToken,
-					"branch":    request.BranchName,
-					"requester": request.RequesterId,
+					"rpc":        "workflow.ListKeyset",
+					"projectId":  projectID,
+					"limit":      limit,
+					"cursor":     cursor,
+					"branch":     branch,
+					"userId":     userID,
+					"mode":       mode,
+					"hasOrgId":   orgID != "",
+					"legacyTool": false,
 				}).
 				WithError(err).
-				Error("gRPC call failed")
-			return mcp.NewToolResultError(fmt.Sprintf("workflow list RPC failed: %v", err)), nil
+				Error("workflow list RPC failed")
+			return mcp.NewToolResultError(fmt.Sprintf(`Workflow list RPC failed: %v
+
+Possible causes:
+- Project does not exist or you lack access rights
+- Internal workflow service is unavailable (retry shortly)
+- Network connectivity issues between MCP server and workflow service
+
+Try reducing the limit or removing filters to see if results return.`, err)), nil
 		}
 
 		if err := shared.CheckStatus(resp.GetStatus()); err != nil {
@@ -139,7 +219,12 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 				}).
 				WithError(err).
 				Warn("workflow list returned non-OK status")
-			return mcp.NewToolResultError(err.Error()), nil
+			return mcp.NewToolResultError(fmt.Sprintf(`Request failed: %v
+
+Double-check that:
+- project_id is correct
+- You have permission to view workflows for this project
+- The organization is active and not suspended`, err)), nil
 		}
 
 		workflows := make([]summary, 0, len(resp.GetWorkflows()))
@@ -164,8 +249,112 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			result.NextCursor = token
 		}
 
-		return mcp.NewToolResultStructuredOnly(result), nil
+		markdown := formatWorkflowsMarkdown(result, mode, projectID, orgID, branch, userID, limit)
+		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.NewTextContent(markdown),
+			},
+			StructuredContent: result,
+		}, nil
 	}
+}
+
+func formatWorkflowsMarkdown(result listResult, mode, projectID, orgID, branch, userID string, limit int) string {
+	mb := shared.NewMarkdownBuilder()
+
+	header := fmt.Sprintf("Workflows for Project %s (%d returned)", projectID, len(result.Workflows))
+	mb.H1(header)
+
+	filters := []string{fmt.Sprintf("limit=%d", limit), fmt.Sprintf("organizationId=%s", orgID), fmt.Sprintf("userId=%s", userID)}
+	if branch != "" {
+		filters = append(filters, fmt.Sprintf(`branch="%s"`, branch))
+	}
+	if len(filters) > 0 {
+		mb.Paragraph("Filters: " + strings.Join(filters, ", "))
+	}
+
+	if len(result.Workflows) == 0 {
+		mb.Paragraph("No workflows matched the current filters.")
+		mb.Paragraph("**Suggestions:**")
+		mb.ListItem("Remove the branch filter to broaden the search")
+		mb.ListItem("Verify the project_id is correct and has recent activity")
+		mb.ListItem("Confirm the authenticated user has permission to view this project")
+		return mb.String()
+	}
+
+	for idx, wf := range result.Workflows {
+		if idx > 0 {
+			mb.Line()
+		}
+
+		mb.H2(fmt.Sprintf("Workflow %s", wf.ID))
+
+		if wf.CreatedAt != "" {
+			mb.KeyValue("Created", wf.CreatedAt)
+		}
+		if wf.Branch != "" {
+			mb.KeyValue("Branch", wf.Branch)
+		}
+		if wf.CommitSHA != "" {
+			mb.KeyValue("Commit", shortenCommit(wf.CommitSHA))
+		}
+
+		mb.KeyValue("Triggered By", humanizeTriggeredBy(wf.TriggeredBy))
+		if wf.RequesterID != "" {
+			mb.KeyValue("Requester ID", fmt.Sprintf("`%s`", wf.RequesterID))
+		}
+
+		if wf.InitialPipeline != "" {
+			mb.KeyValue("Initial Pipeline ID", fmt.Sprintf("`%s`", wf.InitialPipeline))
+		}
+		if wf.RepositoryID != "" {
+			mb.KeyValue("Repository ID", fmt.Sprintf("`%s`", wf.RepositoryID))
+		}
+		if wf.RerunOf != "" {
+			mb.KeyValue("Rerun Of", fmt.Sprintf("`%s`", wf.RerunOf))
+		}
+
+		if mode == "detailed" {
+			mb.Paragraph("Detailed mode enabled. Consider calling `jobs_logs_tail(job_id=\"...\")` for deeper diagnostics.")
+		} else {
+			mb.Paragraph("Use mode=\"detailed\" to include pipeline and rerun metadata in the response.")
+		}
+	}
+
+	mb.Line()
+	if result.NextCursor != "" {
+		mb.Paragraph(fmt.Sprintf("📄 **More workflows available.** Call again with `cursor=\"%s\"` to continue browsing older runs.", result.NextCursor))
+	} else {
+		mb.Paragraph("End of available workflows for the current filters.")
+	}
+
+	return mb.String()
+}
+
+func humanizeTriggeredBy(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "Unspecified"
+	}
+	parts := strings.Split(value, "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		part = strings.ToLower(part)
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
+}
+
+func shortenCommit(sha string) string {
+	sha = strings.TrimSpace(sha)
+	if len(sha) > 12 {
+		return sha[:12]
+	}
+	return sha
 }
 
 func triggeredByToString(value workflowpb.TriggeredBy) string {

@@ -138,3 +138,122 @@ func summarizeJob(job *jobpb.Job) jobSummary {
 		Timeline:       timeline,
 	}
 }
+
+func formatJobMarkdown(summary jobSummary, mode string) string {
+	mb := shared.NewMarkdownBuilder()
+
+	title := summary.Name
+	if strings.TrimSpace(title) == "" {
+		title = fmt.Sprintf("Job %s", summary.ID)
+	} else {
+		title = fmt.Sprintf("%s (%s)", summary.Name, summary.ID)
+	}
+	mb.H1(title)
+
+	mb.KeyValue("Job ID", fmt.Sprintf("`%s`", summary.ID))
+	if summary.PipelineID != "" {
+		mb.KeyValue("Pipeline ID", fmt.Sprintf("`%s`", summary.PipelineID))
+	}
+	if summary.ProjectID != "" {
+		mb.KeyValue("Project ID", fmt.Sprintf("`%s`", summary.ProjectID))
+	}
+	if summary.OrganizationID != "" {
+		mb.KeyValue("Organization ID", fmt.Sprintf("`%s`", summary.OrganizationID))
+	}
+	if summary.BranchID != "" {
+		mb.KeyValue("Branch ID", fmt.Sprintf("`%s`", summary.BranchID))
+	}
+	if summary.HookID != "" {
+		mb.KeyValue("Hook ID", fmt.Sprintf("`%s`", summary.HookID))
+	}
+
+	resultDisplay := strings.TrimSpace(summary.Result)
+	if resultDisplay != "" {
+		mb.KeyValue("Result", fmt.Sprintf("%s %s", shared.StatusIcon(resultDisplay), titleCase(resultDisplay)))
+	}
+	if summary.State != "" {
+		mb.KeyValue("State", titleCase(summary.State))
+	}
+
+	mb.KeyValue("Self-hosted", shared.FormatBoolean(summary.SelfHosted, "Yes", "No"))
+	if summary.IsDebugJob {
+		mb.ListItem("🛠 Debug job")
+	}
+	if summary.DebugUserID != "" {
+		mb.KeyValue("Debug user ID", fmt.Sprintf("`%s`", summary.DebugUserID))
+	}
+
+	if summary.FailureReason != "" {
+		mb.Paragraph(fmt.Sprintf("⚠️ **Failure reason**: %s", summary.FailureReason))
+	}
+
+	mb.Newline()
+	mb.H2("Timeline")
+	appendTimeline(mb, summary.Timeline)
+
+	if mode == "detailed" {
+		mb.Line()
+		mb.H2("Agent & Machine")
+		if summary.MachineType != "" {
+			mb.KeyValue("Machine Type", summary.MachineType)
+		}
+		if summary.MachineImage != "" {
+			mb.KeyValue("Machine Image", summary.MachineImage)
+		}
+		if summary.AgentName != "" {
+			mb.KeyValue("Agent Name", summary.AgentName)
+		}
+		if summary.AgentHost != "" {
+			mb.KeyValue("Agent Host", summary.AgentHost)
+		}
+		if summary.AgentID != "" {
+			mb.KeyValue("Agent ID", fmt.Sprintf("`%s`", summary.AgentID))
+		}
+		mb.KeyValue("Priority", fmt.Sprintf("%d", summary.Priority))
+	}
+
+	mb.Line()
+	mb.Paragraph("Next steps: call `jobs_logs(job_id=\"...\", cursor=...)` to inspect live logs, or `workflow_pipelines_list(workflow_id=\"...\")` to understand the surrounding pipelines.")
+
+	return mb.String()
+}
+
+func appendTimeline(mb *shared.MarkdownBuilder, timeline timelineSummary) {
+	if timeline == (timelineSummary{}) {
+		mb.Paragraph("No timeline information reported.")
+		return
+	}
+	if timeline.CreatedAt != "" {
+		mb.KeyValue("Created", timeline.CreatedAt)
+	}
+	if timeline.EnqueuedAt != "" {
+		mb.KeyValue("Enqueued", timeline.EnqueuedAt)
+	}
+	if timeline.StartedAt != "" {
+		mb.KeyValue("Started", timeline.StartedAt)
+	}
+	if timeline.ExecutionStartedAt != "" {
+		mb.KeyValue("Execution Started", timeline.ExecutionStartedAt)
+	}
+	if timeline.ExecutionFinishedAt != "" {
+		mb.KeyValue("Execution Finished", timeline.ExecutionFinishedAt)
+	}
+	if timeline.FinishedAt != "" {
+		mb.KeyValue("Finished", timeline.FinishedAt)
+	}
+}
+
+func titleCase(value string) string {
+	value = strings.TrimSpace(strings.ToLower(value))
+	if value == "" {
+		return ""
+	}
+	parts := strings.Split(value, "_")
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(part[:1]) + part[1:]
+	}
+	return strings.Join(parts, " ")
+}

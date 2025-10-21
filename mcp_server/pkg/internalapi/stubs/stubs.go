@@ -6,8 +6,10 @@ import (
 
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
@@ -21,27 +23,35 @@ import (
 // New returns an internalapi.Provider backed by deterministic stub responses useful for local development.
 func New() internalapi.Provider {
 	return &provider{
-		timeout:   time.Second,
-		workflows: &workflowStub{},
-		pipelines: &pipelineStub{},
-		jobs:      &jobStub{},
-		loghub:    &loghubStub{},
-		loghub2:   &loghub2Stub{},
+		timeout:       time.Second,
+		workflows:     &workflowStub{},
+		organizations: &organizationStub{},
+		projects:      &projectStub{},
+		pipelines:     &pipelineStub{},
+		jobs:          &jobStub{},
+		loghub:        &loghubStub{},
+		loghub2:       &loghub2Stub{},
 	}
 }
 
 type provider struct {
-	timeout   time.Duration
-	workflows workflowpb.WorkflowServiceClient
-	pipelines pipelinepb.PipelineServiceClient
-	jobs      jobpb.JobServiceClient
-	loghub    loghubpb.LoghubClient
-	loghub2   loghub2pb.Loghub2Client
+	timeout       time.Duration
+	workflows     workflowpb.WorkflowServiceClient
+	organizations orgpb.OrganizationServiceClient
+	projects      projecthubpb.ProjectServiceClient
+	pipelines     pipelinepb.PipelineServiceClient
+	jobs          jobpb.JobServiceClient
+	loghub        loghubpb.LoghubClient
+	loghub2       loghub2pb.Loghub2Client
 }
 
 func (p *provider) CallTimeout() time.Duration { return p.timeout }
 
 func (p *provider) Workflow() workflowpb.WorkflowServiceClient { return p.workflows }
+
+func (p *provider) Organizations() orgpb.OrganizationServiceClient { return p.organizations }
+
+func (p *provider) Projects() projecthubpb.ProjectServiceClient { return p.projects }
 
 func (p *provider) Pipelines() pipelinepb.PipelineServiceClient { return p.pipelines }
 
@@ -179,4 +189,65 @@ func orDefault(value, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+// --- organization stub ---
+
+type organizationStub struct {
+	orgpb.OrganizationServiceClient
+}
+
+func (o *organizationStub) List(ctx context.Context, in *orgpb.ListRequest, opts ...grpc.CallOption) (*orgpb.ListResponse, error) {
+	return &orgpb.ListResponse{
+		Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+		Organizations: []*orgpb.Organization{
+			{
+				OrgId:       "org-local",
+				Name:        "Local Org",
+				OrgUsername: "local-org",
+				OwnerId:     "user-local",
+				CreatedAt:   timestamppb.New(time.Unix(1_700_000_000, 0)),
+				Verified:    true,
+			},
+		},
+		NextPageToken: "",
+	}, nil
+}
+
+// --- project stub ---
+
+type projectStub struct {
+	projecthubpb.ProjectServiceClient
+}
+
+func (p *projectStub) List(ctx context.Context, in *projecthubpb.ListRequest, opts ...grpc.CallOption) (*projecthubpb.ListResponse, error) {
+	return &projecthubpb.ListResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Pagination: &projecthubpb.PaginationResponse{
+			PageNumber:   in.GetPagination().GetPage(),
+			PageSize:     in.GetPagination().GetPageSize(),
+			TotalEntries: 1,
+			TotalPages:   1,
+		},
+		Projects: []*projecthubpb.Project{
+			{
+				Metadata: &projecthubpb.Project_Metadata{
+					Id:        "project-local",
+					Name:      "Example Project",
+					OrgId:     "org-local",
+					OwnerId:   "user-local",
+					CreatedAt: timestamppb.New(time.Unix(1_700_000_000, 0)),
+				},
+				Spec: &projecthubpb.Project_Spec{
+					Repository: &projecthubpb.Project_Spec_Repository{
+						Url:           "https://github.com/example/project",
+						DefaultBranch: "main",
+						PipelineFile:  ".semaphore/semaphore.yml",
+					},
+				},
+			},
+		},
+	}, nil
 }

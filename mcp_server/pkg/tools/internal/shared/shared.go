@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	"google.golang.org/genproto/googleapis/rpc/code"
@@ -42,6 +43,21 @@ func CheckResponseStatus(st *responsepb.ResponseStatus) error {
 	}
 	if st.GetCode() != responsepb.ResponseStatus_OK {
 		return fmt.Errorf("request failed: %s", strings.TrimSpace(st.GetMessage()))
+	}
+	return nil
+}
+
+// CheckProjectResponseMeta validates a Projecthub ResponseMeta payload.
+func CheckProjectResponseMeta(meta *projecthubpb.ResponseMeta) error {
+	if meta == nil {
+		return fmt.Errorf("missing response metadata")
+	}
+	status := meta.GetStatus()
+	if status == nil {
+		return fmt.Errorf("missing status in response metadata")
+	}
+	if status.GetCode() != projecthubpb.ResponseMeta_OK {
+		return fmt.Errorf("request failed: %s", strings.TrimSpace(status.GetMessage()))
 	}
 	return nil
 }

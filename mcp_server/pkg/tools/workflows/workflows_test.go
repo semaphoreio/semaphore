@@ -2,6 +2,7 @@ package workflows
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
@@ -17,18 +18,19 @@ import (
 )
 
 func TestListWorkflows(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
 	client := &workflowClientStub{
 		listResp: &workflowpb.ListKeysetResponse{
 			Status: &statuspb.Status{Code: code.Code_OK},
 			Workflows: []*workflowpb.WorkflowDetails{
 				{
 					WfId:           "wf-123",
-					ProjectId:      "proj-1",
+					ProjectId:      projectID,
 					BranchName:     "main",
 					CommitSha:      "abc123",
 					CreatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
 					TriggeredBy:    workflowpb.TriggeredBy_MANUAL_RUN,
-					OrganizationId: "org-1",
+					OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 				},
 			},
 			NextPageToken: "cursor",
@@ -44,11 +46,15 @@ func TestListWorkflows(t *testing.T) {
 	req := mcp.CallToolRequest{
 		Params: mcp.CallToolParams{
 			Arguments: map[string]any{
-				"project_id": "proj-1",
-				"limit":      10,
+				"project_id":      projectID,
+				"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"limit":           10,
 			},
 		},
 	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -65,7 +71,7 @@ func TestListWorkflows(t *testing.T) {
 	}
 
 	wf := result.Workflows[0]
-	if wf.ID != "wf-123" || wf.ProjectID != "proj-1" || wf.TriggeredBy != "manual_run" {
+	if wf.ID != "wf-123" || wf.ProjectID != projectID || wf.TriggeredBy != "manual_run" {
 		toFail(t, "unexpected workflow summary: %+v", wf)
 	}
 

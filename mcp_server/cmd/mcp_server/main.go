@@ -17,18 +17,19 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/echo"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi/stubs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
 )
 
 var (
 	versionFlag = flag.Bool("version", false, "print the server version and exit")
-	nameFlag    = flag.String("name", "semaphore-echo", "implementation name advertised to MCP clients")
+	nameFlag    = flag.String("name", "semaphore-mcp", "implementation name advertised to MCP clients")
 	httpAddr    = flag.String("http", ":3001", "address to serve the streamable MCP transport")
 	version     = "0.1.0"
 )
@@ -90,7 +91,8 @@ func main() {
 		}()
 	}
 
-	echo.Register(srv)
+	organizations.Register(srv, provider)
+	projects.Register(srv, provider)
 	workflows.Register(srv, provider)
 	pipelines.Register(srv, provider)
 	jobs.Register(srv, provider)

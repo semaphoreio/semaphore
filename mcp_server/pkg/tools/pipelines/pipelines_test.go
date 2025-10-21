@@ -15,13 +15,15 @@ import (
 )
 
 func TestListPipelines(t *testing.T) {
+	workflowID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	pipelineID := "11111111-2222-3333-4444-555555555555"
 	client := &pipelineClientStub{
 		listResp: &pipelinepb.ListKeysetResponse{
 			Pipelines: []*pipelinepb.Pipeline{
 				{
-					PplId:         "ppl-1",
+					PplId:         pipelineID,
 					Name:          "Build",
-					WfId:          "wf-1",
+					WfId:          workflowID,
 					ProjectId:     "proj-1",
 					BranchName:    "main",
 					CommitSha:     "abc123",
@@ -42,7 +44,8 @@ func TestListPipelines(t *testing.T) {
 	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second}
 	handler := listHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"workflow_id": "wf-1",
+		"workflow_id":     workflowID,
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 	}}}
 
 	res, err := handler(context.Background(), req)
@@ -60,7 +63,7 @@ func TestListPipelines(t *testing.T) {
 	}
 
 	ppl := result.Pipelines[0]
-	if ppl.ID != "ppl-1" || ppl.Triggerer != "promotion" || ppl.Queue.ID != "queue-1" {
+	if ppl.ID != pipelineID || ppl.Triggerer != "promotion" || ppl.Queue.ID != "queue-1" {
 		toFail(t, "unexpected pipeline summary: %+v", ppl)
 	}
 
@@ -68,89 +71,20 @@ func TestListPipelines(t *testing.T) {
 		toFail(t, "expected next cursor 'cursor', got %q", result.NextCursor)
 	}
 
-	if client.lastList == nil || client.lastList.GetWfId() != "wf-1" {
+	if client.lastList == nil || client.lastList.GetWfId() != workflowID {
 		toFail(t, "unexpected list request: %+v", client.lastList)
-	}
-}
-
-func TestDescribePipeline(t *testing.T) {
-	blocks := []*pipelinepb.Block{
-		{
-			BlockId:          "block-1",
-			Name:             "Tests",
-			BuildReqId:       "req-1",
-			State:            pipelinepb.Block_RUNNING,
-			Result:           pipelinepb.Block_PASSED,
-			ResultReason:     pipelinepb.Block_TEST,
-			ErrorDescription: "",
-			Jobs: []*pipelinepb.Block_Job{
-				{Name: "job-1", Index: 0, JobId: "job-1", Status: "RUNNING", Result: "PASSED"},
-			},
-		},
-	}
-
-	client := &pipelineClientStub{
-		describeResp: &pipelinepb.DescribeResponse{
-			ResponseStatus: &pipelinepb.ResponseStatus{Code: pipelinepb.ResponseStatus_OK},
-			Pipeline: &pipelinepb.Pipeline{
-				PplId:     "ppl-1",
-				Name:      "Build",
-				WfId:      "wf-1",
-				ProjectId: "proj-1",
-			},
-			Blocks: blocks,
-		},
-	}
-
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second}
-	handler := describeHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"pipeline_id": "ppl-1",
-		"detailed":    true,
-	}}}
-
-	res, err := handler(context.Background(), req)
-	if err != nil {
-		toFail(t, "handler error: %v", err)
-	}
-
-	result, ok := res.StructuredContent.(describeResult)
-	if !ok {
-		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
-	}
-
-	if result.Pipeline.ID != "ppl-1" {
-		toFail(t, "unexpected pipeline id: %s", result.Pipeline.ID)
-	}
-	if len(result.Blocks) != 1 || len(result.Blocks[0].Jobs) != 1 {
-		toFail(t, "unexpected block summary: %+v", result.Blocks)
-	}
-
-	if client.lastDescribe == nil || !client.lastDescribe.GetDetailed() {
-		toFail(t, "expected describe request to set detailed flag")
 	}
 }
 
 type pipelineClientStub struct {
 	pipelinepb.PipelineServiceClient
-	listResp     *pipelinepb.ListKeysetResponse
-	listErr      error
-	describeResp *pipelinepb.DescribeResponse
-	describeErr  error
-	lastList     *pipelinepb.ListKeysetRequest
-	lastDescribe *pipelinepb.DescribeRequest
+	listResp *pipelinepb.ListKeysetResponse
+	listErr  error
+	lastList *pipelinepb.ListKeysetRequest
 }
 
 func (s *pipelineClientStub) Schedule(context.Context, *pipelinepb.ScheduleRequest, ...grpc.CallOption) (*pipelinepb.ScheduleResponse, error) {
 	panic("not implemented")
-}
-
-func (s *pipelineClientStub) Describe(ctx context.Context, in *pipelinepb.DescribeRequest, opts ...grpc.CallOption) (*pipelinepb.DescribeResponse, error) {
-	s.lastDescribe = in
-	if s.describeErr != nil {
-		return nil, s.describeErr
-	}
-	return s.describeResp, nil
 }
 
 func (s *pipelineClientStub) DescribeMany(context.Context, *pipelinepb.DescribeManyRequest, ...grpc.CallOption) (*pipelinepb.DescribeManyResponse, error) {

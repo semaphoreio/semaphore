@@ -9,8 +9,10 @@ import (
 
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -20,6 +22,8 @@ import (
 type Provider interface {
 	CallTimeout() time.Duration
 	Workflow() workflowpb.WorkflowServiceClient
+	Organizations() orgpb.OrganizationServiceClient
+	Projects() projecthubpb.ProjectServiceClient
 	Pipelines() pipelinepb.PipelineServiceClient
 	Jobs() jobpb.JobServiceClient
 	Loghub() loghubpb.LoghubClient
@@ -30,17 +34,21 @@ type Provider interface {
 type Manager struct {
 	cfg Config
 
-	workflowConn *grpc.ClientConn
-	pipelineConn *grpc.ClientConn
-	jobConn      *grpc.ClientConn
-	loghubConn   *grpc.ClientConn
-	loghub2Conn  *grpc.ClientConn
+	workflowConn     *grpc.ClientConn
+	organizationConn *grpc.ClientConn
+	projectConn      *grpc.ClientConn
+	pipelineConn     *grpc.ClientConn
+	jobConn          *grpc.ClientConn
+	loghubConn       *grpc.ClientConn
+	loghub2Conn      *grpc.ClientConn
 
-	workflowClient workflowpb.WorkflowServiceClient
-	pipelineClient pipelinepb.PipelineServiceClient
-	jobClient      jobpb.JobServiceClient
-	loghubClient   loghubpb.LoghubClient
-	loghub2Client  loghub2pb.Loghub2Client
+	workflowClient     workflowpb.WorkflowServiceClient
+	organizationClient orgpb.OrganizationServiceClient
+	projectClient      projecthubpb.ProjectServiceClient
+	pipelineClient     pipelinepb.PipelineServiceClient
+	jobClient          jobpb.JobServiceClient
+	loghubClient       loghubpb.LoghubClient
+	loghub2Client      loghub2pb.Loghub2Client
 }
 
 // NewManager dials the configured services and returns a ready-to-use manager.
@@ -72,6 +80,14 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.workflowConn, err = dial(cfg.WorkflowEndpoint); err != nil {
 		return nil, fmt.Errorf("connect workflow service: %w", err)
 	}
+	if m.organizationConn, err = dial(cfg.OrganizationEndpoint); err != nil {
+		m.Close()
+		return nil, fmt.Errorf("connect organization service: %w", err)
+	}
+	if m.projectConn, err = dial(cfg.ProjectEndpoint); err != nil {
+		m.Close()
+		return nil, fmt.Errorf("connect project service: %w", err)
+	}
 	if m.pipelineConn, err = dial(cfg.PipelineEndpoint); err != nil {
 		m.Close()
 		return nil, fmt.Errorf("connect pipeline service: %w", err)
@@ -92,6 +108,12 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.workflowConn != nil {
 		m.workflowClient = workflowpb.NewWorkflowServiceClient(m.workflowConn)
 	}
+	if m.organizationConn != nil {
+		m.organizationClient = orgpb.NewOrganizationServiceClient(m.organizationConn)
+	}
+	if m.projectConn != nil {
+		m.projectClient = projecthubpb.NewProjectServiceClient(m.projectConn)
+	}
 	if m.pipelineConn != nil {
 		m.pipelineClient = pipelinepb.NewPipelineServiceClient(m.pipelineConn)
 	}
@@ -111,7 +133,15 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 // Close tears down all gRPC connections owned by the manager.
 func (m *Manager) Close() error {
 	var errs []error
-	closers := []*grpc.ClientConn{m.workflowConn, m.pipelineConn, m.jobConn, m.loghubConn, m.loghub2Conn}
+	closers := []*grpc.ClientConn{
+		m.workflowConn,
+		m.organizationConn,
+		m.projectConn,
+		m.pipelineConn,
+		m.jobConn,
+		m.loghubConn,
+		m.loghub2Conn,
+	}
 	for _, conn := range closers {
 		if conn == nil {
 			continue
@@ -134,6 +164,14 @@ func (m *Manager) CallTimeout() time.Duration {
 
 func (m *Manager) Workflow() workflowpb.WorkflowServiceClient {
 	return m.workflowClient
+}
+
+func (m *Manager) Organizations() orgpb.OrganizationServiceClient {
+	return m.organizationClient
+}
+
+func (m *Manager) Projects() projecthubpb.ProjectServiceClient {
+	return m.projectClient
 }
 
 func (m *Manager) Pipelines() pipelinepb.PipelineServiceClient {

@@ -18,15 +18,17 @@ import (
 )
 
 func TestDescribeJob(t *testing.T) {
+	jobID := "11111111-2222-3333-4444-555555555555"
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	client := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
 			Job: &jobpb.Job{
-				Id:             "job-1",
+				Id:             jobID,
 				Name:           "Build",
 				PplId:          "ppl-1",
 				ProjectId:      "proj-1",
-				OrganizationId: "org-1",
+				OrganizationId: orgID,
 				FailureReason:  "",
 				Timeline: &jobpb.Job_Timeline{
 					CreatedAt: timestamppb.New(time.Unix(1700000000, 0)),
@@ -37,7 +39,10 @@ func TestDescribeJob(t *testing.T) {
 
 	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second}
 	handler := describeHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{"job_id": "job-1"}}}
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          jobID,
+	}}}
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -49,16 +54,17 @@ func TestDescribeJob(t *testing.T) {
 		toFail(t, "unexpected structured content type: %T", res.StructuredContent)
 	}
 
-	if result.ID != "job-1" || result.PipelineID != "ppl-1" {
+	if result.ID != jobID || result.PipelineID != "ppl-1" {
 		toFail(t, "unexpected job summary: %+v", result)
 	}
 }
 
 func TestFetchHostedLogs(t *testing.T) {
+	jobID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job:    &jobpb.Job{Id: "job-1", SelfHosted: false},
+			Job:    &jobpb.Job{Id: jobID, SelfHosted: false},
 		},
 	}
 	loghubClient := &loghubClientStub{
@@ -77,8 +83,9 @@ func TestFetchHostedLogs(t *testing.T) {
 
 	handler := logsHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
-		"job_id": "job-1",
-		"cursor": "5",
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"job_id":          jobID,
+		"cursor":          "5",
 	}}}
 
 	res, err := handler(context.Background(), req)
@@ -101,10 +108,11 @@ func TestFetchHostedLogs(t *testing.T) {
 }
 
 func TestFetchSelfHostedLogs(t *testing.T) {
+	jobID := "88888888-7777-6666-5555-444444444444"
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job:    &jobpb.Job{Id: "job-1", SelfHosted: true},
+			Job:    &jobpb.Job{Id: jobID, SelfHosted: true},
 		},
 	}
 	loghub2Client := &loghub2ClientStub{
@@ -118,7 +126,10 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 	}
 
 	handler := logsHandler(provider)
-	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{"job_id": "job-1"}}}
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"job_id":          jobID,
+	}}}
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -134,7 +145,7 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		toFail(t, "unexpected loghub2 response: %+v", result)
 	}
 
-	if loghub2Client.lastRequest == nil || loghub2Client.lastRequest.GetJobId() != "job-1" {
+	if loghub2Client.lastRequest == nil || loghub2Client.lastRequest.GetJobId() != jobID {
 		toFail(t, "unexpected loghub2 request: %+v", loghub2Client.lastRequest)
 	}
 }

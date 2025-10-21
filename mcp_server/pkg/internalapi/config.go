@@ -18,6 +18,14 @@ var (
 		"MCP_WORKFLOW_GRPC_ENDPOINT",
 		"WF_GRPC_URL",
 	}
+	organizationEndpointEnvs = []string{
+		"INTERNAL_API_URL_ORGANIZATION",
+		"MCP_ORGANIZATION_GRPC_ENDPOINT",
+	}
+	projectEndpointEnvs = []string{
+		"INTERNAL_API_URL_PROJECT",
+		"MCP_PROJECT_GRPC_ENDPOINT",
+	}
 	pipelineEndpointEnvs = []string{
 		"INTERNAL_API_URL_PLUMBER",
 		"MCP_PIPELINE_GRPC_ENDPOINT",
@@ -42,11 +50,13 @@ var (
 
 // Config captures the connection settings for talking to internal API services.
 type Config struct {
-	WorkflowEndpoint string
-	PipelineEndpoint string
-	JobEndpoint      string
-	LoghubEndpoint   string
-	Loghub2Endpoint  string
+	WorkflowEndpoint     string
+	OrganizationEndpoint string
+	ProjectEndpoint      string
+	PipelineEndpoint     string
+	JobEndpoint          string
+	LoghubEndpoint       string
+	Loghub2Endpoint      string
 
 	DialTimeout time.Duration
 	CallTimeout time.Duration
@@ -64,13 +74,15 @@ func LoadConfig() (Config, error) {
 	}
 
 	cfg := Config{
-		WorkflowEndpoint: endpointFromEnv(workflowEndpointEnvs...),
-		PipelineEndpoint: endpointFromEnv(pipelineEndpointEnvs...),
-		JobEndpoint:      endpointFromEnv(jobEndpointEnvs...),
-		LoghubEndpoint:   endpointFromEnv(loghubEndpointEnvs...),
-		Loghub2Endpoint:  endpointFromEnv(loghub2EndpointEnvs...),
-		DialTimeout:      dialTimeout,
-		CallTimeout:      callTimeout,
+		WorkflowEndpoint:     endpointFromEnv(workflowEndpointEnvs...),
+		OrganizationEndpoint: endpointFromEnv(organizationEndpointEnvs...),
+		ProjectEndpoint:      endpointFromEnv(projectEndpointEnvs...),
+		PipelineEndpoint:     endpointFromEnv(pipelineEndpointEnvs...),
+		JobEndpoint:          endpointFromEnv(jobEndpointEnvs...),
+		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),
+		Loghub2Endpoint:      endpointFromEnv(loghub2EndpointEnvs...),
+		DialTimeout:          dialTimeout,
+		CallTimeout:          callTimeout,
 	}
 
 	if cfg.DialTimeout <= 0 {
@@ -88,6 +100,12 @@ func (c Config) Validate() error {
 	var missing []string
 	if c.WorkflowEndpoint == "" {
 		missing = append(missing, "workflow gRPC endpoint")
+	}
+	if c.OrganizationEndpoint == "" {
+		missing = append(missing, "organization gRPC endpoint")
+	}
+	if c.ProjectEndpoint == "" {
+		missing = append(missing, "project gRPC endpoint")
 	}
 	if c.PipelineEndpoint == "" {
 		missing = append(missing, "pipeline gRPC endpoint")

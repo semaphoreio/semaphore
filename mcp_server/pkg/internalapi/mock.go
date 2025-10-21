@@ -5,19 +5,23 @@ import (
 
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
+	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 )
 
 // MockProvider is a lightweight Provider implementation intended for tests.
 type MockProvider struct {
-	WorkflowClient workflowpb.WorkflowServiceClient
-	PipelineClient pipelinepb.PipelineServiceClient
-	JobClient      jobpb.JobServiceClient
-	LoghubClient   loghubpb.LoghubClient
-	Loghub2Client  loghub2pb.Loghub2Client
-	Timeout        time.Duration
+	WorkflowClient     workflowpb.WorkflowServiceClient
+	OrganizationClient orgpb.OrganizationServiceClient
+	ProjectClient      projecthubpb.ProjectServiceClient
+	PipelineClient     pipelinepb.PipelineServiceClient
+	JobClient          jobpb.JobServiceClient
+	LoghubClient       loghubpb.LoghubClient
+	Loghub2Client      loghub2pb.Loghub2Client
+	Timeout            time.Duration
 }
 
 func (m *MockProvider) CallTimeout() time.Duration {
@@ -28,6 +32,12 @@ func (m *MockProvider) CallTimeout() time.Duration {
 }
 
 func (m *MockProvider) Workflow() workflowpb.WorkflowServiceClient { return m.WorkflowClient }
+
+func (m *MockProvider) Organizations() orgpb.OrganizationServiceClient {
+	return m.OrganizationClient
+}
+
+func (m *MockProvider) Projects() projecthubpb.ProjectServiceClient { return m.ProjectClient }
 
 func (m *MockProvider) Pipelines() pipelinepb.PipelineServiceClient { return m.PipelineClient }
 

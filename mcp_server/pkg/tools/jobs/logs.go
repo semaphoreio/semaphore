@@ -22,41 +22,88 @@ const (
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
+	maxLogPreviewLines   = 200
 	errLoghubMissing     = "loghub gRPC endpoint is not configured"
 	errLoghub2Missing    = "loghub2 gRPC endpoint is not configured"
 )
 
+const logsToolDescription = `Fetch recent log output for a job.
+
+Use this after jobs_describe indicates a failure or long-running job.
+
+Outputs:
+- Hosted jobs: returns a preview of the most recent log lines (up to 200) and a nextCursor for pagination.
+- Self-hosted jobs: returns a temporary log token (300s TTL) and instructions for downloading full logs.
+
+Inputs:
+- organization_id (required): UUID of the organization context (from core_organizations_list).
+- job_id (required): UUID of the target job.
+- cursor (optional): continue from a previous response’s nextCursor to fetch additional lines.
+
+Typical workflow:
+1. jobs_describe(job_id="...") → identify failing job
+2. jobs_logs(job_id="...") → view latest log lines
+3. If more logs needed, call again with cursor from the previous response.
+4. For self-hosted jobs, use the returned token in a follow-up HTTPS request.
+`
+
 type logsResult struct {
-	JobID           string   `json:"jobId"`
-	Source          string   `json:"source"`
-	Preview         []string `json:"preview,omitempty"`
-	NextCursor      string   `json:"nextCursor,omitempty"`
-	Final           bool     `json:"final,omitempty"`
-	Token           string   `json:"token,omitempty"`
-	TokenType       string   `json:"tokenType,omitempty"`
-	TokenTtlSeconds uint32   `json:"tokenTtlSeconds,omitempty"`
+	JobID            string   `json:"jobId"`
+	Source           string   `json:"source"`
+	Preview          []string `json:"preview,omitempty"`
+	NextCursor       string   `json:"nextCursor,omitempty"`
+	Final            bool     `json:"final,omitempty"`
+	StartLine        int      `json:"startLine,omitempty"`
+	PreviewTruncated bool     `json:"previewTruncated,omitempty"`
+	Token            string   `json:"token,omitempty"`
+	TokenType        string   `json:"tokenType,omitempty"`
+	TokenTtlSeconds  uint32   `json:"tokenTtlSeconds,omitempty"`
 }
 
 func newLogsTool() mcp.Tool {
 	return mcp.NewTool(
 		logsToolName,
-		mcp.WithDescription("Fetch logs for a job."),
+		mcp.WithDescription(logsToolDescription),
+		mcp.WithString(
+			"organization_id",
+			mcp.Required(),
+			mcp.Description("Organization UUID associated with the job. Cache this value after calling core_organizations_list."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		),
 		mcp.WithString(
 			"job_id",
 			mcp.Required(),
-			mcp.Description("Job UUID whose logs to fetch."),
+			mcp.Description("Job UUID to fetch logs for (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithString(
 			"cursor",
-			mcp.Description("Opaque cursor to continue log pagination."),
+			mcp.Description("Pagination cursor returned by a previous call’s nextCursor. Omit to start from the latest logs."),
 		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithIdempotentHintAnnotation(true),
+		mcp.WithOpenWorldHintAnnotation(true),
 	)
 }
 
 func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		jobID, err := req.RequireString("job_id")
+		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
+			return mcp.NewToolResultError("organization_id is required. Provide the organization UUID returned by core_organizations_list."), nil
+		}
+		orgID := strings.TrimSpace(orgIDRaw)
+		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		jobIDRaw, err := req.RequireString("job_id")
+		if err != nil {
+			return mcp.NewToolResultError("job_id is required. Provide the job UUID shown by jobs_describe."), nil
+		}
+
+		jobID := strings.TrimSpace(jobIDRaw)
+		if err := shared.ValidateUUID(jobID, "job_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
@@ -69,6 +116,11 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		job, err := fetchJob(ctx, api, jobID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+		if job.GetOrganizationId() != "" && !strings.EqualFold(job.GetOrganizationId(), orgID) {
+			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
+
+Retrieve the correct organization ID from core_organizations_list before fetching logs.`, job.GetOrganizationId(), orgID)), nil
 		}
 
 		if job.GetSelfHosted() {
@@ -84,7 +136,7 @@ func parseCursor(cursor string) (int, error) {
 	}
 	value, err := strconv.Atoi(cursor)
 	if err != nil || value < 0 {
-		return 0, fmt.Errorf("invalid cursor value: %q", cursor)
+		return 0, fmt.Errorf("cursor must be a non-negative integer produced by the previous response (got %q)", cursor)
 	}
 	return value, nil
 }
@@ -126,19 +178,36 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 
-	result := logsResult{
-		JobID:   jobID,
-		Source:  loghubSource,
-		Preview: append([]string(nil), resp.GetEvents()...),
-		Final:   resp.GetFinal(),
+	events := append([]string(nil), resp.GetEvents()...)
+	displayEvents := events
+	truncated := false
+	if len(events) > maxLogPreviewLines {
+		displayEvents, truncated = shared.TruncateList(events, maxLogPreviewLines)
 	}
 
-	if !resp.GetFinal() && len(resp.GetEvents()) > 0 {
-		next := startingLine + len(resp.GetEvents())
+	result := logsResult{
+		JobID:            jobID,
+		Source:           loghubSource,
+		Preview:          displayEvents,
+		Final:            resp.GetFinal(),
+		StartLine:        startingLine,
+		PreviewTruncated: truncated,
+	}
+
+	if !resp.GetFinal() && len(events) > 0 {
+		next := startingLine + len(events)
 		result.NextCursor = strconv.Itoa(next)
 	}
 
-	return mcp.NewToolResultStructuredOnly(result), nil
+	markdown := formatHostedLogsMarkdown(result)
+	markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.NewTextContent(markdown),
+		},
+		StructuredContent: result,
+	}, nil
 }
 
 func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID string) (*mcp.CallToolResult, error) {
@@ -176,7 +245,78 @@ func fetchSelfHostedLogs(ctx context.Context, api internalapi.Provider, jobID st
 		TokenTtlSeconds: loghub2TokenDuration,
 	}
 
-	return mcp.NewToolResultStructuredOnly(result), nil
+	markdown := formatSelfHostedLogsMarkdown(result)
+	markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			mcp.NewTextContent(markdown),
+		},
+		StructuredContent: result,
+	}, nil
+}
+
+func formatHostedLogsMarkdown(result logsResult) string {
+	mb := shared.NewMarkdownBuilder()
+
+	mb.H1(fmt.Sprintf("Hosted Logs Preview for Job %s", result.JobID))
+
+	if len(result.Preview) == 0 {
+		mb.Paragraph("No log lines were returned. The job may not have produced output yet, or all logs have been consumed.")
+	} else {
+		start := result.StartLine
+		end := result.StartLine + len(result.Preview) - 1
+		if start <= 0 {
+			start = 0
+		}
+
+		mb.Paragraph(fmt.Sprintf("Showing log lines %d-%d (newest first).", start, end))
+		mb.Raw("```\n")
+		mb.Raw(strings.Join(result.Preview, "\n"))
+		mb.Raw("\n```\n")
+
+		if result.PreviewTruncated {
+			mb.Paragraph(fmt.Sprintf("⚠️ Preview truncated to the most recent %d lines. Use pagination to retrieve the full log.", maxLogPreviewLines))
+		}
+	}
+
+	if result.Final {
+		mb.Paragraph("✅ This job reported final logs. No additional pages are available.")
+	} else if result.NextCursor != "" {
+		mb.Paragraph(fmt.Sprintf("📄 More logs available. Call again with `cursor=\"%s\"` to continue.", result.NextCursor))
+	} else {
+		mb.Paragraph("ℹ️ Logs are still streaming. Retry shortly for additional output.")
+	}
+
+	mb.Line()
+	mb.Paragraph("Next steps: consider downloading artifacts or re-running the job if the issue persists.")
+
+	return mb.String()
+}
+
+func formatSelfHostedLogsMarkdown(result logsResult) string {
+	mb := shared.NewMarkdownBuilder()
+
+	mb.H1(fmt.Sprintf("Self-Hosted Logs for Job %s", result.JobID))
+	mb.Paragraph("This job ran on a self-hosted agent. Logs are available via a short-lived token.")
+
+	mb.KeyValue("Token Type", strings.ToUpper(result.TokenType))
+	mb.KeyValue("Expires In", fmt.Sprintf("%d seconds", result.TokenTtlSeconds))
+
+	if result.Token != "" {
+		mb.Paragraph("Use the following JWT within the TTL to stream logs:")
+		mb.Raw("```\n")
+		mb.Raw(result.Token)
+		mb.Raw("\n```\n")
+		mb.Paragraph("Example:\n`curl \"https://<your-workspace>/api/v1/logs/" + result.JobID + "?jwt=<TOKEN>\"`\n")
+	} else {
+		mb.Paragraph("⚠️ No token was returned. Retry the request or contact support if the problem persists.")
+	}
+
+	mb.Line()
+	mb.Paragraph("Remember to rotate tokens promptly and never store them in persistent logs.")
+
+	return mb.String()
 }
 
 func tokenTypeToString(tokenType loghub2pb.TokenType) string {
