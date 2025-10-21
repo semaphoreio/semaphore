@@ -18,6 +18,7 @@ defmodule Front.MemoryCookie do
       "rootSidebar" => false,
       "rootRequester" => true,
       "projectType" => "",
+      "projectListing" => "latest",
       "projectRequester" => "false",
       "logDark" => false,
       "logWrap" => true,
