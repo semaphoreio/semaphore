@@ -4,12 +4,6 @@ description: Schedule pipelines
 
 # Tasks
 
-
-
-
-
-
-
 <VideoTutorial title="How to set up Tasks" src="https://www.youtube.com/embed/zu1WORQUJAM?si=hR_FwyMe4Yd2Lf-H" />
 
 Task allow you to trigger specific [pipelines](./pipelines) on a schedule or manually. This page explains how to create and run tasks, and what settings are available.
@@ -19,12 +13,12 @@ Task allow you to trigger specific [pipelines](./pipelines) on a schedule or man
 The main use cases for tasks are to:
 
 - Run long or resource-intensive jobs outside the usual continuous integration workflow.
+- Trigger pipelines not connected to any [promotions](./promotions)
 - Periodically rebuild an application or run security audits
 - Continue testing projects even when they are inactive (not getting new commits)
 - Run arbitrary code, track results, and get notifications
 - Execute maintenance chores such as such database backups
 - Running exceptional corrective actions such as pruning the [cache](./jobs#cache)
-
 
 ## Limitations {#limitations}
 
@@ -55,17 +49,17 @@ To create a task, open your project and follow these steps. You can create tasks
 
     ![Task creation step 1: name and description](./img/task-create-1.jpg)
 
-5. Type the repository branch and [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that branch. It doesn't need (but it can) to be connected with a promotion to any other pipeline
-6. Press **Next**
+5. You can run the task on a given branch or tag. Select either **branch** or **tag** and type the desired value.
+
+6. Type the [pipeline](./pipelines) file to execute. The only requisite is that the pipeline file exists in that reference. It doesn't need to (but it can) to be connected with a promotion to any other pipeline. Press **Next**
 
     ![Task creation step 2: branch and pipeline](./img/task-create-2.jpg)
 
-7. Press **Next**
-8. Define the schedule using [crontab syntax](https://crontab.guru/). The example below is running Check the option "Unscheduled" if you want to only run the task manually
+7. Define the schedule using [crontab syntax](https://crontab.guru/). The example below is running Check the option "Unscheduled" if you want to only run the task manually
 
     ![Task creation step 4: schedule](./img/task-create-4.jpg)
 
-9. Press **Next** and **Create**
+8. Press **Next** and **Create**
 
 </Steps>
 
@@ -88,8 +82,10 @@ You can add tasks by editing the project using the [Semaphore command line tool]
       description: "This is a test project"
     # ...
     ```
-3. Add a `task` section. Each item in the list is a task. The example below shows one task:
+
+3. Add a `task` section. Each item in the list is a task. The example below shows two tasks:
    - Task "nightly-deploys" runs the `nighthly-deploys.yml` on "master" branch pipeline at 12:15 am every day.
+   - Task "canary-setup" runs the same pipeline in "develop" branch
 
     ```yaml title="sem edit project hello-semaphore"
     # ...
@@ -100,6 +96,18 @@ You can add tasks by editing the project using the [Semaphore command line tool]
           scheduled: true
           at: "15 12 * * *"
           pipeline_file: .semaphore/nightly-deploys.yml
+    # task 2 without an schedule
+        - name: canary-setup
+          branch: develop
+          scheduled: false
+          pipeline_file: .semaphore/nightly-deploys.yml
+    # task 3 with tag
+        - name: release-deploy
+          reference: 
+            type: tag
+            value: v1.0.0
+          scheduled: false
+          pipeline_file: .semaphore/deploy.yml
     ```
 
 4. Save the file to submit your changes
@@ -119,14 +127,13 @@ Press the **View** button to view the execution log for this task.
 
 ![Viewing the task history](./img/view-task.jpg)
 
-
 ## How to run tasks manually {#run-tasks}
 
 Go to the **Tasks** tab in your project to view the configured tasks. Pressing **Run now** shows you the following screen.
 
 ![Running task manually](./img/task-run.jpg)
 
-Here you can change the branch, pipeline file, and define parameter values. Press **Run** to start the task immediately.
+Here you can change the branch, tag, or pipeline file. Press **Run** to start the task immediately.
 
 You may also trigger a task using the [Semaphore API](../reference/api#tasks)
 
