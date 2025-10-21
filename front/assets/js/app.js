@@ -308,12 +308,6 @@ export var App = {
       AddPeople({ dom: addPeopleEl, config: addPeopleEl.dataset });
     }
 
-    const syncPeopleEl = document.querySelector(".app-sync-people");
-    if (syncPeopleEl) {
-      const config = JSON.parse(syncPeopleEl.dataset.config);
-      SyncPeople({ dom: syncPeopleEl, config });
-    }
-
     document.querySelectorAll(".app-edit-person").forEach((editPersonAppRoot) => {
       EditPerson({
         dom: editPersonAppRoot,
