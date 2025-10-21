@@ -320,13 +320,6 @@ export var App = {
         config: editPersonAppRoot.dataset
       })
     });
-
-    document.querySelectorAll(".app-sync-people").forEach((syncPeopleAppRoot) => {
-      SyncPeople({
-        dom: syncPeopleAppRoot,
-        config: syncPeopleAppRoot.dataset
-      })
-    });
   },
   organization_okta: function () {
     OrganizationOktaGroupMappingApp({
