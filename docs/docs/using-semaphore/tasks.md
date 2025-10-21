@@ -55,7 +55,7 @@ To create a task, open your project and follow these steps. You can create tasks
 
     ![Task creation step 2: branch and pipeline](./img/task-create-2.jpg)
 
-7. Optionally, you can add parameters. These work exactly the same as [parameterized promotions](./promotions#parameters). Press **Next**
+7. Optionally, you can add parameters. If your pipeline uses [parameters](./promotions#parameters), you can define their values for the task execution. Press **Next**
 
     ![Task creation step 3: parameters](./img/task-create-3.jpg)
 
