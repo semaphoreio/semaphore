@@ -60,7 +60,14 @@
           <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
           <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
           <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+        </optgroup>
       </select>
+      <%= if @all_pipelines_enabled do %>
+        <select data-key="listing" class="db form-control mb3 mb0-m mr3">
+          <option value="latest" <%= if @listing == "latest", do: "selected" %>>Latest per branch</option>
+          <option value="all_pipelines" <%= if @listing == "all_pipelines", do: "selected" %>>All pipelines</option>
+        </select>
+      <% end %>
       <select data-key="requester" class="db form-control mb3 mb0-m mr3">
         <option value="false" <%= if @requester == false, do: "selected" %>>by Everyone</option>
         <option value="true" <%= if @requester == true, do: "selected" %>>by Me</option>
