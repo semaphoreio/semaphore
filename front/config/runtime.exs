@@ -183,3 +183,7 @@ config :front,
        System.get_env("SINGLE_TENANT") == "true"
 
 config :front, :edition, edition
+
+config :front,
+       :status_page_url,
+       System.get_env("STATUS_PAGE_URL") || "https://status.semaphore.io/"
