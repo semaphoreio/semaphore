@@ -80,40 +80,53 @@
                 </div>
                 <div class="loggin">
                   <div class="wrap">
-                    <h2 class="has-text-align-center" style="margin-top: 0;">Try Cloud</h2>
-                    <div class="wp-block-buttons split-button is-layout-flex wp-block-buttons-is-layout-flex">
-                      <%= if assigns[:github] do %>
-                      <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
-                        <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color  wp-element-button"
-                        href="<%= @github %>"
-                        style="border-color:#CCCCCC;border-width:1px;border-radius:8px">
-                          <img decoding="async" width="22" height="22" class="wp-image-23604" style="width: 22px;" src="https://semaphoreci.com/wp-content/uploads/2024/04/github.svg" alt="">
-                          <strong>Signup with GitHub</strong>
-                        </a>
+                    <%= if assigns[:logged_in] do %>
+                      <h2 class="has-text-align-center" style="margin-top: 0;">You're already logged in</h2>
+                      <div class="wp-block-buttons split-button is-layout-flex wp-block-buttons-is-layout-flex">
+                        <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
+                          <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button"
+                          href="<%= @me_url %>"
+                          style="border-color:#CCCCCC;border-width:1px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+                            <strong style="display:flex;align-items:center;">Continue to <img decoding="async" src="https://semaphore.io/wp-content/uploads/2024/04/semaphore-logo.svg" alt="Semaphore" style="height: 18px; margin-left: 6px;"></strong>
+                          </a>
+                        </div>
                       </div>
-                      <% end %>
-                      <%= if assigns[:bitbucket] do %>
-                      <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
-                        <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button"
-                        style="border-color:#CCCCCC;border-width:1px;border-radius:8px"
-                        href="<%= @bitbucket %>">
-                          <img decoding="async" width="20" height="19" class="wp-image-23603" style="width: 20px;" src="https://semaphoreci.com/wp-content/uploads/2024/04/bitbucket.svg" alt="">
-                          <strong>Signup with Bitbucket</strong>
-                        </a>
+                    <% else %>
+                      <h2 class="has-text-align-center" style="margin-top: 0;">Try Cloud</h2>
+                      <div class="wp-block-buttons split-button is-layout-flex wp-block-buttons-is-layout-flex">
+                        <%= if assigns[:github] do %>
+                        <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
+                          <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color  wp-element-button"
+                          href="<%= @github %>"
+                          style="border-color:#CCCCCC;border-width:1px;border-radius:8px">
+                            <img decoding="async" width="22" height="22" class="wp-image-23604" style="width: 22px;" src="https://semaphoreci.com/wp-content/uploads/2024/04/github.svg" alt="">
+                            <strong>Signup with GitHub</strong>
+                          </a>
+                        </div>
+                        <% end %>
+                        <%= if assigns[:bitbucket] do %>
+                        <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
+                          <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button"
+                          style="border-color:#CCCCCC;border-width:1px;border-radius:8px"
+                          href="<%= @bitbucket %>">
+                            <img decoding="async" width="20" height="19" class="wp-image-23603" style="width: 20px;" src="https://semaphoreci.com/wp-content/uploads/2024/04/bitbucket.svg" alt="">
+                            <strong>Signup with Bitbucket</strong>
+                          </a>
+                        </div>
+                        <% end %>
+                        <%= if assigns[:gitlab] do %>
+                        <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
+                          <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button"
+                          style="border-color:#CCCCCC;border-width:1px;border-radius:8px"
+                          href="<%= @gitlab %>">
+                            <img decoding="async" width="20" height="19" class="wp-image-23603" style="width: 20px;" src="https://semaphoreci.com/wp-content/uploads/2025/02/gitlab.svg" alt="">
+                            <strong>Signup with GitLab</strong>
+                          </a>
+                        </div>
+                        <% end %>
                       </div>
-                      <% end %>
-                      <%= if assigns[:gitlab] do %>
-                      <div class="wp-block-button has-custom-width wp-block-button__width-100 has-custom-font-size is-style-v8-dropshadow has-font-down-2-font-size">
-                        <a class="wp-block-button__link has-v-8-black-color has-v-8-white-background-color has-text-color has-background has-link-color has-border-color wp-element-button"
-                        style="border-color:#CCCCCC;border-width:1px;border-radius:8px"
-                        href="<%= @gitlab %>">
-                          <img decoding="async" width="20" height="19" class="wp-image-23603" style="width: 20px;" src="https://semaphoreci.com/wp-content/uploads/2025/02/gitlab.svg" alt="">
-                          <strong>Signup with GitLab</strong>
-                        </a>
-                      </div>
-                      <% end %>
-                    </div>
-                    <p class="has-text-align-center has-font-down-3-font-size">By continuing, you agree to our <a href="https://semaphoreci.com/tos">Terms of Service</a> and <a href="https://semaphoreci.com/privacy">Privacy policy</a>. </p>
+                      <p class="has-text-align-center has-font-down-3-font-size">By continuing, you agree to our <a href="https://semaphoreci.com/tos">Terms of Service</a> and <a href="https://semaphoreci.com/privacy">Privacy policy</a>. </p>
+                    <% end %>
                   </div>
                 </div>
               </div>
