@@ -2,6 +2,7 @@ defmodule FrontWeb.PeopleControllerTest do
   use FrontWeb.ConnCase
   import Mock
   alias Support.Stubs.{DB, PermissionPatrol, Project}
+  alias Front.RBAC.Members
 
   setup %{conn: conn} do
     Cacheman.clear(:front)
@@ -34,6 +35,51 @@ defmodule FrontWeb.PeopleControllerTest do
       non_member: non_member,
       project: project
     ]
+  end
+
+  describe "GET organization_users" do
+    test "when the user can't access the org => returns 404", %{
+      conn: conn
+    } do
+      PermissionPatrol.remove_all_permissions()
+
+      conn =
+        conn
+        |> get("/people/export")
+
+      assert html_response(conn, 404) =~ "404"
+    end
+
+    test "when the user can access the org => send csv", %{
+      conn: conn,
+      organization: organization
+    } do
+      conn =
+        conn
+        |> get("/people/export")
+
+      assert response_content_type(conn, :csv)
+
+      rows =
+        conn.resp_body
+        |> String.split("\r\n", trim: true)
+        |> CSV.decode!(validate_row_length: true, headers: true)
+        |> Enum.to_list()
+
+      {:ok, {members, total_pages}} =
+        Members.list_org_members(organization.id, page_size: 1000, page_no: 0)
+
+      assert total_pages == 1
+      assert length(rows) == length(members)
+
+      first = List.first(rows)
+
+      assert Map.has_key?(first, "name")
+      assert Map.has_key?(first, "email")
+      assert Map.has_key?(first, "github_login")
+      assert Map.has_key?(first, "bitbucket_login")
+      assert Map.has_key?(first, "gitlab_login")
+    end
   end
 
   describe "GET show" do
