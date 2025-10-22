@@ -24,8 +24,8 @@ defmodule FrontWeb.PeopleController do
   plug(FetchPermissions, [scope: "org"] when action in @person_action)
   plug(PageAccess, [permissions: "organization.view"] when action in @person_action)
 
-  plug(FetchPermissions, [scope: "org"] when action in [:organization])
-  plug(PageAccess, [permissions: "organization.view"] when action in [:organization])
+  plug(FetchPermissions, [scope: "org"] when action in [:organization, :organization_users])
+  plug(PageAccess, [permissions: "organization.view"] when action in [:organization, :organization_users])
 
   plug(
     FetchPermissions,
@@ -1058,6 +1058,36 @@ defmodule FrontWeb.PeopleController do
         redirect_path: people_path(conn, :organization),
         layout: {FrontWeb.LayoutView, "organization.html"}
       )
+    end)
+  end
+
+  def organization_users(conn, _params) do
+    Watchman.benchmark("people.organization_users.duration", fn ->
+      org_id = conn.assigns.organization_id
+
+      fetch_members = Async.run(fn -> Members.list_org_members(org_id, page_size: 1000) end)
+
+      {:ok, {:ok, {members, _total_pages}}} = Async.await(fetch_members)
+
+      data =
+        members
+        |> Enum.map(fn e ->
+          %{
+            "name" => e.name,
+            "email" => e.email,
+            "github_login" => e.github_login
+          }
+        end)
+        |> CSV.encode(
+          headers: [
+            "name",
+            "email",
+            "github"
+          ]
+        )
+        |> Enum.to_list()
+
+      send_download(conn, {:binary, data}, filename: "users.csv")
     end)
   end
 
