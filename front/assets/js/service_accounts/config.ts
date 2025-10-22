@@ -19,6 +19,7 @@ export class AppConfig {
       urls: {
         list: `/service_accounts`,
         create: `/service_accounts`,
+        export: `/service_accounts/export`,
         update: (id: string) => `/service_accounts/${id}`,
         delete: (id: string) => `/service_accounts/${id}`,
         regenerateToken: (id: string) =>
