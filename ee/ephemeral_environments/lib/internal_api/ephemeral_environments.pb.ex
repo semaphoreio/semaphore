@@ -1,3 +1,14 @@
+defmodule InternalApi.EphemeralEnvironments.StageType do
+  @moduledoc false
+
+  use Protobuf, enum: true, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:STAGE_TYPE_UNSPECIFIED, 0)
+  field(:STAGE_TYPE_PROVISION, 1)
+  field(:STAGE_TYPE_DEPLOY, 2)
+  field(:STAGE_TYPE_DEPROVISION, 3)
+end
+
 defmodule InternalApi.EphemeralEnvironments.InstanceState do
   @moduledoc false
 
@@ -137,28 +148,6 @@ defmodule InternalApi.EphemeralEnvironments.CreateResponse do
   )
 end
 
-defmodule InternalApi.EphemeralEnvironments.UpdateRequest do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:environment_type, 1,
-    type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType,
-    json_name: "environmentType"
-  )
-end
-
-defmodule InternalApi.EphemeralEnvironments.UpdateResponse do
-  @moduledoc false
-
-  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
-
-  field(:environment_type, 1,
-    type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType,
-    json_name: "environmentType"
-  )
-end
-
 defmodule InternalApi.EphemeralEnvironments.DeleteRequest do
   @moduledoc false
 
@@ -194,6 +183,28 @@ defmodule InternalApi.EphemeralEnvironments.CordonResponse do
   )
 end
 
+defmodule InternalApi.EphemeralEnvironments.UpdateRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:environment_type, 1,
+    type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType,
+    json_name: "environmentType"
+  )
+end
+
+defmodule InternalApi.EphemeralEnvironments.UpdateResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:environment_type, 1,
+    type: InternalApi.EphemeralEnvironments.EphemeralEnvironmentType,
+    json_name: "environmentType"
+  )
+end
+
 defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
   @moduledoc false
 
@@ -209,6 +220,92 @@ defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentType do
   field(:updated_at, 8, type: Google.Protobuf.Timestamp, json_name: "updatedAt")
   field(:state, 9, type: InternalApi.EphemeralEnvironments.TypeState, enum: true)
   field(:max_number_of_instances, 10, type: :int32, json_name: "maxNumberOfInstances")
+  field(:stages, 11, repeated: true, type: InternalApi.EphemeralEnvironments.StageConfig)
+
+  field(:environment_context, 12,
+    repeated: true,
+    type: InternalApi.EphemeralEnvironments.EnvironmentContext,
+    json_name: "environmentContext"
+  )
+
+  field(:accessible_project_ids, 13,
+    repeated: true,
+    type: :string,
+    json_name: "accessibleProjectIds"
+  )
+
+  field(:ttl_config, 14,
+    type: InternalApi.EphemeralEnvironments.TTLConfig,
+    json_name: "ttlConfig"
+  )
+end
+
+defmodule InternalApi.EphemeralEnvironments.StageConfig do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:type, 1, type: InternalApi.EphemeralEnvironments.StageType, enum: true)
+  field(:pipeline, 2, type: InternalApi.EphemeralEnvironments.PipelineConfig)
+  field(:parameters, 3, repeated: true, type: InternalApi.EphemeralEnvironments.StageParameter)
+
+  field(:rbac_rules, 4,
+    repeated: true,
+    type: InternalApi.EphemeralEnvironments.RBACRule,
+    json_name: "rbacRules"
+  )
+end
+
+defmodule InternalApi.EphemeralEnvironments.StageParameter do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+  field(:required, 3, type: :bool)
+end
+
+defmodule InternalApi.EphemeralEnvironments.RBACRule do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:subject_type, 1,
+    type: InternalApi.RBAC.SubjectType,
+    json_name: "subjectType",
+    enum: true
+  )
+
+  field(:subject_id, 2, type: :string, json_name: "subjectId")
+end
+
+defmodule InternalApi.EphemeralEnvironments.EnvironmentContext do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:name, 1, type: :string)
+  field(:description, 2, type: :string)
+end
+
+defmodule InternalApi.EphemeralEnvironments.PipelineConfig do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:project_id, 1, type: :string, json_name: "projectId")
+  field(:branch, 2, type: :string)
+  field(:pipeline_yaml_file, 3, type: :string, json_name: "pipelineYamlFile")
+end
+
+defmodule InternalApi.EphemeralEnvironments.TTLConfig do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:duration_hours, 1, type: :int32, json_name: "durationHours")
+  field(:allow_extension, 2, type: :bool, json_name: "allowExtension")
 end
 
 defmodule InternalApi.EphemeralEnvironments.EphemeralEnvironmentInstance do

@@ -1,6 +1,7 @@
 list='
 include/google/protobuf/timestamp
 ephemeral_environments
+rbac
 '
 
 for element in $list;do
