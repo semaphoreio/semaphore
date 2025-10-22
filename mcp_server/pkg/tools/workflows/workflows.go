@@ -17,14 +17,15 @@ import (
 )
 
 const (
-	searchToolName       = "project_workflows_search"
+	searchToolName       = "semaphore_workflows_search"
+	legacySearchToolName = "project_workflows_search" // deprecated: use semaphore_workflows_search
 	defaultLimit         = 20
 	maxLimit             = 100
 	missingWorkflowError = "workflow gRPC endpoint is not configured"
 )
 
-const (
-	searchToolDescription = `Search recent workflows for a project (most recent first).
+func searchFullDescription() string {
+	return `Search recent workflows for a project (most recent first).
 
 Use this when you need to answer:
 - "Show the last N workflows for project X"
@@ -43,20 +44,38 @@ Response modes:
 - detailed: adds pipeline IDs, rerun metadata, and repository IDs
 
 Examples:
-- project_workflows_search(project_id="...", organization_id="...", limit=10)
-- project_workflows_search(project_id="...", organization_id="...", branch="main", mode="detailed")
-- project_workflows_search(project_id="...", organization_id="...", requester="deploy-bot", my_workflows_only=false)
-- project_workflows_search(project_id="...", organization_id="...", cursor="opaque-token-from-previous-call")
+1. List recent workflows for a project:
+   semaphore_workflows_search(project_id="...", organization_id="...", limit=10)
+
+2. Find failed workflows on main branch:
+   semaphore_workflows_search(project_id="...", organization_id="...", branch="main", mode="detailed")
+
+3. Search workflows by automation requester:
+   semaphore_workflows_search(project_id="...", organization_id="...", requester="deploy-bot", my_workflows_only=false)
+
+4. Paginate through older workflows:
+   semaphore_workflows_search(project_id="...", organization_id="...", cursor="opaque-token-from-previous-call")
 
 Next steps:
-- Call jobs_logs_tail(job_id="...") after identifying failing jobs
-- Use project_workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
-)
+- Call semaphore_jobs_logs(job_id="...") after identifying failing jobs
+- Use semaphore_workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
+}
+
+func searchDeprecatedDescription() string {
+	return `⚠️ DEPRECATED: Use semaphore_workflows_search instead.
+
+This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
+
+Please update your integrations to use: semaphore_workflows_search
+
+This legacy alias will be removed in a future version. See semaphore_workflows_search for full documentation.`
+}
 
 // Register wires the workflows tool into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
 	handler := listHandler(api)
-	s.AddTool(newTool(searchToolName, searchToolDescription), handler)
+	s.AddTool(newTool(searchToolName, searchFullDescription()), handler)
+	s.AddTool(newTool(legacySearchToolName, searchDeprecatedDescription()), handler)
 }
 
 func newTool(name, description string) mcp.Tool {
@@ -140,7 +159,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by core_organizations_list.`), nil
+			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by semaphore_organizations_list.`), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
@@ -288,21 +307,8 @@ Double-check that:
 func formatWorkflowsMarkdown(result listResult, mode, projectID, orgID, branch, requester string, myWorkflowsOnly bool, userID string, limit int) string {
 	mb := shared.NewMarkdownBuilder()
 
-	header := fmt.Sprintf("Workflows for Project %s (%d returned)", projectID, len(result.Workflows))
+	header := fmt.Sprintf("Workflows (%d returned)", len(result.Workflows))
 	mb.H1(header)
-
-	filters := []string{fmt.Sprintf("limit=%d", limit), fmt.Sprintf("organizationId=%s", orgID)}
-	if branch != "" {
-		filters = append(filters, fmt.Sprintf(`branch="%s"`, branch))
-	}
-	if requester != "" {
-		filters = append(filters, fmt.Sprintf(`requester="%s"`, requester))
-	} else if myWorkflowsOnly {
-		filters = append(filters, fmt.Sprintf("userId=%s", userID))
-	}
-	if len(filters) > 0 {
-		mb.Paragraph("Filters: " + strings.Join(filters, ", "))
-	}
 
 	if len(result.Workflows) == 0 {
 		mb.Paragraph("No workflows matched the current filters.")
@@ -350,15 +356,12 @@ func formatWorkflowsMarkdown(result listResult, mode, projectID, orgID, branch, 
 			if wf.OrganizationID != "" {
 				mb.KeyValue("Organization ID", fmt.Sprintf("`%s`", wf.OrganizationID))
 			}
-			mb.Paragraph("Detailed mode enabled. Consider calling `jobs_logs_tail(job_id=\"...\")` for deeper diagnostics.")
 		}
 	}
 
 	mb.Line()
 	if result.NextCursor != "" {
-		mb.Paragraph(fmt.Sprintf("📄 **More workflows available.** Call again with `cursor=\"%s\"` to continue browsing older runs.", result.NextCursor))
-	} else {
-		mb.Paragraph("End of available workflows for the current filters.")
+		mb.Paragraph(fmt.Sprintf("📄 **More available**. Use `cursor=\"%s\"`", result.NextCursor))
 	}
 
 	return mb.String()

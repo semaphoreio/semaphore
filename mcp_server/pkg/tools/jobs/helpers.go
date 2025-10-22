@@ -213,7 +213,6 @@ func formatJobMarkdown(summary jobSummary, mode string) string {
 	}
 
 	mb.Line()
-	mb.Paragraph("Next steps: call `jobs_logs(job_id=\"...\", cursor=...)` to inspect live logs, or `workflow_pipelines_list(workflow_id=\"...\")` to understand the surrounding pipelines.")
 
 	return mb.String()
 }

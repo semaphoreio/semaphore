@@ -19,15 +19,113 @@ import (
 )
 
 const (
-	listToolName       = "org_projects_list"
-	searchToolName     = "org_projects_search"
-	defaultListLimit   = 25
-	maxListLimit       = 200
-	defaultSearchLimit = 20
-	defaultSearchPages = 5
-	maxSearchPages     = 10
-	searchPageSize     = 100
+	listToolName          = "semaphore_projects_list"
+	legacyListToolName    = "org_projects_list" // deprecated: use semaphore_projects_list
+	searchToolName        = "semaphore_projects_search"
+	legacySearchToolName  = "org_projects_search" // deprecated: use semaphore_projects_search
+	defaultListLimit      = 25
+	maxListLimit          = 200
+	defaultSearchLimit    = 20
+	defaultSearchPages    = 5
+	maxSearchPages        = 10
+	searchPageSize        = 100
 )
+
+func listFullDescription() string {
+	return `List projects that belong to a specific organization.
+
+Use this when you need the project_id before digging into workflows, pipelines, or jobs.
+
+Typical flows:
+- "Show me projects in Acme Org" → call this tool, then ask follow-up questions
+- "I only remember the repo URL" → list projects, then filter or use semaphore_projects_search
+
+Response modes:
+- summary (default): project name, IDs, repository URL, visibility, last updated
+- detailed: adds scheduler/task counts, custom permission flags, debug/attach permissions
+
+Pagination:
+- Default page size: 25 projects
+- Maximum: 200 projects (be mindful of context size)
+- Use cursor from previous response's nextCursor field to fetch more
+- Empty/omitted cursor starts from the beginning
+
+Examples:
+1. List first 10 projects:
+   semaphore_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", limit=10)
+
+2. Get detailed project info with schedulers:
+   semaphore_projects_list(organization_id="...", mode="detailed", limit=25)
+
+3. Fetch next page of projects:
+   semaphore_projects_list(organization_id="...", cursor="opaque-token-from-previous-response", limit=25)
+
+4. List many projects with full details:
+   semaphore_projects_list(organization_id="...", mode="detailed", limit=200)
+
+Common follow-ups:
+- semaphore_projects_search(...) to find a specific repo or branch
+- semaphore_workflows_search(project_id="...", status="failed") to debug
+`
+}
+
+func listDeprecatedDescription() string {
+	return `⚠️ DEPRECATED: Use semaphore_projects_list instead.
+
+This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
+
+Please update your integrations to use: semaphore_projects_list
+
+This legacy alias will be removed in a future version. See semaphore_projects_list for full documentation.`
+}
+
+func searchFullDescription() string {
+	return `Search projects inside an organization by project name, repository URL, or description.
+
+Use this to quickly narrow down a project when you only remember part of its name, repo slug, or default branch.
+
+Ideal prompts:
+- "Find the payments API project"
+- "Which project uses repo github.com/example/mobile?"
+- "Locate projects with 'infra' in the description"
+
+Search details:
+- Provide either a free-form query, a repository URL, or both
+- Matches on project name, description, repository URL, repository name, and default branch
+- Highlights matched fields and provides a confidence score (high / medium / low)
+
+Tuning:
+- limit: cap how many matches the LLM receives (default 20)
+- max_pages: how many paginated fetches to inspect (default 5). Increase for large orgs.
+- mode: 'summary' for concise answers, 'detailed' for schedulers/tasks/permissions
+
+Examples:
+1. Search by project name:
+   semaphore_projects_search(organization_id="...", query="mobile")
+
+2. Search by repository URL:
+   semaphore_projects_search(organization_id="...", repository_url="github.com/example/app")
+
+3. Combined search with increased depth:
+   semaphore_projects_search(organization_id="...", query="payments", max_pages=8, limit=30)
+
+4. Detailed search results:
+   semaphore_projects_search(organization_id="...", query="backend", mode="detailed")
+
+Follow-ups:
+- Once you have a project_id, call semaphore_workflows_search for deeper inspection.
+`
+}
+
+func searchDeprecatedDescription() string {
+	return `⚠️ DEPRECATED: Use semaphore_projects_search instead.
+
+This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
+
+Please update your integrations to use: semaphore_projects_search
+
+This legacy alias will be removed in a future version. See semaphore_projects_search for full documentation.`
+}
 
 // Register wires project tools into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
@@ -35,45 +133,26 @@ func Register(s *server.MCPServer, api internalapi.Provider) {
 		return
 	}
 
-	s.AddTool(newListTool(), listHandler(api))
-	s.AddTool(newSearchTool(), searchHandler(api))
+	listH := listHandler(api)
+	s.AddTool(newListTool(listToolName, listFullDescription()), listH)
+	s.AddTool(newListTool(legacyListToolName, listDeprecatedDescription()), listH)
+
+	searchH := searchHandler(api)
+	s.AddTool(newSearchTool(searchToolName, searchFullDescription()), searchH)
+	s.AddTool(newSearchTool(legacySearchToolName, searchDeprecatedDescription()), searchH)
 }
 
-func newListTool() mcp.Tool {
+func newListTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
-		listToolName,
-		mcp.WithDescription(`List projects that belong to a specific organization.
-
-Use this when you need the project_id before digging into workflows, pipelines, or jobs. Typical flows:
-- “Show me projects in Acme Org” → call this tool, then ask follow-up questions about a specific project
-- “I only remember the repo URL” → list projects, then filter client-side or use org_projects_search
-
-Response modes:
-- summary (default): project name, IDs, repository URL, visibility, last updated timestamps
-- detailed: adds scheduler/task counts, custom permission flags, debug/attach permissions
-
-Pagination:
-- Default page size: 25 projects
-- Maximum: 200 projects (be mindful of context size)
-- `+"`page`"+` parameter is 1-based; increasing it fetches subsequent pages
-
-Examples:
-- org_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", limit=10)
-- org_projects_list(organization_id="...", mode="detailed", page=2)
-
-Common follow-ups:
-- org_projects_search(...) to find a specific repo or branch
-- project_workflows_search(project_id="...", status="failed") to continue debugging
-`),
+		name,
+		mcp.WithDescription(description),
 		mcp.WithString("organization_id",
 			mcp.Required(),
 			mcp.Description("Organization UUID whose projects should be listed. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
 			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
-		mcp.WithNumber("page",
-			mcp.Description("1-based page number. Use page=1 for the first page; higher pages fetch more projects."),
-			mcp.Min(1),
-			mcp.DefaultNumber(1),
+		mcp.WithString("cursor",
+			mcp.Description("Opaque pagination token from a previous response's 'nextCursor' field. Omit or leave empty to start from the first page."),
 		),
 		mcp.WithNumber("limit",
 			mcp.Description("Number of projects per page (1-200). Larger limits consume more context tokens."),
@@ -92,29 +171,10 @@ Common follow-ups:
 	)
 }
 
-func newSearchTool() mcp.Tool {
+func newSearchTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
-		searchToolName,
-		mcp.WithDescription(`Search projects inside an organization by project name, repository URL, or description.
-
-Use this to quickly narrow down a project when you only remember part of its name, repo slug, or default branch. Ideal prompts:
-- “Find the payments API project”
-- “Which project uses repo github.com/example/mobile?”
-- “Locate projects with ‘infra’ in the description”
-
-Search details:
-- Provide either a free-form query, a repository URL, or both
-- Matches on project name, description, repository URL, repository name, and default branch
-- Highlights matched fields and provides a confidence score (high / medium / low)
-
-Tuning:
-- limit: cap how many matches the LLM receives (default 20)
-- max_pages: how many paginated fetches to inspect (default 5). Increase when orgs have hundreds of projects.
-- mode: 'summary' for concise answers, 'detailed' to include schedulers/tasks/permissions metadata
-
-Follow-ups:
-- Once you have a project_id, call project_workflows_search or pipelines tools for deeper inspection.
-`),
+		name,
+		mcp.WithDescription(description),
 		mcp.WithString("organization_id",
 			mcp.Required(),
 			mcp.Description("Organization UUID that scoping the search. Format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx."),
@@ -150,11 +210,8 @@ Follow-ups:
 }
 
 type listResult struct {
-	Projects     []projectSummary `json:"projects"`
-	Page         int              `json:"page"`
-	TotalPages   int              `json:"totalPages"`
-	TotalEntries int              `json:"totalEntries"`
-	HasMore      bool             `json:"hasMore"`
+	Projects   []projectSummary `json:"projects"`
+	NextCursor string           `json:"nextCursor,omitempty"`
 }
 
 type searchResult struct {
@@ -215,7 +272,7 @@ func formatProjectListMarkdown(result listResult, mode string, orgID string) str
 		mb.Paragraph("**Tips:**")
 		mb.ListItem("Confirm the organization_id is correct")
 		mb.ListItem("Ensure the X-Semaphore-User-ID header identifies a user with access")
-		mb.ListItem("Use org_projects_search for fuzzy matching")
+		mb.ListItem("Use semaphore_projects_search for fuzzy matching")
 		return mb.String()
 	}
 
@@ -230,38 +287,48 @@ func formatProjectListMarkdown(result listResult, mode string, orgID string) str
 		}
 		mb.H2(displayName)
 
-		mb.KeyValue("Project ID", fmt.Sprintf("`%s`", project.ID))
-
-		if project.Description != "" {
-			mb.Paragraph(project.Description)
-		}
+		mb.KeyValue("ID", fmt.Sprintf("`%s`", project.ID))
 
 		if project.Repository.URL != "" {
 			mb.KeyValue("Repository", project.Repository.URL)
 		}
-		if project.Repository.DefaultBranch != "" {
-			mb.KeyValue("Default Branch", project.Repository.DefaultBranch)
-		}
-		if project.Repository.PipelineFile != "" {
-			mb.KeyValue("Pipeline File", project.Repository.PipelineFile)
-		}
 
+		// Status (minimal in summary mode)
 		statusFlags := []string{}
 		if project.Repository.Public {
 			statusFlags = append(statusFlags, "🌐 Public")
 		} else {
 			statusFlags = append(statusFlags, "🔒 Private")
 		}
-		if project.Repository.Connected {
-			statusFlags = append(statusFlags, "✅ Repo connected")
-		} else {
-			statusFlags = append(statusFlags, "⚠️ Repo not connected")
-		}
-		if project.Visibility != "" {
-			statusFlags = append(statusFlags, fmt.Sprintf("Visibility: %s", project.Visibility))
-		}
 		if len(statusFlags) > 0 {
 			mb.KeyValue("Status", strings.Join(statusFlags, ", "))
+		}
+
+		// Detailed mode only
+		if mode == "detailed" {
+			if project.Description != "" {
+				mb.Paragraph(project.Description)
+			}
+
+			if project.Repository.DefaultBranch != "" {
+				mb.KeyValue("Default Branch", project.Repository.DefaultBranch)
+			}
+			if project.Repository.PipelineFile != "" {
+				mb.KeyValue("Pipeline File", project.Repository.PipelineFile)
+			}
+
+			detailFlags := []string{}
+			if project.Repository.Connected {
+				detailFlags = append(detailFlags, "✅ Repo connected")
+			} else {
+				detailFlags = append(detailFlags, "⚠️ Repo not connected")
+			}
+			if project.Visibility != "" {
+				detailFlags = append(detailFlags, fmt.Sprintf("Visibility: %s", project.Visibility))
+			}
+			if len(detailFlags) > 0 {
+				mb.KeyValue("Details", strings.Join(detailFlags, ", "))
+			}
 		}
 
 		if mode == "detailed" && project.Details != nil {
@@ -286,15 +353,13 @@ func formatProjectListMarkdown(result listResult, mode string, orgID string) str
 				mb.KeyValue("Attach Permissions", strings.Join(project.Details.AttachPermissions, ", "))
 			}
 		}
-
-		mb.Newline()
-		mb.Paragraph("**Next steps:** Call `project_workflows_search(project_id=\"...\", status=\"failed\")` to inspect recent workflows, or use `workflow_pipelines_list(workflow_id=\"...\")` followed by `jobs_logs(job_id=\"...\")` for job-level details.")
 	}
 
 	mb.Line()
-	mb.Paragraph(fmt.Sprintf("Page %d of %d • %d total known projects", result.Page, result.TotalPages, result.TotalEntries))
-	if result.HasMore {
-		mb.Paragraph("📄 **More projects available.** Increase `page` or `limit` to continue browsing.")
+	mb.Paragraph(fmt.Sprintf("Showing %d projects", len(result.Projects)))
+
+	if result.NextCursor != "" {
+		mb.Paragraph(fmt.Sprintf("📄 **More projects available**. Use `cursor=\"%s\"` to fetch the next page.", result.NextCursor))
 	}
 
 	return mb.String()
@@ -359,8 +424,6 @@ func formatProjectSearchMarkdown(result searchResult, mode string, orgID string,
 			mb.KeyValue("Tasks", fmt.Sprintf("%d", project.Details.TaskCount))
 		}
 
-		mb.Newline()
-		mb.Paragraph("**Next steps:** Call `project_workflows_search(project_id=\"...\", status=\"failed\", branch=\"main\")` to investigate recent failures, or `jobs_describe(job_id=\"...\")` after locating specific workflows.")
 	}
 
 	mb.Line()
@@ -427,7 +490,7 @@ You can discover organizations by calling core_organizations_list first.`), nil
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`%v
 
-Example: org_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
+Example: semaphore_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
@@ -437,10 +500,7 @@ Example: org_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
 Use mode="summary" for quick scanning or mode="detailed" to include schedulers, tasks, and permission metadata.`, err)), nil
 		}
 
-		page := req.GetInt("page", 1)
-		if page < 1 {
-			return mcp.NewToolResultError("page must be at least 1. Example: org_projects_list(..., page=1)"), nil
-		}
+		cursor := strings.TrimSpace(req.GetString("cursor", ""))
 
 		limit := req.GetInt("limit", defaultListLimit)
 		if limit <= 0 {
@@ -461,24 +521,23 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
-		request := &projecthubpb.ListRequest{
-			Metadata: projectRequestMeta(orgID, userID),
-			Pagination: &projecthubpb.PaginationRequest{
-				Page:     int32(page),
-				PageSize: int32(limit),
-			},
+		request := &projecthubpb.ListKeysetRequest{
+			Metadata:  projectRequestMeta(orgID, userID),
+			PageToken: cursor,
+			PageSize:  int32(limit),
+			Direction: projecthubpb.ListKeysetRequest_NEXT,
 		}
 
 		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
 		defer cancel()
 
-		resp, err := client.List(callCtx, request)
+		resp, err := client.ListKeyset(callCtx, request)
 		if err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":            "project.List",
+					"rpc":            "project.ListKeyset",
 					"organizationId": orgID,
-					"page":           page,
+					"cursor":         cursor,
 					"limit":          limit,
 					"mode":           mode,
 					"userId":         userID,
@@ -500,7 +559,7 @@ Suggested next steps:
 
 		if err := shared.CheckProjectResponseMeta(resp.GetMetadata()); err != nil {
 			logging.ForComponent("rpc").
-				WithField("rpc", "project.List").
+				WithField("rpc", "project.ListKeyset").
 				WithError(err).
 				Warn("project list returned non-OK status")
 			return mcp.NewToolResultError(fmt.Sprintf(`Request failed: %v
@@ -513,27 +572,14 @@ This can happen if:
 Try removing optional filters or verifying access permissions.`, err)), nil
 		}
 
-		pagination := resp.GetPagination()
-		totalPages := 0
-		totalEntries := 0
-		hasMore := false
-		if pagination != nil {
-			totalPages = int(pagination.GetTotalPages())
-			totalEntries = int(pagination.GetTotalEntries())
-			hasMore = int(pagination.GetPageNumber()) < totalPages
-		}
-
 		projects := make([]projectSummary, 0, len(resp.GetProjects()))
 		for _, proj := range resp.GetProjects() {
 			projects = append(projects, summarizeProject(proj, mode == "detailed"))
 		}
 
 		result := listResult{
-			Projects:     projects,
-			Page:         page,
-			TotalPages:   totalPages,
-			TotalEntries: totalEntries,
-			HasMore:      hasMore,
+			Projects:   projects,
+			NextCursor: strings.TrimSpace(resp.GetNextPageToken()),
 		}
 
 		markdown := formatProjectListMarkdown(result, mode, orgID)

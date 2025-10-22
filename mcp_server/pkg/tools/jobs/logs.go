@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	logsToolName         = "jobs_logs"
+	logsToolName         = "semaphore_jobs_logs"
+	legacyLogsToolName   = "jobs_logs" // deprecated: use semaphore_jobs_logs
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
@@ -27,27 +28,44 @@ const (
 	errLoghub2Missing    = "loghub2 gRPC endpoint is not configured"
 )
 
-const logsToolDescription = `Fetch recent log output for a job.
+func logsFullDescription() string {
+	return `Fetch recent log output for a job.
 
-Use this after jobs_describe indicates a failure or long-running job.
+Use this after semaphore_jobs_describe indicates a failure or long-running job.
 
 Outputs:
 - Hosted jobs: returns a preview of the most recent log lines (up to 200) and a nextCursor for pagination.
 - Self-hosted jobs: returns a temporary log token (300s TTL) and instructions for downloading full logs.
 
-Inputs:
-- organization_id (required): UUID of the organization context (from core_organizations_list).
-- job_id (required): UUID of the target job.
-- cursor (optional): continue from a previous response’s nextCursor to fetch additional lines.
+Examples:
+1. Fetch latest job logs:
+   semaphore_jobs_logs(job_id="...", organization_id="...")
+
+2. Paginate through more logs:
+   semaphore_jobs_logs(job_id="...", organization_id="...", cursor="next-page-token")
+
+3. Get logs for self-hosted job:
+   semaphore_jobs_logs(job_id="...", organization_id="...")
 
 Typical workflow:
-1. jobs_describe(job_id="...") → identify failing job
-2. jobs_logs(job_id="...") → view latest log lines
+1. semaphore_jobs_describe(job_id="...") → identify failing job
+2. semaphore_jobs_logs(job_id="...") → view latest log lines
 3. If more logs needed, call again with cursor from the previous response.
 4. For self-hosted jobs, use the returned token in a follow-up HTTPS request.
 `
+}
 
-type logsResult struct {
+func logsDeprecatedDescription() string {
+	return `⚠️ DEPRECATED: Use semaphore_jobs_logs instead.
+
+This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
+
+Please update your integrations to use: semaphore_jobs_logs
+
+This legacy alias will be removed in a future version. See semaphore_jobs_logs for full documentation.`
+}
+
+type logsResult struct{
 	JobID            string   `json:"jobId"`
 	Source           string   `json:"source"`
 	Preview          []string `json:"preview,omitempty"`
@@ -60,14 +78,14 @@ type logsResult struct {
 	TokenTtlSeconds  uint32   `json:"tokenTtlSeconds,omitempty"`
 }
 
-func newLogsTool() mcp.Tool {
+func newLogsTool(name, description string) mcp.Tool {
 	return mcp.NewTool(
-		logsToolName,
-		mcp.WithDescription(logsToolDescription),
+		name,
+		mcp.WithDescription(description),
 		mcp.WithString(
 			"organization_id",
 			mcp.Required(),
-			mcp.Description("Organization UUID associated with the job. Cache this value after calling core_organizations_list."),
+			mcp.Description("Organization UUID associated with the job. Cache this value after calling semaphore_organizations_list."),
 			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
 		),
 		mcp.WithString(
@@ -283,13 +301,12 @@ func formatHostedLogsMarkdown(result logsResult) string {
 	if result.Final {
 		mb.Paragraph("✅ This job reported final logs. No additional pages are available.")
 	} else if result.NextCursor != "" {
-		mb.Paragraph(fmt.Sprintf("📄 More logs available. Call again with `cursor=\"%s\"` to continue.", result.NextCursor))
+		mb.Paragraph(fmt.Sprintf("📄 **More available**. Use `cursor=\"%s\"`", result.NextCursor))
 	} else {
 		mb.Paragraph("ℹ️ Logs are still streaming. Retry shortly for additional output.")
 	}
 
 	mb.Line()
-	mb.Paragraph("Next steps: consider downloading artifacts or re-running the job if the issue persists.")
 
 	return mb.String()
 }

@@ -29,7 +29,7 @@ import (
 
 var (
 	versionFlag = flag.Bool("version", false, "print the server version and exit")
-	nameFlag    = flag.String("name", "semaphore-mcp", "implementation name advertised to MCP clients")
+	nameFlag    = flag.String("name", "semaphore-mcp-server", "implementation name advertised to MCP clients")
 	httpAddr    = flag.String("http", ":3001", "address to serve the streamable MCP transport")
 	version     = "0.1.0"
 )

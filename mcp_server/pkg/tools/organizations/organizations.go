@@ -16,25 +16,17 @@ import (
 )
 
 const (
-	listToolName    = "core_organizations_list"
-	defaultPageSize = 20
-	maxPageSize     = 100
+	listToolName       = "semaphore_organizations_list"
+	legacyListToolName = "core_organizations_list" // deprecated: use semaphore_organizations_list
+	defaultPageSize    = 20
+	maxPageSize        = 100
 )
 
-// Register wires organization tools into the MCP server.
-func Register(s *server.MCPServer, api internalapi.Provider) {
-	if s == nil {
-		return
-	}
-	s.AddTool(newListTool(), listHandler(api))
-}
-
-func newListTool() mcp.Tool {
-	return mcp.NewTool(
-		listToolName,
-		mcp.WithDescription(`List organizations available to the authenticated user.
+func fullDescription() string {
+	return `List organizations available to the authenticated user.
 
 This tool retrieves all organizations the user can access. The caller's user ID is derived from the X-Semaphore-User-ID header that the authentication layer injects into every request, so no additional arguments are required to identify the caller.
+
 Use this as the first step when users ask questions like:
 - "Show me my organizations"
 - "Which orgs can I access?"
@@ -51,12 +43,21 @@ Pagination:
 - Empty/omitted cursor starts from the beginning
 
 Common Usage Patterns:
-1. List all accessible orgs → Pick one → Call org.projects.list(organization_id="...")
+1. List all accessible orgs → Pick one → Call semaphore_projects_list(organization_id="...")
 2. List orgs → Filter by name in application code → Use selected org_id
 
 Examples:
-- core_organizations_list(limit=10, mode="summary")
-- core_organizations_list(cursor="opaque-cursor-from-previous-response", limit=50)
+1. List first 10 organizations:
+   semaphore_organizations_list(limit=10, mode="summary")
+
+2. Paginate through all organizations:
+   semaphore_organizations_list(cursor="opaque-cursor-from-previous-response", limit=50)
+
+3. Get detailed org information with IP allowlists:
+   semaphore_organizations_list(mode="detailed", limit=5)
+
+4. Fetch specific page of organizations:
+   semaphore_organizations_list(limit=20, cursor="next-page-token")
 
 Common Errors:
 - Empty list: User may not belong to any organizations (check authentication)
@@ -65,9 +66,36 @@ Common Errors:
 
 Next Steps After This Call:
 - Store the organization_id you intend to use (for example in a local ".semaphore/org" file) so future requests can reference it quickly
-- Use org_projects_list(organization_id="...") to see projects in an organization
-- Use org_projects_search(organization_id="...", query="...") to find specific projects
-`),
+- Use semaphore_projects_list(organization_id="...") to see projects in an organization
+- Use semaphore_projects_search(organization_id="...", query="...") to find specific projects
+`
+}
+
+func deprecatedDescription() string {
+	return `⚠️ DEPRECATED: Use semaphore_organizations_list instead.
+
+This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
+
+Please update your integrations to use: semaphore_organizations_list
+
+This legacy alias will be removed in a future version. See semaphore_organizations_list for full documentation.`
+}
+
+// Register wires organization tools into the MCP server.
+func Register(s *server.MCPServer, api internalapi.Provider) {
+	if s == nil {
+		return
+	}
+	handler := listHandler(api)
+	s.AddTool(newListTool(listToolName, fullDescription()), handler)
+	s.AddTool(newListTool(legacyListToolName, deprecatedDescription()), handler)
+}
+
+func newListTool(name, description string) mcp.Tool {
+	return mcp.NewTool(
+		name,
+		mcp.WithDescription(description),
+
 		mcp.WithString("cursor",
 			mcp.Description("Opaque pagination token from a previous response's 'nextCursor' field. Omit or leave empty to start from the first page."),
 		),
@@ -137,7 +165,7 @@ The 'mode' parameter must be either 'summary' or 'detailed':
 - summary: Returns basic org information (name, ID, status)
 - detailed: Returns full details including IP allowlists, settings, permissions
 
-Example: core_organizations_list(mode="summary")`, err)), nil
+Example: semaphore_organizations_list(mode="summary")`, err)), nil
 		}
 
 		// Fetch and validate the caller's user ID from the authentication header
@@ -152,7 +180,7 @@ Troubleshooting:
 - Verify the header value is the caller's UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 - Retry once the header is present
 
-Example: core_organizations_list(limit=20)`, err)), nil
+Example: semaphore_organizations_list(limit=20)`, err)), nil
 		}
 
 		limit := req.GetInt("limit", defaultPageSize)
@@ -256,8 +284,6 @@ func formatOrganizationsMarkdown(orgs []organizationSummary, mode string, nextCu
 		return mb.String()
 	}
 
-	mb.Paragraph("Tip: jot down the organization ID you plan to reuse (for example in a local `.semaphore/org` file) so future MCP calls can include it without rerunning this tool.")
-
 	for i, org := range orgs {
 		if i > 0 {
 			mb.Newline()
@@ -266,9 +292,12 @@ func formatOrganizationsMarkdown(orgs []organizationSummary, mode string, nextCu
 		mb.H2(fmt.Sprintf("%s `%s`", org.Name, org.Username))
 
 		mb.KeyValue("ID", fmt.Sprintf("`%s`", org.ID))
-		mb.KeyValue("Owner ID", fmt.Sprintf("`%s`", org.OwnerID))
-		if org.CreatedAt != "" {
-			mb.KeyValue("Created", org.CreatedAt)
+
+		if mode == "detailed" {
+			mb.KeyValue("Owner ID", fmt.Sprintf("`%s`", org.OwnerID))
+			if org.CreatedAt != "" {
+				mb.KeyValue("Created", org.CreatedAt)
+			}
 		}
 
 		// Status flags

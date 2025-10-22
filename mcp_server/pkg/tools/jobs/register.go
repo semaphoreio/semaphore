@@ -8,6 +8,11 @@ import (
 
 // Register wires job-related tools into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
-	s.AddTool(newDescribeTool(), describeHandler(api))
-	s.AddTool(newLogsTool(), logsHandler(api))
+	descH := describeHandler(api)
+	s.AddTool(newDescribeTool(describeToolName, describeFullDescription()), descH)
+	s.AddTool(newDescribeTool(legacyDescribeToolName, describeDeprecatedDescription()), descH)
+
+	logsH := logsHandler(api)
+	s.AddTool(newLogsTool(logsToolName, logsFullDescription()), logsH)
+	s.AddTool(newLogsTool(legacyLogsToolName, logsDeprecatedDescription()), logsH)
 }
