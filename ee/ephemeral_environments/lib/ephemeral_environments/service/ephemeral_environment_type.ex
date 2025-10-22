@@ -19,7 +19,7 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
     - {:error, String.t()} on validation failure
   """
   def create(attrs) do
-    attrs = Map.put(attrs, :last_modified_by, attrs[:created_by])
+    attrs = Map.put(attrs, :last_updated_by, attrs[:created_by])
     attrs = Map.put_new(attrs, :state, :draft)
 
     %Schema{}

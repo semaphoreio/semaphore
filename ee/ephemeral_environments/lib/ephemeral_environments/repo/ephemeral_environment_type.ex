@@ -10,7 +10,7 @@ defmodule EphemeralEnvironments.Repo.EphemeralEnvironmentType do
     field(:name, :string)
     field(:description, :string)
     field(:created_by, :binary_id)
-    field(:last_modified_by, :binary_id)
+    field(:last_updated_by, :binary_id)
     field(:state, Ecto.Enum, values: [:draft, :ready, :cordoned, :deleted])
     field(:max_number_of_instances, :integer)
 
@@ -24,14 +24,14 @@ defmodule EphemeralEnvironments.Repo.EphemeralEnvironmentType do
       :name,
       :description,
       :created_by,
-      :last_modified_by,
+      :last_updated_by,
       :state,
       :max_number_of_instances
     ])
-    |> validate_required([:org_id, :name, :created_by, :last_modified_by, :state])
+    |> validate_required([:org_id, :name, :created_by, :last_updated_by, :state])
     |> validate_uuid(:org_id)
     |> validate_uuid(:created_by)
-    |> validate_uuid(:last_modified_by)
+    |> validate_uuid(:last_updated_by)
     |> validate_length(:name, min: 1, max: 255)
     |> validate_length(:description, max: 1000)
     |> validate_number(:max_number_of_instances, greater_than: 0)
