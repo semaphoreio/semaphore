@@ -20,7 +20,7 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
   """
   def create(attrs) do
     attrs = Map.put(attrs, :last_updated_by, attrs[:created_by])
-    attrs = Map.put_new(attrs, :state, :draft)
+    attrs = Map.put(attrs, :state, :draft)
 
     %Schema{}
     |> Schema.changeset(attrs)

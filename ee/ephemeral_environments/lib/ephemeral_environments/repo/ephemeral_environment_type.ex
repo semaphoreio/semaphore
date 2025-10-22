@@ -35,6 +35,10 @@ defmodule EphemeralEnvironments.Repo.EphemeralEnvironmentType do
     |> validate_length(:name, min: 1, max: 255)
     |> validate_length(:description, max: 1000)
     |> validate_number(:max_number_of_instances, greater_than: 0)
+    |> unique_constraint(:duplicate_name,
+      name: :ephemeral_environment_types_org_id_name_index,
+      message: "ephemeral environment name has already been taken"
+    )
   end
 
   defp validate_uuid(changeset, field) do
