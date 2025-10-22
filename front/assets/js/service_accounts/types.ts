@@ -59,6 +59,7 @@ export interface Config {
   urls: {
     list: string;
     create: string;
+    export: string;
     update: (id: string) => string;
     delete: (id: string) => string;
     regenerateToken: (id: string) => string;
