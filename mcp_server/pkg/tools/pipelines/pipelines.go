@@ -16,14 +16,14 @@ import (
 )
 
 const (
-	listToolName          = "semaphore_pipelines_list"
-	legacyListToolName    = "workflow_pipelines_list" // deprecated: use semaphore_pipelines_list
-	legacyLegacyListName  = "pipelines_list"          // deprecated: use semaphore_pipelines_list
-	jobsToolName          = "semaphore_pipeline_jobs"
-	legacyJobsToolName    = "pipeline_jobs_list" // deprecated: use semaphore_pipeline_jobs
-	defaultLimit          = 20
-	maxLimit              = 100
-	errNoClient           = "pipeline gRPC endpoint is not configured"
+	listToolName         = "semaphore_pipelines_list"
+	legacyListToolName   = "workflow_pipelines_list" // deprecated: use semaphore_pipelines_list
+	legacyLegacyListName = "pipelines_list"          // deprecated: use semaphore_pipelines_list
+	jobsToolName         = "semaphore_pipeline_jobs"
+	legacyJobsToolName   = "pipeline_jobs_list" // deprecated: use semaphore_pipeline_jobs
+	defaultLimit         = 20
+	maxLimit             = 100
+	errNoClient          = "pipeline gRPC endpoint is not configured"
 )
 
 func listFullDescription() string {

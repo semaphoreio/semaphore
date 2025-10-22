@@ -19,16 +19,16 @@ import (
 )
 
 const (
-	listToolName          = "semaphore_projects_list"
-	legacyListToolName    = "org_projects_list" // deprecated: use semaphore_projects_list
-	searchToolName        = "semaphore_projects_search"
-	legacySearchToolName  = "org_projects_search" // deprecated: use semaphore_projects_search
-	defaultListLimit      = 25
-	maxListLimit          = 200
-	defaultSearchLimit    = 20
-	defaultSearchPages    = 5
-	maxSearchPages        = 10
-	searchPageSize        = 100
+	listToolName         = "semaphore_projects_list"
+	legacyListToolName   = "org_projects_list" // deprecated: use semaphore_projects_list
+	searchToolName       = "semaphore_projects_search"
+	legacySearchToolName = "org_projects_search" // deprecated: use semaphore_projects_search
+	defaultListLimit     = 25
+	maxListLimit         = 200
+	defaultSearchLimit   = 20
+	defaultSearchPages   = 5
+	maxSearchPages       = 10
+	searchPageSize       = 100
 )
 
 func listFullDescription() string {

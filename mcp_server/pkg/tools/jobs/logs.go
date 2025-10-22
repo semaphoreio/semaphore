@@ -65,7 +65,7 @@ Please update your integrations to use: semaphore_jobs_logs
 This legacy alias will be removed in a future version. See semaphore_jobs_logs for full documentation.`
 }
 
-type logsResult struct{
+type logsResult struct {
 	JobID            string   `json:"jobId"`
 	Source           string   `json:"source"`
 	Preview          []string `json:"preview,omitempty"`

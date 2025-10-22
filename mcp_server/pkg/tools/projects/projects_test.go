@@ -19,15 +19,10 @@ import (
 func TestListProjectsSummary(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	stub := &projectClientStub{
-		responses: map[int32]*projecthubpb.ListResponse{
-			1: {
-				Metadata: okMetadata(),
-				Pagination: &projecthubpb.PaginationResponse{
-					PageNumber:   1,
-					PageSize:     10,
-					TotalEntries: 2,
-					TotalPages:   2,
-				},
+		keysetResponses: map[string]*projecthubpb.ListKeysetResponse{
+			"": {
+				Metadata:      okMetadata(),
+				NextPageToken: "next-page-token",
 				Projects: []*projecthubpb.Project{
 					makeProject("proj-1", "API Service", orgID, "https://github.com/example/api", "main"),
 				},
@@ -44,7 +39,7 @@ func TestListProjectsSummary(t *testing.T) {
 		Params: mcp.CallToolParams{
 			Arguments: map[string]any{
 				"organization_id": orgID,
-				"page":            1,
+				"cursor":          "",
 				"limit":           10,
 			},
 		},
@@ -68,8 +63,8 @@ func TestListProjectsSummary(t *testing.T) {
 	if len(out.Projects) != 1 {
 		t.Fatalf("expected 1 project, got %d", len(out.Projects))
 	}
-	if !out.HasMore {
-		t.Fatalf("expected hasMore=true when total pages > current page")
+	if out.NextCursor != "next-page-token" {
+		t.Fatalf("expected nextCursor=next-page-token, got %q", out.NextCursor)
 	}
 	if out.Projects[0].Repository.URL != "https://github.com/example/api" {
 		t.Fatalf("unexpected repository url: %s", out.Projects[0].Repository.URL)
@@ -157,21 +152,39 @@ func TestSearchProjectsMatches(t *testing.T) {
 		t.Fatalf("expected total matches to be >= returned projects")
 	}
 
-	if stub.calls[0] != 1 || stub.calls[1] != 2 {
-		t.Fatalf("expected pages 1 and 2 to be fetched, got %v", stub.calls)
+	if stub.pageCalls[0] != 1 || stub.pageCalls[1] != 2 {
+		t.Fatalf("expected pages 1 and 2 to be fetched, got %v", stub.pageCalls)
 	}
 }
 
 type projectClientStub struct {
 	projecthubpb.ProjectServiceClient
-	responses map[int32]*projecthubpb.ListResponse
-	calls     []int32
-	err       error
+	keysetResponses map[string]*projecthubpb.ListKeysetResponse
+	responses       map[int32]*projecthubpb.ListResponse
+	calls           []string
+	pageCalls       []int32
+	err             error
+}
+
+func (p *projectClientStub) ListKeyset(ctx context.Context, in *projecthubpb.ListKeysetRequest, opts ...grpc.CallOption) (*projecthubpb.ListKeysetResponse, error) {
+	cursor := in.GetPageToken()
+	p.calls = append(p.calls, cursor)
+	if p.err != nil {
+		return nil, p.err
+	}
+	if resp, ok := p.keysetResponses[cursor]; ok {
+		return resp, nil
+	}
+	return &projecthubpb.ListKeysetResponse{
+		Metadata:      okMetadata(),
+		NextPageToken: "",
+		Projects:      []*projecthubpb.Project{},
+	}, nil
 }
 
 func (p *projectClientStub) List(ctx context.Context, in *projecthubpb.ListRequest, opts ...grpc.CallOption) (*projecthubpb.ListResponse, error) {
 	page := in.GetPagination().GetPage()
-	p.calls = append(p.calls, page)
+	p.pageCalls = append(p.pageCalls, page)
 	if p.err != nil {
 		return nil, p.err
 	}
