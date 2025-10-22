@@ -25,9 +25,13 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer do
   end
 
   def create(request, _stream) do
-    {:ok, ret} = EphemeralEnvironments.Service.EphemeralEnvironmentType.create(request.environment_type)
-    converted = EphemeralEnvironments.Utils.Proto.from_map(%{environment_type: ret}, CreateResponse)
-    converted
+    case EphemeralEnvironments.Service.EphemeralEnvironmentType.create(request.environment_type) do
+      {:ok, ret} ->
+        EphemeralEnvironments.Utils.Proto.from_map(%{environment_type: ret}, CreateResponse)
+
+      {:error, error_message} ->
+        raise GRPC.RPCError, status: :unknown, message: error_message
+    end
   end
 
   def update(_request, _stream) do
