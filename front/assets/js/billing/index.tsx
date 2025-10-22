@@ -65,7 +65,7 @@ const Trial = (props: TrialProps) => {
               <tr>
                 <td className="ph3 bb b--black-10 pt3 pb2 v-top bg-green white br3 br--top">
                   <div className="f2">
-                    <span className="b">Startup</span>
+                    <span className="b">Cloud</span>
                   </div>
                   <div className="f5 pr3">Ideal for growing teams with frequent builds and deployments.</div>
                 </td>

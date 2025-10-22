@@ -111,7 +111,9 @@ const sidebars = {
         collapsed: true,
         items: [
           'using-semaphore/billing',
+          'using-semaphore/user-management',
           'using-semaphore/rbac',
+          'using-semaphore/service-accounts',
           'using-semaphore/org-health',
           'using-semaphore/org-preflight',
           'using-semaphore/notifications',
@@ -132,10 +134,13 @@ const sidebars = {
           },
         ],
       },
-
       {
         type: 'category',
-        label: 'Containers',
+        label: 'Docker and Containers',
+        link: {
+          type: 'doc',
+          id: 'using-semaphore/containers'
+        },
         collapsed: true,
         items: [
           {

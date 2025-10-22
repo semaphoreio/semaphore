@@ -9,44 +9,34 @@ interface Props {
   item: DashboardItem;
   metrics: any;
   deleteHandler: (id: string) => void;
-  renameHandler: (id: string, name: string) => void;
-  updateDescriptionHandler: (id: string, description: string) => void;
+  updateHandler: (id: string, name: string, notes: string) => void;
 }
 
-export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler, updateDescriptionHandler }: Props) => {
+export const DashboardItemCard = ({
+  item,
+  metrics,
+  updateHandler,
+  deleteHandler,
+}: Props) => {
   const insightType = typeByMetric(item.settings.metric);
+  const [name, setName] = useState(item.name);
+  const [notes, setNotes] = useState(item.notes);
 
   if (metrics == null) {
     metrics = [];
   }
 
-  let nameUpdated = false;
-  let descriptionUpdated = false;
-
-  let itemName = item.name;
-  let description = item.notes;
-
   const onInputNameChange = (e: any) => {
-    nameUpdated = true;
-    itemName = e.target.value;
+    setName(e.target.value as string);
   };
 
   const onInputDescriptionChange = (e: any) => {
-    descriptionUpdated = true;
-    description = e.target.value;
+    setNotes(e.target.value as string);
   };
 
   const onSubmit = (e: any) => {
     e.preventDefault();
-    if (nameUpdated) {
-      renameHandler(item.id, itemName);
-      nameUpdated = false;
-    }
-
-    if (descriptionUpdated) {
-      descriptionUpdated = false;
-      updateDescriptionHandler(item.id, description);
-    }
+    updateHandler(item.id, name, notes);
   };
 
   const [visible, setVisible] = useState(false);
@@ -93,7 +83,7 @@ export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler,
                 <div className="f5 pa1">
                   <div className="b mb1">Metric name</div>
                   <input
-                    value={item.name}
+                    value={name}
                     onInput={onInputNameChange}
                     className="x-select-on-click form-control w-90 mb1"
                   />
@@ -105,14 +95,22 @@ export const DashboardItemCard = ({ item, metrics, renameHandler, deleteHandler,
                     className="x-select-on-click form-control mb1 w-100"
                     rows={5}
                     placeholder="This metric is used to measure..."
-                    value={item.notes}
+                    value={notes}
                     onInput={onInputDescriptionChange}
                   />
                   <div className="mt3">
-                    <button className="btn btn-primary btn-small" onClick={hideTippy} type="submit">
+                    <button
+                      className="btn btn-primary btn-small"
+                      onClick={hideTippy}
+                      type="submit"
+                    >
                       Save
                     </button>
-                    <button type="reset" className="btn btn-secondary ml2 btn-small" onClick={hideTippy}>
+                    <button
+                      type="reset"
+                      className="btn btn-secondary ml2 btn-small"
+                      onClick={hideTippy}
+                    >
                       Cancel
                     </button>
                   </div>

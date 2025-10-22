@@ -82,6 +82,113 @@ defmodule Front.Browser.WorkflowPage.PromotionsTest do
     assert has_text?(page, "Nevermind")
   end
 
+  test "promotion targets with single quotes render and open correctly", ctx do
+    quoted_name = "Publish 'my-package' to Production"
+    Support.Stubs.Switch.add_target(ctx.switch, name: quoted_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(quoted_name))
+    click(page, Query.button(quoted_name))
+
+    assert_has(
+      page,
+      Query.css("[promote-confirmation][data-promotion-target=\"#{quoted_name}\"]")
+    )
+
+    assert_has(page, Query.text("Promote to #{quoted_name}?"))
+  end
+
+  test "promotion targets with double quotes render and open correctly", ctx do
+    quoted_name = ~s(Deploy "production" build)
+    Support.Stubs.Switch.add_target(ctx.switch, name: quoted_name)
+
+    page = open(ctx)
+
+    # Use CSS selector with data attribute since XPath queries don't handle embedded quotes
+    click(page, Query.css("[promote-button][data-promotion-target='#{quoted_name}']"))
+
+    # Verify confirmation dialog appeared
+    assert_has(page, Query.css("[promote-confirmation][data-promotion-target='#{quoted_name}']"))
+  end
+
+  test "promotion targets with backslashes render and open correctly", ctx do
+    name_with_backslash = "Deploy\\Staging\\App"
+    Support.Stubs.Switch.add_target(ctx.switch, name: name_with_backslash)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(name_with_backslash))
+    click(page, Query.button(name_with_backslash))
+    assert_has(page, Query.text("Promote to #{name_with_backslash}?"))
+  end
+
+  test "promotion targets with brackets and special characters work correctly", ctx do
+    special_name = "Deploy[test]:value.config"
+    Support.Stubs.Switch.add_target(ctx.switch, name: special_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(special_name))
+    click(page, Query.button(special_name))
+    assert_has(page, Query.text("Promote to #{special_name}?"))
+  end
+
+  test "promotion targets with emoji render and open correctly", ctx do
+    emoji_name = "Deploy 🚀 to Production"
+    Support.Stubs.Switch.add_target(ctx.switch, name: emoji_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(emoji_name))
+    click(page, Query.button(emoji_name))
+    assert_has(page, Query.text("Promote to #{emoji_name}?"))
+  end
+
+  test "promotion targets with accented characters render and open correctly", ctx do
+    accented_name = "Déploiement Français"
+    Support.Stubs.Switch.add_target(ctx.switch, name: accented_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(accented_name))
+    click(page, Query.button(accented_name))
+    assert_has(page, Query.text("Promote to #{accented_name}?"))
+  end
+
+  test "promotion targets with CJK characters render and open correctly", ctx do
+    cjk_name = "部署到生产环境"
+    Support.Stubs.Switch.add_target(ctx.switch, name: cjk_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(cjk_name))
+    click(page, Query.button(cjk_name))
+    assert_has(page, Query.text("Promote to #{cjk_name}?"))
+  end
+
+  test "promotion targets with mixed special characters and unicode work correctly", ctx do
+    mixed_name = "Deploy 'app' 🎉 to Production"
+    Support.Stubs.Switch.add_target(ctx.switch, name: mixed_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(mixed_name))
+    click(page, Query.button(mixed_name))
+    assert_has(page, Query.text("Promote to #{mixed_name}?"))
+  end
+
+  test "promotion targets with complex bracket and quote combinations work correctly", ctx do
+    complex_name = "test[data] 'value' config"
+    Support.Stubs.Switch.add_target(ctx.switch, name: complex_name)
+
+    page = open(ctx)
+
+    assert_has(page, Query.button(complex_name))
+    click(page, Query.button(complex_name))
+    assert_has(page, Query.text("Promote to #{complex_name}?"))
+  end
+
   describe "when deployment targets are enabled" do
     setup ctx do
       Support.Stubs.Feature.enable_feature(ctx.org.id, :deployment_targets)

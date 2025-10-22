@@ -26,11 +26,21 @@ interface Props {
   renameHandler: (id: string, name: string) => void;
 }
 
-export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, renameHandler }: Props) => {
+export const CustomDashboards = ({
+  state,
+  dispatchDashboard,
+  deleteHandler,
+  renameHandler,
+}: Props) => {
   const { id } = useParams<`id`>();
   const dashboard = state.dashboards.find((d) => d.id === id);
   const navigate = useNavigate();
-  const { dashboardsUrl, pipelineReliabilityUrl, pipelineFrequencyUrl, pipelinePerformanceUrl } = useContext(Config);
+  const {
+    dashboardsUrl,
+    pipelineReliabilityUrl,
+    pipelineFrequencyUrl,
+    pipelinePerformanceUrl,
+  } = useContext(Config);
 
   const dateRangeStore = useContext(stores.MetricDateRange.Context);
   const dateRangeState = dateRangeStore.state;
@@ -39,6 +49,8 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
   endpointUrls.reliability = pipelineReliabilityUrl;
   endpointUrls.frequency = pipelineFrequencyUrl;
   endpointUrls.dashboards = dashboardsUrl;
+
+  const [dashboardName, setDashboardName] = useState(dashboard.name);
 
   const { show, toggle } = useToggle();
 
@@ -50,7 +62,9 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
   const scrollToForm = () => {
     toggle();
     setTimeout(() => {
-      document.getElementById(`dashboard-item-form`)?.scrollIntoView({ behavior: `smooth` });
+      document
+        .getElementById(`dashboard-item-form`)
+        ?.scrollIntoView({ behavior: `smooth` });
     }, 100);
   };
 
@@ -69,43 +83,33 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
   }, [dashboard, dateRangeState.selectedMetricDateRangeLabel]);
 
   // --- rename dashboard item
-  const updateDashboardItem = async (url: string, dashboardId: string, id: string, name: string) => {
+  const updateDashboardItem = async (
+    url: string,
+    dashboardId: string,
+    id: string,
+    name: string,
+    notes: string
+  ) => {
     try {
       const response = await fetch(`${url}/${dashboardId}/${id}`, {
         method: `PUT`,
         headers: util.Headers(),
-        body: `name=${name}`,
-      });
-
-      if (response.ok) {
-        dispatchDashboard({ type: `UPDATE_DASHBOARD_ITEM_NAME`, dashboardId: dashboard.id, itemId: id, name: name });
-      }
-    } catch (e) {
-      Notice.error(`Failed to update Dashboard Item.`);
-    }
-  };
-
-  const updateDashboardItemHandler = (id: string, name: string) => {
-    updateDashboardItem(dashboardsUrl, dashboard.id, id, name).catch(() => {
-      return;
-    });
-  };
-
-  // --- Update item description
-  const updateDashboardItemDescription = async (url: string, dashboardId: string, id: string, description: string) => {
-    try {
-      const response = await fetch(`${url}/${dashboardId}/${id}/description`, {
-        method: `PUT`,
-        headers: util.Headers(),
-        body: `description=${description}`,
+        body: `name=${name}&description=${notes}`,
       });
 
       if (response.ok) {
         dispatchDashboard({
+          type: `UPDATE_DASHBOARD_ITEM_NAME`,
+          dashboardId: dashboard.id,
+          itemId: id,
+          name: name,
+        });
+
+        dispatchDashboard({
           type: `UPDATE_DASHBOARD_ITEM_DESCRIPTION`,
           dashboardId: dashboard.id,
           itemId: id,
-          description: description,
+          description: notes,
         });
       }
     } catch (e) {
@@ -113,15 +117,25 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
     }
   };
 
-  const updateDashboardItemDescriptionHandler = (id: string, description: string) => {
-    updateDashboardItemDescription(dashboardsUrl, dashboard.id, id, description).catch(() => {
-      return;
-    });
+  const updateDashboardItemHandler = (
+    id: string,
+    name: string,
+    notes: string
+  ) => {
+    updateDashboardItem(dashboardsUrl, dashboard.id, id, name, notes).catch(
+      () => {
+        return;
+      }
+    );
   };
 
   // --- delete dashboard item
 
-  const deleteDashboardItem = async (url: string, dashboardId: string, id: string) => {
+  const deleteDashboardItem = async (
+    url: string,
+    dashboardId: string,
+    id: string
+  ) => {
     try {
       const response = await fetch(`${url}/${dashboardId}/${id}`, {
         method: `DELETE`,
@@ -129,7 +143,11 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       });
 
       if (response.ok) {
-        dispatchDashboard({ type: `DELETE_DASHBOARD_ITEM`, dashboardId: dashboard.id, itemId: id });
+        dispatchDashboard({
+          type: `DELETE_DASHBOARD_ITEM`,
+          dashboardId: dashboard.id,
+          itemId: id,
+        });
       }
     } catch (e) {
       Notice.error(`Failed to delete Dashboard Item.`);
@@ -143,7 +161,11 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
   };
 
   // --- create new dashboard item
-  const sendNewDashboardItem = async (url: string, dashboardId: string, item: object) => {
+  const sendNewDashboardItem = async (
+    url: string,
+    dashboardId: string,
+    item: object
+  ) => {
     try {
       const response = await fetch(`${url}/${dashboardId}`, {
         method: `POST`,
@@ -154,13 +176,23 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
       const dashboardItem = types.Dashboard.DashboardItem.fromJSON(data.item);
       //load metric
 
-      const routeItems = urlBuilder(endpointUrls, [dashboardItem], dateRangeState);
+      const routeItems = urlBuilder(
+        endpointUrls,
+        [dashboardItem],
+        dateRangeState
+      );
       for (const [url, items] of routeItems) {
-        metricsFetcher(url, items, dashboard.id, dispatchDashboard).catch(() => {
-          return;
-        });
+        metricsFetcher(url, items, dashboard.id, dispatchDashboard).catch(
+          () => {
+            return;
+          }
+        );
       }
-      dispatchDashboard({ type: `ADD_DASHBOARD_ITEM`, id: dashboard.id, item: dashboardItem });
+      dispatchDashboard({
+        type: `ADD_DASHBOARD_ITEM`,
+        id: dashboard.id,
+        item: dashboardItem,
+      });
       dashboard.items.push(dashboardItem);
       Notice.notice(`New Metric added to Dashboard.`);
     } catch (e) {
@@ -178,10 +210,9 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
   const showTippy = () => setVisible(true);
   const hideTippy = () => setVisible(false);
 
-  let dashboardName = dashboard.name;
   // -- event handlers
   const onInputNameChange = (e: any) => {
-    dashboardName = e.target.value;
+    setDashboardName(e.target.value as string);
   };
 
   const onSubmit = (e: any) => {
@@ -210,20 +241,32 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
               <div className="f5 pa1">
                 <div className="b mb1">Dashboard name</div>
                 <input
-                  value={dashboard.name}
+                  value={dashboardName}
                   onInput={onInputNameChange}
                   className="x-select-on-click form-control w-90 mb1"
                 />
                 <div className="mt3">
-                  <button className="btn btn-primary btn-small" onClick={hideTippy} type="submit">
+                  <button
+                    className="btn btn-primary btn-small"
+                    onClick={hideTippy}
+                    type="submit"
+                  >
                     Save
                   </button>
-                  <button className="btn btn-secondary ml2 btn-small" type="reset" onClick={hideTippy}>
+                  <button
+                    className="btn btn-secondary ml2 btn-small"
+                    type="reset"
+                    onClick={hideTippy}
+                  >
                     Cancel
                   </button>
                 </div>
                 <div className="mt2 bt b--lighter-gray pt2">
-                  <button className="link" onClick={() => confirmDeletion(deleteHandler, id)} type="reset">
+                  <button
+                    className="link"
+                    onClick={() => confirmDeletion(deleteHandler, id)}
+                    type="reset"
+                  >
                     Delete
                   </button>
                 </div>
@@ -231,7 +274,10 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
             </form>
           }
         >
-          <button className="btn btn-secondary btn-tiny" onClick={visible ? hideTippy : showTippy}>
+          <button
+            className="btn btn-secondary btn-tiny"
+            onClick={visible ? hideTippy : showTippy}
+          >
             Edit
           </button>
         </Tippy>
@@ -250,20 +296,25 @@ export const CustomDashboards = ({ state, dispatchDashboard, deleteHandler, rena
         </div>
       </div>
 
-      <div hidden={shouldHideEmptyPage(dashboard, show)}>{empty_custom_dashboard(toggle)}</div>
+      <div hidden={shouldHideEmptyPage(dashboard, show)}>
+        {empty_custom_dashboard(toggle)}
+      </div>
       <div hidden={isEmpty(dashboard)}>
         {dashboard.items?.map((item: DashboardItem) => (
           <DashboardItemCard
             key={item.id}
             item={item}
             metrics={state.metrics.get(item.id)}
-            renameHandler={updateDashboardItemHandler}
+            updateHandler={updateDashboardItemHandler}
             deleteHandler={deleteDashboardItemHandler}
-            updateDescriptionHandler={updateDashboardItemDescriptionHandler}
           />
         ))}
         <div className="mt3">
-          <button className="btn btn-primary mb2" hidden={show} onClick={scrollToForm}>
+          <button
+            className="btn btn-primary mb2"
+            hidden={show}
+            onClick={scrollToForm}
+          >
             Add New Metric
           </button>
         </div>
@@ -282,7 +333,8 @@ const fromJsonByInsightsType = (item: DashboardItem) => {
   switch (typeByMetric(item.settings.metric)) {
     case InsightsType.Performance:
       return (json: types.JSONInterface.PipelinePerformance) => {
-        const response = types.PipelinePerformance.DynamicMetrics.fromJSON(json);
+        const response =
+          types.PipelinePerformance.DynamicMetrics.fromJSON(json);
         return response.metrics;
       };
     case InsightsType.Frequency:
@@ -330,7 +382,9 @@ const urlBuilder = (
     const from = state.selectedMetricDateRange.from;
     const to = state.selectedMetricDateRange.to;
     const urlString = url(typeByMetric(item.settings.metric))
-      .concat(`?custom_dashboards=true&branch=${item.branchName}&ppl_file_name=${item.pipelineFileName}`)
+      .concat(
+        `?custom_dashboards=true&branch=${item.branchName}&ppl_file_name=${item.pipelineFileName}`
+      )
       .concat(`&from_date=${from}&to_date=${to}`);
 
     if (map.has(urlString)) {
@@ -343,19 +397,33 @@ const urlBuilder = (
   return map;
 };
 
-const metricsFetcher = async (url: string, items: DashboardItem[], dashboardId: string, dispatcher: any) => {
+const metricsFetcher = async (
+  url: string,
+  items: DashboardItem[],
+  dashboardId: string,
+  dispatcher: any
+) => {
   const response = await fetch(url);
   const data: any = await response.json();
 
   for (const item of items) {
     const fromJson = fromJsonByInsightsType(item);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    dispatcher({ type: `ADD_ITEM_METRICS`, metrics: fromJson(data), itemId: item.id });
+    dispatcher({
+      type: `ADD_ITEM_METRICS`,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      metrics: fromJson(data),
+      itemId: item.id,
+    });
   }
 };
 
 const isInvalid = (item: DashboardItem): boolean => {
-  return item.settings == null || item.settings.metric == 0 || item.branchName == null || item.pipelineFileName == null;
+  return (
+    item.settings == null ||
+    item.settings.metric == 0 ||
+    item.branchName == null ||
+    item.pipelineFileName == null
+  );
 };
 
 function shouldHideEmptyPage(dashboard: Dashboard, show: boolean) {
