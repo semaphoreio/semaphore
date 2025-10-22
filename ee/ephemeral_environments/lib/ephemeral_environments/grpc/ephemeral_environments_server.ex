@@ -26,8 +26,21 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer do
     end
   end
 
-  def describe(_request, _stream) do
-    %DescribeResponse{}
+  def describe(request, _stream) do
+    case EphemeralEnvironments.Service.EphemeralEnvironmentType.describe(
+           request.id,
+           request.org_id
+         ) do
+      {:ok, environment_type} ->
+        # Note: instances field will be added once we implement instance management
+        %{environment_type: environment_type, instances: []}
+
+      {:error, :not_found} ->
+        raise GRPC.RPCError, status: :not_found, message: "Environment type not found"
+
+      {:error, error_message} ->
+        raise GRPC.RPCError, status: :unknown, message: error_message
+    end
   end
 
   def create(request, _stream) do

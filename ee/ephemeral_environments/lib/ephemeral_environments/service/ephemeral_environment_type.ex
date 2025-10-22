@@ -23,6 +23,27 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
   end
 
   @doc """
+  Describes a specific ephemeral environment type by ID and org_id.
+
+  ## Parameters
+    - id: String UUID of the environment type
+    - org_id: String UUID of the organization
+
+  ## Returns
+    - {:ok, map} on success
+    - {:error, :not_found} if the environment type doesn't exist
+  """
+  def describe(id, org_id) when is_binary(id) and is_binary(org_id) do
+    Schema
+    |> where([e], e.id == ^id and e.org_id == ^org_id)
+    |> Repo.one()
+    |> case do
+      nil -> {:error, :not_found}
+      record -> {:ok, struct_to_map(record)}
+    end
+  end
+
+  @doc """
   Creates a new ephemeral environment type.
 
   ## Parameters
@@ -58,6 +79,14 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
     struct
     |> Map.from_struct()
     |> Map.drop([:__meta__])
+    |> rename_timestamp_fields()
+  end
+
+  # Rename Ecto's inserted_at to created_at to match proto definition
+  defp rename_timestamp_fields(map) do
+    map
+    |> Map.put(:created_at, map[:inserted_at])
+    |> Map.delete(:inserted_at)
   end
 
   defp format_errors(changeset) do
