@@ -19,16 +19,14 @@ import (
 )
 
 const (
-	listToolName         = "semaphore_projects_list"
-	legacyListToolName   = "org_projects_list" // deprecated: use semaphore_projects_list
-	searchToolName       = "semaphore_projects_search"
-	legacySearchToolName = "org_projects_search" // deprecated: use semaphore_projects_search
-	defaultListLimit     = 25
-	maxListLimit         = 200
-	defaultSearchLimit   = 20
-	defaultSearchPages   = 5
-	maxSearchPages       = 10
-	searchPageSize       = 100
+	listToolName       = "projects_list"
+	searchToolName     = "projects_search"
+	defaultListLimit   = 25
+	maxListLimit       = 200
+	defaultSearchLimit = 20
+	defaultSearchPages = 5
+	maxSearchPages     = 10
+	searchPageSize     = 100
 )
 
 func listFullDescription() string {
@@ -38,7 +36,7 @@ Use this when you need the project_id before digging into workflows, pipelines, 
 
 Typical flows:
 - "Show me projects in Acme Org" → call this tool, then ask follow-up questions
-- "I only remember the repo URL" → list projects, then filter or use semaphore_projects_search
+- "I only remember the repo URL" → list projects, then filter or use projects_search
 
 Response modes:
 - summary (default): project name, IDs, repository URL, visibility, last updated
@@ -52,31 +50,21 @@ Pagination:
 
 Examples:
 1. List first 10 projects:
-   semaphore_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", limit=10)
+   projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", limit=10)
 
 2. Get detailed project info with schedulers:
-   semaphore_projects_list(organization_id="...", mode="detailed", limit=25)
+   projects_list(organization_id="...", mode="detailed", limit=25)
 
 3. Fetch next page of projects:
-   semaphore_projects_list(organization_id="...", cursor="opaque-token-from-previous-response", limit=25)
+   projects_list(organization_id="...", cursor="opaque-token-from-previous-response", limit=25)
 
 4. List many projects with full details:
-   semaphore_projects_list(organization_id="...", mode="detailed", limit=200)
+   projects_list(organization_id="...", mode="detailed", limit=200)
 
 Common follow-ups:
-- semaphore_projects_search(...) to find a specific repo or branch
-- semaphore_workflows_search(project_id="...", status="failed") to debug
+- projects_search(...) to find a specific repo or branch
+- workflows_search(project_id="...", status="failed") to debug
 `
-}
-
-func listDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_projects_list instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_projects_list
-
-This legacy alias will be removed in a future version. See semaphore_projects_list for full documentation.`
 }
 
 func searchFullDescription() string {
@@ -101,30 +89,20 @@ Tuning:
 
 Examples:
 1. Search by project name:
-   semaphore_projects_search(organization_id="...", query="mobile")
+   projects_search(organization_id="...", query="mobile")
 
 2. Search by repository URL:
-   semaphore_projects_search(organization_id="...", repository_url="github.com/example/app")
+   projects_search(organization_id="...", repository_url="github.com/example/app")
 
 3. Combined search with increased depth:
-   semaphore_projects_search(organization_id="...", query="payments", max_pages=8, limit=30)
+   projects_search(organization_id="...", query="payments", max_pages=8, limit=30)
 
 4. Detailed search results:
-   semaphore_projects_search(organization_id="...", query="backend", mode="detailed")
+   projects_search(organization_id="...", query="backend", mode="detailed")
 
 Follow-ups:
-- Once you have a project_id, call semaphore_workflows_search for deeper inspection.
+- Once you have a project_id, call workflows_search for deeper inspection.
 `
-}
-
-func searchDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_projects_search instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_projects_search
-
-This legacy alias will be removed in a future version. See semaphore_projects_search for full documentation.`
 }
 
 // Register wires project tools into the MCP server.
@@ -133,13 +111,8 @@ func Register(s *server.MCPServer, api internalapi.Provider) {
 		return
 	}
 
-	listH := listHandler(api)
-	s.AddTool(newListTool(listToolName, listFullDescription()), listH)
-	s.AddTool(newListTool(legacyListToolName, listDeprecatedDescription()), listH)
-
-	searchH := searchHandler(api)
-	s.AddTool(newSearchTool(searchToolName, searchFullDescription()), searchH)
-	s.AddTool(newSearchTool(legacySearchToolName, searchDeprecatedDescription()), searchH)
+	s.AddTool(newListTool(listToolName, listFullDescription()), listHandler(api))
+	s.AddTool(newSearchTool(searchToolName, searchFullDescription()), searchHandler(api))
 }
 
 func newListTool(name, description string) mcp.Tool {
@@ -272,7 +245,7 @@ func formatProjectListMarkdown(result listResult, mode string, orgID string) str
 		mb.Paragraph("**Tips:**")
 		mb.ListItem("Confirm the organization_id is correct")
 		mb.ListItem("Ensure the X-Semaphore-User-ID header identifies a user with access")
-		mb.ListItem("Use semaphore_projects_search for fuzzy matching")
+		mb.ListItem("Use projects_search for fuzzy matching")
 		return mb.String()
 	}
 
@@ -484,13 +457,13 @@ Verify server configuration and retry.`), nil
 			return mcp.NewToolResultError(`Missing required argument: organization_id.
 
 Provide the organization UUID (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).
-You can discover organizations by calling core_organizations_list first.`), nil
+You can discover organizations by calling organizations_list first.`), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`%v
 
-Example: semaphore_projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
+Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
@@ -605,7 +578,7 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError(`Missing required argument: organization_id. Use core_organizations_list to discover organization IDs.`), nil
+			return mcp.NewToolResultError(`Missing required argument: organization_id. Use organizations_list to discover organization IDs.`), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {

@@ -13,8 +13,7 @@ import (
 )
 
 const (
-	describeToolName       = "semaphore_jobs_describe"
-	legacyDescribeToolName = "jobs_describe" // deprecated: use semaphore_jobs_describe
+	describeToolName = "jobs_describe"
 )
 
 func describeFullDescription() string {
@@ -31,29 +30,19 @@ Response modes:
 
 Examples:
 1. Get basic job status:
-   semaphore_jobs_describe(job_id="...", organization_id="...")
+   jobs_describe(job_id="...", organization_id="...")
 
 2. Get detailed job information with agent metadata:
-   semaphore_jobs_describe(job_id="...", organization_id="...", mode="detailed")
+   jobs_describe(job_id="...", organization_id="...", mode="detailed")
 
 3. Check job result and timestamps:
-   semaphore_jobs_describe(job_id="...", organization_id="...", mode="summary")
+   jobs_describe(job_id="...", organization_id="...", mode="summary")
 
 Typical workflow:
-1. Call semaphore_jobs_describe(job_id="...") to retrieve status and timelines.
-2. If the job failed, call semaphore_jobs_logs(job_id="...") to stream logs.
-3. Use semaphore_pipelines_list(workflow_id="...") to inspect the broader pipeline context.
+1. Call jobs_describe(job_id="...") to retrieve status and timelines.
+2. If the job failed, call jobs_logs(job_id="...") to stream logs.
+3. Use pipelines_list(workflow_id="...") to inspect the broader pipeline context.
 `
-}
-
-func describeDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_jobs_describe instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_jobs_describe
-
-This legacy alias will be removed in a future version. See semaphore_jobs_describe for full documentation.`
 }
 
 func newDescribeTool(name, description string) mcp.Tool {
@@ -88,7 +77,7 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError("organization_id is required. Use core_organizations_list to capture the correct organization ID before describing jobs."), nil
+			return mcp.NewToolResultError("organization_id is required. Use organizations_list to capture the correct organization ID before describing jobs."), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
@@ -119,7 +108,7 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if summary.OrganizationID != "" && !strings.EqualFold(summary.OrganizationID, orgID) {
 			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
 
-Use the organization_id returned by core_organizations_list for this workspace.`, summary.OrganizationID, orgID)), nil
+Use the organization_id returned by organizations_list for this workspace.`, summary.OrganizationID, orgID)), nil
 		}
 		markdown := formatJobMarkdown(summary, mode)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)

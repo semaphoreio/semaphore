@@ -10,9 +10,7 @@ import (
 func Register(s *server.MCPServer, api internalapi.Provider) {
 	descH := describeHandler(api)
 	s.AddTool(newDescribeTool(describeToolName, describeFullDescription()), descH)
-	s.AddTool(newDescribeTool(legacyDescribeToolName, describeDeprecatedDescription()), descH)
 
 	logsH := logsHandler(api)
 	s.AddTool(newLogsTool(logsToolName, logsFullDescription()), logsH)
-	s.AddTool(newLogsTool(legacyLogsToolName, logsDeprecatedDescription()), logsH)
 }

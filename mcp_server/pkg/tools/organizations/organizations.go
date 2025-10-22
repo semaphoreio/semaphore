@@ -16,10 +16,9 @@ import (
 )
 
 const (
-	listToolName       = "semaphore_organizations_list"
-	legacyListToolName = "core_organizations_list" // deprecated: use semaphore_organizations_list
-	defaultPageSize    = 20
-	maxPageSize        = 100
+	listToolName    = "organizations_list"
+	defaultPageSize = 20
+	maxPageSize     = 100
 )
 
 func fullDescription() string {
@@ -43,21 +42,21 @@ Pagination:
 - Empty/omitted cursor starts from the beginning
 
 Common Usage Patterns:
-1. List all accessible orgs → Pick one → Call semaphore_projects_list(organization_id="...")
+1. List all accessible orgs → Pick one → Call projects_list(organization_id="...")
 2. List orgs → Filter by name in application code → Use selected org_id
 
 Examples:
 1. List first 10 organizations:
-   semaphore_organizations_list(limit=10, mode="summary")
+   organizations_list(limit=10, mode="summary")
 
 2. Paginate through all organizations:
-   semaphore_organizations_list(cursor="opaque-cursor-from-previous-response", limit=50)
+   organizations_list(cursor="opaque-cursor-from-previous-response", limit=50)
 
 3. Get detailed org information with IP allowlists:
-   semaphore_organizations_list(mode="detailed", limit=5)
+   organizations_list(mode="detailed", limit=5)
 
 4. Fetch specific page of organizations:
-   semaphore_organizations_list(limit=20, cursor="next-page-token")
+   organizations_list(limit=20, cursor="next-page-token")
 
 Common Errors:
 - Empty list: User may not belong to any organizations (check authentication)
@@ -66,19 +65,9 @@ Common Errors:
 
 Next Steps After This Call:
 - Store the organization_id you intend to use (for example in a local ".semaphore/org" file) so future requests can reference it quickly
-- Use semaphore_projects_list(organization_id="...") to see projects in an organization
-- Use semaphore_projects_search(organization_id="...", query="...") to find specific projects
+- Use projects_list(organization_id="...") to see projects in an organization
+- Use projects_search(organization_id="...", query="...") to find specific projects
 `
-}
-
-func deprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_organizations_list instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_organizations_list
-
-This legacy alias will be removed in a future version. See semaphore_organizations_list for full documentation.`
 }
 
 // Register wires organization tools into the MCP server.
@@ -86,9 +75,7 @@ func Register(s *server.MCPServer, api internalapi.Provider) {
 	if s == nil {
 		return
 	}
-	handler := listHandler(api)
-	s.AddTool(newListTool(listToolName, fullDescription()), handler)
-	s.AddTool(newListTool(legacyListToolName, deprecatedDescription()), handler)
+	s.AddTool(newListTool(listToolName, fullDescription()), listHandler(api))
 }
 
 func newListTool(name, description string) mcp.Tool {

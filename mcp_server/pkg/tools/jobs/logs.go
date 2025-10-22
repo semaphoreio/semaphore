@@ -18,8 +18,7 @@ import (
 )
 
 const (
-	logsToolName         = "semaphore_jobs_logs"
-	legacyLogsToolName   = "jobs_logs" // deprecated: use semaphore_jobs_logs
+	logsToolName         = "jobs_logs"
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
@@ -31,7 +30,7 @@ const (
 func logsFullDescription() string {
 	return `Fetch recent log output for a job.
 
-Use this after semaphore_jobs_describe indicates a failure or long-running job.
+Use this after jobs_describe indicates a failure or long-running job.
 
 Outputs:
 - Hosted jobs: returns a preview of the most recent log lines (up to 200) and a nextCursor for pagination.
@@ -39,30 +38,20 @@ Outputs:
 
 Examples:
 1. Fetch latest job logs:
-   semaphore_jobs_logs(job_id="...", organization_id="...")
+   jobs_logs(job_id="...", organization_id="...")
 
 2. Paginate through more logs:
-   semaphore_jobs_logs(job_id="...", organization_id="...", cursor="next-page-token")
+   jobs_logs(job_id="...", organization_id="...", cursor="next-page-token")
 
 3. Get logs for self-hosted job:
-   semaphore_jobs_logs(job_id="...", organization_id="...")
+   jobs_logs(job_id="...", organization_id="...")
 
 Typical workflow:
-1. semaphore_jobs_describe(job_id="...") → identify failing job
-2. semaphore_jobs_logs(job_id="...") → view latest log lines
+1. jobs_describe(job_id="...") → identify failing job
+2. jobs_logs(job_id="...") → view latest log lines
 3. If more logs needed, call again with cursor from the previous response.
 4. For self-hosted jobs, use the returned token in a follow-up HTTPS request.
 `
-}
-
-func logsDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_jobs_logs instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_jobs_logs
-
-This legacy alias will be removed in a future version. See semaphore_jobs_logs for full documentation.`
 }
 
 type logsResult struct {
@@ -108,7 +97,7 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError("organization_id is required. Provide the organization UUID returned by core_organizations_list."), nil
+			return mcp.NewToolResultError("organization_id is required. Provide the organization UUID returned by organizations_list."), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
@@ -138,7 +127,7 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if job.GetOrganizationId() != "" && !strings.EqualFold(job.GetOrganizationId(), orgID) {
 			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
 
-Retrieve the correct organization ID from core_organizations_list before fetching logs.`, job.GetOrganizationId(), orgID)), nil
+Retrieve the correct organization ID from organizations_list before fetching logs.`, job.GetOrganizationId(), orgID)), nil
 		}
 
 		if job.GetSelfHosted() {

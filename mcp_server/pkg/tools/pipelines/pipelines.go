@@ -16,26 +16,23 @@ import (
 )
 
 const (
-	listToolName         = "semaphore_pipelines_list"
-	legacyListToolName   = "workflow_pipelines_list" // deprecated: use semaphore_pipelines_list
-	legacyLegacyListName = "pipelines_list"          // deprecated: use semaphore_pipelines_list
-	jobsToolName         = "semaphore_pipeline_jobs"
-	legacyJobsToolName   = "pipeline_jobs_list" // deprecated: use semaphore_pipeline_jobs
-	defaultLimit         = 20
-	maxLimit             = 100
-	errNoClient          = "pipeline gRPC endpoint is not configured"
+	listToolName  = "pipelines_list"
+	jobsToolName  = "pipeline_jobs"
+	defaultLimit  = 20
+	maxLimit      = 100
+	errNoClient   = "pipeline gRPC endpoint is not configured"
 )
 
 func listFullDescription() string {
 	return `List pipelines associated with a workflow (most recent first).
 
-This is typically called after discovering workflows via semaphore_workflows_search. Use it to:
-- Identify pipeline IDs before drilling into jobs with semaphore_jobs_describe or semaphore_jobs_logs
+This is typically called after discovering workflows via workflows_search. Use it to:
+- Identify pipeline IDs before drilling into jobs with jobs_describe or jobs_logs
 - Check which branch/commit triggered each pipeline
 - Investigate promotions, reruns, and queue usage
 
 Filters & pagination:
-- organization_id (required): UUID of the organization context (cache it after calling semaphore_organizations_list)
+- organization_id (required): UUID of the organization context (cache it after calling organizations_list)
 - workflow_id (required): UUID of the workflow whose pipelines you need
 - project_id (optional): narrow results when workflows span multiple projects
 - cursor: use the previous response's nextCursor to fetch older pipelines
@@ -47,36 +44,26 @@ Response modes:
 
 Examples:
 1. List recent pipelines for a workflow:
-   semaphore_pipelines_list(workflow_id="...", organization_id="...", limit=5)
+   pipelines_list(workflow_id="...", organization_id="...", limit=5)
 
 2. Get detailed pipeline info:
-   semaphore_pipelines_list(workflow_id="...", organization_id="...", mode="detailed")
+   pipelines_list(workflow_id="...", organization_id="...", mode="detailed")
 
 3. Paginate through older pipelines:
-   semaphore_pipelines_list(workflow_id="...", organization_id="...", cursor="opaque-token")
+   pipelines_list(workflow_id="...", organization_id="...", cursor="opaque-token")
 
 4. Filter by project ID:
-   semaphore_pipelines_list(workflow_id="...", organization_id="...", project_id="...", limit=10)
+   pipelines_list(workflow_id="...", organization_id="...", project_id="...", limit=10)
 `
-}
-
-func listDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_pipelines_list instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_pipelines_list
-
-This legacy alias will be removed in a future version. See semaphore_pipelines_list for full documentation.`
 }
 
 func jobsFullDescription() string {
 	return `List jobs belonging to a specific pipeline.
 
-Use this after discovering a pipeline via semaphore_pipelines_list when you need job IDs for follow-up calls (semaphore_jobs_describe, semaphore_jobs_logs).
+Use this after discovering a pipeline via pipelines_list when you need job IDs for follow-up calls (jobs_describe, jobs_logs).
 
 Inputs:
-- organization_id (required): UUID of the organization context (cache it after calling semaphore_organizations_list).
+- organization_id (required): UUID of the organization context (cache it after calling organizations_list).
 - pipeline_id (required): UUID of the pipeline whose jobs you need.
 - mode (optional): "summary" (default) or "detailed".
 
@@ -86,21 +73,11 @@ Response:
 
 Examples:
 1. List jobs for a pipeline:
-   semaphore_pipeline_jobs(pipeline_id="...", organization_id="...")
+   pipeline_jobs(pipeline_id="...", organization_id="...")
 
 2. Get detailed job information:
-   semaphore_pipeline_jobs(pipeline_id="...", organization_id="...", mode="detailed")
+   pipeline_jobs(pipeline_id="...", organization_id="...", mode="detailed")
 `
-}
-
-func jobsDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_pipeline_jobs instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_pipeline_jobs
-
-This legacy alias will be removed in a future version. See semaphore_pipeline_jobs for full documentation.`
 }
 
 // Register wires pipeline tooling into the MCP server.
@@ -109,10 +86,7 @@ func Register(s *server.MCPServer, api internalapi.Provider) {
 	jobs := jobsHandler(api)
 
 	s.AddTool(newListTool(listToolName, listFullDescription()), list)
-	s.AddTool(newListTool(legacyListToolName, listDeprecatedDescription()), list)
-	s.AddTool(newListTool(legacyLegacyListName, listDeprecatedDescription()), list)
 	s.AddTool(newJobsTool(jobsToolName, jobsFullDescription()), jobs)
-	s.AddTool(newJobsTool(legacyJobsToolName, jobsDeprecatedDescription()), jobs)
 }
 
 func newListTool(name, description string) mcp.Tool {
@@ -255,7 +229,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError("organization_id is required. Use semaphore_organizations_list to select an organization before listing pipelines."), nil
+			return mcp.NewToolResultError("organization_id is required. Use organizations_list to select an organization before listing pipelines."), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
@@ -264,7 +238,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		workflowIDRaw, err := req.RequireString("workflow_id")
 		if err != nil {
-			return mcp.NewToolResultError("workflow_id is required. Provide the workflow UUID returned by project_workflows_search."), nil
+			return mcp.NewToolResultError("workflow_id is required. Provide the workflow UUID returned by workflows_search."), nil
 		}
 
 		workflowID := strings.TrimSpace(workflowIDRaw)
@@ -360,7 +334,7 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError("organization_id is required. Use semaphore_organizations_list to select an organization before listing jobs."), nil
+			return mcp.NewToolResultError("organization_id is required. Use organizations_list to select an organization before listing jobs."), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
@@ -577,7 +551,7 @@ func formatPipelineListMarkdown(result listResult, mode, workflowID, projectID, 
 		mb.Paragraph("**Suggestions:**")
 		mb.ListItem("Verify the workflow still exists and has completed pipelines.")
 		mb.ListItem("Remove the project_id filter if one was provided.")
-		mb.ListItem("Use project_workflows_search to confirm the workflow status.")
+		mb.ListItem("Use workflows_search to confirm the workflow status.")
 		return mb.String()
 	}
 

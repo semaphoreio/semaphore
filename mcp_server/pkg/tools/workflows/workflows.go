@@ -17,8 +17,7 @@ import (
 )
 
 const (
-	searchToolName       = "semaphore_workflows_search"
-	legacySearchToolName = "project_workflows_search" // deprecated: use semaphore_workflows_search
+	searchToolName       = "workflows_search"
 	defaultLimit         = 20
 	maxLimit             = 100
 	missingWorkflowError = "workflow gRPC endpoint is not configured"
@@ -45,37 +44,25 @@ Response modes:
 
 Examples:
 1. List recent workflows for a project:
-   semaphore_workflows_search(project_id="...", organization_id="...", limit=10)
+   workflows_search(project_id="...", organization_id="...", limit=10)
 
 2. Find failed workflows on main branch:
-   semaphore_workflows_search(project_id="...", organization_id="...", branch="main", mode="detailed")
+   workflows_search(project_id="...", organization_id="...", branch="main", mode="detailed")
 
 3. Search workflows by automation requester:
-   semaphore_workflows_search(project_id="...", organization_id="...", requester="deploy-bot", my_workflows_only=false)
+   workflows_search(project_id="...", organization_id="...", requester="deploy-bot", my_workflows_only=false)
 
 4. Paginate through older workflows:
-   semaphore_workflows_search(project_id="...", organization_id="...", cursor="opaque-token-from-previous-call")
+   workflows_search(project_id="...", organization_id="...", cursor="opaque-token-from-previous-call")
 
 Next steps:
-- Call semaphore_jobs_logs(job_id="...") after identifying failing jobs
-- Use semaphore_workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
-}
-
-func searchDeprecatedDescription() string {
-	return `⚠️ DEPRECATED: Use semaphore_workflows_search instead.
-
-This tool has been renamed to follow MCP naming conventions. The new name includes the 'semaphore_' prefix to prevent naming conflicts when using multiple MCP servers.
-
-Please update your integrations to use: semaphore_workflows_search
-
-This legacy alias will be removed in a future version. See semaphore_workflows_search for full documentation.`
+- Call jobs_logs(job_id="...") after identifying failing jobs
+- Use workflows_search(project_id="...", branch="main") regularly to monitor your own workflows`
 }
 
 // Register wires the workflows tool into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
-	handler := listHandler(api)
-	s.AddTool(newTool(searchToolName, searchFullDescription()), handler)
-	s.AddTool(newTool(legacySearchToolName, searchDeprecatedDescription()), handler)
+	s.AddTool(newTool(searchToolName, searchFullDescription()), listHandler(api))
 }
 
 func newTool(name, description string) mcp.Tool {
@@ -159,7 +146,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 
 		orgIDRaw, err := req.RequireString("organization_id")
 		if err != nil {
-			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by semaphore_organizations_list.`), nil
+			return mcp.NewToolResultError(`Missing required argument: organization_id. Provide the organization UUID returned by organizations_list.`), nil
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
