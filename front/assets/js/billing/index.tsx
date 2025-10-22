@@ -6,10 +6,8 @@ import { BrowserRouter } from "react-router-dom";
 import * as toolbox from "js/toolbox";
 import { useSignal } from "@preact/signals";
 
-export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
-  const availablePlans = config.availablePlans.map((plan: any) =>
-    types.Plans.Plan.fromJSON(plan)
-  );
+export default function ({ config, dom }: { dom: HTMLElement, config: any }) {
+  const availablePlans = config.availablePlans.map((plan: any) => types.Plans.Plan.fromJSON(plan));
 
   render(
     <BrowserRouter basename={config.baseUrl}>
@@ -21,20 +19,8 @@ export default function ({ config, dom }: { dom: HTMLElement, config: any, }) {
   );
 }
 
-export function TrialOverlay({
-  config,
-  dom,
-}: {
-  dom: HTMLElement;
-  config: any;
-}) {
-  render(
-    <Trial
-      ackUrl={config.acknowledgePlanChangeUrl as string}
-      billingUrl={config.billingUrl as string}
-    />,
-    dom
-  );
+export function TrialOverlay({ config, dom }: { dom: HTMLElement, config: any }) {
+  render(<Trial ackUrl={config.acknowledgePlanChangeUrl as string} billingUrl={config.billingUrl as string}/>, dom);
 }
 interface TrialProps {
   ackUrl: string;
@@ -67,15 +53,11 @@ const Trial = (props: TrialProps) => {
   };
 
   return (
-    <div
-      className={`flex justify-center items-center ma4`}
-      style="min-height: calc(80vh)"
-    >
+    <div className={`flex justify-center items-center ma4`} style="min-height: calc(80vh)">
       <div className="bg-white br3 pa4 shadow-5">
         <h2 className="mb2 mh3">👋 Your Semaphore trial has ended</h2>
         <p className="f5 gray pb3 measure mh3">
-          Thanks for trying Semaphore. Ready to take your CI/CD to the next
-          level? Please choose your plan:
+          Thanks for trying Semaphore. Ready to take your CI/CD to the next level? Please choose your plan:
         </p>
         <div className="flex">
           <div className="mh3">
@@ -85,10 +67,7 @@ const Trial = (props: TrialProps) => {
                   <div className="f2">
                     <span className="b">Cloud</span>
                   </div>
-                  <div className="f5 pr3">
-                    Ideal for growing teams with frequent builds and
-                    deployments.
-                  </div>
+                  <div className="f5 pr3">Ideal for growing teams with frequent builds and deployments.</div>
                 </td>
               </tr>
               <tr>
@@ -102,14 +81,10 @@ const Trial = (props: TrialProps) => {
                 </td>
               </tr>
               <tr>
-                <td className="ph3 bb b--black-10 pv2 bg-lightest-green">
-                  ∞ &nbsp; Unlimited concurrency
-                </td>
+                <td className="ph3 bb b--black-10 pv2 bg-lightest-green">∞ &nbsp; Unlimited concurrency</td>
               </tr>
               <tr>
-                <td className="ph3 bb b--black-10 pv2 bg-lightest-green">
-                  ☆ &nbsp; Priority support
-                </td>
+                <td className="ph3 bb b--black-10 pv2 bg-lightest-green">☆ &nbsp; Priority support</td>
               </tr>
               <tr>
                 <td className="ph3 pv3 bg-lightest-green br3 br--bottom">
@@ -119,9 +94,7 @@ const Trial = (props: TrialProps) => {
                     onClick={() => void onChangePlan()}
                   >
                     {!disabledButton.value && `Choose Plan`}
-                    {disabledButton.value && (
-                      <toolbox.Asset path="images/spinner.svg"/>
-                    )}
+                    {disabledButton.value && <toolbox.Asset path="images/spinner.svg"/>}
                   </button>
                 </td>
               </tr>
@@ -134,9 +107,7 @@ const Trial = (props: TrialProps) => {
                   <div className="f2">
                     <span className="b">Free</span>
                   </div>
-                  <div className="f5 pr3">
-                    Good for small times or individuals and occasional use.
-                  </div>
+                  <div className="f5 pr3">Good for small times or individuals and occasional use.</div>
                 </td>
               </tr>
               <tr>
@@ -150,14 +121,10 @@ const Trial = (props: TrialProps) => {
                 </td>
               </tr>
               <tr>
-                <td className="ph3 bb b--black-10 pv2 bg-lightest-gray gray">
-                  ⚠ Limited concurrency
-                </td>
+                <td className="ph3 bb b--black-10 pv2 bg-lightest-gray gray">⚠ Limited concurrency</td>
               </tr>
               <tr>
-                <td className="ph3 bb b--black-10 pv2 bg-lightest-gray gray">
-                  ⚠ Limited support
-                </td>
+                <td className="ph3 bb b--black-10 pv2 bg-lightest-gray gray">⚠ Limited support</td>
               </tr>
               <tr>
                 <td className="ph3 pv3 bg-lightest-gray br3 br--bottom">
@@ -167,9 +134,7 @@ const Trial = (props: TrialProps) => {
                     onClick={() => void onContinue()}
                   >
                     {!disabledButton.value && `Continue on Free`}
-                    {disabledButton.value && (
-                      <toolbox.Asset path="images/spinner.svg"/>
-                    )}
+                    {disabledButton.value && <toolbox.Asset path="images/spinner.svg"/>}
                   </button>
                 </td>
               </tr>

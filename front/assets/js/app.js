@@ -67,6 +67,7 @@ import { default as AddPeople } from "./people/add_people";
 import { default as EditPerson } from "./people/edit_person";
 import { default as SyncPeople } from "./people/sync_people";
 import { default as ServiceAccounts } from "./service_accounts";
+import { default as EphemeralEnvironments } from "./ephemeral_environments";
 import { default as Report } from "./report";
 
 import { InitializingScreen } from "./project_onboarding/initializing";
@@ -286,6 +287,13 @@ export var App = {
       })
     });
     new Star();
+  },
+  ephemeral_environments_page: function () {
+    const ephemeralEnvironmentsEl = document.getElementById("ephemeral-environments");
+    if (ephemeralEnvironmentsEl) {
+      const config = JSON.parse(ephemeralEnvironmentsEl.dataset.config);
+      EphemeralEnvironments({ dom: ephemeralEnvironmentsEl, config });
+    }
   },
   people_page: function () {
     ListPeople.init();

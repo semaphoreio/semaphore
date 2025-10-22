@@ -6,7 +6,10 @@ import { useContext, useLayoutEffect, useReducer } from "preact/hooks";
 
 export const CreditsPage = () => {
   const config = useContext(stores.Config.Context);
-  const [state, dispatch] = useReducer(stores.Credits.Reducer, { ... stores.Credits.EmptyState, url: config.creditsUrl } );
+  const [state, dispatch] = useReducer(stores.Credits.Reducer, {
+    ...stores.Credits.EmptyState,
+    url: config.creditsUrl,
+  });
 
   useLayoutEffect(() => {
     const url = new URL(config.creditsUrl, location.origin);
@@ -24,29 +27,34 @@ export const CreditsPage = () => {
         dispatch({ type: `SET_AVAILABLE`, available });
         dispatch({ type: `SET_BALANCE`, balance });
         dispatch({ type: `SET_STATUS`, value: stores.Credits.Status.Loaded });
-      }).catch((e) => {
+      })
+      .catch((e) => {
         dispatch({ type: `SET_STATUS`, value: stores.Credits.Status.Error });
         dispatch({ type: `SET_STATUS_MESSAGE`, value: `${e as string}` });
       });
   }, []);
 
-  return <Fragment>
+  return (
     <Fragment>
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="inline-flex items-center">
-            <p className="mb0 b f3">Credits balance</p>
-          </div>
-          <div className="gray mb3 flex items-center">
-            <div className="pr2 mr2">Review your remaining pre-paid and gift credits, and check your spending history.</div>
+      <Fragment>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="inline-flex items-center">
+              <p className="mb0 b f3">Credits balance</p>
+            </div>
+            <div className="gray mb3 flex items-center">
+              <div className="pr2 mr2">
+                Review your remaining pre-paid and gift credits, and check your spending history.
+              </div>
+            </div>
           </div>
         </div>
+        <components.PlanFlags/>
+      </Fragment>
+      <div className="center">
+        <components.AvailableCredits credits={state.available}/>
+        <components.CreditsBalance credits={state.balance}/>
       </div>
-      <components.PlanFlags/>
     </Fragment>
-    <div className="center">
-      <components.AvailableCredits credits={state.available}/>
-      <components.CreditsBalance credits={state.balance}/>
-    </div>
-  </Fragment>;
+  );
 };

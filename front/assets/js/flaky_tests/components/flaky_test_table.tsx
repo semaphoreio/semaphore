@@ -52,7 +52,7 @@ const NoFlakyTestsStatus= () => {
 };
 
 
-const FlakyTestList = ({ flakyTests }: { flakyTests: FlakyTestItem[], }) => {
+const FlakyTestList = ({ flakyTests }: { flakyTests: FlakyTestItem[] }) => {
   return (
     <Fragment>
       {flakyTests.map((item) => (
@@ -67,7 +67,7 @@ const ErrorStatus = () => {
 };
 
 
-export const Message = ({ msg }: { msg: string, }) => {
+export const Message = ({ msg }: { msg: string }) => {
   return (
     <div className="w-100-m tc mt1 gray">
       {msg}

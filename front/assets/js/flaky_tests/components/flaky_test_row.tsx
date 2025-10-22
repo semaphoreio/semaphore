@@ -103,7 +103,7 @@ const Name = ({ item }: { item: FlakyTestItem, }) => {
   );
 };
 
-const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem, }) => {
+const LatestFlakyOccurrence = ({ item }: { item: FlakyTestItem }) => {
   return (
     <Fragment>
       <div title={util.Formatter.dateTime(item.latestDisruptionTimestamp)}>

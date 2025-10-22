@@ -162,7 +162,7 @@ export const Header = () => {
 };
 
 
-export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[], }) => {
+export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[] }) => {
   const store = useContext(stores.OrganizationHealth.Context);
   const state = store.state;
 
@@ -179,7 +179,7 @@ export const ProjectHealthList = ({ items }: { items: types.ProjectHealth[], }) 
   );
 };
 
-export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
+export const Items = ({ items }: { items: types.ProjectHealth[] }) => {
   const [sortedItems, setSortedItems] = useState([...items]);
   const [sortOrder, setSortOrder] = useState([`performance`, `desc`]);
 
@@ -277,7 +277,7 @@ export const Items = ({ items }: { items: types.ProjectHealth[], }) => {
 };
 
 
-export const ProjectHealthItem = ({ item, isLast }: { item: types.ProjectHealth, isLast: boolean, }) => {
+export const ProjectHealthItem = ({ item, isLast }: { item: types.ProjectHealth, isLast: boolean }) => {
   const config = useContext(stores.Config.Context);
   const store = useContext(stores.OrganizationHealth.Context);
   const state = store.state;

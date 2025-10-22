@@ -125,13 +125,13 @@ export class Item {
 }
 
 export type Action =
-  | { type: `SET_WAITING_ITEMS`, value: Item[], }
-  | { type: `SET_RUNNING_ITEMS`, value: Item[], }
-  | { type: `SET_LOBBY_ITEMS`, value: Item[], }
-  | { type: `SET_HOSTED_AGENTS`, value: Agent[], }
-  | { type: `SET_SELF_HOSTED_AGENTS`, value: Agent[], }
-  | { type: `DELETE_SELF_HOSTED_AGENT`, value: string, }
-  | { type: `SET_INVISIBLE_JOBS_COUNT`, value: number, };
+  | { type: `SET_WAITING_ITEMS`, value: Item[] }
+  | { type: `SET_RUNNING_ITEMS`, value: Item[] }
+  | { type: `SET_LOBBY_ITEMS`, value: Item[] }
+  | { type: `SET_HOSTED_AGENTS`, value: Agent[] }
+  | { type: `SET_SELF_HOSTED_AGENTS`, value: Agent[] }
+  | { type: `DELETE_SELF_HOSTED_AGENT`, value: string }
+  | { type: `SET_INVISIBLE_JOBS_COUNT`, value: number };
 
 export interface State {
   hostedAgents: Agent[];
@@ -159,9 +159,7 @@ export const Reducer = (state: State, action: Action): State => {
     case `DELETE_SELF_HOSTED_AGENT`:
       return {
         ...state,
-        selfHostedAgents: state.selfHostedAgents.filter(
-          (agent) => agent.name !== action.value
-        ),
+        selfHostedAgents: state.selfHostedAgents.filter((agent) => agent.name !== action.value),
       };
 
     case `SET_WAITING_ITEMS`:

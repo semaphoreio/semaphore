@@ -97,6 +97,8 @@ config :front,
   workflow_api_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_PLUMBER"),
   jwt_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SECRETHUB"),
   service_account_grpc_endpoint: System.fetch_env!("INTERNAL_API_URL_SERVICE_ACCOUNT"),
+  ephemeral_environments_grpc_endpoint:
+    System.get_env("INTERNAL_API_URL_EPHEMERAL_ENVIRONMENTS", "ephemeral-environments:10042"),
   permission_patrol_grpc_endpoint: "127.0.0.1:50052"
 
 config :front,
