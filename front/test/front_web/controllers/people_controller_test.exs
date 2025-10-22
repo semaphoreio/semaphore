@@ -36,6 +36,20 @@ defmodule FrontWeb.PeopleControllerTest do
     ]
   end
 
+  describe "GET organization_users" do
+    test "when the user can't access the org => returns 404", %{
+      conn: conn
+    } do
+      PermissionPatrol.remove_all_permissions()
+
+      conn =
+        conn
+        |> get("/people/export")
+
+      assert html_response(conn, 404) =~ "404"
+    end
+  end
+
   describe "GET show" do
     test "when the user can't access the org => returns 404", %{
       conn: conn,
