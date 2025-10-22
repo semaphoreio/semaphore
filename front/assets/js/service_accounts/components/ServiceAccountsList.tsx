@@ -72,15 +72,23 @@ export const ServiceAccountsList = ({
             <div className="b">Service Accounts</div>
           </div>
         </div>
-        {config.permissions.canManage && (
-          <button
-            className="btn btn-primary flex items-center"
-            onClick={onCreateNew}
-          >
-            <span className="material-symbols-outlined mr2">smart_toy</span>
-            Create Service Account
-          </button>
-        )}
+        <div className="flex">
+          {config.isOrgScope && (
+            <a aria-label="Download service accounts as CSV" title="Download service accounts as CSV" className="pointer flex items-center btn-secondary btn nowrap mr2" href={config.urls.export}>
+              <span className="material-symbols-outlined ">download</span>
+              Download .csv
+            </a>
+          )}
+          {config.permissions.canManage && (
+            <button
+              className="btn btn-primary flex items-center"
+              onClick={onCreateNew}
+            >
+              <span className="material-symbols-outlined mr2">smart_toy</span>
+              Create Service Account
+            </button>
+          )}
+        </div>
       </div>
 
       {serviceAccounts.length === 0 ? (
