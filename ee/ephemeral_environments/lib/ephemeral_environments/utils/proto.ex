@@ -16,13 +16,14 @@ defmodule EphemeralEnvironments.Utils.Proto do
   def from_map(nil, _module), do: nil
 
   def from_map(map, module) when is_map(map) and is_atom(module) do
-    field_props = module.__message_props__().field_props
+    field_props =
+      module.__message_props__().field_props |> Enum.map(fn {_num, props} -> props end)
 
-    # Convert map to struct fields
+    # Convert map to struct fields, only including fields that exist in the schema
     fields =
       map
+      |> Enum.filter(fn {key, _value} -> key in Enum.map(field_props, & &1.name_atom) end)
       |> Enum.map(fn {key, value} ->
-        # Find field info for this key
         field_info = find_field_info(field_props, key)
         converted_value = convert_value_from_map(value, field_info)
         {key, converted_value}
@@ -53,14 +54,8 @@ defmodule EphemeralEnvironments.Utils.Proto do
   end
 
   def to_map(value), do: value
-
-  defp convert_value(value, module, field) when is_list(value) do
-    Enum.map(value, &to_map/1)
-  end
-
-  defp convert_value(value, module, field) when is_struct(value) do
-    to_map(value)
-  end
+  defp convert_value(value, module, field) when is_list(value), do: Enum.map(value, &to_map/1)
+  defp convert_value(value, module, field) when is_struct(value), do: to_map(value)
 
   defp convert_value(value, module, field) when is_integer(value) do
     # Check if this field is an enum by looking at the field definition
@@ -80,20 +75,14 @@ defmodule EphemeralEnvironments.Utils.Proto do
 
   defp convert_value(value, _module, _field), do: value
 
-  # If given field is of type enum inside the parend module, the name of the enum module
+  # If given field is of type enum inside the parent module, the name of the enum module
   # will be returned. Otherwise it will return nil.
   defp get_enum_module(module, field) do
     try do
-      field_props = module.__message_props__().field_props
+      field_props =
+        module.__message_props__().field_props |> Enum.map(fn {_num, props} -> props end)
 
-      # Find the field by name_atom
-      field_info =
-        field_props
-        |> Enum.find(fn {_num, props} -> props.name_atom == field end)
-        |> case do
-          {_num, props} -> props
-          nil -> nil
-        end
+      field_info = find_field_info(field_props, field)
 
       if field_info && field_info.enum? do
         case field_info.type do
@@ -148,28 +137,18 @@ defmodule EphemeralEnvironments.Utils.Proto do
 
   # Find field info by field name atom
   defp find_field_info(field_props, field_name) do
-    field_props
-    |> Enum.find(fn {_num, props} -> props.name_atom == field_name end)
-    |> case do
-      {_num, props} -> props
-      nil -> nil
-    end
+    field_props |> Enum.find(fn props -> props.name_atom == field_name end)
   end
 
   defp convert_value_from_map(nil, _field_info), do: nil
 
   defp convert_value_from_map(%DateTime{} = dt, _field_info) do
-    %Google.Protobuf.Timestamp{
-      seconds: DateTime.to_unix(dt),
-      nanos: 0
-    }
+    %Google.Protobuf.Timestamp{seconds: DateTime.to_unix(dt)}
   end
 
   @unix_epoch ~N[1970-01-01 00:00:00]
   defp convert_value_from_map(%NaiveDateTime{} = ndt, _field_info) do
-    %Google.Protobuf.Timestamp{
-      seconds: NaiveDateTime.diff(ndt, @unix_epoch)
-    }
+    %Google.Protobuf.Timestamp{seconds: NaiveDateTime.diff(ndt, @unix_epoch)}
   end
 
   defp convert_value_from_map(value, nil), do: value
@@ -188,24 +167,15 @@ defmodule EphemeralEnvironments.Utils.Proto do
     end
   end
 
-  # Handle nested maps (embedded messages)
-  defp convert_value_from_map(value, field_info) when is_map(value) and not is_struct(value) do
-    if field_info.embedded? do
-      from_map(value, field_info.type)
-    else
-      value
-    end
+  defp convert_value_from_map(value, field_info) when is_map(value) do
+    from_map(value, field_info.type)
   end
 
   # Handle enum atoms - convert normalized atom back to proto enum
   defp convert_value_from_map(value, field_info) when is_atom(value) do
-    if field_info.enum? do
-      case field_info.type do
-        {:enum, enum_module} -> denormalize_enum_name(value, enum_module)
-        _ -> value
-      end
-    else
-      value
+    case field_info.type do
+      {:enum, enum_module} -> denormalize_enum_name(value, enum_module)
+      _ -> value
     end
   end
 
