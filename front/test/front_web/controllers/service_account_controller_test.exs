@@ -268,6 +268,21 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
   end
 
+  describe "GET /service_accounts/export" do
+    test "requires service_accounts.view permission", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/service_accounts/export")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+  end
+
   describe "PUT /service_accounts/:id" do
     setup %{org_id: org_id, user_id: user_id} do
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
