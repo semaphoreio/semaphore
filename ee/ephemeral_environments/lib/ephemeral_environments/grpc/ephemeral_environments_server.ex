@@ -16,8 +16,14 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServer do
     CordonResponse
   }
 
-  def list(_request, _stream) do
-    %ListResponse{}
+  def list(request, _stream) do
+    case EphemeralEnvironments.Service.EphemeralEnvironmentType.list(request.org_id) do
+      {:ok, environment_types} ->
+        %{environment_types: environment_types}
+
+      {:error, error_message} ->
+        raise GRPC.RPCError, status: :unknown, message: error_message
+    end
   end
 
   def describe(_request, _stream) do

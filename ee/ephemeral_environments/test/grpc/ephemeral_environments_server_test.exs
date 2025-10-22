@@ -7,7 +7,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
   alias InternalApi.EphemeralEnvironments.{
     CreateRequest,
     EphemeralEnvironmentType,
-    EphemeralEnvironments
+    EphemeralEnvironments,
+    ListRequest
   }
 
   @org_id Ecto.UUID.generate()
@@ -26,6 +27,58 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
   end
 
   describe "list/2" do
+    test "returns empty list when no environment types exist", %{channel: channel} do
+      request = %ListRequest{org_id: @org_id}
+      {:ok, response} = EphemeralEnvironments.Stub.list(channel, request)
+      assert response.environment_types == []
+    end
+
+    test "returns all environment types for a specific org", %{channel: channel} do
+      # Create environment types for the test org
+      {:ok, env1} =
+        Support.Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "Development")
+
+      {:ok, env1} =
+        Support.Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "Staging")
+
+      # Create environment type for a different org (should not be returned)
+      {:ok, _} = Support.Factories.EphemeralEnvironmentsType.insert(org_id: Ecto.UUID.generate())
+
+      request = %ListRequest{org_id: @org_id}
+      {:ok, response} = EphemeralEnvironments.Stub.list(channel, request)
+
+      assert length(response.environment_types) == 2
+
+      dev_env = Enum.find(response.environment_types, &(&1.name == "Development"))
+      assert dev_env.org_id == @org_id
+      assert dev_env.name == "Development"
+
+      staging_env = Enum.find(response.environment_types, &(&1.name == "Staging"))
+      assert staging_env.org_id == @org_id
+      assert staging_env.name == "Staging"
+    end
+
+    test "handles multiple orgs correctly", %{channel: channel} do
+      org2_id = Ecto.UUID.generate()
+
+      {:ok, _} = Support.Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
+      {:ok, _} = Support.Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
+
+      # Create environment types for org2
+      {:ok, _} = Support.Factories.EphemeralEnvironmentsType.insert(org_id: org2_id)
+
+      # Request for org1
+      request1 = %ListRequest{org_id: @org_id}
+      {:ok, response1} = EphemeralEnvironments.Stub.list(channel, request1)
+      assert length(response1.environment_types) == 2
+      assert Enum.all?(response1.environment_types, &(&1.org_id == @org_id))
+
+      # Request for org2
+      request2 = %ListRequest{org_id: org2_id}
+      {:ok, response2} = EphemeralEnvironments.Stub.list(channel, request2)
+      assert length(response2.environment_types) == 1
+      assert Enum.all?(response2.environment_types, &(&1.org_id == org2_id))
+    end
   end
 
   describe "describe/2" do

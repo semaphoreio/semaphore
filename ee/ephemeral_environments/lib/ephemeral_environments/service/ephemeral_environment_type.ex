@@ -1,6 +1,26 @@
 defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
+  import Ecto.Query
   alias EphemeralEnvironments.Repo
   alias EphemeralEnvironments.Repo.EphemeralEnvironmentType, as: Schema
+
+  @doc """
+  Lists all ephemeral environment types for a given organization.
+
+  ## Parameters
+    - org_id: String UUID of the organization
+
+  ## Returns
+    - {:ok, list of maps} on success
+  """
+  def list(org_id) when is_binary(org_id) do
+    environment_types =
+      Schema
+      |> where([e], e.org_id == ^org_id)
+      |> Repo.all()
+      |> Enum.map(&struct_to_map/1)
+
+    {:ok, environment_types}
+  end
 
   @doc """
   Creates a new ephemeral environment type.
@@ -9,10 +29,9 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
     - attrs: Map with keys:
       - org_id (required)
       - name (required)
+      - max_number_of_instances (required)
       - created_by (required)
-      - state (optional, defaults to :draft)
       - description (optional)
-      - max_number_of_instances (optional)
 
   ## Returns
     - {:ok, map} on success
