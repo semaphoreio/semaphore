@@ -10,6 +10,7 @@ import (
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 )
 
 // MockProvider is a lightweight Provider implementation intended for tests.
@@ -21,6 +22,7 @@ type MockProvider struct {
 	JobClient          jobpb.JobServiceClient
 	LoghubClient       loghubpb.LoghubClient
 	Loghub2Client      loghub2pb.Loghub2Client
+	UserClient         userpb.UserServiceClient
 	Timeout            time.Duration
 }
 
@@ -46,3 +48,5 @@ func (m *MockProvider) Jobs() jobpb.JobServiceClient { return m.JobClient }
 func (m *MockProvider) Loghub() loghubpb.LoghubClient { return m.LoghubClient }
 
 func (m *MockProvider) Loghub2() loghub2pb.Loghub2Client { return m.Loghub2Client }
+
+func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }

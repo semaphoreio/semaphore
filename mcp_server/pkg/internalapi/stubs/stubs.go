@@ -2,6 +2,8 @@ package stubs
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
@@ -13,6 +15,7 @@ import (
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
+	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 
 	code "google.golang.org/genproto/googleapis/rpc/code"
@@ -31,6 +34,7 @@ func New() internalapi.Provider {
 		jobs:          &jobStub{},
 		loghub:        &loghubStub{},
 		loghub2:       &loghub2Stub{},
+		users:         &userStub{},
 	}
 }
 
@@ -43,6 +47,7 @@ type provider struct {
 	jobs          jobpb.JobServiceClient
 	loghub        loghubpb.LoghubClient
 	loghub2       loghub2pb.Loghub2Client
+	users         userpb.UserServiceClient
 }
 
 func (p *provider) CallTimeout() time.Duration { return p.timeout }
@@ -60,6 +65,8 @@ func (p *provider) Jobs() jobpb.JobServiceClient { return p.jobs }
 func (p *provider) Loghub() loghubpb.LoghubClient { return p.loghub }
 
 func (p *provider) Loghub2() loghub2pb.Loghub2Client { return p.loghub2 }
+
+func (p *provider) Users() userpb.UserServiceClient { return p.users }
 
 // --- workflow stub ---
 
@@ -182,6 +189,23 @@ type loghub2Stub struct {
 
 func (l *loghub2Stub) GenerateToken(ctx context.Context, in *loghub2pb.GenerateTokenRequest, opts ...grpc.CallOption) (*loghub2pb.GenerateTokenResponse, error) {
 	return &loghub2pb.GenerateTokenResponse{Token: "stub-token", Type: loghub2pb.TokenType_PULL}, nil
+}
+
+// --- user stub ---
+
+type userStub struct {
+	userpb.UserServiceClient
+}
+
+func (u *userStub) DescribeByRepositoryProvider(ctx context.Context, in *userpb.DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*userpb.User, error) {
+	login := ""
+	if in != nil && in.GetProvider() != nil {
+		login = strings.TrimSpace(in.GetProvider().GetLogin())
+	}
+	if login == "" {
+		login = "stub-user"
+	}
+	return &userpb.User{Id: fmt.Sprintf("user-%s", login)}, nil
 }
 
 func orDefault(value, fallback string) string {

@@ -14,6 +14,7 @@ import (
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
+	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -28,6 +29,7 @@ type Provider interface {
 	Jobs() jobpb.JobServiceClient
 	Loghub() loghubpb.LoghubClient
 	Loghub2() loghub2pb.Loghub2Client
+	Users() userpb.UserServiceClient
 }
 
 // Manager owns gRPC connections to internal API services and exposes typed clients.
@@ -41,6 +43,7 @@ type Manager struct {
 	jobConn          *grpc.ClientConn
 	loghubConn       *grpc.ClientConn
 	loghub2Conn      *grpc.ClientConn
+	userConn         *grpc.ClientConn
 
 	workflowClient     workflowpb.WorkflowServiceClient
 	organizationClient orgpb.OrganizationServiceClient
@@ -49,6 +52,7 @@ type Manager struct {
 	jobClient          jobpb.JobServiceClient
 	loghubClient       loghubpb.LoghubClient
 	loghub2Client      loghub2pb.Loghub2Client
+	userClient         userpb.UserServiceClient
 }
 
 // NewManager dials the configured services and returns a ready-to-use manager.
@@ -104,6 +108,10 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 		m.Close()
 		return nil, fmt.Errorf("connect loghub2 service: %w", err)
 	}
+	if m.userConn, err = dial(cfg.UserEndpoint); err != nil {
+		m.Close()
+		return nil, fmt.Errorf("connect user service: %w", err)
+	}
 
 	if m.workflowConn != nil {
 		m.workflowClient = workflowpb.NewWorkflowServiceClient(m.workflowConn)
@@ -126,6 +134,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.loghub2Conn != nil {
 		m.loghub2Client = loghub2pb.NewLoghub2Client(m.loghub2Conn)
 	}
+	if m.userConn != nil {
+		m.userClient = userpb.NewUserServiceClient(m.userConn)
+	}
 
 	return m, nil
 }
@@ -141,6 +152,7 @@ func (m *Manager) Close() error {
 		m.jobConn,
 		m.loghubConn,
 		m.loghub2Conn,
+		m.userConn,
 	}
 	for _, conn := range closers {
 		if conn == nil {
@@ -188,6 +200,10 @@ func (m *Manager) Loghub() loghubpb.LoghubClient {
 
 func (m *Manager) Loghub2() loghub2pb.Loghub2Client {
 	return m.loghub2Client
+}
+
+func (m *Manager) Users() userpb.UserServiceClient {
+	return m.userClient
 }
 
 func joinErrors(errs []error) error {

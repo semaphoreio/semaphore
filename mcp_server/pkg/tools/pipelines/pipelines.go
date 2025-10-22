@@ -18,6 +18,7 @@ import (
 const (
 	listToolName       = "workflow_pipelines_list"
 	legacyListToolName = "pipelines_list"
+	jobsToolName       = "pipeline_jobs_list"
 	defaultLimit       = 20
 	maxLimit           = 100
 	errNoClient        = "pipeline gRPC endpoint is not configured"
@@ -47,14 +48,33 @@ Example:
 - workflow_pipelines_list(workflow_id="...", project_id="...", mode="detailed")
 - workflow_pipelines_list(workflow_id="...", cursor="opaque-token")
 `
+
+	jobsToolDescription = `List jobs belonging to a specific pipeline.
+
+Use this after discovering a pipeline via workflow_pipelines_list when you need job IDs for follow-up calls (jobs_describe, jobs_logs).
+
+Inputs:
+- organization_id (required): UUID of the organization context (cache it after calling core_organizations_list).
+- pipeline_id (required): UUID of the pipeline whose jobs you need.
+- mode (optional): "summary" (default) or "detailed".
+
+Response:
+- summary: Block headings with job names and IDs.
+- detailed: Adds job status/result, block state, and pipeline metadata.
+
+Example:
+- pipeline_jobs_list(pipeline_id="...", organization_id="...")
+- pipeline_jobs_list(pipeline_id="...", organization_id="...", mode="detailed")`
 )
 
 // Register wires pipeline tooling into the MCP server.
 func Register(s *server.MCPServer, api internalapi.Provider) {
 	list := listHandler(api)
+	jobs := jobsHandler(api)
 
 	s.AddTool(newListTool(listToolName, listToolDescription), list)
 	s.AddTool(newListTool(legacyListToolName, "Legacy alias for workflow_pipelines_list. Prefer workflow_pipelines_list for full documentation and Markdown output."), list)
+	s.AddTool(newJobsTool(jobsToolName, jobsToolDescription), jobs)
 }
 
 func newListTool(name, description string) mcp.Tool {
@@ -101,6 +121,34 @@ func newListTool(name, description string) mcp.Tool {
 	)
 }
 
+func newJobsTool(name, description string) mcp.Tool {
+	return mcp.NewTool(
+		name,
+		mcp.WithDescription(description),
+		mcp.WithString(
+			"pipeline_id",
+			mcp.Required(),
+			mcp.Description("Pipeline UUID to inspect (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		),
+		mcp.WithString(
+			"organization_id",
+			mcp.Required(),
+			mcp.Description("Organization UUID that owns the pipeline. Cache it after calling core_organizations_list."),
+			mcp.Pattern(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`),
+		),
+		mcp.WithString(
+			"mode",
+			mcp.Description("Response detail level. Use 'summary' for concise output; 'detailed' adds job status and block metadata."),
+			mcp.Enum("summary", "detailed"),
+			mcp.DefaultString("summary"),
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithIdempotentHintAnnotation(true),
+		mcp.WithOpenWorldHintAnnotation(true),
+	)
+}
+
 type queueSummary struct {
 	ID   string `json:"id,omitempty"`
 	Name string `json:"name,omitempty"`
@@ -132,6 +180,32 @@ type pipelineSummary struct {
 type listResult struct {
 	Pipelines  []pipelineSummary `json:"pipelines"`
 	NextCursor string            `json:"nextCursor,omitempty"`
+}
+
+type pipelineJobEntry struct {
+	JobID     string `json:"jobId"`
+	Name      string `json:"name,omitempty"`
+	BlockID   string `json:"blockId,omitempty"`
+	BlockName string `json:"blockName,omitempty"`
+	Index     uint32 `json:"index,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Result    string `json:"result,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+type blockJobGroup struct {
+	ID     string             `json:"blockId"`
+	Name   string             `json:"blockName,omitempty"`
+	State  string             `json:"state,omitempty"`
+	Result string             `json:"result,omitempty"`
+	Jobs   []pipelineJobEntry `json:"jobs,omitempty"`
+}
+
+type jobsListResult struct {
+	Pipeline pipelineSummary    `json:"pipeline"`
+	Blocks   []blockJobGroup    `json:"blocks"`
+	Jobs     []pipelineJobEntry `json:"jobs"`
+	JobCount int                `json:"jobCount"`
 }
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
@@ -239,6 +313,123 @@ Check that:
 	}
 }
 
+func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
+	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		client := api.Pipelines()
+		if client == nil {
+			return mcp.NewToolResultError(errNoClient), nil
+		}
+
+		orgIDRaw, err := req.RequireString("organization_id")
+		if err != nil {
+			return mcp.NewToolResultError("organization_id is required. Use core_organizations_list to select an organization before listing jobs."), nil
+		}
+		orgID := strings.TrimSpace(orgIDRaw)
+		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		pipelineIDRaw, err := req.RequireString("pipeline_id")
+		if err != nil {
+			return mcp.NewToolResultError("pipeline_id is required. Provide the pipeline UUID from workflow_pipelines_list."), nil
+		}
+		pipelineID := strings.TrimSpace(pipelineIDRaw)
+		if err := shared.ValidateUUID(pipelineID, "pipeline_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
+		}
+
+		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
+		defer cancel()
+
+		describeResp, err := client.Describe(callCtx, &pipelinepb.DescribeRequest{PplId: pipelineID, Detailed: true})
+		if err != nil {
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":        "pipeline.Describe",
+					"pipelineId": pipelineID,
+				}).
+				WithError(err).
+				Error("pipeline describe RPC failed")
+			return mcp.NewToolResultError(fmt.Sprintf("Pipeline describe RPC failed: %v", err)), nil
+		}
+
+		if status := describeResp.GetResponseStatus(); status != nil && status.GetCode() != pipelinepb.ResponseStatus_OK {
+			message := strings.TrimSpace(status.GetMessage())
+			if message == "" {
+				message = "pipeline describe returned non-OK status"
+			}
+			logging.ForComponent("rpc").
+				WithFields(logrus.Fields{
+					"rpc":        "pipeline.Describe",
+					"pipelineId": pipelineID,
+					"statusCode": status.GetCode(),
+				}).
+				Warn("pipeline describe returned non-OK status")
+			return mcp.NewToolResultError(message), nil
+		}
+
+		pipeline := summarizePipeline(describeResp.GetPipeline())
+		blocks := make([]blockJobGroup, 0, len(describeResp.GetBlocks()))
+		jobs := make([]pipelineJobEntry, 0)
+		for _, block := range describeResp.GetBlocks() {
+			if block == nil {
+				continue
+			}
+			group := blockJobGroup{
+				ID:     block.GetBlockId(),
+				Name:   strings.TrimSpace(block.GetName()),
+				State:  blockStateToString(block.GetState()),
+				Result: blockResultToString(block.GetResult()),
+			}
+
+			blockJobs := block.GetJobs()
+			if len(blockJobs) > 0 {
+				group.Jobs = make([]pipelineJobEntry, 0, len(blockJobs))
+				for _, bj := range blockJobs {
+					if bj == nil {
+						continue
+					}
+					entry := pipelineJobEntry{
+						JobID:     bj.GetJobId(),
+						Name:      strings.TrimSpace(bj.GetName()),
+						BlockID:   group.ID,
+						BlockName: group.Name,
+						Index:     bj.GetIndex(),
+						Status:    strings.TrimSpace(bj.GetStatus()),
+						Result:    strings.TrimSpace(bj.GetResult()),
+					}
+					group.Jobs = append(group.Jobs, entry)
+					jobs = append(jobs, entry)
+				}
+			}
+
+			blocks = append(blocks, group)
+		}
+
+		result := jobsListResult{
+			Pipeline: pipeline,
+			Blocks:   blocks,
+			Jobs:     jobs,
+			JobCount: len(jobs),
+		}
+
+		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
+		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{
+				mcp.NewTextContent(markdown),
+			},
+			StructuredContent: result,
+		}, nil
+	}
+}
+
 func summarizePipeline(ppl *pipelinepb.Pipeline) pipelineSummary {
 	if ppl == nil {
 		return pipelineSummary{}
@@ -316,6 +507,20 @@ func summarizeTriggerer(triggerer *pipelinepb.Triggerer) string {
 	return ""
 }
 
+func blockStateToString(state pipelinepb.Block_State) string {
+	if name, ok := pipelinepb.Block_State_name[int32(state)]; ok {
+		return strings.ToLower(name)
+	}
+	return "unspecified"
+}
+
+func blockResultToString(result pipelinepb.Block_Result) string {
+	if name, ok := pipelinepb.Block_Result_name[int32(result)]; ok {
+		return strings.ToLower(name)
+	}
+	return "unknown"
+}
+
 func formatPipelineListMarkdown(result listResult, mode, workflowID, projectID, orgID string, limit int) string {
 	mb := shared.NewMarkdownBuilder()
 
@@ -359,33 +564,32 @@ func formatPipelineListMarkdown(result listResult, mode, workflowID, projectID, 
 			}
 			mb.KeyValue("Result", fmt.Sprintf("%s %s", shared.StatusIcon(pipeline.Result), resultLine))
 		}
-		if pipeline.ErrorMessage != "" {
-			mb.Paragraph(fmt.Sprintf("⚠️ **Error**: %s", pipeline.ErrorMessage))
-		}
-
-		if pipeline.Branch != "" {
-			mb.KeyValue("Branch", pipeline.Branch)
-		}
-		if pipeline.CommitSHA != "" {
-			mb.KeyValue("Commit", shortenCommit(pipeline.CommitSHA))
-		}
-		if pipeline.Triggerer != "" {
-			mb.KeyValue("Triggered By", titleCase(pipeline.Triggerer))
-		}
-		if pipeline.Queue.Name != "" {
-			mb.KeyValue("Queue", fmt.Sprintf("%s (%s)", pipeline.Queue.Name, titleCase(pipeline.Queue.Type)))
-		}
 		if pipeline.CreatedAt != "" {
 			mb.KeyValue("Created", pipeline.CreatedAt)
 		}
-		if pipeline.RunningAt != "" {
-			mb.KeyValue("Running Since", pipeline.RunningAt)
-		}
-		if pipeline.DoneAt != "" {
-			mb.KeyValue("Completed At", pipeline.DoneAt)
+		if pipeline.Branch != "" {
+			mb.KeyValue("Branch", pipeline.Branch)
 		}
 
 		if mode == "detailed" {
+			if pipeline.CommitSHA != "" {
+				mb.KeyValue("Commit", shortenCommit(pipeline.CommitSHA))
+			}
+			if pipeline.Triggerer != "" {
+				mb.KeyValue("Triggered By", titleCase(pipeline.Triggerer))
+			}
+			if pipeline.Queue.Name != "" {
+				mb.KeyValue("Queue", fmt.Sprintf("%s (%s)", pipeline.Queue.Name, titleCase(pipeline.Queue.Type)))
+			}
+			if pipeline.RunningAt != "" {
+				mb.KeyValue("Running Since", pipeline.RunningAt)
+			}
+			if pipeline.DoneAt != "" {
+				mb.KeyValue("Completed", pipeline.DoneAt)
+			}
+			if pipeline.ErrorMessage != "" {
+				mb.Paragraph(fmt.Sprintf("⚠️ **Error**: %s", pipeline.ErrorMessage))
+			}
 			if pipeline.WithAfterTask {
 				mb.ListItem("🔁 Includes after-task stage")
 			}
@@ -409,6 +613,83 @@ func formatPipelineListMarkdown(result listResult, mode, workflowID, projectID, 
 		mb.Paragraph(fmt.Sprintf("📄 **More pipelines available.** Continue with `cursor=\"%s\"` to fetch older runs.", result.NextCursor))
 	} else {
 		mb.Paragraph("End of pipelines for the current filters.")
+	}
+
+	return mb.String()
+}
+
+func formatPipelineJobsMarkdown(result jobsListResult, mode, orgID string) string {
+	mb := shared.NewMarkdownBuilder()
+
+	pipelineName := strings.TrimSpace(result.Pipeline.Name)
+	if pipelineName == "" {
+		pipelineName = result.Pipeline.ID
+	}
+	mb.H1(fmt.Sprintf("Jobs for Pipeline %s", pipelineName))
+	mb.KeyValue("Pipeline ID", fmt.Sprintf("`%s`", result.Pipeline.ID))
+	if result.Pipeline.State != "" {
+		mb.KeyValue("Pipeline State", fmt.Sprintf("%s %s", shared.StatusIcon(result.Pipeline.State), titleCase(result.Pipeline.State)))
+	}
+	if result.Pipeline.Result != "" {
+		res := titleCase(result.Pipeline.Result)
+		if result.Pipeline.ResultReason != "" {
+			res = fmt.Sprintf("%s (reason: %s)", res, titleCase(result.Pipeline.ResultReason))
+		}
+		mb.KeyValue("Pipeline Result", fmt.Sprintf("%s %s", shared.StatusIcon(result.Pipeline.Result), res))
+	}
+	mb.Paragraph(fmt.Sprintf("Organization: `%s` • Jobs discovered: %d", orgID, result.JobCount))
+
+	if result.JobCount == 0 {
+		mb.Paragraph("No jobs found for this pipeline. The pipeline may not have started yet or it may only include manual blocks.")
+		return mb.String()
+	}
+
+	for idx, block := range result.Blocks {
+		if idx > 0 {
+			mb.Line()
+		}
+
+		title := block.Name
+		if strings.TrimSpace(title) == "" {
+			title = block.ID
+		}
+		mb.H2(fmt.Sprintf("Block %s", title))
+
+		if mode == "detailed" {
+			if block.State != "" {
+				mb.KeyValue("State", fmt.Sprintf("%s %s", shared.StatusIcon(block.State), titleCase(block.State)))
+			}
+			if block.Result != "" {
+				mb.KeyValue("Result", fmt.Sprintf("%s %s", shared.StatusIcon(block.Result), titleCase(block.Result)))
+			}
+		}
+
+		if len(block.Jobs) == 0 {
+			mb.Paragraph("No jobs reported for this block.")
+			continue
+		}
+
+		for _, job := range block.Jobs {
+			statusParts := []string{fmt.Sprintf("`%s`", job.JobID)}
+			if job.Name != "" {
+				statusParts = append(statusParts, fmt.Sprintf("%s", job.Name))
+			}
+			if mode == "detailed" {
+				if job.Status != "" {
+					statusParts = append(statusParts, fmt.Sprintf("status: %s %s", shared.StatusIcon(job.Status), titleCase(job.Status)))
+				}
+				if job.Result != "" {
+					statusParts = append(statusParts, fmt.Sprintf("result: %s %s", shared.StatusIcon(job.Result), titleCase(job.Result)))
+				}
+				if job.Index > 0 {
+					statusParts = append(statusParts, fmt.Sprintf("index %d", job.Index))
+				}
+				if job.Error != "" {
+					statusParts = append(statusParts, fmt.Sprintf("error: %s", job.Error))
+				}
+			}
+			mb.ListItem(strings.Join(statusParts, " • "))
+		}
 	}
 
 	return mb.String()

@@ -46,6 +46,10 @@ var (
 		"MCP_LOGHUB2_GRPC_ENDPOINT",
 		"LOGHUB2_API_URL",
 	}
+	userEndpointEnvs = []string{
+		"INTERNAL_API_URL_USER",
+		"MCP_USER_GRPC_ENDPOINT",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -57,6 +61,7 @@ type Config struct {
 	JobEndpoint          string
 	LoghubEndpoint       string
 	Loghub2Endpoint      string
+	UserEndpoint         string
 
 	DialTimeout time.Duration
 	CallTimeout time.Duration
@@ -81,6 +86,7 @@ func LoadConfig() (Config, error) {
 		JobEndpoint:          endpointFromEnv(jobEndpointEnvs...),
 		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),
 		Loghub2Endpoint:      endpointFromEnv(loghub2EndpointEnvs...),
+		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
 	}

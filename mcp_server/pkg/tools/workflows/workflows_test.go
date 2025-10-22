@@ -3,6 +3,7 @@ package workflows
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
+	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 
 	"google.golang.org/genproto/googleapis/rpc/code"
@@ -82,9 +84,64 @@ func TestListWorkflows(t *testing.T) {
 	if client.lastList == nil {
 		toFail(t, "expected list request to be recorded")
 	}
+	if got := client.lastList.GetRequesterId(); got != "99999999-aaaa-bbbb-cccc-dddddddddddd" {
+		toFail(t, "expected requester to default to user header, got %s", got)
+	}
 
 	if got := client.lastList.GetPageSize(); got != 10 {
 		toFail(t, "expected page size 10, got %d", got)
+	}
+}
+
+func TestListWorkflowsWithRequesterOverride(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	requester := "deploy-bot"
+	client := &workflowClientStub{
+		listResp: &workflowpb.ListKeysetResponse{
+			Status:    &statuspb.Status{Code: code.Code_OK},
+			Workflows: []*workflowpb.WorkflowDetails{},
+		},
+	}
+	userClient := &userClientStub{
+		response: &userpb.User{Id: "00000000-1111-2222-3333-444444444444"},
+	}
+
+	provider := &internalapi.MockProvider{
+		WorkflowClient: client,
+		UserClient:     userClient,
+		Timeout:        time.Second,
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"project_id":        projectID,
+				"organization_id":   "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				"my_workflows_only": false,
+				"requester":         requester,
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	_, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	if client.lastList == nil {
+		toFail(t, "expected list request to be recorded")
+	}
+	if got := strings.TrimSpace(client.lastList.GetRequesterId()); got != "00000000-1111-2222-3333-444444444444" {
+		toFail(t, "expected requester override to propagate, got %s", got)
+	}
+	if userClient.lastRequest == nil || userClient.lastRequest.GetProvider() == nil {
+		toFail(t, "expected user lookup to be recorded")
+	}
+	if login := userClient.lastRequest.GetProvider().GetLogin(); login != requester {
+		toFail(t, "expected user lookup login %s, got %s", requester, login)
 	}
 }
 
@@ -113,6 +170,24 @@ func (s *workflowClientStub) ListKeyset(ctx context.Context, in *workflowpb.List
 		return nil, s.listErr
 	}
 	return s.listResp, nil
+}
+
+type userClientStub struct {
+	userpb.UserServiceClient
+	response    *userpb.User
+	err         error
+	lastRequest *userpb.DescribeByRepositoryProviderRequest
+}
+
+func (u *userClientStub) DescribeByRepositoryProvider(ctx context.Context, in *userpb.DescribeByRepositoryProviderRequest, opts ...grpc.CallOption) (*userpb.User, error) {
+	u.lastRequest = in
+	if u.err != nil {
+		return nil, u.err
+	}
+	if u.response == nil {
+		u.response = &userpb.User{Id: "ffffffff-ffff-ffff-ffff-ffffffffffff"}
+	}
+	return u.response, nil
 }
 
 func (s *workflowClientStub) ListGrouped(context.Context, *workflowpb.ListGroupedRequest, ...grpc.CallOption) (*workflowpb.ListGroupedResponse, error) {
