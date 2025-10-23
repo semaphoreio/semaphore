@@ -199,6 +199,11 @@ const config = {
 
           },
           {
+            href: 'https://status.semaphore.io/',
+            position: 'right',
+            label: 'Service Status'
+          },
+          {
             type: 'search',
             position: 'right',
           },
@@ -243,6 +248,10 @@ const config = {
           {
             title: 'More',
             items: [
+              {
+                label: 'Cloud Service Status',
+                href: 'https://status.semaphore.io/',
+              },
               {
                 label: 'Semaphore Blog',
                 href: 'https://semaphore.io/blog',
