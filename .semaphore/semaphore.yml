@@ -2448,7 +2448,9 @@ blocks:
         - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Ephemeral Environments Tests"
+            - ls -la
             - make test.ex
+            - ls -la
   # RBAC EE
   - name: "RBAC EE: Provision Test Image"
     dependencies: []
