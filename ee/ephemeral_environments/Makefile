@@ -10,6 +10,7 @@ TMP_REPO_DIR?=/tmp/internal_api
 CONTAINER_ENV_VARS = $(shell [ -f .env ] && sed 's/^/-e /' .env | tr '\n' ' ')
 ifdef CI
 CONTAINER_ENV_VARS := $(shell echo "$(CONTAINER_ENV_VARS)" | sed 's/-e POSTGRES_DB_HOST=[^ ]*/-e POSTGRES_DB_HOST=0.0.0.0/g')
+CONTAINER_ENV_VARS += -e CI=true
 $(info CI detected - CONTAINER_ENV_VARS: $(CONTAINER_ENV_VARS))
 endif
 
