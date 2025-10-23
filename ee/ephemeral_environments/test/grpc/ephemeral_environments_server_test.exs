@@ -24,7 +24,6 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
     # Allow the gRPC server process to use this test's DB connection
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
-    # Connect to the gRPC server
     {:ok, channel} = GRPC.Stub.connect("localhost:#{@grpc_port}")
     {:ok, channel: channel}
   end
@@ -40,7 +39,6 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
       # Create environment types for the test org
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "Development")
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "Staging")
-
       # Create environment type for a different org (should not be returned)
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: Ecto.UUID.generate())
 
@@ -60,10 +58,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
 
     test "handles multiple orgs correctly", %{channel: channel} do
       org2_id = Ecto.UUID.generate()
-
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
-
       # Create environment types for org2
       {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: org2_id)
 
@@ -112,8 +108,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
 
     test "returns not_found error when environment type doesn't exist", %{channel: channel} do
       request = %DescribeRequest{id: Ecto.UUID.generate(), org_id: @org_id}
-      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.describe(channel, request)
 
+      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.describe(channel, request)
       assert error.status == 5
       assert error.message == "Environment type not found"
     end
@@ -121,8 +117,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
     test "returns not_found when querying with wrong org_id", %{channel: channel} do
       {:ok, env_type} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
       request = %DescribeRequest{id: env_type.id, org_id: Ecto.UUID.generate()}
-      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.describe(channel, request)
 
+      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.describe(channel, request)
       assert error.status == 5
       assert error.message == "Environment type not found"
     end
@@ -174,12 +170,14 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
         environment_type: %EphemeralEnvironmentType{
           org_id: @org_id,
           name: "Test",
-          max_number_of_instances: 1
+          max_number_of_instances: 1,
+          created_by: @user_id
         }
       }
 
-      {:error, error} = EphemeralEnvironments.Stub.create(channel, duplicate_request)
-      assert %GRPC.RPCError{} = error
+      {:error, %GRPC.RPCError{} = error} =
+        EphemeralEnvironments.Stub.create(channel, duplicate_request)
+
       assert error.status == 2
       assert error.message == "duplicate_name: ephemeral environment name has already been taken"
     end
@@ -191,7 +189,8 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
         environment_type: %EphemeralEnvironmentType{
           org_id: Ecto.UUID.generate(),
           name: "Test",
-          max_number_of_instances: 1
+          max_number_of_instances: 1,
+          created_by: @user_id
         }
       }
 
@@ -279,28 +278,22 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
     end
 
     test "returns not_found when environment type doesn't exist", %{channel: channel} do
-      non_existent_id = Ecto.UUID.generate()
-
       request = %UpdateRequest{
         environment_type: %EphemeralEnvironmentType{
-          id: non_existent_id,
+          id: Ecto.UUID.generate(),
           org_id: @org_id,
           name: "Updated Name",
           last_updated_by: @user_id
         }
       }
 
-      assert {:error, %GRPC.RPCError{status: 5, message: "Environment type not found"}} =
-               EphemeralEnvironments.Stub.update(channel, request)
+      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.update(channel, request)
+      assert error.status == 5
+      assert error.message == "Environment type not found"
     end
 
     test "returns not_found when updating with wrong org_id", %{channel: channel} do
-      {:ok, env_type} =
-        Factories.EphemeralEnvironmentsType.insert(
-          org_id: @org_id,
-          name: "Test Environment"
-        )
-
+      {:ok, env_type} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "1")
       different_org_id = Ecto.UUID.generate()
 
       request = %UpdateRequest{
@@ -312,72 +305,51 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
         }
       }
 
-      assert {:error, %GRPC.RPCError{status: 5, message: "Environment type not found"}} =
-               EphemeralEnvironments.Stub.update(channel, request)
+      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.update(channel, request)
+      assert error.status == 5
+      assert error.message == "Environment type not found"
     end
 
     test "fails validation when updating with duplicate name in same org", %{channel: channel} do
-      {:ok, env1} =
-        Factories.EphemeralEnvironmentsType.insert(
-          org_id: @org_id,
-          name: "Environment 1"
-        )
-
-      {:ok, env2} =
-        Factories.EphemeralEnvironmentsType.insert(
-          org_id: @org_id,
-          name: "Environment 2"
-        )
+      {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "1")
+      {:ok, env2} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "2")
 
       # Try to rename env2 to env1's name
       request = %UpdateRequest{
         environment_type: %EphemeralEnvironmentType{
           id: env2.id,
           org_id: @org_id,
-          name: "Environment 1",
+          name: "1",
           last_updated_by: @user_id
         }
       }
 
-      {:error, error} = EphemeralEnvironments.Stub.update(channel, request)
-      assert %GRPC.RPCError{} = error
-      # UNKNOWN
+      {:error, %GRPC.RPCError{} = error} = EphemeralEnvironments.Stub.update(channel, request)
       assert error.status == 2
       assert error.message == "duplicate_name: ephemeral environment name has already been taken"
     end
 
     test "allows updating to same name in different org", %{channel: channel} do
-      {:ok, env1} =
-        Factories.EphemeralEnvironmentsType.insert(
-          org_id: @org_id,
-          name: "Shared Name"
-        )
-
-      other_org_id = Ecto.UUID.generate()
-
-      {:ok, env2} =
-        Factories.EphemeralEnvironmentsType.insert(
-          org_id: other_org_id,
-          name: "Original Name"
-        )
+      {:ok, _} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id, name: "1")
+      org2_id = Ecto.UUID.generate()
+      {:ok, env2} = Factories.EphemeralEnvironmentsType.insert(org_id: org2_id, name: "2")
 
       # Update env2 to use the same name as env1 (but different org)
       request = %UpdateRequest{
         environment_type: %EphemeralEnvironmentType{
           id: env2.id,
-          org_id: other_org_id,
-          name: "Shared Name",
+          org_id: org2_id,
+          name: "1",
           last_updated_by: @user_id
         }
       }
 
       assert {:ok, response} = EphemeralEnvironments.Stub.update(channel, request)
-      assert response.environment_type.name == "Shared Name"
+      assert response.environment_type.name == "1"
     end
 
     test "updates timestamp when updating", %{channel: channel} do
       {:ok, env_type} = Factories.EphemeralEnvironmentsType.insert(org_id: @org_id)
-
       # Wait a bit to ensure timestamp changes
       :timer.sleep(100)
 
@@ -396,8 +368,6 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
       original_created_at = DateTime.from_naive!(env_type.inserted_at, "Etc/UTC")
       response_created_at = DateTime.from_unix!(response.environment_type.created_at.seconds)
       assert DateTime.diff(response_created_at, original_created_at, :second) == 0
-
-      # updated_at should be recent
       assert_recent_timestamp(DateTime.from_unix!(response.environment_type.updated_at.seconds))
     end
   end
