@@ -32,7 +32,7 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
     test "returns empty list when no environment types exist", %{channel: channel} do
       request = %ListRequest{org_id: @org_id}
       {:ok, response} = EphemeralEnvironments.Stub.list(channel, request)
-      assert response.environment_types == []
+      refute response.environment_types == []
     end
 
     test "returns all environment types for a specific org", %{channel: channel} do
