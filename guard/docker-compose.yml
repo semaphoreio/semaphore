@@ -66,6 +66,8 @@ services:
 
     volumes:
       - .:/app
+      - /app/deps
+      - /app/_build
 
   db:
     image: postgres:9.6

@@ -95,7 +95,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 If a value is not provided, the default for the machine type is used:
 
 - `e1-standard-*` machine types: `ubuntu2004`
-- `a1-standard-*` machine types: `macos-xcode15`
+- `a2-standard-*` machine types: `macos-xcode16`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
 
@@ -758,8 +758,8 @@ blocks:
    # highlight-start
       agent:
           machine:
-            type: a1-standard-4
-            os_image: macos-xcode15
+            type: a2-standard-4
+            os_image: macos-xcode16
    # highlight-end
       jobs:
         - name: Using agent job
