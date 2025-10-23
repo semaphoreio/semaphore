@@ -25,6 +25,7 @@ config :watchman,
 config :guard,
   projecthub_grpc_endpoint: "127.0.0.1:50052",
   organization_grpc_endpoint: "127.0.0.1:50052",
+  # sobelow_skip ["Config.Secrets"]
   secrethub_grpc_endpoint: "127.0.0.1:50052",
   pipeline_grpc_endpoint: "127.0.0.1:50052",
   repo_proxy_grpc_endpoint: "127.0.0.1:50052",
@@ -117,5 +118,16 @@ if System.get_env("AMQP_URL") != nil do
 end
 
 config :guard, :front_git_integration_path, "/settings/git_integrations"
+
+config :guard, Guard.OrganizationCleaner,
+  jobs: [
+    # Every Midnight
+    {"0 0 * * *", {Guard.OrganizationCleaner, :process, []}}
+  ]
+
+config :guard, :hard_destroy_grace_period_days, 30
+
+config :guard, :posthog_api_key, ""
+config :guard, :posthog_host, "https://app.posthog.com"
 
 import_config "#{config_env()}.exs"

@@ -322,7 +322,8 @@ defmodule Support.Factories do
             owner: "ryanmcdermott",
             run_on: [
               InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:TAGS),
-              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS)
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:FORKED_PULL_REQUESTS),
+              InternalApi.Projecthub.Project.Spec.Repository.RunType.value(:DRAFT_PULL_REQUESTS)
             ],
             forked_pull_requests:
               InternalApi.Projecthub.Project.Spec.Repository.ForkedPullRequests.new(
@@ -1366,7 +1367,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Receives Git Hooks on Sempahore 2.0 and Stores them in a Rabbit queue",
+        description: "Receives Git Hooks on Semaphore 2.0 and Stores them in a Rabbit queue",
         name: "git-hook-broker",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",
@@ -2598,7 +2599,7 @@ defmodule Support.Factories do
       },
       %{
         addable: false,
-        description: "Redirection to sempahoreci.com",
+        description: "Redirection to semaphoreci.com",
         name: "semaphoreapp",
         owner_avatar: "https://avatars3.githubusercontent.com/u/0?v=4",
         owner_name: "octocat",
@@ -3099,64 +3100,75 @@ defmodule Support.Factories do
   end
 
   def pipeline_with_trigger(trigger_type \\ nil) do
-    trigger_type
-    |> case do
-      :INITIAL_WORKFLOW ->
+    db = %{
+      INITIAL_WORKFLOW: fn ->
         pipeline(
           triggerer: [
             wf_triggered_by: WfTriggeredBy.value(:HOOK),
             ppl_triggered_by: PplTriggeredBy.value(:WORKFLOW)
           ]
         )
-
-      :WORKFLOW_RERUN ->
+      end,
+      WORKFLOW_RERUN: fn ->
         pipeline(
           triggerer: [
             workflow_rerun_of: Ecto.UUID.generate()
           ]
         )
-
-      :API ->
+      end,
+      API: fn ->
         pipeline(
           triggerer: [
             wf_triggered_by: WfTriggeredBy.value(:API)
           ]
         )
-
-      :SCHEDULED_RUN ->
+      end,
+      SCHEDULED_RUN: fn ->
         pipeline(
           triggerer: [
             wf_triggered_by: WfTriggeredBy.value(:SCHEDULE)
           ]
         )
-
-      :SCHEDULED_MANUAL_RUN ->
+      end,
+      SCHEDULED_RUN_WITH_PROMOTION: fn ->
+        pipeline(
+          triggerer: [
+            wf_triggered_by: WfTriggeredBy.value(:SCHEDULE),
+            ppl_triggered_by: PplTriggeredBy.value(:PROMOTION)
+          ]
+        )
+      end,
+      SCHEDULED_MANUAL_RUN: fn ->
         pipeline(
           triggerer: [
             wf_triggered_by: WfTriggeredBy.value(:MANUAL_RUN)
           ]
         )
-
-      :PIPELINE_PARTIAL_RERUN ->
+      end,
+      PIPELINE_PARTIAL_RERUN: fn ->
         pipeline(
           triggerer: [
             ppl_triggered_by: PplTriggeredBy.value(:PARTIAL_RE_RUN)
           ]
         )
-
-      :MANUAL_PROMOTION ->
+      end,
+      MANUAL_PROMOTION: fn ->
         pipeline(
           triggerer: [
+            wf_triggered_by: WfTriggeredBy.value(:MANUAL_RUN),
             ppl_triggered_by: PplTriggeredBy.value(:PROMOTION)
           ]
         )
-
-      :AUTO_PROMOTION ->
+      end,
+      AUTO_PROMOTION: fn ->
         pipeline(
           triggerer: [
             ppl_triggered_by: PplTriggeredBy.value(:AUTO_PROMOTION)
           ]
         )
-    end
+      end
+    }
+
+    db[trigger_type].()
   end
 end

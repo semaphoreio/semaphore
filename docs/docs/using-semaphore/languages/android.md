@@ -5,11 +5,11 @@ sidebar_position: 1
 
 # Android
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This guide will help build Android projects on Semaphore.
 
@@ -79,7 +79,6 @@ To configure your Android container using YAML, follow these steps:
 5. Save the file and push it to the repository
 
 </Steps>
-
 
 </TabItem>
 </Tabs>
@@ -184,7 +183,7 @@ blocks:
 
 ## Building custom images {#custom-images}
 
-You can find the pre-build Android images in the [Semaphore Container Registry](../optimization/container-registry).
+You can find the pre-build Android images in the [Semaphore Container Registry](../containers/container-registry).
 
 The image definition and Dockerfiles for these images can be found in the repository [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images). Clone this repository to build your own image variants.
 

@@ -2,7 +2,6 @@ defmodule PipelinesAPI.WorkflowClient.Test do
   use ExUnit.Case
 
   alias PipelinesAPI.WorkflowClient
-  alias Test.GitHub.Credentials
 
   setup do
     Support.Stubs.reset()
@@ -11,15 +10,9 @@ defmodule PipelinesAPI.WorkflowClient.Test do
   test "workflow client schedule and get valid response" do
     response = WorkflowClient.schedule(schedule_params())
     assert {:ok, schedule_response} = response
-    assert %{wf_id: wf_id, ppl_id: ppl_id} = schedule_response
+    assert %{workflow_id: wf_id, pipeline_id: ppl_id} = schedule_response
     assert {:ok, _} = UUID.info(ppl_id)
     assert {:ok, _} = UUID.info(wf_id)
-  end
-
-  test "workflow client schedule - empty request_token" do
-    params = schedule_params() |> Map.replace!("ppl_request_token", "")
-    assert {:error, {:user, message}} = WorkflowClient.schedule(params)
-    assert message.code == :INVALID_ARGUMENT
   end
 
   test "workflow client schedule - limit exceeded" do
@@ -33,10 +26,9 @@ defmodule PipelinesAPI.WorkflowClient.Test do
       )
     end)
 
-    response = WorkflowClient.schedule(schedule_params_same_branch())
-    assert {:error, {:user, status}} = response
-    assert status.code == :RESOURCE_EXHAUSTED
-    assert status.message == "No more workflows for you."
+    response = WorkflowClient.schedule(schedule_params())
+    assert {:error, {:user, message}} = response
+    assert message == "No more workflows for you."
   end
 
   test "workflow client schedule - refused if project deletion was requested" do
@@ -50,40 +42,42 @@ defmodule PipelinesAPI.WorkflowClient.Test do
       )
     end)
 
-    assert {:error, {:user, status}} = WorkflowClient.schedule(schedule_params())
-    assert status.code == :FAILED_PRECONDITION
-    assert status.message == "Project was deleted."
+    assert {:error, {:user, message}} = WorkflowClient.schedule(schedule_params())
+    assert message == "Project was deleted."
   end
 
-  defp schedule_params_same_branch() do
-    same_branch_params = %{
-      "branch_id" => "123",
-      "project_id" => "123",
-      "service" => "local",
-      "repo_name" => "8_sleeping"
-    }
+  test "workflow client request formatter schedule - creates valid gRPC request when given valid params" do
+    alias InternalApi.PlumberWF.TriggeredBy
+    alias PipelinesAPI.WorkflowClient.WFRequestFormatter
+    alias InternalApi.PlumberWF.ScheduleRequest.{ServiceType, EnvVar}
 
-    schedule_params()
-    |> Map.merge(same_branch_params)
+    params = schedule_params()
+
+    assert {:ok, request} = WFRequestFormatter.form_schedule_request(params)
+    assert request.service == ServiceType.value(:GIT_HUB)
+    assert request.label == "main"
+    assert request.repo.branch_name == "main"
+    assert request.repo.commit_sha == "773d5c953bd68cc97efa81d2e014449336265fb4"
+    assert {:ok, _} = UUID.info(request.request_token)
+    assert request.requester_id == params["requester_id"]
+    assert request.definition_file == "semaphore.yml"
+    assert request.organization_id == params["organization_id"]
+    assert request.git_reference == "refs/heads/main"
+    assert request.start_in_conceived_state == true
+    assert request.triggered_by == TriggeredBy.value(:API)
+    assert request.env_vars == [%EnvVar{name: "MY_PARAM", value: "my_value"}]
   end
 
   defp schedule_params() do
     %{
-      "owner" => "renderedtext",
-      "repo_name" => "pipelines-test-repo-auto-call",
-      "service" => "git_hub",
-      "ppl_request_token" => UUID.uuid4(),
-      "branch_id" => UUID.uuid4(),
-      "hook_id" => UUID.uuid4(),
-      "requester_id" => UUID.uuid4(),
-      "branch_name" => "10s-pipeline-run",
+      "reference" => "refs/heads/main",
       "commit_sha" => "773d5c953bd68cc97efa81d2e014449336265fb4",
-      "file_name" => "semaphore.yml",
-      "working_dir" => ".semaphore",
-      "snapshot_archive" => "123",
+      "pipeline_file" => "semaphore.yml",
       "project_id" => UUID.uuid4(),
-      "organization_id" => UUID.uuid4()
+      "organization_id" => UUID.uuid4(),
+      "requester_id" => UUID.uuid4(),
+      "repository" => %{integration_type: :GITHUB_APP},
+      "parameters" => %{"MY_PARAM" => "my_value"}
     }
-    |> Map.merge(Credentials.string_keys())
   end
 end

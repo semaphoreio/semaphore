@@ -4,18 +4,11 @@ description: Install Semaphore on AWS EC2 Instance (VM)
 
 # AWS Compute Instance (EC2)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
-
 This page explains how to install Semaphore Community Edition on a [AWS Elastic Compute Cloud (EC2)](https://aws.amazon.com/ec2/).
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](/getting-started/quickstart) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -103,7 +96,6 @@ chmod 600 $AWS_SSH_KEY.pem
 
 You may skip this step if you already have a subnet configured for your EC2 instance. In that case, ensure the `aws-config` file is exporting the variable `SUBNET_ID`.
 
-
 First, check what subnets you have configured:
 
 ```shell
@@ -112,14 +104,12 @@ aws ec2 describe-subnets
 
 If required, create a subnet. The following example creates a subnet on the default CIDR block. Replace `vpc-8eb123f4` with your VPC ID, adjust the `--cidr-block as needed`, and choose an appropriate `--availability-zone` for your region.
 
-
 ```shell
 aws ec2 create-subnet \
   --vpc-id vpc-8eb123f4 \
   --cidr-block 172.31.1.0/24 \
   --availability-zone us-east-1a
 ```
-
 
 ## Step 4 - Create EC2 instance {#instance}
 
@@ -235,7 +225,6 @@ You may skip this section if you already have wildcard certificates, e.g. `*.sem
 
 We can use [certbot](https://certbot.eff.org/) to create a free wildcard TLS certificate. Install certbot with the following command:
 
-
 ```shell title="remote shell - install tools"
 sudo apt-get update
 sudo apt-get -y install certbot
@@ -308,7 +297,6 @@ export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
 ## Step 10 - Install Semaphore {#install}
 
-
 We recommend running the following sanity checks to confirm you're ready for installation. The commands should not fail and return valid values.
 
 ```shell title="remote shell - check if ready to install"
@@ -331,8 +319,8 @@ Finally, install the Semaphore with Helm:
 ```shell
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
-  --timeout 20m \
+  --version v1.5.0 \
+  --timeout 30m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
   --set ingress.enabled=true \
@@ -353,14 +341,15 @@ To start using the app, go to https://id.semaphore.example.com/login
 
 You can fetch credentials for the login by running this command:
 
-echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
+
 =============================================================================================
 ```
 
 Execute the shown command to retrieve the login credentials.
 
 ```shell title="remote shell - get login credentials"
-$ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+$ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 Email: root@example.com
 Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
@@ -389,18 +378,27 @@ You should be greeted with the onboarding guide.
 
 ![Onboarding guide screen](./img/on-boarding-guide.jpg)
 
+## Step 12 - Set the initialization agent
+
+Define the agent type that handles pipeline initialization:
+
+1. Open the [server settings menu](../using-semaphore/organizations#org-settings)
+2. Select **Initialization jobs**
+3. Select one agent from the list
+4. Press **Save Changes**, *you must save changes even if the correct option was already selected*
+
 ## Post installation tasks
 
 Once your have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
-- [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
+- [Invite users](../using-semaphore/user-management#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -411,6 +409,7 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     kubectl get nodes
     ```
+
 3. Load you configuration file and ensure the certificates are located in the right folder. See [Step 8](#certs) if you need to regenerate the certificates.
 
     ```shell
@@ -421,12 +420,18 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     ls certs/live/${DOMAIN}/privkey.pem
     ```
 
-4. Run the following command to upgrade to `v1.1.0`
+4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+
+    ```shell
+    openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
+    ```
+
+5. Run the following command to upgrade to `v1.3.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
+      --version v1.3.0 \
       --timeout 20m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \
@@ -485,7 +490,6 @@ aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

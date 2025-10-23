@@ -80,6 +80,8 @@ defmodule Support.FakeServices do
     GrpcMock.defmock(FeatureMock, for: InternalApi.Feature.FeatureService.Service)
     GrpcMock.defmock(UsageMock, for: InternalApi.Usage.UsageService.Service)
 
+    GrpcMock.defmock(LicenseMock, for: InternalApi.License.LicenseService.Service)
+
     excluded_stubs =
       System.get_env("EXCLUDE_STUBS", "")
       |> String.split(",")
@@ -121,7 +123,8 @@ defmodule Support.FakeServices do
         UsageMock,
         InstanceConfigMock,
         SuperjerryMock,
-        ScouterMock
+        ScouterMock,
+        LicenseMock
       ]
       |> Enum.reject(&Enum.member?(excluded_stubs, &1))
 
@@ -190,7 +193,9 @@ defmodule Support.FakeServices do
           InternalApi.Projecthub.CheckDeployKeyResponse.DeployKey.new(
             title: "semaphore-renderedtext-guard",
             fingerprint: "SHA256:OpCrpdiCJsjelCRPNnb0oo9EXEGbluYP9c1bUVMBUo0",
-            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543),
+            public_key:
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD5jgAFlCh04eBZ9fO+p1THe/ZhPN77PkbGJNg7VxTxzMY43W8qvHWfpPRT7zDPLGg8oqiSjWub8dBJ1phFeI7KKfnLUIHxEvl3va9cOvCPyXid5pVODtVZIAyXYashtWvycM/S5XvVy1IKX2E8tLufqshCpn1+rY/DOJX/SC6jrKC4aKBqbkZQavEu+5zQyZA2U76Rum+T+aqBTodZVSreYlqKiMiGcIJQmd3//a7s2nvOXktobiyYicNHMqv0jfEDL172ev7pxfHYTC+9XPfTOO1Fa1OSc0rFtWe8jeJgm5mkgwyRgY8SqQoqxYAyTsPQ5Lcj+aFZQjIQ3X8G12EuZzZZULM6yWIeH8YMRI3+MWmmQSKQzI9nfsV1O8kX3PELLpkJgHbcasrxwSD6INFCVw9OEocB/ze7FGaHbUVdF8hZKOSBUPPwZPSVuR2AjU1PITHbWn2hmZtTIeA8lU54kLujASel4M9jlGcWHoilkl9NjL7dup5qE3K6oQ0wuZzM="
           )
       )
 
@@ -201,7 +206,9 @@ defmodule Support.FakeServices do
           InternalApi.Projecthub.RegenerateDeployKeyResponse.DeployKey.new(
             title: "semaphore-renderedtext-guard",
             fingerprint: "SHA256:OpCrpdiCJsjelCRPNnb0oo9EXEGbluYP9c1bUVMBUo0",
-            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543)
+            created_at: Google.Protobuf.Timestamp.new(seconds: 1_522_495_543),
+            public_key:
+              "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQD5jgAFlCh04eBZ9fO+p1THe/ZhPN77PkbGJNg7VxTxzMY43W8qvHWfpPRT7zDPLGg8oqiSjWub8dBJ1phFeI7KKfnLUIHxEvl3va9cOvCPyXid5pVODtVZIAyXYashtWvycM/S5XvVy1IKX2E8tLufqshCpn1+rY/DOJX/SC6jrKC4aKBqbkZQavEu+5zQyZA2U76Rum+T+aqBTodZVSreYlqKiMiGcIJQmd3//a7s2nvOXktobiyYicNHMqv0jfEDL172ev7pxfHYTC+9XPfTOO1Fa1OSc0rFtWe8jeJgm5mkgwyRgY8SqQoqxYAyTsPQ5Lcj+aFZQjIQ3X8G12EuZzZZULM6yWIeH8YMRI3+MWmmQSKQzI9nfsV1O8kX3PELLpkJgHbcasrxwSD6INFCVw9OEocB/ze7FGaHbUVdF8hZKOSBUPPwZPSVuR2AjU1PITHbWn2hmZtTIeA8lU54kLujASel4M9jlGcWHoilkl9NjL7dup5qE3K6oQ0wuZzM="
           )
       )
 

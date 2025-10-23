@@ -4,17 +4,11 @@ description: Where everything begins
 
 # Workflows
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 A *workflow* is a series of steps to build, test, release, or deploy your application. This page explains workflows, how they are triggered, and their settings.
 
 :::tip
 
-If this is your first time using Semaphore, check out [Guided Tour](../getting-started/guided-tour).
+If this is your first time using Semaphore, check out [Quickstart](../getting-started/quickstart).
 
 :::
 
@@ -39,6 +33,8 @@ The [project page](./projects#view-projects) shows all the recent workflows for 
 
 ## Visual workflow editor {#workflow-editor}
 
+<VideoTutorial title="How to use the workflow builder" src="https://www.youtube.com/embed/dg2jDQmYJ_4" />
+
 You can define most aspects of your workflows using the visual editor. 
 
 To access the editor, open one of your projects on and press **Edit Workflow**. All your changes are stored as YAML pipeline definitions on your Git repository. You can make changes using the visual editor, or edit the YAML directly by clicking on the pipeline YAML file.
@@ -46,6 +42,135 @@ To access the editor, open one of your projects on and press **Edit Workflow**. 
 ![Workflow editor button](./img/workflow-editor.jpg)
 
 See the [jobs page](./jobs) to learn how to define jobs and blocks.
+
+## Modeling Complex Workflows {#modeling-complex-workflows}
+
+This section provides guides to model complex, non-linear CI/CD processes.
+
+### Fan-out Fan-In {#fan-out-fan-in}
+
+<VideoTutorial title="Fan Out - Fan In" src="https://www.youtube.com/embed/HKv-jMkC7T0" />
+
+The Fan-Out Fan-In workflow provides consistency and maximum parallelization. It can be split into 3 stages:
+
+1. **Build stage**: you build your project once
+2. **Fan-Out stage**: all your tests fan out from the build stage and run in parallel
+3. **Fan-In stage**: once tested, the workflow fans in to a release or deploy stage
+
+![Fan-Out Fan-In](./img/fan-out-fan-in.jpg)
+
+<Tabs groupId="editor-yaml">
+<TabItem value="editor" label="Editor" default>
+
+<Steps>
+
+1. Create your build [job](./jobs). Depending on the nature of your project, you can save the built artifact to the [artifact store](./artifacts) or push it to a [Docker registry](./containers/docker)
+
+      ![Build stage](./img/fan-out-stage1.jpg)
+
+2. Add your test jobs. Set dependencies so all your tests depend on the build job created on Step 1
+
+      ![Fan-out stage](./img/fan-out-stage2.jpg)
+
+3. Add the release/deploy job. Use dependencies so the new job depends on all your tests. This will make the release/job run only if all tests have passed
+
+      ![Fan-in stage](./img/fan-out-stage3.jpg)
+
+</Steps>
+
+</TabItem>
+<TabItem value="yaml" label="YAML">
+
+You can create a Fan-Out Fan-In workflow by setting the dependencies in your blocks. The Fan-Out stage is achieved by defining `dependencies`. For example:
+
+```yaml
+blocks:
+  - name: "Build"
+    dependencies: []
+    ...
+
+  - name: "Unit tests"
+    dependencies: ["Build"]
+    ...
+
+  - name: "Integration tests"
+    dependencies: ["Build"]
+    ...
+
+  - name: "E2E tests"
+    dependencies: ["Build"]
+    ...
+
+  - name: "Release candidate"
+    dependencies: ["Integration tests", "Unit tests", "E2E tests"]
+    ...
+```
+
+Find below a complex example of a Fan-Out, Fan-In for a Node-based workflow:
+
+```yaml
+version: v1.0
+name: Continuous Integration Pipeline
+agent:
+  machine:
+    type: f1-standard-2
+    os_image: ubuntu2204
+blocks:
+  - name: Build Stage
+    dependencies: []
+    task:
+      jobs:
+        - name: Build Project
+          commands:
+            - 'checkout'
+            - 'npm run build'
+            - 'artifact push workflow build/'
+  - name: End to end tests
+    dependencies:
+      - Build Stage
+    task:
+      jobs:
+        - name: Run E2E tests
+          commands:
+            - 'checkout'
+            - 'artifact pull workflow build/'
+            - 'npm run test:e2e'
+  - name: Integration Tests
+    dependencies:
+      - Build Stage
+    task:
+      jobs:
+        - name: Run integration tests
+          commands:
+            - 'checkout'
+            - 'artifact pull workflow build/'
+            - 'npm run test:integration'
+  - name: Unit tests
+    dependencies:
+      - Build Stage
+    task:
+      jobs:
+        - name: Run unit tests
+          commands:
+            - 'checkout'
+            - 'artifact pull workflow build/'
+            - 'npm run test:unit'
+  - name: Release candidate
+    dependencies:
+      - End to end tests
+      - Integration Tests
+      - Unit tests
+    task:
+      jobs:
+        - name: Generate RC
+          commands:
+            - 'checkout'
+            - 'artifact pull workflow build/'
+            - 'npm run package'
+```
+
+</TabItem>
+</Tabs>
 
 ## Workflow triggers
 
@@ -108,7 +233,10 @@ Selecting **Run on** allows you to configure what triggers are enabled for the p
 
 :::
 
-- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository
+- Enabling **Pull requests** option allows Semaphore to run workflows on pull requests originating in the same repository. You can opt to disable triggering workflows on **draft pull requests**
+
+![Control how pull requests and draft pull requests are handled](./img/trigger-draft-pull-request.jpg)
+
 - The **Forked pull request** works the same for pull requests originating from forked pull requests. [To prevent security leaks](#pr), you can configure a list of allowed secrets and GitHub/BitBucket usernames that can trigger workflows in this way
   
 ![Pull request triggers](./img/project-general-settings-3.jpg)

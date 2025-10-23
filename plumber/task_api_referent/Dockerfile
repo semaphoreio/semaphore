@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.11.4
 ARG OTP_VERSION=24.3.4.13
-ARG UBUNTU_VERSION=focal-20230126
+ARG UBUNTU_VERSION=jammy-20230126
 
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-ubuntu-${UBUNTU_VERSION}"
 ARG RUNNER_IMAGE="ubuntu:${UBUNTU_VERSION}"
@@ -61,7 +61,7 @@ FROM ${RUNNER_IMAGE} AS runner
 HEALTHCHECK NONE
 
 RUN apt-get update -y && apt-get install --no-install-recommends -y ca-certificates wget libstdc++6 openssl libncurses5 locales openssh-client \
-  && apt-get clean && rm -f /var/lib/apt/lists/*_*
+    && apt-get clean && rm -f /var/lib/apt/lists/*_*
 
 # Set the locale
 RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen

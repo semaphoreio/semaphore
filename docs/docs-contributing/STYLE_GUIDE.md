@@ -1,7 +1,7 @@
 
 # Style Guide
 
-This document describe *guidelines* to write documentation pages. Documents are written in Markdown with a [few custom components](#components). 
+This document describe *guidelines* to write documentation pages. Documents are written in Markdown with a [few custom components](#components).
 
 ## Linter
 
@@ -18,7 +18,7 @@ The rules are explained in [markdownlint rule descriptions](https://github.com/D
 The general guidelines to approach writing are:
 
 - Put first things first
-- Write like you speak 
+- Write like you speak
 - Get to the point fast
 - Shorter is better than longer
 - Simple is better than complex
@@ -31,7 +31,7 @@ The general guidelines to approach writing are:
 - Prefer the present tense
 - Contractions: use contractions: it's, you'll, you're, let's.
 - Imperative: use imperative for steps, e.g. "Fork the repository and clone it to your machine"
-- Punctuation: skip periods (.), exclamation (!) and question (?) marks in titles, headings and bullet point lists 
+- Punctuation: skip periods (.), exclamation (!) and question (?) marks in titles, headings and bullet point lists
 - Commas: when listing three or more items use a comma before the conjunction (Oxford comma), e.g. "apples, tomatoes, and pears"
 - Italics: use *italics* to draw attention to words.
 - Bold: use **bold** for UI elements.
@@ -80,8 +80,9 @@ When using images:
 
 ## Links
 
-Use 
-- Links to missing pages: links to pages not yet written should be _enclosed inside underscores_ for easy identification
+Use
+
+- Links to missing pages: links to pages not yet written should be *enclosed inside underscores* for easy identification
 
 Use meaningful text in the link text. The reader should know where the link goes before clicking on it.
 
@@ -108,6 +109,7 @@ Header rules:
 Since most of the bullet points, lists, and tables are used to give step-by-step instructions and show commands, you can skip the final period at the end of the line.
 
 Example:
+
 1. This line doesn't end with a period. It describes how to use `checkout`
 2. Another item. Only use periods to separate sentences in the same line
 3. Periods at the end of this line are optional.
@@ -117,7 +119,6 @@ Another example:
 | Header1                                        | Header2                                                     |
 | You don't need periods in tables               | You may use periods. To separate sentences in the same line |
 | Avoid periods in the last sentence in the line | Thank you                                                   |
-
 
 ## Shell commands
 
@@ -193,6 +194,7 @@ Some **content** with _Markdown_ `syntax`. Check [this `api`](#).
 ```
 
 There are five types of admonitions, in increasing levels of importance:
+
 - note
 - tip
 - info
@@ -204,13 +206,13 @@ Don't use an admonition of higher leven when a lower level will do. Danger shoul
 ## Verbs for UI actions
 
 Use the proper verb to act on elements:
+
 - Buttons are *pressed*
 - Links are *clicked* or *navigated to*
 - Toggable sections are *expanded*, *maximized* or *minimized*
 - Text is *typed* into inputs
 - Checkboxes are *checked/unchecked* or *enabled/disabled*
 - Radio selection items are *selected*
-
 
 ## Components
 
@@ -221,12 +223,6 @@ We use some non-standard React components and Markdown extensions.
 We have a `<Steps>` component to decorate and make **numbered** step guides more readable.
 
 Use this component for step-by-step guides. Do not use it for listing processes steps. This component indicates user action and guides users to follow steps.
-
-To use this component, first import it:
-
-```js
-import Steps from '@site/src/components/Steps';
-```
 
 To use it, wrap the normal numbered markdown lists in `<Steps>`. For example:
 
@@ -273,14 +269,7 @@ You can also put elements between numbered bullet points using indentation (at l
 
 Use tabs to show multiple ways of achieving the same task. For example, in the [jobs page](http://localhost:3000/docs/using-semaphore/jobs) we use tabs to show how to configure jobs using the visual editor and the YAML. In the [tasks page](http://localhost:3000/docs/using-semaphore/tasks) we use tabs to show how to create a task using the UI and the CLI.
 
-To use tabs, import them near the beginning of the document:
-
-```js
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-```
-
-Then add the `<Tabs>` component. Each `<TabItem>` is a tab. Indenting is optional.
+To use this component, add the `<Tabs>` component. Each `<TabItem>` is a tab. Indenting is optional.
 
 ```js
 <Tabs groupId="myGroupId">
@@ -295,17 +284,11 @@ Then add the `<Tabs>` component. Each `<TabItem>` is a tab. Indenting is optiona
 
 The `groupID` is optional. Tabs sharing a group id will switch together through the document.
 
-### Available 
+### Available
 
 We use a special admonition to mark features that are available only with specific plans.
 
-First import the React component:
-
-```js
-import Available from '@site/src/components/Available';
-```
-
-Then use the admonition in the MDX.
+To use the admonition in the MDX.
 
 ```js
 // Renders as: Available on Semaphore Cloud: All Plans
@@ -316,10 +299,10 @@ You can pass an array of plans instead.
 
 ```js
 // Renders as: Available on Semaphore Cloud: Startup Scalup
-<Available  plans={['Startup','Scaleup']}/>
+<Available  plans={['Cloud','Enterprise']}/>
 ```
 
-### Toggleable content 
+### Toggleable content
 
 You can hide less important elements using a toggable content
 
@@ -337,8 +320,6 @@ You can add regular markdown inside the `<div>`
 Sometimes we want to include a YouTube video inside the documentation. We have a custom component for this:
 
 ```js
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 <VideoTutorial title="Video Title" src="Video-Embed-URL"/>
 ```
 
@@ -347,7 +328,7 @@ To get the embeddable URL:
 1. Go to the YouTube video
 2. Press the **Share** button
 3. Select embed
-4. Copy the SRC part of the code, e.g. "https://www.youtube.com/embed/xId2H2wlKx4?si=0IXKyNNUVVjDDvHz"
+4. Copy the SRC part of the code, e.g. "<https://www.youtube.com/embed/6YCMY1cPrU8>"
 
 ### Railroad diagrams
 
@@ -376,6 +357,5 @@ When a feature is not available on documented edition/version of Semaphore, you 
 To use it:
 
 ```md
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
 <FeatureNotAvailable/>
 ```

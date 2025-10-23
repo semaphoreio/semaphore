@@ -5,6 +5,7 @@ defmodule InternalApi.RBAC.SubjectType do
 
   field(:USER, 0)
   field(:GROUP, 1)
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.RBAC.Scope do
@@ -379,6 +380,23 @@ defmodule InternalApi.RBAC.Permission do
   field(:scope, 4, type: InternalApi.RBAC.Scope, enum: true)
 end
 
+defmodule InternalApi.RBAC.ListSubjectsRequest do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:org_id, 1, type: :string, json_name: "orgId")
+  field(:subject_ids, 2, repeated: true, type: :string, json_name: "subjectIds")
+end
+
+defmodule InternalApi.RBAC.ListSubjectsResponse do
+  @moduledoc false
+
+  use Protobuf, syntax: :proto3, protoc_gen_elixir_version: "0.13.0"
+
+  field(:subjects, 1, repeated: true, type: InternalApi.RBAC.Subject)
+end
+
 defmodule InternalApi.RBAC.RBAC.Service do
   @moduledoc false
 
@@ -435,6 +453,8 @@ defmodule InternalApi.RBAC.RBAC.Service do
     InternalApi.RBAC.RefreshCollaboratorsRequest,
     InternalApi.RBAC.RefreshCollaboratorsResponse
   )
+
+  rpc(:ListSubjects, InternalApi.RBAC.ListSubjectsRequest, InternalApi.RBAC.ListSubjectsResponse)
 end
 
 defmodule InternalApi.RBAC.RBAC.Stub do

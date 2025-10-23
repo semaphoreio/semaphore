@@ -33,14 +33,12 @@ defmodule FrontWeb.AccountController do
   def update(conn, params) do
     Watchman.benchmark("account.update.duration", fn ->
       user_id = conn.assigns.user_id
-      organization_id = conn.assigns.organization_id
 
-      fetch_user =
-        Async.run(fn -> Models.User.find_user_with_providers(user_id, organization_id) end)
+      fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
 
       {:ok, user} = Async.await(fetch_user)
 
-      case Models.User.update(user, %{name: params["name"]}, nil, organization_id) do
+      case Models.User.update(user, %{name: params["name"]}) do
         {:ok, _updated_user} ->
           conn
           |> put_flash(:notice, "Changes saved.")
@@ -63,9 +61,8 @@ defmodule FrontWeb.AccountController do
   def reset_token(conn, _params) do
     Watchman.benchmark("account.regenerate_token.duration", fn ->
       user_id = conn.assigns.user_id
-      org_id = conn.assigns.organization_id
 
-      case Models.User.regenerate_token(user_id, nil, org_id) do
+      case Models.User.regenerate_token(user_id) do
         {:ok, new_token} ->
           conn
           |> put_flash(:notice, "Token reset.")
@@ -78,7 +75,7 @@ defmodule FrontWeb.AccountController do
           conn
           |> put_flash(
             :alert,
-            "An error occured while regenerating the API token. Please contact our support team."
+            "An error occurred while regenerating the API token. Please contact our support team."
           )
           |> render_show(user_id)
       end
@@ -101,7 +98,7 @@ defmodule FrontWeb.AccountController do
             conn
             |> put_flash(
               :alert,
-              "An error occured while rotating the password. Please contact our support team."
+              "An error occurred while rotating the password. Please contact our support team."
             )
             |> redirect(to: account_path(conn, :show))
         end
@@ -139,14 +136,79 @@ defmodule FrontWeb.AccountController do
     end)
   end
 
+  def change_my_email(conn, %{"email" => email}) do
+    Watchman.benchmark("account.change_my_email.duration", fn ->
+      user_id = conn.assigns.user_id
+      email = String.trim(email)
+
+      # Basic validation
+      cond do
+        email == "" ->
+          conn
+          |> put_flash(:alert, "Email address cannot be empty.")
+          |> redirect(to: account_path(conn, :show))
+
+        not valid_email_format?(email) ->
+          conn
+          |> put_flash(:alert, "Please enter a valid email address.")
+          |> redirect(to: account_path(conn, :show))
+
+        true ->
+          case Models.Member.change_email(user_id, user_id, email) do
+            {:ok, %{msg: msg}} ->
+              conn
+              |> put_flash(:notice, msg)
+              |> redirect(to: account_path(conn, :show))
+
+            {:error, error_msg} ->
+              conn
+              |> put_flash(:alert, "Failed to update email: #{error_msg}")
+              |> redirect(to: account_path(conn, :show))
+          end
+      end
+    end)
+  end
+
+  def reset_my_password(conn, _params) do
+    Watchman.benchmark("account.reset_my_password.duration", fn ->
+      user_id = conn.assigns.user_id
+
+      # Check if feature is enabled
+      if FeatureProvider.feature_enabled?(:email_members) or Front.ce?() do
+        case Models.Member.reset_password(user_id, user_id) do
+          {:ok, %{msg: msg, password: new_password}} ->
+            conn
+            |> put_flash(:notice, msg)
+            |> assign(:new_password, new_password)
+            |> render_show(user_id)
+
+          {:error, error_msg} ->
+            conn
+            |> put_flash(:alert, "Failed to reset password: #{error_msg}")
+            |> render_show(user_id)
+        end
+      else
+        conn
+        |> put_flash(:alert, "Password changes are not enabled for your organization.")
+        |> render_show(user_id)
+      end
+    end)
+  end
+
   defp render_show(conn, user_id, errors \\ nil)
 
   defp render_show(conn, user_id, errors) when is_binary(user_id) do
-    org_id = conn.assigns.organization_id
-    fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id, org_id) end)
-    {:ok, user} = Async.await(fetch_user)
+    fetch_user = Async.run(fn -> Models.User.find_user_with_providers(user_id) end)
 
-    render_show(conn, user, errors)
+    case Async.await(fetch_user) do
+      {:ok, user} ->
+        render_show(conn, user, errors)
+
+      _ ->
+        conn
+        |> put_flash(:alert, "User not found.")
+        |> redirect(to: "/")
+    end
   end
 
   defp render_show(conn, user, errors) do
@@ -158,5 +220,10 @@ defmodule FrontWeb.AccountController do
       errors: errors,
       title: "Semaphore - Account"
     )
+  end
+
+  defp valid_email_format?(email) do
+    email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    Regex.match?(email_regex, email)
   end
 end

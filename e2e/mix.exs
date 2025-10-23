@@ -19,7 +19,28 @@ defmodule E2E.MixProject do
     ]
   end
 
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test) do
+    base = ["lib", "test/support"]
+    if System.get_env("START_WALLABY") do
+      base
+    else
+      ui_test_files = [
+        "test/support/ui_test_case.ex",
+        "test/support/user_action.ex"
+      ]
+
+      ["lib", "test/support"]
+      |> Enum.flat_map(fn
+        "test/support" ->
+          Path.wildcard("test/support/*.ex")
+          |> Enum.reject(&(&1 in ui_test_files))
+
+        path ->
+          [path]
+      end)
+    end
+  end
+
   defp elixirc_paths(:dev), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 

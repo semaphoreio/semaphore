@@ -10,7 +10,7 @@ defmodule Ppl.E2E.ExecutionTimeLimit.Test do
   end
 
   @tag :integration
-  test "pipelone wit valid limits on all levels passes" do
+  test "pipeline with valid limits on all levels passes" do
     {:ok, %{ppl_id: ppl_id}} =
       %{"repo_name" => "23_initializing_test",
         "file_name" => "/exec_time_limit/valid_example.yml"}
@@ -67,7 +67,7 @@ defmodule Ppl.E2E.ExecutionTimeLimit.Test do
   end
 
   @tag :integration
-  test "when pipline limit is longer than deafult job limit => pipeline is malformed" do
+  test "when pipeline limit is longer than default job limit => pipeline is malformed" do
     {:ok, %{ppl_id: ppl_id}} =
       %{"repo_name" => "23_initializing_test",
         "file_name" => "/exec_time_limit/ppl_limit_over_default_job.yml"}

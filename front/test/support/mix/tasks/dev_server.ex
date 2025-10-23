@@ -55,7 +55,8 @@ defmodule Mix.Tasks.Dev.Server do
           :test_results,
           :test_results_debug,
           :after_pipeline,
-          :bitbucket
+          :bitbucket,
+          :generic_git
         ]
 
       projects ->
@@ -65,6 +66,7 @@ defmodule Mix.Tasks.Dev.Server do
     |> Enum.each(fn project_type ->
       project = create_project(project_type, org, user)
       Stubs.RBAC.add_member(org.id, user.id, project.id)
+      Stubs.Project.set_project_state(project, :READY)
     end)
 
     {user, org}
@@ -152,6 +154,56 @@ defmodule Mix.Tasks.Dev.Server do
       Stubs.Project.create(org, user,
         name: "bitbucket",
         integration_type: "bitbucket",
+        run_on: ["branches", "tags"],
+        whitelist_branches: ["master"]
+      )
+
+    branch = Stubs.Branch.create(project)
+    hook = Stubs.Hook.create(branch)
+    workflow = Stubs.Workflow.create(hook, user)
+
+    pipeline =
+      Stubs.Pipeline.create_initial(workflow, name: "Build & Test", organization_id: org.id)
+
+    block1 = Stubs.Pipeline.add_block(pipeline, %{name: "Block 1"})
+    block2 = Stubs.Pipeline.add_block(pipeline, %{name: "Block 2", dependencies: ["Block 1"]})
+    block3 = Stubs.Pipeline.add_block(pipeline, %{name: "Block 3", dependencies: ["Block 1"]})
+
+    Stubs.Task.create(block1)
+    Stubs.Task.create(block2)
+    Stubs.Task.create(block3)
+
+    periodic = Stubs.Scheduler.create(project, user, branch: branch.name)
+    Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, branch: branch.name)
+
+    params = [
+      name: "Paused Scheduler",
+      branch: branch.name,
+      paused: true,
+      pause_toggled_by: user.id
+    ]
+
+    periodic = Stubs.Scheduler.create(project, user, params)
+    Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, branch: branch.name)
+
+    params = [name: "Blocked Scheduler", branch: branch.name, suspended: true]
+    Stubs.Scheduler.create(project, user, params)
+
+    params = [name: "Failing Scheduler", branch: branch.name]
+    periodic = Stubs.Scheduler.create(project, user, params)
+    params = [branch: branch.name, scheduling_status: "failed"]
+    Stubs.Scheduler.create_trigger(periodic, workflow.api_model, user, params)
+
+    Stubs.Deployments.create(project, user, "Production")
+
+    project
+  end
+
+  defp create_project(:generic_git, org, user) do
+    project =
+      Stubs.Project.create(org, user,
+        name: "generic-git",
+        integration_type: "git",
         run_on: ["branches", "tags"],
         whitelist_branches: ["master"]
       )
@@ -418,19 +470,20 @@ defmodule Mix.Tasks.Dev.Server do
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{build_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/pipeline/build.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/pipeline/build.json"
     )
 
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{test_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/pipeline/test.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/pipeline/test.json"
     )
 
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{deploy_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/failed/invalid_junit_json/junit.json"
+      url:
+        "#{Application.get_env(:front, :artifact_host)}/test-results/failed/invalid_junit_json/junit.json"
     )
 
     %{api_model: %{jobs: jobs}} =
@@ -447,7 +500,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/build/build_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/build/build_#{index}.json"
       )
     end)
 
@@ -465,7 +519,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/test/test_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/test/test_#{index}.json"
       )
 
       Stubs.Velocity.create_job_summary(pipeline_id: test_pipeline.id, job_id: job.id)
@@ -485,7 +540,8 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/job/deploy/deploy_#{index}.json"
+        url:
+          "#{Application.get_env(:front, :artifact_host)}/test-results/job/deploy/deploy_#{index}.json"
       )
     end)
 
@@ -624,7 +680,7 @@ defmodule Mix.Tasks.Dev.Server do
     workflow
     |> Stubs.Workflow.add_artifact(
       path: "test-results/#{debug_pipeline.id}.json",
-      url: "http://localhost:9000/test-results/debug/junit.json"
+      url: "#{Application.get_env(:front, :artifact_host)}/test-results/debug/junit.json"
     )
 
     %{api_model: %{jobs: jobs}} =
@@ -641,7 +697,7 @@ defmodule Mix.Tasks.Dev.Server do
       job
       |> Stubs.Task.add_job_artifact(
         path: "test-results/junit.json",
-        url: "http://localhost:9000/test-results/debug/junit.json"
+        url: "#{Application.get_env(:front, :artifact_host)}/test-results/debug/junit.json"
       )
     end)
 

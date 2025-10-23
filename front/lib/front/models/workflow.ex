@@ -115,7 +115,8 @@ defmodule Front.Models.Workflow do
           nil
 
         response ->
-          Cacheman.put(:front, cache_key, encode(response))
+          ttl = get_ttl_for_workflow(response)
+          Cacheman.put(:front, cache_key, encode(response), ttl: ttl)
           response
       end
     end
@@ -137,7 +138,8 @@ defmodule Front.Models.Workflow do
     non_cached_workflows = find_many(non_cached_ids, :from_api)
 
     Enum.each(non_cached_workflows, fn workflow ->
-      Cacheman.put(:front, workflow_cache_key(workflow.id), encode(workflow))
+      ttl = get_ttl_for_workflow(workflow)
+      Cacheman.put(:front, workflow_cache_key(workflow.id), encode(workflow), ttl: ttl)
     end)
 
     cached_workflows ++ non_cached_workflows
@@ -350,7 +352,8 @@ defmodule Front.Models.Workflow do
       requester_id: workflow.requester_id,
       created_at: DateTime.from_unix!(workflow.created_at.seconds),
       triggered_by: TriggeredBy.key(workflow.triggered_by),
-      rerun_of: workflow.rerun_of
+      rerun_of: workflow.rerun_of,
+      pipelines: []
     }
     |> then(fn
       workflow when preload? ->
@@ -431,7 +434,8 @@ defmodule Front.Models.Workflow do
 
   def preload_pipelines(workflows) when is_list(workflows) do
     Front.Utils.parallel_map(workflows, fn workflow ->
-      pipelines = Front.Models.Pipeline.list(wf_id: workflow.id)
+      options = [pagination: :auto]
+      pipelines = Front.Models.Pipeline.list([wf_id: workflow.id], options)
 
       %{workflow | pipelines: pipelines}
     end)
@@ -524,5 +528,22 @@ defmodule Front.Models.Workflow do
     [workflow] = preload_project_name([workflow])
 
     workflow
+  end
+
+  defp has_active_pipelines?(workflow) do
+    workflow.pipelines
+    |> Enum.any?(fn pipeline ->
+      pipeline.state in [:RUNNING, :STOPPING, :PENDING, :QUEUING, :INITIALIZING]
+    end)
+  end
+
+  defp get_ttl_for_workflow(workflow) do
+    if has_active_pipelines?(workflow) do
+      # Finite cache for workflows with active pipelines
+      :timer.hours(2)
+    else
+      # Never expire for completed workflows
+      :infinity
+    end
   end
 end

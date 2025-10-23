@@ -28,6 +28,8 @@ defmodule InternalApi.PlumberWF.ScheduleRequest.ServiceType do
   field(:LOCAL, 1)
   field(:SNAPSHOT, 2)
   field(:BITBUCKET, 3)
+  field(:GITLAB, 4)
+  field(:GIT, 5)
 end
 
 defmodule InternalApi.PlumberWF.ListLatestWorkflowsRequest.Order do
@@ -142,6 +144,9 @@ defmodule InternalApi.PlumberWF.ScheduleRequest do
     type: InternalApi.PlumberWF.ScheduleRequest.EnvVar,
     json_name: "envVars"
   )
+
+  field(:start_in_conceived_state, 18, type: :bool, json_name: "startInConceivedState")
+  field(:git_reference, 19, type: :string, json_name: "gitReference")
 end
 
 defmodule InternalApi.PlumberWF.ScheduleResponse do

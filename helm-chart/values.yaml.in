@@ -2,6 +2,21 @@ global:
   # Edition of Semaphore to install (ce or ee)
   edition: "ce"
 
+  development:
+    minimalDeployment: false
+
+    #
+    # When true, mounts a writable root filesystem in containers
+    # to support local development tools.
+    #
+    writableRootFilesystem: false
+
+    #
+    # When true, disables TLS verification for internal service-to-service calls.
+    # Use only in development environments with self-signed certificates.
+    #
+    skipTlsVerifyInternal: false
+
   domain:
     ip: ""
     name: ""
@@ -150,8 +165,11 @@ global:
   vault:
     secretName: ""
 
+  license: ""
+  licenseServerUrl: "https://licensing.semaphore.io"
+
 toolbox:
-  version: "v1.22.5"
+  version: "v1.25.0"
 
 #
 # Ingress configuration
@@ -238,7 +256,7 @@ controller:
     name: organization
     key: endpoint
   agent:
-    defaultImage: "registry.semaphoreci.com/ubuntu:22.04"
+    defaultImage: "docker.io/erlang:26"
     defaultPodSpec:
       mainContainer:
         env: []

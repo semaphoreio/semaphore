@@ -4,11 +4,6 @@ description: Secrets YAML reference
 
 # Secrets YAML 
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 This document is the reference for the YAML syntax used for creating Semaphore secrets.
 
 ## Overview
@@ -56,9 +51,9 @@ This is a required field for project-level secrets. It must contain either the p
 
 ## org_config {#org-config}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
-The `org_config` property holds organization access policy fields, which are enabled for organizations on a Startup plan or higher. 
+The `org_config` property holds organization access policy fields, which are enabled for organizations on a Cloud plan or higher. 
 
 This property can contain the following:
 

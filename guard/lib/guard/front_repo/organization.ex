@@ -17,6 +17,7 @@ defmodule Guard.FrontRepo.Organization do
     field(:deny_member_workflows, :boolean)
     field(:deny_non_member_workflows, :boolean)
     field(:settings, :map)
+    field(:deleted_at, :utc_datetime)
 
     has_many(:contacts, Guard.FrontRepo.OrganizationContact, on_delete: :delete_all)
     has_many(:suspensions, Guard.FrontRepo.OrganizationSuspension, on_delete: :delete_all)
@@ -47,7 +48,8 @@ defmodule Guard.FrontRepo.Organization do
         :deny_member_workflows,
         :deny_non_member_workflows,
         :settings,
-        :created_at
+        :created_at,
+        :deleted_at
       ],
       empty_values: []
     )

@@ -13,6 +13,8 @@ export interface State {
   userProfileUrl?: string;
   setupIntegrationUrl: string;
   csrfToken: string;
+  skipOnboardingUrl?: string;
+  projectUrl?: string;
   scopeUrls?: {
     github_oauth_token?: Array<{
       url: string;
@@ -49,7 +51,6 @@ export interface State {
   };
 }
 
-
 export const Context = createContext<State>({
   baseUrl: ``,
   domain: ``,
@@ -60,5 +61,5 @@ export const Context = createContext<State>({
   csrfToken: ``,
   duplicateCheckUrl: ``,
   createProjectUrl: ``,
-  createProjectStatusUrl: ``
+  createProjectStatusUrl: ``,
 });

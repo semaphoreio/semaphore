@@ -33,7 +33,7 @@
 
             <div class="ml1 mv2">
                 <%= label @form, :people, class: "db b" %>
-                <p class="measure f6 gray">Allow individual people or groups to deploy regardless of their role</p>
+                <p class="measure f6 gray">Allow individual people to deploy regardless of their role</p>
                 <%= multiple_select @form, :members, options(@resources, :members),
                     'data-component': "people-select", class: "form-control w-100 w-50-m" %>
             </div>
@@ -63,7 +63,7 @@
             <div class="bl b--light-gray pv2 ml2 pl3" data-component="user-access-details">
                 <div class="ml2 measure">
                     Advanced user access control for Deployment Targets is available only to
-                    Scaleup plan customers. Please contact our Support for more information.
+                    Enterprise plan customers. Please contact our Support for more information.
                 </div>
             </div>
         </div>

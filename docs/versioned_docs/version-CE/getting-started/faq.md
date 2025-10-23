@@ -4,12 +4,6 @@ description: Frequently Asked Questions
 
 # FAQ
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 This page contains Frequently Asked Questions.
 
 ## Architecture
@@ -23,11 +17,17 @@ This page contains Frequently Asked Questions.
 
 You can run Semaphore CE on any Linux machine or Kubernetes cluster. We provide detailed [installation instructions](./install.md) for popular cloud vendors and generic systems.
 
+### Help! My Semaphore installation is too slow
+
+First, check that your hardware meets the minimum requisites. See the [installation page](./install) to view what are the minimum hardware requisites.
+
+If your machines meet the minimum requisites and your Semaphore Enterprise Edition runs slowly or has timeout problems, ensure you have activated all hardware-virtualization features in your VM. Failure to activate the proper virtualization mode can result in a slow or unresponding service.
+
 ### Help! Docker fails with "toomanyrequests"
 
 This is commonly due to a rate-limit of third-party providers such as Docker Hub. These services limit how many unauthenticated pulls you can do in an hour, often based on IP. The machine or cluster running the jobs might have already tripped the IP rate limit.
 
-You can bypass this issue by creating a free account on Docker Hub, and then [authenticating with Docker](../using-semaphore/optimization/docker#auth) within the job. This way, the [pulls are limited by your account (100 per hour)](https://docs.docker.com/docker-hub/usage/), and not by the IP of the machine.
+You can bypass this issue by creating a free account on Docker Hub, and then [authenticating with Docker](../using-semaphore/containers/docker#auth) within the job. This way, the [pulls are limited by your account (100 per hour)](https://docs.docker.com/docker-hub/usage/), and not by the IP of the machine.
 
 :::tip
 
@@ -48,7 +48,7 @@ Yes. To use a private Docker registry with a self-signed SSL certificate you mus
 
 This will allow a connection to a private remote registry using the provided certificate.
 
-## Git, GitHub and BitBucket
+## Git, GitHub, GitLab, and BitBucket
 
 ### Can I build a project with git submodules?
 
@@ -62,6 +62,7 @@ Yes. To do that, follow these steps:
     git submodule init
     git submodule update
     ```
+
 2. Append the these commands in the [epilogue](../using-semaphore/jobs#epilogue)
 
     ```shell
@@ -70,11 +71,11 @@ Yes. To do that, follow these steps:
 
 </Steps>
 
-Make sure that Semaphore has permissions to clone your submodules repository. 
+Make sure that Semaphore has permissions to clone your submodules repository.
 
 ### Can I redeliver webhooks from Github to Semaphore?
 
-Yes. Rarely Semaphore does not receive a webhook from GitHub. This results in a workflow not being triggered. When this happens, you can redeliver the webhook to trigger the workflow. 
+Yes. Rarely Semaphore does not receive a webhook from GitHub. This results in a workflow not being triggered. When this happens, you can redeliver the webhook to trigger the workflow.
 
 These are the steps to redeliver webhooks from Github:
 
@@ -87,7 +88,7 @@ These are the steps to redeliver webhooks from Github:
 
 ### Can I send a comment on a pull request on GitHub from a workflow?
 
-Yes. You can use the [GitHub API](https://docs.github.com/en/rest/issues?apiVersion=2022-11-28#create-an-issue-comment) to comment on pull requests. 
+Yes. You can use the [GitHub API](https://docs.github.com/en/rest/issues?apiVersion=2022-11-28#create-an-issue-comment) to comment on pull requests.
 
 For example:
 
@@ -164,7 +165,7 @@ blocks:
 
 ### Can I change the timezone?
 
-The default timezone is UTC. The timezone can be changed in 2 ways in Linux agents: 
+The default timezone is UTC. The timezone can be changed in 2 ways in Linux agents:
 
 - Assign a different value to the TZ environment variable:
 
@@ -211,15 +212,13 @@ While an issue is ongoing, you might consider using a shorter [execution_time_li
 
 :::
 
-
 ### Why is my job failing if all commands have passed?
 
 This can happen because of code coverage tools, e.g. simplecov, which can be set to fail the test suite if a [minimum coverage level is not achieved](https://github.com/simplecov-ruby/simplecov#minimum-coverage).
 
-
 ### Why are tests passing locally but not on Semaphore?
 
-The main reason for this behavior is differences in the stacks. As a first step, ensure that the same versions of languages, services, tools, and frameworks such as Selenium, browser drivers, Capybara, Cypress are used both locally and in the CI environment. 
+The main reason for this behavior is differences in the stacks. As a first step, ensure that the same versions of languages, services, tools, and frameworks such as Selenium, browser drivers, Capybara, Cypress are used both locally and in the CI environment.
 
 If you are using Docker containers when performing tests, it's possible that, while the command itself runs instantly, the process will not be completely started, leading to certain endpoints not being available. Using a minimum `sleep 10` can help in this scenario. Cypress has a [wait-on](https://docs.cypress.io/guides/continuous-integration/introduction.html#Boot-your-server) module that provides similar functionality.
 
@@ -231,7 +230,7 @@ You might be hitting the quota limitation. To see your activity across the serve
 2. Select Activity Monitor
 3. Check your agent usage, jobs won't start until a suitable agent is free
 
-You can also run [`sem get jobs`](../reference/semaphore-cli#sem-get-job) to display all running jobs to confirm how much of the quota is being used. 
+You can also run [`sem get jobs`](../reference/semaphore-cli#sem-get-job) to display all running jobs to confirm how much of the quota is being used.
 
 ### Why does my job fail when I specify "exit 0" in commands?
 
@@ -249,8 +248,22 @@ Some commands like `bash -e` or `set -x otrace` may override this behavior and m
 
 :::
 
-
 ## Project
+
+### When I try to edit the workflow, I get a 500 error page (workflow editor button)?
+
+This can happen if no [initialization machine](../using-semaphore/pipelines#init-job) is defined. To fix the error, follow these steps:
+
+1. Open the server menu and press **Settings**
+2. Select **Initialiation jobs** on the left menu
+3. Unsure at least **Environment type** and **Machine type** are select
+4. Press **Save changes** *even it the correct options were already selected*
+
+:::note
+
+Even if the correct options are selected, press **Save changes** to ensure they are applied.
+
+:::
 
 ### Can I transfer ownership of a project?
 
@@ -268,7 +281,7 @@ To change the project ownership:
 
 After project ownership has been transferred, you need to push a new commit. Old workflows cannot be re-run after transferring ownership.
 
-If you come across any issues, please reach out to support@semaphoreci.com and include the name of the project and the GitHub/Bitbucket username of the new owner in your message.
+If you come across any issues, please reach out to `support@semaphoreci.com` and include the name of the project and the GitHub/Bitbucket username of the new owner in your message.
 
 ### Can I rename a project?
 
@@ -300,7 +313,6 @@ Deleting a project cannot be reversed.
 
 :::
 
-
 ### Can I change the visibility of a project?
 
 Yes. To make the project visible or private follow these steps:
@@ -309,7 +321,6 @@ Yes. To make the project visible or private follow these steps:
 2. Go to **Settings**
 3. Click the link next to **Public** or **Private** to toggle the visibility
 4. Press **Save Changes**
-
 
 ## Workflows
 
@@ -328,13 +339,12 @@ If you are using a [filter for contributors](../using-semaphore/workflows#projec
 
 Approving forked pull requests is limited to new comments only and is not possible for comment edits. Due to security concerns, `/sem-approve` will work only once. Subsequent pushes to the forked pull request must be approved again.
 
-
 ### How do I fix the error "Revision: COMMIT_SHA not found. Exiting"
 
 This happens when the repository receives pushed while Semaphore is still processing the incoming webhook. For example, when someone modifies or removes with a `git rebase` or `git commit --amend` command followed by a `git push --force` shortly after.
 
 You can prevent this error by enabling the [auto-cancel](../using-semaphore/pipelines#auto-cancel) option in the pipeline.
- 
+
 ### Why are my workflows not running in parallel?
 
 Git pushes to the same branch are [queued](../using-semaphore/pipelines#pipeline-queues) by default. Pushes to different branches do run in parallel. You can use [named queues in your pipelines](../using-semaphore/pipelines#named-queues) to better control how workflows are parallelized or activate [auto-cancel](../using-semaphore/pipelines#auto-cancel) to stop running pipelines when new pushes arrive to the queue.
@@ -393,4 +403,3 @@ Enabling the `set -e` option in the Bash shell causes autocomplete to fail and e
 ### Why are my secrets empty?
 
 We have discontinued exposing secret content via the CLI, API, and web interface to ensure enhanced security measures. Retrieval of secret values is now exclusively available through the job mechanism.
-

@@ -4,11 +4,11 @@ description: Ubuntu 20.04 Image Reference
 
 # Ubuntu 20.04 (x86_64)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This is a customized x86_64 image based on [Ubuntu 20.04](https://wiki.ubuntu.com/FocalFossa/ReleaseNotes) (Focal Fossa LTS).
 
@@ -61,8 +61,8 @@ Following version control tools are pre-installed:
 
 - Firefox 68.9 (`68`, `esr-old`), 78.1 (`78`, `default`, `esr`), 102.11.0 (`102`, `esr-new`, `esr-latest`)
 - Geckodriver 0.36.0
-- Google Chrome 134.0.6998.117
-- ChromeDriver 134.0.6998.117
+- Google Chrome 131.0.6778.139
+- ChromeDriver 131.0.6778.139
 - Xvfb (X Virtual Framebuffer)
 - Phantomjs 2.1.1
 

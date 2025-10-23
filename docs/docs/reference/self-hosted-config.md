@@ -4,12 +4,7 @@ description: Self-hosted agents configuration reference
 
 # Self-hosted Agents Settings
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
-<Available plans={['Startup (Hybrid)', 'Scaleup (Hybrid)']}/>
+<Available plans={['Hybrid', 'Enterprise']}/>
 
 This page describes all the settings available to configure [self-hosted agents](../using-semaphore/self-hosted).
 

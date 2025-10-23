@@ -4,18 +4,18 @@ description: Install Semaphore on Google Cloud Compute (VM)
 
 # Google Cloud Compute (VM)
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-import FeatureNotAvailable from '@site/src/components/FeatureNotAvailable';
+
+
+
+
+
+
 
 This page explains how to install Semaphore Community Edition on a [Google Cloud Compute Engine (VMs)](https://cloud.google.com/products/compute).
 
 ## Overview
 
-If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](../../../docs/getting-started/guided-tour.md) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
+If this is your first time using Semaphore we suggest trying out [Semaphore Cloud](/getting-started/quickstart) to see if the platform fits your needs. You can create a free trial account without a credit card and use every feature.
 
 The self-hosted installation is recommended for users and teams familiar with Semaphore.
 
@@ -38,8 +38,7 @@ You may skip this step if you already have an SSH key pair.
 
 :::
 
-To generate your SSH keys, run the following command. Follow the on-screen instructions. 
-
+To generate your SSH keys, run the following command. Follow the on-screen instructions.
 
 ```shell
 ssh-keygen -t rsa
@@ -55,7 +54,6 @@ The generated keys should be located in the `$HOME/.ssh` folder. The exact names
 We recommend creating a separate [Google Cloud Project](https://cloud.google.com/resource-manager/docs/creating-managing-projects) for your Semaphore installation. Once you have created your project, take note of the **Google Project ID**.
 
 Create a config file to store your Google Cloud parameters. We'll call it `google-config`. Adjust the values to match your Project ID and which zone the compute instance should run on. Ensure you the paths for the [SSH keypairs generated earlier](#ssh) are correct (warning: never switch the public with the private keys).
-
 
 ```shell title="contents of google-config"
 export GOOGLE_CLOUD_PROJECT_ID="<your-project-id>"
@@ -219,7 +217,6 @@ export IP_ADDRESS=1.2.3.4
 
 :::
 
-
 ## Step 9 - Create TLS certificates {#certs}
 
 :::note
@@ -318,12 +315,13 @@ export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 kubectl apply -f https://app.getambassador.io/yaml/emissary/3.9.1/emissary-crds.yaml
 kubectl wait --timeout=90s --for=condition=available deployment emissary-apiext -n emissary-system
 ```
+
 Finally, install Semaphore with Helm:
 
 ```shell title="remote shell - install Semaphore"
 helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
   --debug \
-  --version v1.1.0 \
+  --version v1.3.0 \
   --timeout 20m \
   --set global.domain.ip=${IP_ADDRESS} \
   --set global.domain.name=${DOMAIN} \
@@ -345,7 +343,7 @@ To start using the app, go to https://id.semaphore.example.com/login
 
 You can fetch credentials for the login by running this command:
 
-echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 =============================================================================================
 ```
@@ -353,7 +351,7 @@ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email
 Execute the shown command to retrieve the login credentials.
 
 ```shell title="remote shell - get login credentials"
-$ echo "Email: $(kubectl get secret root-user -n default -o jsonpath='{.data.email}' | base64 -d)"; echo "Password: $(kubectl get secret root-user -n default -o jsonpath='{.data.password}' | base64 -d)"; echo "API Token: $(kubectl get secret root-user -n default -o jsonpath='{.data.token}' | base64 -d)"
+$ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
 Email: root@example.com
 Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
@@ -382,18 +380,27 @@ You should be greeted with the onboarding guide.
 
 ![Onboarding guide screen](./img/on-boarding-guide.jpg)
 
+## Step 13 - Set the initialization agent
+
+Define the agent type that handles pipeline initialization:
+
+1. Open the [server settings menu](../using-semaphore/organizations#org-settings)
+2. Select **Initialization jobs**
+3. Select one agent from the list
+4. Press **Save Changes**, *you must save changes even if the correct option was already selected*
+
 ## Post-installation tasks
 
 Once you have Semaphore up and running, check out the following pages to finish setting up:
 
 - [Connect with GitHub](../using-semaphore/connect-github.md): connect your instance with GitHub to access your repositories
-- [Guided tour](./guided-tour): complete the guided tour to get familiarized with Semaphore Community Edition
-- [Invite users](../using-semaphore/organizations#people): invite users to your instance so they can start working on projects
+- [Quickstart](./quickstart): complete the Quickstart to get familiarized with Semaphore Community Edition
+- [Invite users](../using-semaphore/user-management#people): invite users to your instance so they can start working on projects
 - [Add self-hosted agents](../using-semaphore/self-hosted): add more machines to scale up the capacity of your CI/CD platform
 
 ## How to Upgrade Semaphore {#upgrade}
 
-To upgrade Semaphore from version `v1.0.x`, follow these steps:
+To upgrade Semaphore, follow these steps:
 
 <Steps>
 
@@ -404,6 +411,7 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
     kubectl get nodes
     ```
+
 3. Load the configuration file and ensure the certificates are located on the correct folders. See [Step 9](#certs) if you need to regenerate the certificates.
 
     ```shell
@@ -414,13 +422,19 @@ To upgrade Semaphore from version `v1.0.x`, follow these steps:
     ls certs/live/${DOMAIN}/privkey.pem
     ```
 
-4. Run the following command to upgrade to `v1.1.0`
+4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+
+    ```shell
+    openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem
+    ```
+
+5. Run the following command to upgrade to `v1.3.0`
 
     ```shell
     helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
       --debug \
-      --version v1.1.0 \
-      --timeout 20m \
+      --version v1.5.0 \
+      --timeout 30m \
       --set global.domain.ip=${IP_ADDRESS} \
       --set global.domain.name=${DOMAIN} \
       --set ingress.enabled=true \
@@ -479,7 +493,6 @@ gcloud compute instances delete ${GOOGLE_INSTANCE_NAME} \
 
 ## See also
 
-- [Installation guide](./install.md)
-- [Getting started guide](./guided-tour)
-- [Migration guide](./migration/overview)
-
+- [Installation overview](./install-overview.md)
+- [Quickstart](./quickstart)
+- [Migration guide](./migration-overview)

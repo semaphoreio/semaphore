@@ -5,7 +5,7 @@ defmodule JobPage.Api.User do
     Watchman.benchmark("fetch_user.duration", fn ->
       req = InternalApi.User.DescribeRequest.new(user_id: id)
 
-      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:user_grpc_endpoint))
+      {:ok, channel} = GRPC.Stub.connect(GrpcConfig.endpoint(:guard_user_grpc_endpoint))
       {:ok, res} = InternalApi.User.UserService.Stub.describe(channel, req, timeout: 30_000)
 
       if res.status.code == 0 do

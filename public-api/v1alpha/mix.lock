@@ -30,7 +30,7 @@
   "idna": {:hex, :idna, "6.1.1", "8a63070e9f7d0c62eb9d9fcb360a7de382448200fbbd1b106cc96d3d8099df8d", [:rebar3], [{:unicode_util_compat, "~> 0.7.0", [hex: :unicode_util_compat, repo: "hexpm", optional: false]}], "hexpm", "92376eb7894412ed19ac475e4a86f7b413c1b9fbb5bd16dccd57934157944cea"},
   "jason": {:hex, :jason, "1.4.1", "af1504e35f629ddcdd6addb3513c3853991f694921b1b9368b0bd32beb9f1b63", [:mix], [{:decimal, "~> 1.0 or ~> 2.0", [hex: :decimal, repo: "hexpm", optional: true]}], "hexpm", "fbb01ecdfd565b56261302f7e1fcc27c4fb8f32d56eab74db621fc154604a7a1"},
   "jumper": {:hex, :jumper, "1.0.2", "68cdcd84472a00ac596b4e6459a41b3062d4427cbd4f1e8c8793c5b54f1406a7", [:mix], [], "hexpm", "9b7782409021e01ab3c08270e26f36eb62976a38c1aa64b2eaf6348422f165e1"},
-  "junit_formatter": {:hex, :junit_formatter, "3.3.1", "c729befb848f1b9571f317d2fefa648e9d4869befc4b2980daca7c1edc468e40", [:mix], [], "hexpm", "761fc5be4b4c15d8ba91a6dafde0b2c2ae6db9da7b8832a55b5a1deb524da72b"},
+  "junit_formatter": {:hex, :junit_formatter, "3.4.0", "d0e8db6c34dab6d3c4154c3b46b21540db1109ae709d6cf99ba7e7a2ce4b1ac2", [:mix], [], "hexpm", "bb36e2ae83f1ced6ab931c4ce51dd3dbef1ef61bb4932412e173b0cfa259dacd"},
   "lager": {:hex, :lager, "3.6.1", "9d29c5ff7f926d25ecd9899990867c9152dcf34eee65bac8ec0dfc0d16a26e0c", [:rebar3], [{:goldrush, "0.1.9", [hex: :goldrush, repo: "hexpm", optional: false]}], "hexpm", "4e8bdedd636fcc606e58bad137ec7fdd1286d1fe5c739cca70d8fe79c61091d7"},
   "log_tee": {:git, "https://github.com/renderedtext/log-tee.git", "30c69704d583bda8cffb324b8936ffd3680e6ae4", []},
   "metrics": {:hex, :metrics, "1.0.1", "25f094dea2cda98213cecc3aeff09e940299d950904393b2a29d191c346a8486", [:rebar3], [], "hexpm", "69b09adddc4f74a40716ae54d140f93beb0fb8978d8636eaded0c31b6f099f16"},

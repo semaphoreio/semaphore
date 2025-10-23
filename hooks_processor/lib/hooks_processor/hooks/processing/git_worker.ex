@@ -55,7 +55,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   defp get_requester_id(webhook, email) do
     "email: #{email}"
-    |> LT.info("Hook #{webhook.id} - calling User API to find requester")
+    |> LT.debug("Hook #{webhook.id} - calling User API to find requester")
 
     case UserClient.describe_by_email(email) do
       {:ok, user} ->
@@ -73,7 +73,7 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
 
   defp filter_membership(webhook, organization_id, user_id) do
     "organization_id: #{organization_id}, user_id: #{user_id}"
-    |> LT.info("Hook #{webhook.id} - calling RBAC API to check membership")
+    |> LT.debug("Hook #{webhook.id} - calling RBAC API to check membership")
 
     case RBACClient.member?(organization_id, user_id) do
       {:ok, true} ->
@@ -136,8 +136,11 @@ defmodule HooksProcessor.Hooks.Processing.GitWorker do
     e -> e
   end
 
-  defp process_webhook(hook_type, _webhook, _project, _requester_id) do
-    "Unsuported type of the hook: '#{hook_type}'"
+  defp process_webhook(hook_type, webhook, _project, requester_id) do
+    params = %{provider: "git", requester_id: requester_id}
+    HooksQueries.update_webhook(webhook, params, "failed", "BAD REQUEST")
+
+    {:error, "Unsupported type of the hook: '#{hook_type}' for webhook: #{inspect(webhook)}"}
   end
 
   defp perform_actions(webhook, parsed_data) do

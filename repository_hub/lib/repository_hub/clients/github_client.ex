@@ -32,6 +32,8 @@ defmodule RepositoryHub.GithubClient do
   @err_not_found "Repository not found. If this is a private repository, it looks like you haven't authorized Semaphore with GitHub, please visit https://docs.semaphoreci.com/using-semaphore/connect-github#troubleshooting-guide to read more."
   @err_not_authorized "It looks like you haven't authorized Semaphore with GitHub, please visit https://docs.semaphoreci.com/using-semaphore/connect-github#troubleshooting-guide to read more."
 
+  @api_url "https://api.github.com"
+
   def repository_permissions(params, opts \\ []) do
     owner = params.repo_owner
     repo = params.repo_name
@@ -377,6 +379,24 @@ defmodule RepositoryHub.GithubClient do
               fail_with(:precondition, "Error while setting deploy key on GitHub. Please contact support.")
           end
 
+        {422, payload, resp} ->
+          log_warn([
+            "deploy could not be created in #{params.repo_owner}/#{params.repo_name}. Possibly due to disabled deploy keys on the repo.",
+            "response: #{inspect_response(resp)}"
+          ])
+
+          error_message =
+            case payload do
+              %{"errors" => errors} when is_list(errors) ->
+                messages = errors |> Enum.map(fn %{"message" => msg} -> msg end) |> Enum.join(", ")
+                "Error while setting deploy key on GitHub. #{messages}"
+
+              _ ->
+                "Error while setting deploy key on GitHub. Please contact support."
+            end
+
+          fail_with(:precondition, error_message)
+
         {status, _, resp} ->
           log_error([
             "creating deploy key #{params.repo_owner}/#{params.repo_name}",
@@ -623,33 +643,28 @@ defmodule RepositoryHub.GithubClient do
   end
 
   @impl true
+  # https://docs.github.com/en/rest/repos/webhooks?apiVersion=2022-11-28#delete-a-repository-webhook
   def remove_webhook(params, opts \\ []) do
-    with_client(opts[:token], params.repo_owner, :remove_webhook, fn client ->
-      client
-      |> Tentacat.Hooks.remove(
-        params.repo_owner,
-        params.repo_name,
-        params.webhook_id
-      )
-      |> case do
-        {204, _, _} ->
-          wrap(:ok)
+    "#{@api_url}/repos/#{params.repo_owner}/#{params.repo_name}/hooks/#{params.webhook_id}"
+    |> http_delete(opts[:token])
+    |> unwrap(fn response ->
+      {response.status_code, response.body, response.headers, response.request_url}
+    end)
+    |> unwrap(fn
+      {204, _, _, _} ->
+        wrap(:ok)
 
-        {307, _, response} ->
-          fail_with(:precondition, "Removing webhook failed. #{fetch_status_message(response)}")
+      {404, _, _, _} ->
+        wrap(:ok)
 
-        {404, _, _} ->
-          wrap(:ok)
+      {status, encoded_body, _, _} ->
+        log_error([
+          "removing webhook #{params.repo_owner}/#{params.repo_name}",
+          "status: #{status}",
+          "response: #{inspect(encoded_body)}"
+        ])
 
-        {status, _, resp} ->
-          log_error([
-            "removing webhook #{params.repo_owner}/#{params.repo_name}",
-            "status: #{status}",
-            "response: #{inspect_response(resp)}"
-          ])
-
-          fail_with(:precondition, "Removing webhook failed.")
-      end
+        fail_with(:precondition, "Removing webhook failed.")
     end)
   end
 
@@ -921,6 +936,25 @@ defmodule RepositoryHub.GithubClient do
       end)
 
     inspect(%{response | request: %{response.request | headers: request_headers}})
+  end
+
+  defp http_delete(resource, token) do
+    resource
+    |> HTTPoison.delete(request_headers(token), options())
+  end
+
+  defp options(opts \\ []) do
+    [recv_timeout: 25_000]
+    |> Keyword.merge(opts)
+  end
+
+  defp request_headers(token) do
+    [
+      {"Content-Type", "application/json"},
+      {"Accept", "application/vnd.github+json"},
+      {"X-GitHub-Api-Version", "2022-11-28"},
+      {"Authorization", "Bearer #{token}"}
+    ]
   end
 
   defmodule Webhook do

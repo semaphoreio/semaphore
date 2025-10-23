@@ -133,4 +133,16 @@ defmodule RepositoryHub.GitClient do
   @callback get_branch(get_branch_request(), options()) :: Toolkit.tupled_result(get_branch_response())
   @callback get_tag(get_tag_request(), options()) :: Toolkit.tupled_result(get_tag_response())
   @callback get_commit(get_commit_request(), options()) :: Toolkit.tupled_result(get_commit_response())
+
+  defmodule Webhook do
+    def url(organization_name, repository_id) do
+      host = Application.fetch_env!(:repository_hub, :webhook_host)
+
+      "https://#{organization_name}.#{host}/hooks/git?id=#{repository_id}"
+    end
+
+    def events do
+      []
+    end
+  end
 end

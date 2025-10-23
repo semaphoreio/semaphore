@@ -12,6 +12,7 @@ defmodule FrontWeb.ProjectController do
 
   alias Front.Models.{
     AgentType,
+    Artifacthub,
     Deployments,
     Organization,
     Repohub,
@@ -677,21 +678,38 @@ defmodule FrontWeb.ProjectController do
     branch = params["branch"] || project.repo_default_branch
     commit_sha = params["commit_sha"]
 
-    workflow =
-      Models.Workflow.find_latest(
-        project_id: project.id,
-        branch_name: branch,
-        commit_sha: commit_sha
-      )
-
     workflow_url =
-      if workflow do
-        workflow_path(conn, :show, workflow.id, pipeline_id: workflow.root_pipeline_id)
-      else
-        nil
+      if params["commit_sha"] != "" do
+        workflow =
+          Models.Workflow.find_latest(
+            project_id: project.id,
+            branch_name: branch,
+            commit_sha: commit_sha
+          )
+
+        if workflow do
+          workflow_path(conn, :show, workflow.id, pipeline_id: workflow.root_pipeline_id)
+        end
       end
 
-    conn |> put_status(200) |> json(%{workflow_url: workflow_url})
+    artifact_url =
+      if params["job_id"] do
+        job = Job.find(params["job_id"])
+
+        if job && job.state == "passed" do
+          {:ok, url} =
+            Artifacthub.signed_url(project.id, "jobs", job.id, ".workflow_editor/commit_sha.val")
+
+          url
+        end
+      end
+
+    conn
+    |> put_status(200)
+    |> json(%{
+      workflow_url: workflow_url,
+      artifact_url: artifact_url
+    })
   end
 
   def queues(conn, _params) do
@@ -731,7 +749,7 @@ defmodule FrontWeb.ProjectController do
 
       branches =
         Enum.map(branches, fn branch ->
-          Map.take(branch, [:id, :display_name, :html_url, :type])
+          Map.take(branch, [:id, :display_name, :name, :html_url, :type])
         end)
 
       conn
@@ -956,13 +974,21 @@ defmodule FrontWeb.ProjectController do
     alias InternalApi.Repository.CommitRequest.Change
 
     added =
-      Enum.map(params["added_files"] || [], fn f ->
-        to_commit_change(:ADD_FILE, f.filename, File.read!(f.path))
+      Enum.map(params["added_files"] || [], fn
+        %{filename: filename, path: path} ->
+          to_commit_change(:ADD_FILE, filename, File.read!(path))
+
+        %{filename: filename, content: content} ->
+          to_commit_change(:ADD_FILE, filename, content)
       end)
 
     modified =
-      Enum.map(params["modified_files"] || [], fn f ->
-        to_commit_change(:MODIFY_FILE, f.filename, File.read!(f.path))
+      Enum.map(params["modified_files"] || [], fn
+        %{filename: filename, path: path} ->
+          to_commit_change(:MODIFY_FILE, filename, File.read!(path))
+
+        %{filename: filename, content: content} ->
+          to_commit_change(:MODIFY_FILE, filename, content)
       end)
 
     deleted =

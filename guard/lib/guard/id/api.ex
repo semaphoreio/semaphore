@@ -139,29 +139,30 @@ defmodule Guard.Id.Api do
   # Signup endpoint
   #
   get "/signup" do
-    ensure_empty_user(conn, fn ->
-      case default_login_method() do
-        method when method in ["local", "oidc"] ->
-          conn |> signup_page(method)
+    logged_in = conn.assigns[:user_id] != nil
 
-        unknown ->
-          Logger.error("Unknown default signup method: #{unknown}")
+    case default_login_method() do
+      method when method in ["local", "oidc"] ->
+        conn |> signup_page(method, logged_in)
 
-          conn |> error_login_page("Signup is disabled")
-      end
-    end)
+      unknown ->
+        Logger.error("Unknown default signup method: #{unknown}")
+        conn |> error_login_page("Signup is disabled")
+    end
   end
 
-  defp signup_page(conn, "local") do
+  defp signup_page(conn, "local", logged_in) do
     conn
     |> render_signup_page(
       github: id_page("github"),
       bitbucket: id_page("bitbucket"),
-      gitlab: id_page("gitlab") |> filter_gitlab()
+      gitlab: id_page("gitlab") |> filter_gitlab(),
+      logged_in: logged_in,
+      me_url: me_page()
     )
   end
 
-  defp signup_page(conn, "oidc") do
+  defp signup_page(conn, "oidc", logged_in) do
     if Guard.OIDC.enabled?() do
       oidc_callback = id_page("oidc/callback")
 
@@ -172,7 +173,9 @@ defmodule Guard.Id.Api do
           |> render_signup_page(
             github: "#{url}&kc_idp_hint=github",
             bitbucket: "#{url}&kc_idp_hint=bitbucket",
-            gitlab: "#{url}&kc_idp_hint=gitlab" |> filter_gitlab()
+            gitlab: "#{url}&kc_idp_hint=gitlab" |> filter_gitlab(),
+            logged_in: logged_in,
+            me_url: me_page()
           )
 
         {:error, error} ->
@@ -187,7 +190,14 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_signup_page(conn, assigns) do
+    assigns =
+      Keyword.merge(assigns,
+        posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+      )
+
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "signup.html")
 
     conn
@@ -325,7 +335,14 @@ defmodule Guard.Id.Api do
     end
   end
 
+  # sobelow_skip ["XSS.SendResp"]
   defp render_login_page(conn, assigns) do
+    assigns =
+      Keyword.merge(assigns,
+        posthog_api_key: Application.get_env(:guard, :posthog_api_key, ""),
+        posthog_host: Application.get_env(:guard, :posthog_host, "https://app.posthog.com")
+      )
+
     html_content = Guard.TemplateRenderer.render_template([assigns: assigns], "login.html")
 
     conn

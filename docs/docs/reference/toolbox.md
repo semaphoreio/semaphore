@@ -4,11 +4,6 @@ description: Semaphore toolbox reference
 
 # Semaphore Toolbox
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 The toolbox is an [open source](https://github.com/semaphoreci/toolbox) package of command line tools available in every Semaphore job. It provides utility functions to clone, cache data, run test services, or change language versions. This page explains all the available tools.
 
 ## Overview
@@ -41,10 +36,10 @@ The available namespaces are:
 See [artifact namespaces](../using-semaphore/artifacts#namespaces) for more details.
 
 The optional flags are:
+
 - `--force` or `-f`: overwrite file or directory if already exists
 - `--destination` of `-d`: pull or yank the file into a different path
 - `--verbose` or `-v`: verbose logging
-
 
 ### Examples
 
@@ -83,7 +78,7 @@ The uploaded files must meet the following requirements:
 - File names cannot contain non-URI-encodable characters like `{, }, |, \, ^, ~, [, ]`
 - Files cannot be named `.` or `...`
 
-You can workaround these limitations by compressing the file with tar before pushing it to the artifact store. For example: 
+You can workaround these limitations by compressing the file with tar before pushing it to the artifact store. For example:
 
 ```shell title="Creating a tarball before storing the artifact"
 tar -czvf example.tar.gz ~/example
@@ -99,7 +94,7 @@ tar -xzf example.tar.gz
 
 ## cache {#cache}
 
-The cache tool lets you interact with your project's [Semaphore cache](../using-semaphore/optimization/cache).
+The cache tool lets you interact with your project's [Semaphore cache](../using-semaphore/cache).
 
 The syntax is:
 
@@ -159,7 +154,6 @@ The supported options for `--cleanup-by` are:
 - `SIZE`: delete biggest files first
 - `STORE_TIME`: (default) delete oldest files first
 - `ACCESS_TIME`: delete oldest accessed files first
-
 
 ### Environment variables {#cache-env-vars}
 
@@ -222,7 +216,7 @@ The checkout command uses the following environment variables.
 
 ## checksum {#checksum}
 
-This tool takes a single argument which is the file to checksum. It outputs the MD5 checksum of the file's contents. This tool is useful for tagging [artifacts](../using-semaphore/artifacts) or generating [cache keys](../using-semaphore/optimization/cache).
+This tool takes a single argument which is the file to checksum. It outputs the MD5 checksum of the file's contents. This tool is useful for tagging [artifacts](../using-semaphore/artifacts) or generating [cache keys](../using-semaphore/cache).
 
 The syntax is:
 
@@ -239,36 +233,21 @@ $ checksum package-lock.json
 
 ## install-package {#install-package}
 
-The `install-package` tool is used to manage Ubuntu packages you may need for your jobs. It downloads and caches packages in a way that can be quickly reinstalled over and over again in different jobs. This is a convenient tool, you can still use `sudo` to install packages using the system's package manager.
-
+The `install-package` tool is used to manage Ubuntu packages you may need for your jobs. It downloads and caches packages in a way that can be quickly reinstalled over and over again in different jobs. This is a tool made for convenience, but you can still use `sudo` to install packages using the system's package manager.
 
 The syntax is:
 
 ```shell title="install-package syntax"
-install-package <command> <pkg-name>
+install-package <flag> <pkg-name>
 ```
 
 Where `<pkg-name>` is the Ubuntu package name without the `.deb` extension. In other words, you want `libc6` instead of `libc6.deb`.
 
-Where command is one of the following:
+Where the flag is one of the following:
 
-- `update`: Retrieve new lists of packages
-- `upgrade`: Perform an upgrade
-- `install`: Install new packages 
-- `reinstall`: Reinstall packages 
-- `remove`: Remove packages
-- `purge`: Remove packages and config files
-- `autoremove`: Remove automatically all unused packages
-- `dist-upgrade`: Distribution upgrade, see apt-get(8)
-- `dselect-upgrade`: Follow dselect selections
-- `build-dep`: Configure build-dependencies for source packages
-- `satisfy`: Satisfy dependency strings
-- `clean`: Erase downloaded archive files
-- `autoclean`: Erase old downloaded archive files
-- `check`: Verify that there are no broken dependencies
-- `source`: Download source archives
-- `download`: Download the binary package into the current directory
-- `changelog`: Download and display the changelog for the given package
+- `--update` (or -u): Retrieve new lists of packages
+- `--skip-update` (or -s): Skips repository list update
+- `--update-new` (or -n): Update only repository lists modified in the last 1 hour
 
 You can supply multiple packages with their versions in the same invocation:
 
@@ -276,7 +255,7 @@ You can supply multiple packages with their versions in the same invocation:
  install-package install mongodb-clients=3.6.8 mysql-client=8.0.36-0ubuntu0.20.04.1
 ```
 
-The tool integrates with the [Semaphore cache](../using-semaphore/optimization/cache) to save, retrieve, and update the Deb packages as needed.
+The tool integrates with the [Semaphore cache](../using-semaphore/cache) to save, retrieve, and update the Deb packages as needed.
 
 You can reinstall the packages in a different job within the same project with:
 
@@ -307,7 +286,7 @@ retry --times 5 --sleep 10 bundle install
 
 ## sem-context {#sem-context}
 
-This tool can be used to share key-value data between Semaphore jobs. It enables communication between jobs and pipelines within the same workflow.
+This tool enables sharing key-value data between Semaphore jobs within the same workflow. It carries values from parent jobs, and updates made within a workflow are inherited by promoted jobs. However, please note that values are not shared across different promotions.
 
 :::note
 
@@ -363,6 +342,7 @@ $ sem-context get ReleaseVersion
 ```
 
 Exit status codes:
+
 - 0: key retrieved successfully
 - 1: key not found
 - 2: connection to the artifacts server failed
@@ -377,6 +357,7 @@ sem-context delete ReleaseVersion
 ```
 
 Exit status codes:
+
 - 0: key deleted successfully
 - 1: key not found
 - 2: connection to the artifacts server failed
@@ -384,7 +365,7 @@ Exit status codes:
 
 ## sem-service {#sem-service}
 
-The `sem-service` tool manages databases and other useful services in Ubuntu-based environments. 
+The `sem-service` tool manages databases and other useful services in Ubuntu-based environments.
 
 :::info
 
@@ -436,10 +417,9 @@ When starting `mysql` or `postgres` services you can provide the following optio
   - On `postgres` defaults to a blank string
 - `--db=<name>` database name to create and default to
 
-
 ### Container registry images {#sem-service-container}
 
-The `sem-service` tool pulls images from the [Semaphore Container Registry](../using-semaphore/optimization/container-registry).
+The `sem-service` tool pulls images from the [Semaphore Container Registry](../using-semaphore/containers/container-registry).
 
 ## sem-version {#sem-version}
 
@@ -514,6 +494,8 @@ The available commands are:
 - `compile`: parses JUnit XML files to a well-defined JSON report file
 - `gen-pipeline-report`: fetches and combines workflow-level JUnit report and combines them
 - `publish`: parses XML JUnit file to a well-defined JSON schema and publishes results to artifacts storage
+- `command-metrics`: generates a Markdown-compatible Mermaid.js Gantt diagram showing the job commands timeline. Used to produce [Markdown Reports](../using-semaphore/tests/markdown-reports)
+- `resource-metrics`: generates a Markdown-compatible computer resource report for the job. Used to produce [Markdown Reports](../using-semaphore/tests/markdown-reports)
 
 The available flags are:
 
@@ -527,7 +509,7 @@ The test-results CLI is open-sourced and available on [semaphoreci/test-results]
 
 ### Merging test results {#test-result-merge}
 
-To use the test result feature you must add the following command at the end of every test job. 
+To use the test result feature you must add the following command at the end of every test job.
 
 The syntax is:
 
@@ -591,5 +573,5 @@ kubectl apply -f deployment.yml
 ## See also
 
 - [Semaphore command line tool reference](./semaphore-cli)
-- [Working with Docker](../using-semaphore/optimization/docker)
+- [Working with Docker](../using-semaphore/containers/docker)
 - [Environment variable reference](./env-vars)

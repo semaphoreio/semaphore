@@ -12,7 +12,13 @@ defmodule Support.Stubs.Artifacthub do
   def create(scope_id, params \\ []) do
     path = Keyword.get(params, :path, UUID.gen())
     scope = Keyword.get(params, :scope, "workflows")
-    url = Keyword.get(params, :url, "https://localhost:9000/some_file")
+
+    url =
+      Keyword.get(
+        params,
+        :url,
+        "#{Application.get_env(:front, :artifact_host)}/non_existent_file"
+      )
 
     path
     |> build_artifacts_from_path()
@@ -161,7 +167,7 @@ defmodule Support.Stubs.Artifacthub do
             |> DB.extract(:url)
         end
         |> case do
-          [] -> "http://localhost:9000/non_existent_file"
+          [] -> "#{Application.get_env(:front, :artifact_host)}/non_existent_file"
           [url] -> url
         end
 

@@ -137,8 +137,7 @@ defmodule RepositoryHub.Model.GitRepositoryTest do
 
       new_url = "git@gitea.com:marvinwills/base-app.git"
 
-      assert {:error, "Only github.com and bitbucket.org and gitlab.com hosts are supported"} ==
-               GitRepository.equal?(git_repository, new_url)
+      assert {:ok, false} == GitRepository.equal?(git_repository, new_url)
     end
   end
 end

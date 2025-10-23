@@ -28,7 +28,6 @@ github_notifier-*.tar
 .direnv
 .envrc
 shell.nix
-junit.xml
 
 .devcontainer
 .vscode

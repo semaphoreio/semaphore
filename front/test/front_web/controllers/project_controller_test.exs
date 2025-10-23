@@ -236,6 +236,7 @@ defmodule FrontWeb.ProjectControllerTest do
                %{
                  "id" => branch.id,
                  "type" => "branch",
+                 "name" => branch.api_model.name,
                  "display_name" => branch.api_model.name,
                  "html_url" => "/branches/#{branch.id}"
                }
@@ -599,7 +600,9 @@ defmodule FrontWeb.ProjectControllerTest do
         "export SEMAPHORE_GIT_BRANCH=master",
         "checkout",
         "git checkout -b new-branch",
+        "mkdir -p ./.semaphore",
         "mv ../.changed_files/.semaphore/semaphore.yml ./.semaphore/semaphore.yml",
+        "mkdir -p ./.semaphore",
         "mv ../.changed_files/.semaphore/deploy.yml ./.semaphore/deploy.yml",
         "rm .semaphore/staging.yml || true",
         "git config --global user.name Test Test the 3rd",

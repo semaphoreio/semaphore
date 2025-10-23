@@ -29,6 +29,9 @@ export var EditNotification = {
                      class="form-control w-100"
                      placeholder="e.g. my-project, /hotfix-*/, /.*/" >
               <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+              <p class="f6 mt2 pa2 bg-washed-yellow ba b--yellow br2">
+                  <strong>Note:</strong> Regardless of the regex patterns specified, notifications will only be sent for projects to which the creator of this notification has access.
+              </p>
             </div>
 
             <div class="pl4 mb3">
@@ -39,6 +42,17 @@ export var EditNotification = {
               <input id="branches" name="rule_${rule_hash}[branches]" type="text"
                      class="form-control w-100"
                      placeholder="e.g. master, /prod-*/, /.*/" >
+              <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
+            </div>
+
+            <div class="pl4 mb3">
+              <label for="tags" class="db b mb1">
+                Tags
+                <span class="f6 normal gray"> · optional</span>
+              </label>
+              <input id="tags" name="rule_${rule_hash}[tags]" type="text"
+                     class="form-control w-100"
+                     placeholder="e.g. v1.0.0, /^v\\\\d+\\\\.\\\\d+\\\\.\\\\d+$/, release-*" >
               <p class="f6 mt1 mb0 nb1">Comma separated, regular expressions allowed</p>
             </div>
 

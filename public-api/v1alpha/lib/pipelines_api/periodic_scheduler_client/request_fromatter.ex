@@ -98,15 +98,18 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
   # RunNow
 
   def form_run_now_request(params, conn) when is_map(params) do
-    %{
-      id: params |> Map.get("periodic_id", ""),
-      requester: Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, ""),
-      branch: params |> Map.get("branch", ""),
-      pipeline_file: params |> Map.get("pipeline_file", ""),
-      parameter_values: params |> Map.get("parameters", %{}) |> to_param_values()
-    }
-    |> RunNowRequest.new()
-    |> ToTuple.ok()
+    reference = build_reference(params)
+
+    req =
+      %{
+        id: params |> Map.get("periodic_id", ""),
+        requester: Conn.get_req_header(conn, "x-semaphore-user-id") |> Enum.at(0, ""),
+        reference: reference,
+        pipeline_file: params |> Map.get("pipeline_file", ""),
+        parameter_values: params |> Map.get("parameters", %{}) |> to_param_values()
+      }
+      |> RunNowRequest.new()
+      |> ToTuple.ok()
   catch
     error -> error
   end
@@ -120,6 +123,25 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
     |> ToTuple.user_error()
     |> throw()
   end
+
+  defp build_reference(%{"reference" => reference_map} = _params) when is_map(reference_map) do
+    reference_type = Map.get(reference_map, "type", "BRANCH")
+    reference_name = Map.get(reference_map, "name", "")
+
+    format_reference(String.upcase(reference_type), reference_name)
+  end
+
+  defp build_reference(params) do
+    branch_name = Map.get(params, "branch", "")
+    format_branch_reference(branch_name)
+  end
+
+  defp format_reference("TAG", ""), do: ""
+  defp format_reference("TAG", name), do: "refs/tags/#{name}"
+  defp format_reference("BRANCH", name), do: format_branch_reference(name)
+
+  defp format_branch_reference(""), do: ""
+  defp format_branch_reference(name), do: "refs/heads/#{name}"
 
   defp to_param_values(parameters) do
     Enum.into(parameters, [], &ParameterValue.new(name: elem(&1, 0), value: elem(&1, 1)))

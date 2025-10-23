@@ -38,4 +38,15 @@ defmodule PipelinesAPI.RBACClient do
       )
     end)
   end
+
+  def retract_role(params) do
+    LogTee.debug(params, "RBACClient.retract_role")
+
+    Metrics.benchmark("PipelinesAPI.RBAC_client", ["retract_role"], fn ->
+      params
+      |> RequestFormatter.form_retract_role_request()
+      |> GrpcClient.retract_role()
+      |> ResponseFormatter.process_retract_role_response()
+    end)
+  end
 end

@@ -5,11 +5,11 @@ sidebar_position: 7
 
 # PHP
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+
+
+
+
+
 
 This guide will help build PHP projects on Semaphore.
 
@@ -35,7 +35,7 @@ phpbrew --no-progress install 8.2.20
 
 The `sem-version` tool does not work on Docker containers. You must use a pre-built Docker image with the language versions you need and run the job using [Docker environments](../../using-semaphore/pipelines#docker-environments).
 
-You can use the pre-build [PHP images](../../using-semaphore/optimization/container-registry#php) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
+You can use the pre-build [PHP images](../../using-semaphore/containers/container-registry#php) or build your own. Find Dockerfiles to build your custom images in the [semaphoreci/docker-images](https://github.com/semaphoreci/docker-images) repository.
 
 ## How to cache dependencies {#caching}
 
@@ -73,7 +73,7 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 2. Create an [after_pipeline job](../../using-semaphore/pipelines#after-pipeline-job) with the following command:
 
     ```shell
-    test-results publish junit.xml
+    test-results publish --parser phpunit junit.xml
     ```
 
 </Steps>
@@ -108,7 +108,3 @@ This section explains how to set up [test reports](../../using-semaphore/tests/t
 
 </div>
 </details>
-
-
-
-

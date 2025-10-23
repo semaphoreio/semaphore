@@ -6,6 +6,7 @@ defmodule Scheduler.Actions.HistoryImpl do
   alias Scheduler.Periodics.Model.PeriodicsQueries
   alias Scheduler.Periodics.Model.Periodics
   alias Scheduler.PeriodicsTriggers.Model.HistoryPage
+  alias Scheduler.Utils.GitReference
 
   def history(params) do
     {:ok, handle_history(params)}
@@ -51,10 +52,23 @@ defmodule Scheduler.Actions.HistoryImpl do
 
   defp parse_filters(filters) when is_map(filters) do
     filter_keys = ~w(branch_name pipeline_file triggered_by)a
-    filters |> Map.take(filter_keys) |> Enum.reject(&empty?(elem(&1, 1))) |> Map.new()
+
+    filters
+    |> Map.take(filter_keys)
+    |> Enum.reject(&empty?(elem(&1, 1)))
+    |> Enum.map(&transform_filter/1)
+    |> Map.new()
   end
 
   defp parse_filters(_filters), do: %{}
+
+  defp transform_filter({:branch_name, value}) do
+    normalized_ref = GitReference.normalize(value)
+    short_name = GitReference.extract_name(value)
+    {:reference, %{normalized: normalized_ref, short: short_name, original: value}}
+  end
+
+  defp transform_filter(filter), do: filter
 
   defp from_model(periodics_trigger) do
     parameter_values = Enum.into(periodics_trigger.parameter_values, [], &Map.from_struct/1)

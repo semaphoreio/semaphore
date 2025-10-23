@@ -4,15 +4,9 @@ description: Overview of all your projects
 
 # Organization Health
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 <VideoTutorial title="How to use Organization Health dashboard" src="https://www.youtube.com/embed/2JVsH3DJccE?si=Xq_U0yWhryBsioDv" />
 
-<Available plans={['ScaleUp']} />
+<Available plans={['Enterprise']} />
 
 The Organization Health dashboard summarizes all your [Project Insights](./insights) in a single place.
 

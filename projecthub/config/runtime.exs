@@ -36,6 +36,7 @@ config :sentry,
 
 config :projecthub,
   start_project_init_worker?: System.get_env("START_PROJECT_INIT_WORKER"),
+  start_project_cleaner?: System.get_env("START_PROJECT_CLEANER"),
   start_internal_api?: System.get_env("START_INTERNAL_API")
 
 feature_provider =

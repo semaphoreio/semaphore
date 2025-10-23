@@ -3,7 +3,7 @@ version: '3.6'
 services:
   app:
     container_name: guard
-    image: ${IMAGE:-guard}:${TAG:-latest}
+    image: ${IMAGE:-guard}:${TAG:-test}
     build:
       context: ..
       cache_from:
@@ -50,6 +50,7 @@ services:
       START_GPRC_GUARD_API: "true"
       START_GRPC_AUTH_API: "true"
       START_GRPC_USER_API: "true"
+      START_GRPC_SERVICE_ACCOUNT_API: "true"
       START_GRPC_ORGANIZATION_API: "true"
       START_GRPC_INSTANCE_CONFIG_API: "true"
       INSTANCE_CONFIG_API: "true"
@@ -65,6 +66,8 @@ services:
 
     volumes:
       - .:/app
+      - /app/deps
+      - /app/_build
 
   db:
     image: postgres:9.6

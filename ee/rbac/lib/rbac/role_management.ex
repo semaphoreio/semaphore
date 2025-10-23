@@ -315,12 +315,12 @@ defmodule Rbac.RoleManagement do
       "[Role Management] Assigning roles based of collaborators list for RBI: #{inspect(rbi)}"
     )
 
-    roles_to_be_assign =
+    roles_to_be_assigned =
       gen_query_to_assign_roles_to_collaborators(rbi)
       |> Rbac.Repo.all()
 
     list_of_subject_role_bindings =
-      Enum.map(roles_to_be_assign, fn binding ->
+      Enum.map(roles_to_be_assigned, fn binding ->
         %{
           role_id:
             Rbac.Repo.RepoToRoleMapping.get_project_role_from_repo_access_rights(
@@ -335,6 +335,7 @@ defmodule Rbac.RoleManagement do
           binding_source: String.to_atom(binding[:provider])
         }
       end)
+      |> Enum.filter(fn binding -> binding.role_id != nil end)
 
     assign_roles(list_of_subject_role_bindings, rbi)
   end
@@ -371,10 +372,15 @@ defmodule Rbac.RoleManagement do
          |> Ecto.Multi.run(:update_user_permissions_store, fn _repo, _changeset ->
            update_user_permissions_store(rbi)
          end)
-         |> Ecto.Multi.run(
-           :update_project_access_store,
-           fn _repo, _changeset -> update_project_access_store(subject_role_bindings, :add) end
-         )
+         |> Ecto.Multi.run(:add_project_access, fn _repo, _changeset ->
+           case ProjectAccess.add_project_access(rbi) do
+             :ok ->
+               {:ok, :added_keys_from_project_access_store}
+
+             err_tuple ->
+               err_tuple
+           end
+         end)
          |> Rbac.Repo.transaction(timeout: 60_000) do
       {:ok, _} ->
         Logger.debug(fn -> "[Rbac RoleManagement] Role(s) successfully assigned" end)
@@ -398,35 +404,6 @@ defmodule Rbac.RoleManagement do
       else
         throw(error)
       end
-  end
-
-  defp update_project_access_store(subject_role_bindings, action)
-       when action in [:add, :remove] do
-    func =
-      if action == :add do
-        &Rbac.Store.ProjectAccess.add_project_access/3
-      else
-        &Rbac.Store.ProjectAccess.remove_project_access/3
-      end
-
-    operation_result =
-      subject_role_bindings
-      |> Enum.filter(&(&1.project_id != nil))
-      |> Enum.map(
-        &func.(
-          &1.subject_id,
-          &1.org_id,
-          &1.project_id
-        )
-      )
-
-    case Enum.filter(operation_result, &(&1 != :ok)) |> length() do
-      0 ->
-        {:ok, "Successfully added project access"}
-
-      no_of_errors ->
-        {:error, "Had #{no_of_errors} errors while adding project access to the eky value store"}
-    end
   end
 
   defp update_user_permissions_store(rbi) do

@@ -4,12 +4,6 @@ description: Jobs and blocks are the basic unit of work
 
 # Jobs
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Jobs get stuff done. This page explains to create and configure jobs.
 
 ## Job lifecycle {#job-lifecycle}
@@ -1025,6 +1019,8 @@ It's not possible to use job parallelism at the same time as [job matrices](#mat
 
 ## Job matrix {#matrix}
 
+<VideoTutorial title="How to use a Job Matrix" src="https://www.youtube.com/embed/jRpj2Pu5eak" />
+
 A job matrix is a more advanced form of [job parallelism](#job-parallelism) where you can define multiple variables with different values and run all the possible permutations.
 
 For example, let's say we want to test our application using three Node.js versions using npm and yarn
@@ -1074,7 +1070,7 @@ To use a job matrix, follow these steps:
 
 </Steps>
 
-The following example runs a 2 x 3 matrix with variables `NODE_VER` and `PKG_MNGR`. Semaphore expands the job into 6 parametererized jobs:
+The following example runs a 2 x 3 matrix with variables `NODE_VER` and `PKG_MNGR`. Semaphore expands the job into 6 parameterized jobs:
 
 ```yaml
 version: v1.0

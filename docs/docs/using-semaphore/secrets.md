@@ -4,13 +4,7 @@ description: Store and use sensitive data
 
 # Secrets
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
-<VideoTutorial title="How to use secrets" src="https://www.youtube.com/embed/rAJIRX81DeA"/>
+<VideoTutorial title="How to use secrets" src="https://www.youtube.com/embed/gB1Oat4HwTo"/>
 
 Secrets store sensitive data like API keys, passwords, and SSH keys. This page explains the types of secrets, their scopes, and how to create and secure them.
 
@@ -150,7 +144,7 @@ To create secrets with the Semaphore API, see the [API reference](../reference/a
 
 <VideoTutorial title="How to configure secret access policy" src="https://www.youtube.com/embed/gB1Oat4HwTo?si=_dvCKllE0bPgtDFe" />
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Access policies allow you to control how and who can use [organization secrets](#org-secrets). 
 
@@ -169,7 +163,7 @@ You can apply a policy at three levels:
 
 ## How to create project secrets {#create-project-secrets}
 
-<Available plans={['Startup']}/>
+<Available plans={['Cloud']}/>
 
 Project secrets are only available to the [project](./projects) they are tied to.
 

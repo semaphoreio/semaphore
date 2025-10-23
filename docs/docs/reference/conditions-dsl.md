@@ -4,11 +4,6 @@ description: Conditions syntax
 
 # Conditions Syntax DSL
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 The conditions syntax allows the use of regular expressions to match different conditions and take actions.
 
 ## Overview
@@ -158,6 +153,32 @@ See [change detection strategy](../using-semaphore/monorepo#strategies) to learn
 ### Examples {#examples}
 
 See [change detection examples](../using-semaphore/monorepo#examples) for more `change_in` examples.
+
+## Using Parameters in Conditions {#parameters}
+
+If your pipeline is started via [parameterized promotions](../using-semaphore/promotions#parameters) or a parameterized task run, you can access the values of the parameters in your conditions using the following syntax:
+
+```yaml
+${{parameters.PARAMETER_NAME}}
+```
+
+Using parameters in your conditions allows things such as running a job when the environment is production:
+
+```yaml
+  run:
+    when: "'${{parameters.ENV}}' = 'prod' AND branch = 'master'"
+```
+
+Or even [auto-promoting](../using-semaphore/promotions#automatic-promotions). This example only start a pipeline called `deploy.yml` when the variable `DEPLOY` is true:
+
+```yaml
+promotions:
+  - name: Deploy
+    pipeline_file: deploy.yml
+  auto_promote:
+    when: "'${{parameters.DEPLOY}}' = 'true'"
+```
+
 
 ## Formal syntax definition {#definition}
 

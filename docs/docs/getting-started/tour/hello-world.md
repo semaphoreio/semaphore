@@ -2,21 +2,14 @@
 description: Create your first job
 ---
 
-# Hello, World!
-
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+# Hello, World
 
 Projects allow Semaphore to perform user-defined actions every time there is a change in your Git repository. Projects can build and test your code, and release and deploy your applications.
 
 In this section, you will:
 
 - Create your first project
-- Invite contributors 
+- Invite contributors
 - Learn about workflows and pipelines
 - Set up jobs and use environment variables
 
@@ -47,7 +40,7 @@ These are the steps to create your first project:
 
 <Steps>
 
-1. Press the **Create new** button 
+1. Press the **Create new** button
 
     ![Create new button location](./img/create-new.jpg)
 
@@ -64,7 +57,7 @@ These are the steps to create your first project:
 
 6. Next, you'll see a list with all the existing contributors in the repository. These are all individuals with some level of access to your GitHub or BitBucket repository.
 
-    Select the individuals you wish to invite to the project and press **Add selected** 
+    Select the individuals you wish to invite to the project and press **Add selected**
 
     You can also [add people later](#people)
 
@@ -136,7 +129,7 @@ Execute this workflow and see the output of the jobs. Both jobs should show the 
 
 Do not put sensitive data such as passwords or API tokens in environment variables. Environment variables are not secure. They are stored in plain text in the pipeline file. So, anyone with read permissions in the repository can view your environment variables.
 
-Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the guided tour [Continuous Delivery](./continuous-delivery)
+Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use secrets in the last part of the [Quickstart](./deploy-project)
 
 :::
 

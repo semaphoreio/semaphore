@@ -45,7 +45,9 @@ defmodule RepositoryHub.Server do
     DescribeRevisionRequest,
     DescribeRevisionResponse,
     VerifyWebhookSignatureRequest,
-    VerifyWebhookSignatureResponse
+    VerifyWebhookSignatureResponse,
+    RegenerateWebhookSecretRequest,
+    RegenerateWebhookSecretResponse
   }
 
   alias RepositoryHub.Server
@@ -103,6 +105,11 @@ defmodule RepositoryHub.Server do
   @spec delete(DeleteRequest.t(), ServerStream.t()) :: DeleteResponse.t()
   def delete(request, _stream) do
     execute(request, Server.DeleteAction)
+  end
+
+  @spec clear_external_data(ClearExternalDataRequest.t(), ServerStream.t()) :: ClearExternalDataResponse.t()
+  def clear_external_data(request, _stream) do
+    execute(request, Server.ClearExternalDataAction)
   end
 
   @spec get_file(GetFileRequest.t(), ServerStream.t()) :: GetFileResponse.t()
@@ -199,6 +206,12 @@ defmodule RepositoryHub.Server do
           VerifyWebhookSignatureResponse.t()
   def verify_webhook_signature(request, _stream) do
     execute(request, Server.VerifyWebhookSignatureAction)
+  end
+
+  @spec regenerate_webhook_secret(RegenerateWebhookSecretRequest.t(), ServerStream.t()) ::
+          RegenerateWebhookSecretResponse.t()
+  def regenerate_webhook_secret(request, _stream) do
+    execute(request, Server.RegenerateWebhookSecretAction)
   end
 
   defp execute(request, stream \\ nil, action) do

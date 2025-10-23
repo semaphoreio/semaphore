@@ -56,10 +56,11 @@ defmodule Rbac.GrpcServers.RbacServer do
       role_id = role_assignment.role_id
       project_id = role_assignment.project_id
       subject_id = role_assignment.subject.subject_id
+      subject_type = role_assignment.subject.subject_type
 
       cond do
         valid_uuid?(role_id) ->
-          handle_role_assignment(org_id, subject_id, role_id)
+          handle_role_assignment(org_id, subject_id, role_id, subject_type)
 
         valid_uuid?(project_id) ->
           handle_project_assignment(subject_id, org_id, project_id)
@@ -260,6 +261,21 @@ defmodule Rbac.GrpcServers.RbacServer do
     end)
   end
 
+  @spec list_subjects(RBAC.ListSubjectsRequest.t(), GRPC.Server.Stream.t()) ::
+          RBAC.ListSubjectsResponse.t()
+  def list_subjects(%RBAC.ListSubjectsRequest{} = req, _stream) do
+    Log.observe("grpc.rbac.list_subjects", fn ->
+      validate_uuid!(req.org_id)
+
+      role_assignments = RoleAssignment.find_by_ids_and_org(req.subject_ids, req.org_id)
+      display_names_by_id = fetch_display_names(role_assignments)
+
+      %RBAC.ListSubjectsResponse{
+        subjects: Enum.map(role_assignments, &construct_grpc_subject(&1, display_names_by_id))
+      }
+    end)
+  end
+
   # ----------------
   # Helper functions
   # ----------------
@@ -298,6 +314,8 @@ defmodule Rbac.GrpcServers.RbacServer do
   end
 
   defp build_search_params(request, page) do
+    Logger.info("build_search_params: #{inspect(request)}")
+
     params =
       request
       |> Map.from_struct()
@@ -342,6 +360,9 @@ defmodule Rbac.GrpcServers.RbacServer do
       :member_has_role ->
         if valid_uuid?(value), do: Keyword.put(acc, :role_id, value), else: acc
 
+      :member_type ->
+        Keyword.put(acc, :subject_type, value |> Atom.to_string() |> String.downcase())
+
       _ ->
         acc
     end
@@ -376,10 +397,14 @@ defmodule Rbac.GrpcServers.RbacServer do
 
   defp build_members_response(role_assignments, display_names_by_id) do
     Enum.map(role_assignments, fn assignment ->
+      # Determine subject type - for CE, we support USER and SERVICE_ACCOUNT
+      # We need to determine if this user_id is a service account
+      subject_type = assignment.subject_type |> String.upcase() |> String.to_existing_atom()
+
       %RBAC.ListMembersResponse.Member{
         subject: %RBAC.Subject{
           subject_id: assignment.user_id,
-          subject_type: :USER,
+          subject_type: subject_type,
           display_name: display_names_by_id[assignment.user_id] || ""
         },
         subject_role_bindings: [build_subject_role_binding(assignment)]
@@ -458,14 +483,21 @@ defmodule Rbac.GrpcServers.RbacServer do
     end
   end
 
-  defp handle_role_assignment(org_id, subject_id, role_id) do
+  defp handle_role_assignment(org_id, subject_id, role_id, subject_type) do
     role = Rbac.Roles.find_by_id(role_id)
 
     if is_nil(role) do
       grpc_error!(:not_found, "Role with id #{role_id} not found")
     end
 
-    RoleAssignment.create_or_update(%{org_id: org_id, user_id: subject_id, role_id: role_id})
+    subject_type_string = convert_subject_type_to_string(subject_type)
+
+    RoleAssignment.create_or_update(%{
+      org_id: org_id,
+      user_id: subject_id,
+      role_id: role_id,
+      subject_type: subject_type_string
+    })
   end
 
   defp handle_delete_role_assignment(org_id, subject_id) do
@@ -511,5 +543,25 @@ defmodule Rbac.GrpcServers.RbacServer do
 
     validate_uuid!(role_assignment.org_id)
     validate_uuid!(role_assignment.subject.subject_id)
+  end
+
+  defp convert_subject_type_to_string(subject_type) do
+    case subject_type do
+      :USER -> "user"
+      :SERVICE_ACCOUNT -> "service_account"
+      :GROUP -> "group"
+      # Default fallback for unknown values
+      _ -> "user"
+    end
+  end
+
+  defp construct_grpc_subject(assignment, display_names_by_id) do
+    subject_type = assignment.subject_type |> String.upcase() |> String.to_existing_atom()
+
+    %RBAC.Subject{
+      subject_type: subject_type,
+      subject_id: assignment.user_id,
+      display_name: display_names_by_id[assignment.user_id] || ""
+    }
   end
 end

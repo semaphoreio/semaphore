@@ -21,11 +21,13 @@ export var AddToProject = {
     if(modal){
       var addPeopleToProjectBtn = document.getElementById("add_people_to_project");
       var addGroupsToProjectBtn = document.getElementById("add_group_to_project");
+      var addServiceAccountsToProjectBtn = document.getElementById("add_service_accounts_to_project");
       var cancelModalBtn = document.getElementById("cancel_btn");
 
       if(addPeopleToProjectBtn){
         addPeopleToProjectBtn.onclick = () => {
           modal.style.display = "block";
+          this.setModalCopy("user")
           this.initProjectNonMembersFilter("user")
         }
       }
@@ -33,7 +35,16 @@ export var AddToProject = {
       if(addGroupsToProjectBtn){
         addGroupsToProjectBtn.onclick = () => {
           modal.style.display = "block";
+          this.setModalCopy("group")
           this.initProjectNonMembersFilter("group")
+        }
+      }
+
+      if(addServiceAccountsToProjectBtn){
+        addServiceAccountsToProjectBtn.onclick = () => {
+          modal.style.display = "block";
+          this.setModalCopy("service_account")
+          this.initProjectNonMembersFilter("service_account")
         }
       }
 
@@ -48,6 +59,36 @@ export var AddToProject = {
 
         modal.style.display = "none"
       }
+    }
+  },
+
+  setModalCopy(type) {
+    const modal = document.getElementById("modal_overlay");
+    const container = modal?.querySelector(".popup");
+    if(!container) return;
+
+    const suffix = type === "service_account"
+      ? "Service_account"
+      : type.charAt(0).toUpperCase() + type.slice(1);
+
+    const title = container.dataset[`title${suffix}`];
+    const subjectPlural = container.dataset[`subjectPlural${suffix}`];
+    const placeholder = container.dataset[`placeholder${suffix}`];
+
+    const titleEl = container.querySelector("[data-modal-title]");
+    if(titleEl && title){
+      titleEl.textContent = title;
+    }
+
+    if(subjectPlural){
+      container.querySelectorAll("[data-modal-subject-plural]").forEach((el) => {
+        el.textContent = subjectPlural;
+      });
+    }
+
+    const searchInput = container.querySelector("[data-modal-search]");
+    if(searchInput && placeholder){
+      searchInput.placeholder = placeholder;
     }
   },
 
@@ -119,7 +160,7 @@ export var AddToProject = {
     .catch(e =>{
       toggleSpinner()
       console.error("Error while adding members to the project: " + e)
-      Notice.error("An error occured while adding members to the project. Please check console for any logs and contact our support team.")
+      Notice.error("An error occurred while adding members to the project. Please check console for any logs and contact our support team.")
     })
   },
 
@@ -137,9 +178,11 @@ export var AddToProject = {
           let assets_path = document.querySelector("meta[name='assets-path']").getAttribute("content")
 
           return `<span ${props}>
-            ${result.has_avatar
-              ? `<img src="${result.avatar}" class="ba b--black-50 br-100 mr2" width="32">`
-              : `<img src="${assets_path}/images/org-${result.name.charAt(0).toLowerCase()}.svg" class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50"></div>`
+            ${result.subject_type === "service_account"
+              ? `<div class="dib w2 h2 br-100 mr2 ba b--black-50 tc bg-light-gray"><span class="material-symbols-outlined f6 gray" style="line-height: 2;">smart_toy</span></div>`
+              : result.has_avatar
+                ? `<img src="${result.avatar}" class="ba b--black-50 br-100 mr2" width="32">`
+                : `<img src="${assets_path}/images/org-${result.name.charAt(0).toLowerCase()}.svg" class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50"></div>`
             }
             <span>${escapeHtml(result.name)}</span>
             </span>`
@@ -180,9 +223,11 @@ export var AddToProject = {
     `
     <div id="${user.id}" class="flex items-center justify-between bg-white shadow-1 mv1 mh1 ph3 pv2 br3">
       <div class="flex items-center">
-        ${user.has_avatar
-          ? `<img src="${user.avatar}" class="w2 h2 br-100 mr2 ba b--black-50">`
-          : `<img src="${assets_path}/images/org-${user.name.charAt(0).toLowerCase()}.svg" class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50">`
+        ${user.subject_type === "service_account"
+          ? `<div class="w2 h2 br-100 mr2 ba b--black-50 flex items-center justify-center bg-light-gray"><span class="material-symbols-outlined f6 gray">smart_toy</span></div>`
+          : user.has_avatar
+            ? `<img src="${user.avatar}" class="w2 h2 br-100 mr2 ba b--black-50">`
+            : `<img src="${assets_path}/images/org-${user.name.charAt(0).toLowerCase()}.svg" class="bg-washed-gray w2 h2 br-100 mr2 ba b--black-50">`
         }
         <div class="flex items-center">
           <div class="b">${escapeHtml(user.name)}</div>

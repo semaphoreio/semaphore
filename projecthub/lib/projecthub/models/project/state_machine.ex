@@ -26,7 +26,7 @@ defmodule Projecthub.Models.Project.StateMachine do
          └──►│errror(unrecoverable)│
              └─────────────────────┘
 
-  When all the dependancies are created via the Workers.ProjectInit worker, the
+  When all the dependencies are created via the Workers.ProjectInit worker, the
   state of the project is transitioned from "initializing" to "onboarding".
 
   Decomposed diagram, new_project_onboarding=false or skip_onboarding=true
@@ -39,7 +39,7 @@ defmodule Projecthub.Models.Project.StateMachine do
             └───►│errror(unrecoverable)│
                  └─────────────────────┘
 
-  When all the dependancies are created via the Workers.ProjectInit worker, the
+  When all the dependencies are created via the Workers.ProjectInit worker, the
   state of the project is transitioned from "initializing" to "ready".
 
   In other words, "initializing_skip" is a special case of "initializing" where

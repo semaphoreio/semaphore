@@ -4,20 +4,13 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available.
 
 ## Overview {#overview}
 
 Pipelines are groups of blocks that can be connected via dependencies to define their execution order.
 
-Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder. 
+Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder.
 
 For reference, here is an example pipeline with its respective YAML.
 
@@ -151,6 +144,15 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 ![Example init job log](./img/init-log-example.jpg)
 
+## Pipeline rebuild {#rebuild}
+
+When a job in the pipeline fails, the default behavior is to stop the pipeline. You can attempt to re-run the pipeline in two ways:
+
+- Pressing **Rerun** restarts the whole pipeline from the beginning
+- Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
+
+![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
+
 ## Connecting pipelines with promotions {#connecting-pipelines}
 
 Your project can have multiple pipelines to perform different tasks such as build, release, or test. [Promotions](./promotions) connect pipelines. Multiple pipelines can be chained to create branching workflows to automate almost any task.
@@ -163,7 +165,7 @@ For more information, see the [Promotions page](./promotions).
 
 ## Pipeline settings {#settings}
 
-Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML. 
+Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML.
 
 ### Agents {#agents}
 
@@ -172,9 +174,9 @@ An agent is the machine and operating system where a job run. Semaphore keeps a 
 Semaphore Cloud provides the following agent types in x86 and ARM architectures:
 
 - [Linux](../reference/machine-types#linux) Virtual Machines
-- [Docker containers](#docker-environments) running on Linux
+- [Docker containers](./containers) running on Linux
 - [Apple macOS](../reference/machine-types#macos) Machines
-- [Windows](./self-hosted-install) Virtual Machines (only for self-hosted agents) 
+- [Windows](./self-hosted-install) Virtual Machines (only for self-hosted agents)
 
 You can add your own machines by [installing self-hosted agents](./self-hosted).
 
@@ -198,7 +200,6 @@ The available hardware changes depending on the type of environment you selected
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
-
 
 <Steps>
 
@@ -234,94 +235,10 @@ blocks:
 </TabItem>
 </Tabs>
 
-
 ### Docker containers {#docker-environments}
 
-:::tip
+The [Running Jobs in Docker Containers page](./containers) shows how to use Docker environments in your jobs.
 
-If you want to build and run Docker images in your jobs, check the [working with Docker page](./optimization/docker).
-
-:::
-
-Jobs can run inside Docker containers. This allows you to define a custom-build environment with pre-installed tools and dependencies needed for your project. You can enable this setting in the pipeline agent or in the [block agent override](./jobs#agent-override).
-
-You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate. 
-
-The network addresses of all containers are mapped to their names. Let's say you have two containers, "main" and "mysql", you can connect to the database from main with:
-
-```shell title="container 'main'"
-mysql --host=mysql --user=root
-```
-
-To run the job inside a Docker container:
-
-<Tabs groupId="editor-yaml">
-<TabItem value="editor" label="Editor">
-
-<Steps>
-
-1. Select the pipeline
-2. In **Environment Types** select **Docker Container(s)**
-3. Select the [machine type](../reference/machine-types)
-4. Type the **Image** name for this container
-5. Optionally, add environment variables
-6. Optionally, add more containers
-
-  ![Setting Docker environments](./img/agent-docker.jpg)
-
-</Steps>
-
-</TabItem>
-<TabItem value="yaml" label="YAML">
-
-<Steps>
-
-1. Add the `agent` and `machine`
-2. Add a `containers` key
-3. Each list item is a container. The first one must be called `main`
-4. Add the `image`
-5. Optionally, add `env_vars`
-6. Optionally, add more containers
-
-</Steps>
-
-```yaml title=".semaphore/semaphore.yml"
-version: v1.0
-name: Initial Pipeline
-agent:
-  machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
-  # highlight-start
-  containers:
-    - name: main
-      image: 'semaphoreci/ubuntu:20.04'
-      env_vars:
-        - name: FOO_1
-          value: BAR_1
-    - name: web
-      image: nginx
-  # highlight-end
-blocks:
-  - name: 'Block #1'
-    dependencies: []
-    task:
-      jobs:
-        - name: 'Job #1'
-          commands:
-            - 'curl http://web'
-```
-
-</TabItem>
-</Tabs>
-
-To use images in private repositories see [Private Docker Registries](#docker-private).
-
-:::info
-
-Semaphore provides a [public Docker registry](./optimization/container-registry) for popular images.
-
-:::
 
 ### Prologue {#prologue}
 
@@ -419,6 +336,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -462,6 +380,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -575,9 +494,9 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
-
 
 ### YAML file path {#yaml-path}
 
@@ -679,176 +598,13 @@ after_pipeline:
 </Tabs>
 
 
-## Private Docker Registries {#docker-private}
-
-If the images you need for your [docker environment](#docker-environments) are not publicly available, you need to provide authentication credentials in your pipeline. This feature is only available by editing the pipeline YAML directly.
-
-See [containers in pipeline YAML](../reference/pipeline-yaml#containers) for more details.
-
-### Images in Docker Hub {#docker-hub}
-
-To pull images from a private Docker Hub registry, follow these steps:
-
-<Steps>
-
-1. Create a [secret](./secrets) with the following key-value pairs:
-
-    - `DOCKER_CREDENTIAL_TYPE` = `DockerHub`
-    - `DOCKERHUB_USERNAME` = `<your Docker Hub account username>`
-    - `DOCKERHUB_PASSWORD` = `<your Docker Hub account password>`
-
-2. Import the secret by name into the agent using `image_pull_secret`. The following example assumes the secret is called `dockerhub-pull`
-
-  ```yaml title=".semaphore/semaphore.yml"
-  agent:
-     machine:
-       type: e1-standard-2
-     containers:
-       - name: main
-         image: <your-private-repository>/<image>
-         # highlight-start
-     image_pull_secrets:
-       - name: dockerhub-pull
-         # highlight-end
-  ```
-
-</Steps>
-
-### Images in AWS ECR {#docker-ecr}
-
-To pull images from a private AWS Elastic Container Registry (ECR), follow these steps:
-
-<Steps>
-
-1. Create a [secret](./secrets) with the following key-value pairs:
-
-    - `DOCKER_CREDENTIAL_TYPE` = `AWS_ECR`
-    - `AWS_REGION` = `<aws-ecr-region>`
-    - `AWS_ACCESS_KEY_ID` = `<your-aws-access-key>`
-    - `AWS_SECRET_ACCESS_KEY` = `<your-aws-secret-key>`
-
-2. Import the secret by name into the agent using `image_pull_secret`. The following example assumes the secret is called `ecr-pull`
-
-  ```yaml title=".semaphore/semaphore.yml"
-  agent:
-     machine:
-       type: e1-standard-2
-     containers:
-       - name: main
-         image: <your-private-repository>/<image>
-         # highlight-start
-     image_pull_secrets:
-       - name: ecr-pull
-         # highlight-end
-  ```
-
-</Steps>
-
-### Images in Google GCR {#docker-gcr}
-
-
-To pull images from a private Google Container Registry (GCR), follow these steps:
-
-<Steps>
-
-1. Create a [secret](./secrets) with the following key-value pairs:
-
-    - `DOCKER_CREDENTIAL_TYPE` = `GCR`
-    - `GCR_HOSTNAME` = `gcr.io`
-
-2. Download the [service account keyfile](https://cloud.google.com/artifact-registry/docs/docker/authentication#json-key) that provides access to your Google Container Registry.
-
-3. Upload the keyfile to the secret created on step 1
-  
-     **Important**: the file must be mounted on `/tmp/gcr/keyfile.json`
-
-     ![Secret to access GCR](./img/gcr-pull-secret.jpg)
-
-4. Import the secret by name into the agent using `image_pull_secret`. The following example assumes the secret is called `gcr-pull`
-
-  ```yaml title=".semaphore/semaphore.yml"
-  agent:
-     machine:
-       type: e1-standard-2
-     containers:
-       - name: main
-         image: <your-private-repository>/<image>
-         # highlight-start
-     image_pull_secrets:
-       - name: gcr-pull
-         # highlight-end
-  ```
-
-</Steps>
-
-### Images in Quay.io {#docker-quay}
-
-To pull images from a private Quay.io registry, follow these steps:
-
-<Steps>
-
-1. Create a [secret](./secrets) with the following key-value pairs:
-
-    - `DOCKER_CREDENTIAL_TYPE` = `GenericDocker`
-    - `DOCKER_URL` = `quay.io`
-    - `DOCKER_USERNAME` = `<your-quay-username>`
-    - `DOCKER_PASSWORD` = `<your-quay-password>`
-
-2. Import the secret by name into the agent using `image_pull_secret`. The following example assumes the secret is called `quay-pull`
-
-  ```yaml title=".semaphore/semaphore.yml"
-  agent:
-     machine:
-       type: e1-standard-2
-     containers:
-       - name: main
-         image: <your-private-repository>/<image>
-         # highlight-start
-     image_pull_secrets:
-       - name: quay-pull
-         # highlight-end
-  ```
-
-</Steps>
-
-### Images in generic registries {#docker-any}
-
-To pull images from any arbitrary Docker registry, follow these steps:
-
-<Steps>
-
-1. Create a [secret](./secrets) with the following key-value pairs:
-
-    - `DOCKER_CREDENTIAL_TYPE` = `GenericDocker`
-    - `DOCKER_URL` = `<your-repository-url>`
-    - `DOCKER_USERNAME` = `<your-registry-username>`
-    - `DOCKER_PASSWORD` = `<your-registry-password>`
-
-2. Import the secret by name into the agent using `image_pull_secret`. The following example assumes the secret is called `registry-pull`
-
-  ```yaml title=".semaphore/semaphore.yml"
-  agent:
-     machine:
-       type: e1-standard-2
-     containers:
-       - name: main
-         image: <your-private-repository>/<image>
-         # highlight-start
-     image_pull_secrets:
-       - name: registry-pull
-         # highlight-end
-  ```
-
-</Steps>
-
-
 ## Pipeline queues {#pipeline-queues}
 
 Queues allow you to control the order in which pipelines run. Semaphore pipelines can run sequentially or in parallel. For example, you can run CI pipelines in parallel on the main branch, while limiting deployment pipelines to run one at at time to prevent conflicts or race conditions.
 
 ### Default and named queues {#named-queues}
 
-Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially. 
+Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially.
 
 In other words, every time you re-run a workflow, create a pull request, push a tag, or start a [promotion](./pipelines#connecting-pipelines), the pipeline is added to the end of the same-commit queue.
 
@@ -964,7 +720,7 @@ blocks:
 
 ### Conditional queues {#conditional-queues}
 
-You can use conditional statements to assign pipelines based on parameters like branch name or tag name. 
+You can use conditional statements to assign pipelines based on parameters like branch name or tag name.
 
 The following example uses three rules:
 
@@ -1046,7 +802,6 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-
 <Steps>
 
 1. Open the pipeline YAML
@@ -1056,7 +811,7 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 
 </Steps>
 
-```shell title="Changing max duration for a single job"
+```yaml title="Changing max duration for a single job"
 version: v1.0
 name: Pipeline using execution_time_limit
 agent:
@@ -1090,13 +845,13 @@ See [job time limit](./jobs#job-duration) to change the maximum duration for a s
 
 You can workaround the queue limit by assigning pipelines to [named queues](#named-queues).
 
-If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+If you have a use case in which this limit is too constraining, please contact us at `support@semaphore.io` and we will try to work out a solution.
 
 ### Max blocks per pipeline {#max-blocks}
 
 There is a hard limit of a 100 blocks per pipeline.
 
-This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at support@semaphoreci.com and we will try to work out a solution.
+This limit is not adjustable. If you have a use case in which this limit is too constraining, please contact us at `support@semaphore.io` and we will try to work out a solution.
 
 ## See also
 

@@ -1,6 +1,6 @@
 ARG ELIXIR_VERSION=1.13.4
-ARG OTP_VERSION=24.3.4.9
-ARG ALPINE_VERSION=3.18.6
+ARG OTP_VERSION=24.2.2
+ARG ALPINE_VERSION=3.19.0
 ARG BUILDER_IMAGE="hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-alpine-${ALPINE_VERSION}"
 ARG RUNNER_IMAGE="alpine:${ALPINE_VERSION}"
 
@@ -21,7 +21,7 @@ RUN ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts
 RUN mix local.hex --force && mix local.rebar --force
 
 RUN mkdir api
-WORKDIR /app/api
+WORKDIR /app
 
 # install mix dependencies
 COPY public-api/v1alpha/mix.exs public-api/v1alpha/mix.lock ./
@@ -63,7 +63,7 @@ HEALTHCHECK NONE
 
 # install runtime dependencies
 RUN apk update \
-    && apk add --no-cache libstdc++ openssl ncurses-libs libcrypto1.1 libssl1.1 libcrypto3 libssl3 zlib
+    && apk add --no-cache libstdc++ openssl ncurses-libs libcrypto3 libssl3 zlib
 
 ENV USER="front"
 
@@ -86,7 +86,7 @@ RUN \
 USER "${USER}"
 
 # copy release executables
-COPY --from=builder --chown="${USER}":"${USER}" /app/api/_build/"${MIX_ENV}"/rel/pipelines_api ./
+COPY --from=builder --chown="${USER}":"${USER}" /app/_build/"${MIX_ENV}"/rel/pipelines_api ./
 
 ENTRYPOINT ["bin/pipelines_api"]
 

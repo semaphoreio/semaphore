@@ -67,7 +67,7 @@ To set up a local environment for contributing to Semaphore documentation:
 
 2. Clone or fork the repository
 
-   - **External Contributors** (no write access to upstream): navigate to [sempahoreci/semaphore](https://github.com/semaphoreci/semaphore), click **Fork**, then select **Create a new fork**. Run the following command to clone the repository:
+   - **External Contributors** (no write access to upstream): navigate to [semaphoreci/semaphore](https://github.com/semaphoreci/semaphore), click **Fork**, then select **Create a new fork**. Run the following command to clone the repository:
 
    ```bash
    git clone https://github.com/<your-github-username>/semaphore

@@ -26,9 +26,7 @@ defmodule Rbac.GrpcServers.GroupsServer do
       {:ok, created_group} ->
         Rbac.TempSync.assign_org_member_role(created_group.id, org_id)
 
-        Enum.each(group.member_ids, fn member_id ->
-          Rbac.Repo.GroupManagementRequest.create_new_request(member_id, created_group.id, :add)
-        end)
+        {:ok, _} = create_request(group.member_ids, created_group.id, :add_user, requester_id)
 
         %Groups.CreateGroupResponse{group: construct_grpc_group(created_group)}
 
@@ -61,8 +59,6 @@ defmodule Rbac.GrpcServers.GroupsServer do
   end
 
   def modify_group(%Groups.ModifyGroupRequest{} = req, _stream) do
-    alias Rbac.Repo.GroupManagementRequest
-
     if req.group == nil,
       do: grpc_error!(:invalid_argument, "Required group information not provided")
 
@@ -72,13 +68,17 @@ defmodule Rbac.GrpcServers.GroupsServer do
 
     with {:ok, _} <- Group.fetch_group(req.group.id),
          {:ok, group} <-
-           Group.modify_metadata(req.group.id, req.group.name, req.group.description) do
-      GroupManagementRequest.create_new_request(req.members_to_remove, group.id, :remove)
-      GroupManagementRequest.create_new_request(req.members_to_add, group.id, :add)
+           Group.modify_metadata(req.group.id, req.org_id, req.group.name, req.group.description) do
+      {:ok, _} = create_request(req.members_to_remove, group.id, :remove_user, req.requester_id)
+      {:ok, _} = create_request(req.members_to_add, group.id, :add_user, req.requester_id)
+
       %Groups.ModifyGroupResponse{group: construct_grpc_group(group)}
     else
       {:error, :not_found} ->
         grpc_error!(:invalid_argument, "The group you are trying to modify does not exist")
+
+      {:error, :name_taken} ->
+        grpc_error!(:invalid_argument, "The new group name is already in use")
 
       {:error, _error_msg} ->
         Watchman.increment("modify_group.failure")
@@ -86,9 +86,34 @@ defmodule Rbac.GrpcServers.GroupsServer do
     end
   end
 
+  def destroy_group(
+        %Groups.DestroyGroupRequest{group_id: group_id, requester_id: requester_id},
+        _stream
+      ) do
+    validate_uuid!([requester_id, group_id])
+
+    case Group.fetch_group(group_id) do
+      {:ok, group} ->
+        authorize!(@manage_groups_permission, requester_id, group.org_id)
+        {:ok, _} = create_request(nil, group_id, :destroy_group, requester_id)
+        %Groups.DestroyGroupResponse{}
+
+      {:error, :not_found} ->
+        grpc_error!(:not_found, "The group you are trying to destroy does not exist")
+
+      {:error, _error_msg} ->
+        Watchman.increment("destroy_group.failure")
+        grpc_error!(:internal, "Groups service, internal server error")
+    end
+  end
+
   ###
   ### Helper functions
   ###
+
+  defdelegate create_request(user_id_or_ids, group_id, action, requester_id),
+    to: Rbac.Repo.GroupManagementRequest,
+    as: :create_new_request
 
   defp validate_group_parameters!(nil),
     do: grpc_error!(:invalid_argument, "No group information provided")
@@ -96,6 +121,9 @@ defmodule Rbac.GrpcServers.GroupsServer do
   defp validate_group_parameters!(group) do
     if group.name == "" or group.name == nil,
       do: grpc_error!(:invalid_argument, "Group name is required")
+
+    if group.description == "" or group.description == nil,
+      do: grpc_error!(:invalid_argument, "Group description is required")
   end
 
   defp check_if_members_are_in_org!(member_ids, org_id) do

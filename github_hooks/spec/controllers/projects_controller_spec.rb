@@ -23,6 +23,50 @@ RSpec.describe ProjectsController, :type => :controller do
       allow(Semaphore::GithubApp::Collaborators::Worker).to receive(:perform_async)
     end
 
+    context "when App.ee? is true and license is valid" do
+      before do
+        allow(App).to receive(:ee?).and_return(true)
+        # Stub check_license! to simulate valid license (do nothing)
+        allow(LicenseVerifier).to receive(:verify).and_return(true)
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
+        allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
+        allow_any_instance_of(Logman).to receive(:add)
+        allow_any_instance_of(Logman).to receive(:info)
+        allow_any_instance_of(Logman).to receive(:error)
+      end
+
+      it "processes the hook and returns 200 OK" do
+        post :repo_host_post_commit_hook, params: { payload: "{}" }
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "when App.ee? is true and license is invalid" do
+      before do
+        allow(App).to receive(:ee?).and_return(true)
+        # Simulate check_license! to simulate invalid license
+        allow(LicenseVerifier).to receive(:verify).and_return(false)
+        allow(Semaphore::RepoHost::Hooks::Request).to receive_messages(new: double(delivery_id: "123"), normalize_params: { payload: "{}" })
+        allow(Semaphore::RepoHost::WebhookFilter).to receive(:create_webhook_filter).and_return(double(
+                                                                                                  unsupported_webhook?: true,
+                                                                                                  github_app_webhook?: false,
+                                                                                                  github_app_installation_webhook?: false
+                                                                                                ))
+        allow_any_instance_of(Logman).to receive(:add)
+        allow_any_instance_of(Logman).to receive(:info)
+        allow_any_instance_of(Logman).to receive(:error)
+      end
+
+      it "refuses processing and returns 403 Forbidden" do
+        post :repo_host_post_commit_hook, params: { payload: "{}" }
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
     context "when GitHub hook" do
       let(:workflow) { double(Workflow, :id => 111, :update_attribute => nil) }
       let(:payload) { RepoHost::Github::Responses::Payload.post_receive_hook_pull_request }
@@ -262,8 +306,9 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double("Repository", :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner_and_name => "foo/bar")
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
 
           expect(Semaphore::Events::ProjectCollaboratorsChanged).to receive(:emit).and_call_original
@@ -329,9 +374,18 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double(Repository, :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner => "foo")
+                                    :repo_owner => "foo", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
+
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).with(
+            anything,
+            project.organization.id,
+            project.repository.id,
+            anything,
+            anything
+          ).and_return(true)
 
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
 
@@ -362,11 +416,32 @@ RSpec.describe ProjectsController, :type => :controller do
         end
 
         it "publish event" do
+          repository = double(Repository, :id => "repo-123")
           project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
-                                    :repo_owner_and_name => "foo/bar")
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
           expect(Project).to receive(:find_by).and_return(project)
 
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).with(
+            anything,
+            project.organization.id,
+            project.repository.id,
+            anything,
+            anything
+          ).and_return(true)
+
           expect(Semaphore::Events::RemoteRepositoryChanged).to receive(:emit).and_call_original
+
+          post_payload(payload)
+        end
+
+        it "does not publish event when signature is invalid" do
+          repository = double("Repository", :id => "repo-123")
+          project = double(Project, :id => "96b0a57c-d9ae-453f-b56f-3b154eb10cda", :organization => @organization,
+                                    :repo_owner_and_name => "foo/bar", :repository => repository)
+          expect(Project).to receive(:find_by).and_return(project)
+
+          expect(Semaphore::RepoHost::Hooks::Handler).to receive(:webhook_signature_valid?).and_return(false)
+          expect(Semaphore::Events::RemoteRepositoryChanged).not_to receive(:emit)
 
           post_payload(payload)
         end

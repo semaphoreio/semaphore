@@ -7,7 +7,7 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
   describe "compose/2" do
     test "paused" do
       expected = """
-      apiVersion: v1.1
+      apiVersion: v1.2
       kind: Schedule
       metadata:
         name: \"name\"
@@ -18,7 +18,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
         recurring: true
         paused: true
         at: \"* * * * *\"
-        branch: \"master\"
+        reference:
+          type: BRANCH
+          name: \"master\"
         pipeline_file: \"semaphore.yml\"
       """
 
@@ -41,7 +43,7 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
 
     test "without description" do
       expected = """
-      apiVersion: v1.1
+      apiVersion: v1.2
       kind: Schedule
       metadata:
         name: \"name\"
@@ -52,7 +54,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
         recurring: true
         paused: true
         at: \"* * * * *\"
-        branch: \"master\"
+        reference:
+          type: BRANCH
+          name: \"master\"
         pipeline_file: \"semaphore.yml\"
       """
 
@@ -75,7 +79,7 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
 
     test "without parameters" do
       expected = """
-      apiVersion: v1.1
+      apiVersion: v1.2
       kind: Schedule
       metadata:
         name: \"name\"
@@ -86,7 +90,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
         recurring: true
         paused: false
         at: \"* * * * *\"
-        branch: \"master\"
+        reference:
+          type: BRANCH
+          name: \"master\"
         pipeline_file: \"semaphore.yml\"
       """
 
@@ -108,7 +114,7 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
 
     test "without cron expression" do
       expected = """
-      apiVersion: v1.1
+      apiVersion: v1.2
       kind: Schedule
       metadata:
         name: \"name\"
@@ -119,7 +125,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
         recurring: false
         paused: false
         at: \"\"
-        branch: \"master\"
+        reference:
+          type: BRANCH
+          name: \"master\"
         pipeline_file: \"semaphore.yml\"
       """
 
@@ -138,9 +146,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
                )
     end
 
-    test "with branch, pipeline file and parameters" do
+    test "with reference, pipeline file and parameters" do
       expected = """
-      apiVersion: v1.1
+      apiVersion: v1.2
       kind: Schedule
       metadata:
         name: \"name\"
@@ -151,7 +159,9 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
         recurring: true
         paused: false
         at: \"* * * * *\"
-        branch: \"master\"
+        reference:
+          type: BRANCH
+          name: \"master\"
         pipeline_file: \"semaphore.yml\"
         parameters:
         - name: \"parameter1\"
@@ -189,6 +199,74 @@ defmodule Projecthub.Models.PeriodicTask.YamlTest do
                        options: ["option1", "option2"]
                      }
                    ]
+                 },
+                 %Project{name: "project_name"}
+               )
+    end
+
+    test "with tag reference" do
+      expected = """
+      apiVersion: v1.2
+      kind: Schedule
+      metadata:
+        name: \"release-task\"
+        id: \"tag-id\"
+        description: "tag release task"
+      spec:
+        project: \"project_name\"
+        recurring: false
+        paused: false
+        at: \"\"
+        reference:
+          type: TAG
+          name: \"v1.0.0\"
+        pipeline_file: \"semaphore.yml\"
+      """
+
+      assert ^expected =
+               Projecthub.Models.PeriodicTask.YAML.compose(
+                 %PeriodicTask{
+                   id: "tag-id",
+                   name: "release-task",
+                   description: "tag release task",
+                   project_name: "project_name",
+                   recurring: false,
+                   branch: "refs/tags/v1.0.0",
+                   pipeline_file: "semaphore.yml"
+                 },
+                 %Project{name: "project_name"}
+               )
+    end
+
+    test "with pull request reference" do
+      expected = """
+      apiVersion: v1.2
+      kind: Schedule
+      metadata:
+        name: \"pr-task\"
+        id: \"pr-id\"
+        description: "PR task"
+      spec:
+        project: \"project_name\"
+        recurring: false
+        paused: false
+        at: \"\"
+        reference:
+          type: PR
+          name: \"123\"
+        pipeline_file: \"semaphore.yml\"
+      """
+
+      assert ^expected =
+               Projecthub.Models.PeriodicTask.YAML.compose(
+                 %PeriodicTask{
+                   id: "pr-id",
+                   name: "pr-task",
+                   description: "PR task",
+                   project_name: "project_name",
+                   recurring: false,
+                   branch: "refs/pull/123/head",
+                   pipeline_file: "semaphore.yml"
                  },
                  %Project{name: "project_name"}
                )

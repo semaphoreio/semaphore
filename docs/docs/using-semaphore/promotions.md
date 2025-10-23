@@ -4,15 +4,9 @@ description: Connect pipelines to create workflows
 
 # Promotions
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
+<VideoTutorial title="How to use promotions" src="https://www.youtube.com/embed/jfOx24zsBh8" />
 
-<VideoTutorial title="How to use promotions" src="https://www.youtube.com/embed/rbf2jb3Uh-E?si=UH-_74icf4KdGYCf" />
-
-Promotions connect [pipelines](./pipelines) to implement continuous delivery and deployment, or other types of automation, such as [blue-green](https://semaphoreci.com/blog/blue-green-deployment) deployments and [canary](https://semaphoreci.com/blog/what-is-canary-deployment) deployments. 
+Promotions connect [pipelines](./pipelines) to implement continuous delivery and deployment, or other types of automation, such as [blue-green](https://semaphore.io/blog/blue-green-deployment) deployments and [canary](https://semaphore.io/blog/what-is-canary-deployment) deployments. 
 
 This page explains promotions, how to use them to connect pipelines, and what settings are available.
 
@@ -493,7 +487,7 @@ after_pipeline:
 
 ## Deployment targets {#deployment-targets}
 
-<VideoTutorial title="How to Use Deployment Targets" src="https://www.youtube.com/embed/xId2H2wlKx4?si=0IXKyNNUVVjDDvHz" />
+<VideoTutorial title="How to Use Deployment Targets" src="https://www.youtube.com/embed/6YCMY1cPrU8" />
 
 Deployment targets (also known as Environments) provide additional controls over [pipelines](./pipelines). You can limit who can trigger a pipeline and under which circumstances, or define fine-grained secrets and environment variables.
 
@@ -561,7 +555,7 @@ Credentials are optional. Go to the next step if you don't need them.
 
 ### Granular permissions {#granular-permissions}
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 In the "Who can deploy?" section, you can define the users and roles that can manually start the promotion. Granular permissions are optional. You can go to the next section if you don't need to restrict access to the promotion.
 

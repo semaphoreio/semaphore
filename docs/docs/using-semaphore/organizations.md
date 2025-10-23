@@ -4,19 +4,13 @@ description: Manage people, permissions, and costs
 
 # Organizations
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
 Organizations are the administrative unit for Semaphore. This page explains how to set up [notifications](./notifications), manage users, and what settings are available.
 
 ## Overview {#overview}
 
 In order to access any non-public resources on Semaphore you must be invited to the organization your team or company has created. 
 
-If you are trying out Semaphore for the first time, we suggest the [Guided Tour](../getting-started/guided-tour), where we show how to create your first organization.
+If you are trying out Semaphore for the first time, we suggest the [Quickstart](../getting-started/quickstart), where we show how to create your first organization.
 
 Organizations have:
 
@@ -63,156 +57,6 @@ You must install and connect the [Semaphore command line](../reference/semaphore
 </TabItem>
 </Tabs>
 
-## Managing users {#people}
-
-Semaphore users a [Role Based Access Control](./rbac) model to manage permissions at the organization and project level.
-
-Free plans are limited to 5 users per organization. Paid plans have no user limit.
-
-You can only invite people with GitHub or BitBucket accounts to your organization.
-
-To manage users in your organization, open the organization menu and select **People**. This tab shows users and groups in your organization along with their roles and groups.
-
-![The people tab](./img/people-tab.jpg)
-
-### How to invite users {#add-people}
-
-To invite a user to your organization, press the **Add people** button:
-
-![Add people button](./img/add-people-button.jpg)
-
-<Steps>
-
-1. Select one of the available tabs
-    - Type the user's handle, e.g. `TomFern`, or select the user from the list.
-    - If you don't see the user in the list. Ensure they have repository access in **GitHub** or **BitBucket** for at least one project in your organization
-
-    ![Invite users](./img/invite-users.jpg)
-
-2. Press **Add selected**
-3. Optionally, set their [role](#roles-people)
-
-
-</Steps>
-
-### How to remove users {#remove-users}
-
-Users can only be removed from the organization when they don't own any projects. You must [transfer the ownership](./projects#owner-change) of all the user's projects before they can be removed from the organization.
-
-To remove a user, go to the people option in the organization menu and follow these steps:
-
-<Steps>
-
-1. Transfer any [project ownership](./projects#owner-change) the user may have to another individual. The user must not own any projects
-2. Press the **X** button next to the username of the user you want to remove
-
-  ![Removing a user from the organization](./img/remove-user.jpg)
-
-</Steps>
-   
-Upon removal, access to all projects in the organization are revoked.
-
-:::note
-
-Only an Admins, Owner, or dedicated [custom roles](./rbac#custom-roles) can remove users from the organization.
-
-:::
-
-### How to change user roles {#roles-people}
-
-To change the role of a user, press the **Change Role** button next to the person.
-
-![Changing user roles](./img/change-roles.jpg)
-
-See [organization roles](./rbac#org) to learn what roles are available.
-
-### How to create groups {#add-groups}
-
-<Available plans={['Scaleup']}/>
-
-User groups streamline user management by allowing bulk actions. After creating a group, you can:
-
-- Add members to the group
-- Assign a role to the group
-
-All members of the group automatically inherit the permissions associated with the assigned role.
-
-As an example, let's say you want to give the Finance team access to the [Billing pages](./billing) in your organization. To achieve that you can:
-
-1. Create a [custom role](#custom) with view permissions on the Billing page
-2. Create a Finance group
-3. Assign the new custom role to the group
-4. Add everyone in the Finance team to the group
-5. As the team changes, you can add or delete persons from the group
-
-To create a group, open the organization menu and select **People**. 
-
-<Steps>
-
-1. Press on **Create group**
-2. Type in the group name and description
-3. Type the names of the persons to add to the group
-4. Press **Save changes** to create the group
-
-  ![Add group](./img/add-group.jpg)
-
-</Steps>
-
-The new group has the [member](./rbac#org-member) role by default. You can change it by pressing the **Modify Role** button and selecting a different role.
-
-You can also define [custom organization roles](#custom) if none of the pre-defined roles suit your needs.
-
-### How to change group roles {#group-role}
-
-To change the role of a group, press the **Change Role** button next to the group.
-
-![Changing the roles of a group](./img/group-role.jpg)
-
-### How to add members groups {#change-groups}
-
-To add or remove users in a group, press the **Modify group** button next to it.
-
-- Press the **X** button to remove the user from the group
-- Type the name of the persons you want to add to the group
-- Press **Save changes** to finish editing the group
-
-![Add group](./img/add-group.jpg)
-
-### How to view pre-defined roles {#org-roles}
-
-Semaphore provides pre-defined roles for organizations. You can see what actions each role can perform by following these steps:
-
-<Steps>
-
-1. Open the Organization **Settings** menu
-2. Select **Roles**
-    ![Settings Role location](./img/settings-roles.jpg)
-3. In the **Organization Roles** section, press the eye button next to the role you want to examine
-
-</Steps>
-
-The actions with enabled checkbox are allowed for that role.
-
-![Organization admin allowed actions](./img/org-admin-roles.jpg)
-
-### How to create custom roles {#custom}
-
-<Available plans={['Scaleup']}/>
-
-Create custom roles to give your users the precise permissions they need. 
-
-<Steps>
-
-1. Open the Organization **Settings** menu
-2. Select **Roles**
-3. On the **Organization Roles** section, press **New Role**
-4. Give a name a description to the new role
-5. Enable the permissions allowed to the role. You can use the search box to narrow down options
-6. Press **Save changes**
-
-  ![Creating a new organization role](./img/org-role-create-custom.jpg)
-
-</Steps>
 
 ## Organization settings {#org-settings}
 
@@ -242,9 +86,9 @@ To learn more, see the [notification documentation](./notifications.md)
 
 ### Initialization agent {#init-agent}
 
-Some types of pipelines require [initialization job](./pipelines#init-job) to evaluate and compile the them before the workload beings.
+Some types of pipelines require [initialization job](./pipelines#init-job) to evaluate and compile them before the workload begins.
 
-Semaphore tries to pick the best type of agent automatically but you change it for the whole organization. This is particularly useful when you are using [self-hosted agents](./self-hosted).
+Semaphore tries to pick the best type of agent automatically, but you can change it for the whole organization. This is particularly useful when you are using [self-hosted agents](./self-hosted).
 
 To change the initialization job agent for all your [projects](./projects) in your organization, follow these steps:
 
@@ -270,7 +114,7 @@ If you experience errors during initialization, see the [initialization job logs
 
 ### Okta integration {#okta-integration}
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 Integration with Okta allows you to automate user management within your Semaphore organization, as well as to use Okta apps for Single Sign On.
 
@@ -288,7 +132,9 @@ In this section, you can add contact details in case the Semaphore Support Team 
 
 ## Audit logs {#audit-log}
 
-<Available plans={['Scaleup']} />
+<VideoTutorial title="How to view audit logs" src="https://www.youtube.com/embed/o5yXSvjcz7s"/>
+
+<Available plans={['Enterprise']} />
 
 To support compliance, accountability, and security, Semaphore provides logs of audited events. Audit Log events are events that affect your organization, projects, users, or any other resources in Semaphore. Events contain information about when who and what was the performed activity.
 
@@ -302,7 +148,7 @@ The audit logs shows all the [audited events](../reference/audit-events) in reve
 
 ### How to export audit logs {#audit-export}
 
-<Available plans={['Scaleup']} />
+<Available plans={['Enterprise']} />
 
 Audit logs can be exported in two ways:
 
@@ -336,6 +182,8 @@ To configure streaming to an S3-compatible bucket, press the **Configure Streami
 :::info
 
 Audit logs are streamed to the bucket once per day.
+
+Large audit logs may cause errors when exporting to CSV. In this case, consider setting up an S3-compatible bucket instead of using CSV as the export medium.
 
 :::
 
@@ -388,7 +236,7 @@ Updating the ownership of an organization doesn't automatically transfer the pro
 
 ### How to remove an owner {#remove-owner}
 
-If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphoreci.com from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
+If you need to demote or remove an owner from the organization, any user with the Owner permission level needs to send an email to support@semaphore.io from the primary email address associated with their GitHub or Bitbucket account used to log into Semaphore.
 
 ## How to delete an organization {#deleting-an-organization}
 

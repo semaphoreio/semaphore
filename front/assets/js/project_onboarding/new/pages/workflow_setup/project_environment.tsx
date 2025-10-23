@@ -5,8 +5,8 @@ import * as stores from "../../stores";
 import { useContext, useCallback, useEffect } from "preact/hooks";
 import { useNavigate } from "react-router-dom";
 import Tippy from "@tippyjs/react";
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
+import { useSteps } from "../../stores/create/steps";
+import { handleSkipOnboarding } from "../../utils/skip_onboarding";
 import { Notice } from "js/notice";
 
 interface AgentCardProps {
@@ -40,6 +40,12 @@ export const Projectenvironment = () => {
   const { state: configState } = useContext(stores.WorkflowSetup.Config.Context);
   const { state: envState, setSelectedAgentType, setYamlPath } = stores.WorkflowSetup.Environment.useEnvironmentStore();
   const navigate = useNavigate();
+
+  const { dispatch } = useSteps();
+
+  useEffect(() => {
+    dispatch([`SET_CURRENT`, `select-environment`]);
+  }, []);
 
   const handleAgentSelect = useCallback((agent: stores.WorkflowSetup.Config.AgentType | stores.WorkflowSetup.Config.SelfHostedAgentType) => {
     const isCloudAgent = `available_os_images` in agent;
@@ -88,6 +94,16 @@ export const Projectenvironment = () => {
     } catch (error) {
       Notice.error(`Failed to update pipeline file. Please try again.`);
     }
+  };
+
+  const onSkipOnboarding = (e: Event) => {
+    e.preventDefault();
+    
+    void handleSkipOnboarding({
+      skipOnboardingUrl: configState.skipOnboardingUrl,
+      csrfToken: configState.csrfToken,
+      projectUrl: configState.projectUrl
+    });
   };
 
   return (
@@ -199,7 +215,17 @@ export const Projectenvironment = () => {
             </div>
             <div className="mt3">
               <div className="flex justify-between items-center">
-                <p className="f6 gray mb0">Next, we&apos;ll define your build steps and workflow.</p>
+                <div className="flex items-center">
+                  <p className="f6 gray mb0 mr1">Next, we&apos;ll define your build steps and workflow. or you can </p>
+                  <a
+                    href="#"
+                    onClick={onSkipOnboarding}
+                    className="f6 link dim gray underline"
+                    title="Skip the onboarding process and go directly to the project"
+                  >
+                    skip onboarding
+                  </a>
+                </div>
                 <Tippy
                   placement="top"
                   content="Select an agent type to continue"

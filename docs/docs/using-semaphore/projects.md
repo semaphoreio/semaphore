@@ -1,16 +1,10 @@
 ---
-description: Connect Git repos to Semaphore
+description: Connect Git repos to Semaphore (Cloud)
 ---
 
 # Projects
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
-Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphoreci.com/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
+Projects are codebases developed and managed through Semaphore [Continuous Integration](https://semaphore.io/continuous-integration). A project links your Git repository with Semaphore, so it can run [jobs](./jobs) to test, build, or deploy your application. 
 
 This page explains how to set up projects and what settings are available.
 
@@ -20,22 +14,22 @@ This page explains how to set up projects and what settings are available.
 
 To create a Semaphore project you need:
 
-- A [Semaphore](https://semaphoreci.com) account with an [organization](./organizations.md)
+- A [Semaphore](https://semaphore.io) account with an [organization](./organizations.md)
+- A repository with at least one commit
 - A GitHub or Bitbucket account. For more information, see the connection guides
   - [How to connect to GitHub](./connect-github)
   - [How to connect to Bitbucket](./connect-bitbucket)
-- A repository with at least one commit
 
 <Tabs groupId="ui-cli">
 <TabItem value="ui" label="UI">
 
-Go to Semaphore, press **+Create New** 1 and then press **Choose repository**
+Go to Semaphore, press **+Create New** and then press **Choose repository**
 
 ![Creating a new project](./img/create-project-1.jpg)
 
 <Steps>
 
-1. Select the GitHub or Bitbucket tab. You may need to press the **Connect account** button if this is the first time
+1. Select the GitHub or BitBucket tab. You may need to press the **Connect account** button if this is the first time
 2. Select the repository from the list and press on **Choose**
 
     <details>
@@ -45,7 +39,7 @@ Go to Semaphore, press **+Create New** 1 and then press **Choose repository**
     </div>
     </details>
 
-3. Optionally, [add people](./organizations#people) to the project. Press **Continue**
+3. Optionally, [add people](./user-management#people) to the project. Press **Continue**
 
     <details>
     <summary>Show me</summary>
@@ -199,9 +193,9 @@ Users can be granted access and permissions on a project by different means:
 
 ### How to manually add/remove members to projects {#manual}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
-Scaleup plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
+Enterprise plan users can manually add and remove people from a project. To manage users, open your project and go to the **People** tab
 
 <Steps>
 
@@ -218,7 +212,7 @@ See [project roles](./rbac#project) for more information on what actions can eac
 
 ### How to change permissions {#people-roles}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Open your project and go to the **People** tab
 
@@ -249,7 +243,7 @@ The actions with enabled checkbox are allowed for that role.
 
 ### How to create custom roles {#custom-roles}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Create custom roles to give your users the precise permissions they need. 
 
@@ -268,7 +262,7 @@ Create custom roles to give your users the precise permissions they need.
 
 ### How to change the project's owner {#owner-change}
 
-Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the organization](./organizations#add-people).
+Open the [project settings](#settings), under **Project Owner** type the username and press **Change**. The user must already have been [invited to the organization](./user-management#add-people).
 
 ![Changing project owner](./img/change-project-owner.jpg)
 
@@ -393,7 +387,7 @@ To learn more, see the [artifacts retention page](./artifacts#retention)
 
 ## Pre-flight checks {#preflight}
 
-<Available plans={['Scaleup']}/>
+<Available plans={['Enterprise']}/>
 
 Pre-flight checks are user-defined commands executed before the pipeline begins as part of the pipeline [initialization job](./pipelines#init-job). These checks allow you to define the type of agent running the initialization job and to manually run commands before a pipeline starts.
 
@@ -602,7 +596,7 @@ There are several actions that can break the connection between GitHub and Semap
 - renaming the GitHub user account
 - renaming the GitHub organization
 
-When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphoreci.com) providing the following details:
+When this happens, please email Semaphore at [support@semaphoreci.com](mailto:support@semaphore.io) providing the following details:
 
 - Previous repository name and URL
 - New repository name and URL

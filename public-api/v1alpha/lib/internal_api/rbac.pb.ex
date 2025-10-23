@@ -306,6 +306,30 @@ defmodule InternalApi.RBAC.ListMembersResponse.Member do
   field(:subject_role_bindings, 3, repeated: true, type: InternalApi.RBAC.SubjectRoleBinding)
 end
 
+defmodule InternalApi.RBAC.CountMembersRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.RBAC.CountMembersResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          members: integer
+        }
+  defstruct [:members]
+
+  field(:members, 1, type: :int32)
+end
+
 defmodule InternalApi.RBAC.SubjectRoleBinding do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -406,6 +430,25 @@ defmodule InternalApi.RBAC.Subject do
   field(:display_name, 3, type: :string)
 end
 
+defmodule InternalApi.RBAC.RefreshCollaboratorsRequest do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  @type t :: %__MODULE__{
+          org_id: String.t()
+        }
+  defstruct [:org_id]
+
+  field(:org_id, 1, type: :string)
+end
+
+defmodule InternalApi.RBAC.RefreshCollaboratorsResponse do
+  @moduledoc false
+  use Protobuf, syntax: :proto3
+
+  defstruct []
+end
+
 defmodule InternalApi.RBAC.Role do
   @moduledoc false
   use Protobuf, syntax: :proto3
@@ -471,6 +514,7 @@ defmodule InternalApi.RBAC.SubjectType do
 
   field(:USER, 0)
   field(:GROUP, 1)
+  field(:SERVICE_ACCOUNT, 2)
 end
 
 defmodule InternalApi.RBAC.Scope do
@@ -493,6 +537,7 @@ defmodule InternalApi.RBAC.RoleBindingSource do
   field(:ROLE_BINDING_SOURCE_GITLAB, 4)
   field(:ROLE_BINDING_SOURCE_SCIM, 5)
   field(:ROLE_BINDING_SOURCE_INHERITED_FROM_ORG_ROLE, 6)
+  field(:ROLE_BINDING_SOURCE_SAML_JIT, 7)
 end
 
 defmodule InternalApi.RBAC.RBAC.Service do
@@ -525,6 +570,7 @@ defmodule InternalApi.RBAC.RBAC.Service do
   rpc(:ModifyRole, InternalApi.RBAC.ModifyRoleRequest, InternalApi.RBAC.ModifyRoleResponse)
   rpc(:DestroyRole, InternalApi.RBAC.DestroyRoleRequest, InternalApi.RBAC.DestroyRoleResponse)
   rpc(:ListMembers, InternalApi.RBAC.ListMembersRequest, InternalApi.RBAC.ListMembersResponse)
+  rpc(:CountMembers, InternalApi.RBAC.CountMembersRequest, InternalApi.RBAC.CountMembersResponse)
 
   rpc(
     :ListAccessibleOrgs,
@@ -536,6 +582,12 @@ defmodule InternalApi.RBAC.RBAC.Service do
     :ListAccessibleProjects,
     InternalApi.RBAC.ListAccessibleProjectsRequest,
     InternalApi.RBAC.ListAccessibleProjectsResponse
+  )
+
+  rpc(
+    :RefreshCollaborators,
+    InternalApi.RBAC.RefreshCollaboratorsRequest,
+    InternalApi.RBAC.RefreshCollaboratorsResponse
   )
 end
 

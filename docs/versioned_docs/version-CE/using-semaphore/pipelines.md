@@ -4,20 +4,13 @@ description: Connect blocks to get things done
 
 # Pipelines
 
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-import Steps from '@site/src/components/Steps';
-
-A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available.
+A pipeline is a group of connected blocks. This page explains what pipelines are, how they organize workflow execution order, and what settings are available. In this page, the terms organization, server, and instance are used interchangeably.
 
 ## Overview {#overview}
 
 Pipelines are groups of blocks that can be connected via dependencies to define their execution order.
 
-Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder. 
+Pipelines are also the *unit of configuration*. Each pipeline is encoded as separate a YAML file in the `.semaphore` folder.
 
 For reference, here is an example pipeline with its respective YAML.
 
@@ -34,8 +27,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: Build
     task:
@@ -95,7 +91,7 @@ You can reorder blocks by changing their dependencies using the visual editor.
 
 ## Pipeline initialization {#init}
 
-Before Semaphore can start running the jobs in the pipeline, the pipeline YAML file needs to be retrieved from the repository. As a first step, Semaphore request the file via the GitHub or BitBucket API and inspects its contents.
+Before Semaphore can start running the jobs in the pipeline, the pipeline YAML file needs to be retrieved from the repository. As a first step, Semaphore requests the file to the Git provider and inspects its contents.
 
 There are two types of pipelines:
 
@@ -137,9 +133,18 @@ Here you can see the how spc evaluated the pipeline and all the actions taken du
 
 ![Example init job log](./img/init-log-example.jpg)
 
+## Pipeline rebuild {#rebuild}
+
+When a job in the pipeline fails, the default behavior is to stop the pipeline. You can attempt to re-run the pipeline in two ways:
+
+- Pressing **Rerun** restarts the whole pipeline from the beginning
+- Pressing **Rebuild Pipeline** only re-runs the blocks with failed jobs
+
+![Location of rerun and rebuild buttons](./img/rerun-pipeline.jpg)
+
 ## Pipeline settings {#settings}
 
-Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML. 
+Pipeline settings are applied to all its blocks. You can change pipeline settings with the editor or directly in the YAML.
 
 ### Agents {#agents}
 
@@ -153,25 +158,23 @@ To select the agent running your jobs in a pipeline:
 <Steps>
 
 1. Select the pipeline
-2. Select the **Environment Type**
-3. Select the **Operating System** (if available)
-4. Select the [machine type](../reference/machine-types)
+2. Select the "Docker Containers" in **Environment Type**
+3. Select the default **Machine type**
+4. Type the name of the Docker image to use in the jobs
 
 </Steps>
-
-The available hardware changes depending on the type of environment you selected.
 
 ![Agent Selection](./img/agent-settings.jpg)
 
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-
 <Steps>
 
 1. Add the `agent` and `machine` keys
-2. Add the hardware `type`. The value must be one of the supported [machine types](../reference/machine-types)
-3. Add the `os_image`. The value must be one of the supported operating systems
+2. Add the hardware `type`. The default is `s1-kubernetes`, which is the [self-hosted agent](./self-hosted) built-in in the Semaphore server
+3. Leave `os_image` empty
+4. Add the `containers` key, this contains a list with keys `name` and `image`. The first container must have `name = main` and the image is the Docker image where the jobs run
 
 </Steps>
 
@@ -181,17 +184,16 @@ name: Initial Pipeline
 # highlight-start
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-end
 blocks:
   - name: 'Block #1'
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
       jobs:
         - name: 'Job #1'
           commands:
@@ -203,91 +205,7 @@ blocks:
 
 ### Docker containers {#docker-environments}
 
-:::tip
-
-If you want to build and run Docker images in your jobs, check the [working with Docker page](./optimization/docker).
-
-:::
-
-Jobs can run inside Docker containers. This allows you to define a custom-build environment with pre-installed tools and dependencies needed for your project. You can enable this setting in the pipeline agent or in the [block agent override](./jobs#agent-override).
-
-You can run multiple containers at the same time. The job runs in the first container (called `main`) and attaches the other containers to the same network. This is similar to how containers inside a Kubernetes pod communicate. 
-
-The network addresses of all containers are mapped to their names. Let's say you have two containers, "main" and "mysql", you can connect to the database from main with:
-
-```shell title="container 'main'"
-mysql --host=mysql --user=root
-```
-
-To run the job inside a Docker container:
-
-<Tabs groupId="editor-yaml">
-<TabItem value="editor" label="Editor">
-
-<Steps>
-
-1. Select the pipeline
-2. In **Environment Types** select **Docker Container(s)**
-3. Select the [machine type](../reference/machine-types)
-4. Type the **Image** name for this container
-5. Optionally, add environment variables
-6. Optionally, add more containers
-
-  ![Setting Docker environments](./img/agent-docker.jpg)
-
-</Steps>
-
-</TabItem>
-<TabItem value="yaml" label="YAML">
-
-<Steps>
-
-1. Add the `agent` and `machine`
-2. Add a `containers` key
-3. Each list item is a container. The first one must be called `main`
-4. Add the `image`
-5. Optionally, add `env_vars`
-6. Optionally, add more containers
-
-</Steps>
-
-```yaml title=".semaphore/semaphore.yml"
-version: v1.0
-name: Initial Pipeline
-agent:
-  machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
-  # highlight-start
-  containers:
-    - name: main
-      image: 'semaphoreci/ubuntu:20.04'
-      env_vars:
-        - name: FOO_1
-          value: BAR_1
-    - name: web
-      image: nginx
-  # highlight-end
-blocks:
-  - name: 'Block #1'
-    dependencies: []
-    task:
-      jobs:
-        - name: 'Job #1'
-          commands:
-            - 'curl http://web'
-```
-
-</TabItem>
-</Tabs>
-
-To use images in private repositories see [Private Docker Registries](#docker-private).
-
-:::info
-
-Semaphore provides a [public Docker registry](./optimization/container-registry) for popular images.
-
-:::
+The [Running Jobs in Docker Containers page](./containers) shows how to use Docker environments in your jobs.
 
 ### Prologue {#prologue}
 
@@ -306,8 +224,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 global_job_config:
   prologue:
@@ -353,8 +274,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 global_job_config:
   epilogue:
@@ -385,6 +309,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -405,8 +330,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 execution_time_limit:
   hours: 2
@@ -428,6 +356,7 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
 
@@ -459,8 +388,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 fail_fast:
   stop:
@@ -517,8 +449,11 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 auto_cancel:
   running:
@@ -541,9 +476,9 @@ blocks:
           commands:
             - npm run build
 ```
+
 </TabItem>
 </Tabs>
-
 
 ### YAML file path {#yaml-path}
 
@@ -562,8 +497,11 @@ version: v1.0
 name: Deploy
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: 'Block #1'
     task:
@@ -615,16 +553,15 @@ version: v1.0
 name: Initial Pipeline
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 blocks:
   - name: 'Block #1'
     dependencies: []
     task:
-      agent:
-        machine:
-          type: e1-standard-2
-          os_image: ubuntu2004
       jobs:
         - name: 'Job #1'
           commands:
@@ -643,7 +580,6 @@ after_pipeline:
 
 </TabItem>
 </Tabs>
-
 
 ## Private Docker Registries {#docker-private}
 
@@ -668,7 +604,7 @@ To pull images from a private Docker Hub registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -698,7 +634,7 @@ To pull images from a private AWS Elastic Container Registry (ECR), follow these
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -711,7 +647,6 @@ To pull images from a private AWS Elastic Container Registry (ECR), follow these
 </Steps>
 
 ### Images in Google GCR {#docker-gcr}
-
 
 To pull images from a private Google Container Registry (GCR), follow these steps:
 
@@ -735,7 +670,7 @@ To pull images from a private Google Container Registry (GCR), follow these step
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -765,7 +700,7 @@ To pull images from a private Quay.io registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -795,7 +730,7 @@ To pull images from any arbitrary Docker registry, follow these steps:
   ```yaml title=".semaphore/semaphore.yml"
   agent:
      machine:
-       type: e1-standard-2
+       type: s1-kubernetes
      containers:
        - name: main
          image: <your-private-repository>/<image>
@@ -813,7 +748,7 @@ Queues allow you to control the order in which pipelines run. Semaphore pipeline
 
 ### Default and named queues {#named-queues}
 
-Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially. 
+Semaphore creates a queue for each Git push or pull requests. All workflows sharing the same commit SHA belong in the same queue and run sequentially.
 
 In other words, every time you re-run a workflow, create a pull request, push a tag, the pipeline is added to the end of the same-commit queue.
 
@@ -855,8 +790,11 @@ version: v1.0
 name: Production deployment
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   name: Deployment queue
@@ -877,8 +815,11 @@ version: v1.0
 name: Project A deployment
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   name: Shared deployment queue
@@ -913,8 +854,11 @@ version: v1.0
 name: Tests
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   processing: parallel
@@ -929,7 +873,7 @@ blocks:
 
 ### Conditional queues {#conditional-queues}
 
-You can use conditional statements to assign pipelines based on parameters like branch name or tag name. 
+You can use conditional statements to assign pipelines based on parameters like branch name or tag name.
 
 The following example uses three rules:
 
@@ -942,8 +886,11 @@ version: v1.0
 name: Example project
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 queue:
   - when: "branch = 'master'"
@@ -1011,7 +958,6 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 </TabItem>
 <TabItem value="yaml" label="YAML">
 
-
 <Steps>
 
 1. Open the pipeline YAML
@@ -1021,13 +967,16 @@ To change the global time limit for all jobs in a pipeline, follow these steps:
 
 </Steps>
 
-```shell title="Changing max duration for a single job"
+```yaml title="Changing max duration for a single job"
 version: v1.0
 name: Pipeline using execution_time_limit
 agent:
   machine:
-    type: e1-standard-2
-    os_image: ubuntu2004
+    type: s1-kubernetes
+    os_image: ''
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ubuntu:22.04'
 # highlight-start
 execution_time_limit:
   hours: 3

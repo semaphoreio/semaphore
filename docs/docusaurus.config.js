@@ -13,7 +13,7 @@ const config = {
   // https://docusaurus.io/docs/next/api/docusaurus-config#noIndex
   noIndex: false,
   title: 'Semaphore',
-  tagline: 'A CI/CD solution to elevate developer workflows',
+  tagline: 'The open source delivery platform',
   favicon: 'img/favicon.ico',
 
   // extra themes
@@ -23,21 +23,24 @@ const config = {
   ],
   markdown: {
     mermaid: true,
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownImages: 'throw',
+    }
   },
 
   // Production url of your site here
-  url: 'https://docs.semaphoreci.com',
+  url: 'https://docs.semaphore.io',
 
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: process.env.BASE_URL ? process.env.BASE_URL : '/',
 
   // GitHub org and project. Needed for Github Pages.
-  organizationName: 'semaphoreci',
+  organizationName: 'semaphoreio',
   projectName: 'semaphore',
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
 
   i18n: {
     defaultLocale: 'en',
@@ -50,7 +53,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
-          sidebarCollapsible: false,
+          sidebarCollapsible: true,
           routeBasePath: '/', // move docs to the website root
           sidebarPath: './sidebars.js',
           docItemComponent: "@theme/ApiItem", // Derived from docusaurus-theme-openapi
@@ -65,10 +68,23 @@ const config = {
               banner: "none",
             },
             "CE": {
-              label: 'Community Edition (1.1)',
+              label: 'Community Edition v1.5 (latest)',
               path: 'CE',
               banner: "none"
-            }
+            },
+            "CE-1.4": {
+              label: 'Community Edition v1.4',
+              path: 'CE-1.4',
+            },
+            "EE": {
+              label: 'Enterprise Edition v1.5 (latest)',
+              path: 'EE',
+              banner: "none"
+            },
+            "EE-1.4": {
+              label: 'Enterprise Edition v1.4',
+              path: 'EE-1.4',
+            },
           },
 
         },
@@ -87,15 +103,23 @@ const config = {
   plugins: [
       '@docusaurus/plugin-ideal-image',
       [
+        "posthog-docusaurus",
+        {
+          apiKey: "phc_BTxwQUnbsnovudhs0s8IKekz9HRT8gXXortX1g1rocf",
+          appUrl: "https://eu.i.posthog.com", // optional, defaults to "https://us.i.posthog.com"
+          enableInDevelopment: false, // optional
+        },
+      ],
+      [
         'docusaurus-plugin-openapi-docs',
         {
           id: "api", // plugin id
           docsPluginId: "classic", // configured for preset-classic
           config: {
             semaphoreAPI: {
-              specPath: "https://docs.semaphoreci.com/v2/api-spec/openapi.yaml",
+              specPath: "https://docs.semaphore.io/v2/api-spec/openapi.yaml",
               outputDir: "docs/openapi-spec",
-              downloadUrl: "https://docs.semaphoreci.com/v2/api-spec/openapi.json",
+              downloadUrl: "https://docs.semaphore.io/v2/api-spec/openapi.json",
               sidebarOptions: {
                 categoryLinkSource: "tag",
                 groupPathsBy: "tag",
@@ -129,24 +153,24 @@ const config = {
           srcDark: 'img/logo-white.svg'
         },
         items: [
-          {
-            type: 'docSidebar',
-            sidebarId: 'gettingStarted',
-            position: 'left',
-            label: 'Getting Started',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'usingSemaphore',
-            position: 'left',
-            label: 'Using Semaphore',
-          },
-          {
-            type: 'docSidebar',
-            sidebarId: 'reference',
-            position: 'left',
-            label: 'Reference',
-          },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'docs',
+          //   position: 'right',
+          //   label: 'Docs',
+          // },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'usingSemaphore',
+          //   position: 'right',
+          //   label: 'Using Semaphore',
+          // },
+          // {
+          //   type: 'docSidebar',
+          //   sidebarId: 'reference',
+          //   position: 'right',
+          //   label: 'Reference',
+          // },
           // uncomment this when the new API is released
           // {
           //   type: 'docSidebar',
@@ -154,15 +178,15 @@ const config = {
           //   position: 'left',
           //   label: 'API Specification',
           // },
-          {
-            type: 'html',
-            position: 'right',
-            value: '<a href="/CE/getting-started/about-semaphore">Semaphore Editions →</a>'
-          },
+          // {
+          //   type: 'html',
+          //   position: 'right',
+          //   value: '<a href="/CE/getting-started/about-semaphore">Semaphore Editions →</a>'
+          // },
           /* version */
           {
             type: 'docsVersionDropdown',
-            position: 'right',
+            position: 'left',
             // dropdownItemsAfter: [{to: '/versions', label: 'All versions'}],
             dropdownActiveClassDisabled: true,
           },
@@ -182,12 +206,12 @@ const config = {
       },
 
       // This is an optional announcement bar. It goes on the top of the page
-      announcementBar: {
-        id: `announcementBar-1`,
-        content: `Semaphore CE <strong>v1.1.0 is out</strong> — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
-        backgroundColor: '#49a26e',
-        textColor: '#f5f6f7'
-      },
+      // announcementBar: {
+      //   id: `announcementBar-1`,
+      //   content: `Semaphore <strong>Enterprise Edition</strong> v1.3.0 is available! — ⭐️ If you like Semaphore, <em>give it a star</em> on <a target="_blank" rel="noopener noreferrer" href="https://github.com/semaphoreio/semaphore">GitHub</a>`,
+      //   backgroundColor: '#49a26e',
+      //   textColor: '#f5f6f7'
+      // },
       footer: {
         style: 'dark',
         links: [

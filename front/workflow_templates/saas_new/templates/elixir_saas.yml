@@ -1,11 +1,12 @@
-# This is a Semaphore configuration file for Elixir projects
-# For more information about Semaphore configuration visit:
-# https://docs.semaphoreci.com/reference/pipeline-yaml-reference/
+# Semaphore CI pipeline for a non-Phoenix Elixir project
+# Spec: https://docs.semaphoreci.com/reference/pipeline-yaml
 
-version: v1.0  # Semaphore configuration version
-name: "💫 Elixir CI Pipeline"  # Pipeline display name
+version: v1.0
+name: "💧 Elixir CI Pipeline"
 
+# -------------------------------------------------------------------
 # Define the machine type and OS image to run the pipeline on
+# -------------------------------------------------------------------
 agent:
   machine:
     type: {{ machine_type }}
@@ -21,79 +22,140 @@ auto_cancel:
   queued:
     when: branch = 'main'   # Cancel queued pipelines on main branch
 
-# Commands to run before each job
+# -------------------------------------------------------------------
+# GLOBAL JOB CONFIG – runs before every job
+# Docs: https://docs.semaphoreci.com/reference/pipeline-yaml#global-job-config
+# Keep only commands truly needed everywhere
+# -------------------------------------------------------------------
 global_job_config:
   prologue:
     commands:
-      - checkout                           # Get the code from repository
-      - sem-service start postgres 17      # Start PostgreSQL service
-      - sem-version erlang 26.2            # Set Erlang version
-      - sem-version elixir 1.15.7          # Set Elixir version
-      - cache restore                      # Restore cached dependencies      
-      - mix local.hex --force              # Install Hex package manager
-      - mix local.rebar --force            # Install rebar3 build tool
-      - mix deps.get                       # Install dependencies
+      - checkout                           # Clone repo → https://docs.semaphoreci.com/reference/toolbox#checkout
+      - sem-version elixir 1.16            # Select Elixir version → https://docs.semaphoreci.com/reference/toolbox#sem-version
+      - sem-version erlang 26.2            # Select Erlang/OTP version → https://docs.semaphoreci.com/using-semaphore/languages/elixir-erlang
+      - mix local.hex   --force
+      - mix local.rebar --force
+      - cache restore                      # Reuse deps/ or _build cache
 
-# Pipeline blocks represent groups of jobs that can run in parallel
+# -------------------------------------------------------------------
+# BLOCK: 📦 Install & Build – compile & cache artifacts
+# -------------------------------------------------------------------
 blocks:
-  # Block for setting up dependencies and caching
-  - name: "🛠️ Setup and Cache"
+  - name: "📦 Install & Build"
     dependencies: []
     task:
       jobs:
-        - name: Install Dependencies
+        - name: "⚙️ Compile"
           commands:
-            - mix deps.compile  # Compile dependencies
-            - mix compile      # Compile project
-            - cache store      # Cache dependencies for future runs
+            - mix deps.get
+            - mix compile
+            - cache store                  # Save deps/ or _build for later steps
 
-  # Block for code quality checks
-  - name: "🔍 Code Quality"
-    dependencies:
-      - "🛠️ Setup and Cache"
+# -------------------------------------------------------------------
+# CODE-QUALITY BLOCKS – one block per check
+# -------------------------------------------------------------------
+  - name: "🖋 Format"
+    dependencies: ["📦 Install & Build"]
     task:
       jobs:
-        - name: Run Formatter and Credo
+        - name: "🎨 mix format"
           commands:
-            - mix format --check-formatted  # Check code formatting
-            - mix credo --strict           # Run static code analysis
+            - mix format --check-formatted
 
-  # Block for security checks
-  - name: "🔐 Security Checks"
-    dependencies:
-      - "🛠️ Setup and Cache"
+  - name: "🔎 Credo"
+    dependencies: ["📦 Install & Build"]
     task:
       jobs:
-        - name: Run Security Scans
+        - name: "🔍 mix credo"
           commands:
-            - mix deps.audit  # Check for known vulnerabilities
-            - mix sobelow    # Run security-focused static analysis
+            - mix credo --strict
 
-  # Block for type checking
+  - name: "🔐 Sobelow"
+    dependencies: ["📦 Install & Build"]
+    task:
+      jobs:
+        - name: "🛡️ mix sobelow"
+          commands:
+            - mix sobelow --exit
+
+  - name: "🛡 Deps Audit"
+    dependencies: ["📦 Install & Build"]
+    task:
+      jobs:
+        - name: "🛡️ mix deps.audit"
+          commands:
+            - mix deps.audit
+
   - name: "📊 Dialyzer"
-    dependencies:
-      - "🛠️ Setup and Cache"
+    dependencies: ["📦 Install & Build"]
     task:
       jobs:
-        - name: Type Checking
+        - name: "🧠 mix dialyzer"
+          env_vars:
+            - name: MIX_ENV
+              value: test
           commands:
-            - mix dialyzer  # Run static type checking
+            - mix dialyzer --halt-exit-status
 
-  # Block for running tests
-  - name: "🧪 Test Suite"
-    dependencies:
-      - "🛠️ Setup and Cache"
+# -------------------------------------------------------------------
+# BLOCK: 🧪 Tests – split suite for faster feedback
+# -------------------------------------------------------------------
+  - name: "🧪 Tests"
+    dependencies: ["📦 Install & Build"]
     task:
-      env_vars:
-        - name: MIX_ENV
-          value: test
-        - name: PGHOST
-          value: 127.0.0.1
-        - name: PGUSER
-          value: postgres
-      jobs:
-        - name: "🟢 ExUnit Tests"
-          parallelism: 4  # Run tests in parallel
+      epilogue:                            # Publish JUnit only for test jobs
+        always:
           commands:
-            - mix test.setup  # Setup test database
-            - mix test --partitions $SEMAPHORE_JOB_COUNT --partition $SEMAPHORE_JOB_INDEX --cover  # Run tests with coverage
+            - '[ -f report.xml ] && test-results publish report.xml'  # https://docs.semaphoreci.com/using-semaphore/tests/test-reports
+      jobs:
+        - name: "🧪 Tests-1"
+          env_vars:
+            - name: MIX_TEST_PARTITION
+              value: "1"
+          commands:
+            - sem-service start postgres 17
+            - mix test --color
+        - name: "🧪 Tests-2"
+          env_vars:
+            - name: MIX_TEST_PARTITION
+              value: "2"
+          commands:
+            - sem-service start postgres 17
+            - mix test --color
+
+# -------------------------------------------------------------------
+# BLOCK: 🚀 Docker Deploy – runs only on main branch
+# Secrets docs: https://docs.semaphoreci.com/reference/pipeline-yaml#secrets-in-task
+# -------------------------------------------------------------------
+  - name: "🚀 Docker Deploy"
+    dependencies:
+      - "🖋 Format"
+      - "🔎 Credo"
+      - "🔐 Sobelow"
+      - "🛡 Deps Audit"
+      - "📊 Dialyzer"
+      - "🧪 Tests"
+    run:
+      when: "branch = 'main'"
+    task:
+      secrets:
+        - name: dockerhub              # Registry creds    
+      jobs:
+        - name: "🐳 Build & Push"
+          commands:
+            - echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+            - docker build -t myapp:${SEMAPHORE_GIT_SHA} .
+            - docker tag  myapp:${SEMAPHORE_GIT_SHA} myapp:latest
+            - docker push myapp:${SEMAPHORE_GIT_SHA}
+            - docker push myapp:latest
+
+# -------------------------------------------------------------------
+# AFTER PIPELINE – merge JUnit files into a single report
+# Docs: https://docs.semaphoreci.com/using-semaphore/tests/test-reports#step3
+# -------------------------------------------------------------------
+after_pipeline:
+  task:
+    jobs:
+      - name: "📊 Merge Reports"
+        commands:
+          - test-results gen-pipeline-report  # Combine job reports

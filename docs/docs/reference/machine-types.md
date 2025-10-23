@@ -4,11 +4,6 @@ description: Semaphore Cloud Machines Specifications
 
 # Machine Types
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import Available from '@site/src/components/Available';
-import VideoTutorial from '@site/src/components/VideoTutorial';
-
 This page gives technical specifications for the machines available on Semaphore Cloud.
 
 ## Overview
@@ -112,7 +107,8 @@ The r1 generation is presented in the following types:
 
 | Type | Virtual CPUs | Memory (GB) | Disk (GB) |
 |--|--|--|--|
-| `r1-standard-4` | 4 | 10 | 65 |
+| `r1-standard-2` | 2 | 4 | 55 |
+| `r1-standard-4` | 4 | 8 | 65 |
 
 R1 Generation machine types can only be paired with:
 

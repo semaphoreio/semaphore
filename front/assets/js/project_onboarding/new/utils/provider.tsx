@@ -16,22 +16,36 @@ export const getProviderName = (type: IntegrationType | string): string => {
 };
 
 export const getProviderNameWithBadge = (type: IntegrationType | string) => {
-  if (type === IntegrationType.GithubOauthToken) {
-    return (
-      <Fragment>
-        GitHub
-        <span className="f6 normal ml2 ph1 br2 bg-yellow white pointer">
+  switch(type) {
+    case IntegrationType.GithubApp:
+      return (
+        <Fragment>
+          GitHub
+          <span className="f6 normal ml2 ph1 br2 bg-yellow white pointer">
           Personal Token
-        </span>
-        {` `}
-      </Fragment>
-    );
+          </span>
+        </Fragment>
+      );
+    case IntegrationType.Git:
+      return (
+        <Fragment>
+        Generic git
+        </Fragment>
+      );
+    default:
+      return (
+        <Fragment>
+          {getProviderName(type)}
+        </Fragment>
+      );
+
   }
-  return <Fragment>{getProviderName(type)}</Fragment>;
 };
 
 export const getProviderIcon = (type: IntegrationType | string): string | null => {
   switch (type) {
+    case IntegrationType.Git:
+      return `images/icn-git-generic.svg`;
     case IntegrationType.GithubApp:
     case IntegrationType.GithubOauthToken:
       return `images/icn-github.svg`;
@@ -50,6 +64,8 @@ export const getProviderDescription = (type: IntegrationType | string, status: s
   }
 
   switch (type) {
+    case IntegrationType.Git:
+      return `Run builds on changes in your hosted git repository.`;
     case IntegrationType.GithubApp:
     case IntegrationType.GithubOauthToken:
       return `Automate builds for your GitHub repositories.`;

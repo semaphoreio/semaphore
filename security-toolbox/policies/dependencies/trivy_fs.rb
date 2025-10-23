@@ -4,6 +4,7 @@ class Policy::TrivyFs < Policy
     @severity = args[:severity] || "HIGH,CRITICAL"
     @template_path = File.join(File.dirname(__FILE__), "trivyfs/junit.tpl")
     @ignore_policy = args[:ignore_policy] || nil
+    @output_dir = args[:output_dir] || "out"
   end
 
   def test
@@ -13,10 +14,9 @@ class Policy::TrivyFs < Policy
       "--exit-code 1",
       "--severity #{@severity}",
       "--ignore-unfixed",
-      "--format template",
+      "--format json",
       "--scanners vuln,license",
-      "--template '@#{@template_path}'",
-      "-o results.xml"
+      "-o #{@output_dir}/dependency-scan-trivy.json"
     ]
 
     if @ignore_policy != nil
