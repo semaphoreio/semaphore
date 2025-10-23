@@ -354,7 +354,7 @@ Following gems are pre-installed:
 </div>
 </details>
 
-## macOS Xcode 15 {#mac-15}
+## (DEPRECATED) macOS Xcode 15 {#mac-15}
 
 <Tabs groupId="editor-yaml">
 <TabItem value="editor" label="Editor">

@@ -769,8 +769,8 @@ blocks:
    # highlight-start
       agent:
           machine:
-            type: a1-standard-4
-            os_image: macos-xcode15
+            type: a2-standard-4
+            os_image: macos-xcode16
    # highlight-end
       jobs:
         - name: Using agent job
