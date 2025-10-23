@@ -190,6 +190,7 @@ defmodule Secrethub.OpenIDConnect.JWT do
     ref =
       req.git_ref
       |> sanitize()
+      |> trim_refs_prefix()
       |> cap(:ref)
 
     [org, project, repo, ref_type, ref]
@@ -208,6 +209,9 @@ defmodule Secrethub.OpenIDConnect.JWT do
     |> to_string()
     |> sanitize()
   end
+
+  defp trim_refs_prefix("refs/" <> rest), do: rest
+  defp trim_refs_prefix(value), do: value
 
   defp cap(value, key) do
     limit = Map.fetch!(@truncate_rules, key)
