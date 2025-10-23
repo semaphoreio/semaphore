@@ -11,7 +11,7 @@ services:
       args:
         - BUILD_ENV=test
     ports:
-      - "50051"
+      - 60051:50051
     env_file:
       - .env
     volumes:
