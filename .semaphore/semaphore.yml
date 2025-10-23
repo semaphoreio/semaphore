@@ -2438,6 +2438,10 @@ blocks:
         commands:
           - checkout && cd ee/ephemeral_environments
           - make build
+      epilogue:
+        always:
+          commands:
+            - ls -la
       jobs:
         - name: "Lint"
           commands:
@@ -2448,7 +2452,9 @@ blocks:
         - name: "Test"
           commands:
             - export TEST_RESULTS_NAME="Ephemeral Environments Tests"
+            - ls -la
             - make test.ex
+            - ls -la
   # RBAC EE
   - name: "RBAC EE: Provision Test Image"
     dependencies: []
