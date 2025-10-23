@@ -16,7 +16,7 @@ defmodule EphemeralEnvironments.Grpc.EphemeralEnvironmentsServerTest do
 
   @org_id Ecto.UUID.generate()
   @user_id Ecto.UUID.generate()
-  @grpc_port 50051
+  @grpc_port 50_051
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)

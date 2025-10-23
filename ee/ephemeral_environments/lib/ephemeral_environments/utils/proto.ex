@@ -54,8 +54,8 @@ defmodule EphemeralEnvironments.Utils.Proto do
   end
 
   def to_map(value), do: value
-  defp convert_value(value, module, field) when is_list(value), do: Enum.map(value, &to_map/1)
-  defp convert_value(value, module, field) when is_struct(value), do: to_map(value)
+  defp convert_value(value, _module, _field) when is_list(value), do: Enum.map(value, &to_map/1)
+  defp convert_value(value, _module, _field) when is_struct(value), do: to_map(value)
 
   defp convert_value(value, module, field) when is_integer(value) do
     # Check if this field is an enum by looking at the field definition
@@ -78,37 +78,33 @@ defmodule EphemeralEnvironments.Utils.Proto do
   # If given field is of type enum inside the parent module, the name of the enum module
   # will be returned. Otherwise it will return nil.
   defp get_enum_module(module, field) do
-    try do
-      field_props =
-        module.__message_props__().field_props |> Enum.map(fn {_num, props} -> props end)
+    field_props =
+      module.__message_props__().field_props |> Enum.map(fn {_num, props} -> props end)
 
-      field_info = find_field_info(field_props, field)
+    field_info = find_field_info(field_props, field)
 
-      if field_info && field_info.enum? do
-        case field_info.type do
-          {:enum, enum_module} -> enum_module
-          _ -> nil
-        end
-      else
-        nil
+    if field_info && field_info.enum? do
+      case field_info.type do
+        {:enum, enum_module} -> enum_module
+        _ -> nil
       end
-    rescue
-      _ -> nil
+    else
+      nil
     end
+  rescue
+    _ -> nil
   end
 
   defp integer_to_atom(enum_module, value) do
-    try do
-      enum_module.__message_props__()
-      |> Map.get(:field_props, %{})
-      |> Enum.find(fn {_name, props} -> props[:enum_value] == value end)
-      |> case do
-        {name, _} -> normalize_enum_name(name, enum_module)
-        nil -> value
-      end
-    rescue
-      _ -> value
+    enum_module.__message_props__()
+    |> Map.get(:field_props, %{})
+    |> Enum.find(fn {_name, props} -> props[:enum_value] == value end)
+    |> case do
+      {name, _} -> normalize_enum_name(name, enum_module)
+      nil -> value
     end
+  rescue
+    _ -> value
   end
 
   # Normalize enum names by removing prefix and lowercasing

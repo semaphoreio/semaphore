@@ -1,5 +1,4 @@
 list='
-include/google/protobuf/timestamp
 ephemeral_environments
 rbac
 '

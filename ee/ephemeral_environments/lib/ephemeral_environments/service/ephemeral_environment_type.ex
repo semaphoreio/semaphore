@@ -159,10 +159,9 @@ defmodule EphemeralEnvironments.Service.EphemeralEnvironmentType do
         String.replace(acc, "%{#{key}}", safe_to_string(value))
       end)
     end)
-    |> Enum.map(fn {field, errors} ->
+    |> Enum.map_join("; ", fn {field, errors} ->
       "#{field}: #{Enum.join(errors, ", ")}"
     end)
-    |> Enum.join("; ")
   end
 
   # Safely convert values to strings, handling complex types
