@@ -835,7 +835,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-      assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:::"
+      assert Map.get(jwt.fields, "sub127") == "testera:#{req.project_id}:::"
       assert Map.get(jwt.fields, "prj") == req.project_name
       assert Map.get(jwt.fields, "org") == req.org_username
       refute Map.has_key?(jwt.fields, "https://aws.amazon.com/tags")
@@ -909,7 +909,120 @@ defmodule Secrethub.InternalGrpcApi.Test do
       assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
       assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
       assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-      assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:my-repo:branch:"
+      assert Map.get(jwt.fields, "sub127") == "testera:#{req.project_id}:my-repo:br:"
+    end
+
+    test "sub127 claim sanitizes values, caps field lengths, and stays within 127 chars" do
+      long_org = String.duplicate("org-with:colon:", 10)
+      long_repo = String.duplicate("repo-with:colon:", 10)
+      long_ref = String.duplicate("feature/super-long:ref:", 12)
+
+      req =
+        GenerateOpenIDConnectTokenRequest.new(
+          org_id: Ecto.UUID.generate(),
+          org_username: long_org,
+          expire_in: 3600,
+          subject: "project:front:pipeline:semaphore.yml",
+          project_id: Ecto.UUID.generate(),
+          workflow_id: Ecto.UUID.generate(),
+          pipeline_id: Ecto.UUID.generate(),
+          job_id: Ecto.UUID.generate(),
+          git_branch_name: "master",
+          repository_name: long_repo,
+          git_ref_type: "branch",
+          git_ref: long_ref,
+          job_type: "pipeline_job",
+          repo_slug: "renderedtext/front",
+          triggerer: "api"
+        )
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      assert {:ok, response} = SecretService.Stub.generate_open_id_connect_token(channel, req)
+      assert {true, jwt, _} = Secrethub.OpenIDConnect.JWT.verify(response.token)
+
+      claim = Map.fetch!(jwt.fields, "sub127")
+      parts = String.split(claim, ":", parts: 5, trim: false)
+
+      assert length(parts) == 5
+      assert Enum.all?(parts, &(not String.contains?(&1, ":")))
+      assert String.length(claim) <= 127
+
+      expected_org =
+        long_org
+        |> String.replace(":", "")
+        |> String.slice(0, 25)
+
+      expected_repo =
+        long_repo
+        |> String.replace(":", "")
+        |> String.slice(0, 25)
+
+      expected_ref =
+        long_ref
+        |> String.replace(":", "")
+        |> String.slice(0, 35)
+
+      expected =
+        Enum.join(
+          [
+            expected_org,
+            String.slice(req.project_id, 0, 36),
+            expected_repo,
+            "br",
+            expected_ref
+          ],
+          ":"
+        )
+
+      assert claim == expected
+      assert Enum.at(parts, 0) == expected_org
+      assert Enum.at(parts, 1) == String.slice(req.project_id, 0, 36)
+      assert Enum.at(parts, 2) == expected_repo
+      assert Enum.at(parts, 3) == "br"
+      assert Enum.at(parts, 4) == expected_ref
+      assert String.length(Enum.at(parts, 0)) <= 25
+      assert String.length(Enum.at(parts, 2)) <= 25
+      assert String.length(Enum.at(parts, 4)) <= 35
+    end
+
+    test "sub127 claim shortens ref types to two characters" do
+      org_id = Ecto.UUID.generate()
+      project_id = Ecto.UUID.generate()
+
+      {:ok, channel} = GRPC.Stub.connect("localhost:50051")
+
+      for {ref_type, expected} <- [
+            {"branch", "br"},
+            {"tag", "tg"},
+            {"pull_request", "pr"},
+            {"pull-request", "pr"},
+            {"custom", "cu"},
+            {"", ""}
+          ] do
+        req =
+          GenerateOpenIDConnectTokenRequest.new(
+            org_id: org_id,
+            org_username: "organization",
+            expire_in: 3600,
+            subject: "sub",
+            project_id: project_id,
+            workflow_id: Ecto.UUID.generate(),
+            pipeline_id: Ecto.UUID.generate(),
+            job_id: Ecto.UUID.generate(),
+            repository_name: "repository",
+            git_ref_type: ref_type,
+            git_ref: "feature/example",
+            job_type: "pipeline_job"
+          )
+
+        assert {:ok, response} = SecretService.Stub.generate_open_id_connect_token(channel, req)
+        assert {true, jwt, _} = Secrethub.OpenIDConnect.JWT.verify(response.token)
+
+        claim = Map.fetch!(jwt.fields, "sub127")
+        [_org, _project, _repo, actual, _ref] = String.split(claim, ":", parts: 5, trim: false)
+        assert actual == expected
+      end
     end
 
     test "it returns a signed token with filtered claims in on_prem mode" do
@@ -944,7 +1057,7 @@ defmodule Secrethub.InternalGrpcApi.Test do
 
         # Essential claims should be present
         assert Map.get(jwt.fields, "sub") == "project:front:pipeline:semaphore.yml"
-        assert Map.get(jwt.fields, "sub2") == "testera:#{req.project_id}:my-repo:branch:"
+        assert Map.get(jwt.fields, "sub127") == "testera:#{req.project_id}:my-repo:br:"
         assert Map.get(jwt.fields, "aud") == "https://testera.localhost"
         assert Map.get(jwt.fields, "iss") == "https://testera.localhost"
         assert_in_delta Map.get(jwt.fields, "exp") + req.expires_in, now, 5
