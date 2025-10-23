@@ -54,8 +54,8 @@ defmodule EphemeralEnvironments.Utils.Proto do
   end
 
   def to_map(value), do: value
-  defp convert_value(value, module, field) when is_list(value), do: Enum.map(value, &to_map/1)
-  defp convert_value(value, module, field) when is_struct(value), do: to_map(value)
+  defp convert_value(value, _module, _field) when is_list(value), do: Enum.map(value, &to_map/1)
+  defp convert_value(value, _module, _field) when is_struct(value), do: to_map(value)
 
   defp convert_value(value, module, field) when is_integer(value) do
     # Check if this field is an enum by looking at the field definition
