@@ -3,13 +3,14 @@ export MIX_ENV?=dev
 include ../../Makefile
 
 APP_NAME := $(shell grep 'app:' mix.exs | cut -d ':' -f3 | cut -d ',' -f1)
-INTERNAL_API_BRANCH?=master
+INTERNAL_API_BRANCH=master
 PROTOC_TAG=1.18.4-3.20.1-0.13.0
 TMP_REPO_DIR?=/tmp/internal_api
 
 CONTAINER_ENV_VARS = $(shell [ -f .env ] && sed 's/^/-e /' .env | tr '\n' ' ')
 ifdef CI
 CONTAINER_ENV_VARS := $(shell echo "$(CONTAINER_ENV_VARS)" | sed 's/-e POSTGRES_DB_HOST=[^ ]*/-e POSTGRES_DB_HOST=0.0.0.0/g')
+CONTAINER_ENV_VARS += -e CI=true
 $(info CI detected - CONTAINER_ENV_VARS: $(CONTAINER_ENV_VARS))
 endif
 
@@ -22,6 +23,9 @@ test.ex.setup:
 ifdef CI
 	sem-service start postgres 9.6 --db=$(POSTGRES_DB_NAME) --user=$(POSTGRES_DB_USER) --password=$(POSTGRES_DB_PASSWORD)
 endif
+
+console.ex:
+	docker compose run --service-ports $(CONTAINER_ENV_VARS) --rm app sh -c "mix ecto.create && mix ecto.migrate && iex -S mix"
 
 migration.gen:
 	@if [ -z "$(NAME)" ]; then \
