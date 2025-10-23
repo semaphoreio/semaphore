@@ -72,8 +72,7 @@ defmodule PipelinesAPI.GoferClient.RequestFormatter.Test do
   end
 
   test "form_list_request() returns user error when numeric params are invalid" do
-    assert {:error, {:user, msg}} =
-             RequestFormatter.form_list_request(%{"page_size" => "ten"})
+    assert {:error, {:user, msg}} = RequestFormatter.form_list_request(%{"page_size" => "ten"})
 
     assert msg == "Invalid value of 'page_size' param: \"ten\" - needs to be integer."
   end
