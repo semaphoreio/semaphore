@@ -99,7 +99,7 @@ defmodule Zebra.Workers.FeatureProviderInvalidatorWorkerTest do
       Worker.features_changed(callback_message)
 
       {:ok, features} = FeatureProvider.list_features()
-      assert length(features) == 4
+      assert length(features) == 5
     end
 
     test "when the organization feature state changes, organization feature caches are invalidated" do
