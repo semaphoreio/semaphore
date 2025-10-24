@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	repoipb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
 
@@ -32,6 +33,7 @@ func TestListProjectsSummary(t *testing.T) {
 
 	provider := &internalapi.MockProvider{
 		ProjectClient: stub,
+		RBACClient:    &allowRBACStub{},
 	}
 
 	handler := listHandler(provider)
@@ -105,6 +107,7 @@ func TestSearchProjectsMatches(t *testing.T) {
 
 	provider := &internalapi.MockProvider{
 		ProjectClient: stub,
+		RBACClient:    &allowRBACStub{},
 	}
 
 	handler := searchHandler(provider)
@@ -164,6 +167,19 @@ type projectClientStub struct {
 	calls           []string
 	pageCalls       []int32
 	err             error
+}
+
+type allowRBACStub struct {
+	rbacpb.RBACClient
+}
+
+func (a *allowRBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	return &rbacpb.ListUserPermissionsResponse{
+		UserId:      in.GetUserId(),
+		OrgId:       in.GetOrgId(),
+		ProjectId:   in.GetProjectId(),
+		Permissions: []string{"organization.view", "project.view"},
+	}, nil
 }
 
 func (p *projectClientStub) ListKeyset(ctx context.Context, in *projecthubpb.ListKeysetRequest, opts ...grpc.CallOption) (*projecthubpb.ListKeysetResponse, error) {

@@ -10,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -114,6 +115,18 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`%v
+
+The authentication layer must inject the X-Semaphore-User-ID header so we can enforce project permissions before streaming job logs.
+
+Troubleshooting:
+- Ensure requests pass through the authenticated proxy
+- Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Retry once the header is present`, err)), nil
+		}
+
 		cursor := strings.TrimSpace(req.GetString("cursor", ""))
 		startingLine, err := parseCursor(cursor)
 		if err != nil {
@@ -128,6 +141,15 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
 
 Retrieve the correct organization ID from organizations_list before fetching logs.`, job.GetOrganizationId(), orgID)), nil
+		}
+
+		jobProjectID := strings.TrimSpace(job.GetProjectId())
+		if jobProjectID == "" {
+			return mcp.NewToolResultError("Job describe response is missing project_id; unable to enforce authorization."), nil
+		}
+
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
 		}
 
 		if job.GetSelfHosted() {

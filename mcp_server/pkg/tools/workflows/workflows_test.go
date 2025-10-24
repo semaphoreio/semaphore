@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
@@ -42,6 +42,7 @@ func TestListWorkflows(t *testing.T) {
 	provider := &internalapi.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
+		RBACClient:     &allowRBACStub{},
 	}
 
 	handler := listHandler(provider)
@@ -110,6 +111,7 @@ func TestListWorkflowsWithRequesterOverride(t *testing.T) {
 		WorkflowClient: client,
 		UserClient:     userClient,
 		Timeout:        time.Second,
+		RBACClient:     &allowRBACStub{},
 	}
 
 	req := mcp.CallToolRequest{
@@ -150,6 +152,19 @@ type workflowClientStub struct {
 	listResp *workflowpb.ListKeysetResponse
 	listErr  error
 	lastList *workflowpb.ListKeysetRequest
+}
+
+type allowRBACStub struct {
+	rbacpb.RBACClient
+}
+
+func (a *allowRBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	return &rbacpb.ListUserPermissionsResponse{
+		UserId:      in.GetUserId(),
+		OrgId:       in.GetOrgId(),
+		ProjectId:   in.GetProjectId(),
+		Permissions: []string{"project.view", "organization.view"},
+	}, nil
 }
 
 func (s *workflowClientStub) Schedule(context.Context, *workflowpb.ScheduleRequest, ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {

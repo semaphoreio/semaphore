@@ -2,11 +2,12 @@ package jobs
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
@@ -37,12 +38,15 @@ func TestDescribeJob(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second}
+	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: &allowRBACStub{}}
 	handler := describeHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
 		"job_id":          jobID,
 	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -64,7 +68,12 @@ func TestFetchHostedLogs(t *testing.T) {
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job:    &jobpb.Job{Id: jobID, SelfHosted: false},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				SelfHosted:     false,
+			},
 		},
 	}
 	loghubClient := &loghubClientStub{
@@ -78,6 +87,7 @@ func TestFetchHostedLogs(t *testing.T) {
 	provider := &internalapi.MockProvider{
 		JobClient:    jobClient,
 		LoghubClient: loghubClient,
+		RBACClient:   &allowRBACStub{},
 		Timeout:      time.Second,
 	}
 
@@ -87,6 +97,9 @@ func TestFetchHostedLogs(t *testing.T) {
 		"job_id":          jobID,
 		"cursor":          "5",
 	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -112,7 +125,12 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 	jobClient := &jobClientStub{
 		describeResp: &jobpb.DescribeResponse{
 			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Job:    &jobpb.Job{Id: jobID, SelfHosted: true},
+			Job: &jobpb.Job{
+				Id:             jobID,
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				SelfHosted:     true,
+			},
 		},
 	}
 	loghub2Client := &loghub2ClientStub{
@@ -122,6 +140,7 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 	provider := &internalapi.MockProvider{
 		JobClient:     jobClient,
 		Loghub2Client: loghub2Client,
+		RBACClient:    &allowRBACStub{},
 		Timeout:       time.Second,
 	}
 
@@ -130,6 +149,9 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 		"job_id":          jobID,
 	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -155,6 +177,19 @@ type jobClientStub struct {
 	describeResp *jobpb.DescribeResponse
 	describeErr  error
 	lastDescribe *jobpb.DescribeRequest
+}
+
+type allowRBACStub struct {
+	rbacpb.RBACClient
+}
+
+func (a *allowRBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	return &rbacpb.ListUserPermissionsResponse{
+		UserId:      in.GetUserId(),
+		OrgId:       in.GetOrgId(),
+		ProjectId:   in.GetProjectId(),
+		Permissions: []string{"project.view", "organization.view"},
+	}, nil
 }
 
 func (s *jobClientStub) Describe(ctx context.Context, in *jobpb.DescribeRequest, opts ...grpc.CallOption) (*jobpb.DescribeResponse, error) {
