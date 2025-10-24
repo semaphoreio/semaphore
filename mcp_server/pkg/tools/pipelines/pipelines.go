@@ -16,11 +16,11 @@ import (
 )
 
 const (
-	listToolName  = "pipelines_list"
-	jobsToolName  = "pipeline_jobs"
-	defaultLimit  = 20
-	maxLimit      = 100
-	errNoClient   = "pipeline gRPC endpoint is not configured"
+	listToolName = "pipelines_list"
+	jobsToolName = "pipeline_jobs"
+	defaultLimit = 20
+	maxLimit     = 100
+	errNoClient  = "pipeline gRPC endpoint is not configured"
 )
 
 func listFullDescription() string {
@@ -265,9 +265,14 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			limit = maxLimit
 		}
 
+		pageSize, err := shared.IntToInt32(limit, "limit")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		request := &pipelinepb.ListKeysetRequest{
 			WfId:      workflowID,
-			PageSize:  int32(limit),
+			PageSize:  pageSize,
 			PageToken: strings.TrimSpace(req.GetString("cursor", "")),
 			Order:     pipelinepb.ListKeysetRequest_BY_CREATION_TIME_DESC,
 			Direction: pipelinepb.ListKeysetRequest_NEXT,

@@ -182,9 +182,14 @@ Troubleshooting:
 			limit = maxLimit
 		}
 
+		pageSize, err := shared.IntToInt32(limit, "limit")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		request := &workflowpb.ListKeysetRequest{
 			ProjectId: projectID,
-			PageSize:  int32(limit),
+			PageSize:  pageSize,
 			PageToken: cursor,
 			Order:     workflowpb.ListKeysetRequest_BY_CREATION_TIME_DESC,
 			Direction: workflowpb.ListKeysetRequest_NEXT,

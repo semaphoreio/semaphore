@@ -156,7 +156,11 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 
 	request := &loghubpb.GetLogEventsRequest{JobId: jobID}
 	if startingLine > 0 {
-		request.StartingLine = int32(startingLine)
+		offset, err := shared.IntToInt32(startingLine, "cursor offset")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		request.StartingLine = offset
 	}
 
 	callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())

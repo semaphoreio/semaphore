@@ -85,40 +85,41 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	}
 
 	var err error
+	handleDialError := func(service string, dialErr error) error {
+		if dialErr == nil {
+			return nil
+		}
+		if closeErr := m.Close(); closeErr != nil {
+			return fmt.Errorf("connect %s service: %w (cleanup failed: %v)", service, dialErr, closeErr)
+		}
+		return fmt.Errorf("connect %s service: %w", service, dialErr)
+	}
 	if m.workflowConn, err = dial(cfg.WorkflowEndpoint); err != nil {
 		return nil, fmt.Errorf("connect workflow service: %w", err)
 	}
 	if m.organizationConn, err = dial(cfg.OrganizationEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect organization service: %w", err)
+		return nil, handleDialError("organization", err)
 	}
 	if m.projectConn, err = dial(cfg.ProjectEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect project service: %w", err)
+		return nil, handleDialError("project", err)
 	}
 	if m.pipelineConn, err = dial(cfg.PipelineEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect pipeline service: %w", err)
+		return nil, handleDialError("pipeline", err)
 	}
 	if m.jobConn, err = dial(cfg.JobEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect job service: %w", err)
+		return nil, handleDialError("job", err)
 	}
 	if m.loghubConn, err = dial(cfg.LoghubEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect loghub service: %w", err)
+		return nil, handleDialError("loghub", err)
 	}
 	if m.loghub2Conn, err = dial(cfg.Loghub2Endpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect loghub2 service: %w", err)
+		return nil, handleDialError("loghub2", err)
 	}
 	if m.userConn, err = dial(cfg.UserEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect user service: %w", err)
+		return nil, handleDialError("user", err)
 	}
 	if m.rbacConn, err = dial(cfg.RBACEndpoint); err != nil {
-		m.Close()
-		return nil, fmt.Errorf("connect rbac service: %w", err)
+		return nil, handleDialError("rbac", err)
 	}
 
 	if m.workflowConn != nil {

@@ -494,10 +494,15 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
+		pageSize, err := shared.IntToInt32(limit, "limit")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		request := &projecthubpb.ListKeysetRequest{
 			Metadata:  projectRequestMeta(orgID, userID),
 			PageToken: cursor,
-			PageSize:  int32(limit),
+			PageSize:  pageSize,
 			Direction: projecthubpb.ListKeysetRequest_NEXT,
 		}
 
@@ -640,10 +645,15 @@ Troubleshooting:
 		moreAvailable := false
 
 		for page := 1; page <= maxPages; page++ {
+			pageNumber, err := shared.IntToInt32(page, "page")
+			if err != nil {
+				return mcp.NewToolResultError(err.Error()), nil
+			}
+
 			request := &projecthubpb.ListRequest{
 				Metadata: projectRequestMeta(orgID, userID),
 				Pagination: &projecthubpb.PaginationRequest{
-					Page:     int32(page),
+					Page:     pageNumber,
 					PageSize: searchPageSize,
 				},
 			}
