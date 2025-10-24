@@ -5,7 +5,8 @@ defmodule PipelinesAPI.GoferClient.RequestFormatter.Test do
 
   alias InternalApi.Gofer.{
     TriggerRequest,
-    EnvVariable
+    EnvVariable,
+    ListTriggerEventsRequest
   }
 
   test "form_trigger_request() returns internal error when it is not called with map as a param" do
@@ -51,5 +52,28 @@ defmodule PipelinesAPI.GoferClient.RequestFormatter.Test do
 
     assert {:error, {:user, msg}} = RequestFormatter.form_trigger_request(params)
     assert msg == "Invalid value of 'override' param: \"not-a-bool-val\" - needs to be boolean."
+  end
+
+  test "form_list_request() converts numeric params received as strings" do
+    params = %{
+      "switch_id" => "sw1",
+      "name" => "tg1",
+      "page" => "2",
+      "page_size" => "15"
+    }
+
+    assert {:ok,
+            %ListTriggerEventsRequest{
+              switch_id: "sw1",
+              target_name: "tg1",
+              page: 2,
+              page_size: 15
+            }} = RequestFormatter.form_list_request(params)
+  end
+
+  test "form_list_request() returns user error when numeric params are invalid" do
+    assert {:error, {:user, msg}} = RequestFormatter.form_list_request(%{"page_size" => "ten"})
+
+    assert msg == "Invalid value of 'page_size' param: \"ten\" - needs to be integer."
   end
 end

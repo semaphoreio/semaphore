@@ -46,3 +46,5 @@ services:
 
     volumes:
       - .:/app
+      - /app/_build
+      - /app/deps

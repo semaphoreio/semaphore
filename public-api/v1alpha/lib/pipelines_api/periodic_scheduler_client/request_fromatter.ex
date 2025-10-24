@@ -118,7 +118,16 @@ defmodule PipelinesAPI.PeriodicSchedulerClient.RequestFormatter do
 
   defp to_int(val, _field) when is_integer(val), do: val
 
-  defp to_int(val, field) do
+  defp to_int(val, field) when is_binary(val) do
+    case Integer.parse(val) do
+      {int, ""} -> int
+      _ -> invalid_integer(field, val)
+    end
+  end
+
+  defp to_int(val, field), do: invalid_integer(field, val)
+
+  defp invalid_integer(field, val) do
     "Invalid value of '#{field}' param: #{inspect(val)} - needs to be integer."
     |> ToTuple.user_error()
     |> throw()
