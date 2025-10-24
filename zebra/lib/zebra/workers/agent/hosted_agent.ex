@@ -125,7 +125,7 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     channel
   end
 
-  defp translate_machine(job) do
+  def translate_machine(job) do
     original_type = job.machine_type || ""
     original_os_image = job.machine_os_image || ""
 

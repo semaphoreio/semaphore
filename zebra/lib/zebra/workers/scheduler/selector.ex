@@ -122,7 +122,8 @@ defmodule Zebra.Workers.Scheduler.Selector do
         0
       end
     else
-      with {:ok, machine} <- FeatureProvider.find_machine(job.machine_type, param: org_id),
+      with {machine_type, _} <- Zebra.Workers.Agent.HostedAgent.translate_machine(job),
+           {:ok, machine} <- FeatureProvider.find_machine(machine_type, param: org_id),
            true <- FeatureProvider.Machine.enabled?(machine),
            true <- Enum.member?(machine.available_os_images, job.machine_os_image),
            quota <- FeatureProvider.Machine.quota(machine) do
