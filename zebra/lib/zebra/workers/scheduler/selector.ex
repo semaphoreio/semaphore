@@ -46,8 +46,9 @@ defmodule Zebra.Workers.Scheduler.Selector do
 
   defp select(jobs = [job | rest], org, state, result) do
     alias __MODULE__.{State, Result}
+    {machine_type, _} = Zebra.Workers.Agent.HostedAgent.translate_machine(job)
 
-    running_jobs_for_machine_type = State.running_jobs(state, job.machine_type)
+    running_jobs_for_machine_type = State.running_jobs(state, machine_type)
     machine_quota = get_machine_quota_for_job(job, org.id)
     org_id = org.id
 
@@ -94,7 +95,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
         # can be scheduled, however we continue in order to look up all the jobs
         # that need to be force finished.
         #
-        result = Result.add_no_capacity(result, job.machine_type)
+        result = Result.add_no_capacity(result, machine_type)
         select(rest, org, state, result)
 
       running_jobs_for_machine_type < machine_quota ->
@@ -106,7 +107,7 @@ defmodule Zebra.Workers.Scheduler.Selector do
 
       running_jobs_for_machine_type >= machine_quota ->
         # Can't run this job, continue selection on the rest of the jobs.
-        result = Result.add_no_capacity(result, job.machine_type)
+        result = Result.add_no_capacity(result, machine_type)
         select(rest, org, state, result)
 
       true ->
