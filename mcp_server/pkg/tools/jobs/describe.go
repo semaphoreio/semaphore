@@ -8,12 +8,14 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
 )
 
 const (
-	describeToolName = "jobs_describe"
+	describeToolName      = "jobs_describe"
+	projectViewPermission = "project.view"
 )
 
 func describeFullDescription() string {
@@ -94,6 +96,18 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`%v
+
+The authentication layer must inject the X-Semaphore-User-ID header so we can enforce project permissions before describing jobs.
+
+Troubleshooting:
+- Ensure calls pass through the authenticated proxy
+- Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Retry once the header is present`, err)), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
@@ -102,6 +116,22 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		job, err := fetchJob(ctx, api, jobID)
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		jobOrg := strings.TrimSpace(job.GetOrganizationId())
+		if jobOrg != "" && !strings.EqualFold(jobOrg, orgID) {
+			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
+
+Use the organization_id returned by organizations_list for this workspace.`, jobOrg, orgID)), nil
+		}
+
+		jobProjectID := strings.TrimSpace(job.GetProjectId())
+		if jobProjectID == "" {
+			return mcp.NewToolResultError("Job response is missing project_id; unable to enforce authorization."), nil
+		}
+
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
 		}
 
 		summary := summarizeJob(job)

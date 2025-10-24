@@ -2,11 +2,12 @@ package pipelines
 
 import (
 	"context"
+	"net/http"
 	"testing"
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 
@@ -21,32 +22,36 @@ func TestListPipelines(t *testing.T) {
 		listResp: &pipelinepb.ListKeysetResponse{
 			Pipelines: []*pipelinepb.Pipeline{
 				{
-					PplId:         pipelineID,
-					Name:          "Build",
-					WfId:          workflowID,
-					ProjectId:     "proj-1",
-					BranchName:    "main",
-					CommitSha:     "abc123",
-					State:         pipelinepb.Pipeline_RUNNING,
-					Result:        pipelinepb.Pipeline_PASSED,
-					ResultReason:  pipelinepb.Pipeline_TEST,
-					CreatedAt:     timestamppb.New(time.Unix(1700000000, 0)),
-					Queue:         &pipelinepb.Queue{QueueId: "queue-1", Name: "default", Type: pipelinepb.QueueType_IMPLICIT},
-					Triggerer:     &pipelinepb.Triggerer{PplTriggeredBy: pipelinepb.TriggeredBy_PROMOTION},
-					WithAfterTask: true,
-					AfterTaskId:   "after-1",
+					PplId:          pipelineID,
+					Name:           "Build",
+					WfId:           workflowID,
+					ProjectId:      "proj-1",
+					OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+					BranchName:     "main",
+					CommitSha:      "abc123",
+					State:          pipelinepb.Pipeline_RUNNING,
+					Result:         pipelinepb.Pipeline_PASSED,
+					ResultReason:   pipelinepb.Pipeline_TEST,
+					CreatedAt:      timestamppb.New(time.Unix(1700000000, 0)),
+					Queue:          &pipelinepb.Queue{QueueId: "queue-1", Name: "default", Type: pipelinepb.QueueType_IMPLICIT},
+					Triggerer:      &pipelinepb.Triggerer{PplTriggeredBy: pipelinepb.TriggeredBy_PROMOTION},
+					WithAfterTask:  true,
+					AfterTaskId:    "after-1",
 				},
 			},
 			NextPageToken: "cursor",
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second}
+	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: &allowRBACStub{}}
 	handler := listHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"workflow_id":     workflowID,
 		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -81,12 +86,13 @@ func TestListPipelineJobs(t *testing.T) {
 	client := &pipelineClientStub{
 		describeResp: &pipelinepb.DescribeResponse{
 			Pipeline: &pipelinepb.Pipeline{
-				PplId:     pipelineID,
-				Name:      "Build",
-				WfId:      "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-				ProjectId: "proj-1",
-				State:     pipelinepb.Pipeline_RUNNING,
-				Result:    pipelinepb.Pipeline_PASSED,
+				PplId:          pipelineID,
+				Name:           "Build",
+				WfId:           "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				ProjectId:      "proj-1",
+				OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				State:          pipelinepb.Pipeline_RUNNING,
+				Result:         pipelinepb.Pipeline_PASSED,
 			},
 			Blocks: []*pipelinepb.Block{
 				{
@@ -103,12 +109,15 @@ func TestListPipelineJobs(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second}
+	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: &allowRBACStub{}}
 	handler := jobsHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"pipeline_id":     pipelineID,
 		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
 	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
 
 	res, err := handler(context.Background(), req)
 	if err != nil {
@@ -138,6 +147,19 @@ type pipelineClientStub struct {
 	describeResp *pipelinepb.DescribeResponse
 	describeErr  error
 	lastDescribe *pipelinepb.DescribeRequest
+}
+
+type allowRBACStub struct {
+	rbacpb.RBACClient
+}
+
+func (a *allowRBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	return &rbacpb.ListUserPermissionsResponse{
+		UserId:      in.GetUserId(),
+		OrgId:       in.GetOrgId(),
+		ProjectId:   in.GetProjectId(),
+		Permissions: []string{"project.view", "organization.view"},
+	}, nil
 }
 
 func (s *pipelineClientStub) Schedule(context.Context, *pipelinepb.ScheduleRequest, ...grpc.CallOption) (*pipelinepb.ScheduleResponse, error) {

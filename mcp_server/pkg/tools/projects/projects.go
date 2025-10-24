@@ -13,6 +13,7 @@ import (
 	repoipb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
@@ -27,6 +28,8 @@ const (
 	defaultSearchPages = 5
 	maxSearchPages     = 10
 	searchPageSize     = 100
+
+	orgViewPermission = "organization.view"
 )
 
 func listFullDescription() string {
@@ -494,6 +497,10 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
+		if err := authz.CheckOrgPermission(ctx, api, userID, orgID, orgViewPermission); err != nil {
+			return shared.OrgAuthorizationError(err, orgID, orgViewPermission), nil
+		}
+
 		request := &projecthubpb.ListKeysetRequest{
 			Metadata:  projectRequestMeta(orgID, userID),
 			PageToken: cursor,
@@ -626,6 +633,10 @@ Troubleshooting:
 - Ensure requests go through the authenticated proxy
 - Verify the header contains a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 - Retry once the header is present`, err)), nil
+		}
+
+		if err := authz.CheckOrgPermission(ctx, api, userID, orgID, orgViewPermission); err != nil {
+			return shared.OrgAuthorizationError(err, orgID, orgViewPermission), nil
 		}
 
 		type candidate struct {

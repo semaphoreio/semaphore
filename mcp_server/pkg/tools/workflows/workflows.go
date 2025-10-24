@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -17,10 +18,11 @@ import (
 )
 
 const (
-	searchToolName       = "workflows_search"
-	defaultLimit         = 20
-	maxLimit             = 100
-	missingWorkflowError = "workflow gRPC endpoint is not configured"
+	searchToolName        = "workflows_search"
+	defaultLimit          = 20
+	maxLimit              = 100
+	missingWorkflowError  = "workflow gRPC endpoint is not configured"
+	projectViewPermission = "project.view"
 )
 
 func searchFullDescription() string {
@@ -175,6 +177,10 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, projectID, projectViewPermission), nil
+		}
+
 		limit := req.GetInt("limit", defaultLimit)
 		if limit <= 0 {
 			limit = defaultLimit
@@ -259,11 +265,43 @@ Double-check that:
 
 		workflows := make([]summary, 0, len(resp.GetWorkflows()))
 		for _, wf := range resp.GetWorkflows() {
+			if wf == nil {
+				continue
+			}
+
+			workflowOrg := normalizeID(wf.GetOrganizationId())
+			if workflowOrg == "" || workflowOrg != normalizeID(orgID) {
+				logging.ForComponent("tools").
+					WithFields(logrus.Fields{
+						"tool":          searchToolName,
+						"workflowId":    wf.GetWfId(),
+						"workflowOrgId": wf.GetOrganizationId(),
+						"expectedOrgId": orgID,
+						"projectId":     wf.GetProjectId(),
+					}).
+					Warn("skipping workflow outside authorized organization scope")
+				continue
+			}
+
+			workflowProject := normalizeID(wf.GetProjectId())
+			if workflowProject == "" || workflowProject != normalizeID(projectID) {
+				logging.ForComponent("tools").
+					WithFields(logrus.Fields{
+						"tool":           searchToolName,
+						"workflowId":     wf.GetWfId(),
+						"workflowProjId": wf.GetProjectId(),
+						"expectedProjId": projectID,
+						"organizationId": wf.GetOrganizationId(),
+					}).
+					Warn("skipping workflow outside authorized project scope")
+				continue
+			}
+
 			workflows = append(workflows, summary{
 				ID:              wf.GetWfId(),
 				InitialPipeline: wf.GetInitialPplId(),
-				ProjectID:       wf.GetProjectId(),
-				OrganizationID:  wf.GetOrganizationId(),
+				ProjectID:       strings.TrimSpace(wf.GetProjectId()),
+				OrganizationID:  strings.TrimSpace(wf.GetOrganizationId()),
 				Branch:          wf.GetBranchName(),
 				CommitSHA:       wf.GetCommitSha(),
 				RequesterID:     wf.GetRequesterId(),
@@ -376,6 +414,10 @@ func shortenCommit(sha string) string {
 		return sha[:12]
 	}
 	return sha
+}
+
+func normalizeID(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func resolveRequesterID(ctx context.Context, api internalapi.Provider, raw string) (string, error) {
