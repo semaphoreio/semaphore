@@ -124,7 +124,6 @@ defmodule Zebra.Workers.Agent.HostedAgentTest do
       end
     end
 
-
     test "remaps e1-standard-8 machines to f1-standard-4 when migration flag is enabled" do
       org_id = Support.StubbedProvider.e1_to_f1_org_id()
 
@@ -172,7 +171,6 @@ defmodule Zebra.Workers.Agent.HostedAgentTest do
         assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
       end
     end
-
   end
 
   describe ".release" do

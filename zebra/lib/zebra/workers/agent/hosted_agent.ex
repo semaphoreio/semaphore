@@ -130,7 +130,7 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     original_os_image = job.machine_os_image || ""
 
     cond do
-      not is_e1_family?(original_type) ->
+      not e1_family?(original_type) ->
         {original_type, original_os_image}
 
       not migration_enabled?(job.organization_id) ->
@@ -139,7 +139,9 @@ defmodule Zebra.Workers.Agent.HostedAgent do
       true ->
         {new_type, new_os_image} = map_machine_type(original_type, original_os_image)
 
-        Watchman.increment({"zebra.occupy.translation", [original_type, new_type, job.organization_id]})
+        Watchman.increment(
+          {"zebra.occupy.translation", [original_type, new_type, job.organization_id]}
+        )
 
         {new_type, new_os_image}
     end
@@ -170,10 +172,10 @@ defmodule Zebra.Workers.Agent.HostedAgent do
     FeatureProvider.feature_enabled?("e1_to_f1_migration", param: org_id)
   end
 
-  @spec is_e1_family?(String.t()) :: boolean()
-  defp is_e1_family?(machine_type) when is_binary(machine_type) do
+  @spec e1_family?(String.t()) :: boolean()
+  defp e1_family?(machine_type) when is_binary(machine_type) do
     String.starts_with?(machine_type, "e1-")
   end
 
-  defp is_e1_family?(_), do: false
+  defp e1_family?(_), do: false
 end
