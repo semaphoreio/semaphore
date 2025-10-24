@@ -7,9 +7,8 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
-
-	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 
 	"google.golang.org/grpc"
@@ -17,24 +16,22 @@ import (
 )
 
 func TestListOrganizationsSummary(t *testing.T) {
-	stub := &organizationClientStub{
-		response: &orgpb.ListResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organizations: []*orgpb.Organization{
-				{
-					OrgId:       "org-1",
-					Name:        "Example Org",
-					OrgUsername: "example",
-					CreatedAt:   timestamppb.New(time.Unix(1_700_000_000, 0)),
-					Verified:    true,
-				},
+	orgStub := &organizationClientStub{
+		organizations: []*orgpb.Organization{
+			{
+				OrgId:       "org-1",
+				Name:        "Example Org",
+				OrgUsername: "example",
+				CreatedAt:   timestamppb.New(time.Unix(1_700_000_000, 0)),
+				Verified:    true,
 			},
-			NextPageToken: "next",
 		},
 	}
+	rbacStub := &rbacClientStub{ids: []string{"org-1"}}
 
 	provider := &internalapi.MockProvider{
-		OrganizationClient: stub,
+		OrganizationClient: orgStub,
+		RBACClient:         rbacStub,
 		Timeout:            time.Second,
 	}
 
@@ -55,15 +52,12 @@ func TestListOrganizationsSummary(t *testing.T) {
 		t.Fatalf("expected success, got error result: %+v", res)
 	}
 
-	got, ok := res.StructuredContent.(listResult)
-	if !ok {
-		t.Fatalf("unexpected structured content type: %T", res.StructuredContent)
-	}
+	got := res.StructuredContent.(listResult)
 	if len(got.Organizations) != 1 {
 		t.Fatalf("expected 1 organization, got %d", len(got.Organizations))
 	}
-	if got.NextCursor != "next" {
-		t.Fatalf("expected next cursor 'next', got %q", got.NextCursor)
+	if got.NextCursor != "" {
+		t.Fatalf("expected empty next cursor, got %q", got.NextCursor)
 	}
 	if got.Organizations[0].Name != "Example Org" {
 		t.Fatalf("unexpected organization name: %q", got.Organizations[0].Name)
@@ -74,28 +68,27 @@ func TestListOrganizationsSummary(t *testing.T) {
 }
 
 func TestListOrganizationsDetailed(t *testing.T) {
-	stub := &organizationClientStub{
-		response: &orgpb.ListResponse{
-			Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
-			Organizations: []*orgpb.Organization{
-				{
-					OrgId:                  "org-1",
-					Name:                   "Detailed Org",
-					OrgUsername:            "detail",
-					AllowedIdProviders:     []string{"github"},
-					IpAllowList:            []string{"1.1.1.1/32"},
-					DenyMemberWorkflows:    true,
-					DenyNonMemberWorkflows: true,
-					Settings: []*orgpb.OrganizationSetting{
-						{Key: "feature", Value: "enabled"},
-					},
+	orgStub := &organizationClientStub{
+		organizations: []*orgpb.Organization{
+			{
+				OrgId:                  "org-1",
+				Name:                   "Detailed Org",
+				OrgUsername:            "detail",
+				AllowedIdProviders:     []string{"github"},
+				IpAllowList:            []string{"1.1.1.1/32"},
+				DenyMemberWorkflows:    true,
+				DenyNonMemberWorkflows: true,
+				Settings: []*orgpb.OrganizationSetting{
+					{Key: "feature", Value: "enabled"},
 				},
 			},
 		},
 	}
+	rbacStub := &rbacClientStub{ids: []string{"org-1"}}
 
 	provider := &internalapi.MockProvider{
-		OrganizationClient: stub,
+		OrganizationClient: orgStub,
+		RBACClient:         rbacStub,
 		Timeout:            time.Second,
 	}
 
@@ -118,9 +111,9 @@ func TestListOrganizationsDetailed(t *testing.T) {
 		t.Fatalf("expected success, got error result: %+v", res)
 	}
 
-	got, ok := res.StructuredContent.(listResult)
-	if !ok || len(got.Organizations) != 1 {
-		t.Fatalf("unexpected structured content: %+v", res.StructuredContent)
+	got := res.StructuredContent.(listResult)
+	if len(got.Organizations) != 1 {
+		t.Fatalf("unexpected organization count: %d", len(got.Organizations))
 	}
 
 	details := got.Organizations[0].Details
@@ -135,17 +128,98 @@ func TestListOrganizationsDetailed(t *testing.T) {
 	}
 }
 
-type organizationClientStub struct {
-	orgpb.OrganizationServiceClient
-	response *orgpb.ListResponse
-	err      error
-	request  *orgpb.ListRequest
+func TestListOrganizationsPagination(t *testing.T) {
+	orgStub := &organizationClientStub{
+		organizations: []*orgpb.Organization{
+			{OrgId: "org-2", Name: "Beta Org", OrgUsername: "beta"},
+			{OrgId: "org-1", Name: "Alpha Org", OrgUsername: "alpha"},
+			{OrgId: "org-3", Name: "Gamma Org", OrgUsername: "gamma"},
+		},
+	}
+	rbacStub := &rbacClientStub{ids: []string{"org-1", "org-2", "org-3"}}
+	provider := &internalapi.MockProvider{
+		OrganizationClient: orgStub,
+		RBACClient:         rbacStub,
+		Timeout:            time.Second,
+	}
+
+	first, err := listHandler(provider)(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"limit": 2,
+			},
+		},
+		Header: func() http.Header {
+			h := http.Header{}
+			h.Set("X-Semaphore-User-ID", "11111111-2222-3333-4444-555555555555")
+			return h
+		}(),
+	})
+	if err != nil || first.IsError {
+		t.Fatalf("first page failed: err=%v, res=%+v", err, first)
+	}
+
+	page1 := first.StructuredContent.(listResult)
+	if len(page1.Organizations) != 2 {
+		t.Fatalf("expected 2 orgs on first page, got %d", len(page1.Organizations))
+	}
+	if page1.Organizations[0].Name != "Alpha Org" || page1.Organizations[1].Name != "Beta Org" {
+		t.Fatalf("unexpected sort order: %#v", page1.Organizations)
+	}
+	if page1.NextCursor == "" {
+		t.Fatalf("expected next cursor for remaining items")
+	}
+
+	second, err := listHandler(provider)(context.Background(), mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"limit":  2,
+				"cursor": page1.NextCursor,
+			},
+		},
+		Header: func() http.Header {
+			h := http.Header{}
+			h.Set("X-Semaphore-User-ID", "11111111-2222-3333-4444-555555555555")
+			return h
+		}(),
+	})
+	if err != nil || second.IsError {
+		t.Fatalf("second page failed: err=%v, res=%+v", err, second)
+	}
+
+	page2 := second.StructuredContent.(listResult)
+	if len(page2.Organizations) != 1 || page2.Organizations[0].Name != "Gamma Org" {
+		t.Fatalf("unexpected second page data: %#v", page2.Organizations)
+	}
+	if page2.NextCursor != "" {
+		t.Fatalf("expected no further pages, got cursor %q", page2.NextCursor)
+	}
 }
 
-func (o *organizationClientStub) List(ctx context.Context, in *orgpb.ListRequest, opts ...grpc.CallOption) (*orgpb.ListResponse, error) {
-	o.request = in
+type organizationClientStub struct {
+	orgpb.OrganizationServiceClient
+	organizations   []*orgpb.Organization
+	err             error
+	describeRequest *orgpb.DescribeManyRequest
+}
+
+func (o *organizationClientStub) DescribeMany(ctx context.Context, in *orgpb.DescribeManyRequest, opts ...grpc.CallOption) (*orgpb.DescribeManyResponse, error) {
+	o.describeRequest = in
 	if o.err != nil {
 		return nil, o.err
 	}
-	return o.response, nil
+	return &orgpb.DescribeManyResponse{Organizations: o.organizations}, nil
+}
+
+type rbacClientStub struct {
+	rbacpb.RBACClient
+	ids []string
+	err error
+}
+
+func (r *rbacClientStub) ListAccessibleOrgs(ctx context.Context, in *rbacpb.ListAccessibleOrgsRequest, opts ...grpc.CallOption) (*rbacpb.ListAccessibleOrgsResponse, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+	return &rbacpb.ListAccessibleOrgsResponse{OrgIds: r.ids}, nil
 }

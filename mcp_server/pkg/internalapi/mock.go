@@ -3,6 +3,7 @@ package internalapi
 import (
 	"time"
 
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -23,6 +24,7 @@ type MockProvider struct {
 	LoghubClient       loghubpb.LoghubClient
 	Loghub2Client      loghub2pb.Loghub2Client
 	UserClient         userpb.UserServiceClient
+	RBACClient         rbacpb.RBACClient
 	Timeout            time.Duration
 }
 
@@ -50,3 +52,5 @@ func (m *MockProvider) Loghub() loghubpb.LoghubClient { return m.LoghubClient }
 func (m *MockProvider) Loghub2() loghub2pb.Loghub2Client { return m.Loghub2Client }
 
 func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }
+
+func (m *MockProvider) RBAC() rbacpb.RBACClient { return m.RBACClient }

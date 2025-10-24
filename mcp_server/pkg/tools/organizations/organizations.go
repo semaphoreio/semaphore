@@ -2,11 +2,17 @@ package organizations
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	"github.com/sirupsen/logrus"
 
@@ -143,6 +149,18 @@ This usually means:
 Please check the server configuration and retry.`), nil
 		}
 
+		rbacClient := api.RBAC()
+		if rbacClient == nil {
+			return mcp.NewToolResultError(`RBAC gRPC endpoint is not configured.
+
+This usually means:
+1. The INTERNAL_API_URL_RBAC environment variable is not set
+2. The RBAC service is not accessible from this server
+3. Network connectivity issues
+
+The RBAC service determines which organizations the authenticated user can access. Please configure the endpoint and retry.`), nil
+		}
+
 		// Validate and normalize mode
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
@@ -177,71 +195,111 @@ Example: semaphore_organizations_list(limit=20)`, err)), nil
 			limit = maxPageSize
 		}
 
-		request := &orgpb.ListRequest{
-			UserId:    userID,
-			PageSize:  int32(limit),
-			PageToken: strings.TrimSpace(req.GetString("cursor", "")),
-			Order:     orgpb.ListRequest_BY_NAME_ASC,
+		offset, err := parseCursorOffset(strings.TrimSpace(req.GetString("cursor", "")))
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`Invalid cursor parameter: %v
+
+The 'cursor' parameter must be the opaque value returned in a previous response's 'nextCursor' field.
+
+Tips:
+- Omit the cursor to start from the beginning
+- Use exactly the value returned from 'nextCursor' without modification`, err)), nil
 		}
 
-		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
-		defer cancel()
-
-		resp, err := client.List(callCtx, request)
+		accessibleIDs, err := listAccessibleOrgIDs(ctx, rbacClient, api.CallTimeout(), userID)
 		if err != nil {
 			logging.ForComponent("rpc").
 				WithFields(logrus.Fields{
-					"rpc":     "organization.List",
+					"rpc":     "rbac.ListAccessibleOrgs",
 					"userId":  userID,
-					"limit":   limit,
-					"cursor":  request.GetPageToken(),
-					"mode":    mode,
 					"reqName": listToolName,
 				}).
 				WithError(err).
-				Error("organization list RPC failed")
+				Error("rbac list accessible orgs RPC failed")
 
-			return mcp.NewToolResultError(fmt.Sprintf(`Organization list RPC failed: %v
+			return mcp.NewToolResultError(fmt.Sprintf(`Failed to determine accessible organizations: %v
 
-This usually means:
-1. The organization service is temporarily unavailable (retry in a few seconds)
-2. Network connectivity issues between MCP server and internal APIs
-3. Invalid authentication credentials
-
-Suggested next steps:
-- Retry the request after a short delay
-- Check server logs for more details
-- Verify the organization service is running and accessible`, err)), nil
+The RBAC service confirms which organizations the authenticated user can access. Ensure the RBAC service is reachable and the user ID header is valid, then retry.`, err)), nil
 		}
 
-		if err := shared.CheckResponseStatus(resp.GetStatus()); err != nil {
+		accessibleSet, dedupIDs := normalizeAccessibleIDs(accessibleIDs)
+		if len(accessibleSet) == 0 {
+			result := listResult{Organizations: []organizationSummary{}}
+			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
+			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+			return &mcp.CallToolResult{
+				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
+				StructuredContent: result,
+			}, nil
+		}
+
+		callCtx, cancel := context.WithTimeout(ctx, api.CallTimeout())
+		resp, err := client.DescribeMany(callCtx, &orgpb.DescribeManyRequest{OrgIds: dedupIDs})
+		cancel()
+		if err != nil {
 			logging.ForComponent("rpc").
-				WithField("rpc", "organization.List").
+				WithFields(logrus.Fields{
+					"rpc":      "organization.DescribeMany",
+					"userId":   userID,
+					"orgCount": len(dedupIDs),
+					"reqName":  listToolName,
+				}).
 				WithError(err).
-				Warn("organization list returned non-OK status")
+				Error("organization describe many RPC failed")
 
-			return mcp.NewToolResultError(fmt.Sprintf(`Request failed: %v
+			return mcp.NewToolResultError(fmt.Sprintf(`Organization lookup failed: %v
 
-This may indicate:
-- The X-Semaphore-User-ID header references a user you cannot access
-- Authentication token expired or invalid
-- Internal service error
+The organization service could not describe the permitted organizations. Retry in a few moments or verify the service connectivity.`, err)), nil
+		}
 
-Try:
-- Confirming the X-Semaphore-User-ID header is present and valid
-- Verifying authentication credentials
-- Checking if you have permission to list organizations`, err)), nil
+		filtered := filterAccessibleOrganizations(resp.GetOrganizations(), accessibleSet)
+		if len(filtered) == 0 {
+			result := listResult{Organizations: []organizationSummary{}}
+			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
+			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
+
+			return &mcp.CallToolResult{
+				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
+				StructuredContent: result,
+			}, nil
+		}
+
+		sortOrganizations(filtered)
+
+		if offset < 0 {
+			offset = 0
+		}
+		if offset > len(filtered) {
+			offset = len(filtered)
+		}
+
+		end := offset + limit
+		if end > len(filtered) {
+			end = len(filtered)
 		}
 
 		includeDetails := mode == "detailed"
-		orgs := make([]organizationSummary, 0, len(resp.GetOrganizations()))
-		for _, o := range resp.GetOrganizations() {
+		orgs := make([]organizationSummary, 0, end-offset)
+		for _, o := range filtered[offset:end] {
 			orgs = append(orgs, summarizeOrganization(o, includeDetails))
+		}
+
+		nextCursor := ""
+		if end < len(filtered) {
+			if token, err := encodeCursorOffset(end); err == nil {
+				nextCursor = token
+			} else {
+				logging.ForComponent("tools").
+					WithField("tool", listToolName).
+					WithError(err).
+					Warn("failed to encode pagination cursor")
+			}
 		}
 
 		result := listResult{
 			Organizations: orgs,
-			NextCursor:    strings.TrimSpace(resp.GetNextPageToken()),
+			NextCursor:    nextCursor,
 		}
 
 		// Generate Markdown summary
@@ -255,6 +313,120 @@ Try:
 			StructuredContent: result,
 		}, nil
 	}
+}
+
+func listAccessibleOrgIDs(ctx context.Context, client rbacpb.RBACClient, timeout time.Duration, userID string) ([]string, error) {
+	callCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	resp, err := client.ListAccessibleOrgs(callCtx, &rbacpb.ListAccessibleOrgsRequest{UserId: userID})
+	if err != nil {
+		return nil, err
+	}
+	return resp.GetOrgIds(), nil
+}
+
+func normalizeAccessibleIDs(ids []string) (map[string]struct{}, []string) {
+	set := make(map[string]struct{}, len(ids))
+	dedup := make([]string, 0, len(ids))
+	for _, id := range ids {
+		norm := normalizeOrgID(id)
+		if norm == "" {
+			continue
+		}
+		if _, exists := set[norm]; exists {
+			continue
+		}
+		set[norm] = struct{}{}
+		dedup = append(dedup, id)
+	}
+	return set, dedup
+}
+
+func filterAccessibleOrganizations(orgs []*orgpb.Organization, allowed map[string]struct{}) []*orgpb.Organization {
+	if len(orgs) == 0 {
+		return nil
+	}
+
+	filtered := make([]*orgpb.Organization, 0, len(orgs))
+	for _, org := range orgs {
+		if org == nil {
+			continue
+		}
+		if _, ok := allowed[normalizeOrgID(org.GetOrgId())]; ok {
+			filtered = append(filtered, org)
+		}
+	}
+	return filtered
+}
+
+func sortOrganizations(orgs []*orgpb.Organization) {
+	sort.SliceStable(orgs, func(i, j int) bool {
+		a := orgs[i]
+		b := orgs[j]
+
+		aName := strings.ToLower(strings.TrimSpace(a.GetName()))
+		bName := strings.ToLower(strings.TrimSpace(b.GetName()))
+		if aName != bName {
+			return aName < bName
+		}
+
+		aUsername := strings.ToLower(strings.TrimSpace(a.GetOrgUsername()))
+		bUsername := strings.ToLower(strings.TrimSpace(b.GetOrgUsername()))
+		if aUsername != bUsername {
+			return aUsername < bUsername
+		}
+
+		return normalizeOrgID(a.GetOrgId()) < normalizeOrgID(b.GetOrgId())
+	})
+}
+
+type cursorPayload struct {
+	Offset int `json:"offset"`
+}
+
+func parseCursorOffset(raw string) (int, error) {
+	if raw == "" {
+		return 0, nil
+	}
+	if strings.HasPrefix(raw, "v1:") {
+		data, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(raw, "v1:"))
+		if err != nil {
+			return 0, fmt.Errorf("decode cursor: %w", err)
+		}
+		var payload cursorPayload
+		if err := json.Unmarshal(data, &payload); err != nil {
+			return 0, fmt.Errorf("parse cursor: %w", err)
+		}
+		if payload.Offset < 0 {
+			payload.Offset = 0
+		}
+		return payload.Offset, nil
+	}
+	if n, err := strconv.Atoi(raw); err == nil {
+		if n < 0 {
+			return 0, fmt.Errorf("cursor offset cannot be negative")
+		}
+		return n, nil
+	}
+	// Unknown legacy cursor – treat as start of list.
+	return 0, nil
+}
+
+func encodeCursorOffset(offset int) (string, error) {
+	if offset <= 0 {
+		return "", nil
+	}
+	payload := cursorPayload{Offset: offset}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return "", err
+	}
+	return "v1:" + base64.StdEncoding.EncodeToString(raw), nil
+}
+
+func normalizeOrgID(id string) string {
+	return strings.ToLower(strings.TrimSpace(id))
 }
 
 func formatOrganizationsMarkdown(orgs []organizationSummary, mode string, nextCursor string) string {

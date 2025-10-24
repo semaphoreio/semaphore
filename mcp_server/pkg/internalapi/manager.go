@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -30,6 +31,7 @@ type Provider interface {
 	Loghub() loghubpb.LoghubClient
 	Loghub2() loghub2pb.Loghub2Client
 	Users() userpb.UserServiceClient
+	RBAC() rbacpb.RBACClient
 }
 
 // Manager owns gRPC connections to internal API services and exposes typed clients.
@@ -44,6 +46,7 @@ type Manager struct {
 	loghubConn       *grpc.ClientConn
 	loghub2Conn      *grpc.ClientConn
 	userConn         *grpc.ClientConn
+	rbacConn         *grpc.ClientConn
 
 	workflowClient     workflowpb.WorkflowServiceClient
 	organizationClient orgpb.OrganizationServiceClient
@@ -53,6 +56,7 @@ type Manager struct {
 	loghubClient       loghubpb.LoghubClient
 	loghub2Client      loghub2pb.Loghub2Client
 	userClient         userpb.UserServiceClient
+	rbacClient         rbacpb.RBACClient
 }
 
 // NewManager dials the configured services and returns a ready-to-use manager.
@@ -112,6 +116,10 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 		m.Close()
 		return nil, fmt.Errorf("connect user service: %w", err)
 	}
+	if m.rbacConn, err = dial(cfg.RBACEndpoint); err != nil {
+		m.Close()
+		return nil, fmt.Errorf("connect rbac service: %w", err)
+	}
 
 	if m.workflowConn != nil {
 		m.workflowClient = workflowpb.NewWorkflowServiceClient(m.workflowConn)
@@ -137,6 +145,9 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 	if m.userConn != nil {
 		m.userClient = userpb.NewUserServiceClient(m.userConn)
 	}
+	if m.rbacConn != nil {
+		m.rbacClient = rbacpb.NewRBACClient(m.rbacConn)
+	}
 
 	return m, nil
 }
@@ -153,6 +164,7 @@ func (m *Manager) Close() error {
 		m.loghubConn,
 		m.loghub2Conn,
 		m.userConn,
+		m.rbacConn,
 	}
 	for _, conn := range closers {
 		if conn == nil {
@@ -204,6 +216,10 @@ func (m *Manager) Loghub2() loghub2pb.Loghub2Client {
 
 func (m *Manager) Users() userpb.UserServiceClient {
 	return m.userClient
+}
+
+func (m *Manager) RBAC() rbacpb.RBACClient {
+	return m.rbacClient
 }
 
 func joinErrors(errs []error) error {

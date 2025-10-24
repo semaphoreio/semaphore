@@ -50,6 +50,10 @@ var (
 		"INTERNAL_API_URL_USER",
 		"MCP_USER_GRPC_ENDPOINT",
 	}
+	rbacEndpointEnvs = []string{
+		"INTERNAL_API_URL_RBAC",
+		"MCP_RBAC_GRPC_ENDPOINT",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -62,6 +66,7 @@ type Config struct {
 	LoghubEndpoint       string
 	Loghub2Endpoint      string
 	UserEndpoint         string
+	RBACEndpoint         string
 
 	DialTimeout time.Duration
 	CallTimeout time.Duration
@@ -87,6 +92,7 @@ func LoadConfig() (Config, error) {
 		LoghubEndpoint:       endpointFromEnv(loghubEndpointEnvs...),
 		Loghub2Endpoint:      endpointFromEnv(loghub2EndpointEnvs...),
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
+		RBACEndpoint:         endpointFromEnv(rbacEndpointEnvs...),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
 	}
@@ -118,6 +124,9 @@ func (c Config) Validate() error {
 	}
 	if c.JobEndpoint == "" {
 		missing = append(missing, "job gRPC endpoint")
+	}
+	if c.RBACEndpoint == "" {
+		missing = append(missing, "rbac gRPC endpoint")
 	}
 
 	if len(missing) > 0 {

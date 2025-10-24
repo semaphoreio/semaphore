@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -35,6 +36,7 @@ func New() internalapi.Provider {
 		loghub:        &loghubStub{},
 		loghub2:       &loghub2Stub{},
 		users:         &userStub{},
+		rbac:          &rbacStub{},
 	}
 }
 
@@ -48,6 +50,7 @@ type provider struct {
 	loghub        loghubpb.LoghubClient
 	loghub2       loghub2pb.Loghub2Client
 	users         userpb.UserServiceClient
+	rbac          rbacpb.RBACClient
 }
 
 func (p *provider) CallTimeout() time.Duration { return p.timeout }
@@ -67,6 +70,8 @@ func (p *provider) Loghub() loghubpb.LoghubClient { return p.loghub }
 func (p *provider) Loghub2() loghub2pb.Loghub2Client { return p.loghub2 }
 
 func (p *provider) Users() userpb.UserServiceClient { return p.users }
+
+func (p *provider) RBAC() rbacpb.RBACClient { return p.rbac }
 
 // --- workflow stub ---
 
@@ -191,6 +196,21 @@ func (l *loghub2Stub) GenerateToken(ctx context.Context, in *loghub2pb.GenerateT
 	return &loghub2pb.GenerateTokenResponse{Token: "stub-token", Type: loghub2pb.TokenType_PULL}, nil
 }
 
+// --- rbac stub ---
+
+type rbacStub struct {
+	rbacpb.RBACClient
+	orgIDs []string
+}
+
+func (r *rbacStub) ListAccessibleOrgs(ctx context.Context, in *rbacpb.ListAccessibleOrgsRequest, opts ...grpc.CallOption) (*rbacpb.ListAccessibleOrgsResponse, error) {
+	ids := r.orgIDs
+	if len(ids) == 0 {
+		ids = []string{"org-local"}
+	}
+	return &rbacpb.ListAccessibleOrgsResponse{OrgIds: ids}, nil
+}
+
 // --- user stub ---
 
 type userStub struct {
@@ -235,6 +255,21 @@ func (o *organizationStub) List(ctx context.Context, in *orgpb.ListRequest, opts
 			},
 		},
 		NextPageToken: "",
+	}, nil
+}
+
+func (o *organizationStub) DescribeMany(ctx context.Context, in *orgpb.DescribeManyRequest, opts ...grpc.CallOption) (*orgpb.DescribeManyResponse, error) {
+	return &orgpb.DescribeManyResponse{
+		Organizations: []*orgpb.Organization{
+			{
+				OrgId:       "org-local",
+				Name:        "Local Org",
+				OrgUsername: "local-org",
+				OwnerId:     "user-local",
+				CreatedAt:   timestamppb.New(time.Unix(1_700_000_000, 0)),
+				Verified:    true,
+			},
+		},
 	}, nil
 }
 
