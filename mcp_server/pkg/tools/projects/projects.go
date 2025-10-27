@@ -559,6 +559,12 @@ Try removing optional filters or verifying access permissions.`, err)), nil
 
 		projects := make([]projectSummary, 0, len(resp.GetProjects()))
 		for _, proj := range resp.GetProjects() {
+			if proj == nil {
+				continue
+			}
+			if mismatch := ensureProjectInOrg(listToolName, orgID, "", proj); mismatch != nil {
+				return mismatch, nil
+			}
 			projects = append(projects, summarizeProject(proj, mode == "detailed"))
 		}
 
@@ -708,6 +714,12 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 			searchedPages++
 
 			for _, proj := range resp.GetProjects() {
+				if proj == nil {
+					continue
+				}
+				if mismatch := ensureProjectInOrg(searchToolName, orgID, "", proj); mismatch != nil {
+					return mismatch, nil
+				}
 				score := 0
 				matched := []string{}
 
@@ -823,6 +835,39 @@ func projectRequestMeta(orgID, userID string) *projecthubpb.RequestMeta {
 		UserId:     strings.TrimSpace(userID),
 		ReqId:      uuid.NewString(),
 	}
+}
+
+func ensureProjectInOrg(tool, orgID, expectedProjectID string, project *projecthubpb.Project) *mcp.CallToolResult {
+	if project == nil {
+		return nil
+	}
+	meta := project.GetMetadata()
+	if meta == nil {
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              tool,
+			ResourceType:      "project",
+			ResourceID:        "",
+			RequestOrgID:      orgID,
+			ResourceOrgID:     "",
+			RequestProjectID:  expectedProjectID,
+			ResourceProjectID: "",
+		})
+		return shared.ScopeMismatchError(tool, "organization")
+	}
+	resourceOrg := strings.TrimSpace(meta.GetOrgId())
+	if !strings.EqualFold(resourceOrg, orgID) || resourceOrg == "" {
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              tool,
+			ResourceType:      "project",
+			ResourceID:        meta.GetId(),
+			RequestOrgID:      orgID,
+			ResourceOrgID:     resourceOrg,
+			RequestProjectID:  expectedProjectID,
+			ResourceProjectID: meta.GetId(),
+		})
+		return shared.ScopeMismatchError(tool, "organization")
+	}
+	return nil
 }
 
 func summarizeProject(project *projecthubpb.Project, includeDetails bool) projectSummary {

@@ -137,15 +137,32 @@ Troubleshooting:
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
-		if job.GetOrganizationId() != "" && !strings.EqualFold(job.GetOrganizationId(), orgID) {
-			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
-
-Retrieve the correct organization ID from organizations_list before fetching logs.`, job.GetOrganizationId(), orgID)), nil
+		jobProjectID := strings.TrimSpace(job.GetProjectId())
+		jobOrg := strings.TrimSpace(job.GetOrganizationId())
+		if jobOrg == "" || !strings.EqualFold(jobOrg, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              logsToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     job.GetOrganizationId(),
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(logsToolName, "organization"), nil
 		}
 
-		jobProjectID := strings.TrimSpace(job.GetProjectId())
 		if jobProjectID == "" {
-			return mcp.NewToolResultError("Job describe response is missing project_id; unable to enforce authorization."), nil
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              logsToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     jobOrg,
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(logsToolName, "project"), nil
 		}
 
 		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
