@@ -140,7 +140,7 @@ Use [Secrets](../../using-semaphore/secrets) to for sensitive data. We'll use se
 
 ## Inviting people to the project {#people}
 
-If you want to allow other persons access to the project, you must first [invite them to your Semaphore server](../../using-semaphore/organizations#people). Once they are invited, you can grant them access to the project by following these steps:
+If you want to allow other persons access to the project, you must first [invite them to your Semaphore server](../../using-semaphore/user-management#people). Once they are invited, you can grant them access to the project by following these steps:
 
 <Steps>
 

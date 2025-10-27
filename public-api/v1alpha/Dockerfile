@@ -12,7 +12,7 @@ ENV MIX_ENV=$BUILD_ENV
 
 RUN echo "Build for $MIX_ENV environment started"
 
-RUN apk update && apk add --no-cache build-base git python3 curl openssh
+RUN apk update && apk add --no-cache build-base git python3 curl openssh bash
 
 RUN mkdir -p ~/.ssh
 RUN touch ~/.ssh/known_hosts

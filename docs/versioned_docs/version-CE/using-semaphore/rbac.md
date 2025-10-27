@@ -41,7 +41,7 @@ Among other actions, members can:
 - Create [projects](./projects)
 - View and manage [self-hosted agents](./self-hosted)
 
-For the full list of member permissions, see [server roles](./organizations#org-roles).
+For the full list of member permissions, see [server roles](./user-management#org-roles).
 
 ### Admin {#org-admin}
 
@@ -55,17 +55,17 @@ In addition to the [member permissions](#org-member), admins can:
 - Invite users to the server
 - Remove people from the server
 
-For the full list of admin permissions, see [server roles](./organizations#org-roles).
+For the full list of admin permissions, see [server roles](./user-management#org-roles).
 
 ### Owner {#org-owner}
 
 The owner of the server is the person that created it. A server can have multiple owners.  Owners have access to all functionalities within the server and any of its projects. Only Admins and Owners can invite users to the server.
 
-For the full list of owner permissions, see [server roles](./organizations#org-roles).
+For the full list of owner permissions, see [server roles](./user-management#org-roles).
 
 To remove an owner, see [how to remove an owner](https://docs.semaphoreci.com/using-semaphore/organizations#remove-owner).
 
 ## See also
 
-- [How to manage users](./organizations#people)
+- [How to manage users](./user-management#people)
 - [How to manage project access](./projects#people)
