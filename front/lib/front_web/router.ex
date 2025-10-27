@@ -152,6 +152,7 @@ defmodule FrontWeb.Router do
 
     scope "/people" do
       get("/", PeopleController, :organization)
+      get("/export", PeopleController, :organization_users)
       post("/", PeopleController, :create)
       post("/refresh", PeopleController, :refresh)
       post("/assign_role", PeopleController, :assign_role)
@@ -175,6 +176,7 @@ defmodule FrontWeb.Router do
     scope "/service_accounts" do
       get("/", ServiceAccountController, :index)
       post("/", ServiceAccountController, :create)
+      get("/export", ServiceAccountController, :export)
       get("/:id", ServiceAccountController, :show)
       put("/:id", ServiceAccountController, :update)
       delete("/:id", ServiceAccountController, :delete)
