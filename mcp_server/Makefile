@@ -5,7 +5,7 @@ APP_ENV=prod
 
 INTERNAL_API_BRANCH?=master
 TMP_REPO_DIR ?= /tmp/internal_api
-INTERNAL_API_MODULES?=include/internal_api/status,include/internal_api/response_status,plumber_w_f.workflow,plumber.pipeline,server_farm.job,loghub,loghub2,user,repository_integrator
+INTERNAL_API_MODULES?=include/internal_api/status,include/internal_api/response_status,plumber_w_f.workflow,plumber.pipeline,server_farm.job,loghub,loghub2,user,repository_integrator,rbac,organization,projecthub
 PROTOC_IMAGE?=golang:1.24-alpine
 
 .PHONY: tidy test test.setup lint pb.gen dev.run
@@ -32,8 +32,8 @@ pb.gen:
 		-w /app \
 		$(PROTOC_IMAGE) \
 		sh -c 'apk add --no-cache bash protobuf && \
-		go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.34.2 && \
-		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.4.0 && \
+		go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.2 && \
+		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1 && \
 		bash script/internal_api/gen.sh "$(INTERNAL_API_MODULES)" $(INTERNAL_API_BRANCH) /tmp/internal_api'
 	rm -rf $(TMP_REPO_DIR)
 
