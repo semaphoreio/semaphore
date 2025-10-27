@@ -4,6 +4,8 @@ Role-Based Access Control (RBAC) service for Semaphore CI/CD platform.
 
 ## Database Schema
 
+Important note! Even though there is a dedicated RBAC microservice (this one), for legacy reasons it uses the Guard database. Therefore, if you need to make changes to the DB schema, you need to go to the Guard project and add an Ecto migration there. Then, copy that same migration here to RBAC for testing purposes.
+
 ### Core RBAC System
 
 ```mermaid
@@ -320,3 +322,22 @@ If SAML JIT provisioning is enabled and this is the user's first SAML request, w
 ### Known Limitation
 
 The SAML JIT provisioning implementation has a limitation that should be addressed. Even though the structure of the `saml_jit_user` entity is designed to work with async workers, those workers were never implemented. The current implementation processes SAML JIT users synchronously during the request. If there is no available database connection at the time of the SAML request, the request will fail, and the SAML JIT user will not be processed again. This differs from the SCIM provisioning flow, which properly handles retries through the async worker pattern.
+
+## Adding New Permissions/Changing Roles
+
+### Adding New Permissions
+
+When you want to add a new permission, there is a `permissions.yaml` file in the assets folder. You can add new permissions there, and on the next deployment, they will be added to the database.
+
+### Changing Roles
+
+Adding new permissions to existing roles (or changing roles at all) takes a few more steps. There is a `roles.yaml` file where all existing roles are listed, together with the permissions they have. These definitions apply to any newly created role. When a new organization is created, RBAC receives an AMQP message and creates all the roles for that new organization. These new roles will follow the role definitions from `roles.yaml`, but when you make changes to `roles.yaml`, existing roles won't be affected.
+
+If you want to change the existing roles, you have to:
+
+1. Change the contents of the `role_permission_binding` table
+2. Recalculate all of the permissions in `user_permission_key_value_store`
+
+The second step can be (in theory) done just by executing the `recalculate_entire_cache` function within the `user_permissions` module, but if there is a lot of data, which is the case for our production environment, it will time out and fail.
+
+For that reason, we added a new worker called `refresh_all_permissions.ex`. By executing `Rbac.Repo.RbacRefreshAllPermissionsRequest.create_new_request()`, a new request will be inserted into the database, and the worker usually takes several hours to update all of the permissions in the cache for every single organization.
