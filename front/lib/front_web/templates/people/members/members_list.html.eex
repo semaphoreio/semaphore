@@ -32,7 +32,15 @@
           <div class="b">People</div>
         </div>
       </div>
-      <%= render "members/_add_people_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
+      <div class="flex">
+      <%= if @org_scope? do %>
+        <%= link to: people_path(@conn, :organization_users), class: "pointer flex items-center btn-secondary btn nowrap mr2", aria_label: "Download members as CSV", title: "Download members as CSV" do %>
+          <span class="material-symbols-outlined ">download</span>
+          Download .csv
+        <% end %>
+      <% end %>
+        <%= render "members/_add_people_button.html", conn: @conn, org_scope?: @org_scope?, permissions: @permissions %>
+      </div>
     </div>
 
     <div id="members">
