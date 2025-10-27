@@ -2,6 +2,7 @@ defmodule FrontWeb.ServiceAccountControllerTest do
   use FrontWeb.ConnCase
   import Mox
   alias Support.Stubs.DB
+  alias Front.Models
 
   setup :verify_on_exit!
 
@@ -265,6 +266,69 @@ defmodule FrontWeb.ServiceAccountControllerTest do
       conn = post(conn, "/service_accounts", %{"name" => "Test"})
 
       assert html_response(conn, 404) =~ "Page not found"
+    end
+  end
+
+  describe "GET /service_accounts/export" do
+    test "requires service_accounts.view permission", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/service_accounts/export")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+
+    test "when the user can access the org => send csv", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/service_accounts/export")
+
+      rows =
+        conn.resp_body
+        |> String.split("\r\n", trim: true)
+        |> CSV.decode!(validate_row_length: true, headers: true)
+        |> Enum.to_list()
+
+      data =
+        Stream.unfold(1, fn
+          nil ->
+            nil
+
+          page ->
+            case Models.ServiceAccount.list(org_id, page) do
+              {:ok, {service_accounts, total_pages}} ->
+                next_page_no = page + 1
+
+                if next_page_no <= total_pages do
+                  {service_accounts, next_page_no}
+                else
+                  {service_accounts, nil}
+                end
+
+              _ ->
+                nil
+            end
+        end)
+        |> Enum.flat_map(& &1)
+
+      assert length(rows) == length(data)
+
+      first = List.first(rows)
+
+      assert Map.has_key?(first, "name")
+      assert Map.has_key?(first, "description")
+      assert Map.has_key?(first, "deactivated")
+      assert Map.has_key?(first, "created_at")
+      assert Map.has_key?(first, "updated_at")
     end
   end
 
