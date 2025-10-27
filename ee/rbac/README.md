@@ -122,7 +122,7 @@ One role can inherit another role and all of its permissions. Every time we want
 
 Organization Role to Project Role Mappings
 
-Another table is organization role to project role mappings, which also makes this a bit more complex. This is something we are using regularly. You can say that some organizational role, like "Owner", carries automatic "Admin" access to all of the projects within the organization. In this case, organization role "Owner" maps to project role "Admin", and this also has to be taken into consideration when we are checking if user has access to a project: Even though they might not have a role directly within the project, they maybe have an organization role which maps to project role.
+Another table is organization role to project role mappings. This is something we are using regularly. You can say that some organizational role, like "Owner", carries automatic "Admin" access to all of the projects within the organization. In this case, organization role "Owner" maps to project role "Admin", and this also has to be taken into consideration when we are checking if user has access to a project: Even though they might not have a role directly within the project, they maybe have an organization role which maps to project role.
 
 Groups
 
@@ -146,7 +146,7 @@ erDiagram
 
 User Permission Key Value Store
 
-All of this complexity makes actually figuring out which permissions a user has within an organization (or project) a bit more complex. It's not as simple as just tracking the subject role bindings table. It takes quite a few joins, and some recursive joins. Query which calculates all of the permisions for a given user/organization/project is written in the `Rbac.ComputePermissions` module of rhis service. Depending on the size of the organization, number of user and projects they have, it can take from >1s, to 6,7s to calculate these permission.
+All of this complexity makes actually figuring out which permissions a user has within an organization (or project) a bit more time consuming. Query which calculates all of the permisions for a given user/organization/project is written in the `Rbac.ComputePermissions` module of this service. Depending on the size of the organization, number of users and projects they have, it can take from >1s, to 6,7s to calculate these permission.
 
 That's why we had a need for `user_permissions_key_value_store` and `project_access_key_value_store`. Instead of calculating all of the permissions for every "GET" query, there is one table which stores all of the permissions user has within the org and/or project, and another with list of projects user has access to within the organization.
 
