@@ -4,11 +4,7 @@ description: Semaphore installation overview for Semaphore CE
 
 # Install Overview
 
-
-
-
-
-
+TODO: delete this page
 
 import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
 import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
