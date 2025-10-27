@@ -263,6 +263,8 @@ Double-check that:
 - The organization is active and not suspended`, err)), nil
 		}
 
+		expectedOrg := normalizeID(orgID)
+		expectedProject := normalizeID(projectID)
 		workflows := make([]summary, 0, len(resp.GetWorkflows()))
 		for _, wf := range resp.GetWorkflows() {
 			if wf == nil {
@@ -270,31 +272,31 @@ Double-check that:
 			}
 
 			workflowOrg := normalizeID(wf.GetOrganizationId())
-			if workflowOrg == "" || workflowOrg != normalizeID(orgID) {
-				logging.ForComponent("tools").
-					WithFields(logrus.Fields{
-						"tool":          searchToolName,
-						"workflowId":    wf.GetWfId(),
-						"workflowOrgId": wf.GetOrganizationId(),
-						"expectedOrgId": orgID,
-						"projectId":     wf.GetProjectId(),
-					}).
-					Warn("skipping workflow outside authorized organization scope")
-				continue
+			if workflowOrg == "" || workflowOrg != expectedOrg {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              searchToolName,
+					ResourceType:      "workflow",
+					ResourceID:        wf.GetWfId(),
+					RequestOrgID:      orgID,
+					ResourceOrgID:     wf.GetOrganizationId(),
+					RequestProjectID:  projectID,
+					ResourceProjectID: wf.GetProjectId(),
+				})
+				return shared.ScopeMismatchError(searchToolName, "organization"), nil
 			}
 
 			workflowProject := normalizeID(wf.GetProjectId())
-			if workflowProject == "" || workflowProject != normalizeID(projectID) {
-				logging.ForComponent("tools").
-					WithFields(logrus.Fields{
-						"tool":           searchToolName,
-						"workflowId":     wf.GetWfId(),
-						"workflowProjId": wf.GetProjectId(),
-						"expectedProjId": projectID,
-						"organizationId": wf.GetOrganizationId(),
-					}).
-					Warn("skipping workflow outside authorized project scope")
-				continue
+			if workflowProject == "" || workflowProject != expectedProject {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              searchToolName,
+					ResourceType:      "workflow",
+					ResourceID:        wf.GetWfId(),
+					RequestOrgID:      orgID,
+					ResourceOrgID:     wf.GetOrganizationId(),
+					RequestProjectID:  projectID,
+					ResourceProjectID: wf.GetProjectId(),
+				})
+				return shared.ScopeMismatchError(searchToolName, "project"), nil
 			}
 
 			workflows = append(workflows, summary{

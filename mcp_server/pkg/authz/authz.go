@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	watchman "github.com/renderedtext/go-watchman"
 	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
@@ -37,6 +38,7 @@ func checkPermissions(ctx context.Context, api internalapi.Provider, userID, org
 
 	client := api.RBAC()
 	if client == nil {
+		emitPermissionMetric("rbac_unavailable", orgID, projectID, permissions)
 		return ErrRBACUnavailable
 	}
 
@@ -60,6 +62,7 @@ func checkPermissions(ctx context.Context, api internalapi.Provider, userID, org
 			}).
 			WithError(err).
 			Error("ListUserPermissions RPC failed")
+		emitPermissionMetric("rpc_error", orgID, projectID, permissions)
 		return fmt.Errorf("rbac permission lookup failed: %w", err)
 	}
 
@@ -84,8 +87,34 @@ func checkPermissions(ctx context.Context, api internalapi.Provider, userID, org
 				"missing":   missing,
 			}).
 			Info("permission check failed")
+		emitPermissionMetric("denied", orgID, projectID, permissions)
 		return fmt.Errorf("%w: missing %s", ErrPermissionDenied, strings.Join(missing, ", "))
 	}
 
+	emitPermissionMetric("granted", orgID, projectID, permissions)
 	return nil
+}
+
+func emitPermissionMetric(outcome, orgID, projectID string, permissions []string) {
+	scope := "organization"
+	if strings.TrimSpace(projectID) != "" {
+		scope = "project"
+	}
+	permTag := "unknown"
+	if len(permissions) > 0 {
+		permTag = strings.TrimSpace(permissions[0])
+		if permTag == "" {
+			permTag = "unknown"
+		}
+	}
+	tags := []string{outcome, scope, permTag}
+	if err := watchman.IncrementWithTags("mcp.authz.permission_check", tags); err != nil {
+		logging.ForComponent("metrics").
+			WithError(err).
+			WithFields(logrus.Fields{
+				"metric": "mcp.authz.permission_check",
+				"tags":   tags,
+			}).
+			Debug("failed to emit Watchman metric")
+	}
 }

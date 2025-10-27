@@ -341,32 +341,43 @@ Check that:
 			summary := summarizePipeline(ppl)
 			pipelineOrg := normalizeID(summary.OrganizationID)
 			if pipelineOrg == "" || pipelineOrg != normalizedOrg {
-				logging.ForComponent("tools").
-					WithFields(logrus.Fields{
-						"tool":          listToolName,
-						"workflowId":    summary.WorkflowID,
-						"pipelineId":    summary.ID,
-						"pipelineOrgId": summary.OrganizationID,
-						"expectedOrgId": orgID,
-					}).
-					Warn("skipping pipeline outside authorized organization scope")
-				continue
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "organization"), nil
 			}
 
 			pipelineProject := normalizeID(summary.ProjectID)
 			if pipelineProject == "" {
-				logging.ForComponent("tools").
-					WithFields(logrus.Fields{
-						"tool":       listToolName,
-						"pipelineId": summary.ID,
-						"workflowId": summary.WorkflowID,
-					}).
-					Warn("skipping pipeline with missing project identifier")
-				continue
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "project"), nil
 			}
 
 			if requestedProject != "" && pipelineProject != requestedProject {
-				continue
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "project"), nil
 			}
 
 			allowed, known := projectAccess[pipelineProject]
@@ -489,13 +500,29 @@ Troubleshooting:
 
 		pipeline := summarizePipeline(describeResp.GetPipeline())
 		if normalized := normalizeID(pipeline.OrganizationID); normalized == "" || normalized != normalizeID(orgID) {
-			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: pipeline belongs to %s but you provided %s.
-
-Use the organization_id returned by organizations_list for this workspace.`, pipeline.OrganizationID, orgID)), nil
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              jobsToolName,
+				ResourceType:      "pipeline",
+				ResourceID:        pipeline.ID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     pipeline.OrganizationID,
+				RequestProjectID:  "",
+				ResourceProjectID: pipeline.ProjectID,
+			})
+			return shared.ScopeMismatchError(jobsToolName, "organization"), nil
 		}
 
 		if strings.TrimSpace(pipeline.ProjectID) == "" {
-			return mcp.NewToolResultError("Pipeline describe response is missing project_id; unable to enforce authorization."), nil
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              jobsToolName,
+				ResourceType:      "pipeline",
+				ResourceID:        pipeline.ID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     pipeline.OrganizationID,
+				RequestProjectID:  "",
+				ResourceProjectID: pipeline.ProjectID,
+			})
+			return shared.ScopeMismatchError(jobsToolName, "project"), nil
 		}
 
 		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, pipeline.ProjectID, projectViewPermission); err != nil {

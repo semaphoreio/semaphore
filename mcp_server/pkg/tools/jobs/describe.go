@@ -118,16 +118,32 @@ Troubleshooting:
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		jobProjectID := strings.TrimSpace(job.GetProjectId())
 		jobOrg := strings.TrimSpace(job.GetOrganizationId())
-		if jobOrg != "" && !strings.EqualFold(jobOrg, orgID) {
-			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
-
-Use the organization_id returned by organizations_list for this workspace.`, jobOrg, orgID)), nil
+		if jobOrg == "" || !strings.EqualFold(jobOrg, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              describeToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     job.GetOrganizationId(),
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(describeToolName, "organization"), nil
 		}
 
-		jobProjectID := strings.TrimSpace(job.GetProjectId())
 		if jobProjectID == "" {
-			return mcp.NewToolResultError("Job response is missing project_id; unable to enforce authorization."), nil
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              describeToolName,
+				ResourceType:      "job",
+				ResourceID:        jobID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     jobOrg,
+				RequestProjectID:  "",
+				ResourceProjectID: jobProjectID,
+			})
+			return shared.ScopeMismatchError(describeToolName, "project"), nil
 		}
 
 		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, jobProjectID, projectViewPermission); err != nil {
@@ -135,10 +151,17 @@ Use the organization_id returned by organizations_list for this workspace.`, job
 		}
 
 		summary := summarizeJob(job)
-		if summary.OrganizationID != "" && !strings.EqualFold(summary.OrganizationID, orgID) {
-			return mcp.NewToolResultError(fmt.Sprintf(`Organization mismatch: job belongs to %s but you provided %s.
-
-Use the organization_id returned by organizations_list for this workspace.`, summary.OrganizationID, orgID)), nil
+		if summary.OrganizationID == "" || !strings.EqualFold(summary.OrganizationID, orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              describeToolName,
+				ResourceType:      "job",
+				ResourceID:        summary.ID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     summary.OrganizationID,
+				RequestProjectID:  "",
+				ResourceProjectID: summary.ProjectID,
+			})
+			return shared.ScopeMismatchError(describeToolName, "organization"), nil
 		}
 		markdown := formatJobMarkdown(summary, mode)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)

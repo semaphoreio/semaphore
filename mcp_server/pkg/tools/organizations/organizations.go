@@ -253,7 +253,23 @@ The RBAC service confirms which organizations the authenticated user can access.
 The organization service could not describe the permitted organizations. Retry in a few moments or verify the service connectivity.`, err)), nil
 		}
 
-		filtered := filterAccessibleOrganizations(resp.GetOrganizations(), accessibleSet)
+		filtered, mismatches := filterAccessibleOrganizations(resp.GetOrganizations(), accessibleSet)
+		if len(mismatches) > 0 {
+			for _, org := range mismatches {
+				if org == nil {
+					continue
+				}
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:             listToolName,
+					ResourceType:     "organization",
+					ResourceID:       org.GetOrgId(),
+					RequestOrgID:     "(multiple)",
+					ResourceOrgID:    org.GetOrgId(),
+					RequestProjectID: "",
+				})
+			}
+			return shared.ScopeMismatchError(listToolName, "organization"), nil
+		}
 		if len(filtered) == 0 {
 			result := listResult{Organizations: []organizationSummary{}}
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
@@ -343,21 +359,25 @@ func normalizeAccessibleIDs(ids []string) (map[string]struct{}, []string) {
 	return set, dedup
 }
 
-func filterAccessibleOrganizations(orgs []*orgpb.Organization, allowed map[string]struct{}) []*orgpb.Organization {
+func filterAccessibleOrganizations(orgs []*orgpb.Organization, allowed map[string]struct{}) ([]*orgpb.Organization, []*orgpb.Organization) {
 	if len(orgs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	filtered := make([]*orgpb.Organization, 0, len(orgs))
+	mismatches := make([]*orgpb.Organization, 0)
 	for _, org := range orgs {
 		if org == nil {
 			continue
 		}
-		if _, ok := allowed[normalizeOrgID(org.GetOrgId())]; ok {
+		norm := normalizeOrgID(org.GetOrgId())
+		if _, ok := allowed[norm]; ok {
 			filtered = append(filtered, org)
+			continue
 		}
+		mismatches = append(mismatches, org)
 	}
-	return filtered
+	return filtered, mismatches
 }
 
 func sortOrganizations(orgs []*orgpb.Organization) {
