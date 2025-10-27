@@ -227,7 +227,7 @@ defmodule Guard.InstanceConfig.Api do
 
   defp github_app_install_url(org) when is_binary(org) and byte_size(org) > 0 do
     base_url = Application.get_env(:guard, :github_app_base_url, "https://github.com")
-    "#{base_url}/organizations/#{org}/settings/apps/new"
+    "#{base_url}/organizations/#{URI.encode(org)}/settings/apps/new"
   end
 
   defp github_app_install_url(_) do
