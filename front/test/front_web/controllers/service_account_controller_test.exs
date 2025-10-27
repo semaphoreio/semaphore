@@ -268,6 +268,65 @@ defmodule FrontWeb.ServiceAccountControllerTest do
     end
   end
 
+  describe "GET /service_accounts/export" do
+    test "requires service_accounts.view permission", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.remove_all_permissions()
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      conn = get(conn, "/service_accounts/export")
+
+      assert html_response(conn, 404) =~ "Page not found"
+    end
+
+    test "when the user can access the org => send csv", %{
+      conn: conn,
+      org_id: org_id,
+      user_id: user_id
+    } do
+      Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, ["organization.view"])
+
+      expect(ServiceAccountMock, :describe_many, fn members ->
+        service_accounts =
+          Enum.map(members, fn member_id ->
+            %InternalApi.ServiceAccount.ServiceAccount{
+              id: member_id,
+              name: "Test Service Account",
+              description: "Test description",
+              org_id: org_id,
+              creator_id: "",
+              created_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+              updated_at: %Google.Protobuf.Timestamp{seconds: 1_704_103_200},
+              deactivated: false
+            }
+          end)
+
+        {:ok, service_accounts}
+      end)
+
+      conn = get(conn, "/service_accounts/export")
+
+      rows =
+        conn.resp_body
+        |> String.split("\r\n", trim: true)
+        |> CSV.decode!(validate_row_length: true, headers: true)
+        |> Enum.to_list()
+
+      assert length(rows) == 3
+
+      first = List.first(rows)
+
+      assert Map.has_key?(first, "name")
+      assert Map.has_key?(first, "description")
+      assert Map.has_key?(first, "deactivated")
+      assert Map.has_key?(first, "created_at")
+      assert Map.has_key?(first, "updated_at")
+    end
+  end
+
   describe "PUT /service_accounts/:id" do
     setup %{org_id: org_id, user_id: user_id} do
       Support.Stubs.PermissionPatrol.add_permissions(org_id, user_id, [
