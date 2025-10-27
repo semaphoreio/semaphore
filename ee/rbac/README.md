@@ -299,3 +299,24 @@ erDiagram
         string name
     }
 ```
+
+## Provisioning SCIM/SAML JIT Users
+
+### SCIM Provisioning
+
+When we receive a SCIM request, we first validate that the signature is correct. Once validated, we create an `okta_user` entity in the database (note: this is an outdated name that predates our support for multiple identity providers), or update an existing `okta_user` if one already exists. The user is placed in a pending state.
+
+A SCIM provisioner async worker then processes these pending `okta_user` entities. Based on the payload of the SCIM request (which is stored as part of the `okta_user` database entity), the worker performs one of three actions:
+- Creates a new user and adds them to the organization
+- Updates an existing user
+- Deactivates a user and removes them from the organization
+
+### SAML JIT Provisioning
+
+When we receive a SAML request, we check if an `okta_user` (SCIM user) already exists for that user. If no SCIM user exists, we return a 404 error, unless the organization has SAML JIT (Just-In-Time) provisioning enabled.
+
+If SAML JIT provisioning is enabled and this is the user's first SAML request, we create a `saml_jit_user` entity. The SAML JIT provisioner picks this up immediately and creates a proper Semaphore user.
+
+### Known Limitation
+
+The SAML JIT provisioning implementation has a limitation that should be addressed. Even though the structure of the `saml_jit_user` entity is designed to work with async workers, those workers were never implemented. The current implementation processes SAML JIT users synchronously during the request. If there is no available database connection at the time of the SAML request, the request will fail, and the SAML JIT user will not be processed again. This differs from the SCIM provisioning flow, which properly handles retries through the async worker pattern.
