@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ruby:3.3.6-slim-bookworm
+ARG BASE_IMAGE=ruby:3.3.10-slim-bookworm
 
 FROM ${BASE_IMAGE} as base
 
