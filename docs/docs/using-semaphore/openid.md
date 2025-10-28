@@ -200,7 +200,7 @@ Next, we need to map fields from the Semaphore OIDC provider to Google Cloud att
 
 2. Use the following template to grant Google Cloud access to the identity pool created in Step 1. 
 
-    **Note**: Google Cloud has a 127-byte limit for mapped attributes. Semaphore's JWT subject can exceed this limit, so we'll use shorter JWT claims for the mapping.
+    **Note**: Google Cloud has a 127-byte limit for mapped attributes. Semaphore's `sub` claim can exceed this limit, but each token now also includes a compact `sub127` claim that stays under 127 characters (with `org` and `repo` capped at 25 characters and `ref` capped at 35). The example below keeps using shorter individual claims for clarity, yet you can map `google.subject=assertion.sub127` if you prefer to rely on the subject value.
 
     Replace:
     - `<REPOSITORY>` with your repository name, e.g. `web`
@@ -221,7 +221,7 @@ Next, we need to map fields from the Semaphore OIDC provider to Google Cloud att
     - Maps the repository name from the JWT to `google.subject` 
     - Maps the branch name from the JWT to `google.branch`
     - Uses attribute conditions to verify the specific repository, branch, and project from the JWT claims
-    - Avoids the 127-byte limit by using shorter JWT claims instead of the full subject
+    - Avoids the 127-byte limit by using shorter JWT claims (or the compact `sub127` claim) instead of the full subject
 
 </Steps>
 
@@ -385,4 +385,3 @@ See the [OIDC token reference page](../reference/openid) to learn how the OIDC t
 
 - [How to integrate Semaphore with Okta](./okta)
 - [Semaphore organizations](./organizations)
-
