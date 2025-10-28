@@ -54,6 +54,123 @@ defmodule Zebra.Workers.Agent.HostedAgentTest do
         assert Agent.occupy(job) == {:error, error.message}
       end
     end
+
+    test "uses original machine values when migration flag is disabled" do
+      {:ok, job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "e1-standard-2",
+          machine_os_image: "ubuntu2004"
+        })
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent: %InternalApi.Chmura.Agent{id: @agent_id}
+      }
+
+      with_mock Stub,
+        occupy_agent: fn _, request, _ ->
+          assert request.machine.type == "e1-standard-2"
+          assert request.machine.os_image == "ubuntu2004"
+          {:ok, response}
+        end do
+        assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
+      end
+    end
+
+    test "remaps e1-standard-2 machines to f1-standard-2 when migration flag is enabled" do
+      org_id = Support.StubbedProvider.e1_to_f1_org_id()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_id,
+          machine_type: "e1-standard-2",
+          machine_os_image: "ubuntu2004"
+        })
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent: %InternalApi.Chmura.Agent{id: @agent_id}
+      }
+
+      with_mock Stub,
+        occupy_agent: fn _, request, _ ->
+          assert request.machine.type == "f1-standard-2"
+          assert request.machine.os_image == "ubuntu2004"
+          {:ok, response}
+        end do
+        assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
+      end
+    end
+
+    test "remaps e1-standard-4 machines to f1-standard-2 when migration flag is enabled" do
+      org_id = Support.StubbedProvider.e1_to_f1_org_id()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_id,
+          machine_type: "e1-standard-4",
+          machine_os_image: "ubuntu2004"
+        })
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent: %InternalApi.Chmura.Agent{id: @agent_id}
+      }
+
+      with_mock Stub,
+        occupy_agent: fn _, request, _ ->
+          assert request.machine.type == "f1-standard-2"
+          assert request.machine.os_image == "ubuntu2004"
+          {:ok, response}
+        end do
+        assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
+      end
+    end
+
+    test "remaps e1-standard-8 machines to f1-standard-4 when migration flag is enabled" do
+      org_id = Support.StubbedProvider.e1_to_f1_org_id()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_id,
+          machine_type: "e1-standard-8",
+          machine_os_image: "ubuntu2004"
+        })
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent: %InternalApi.Chmura.Agent{id: @agent_id}
+      }
+
+      with_mock Stub,
+        occupy_agent: fn _, request, _ ->
+          assert request.machine.type == "f1-standard-4"
+          assert request.machine.os_image == "ubuntu2004"
+          {:ok, response}
+        end do
+        assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
+      end
+    end
+
+    test "does not remap different machine types when migration flag is enabled" do
+      org_id = Support.StubbedProvider.e1_to_f1_org_id()
+
+      {:ok, job} =
+        Support.Factories.Job.create(:scheduled, %{
+          organization_id: org_id,
+          machine_type: "e2-standard-2",
+          machine_os_image: "ubuntu2004"
+        })
+
+      response = %InternalApi.Chmura.OccupyAgentResponse{
+        agent: %InternalApi.Chmura.Agent{id: @agent_id}
+      }
+
+      with_mock Stub,
+        occupy_agent: fn _, request, _ ->
+          assert request.machine.type == "e2-standard-2"
+          assert request.machine.os_image == "ubuntu2004"
+          {:ok, response}
+        end do
+        assert Agent.occupy(job) == {:ok, Agent.construct_agent(response)}
+      end
+    end
   end
 
   describe ".release" do
