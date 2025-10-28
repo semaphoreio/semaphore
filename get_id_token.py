@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 #
 # The gcloud auth print-identity-token command does not work
 # for external account (workload identity federation).
