@@ -12,6 +12,7 @@ window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
       type: @type,
       requester: @requester,
       listing: @listing,
+      listing_requester: @listing_requester,
       permissions: @permissions,
       all_pipelines_enabled: @all_pipelines_enabled %>
     <%= render FrontWeb.DashboardView, "partials/_workflows.html", conn: @conn, workflows: @workflows, pagination: @pagination, pollman: @pollman, page: :project %>
