@@ -29,10 +29,10 @@ defmodule Front.ProjectPage.CacheInvalidatorTest do
       pipeline: pipeline
     } do
       branch_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=branch/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=branch/list_mode=latest/"
 
       all_git_refs_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=/list_mode=latest/"
 
       Cacheman.put(
         :front,
@@ -64,16 +64,16 @@ defmodule Front.ProjectPage.CacheInvalidatorTest do
   describe "project_updated" do
     test "invalidates project page caches", %{organization: organization, project: project} do
       tag_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=tag/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=tag/list_mode=latest/"
 
       branch_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=branch/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=branch/list_mode=latest/"
 
       pr_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=pr/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=pr/list_mode=latest/"
 
       all_git_refs_cache_key =
-        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=/"
+        "project_page_model/#{Model.cache_version()}/project_id=#{project.id}/ref_types=/list_mode=latest/"
 
       Cacheman.put(
         :front,
