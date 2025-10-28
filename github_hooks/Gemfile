@@ -5,6 +5,7 @@ gem "bundler", ">= 1.8.4"
 
 gem "pg", "~> 1.1"
 gem "rails", ">= 8.0.2.1", "< 8.1"
+gem "rack", "~> 2.2.20"
 gem "sprockets-rails"
 
 gem "excon", "~> 0.81.0"
@@ -35,6 +36,7 @@ gem "sentry-sidekiq"
 
 gem "sprockets", "< 4"
 gem "nokogiri", "~> 1.18.9"
+gem "uri", "~> 1.0", ">= 1.0.4"
 
 gem "rt-watchman", :require => "watchman", :github => "renderedtext/watchman", :ref => "74530687a232aea678b6738114c82dfc163657cd"
 gem "rt-logman", :require => "logman"
