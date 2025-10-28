@@ -26,6 +26,7 @@ window.InjectedDataByBackend.AssetsPath = "<%= assets_path() %>"
       type: @type,
       requester: @requester,
       listing: @listing,
+      listing_requester: @listing_requester,
       all_pipelines_enabled: @all_pipelines_enabled %>
 
     <%= render FrontWeb.ProjectView, "public/_workflows.html", project: @project, conn: @conn, pollman: @pollman, workflows: @workflows, page: :project %>
