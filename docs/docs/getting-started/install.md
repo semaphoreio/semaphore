@@ -13,7 +13,7 @@ See the [feature comparison](./features) to decide which edition of Semaphore is
 
 <Columns>
   <Column className='text--center'>
- <Card shadow='tl' style={{marginBottom:10 + 'px'}}>
+ <Card shadow='md' style={{marginBottom:10 + 'px'}}>
     <CardHeader>
       <h3>Community Edition</h3>
     </CardHeader>
@@ -30,7 +30,7 @@ See the [feature comparison](./features) to decide which edition of Semaphore is
   </Card>
   </Column>
   <Column className='text--center'>
- <Card shadow='tl' style={{marginBottom:10 + 'px'}}>
+ <Card shadow='md' style={{marginBottom:10 + 'px'}}>
     <CardHeader>
       <h3>Enterprise Edition</h3>
     </CardHeader>
@@ -48,7 +48,11 @@ See the [feature comparison](./features) to decide which edition of Semaphore is
   </Column>
 </Columns>
 
+:::note
+
 Developers interested in contributing to the [Semaphore repository](https://github.com/semaphoreio/semaphore) should use a [local development build](https://github.com/semaphoreio/semaphore/blob/main/LOCAL-DEVELOPMENT.md).
+
+:::
 
 ## Other Tools
 
