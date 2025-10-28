@@ -42,6 +42,8 @@ export class ChooseSelect {
     const url = new Url
     url.query['listing'] = selection.listing
     url.query['requester'] = selection.requester
+    delete url.query['page_token']
+    delete url.query['direction']
 
     window.location.href = url.toString()
   }
