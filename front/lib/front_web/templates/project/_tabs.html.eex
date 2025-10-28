@@ -51,23 +51,27 @@
 
 <div class="flex item-start items-center-m mb3">
   <div class="flex-auto">
-    <div id="chooseSelect" class="flex-m items-center">
-      <select data-key="type" class="db form-control mb3 mb0-m mr3">
-        <optgroup label="Show everything">
-          <option value="" <%= if @type == "", do: "selected" %>>Branches, PRs and Tags</option>
-        </optgroup>
-        <optgroup label="Filter per type">
-          <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
-          <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
-          <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+    <div id="chooseSelect" class="flex-m items-center flex-wrap">
+      <select data-key="listing_requester" class="db form-control mb3 mb0-m mr3">
+        <option value="all_pipelines" <%= if @listing_requester == "all_pipelines", do: "selected" %>>All pipelines</option>
+        <option value="all_by_me" <%= if @listing_requester == "all_by_me", do: "selected" %>>All by me</option>
+        <option value="latest_per_branch" <%= if @listing_requester == "latest_per_branch", do: "selected" %>>Latest per branch</option>
       </select>
-      <select data-key="requester" class="db form-control mb3 mb0-m mr3">
-        <option value="false" <%= if @requester == false, do: "selected" %>>by Everyone</option>
-        <option value="true" <%= if @requester == true, do: "selected" %>>by Me</option>
-      </select>
-      <div class="project-jumpto">
-        <input type="text" class="form-control" placeholder="Search…">
-        <div class="jumpto-results"></div>
+      <div class="flex items-center">
+        <select data-key="type" class="db form-control mb3 mb0-m mr3">
+          <optgroup label="Show everything">
+            <option value="" <%= if @type == "", do: "selected" %>>Branches, PRs and Tags</option>
+          </optgroup>
+          <optgroup label="Filter per type">
+            <option value="branch" <%= if @type == "branch", do: "selected" %>>Branches only</option>
+            <option value="pr" <%= if @type == "pr", do: "selected" %>>Pull Requests only</option>
+            <option value="tag" <%= if @type == "tag", do: "selected" %>>Tags only</option>
+          </optgroup>
+        </select>
+        <div class="project-jumpto">
+          <input type="text" class="form-control" placeholder="Search…">
+          <div class="jumpto-results"></div>
+        </div>
       </div>
     </div>
   </div>
