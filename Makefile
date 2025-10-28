@@ -304,7 +304,7 @@ configure.sign:
 		--credential-source-file=/tmp/oidc_token \
 		--credential-source-type="text" && \
 	export GOOGLE_APPLICATION_CREDENTIALS=/home/semaphore/creds.json && \
-	pip install google-cloud-iam && \
+	pip install packaging google-cloud-iam && \
 	$(ROOT_MAKEFILE_PATH)/get_id_token.py $$GOOGLE_PROJECT_NAME ci-image-signer > /tmp/sigstore-token
 
 registry.push:
