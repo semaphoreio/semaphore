@@ -844,6 +844,7 @@ defmodule FrontWeb.ProjectController do
         type: workflow_list_type_setting(conn),
         requester: model.user_page?,
         listing: model.list_mode,
+        listing_requester: combined_listing_requester(model.list_mode, model.user_page?),
         all_pipelines_enabled: show_all_pipelines?(conn),
         notice: conn |> get_flash(:notice),
         social_metatags: true,
@@ -902,9 +903,10 @@ defmodule FrontWeb.ProjectController do
       state: "poll",
       href: "/projects/#{project.id}/workflows",
       params: [
+        requester: data.user_page?,
         page_token: params.page_token,
         direction: params.direction,
-        listing: data.list_mode || "latest"
+        listing: data.list_mode || workflow_list_mode_setting(conn)
       ]
     }
 
@@ -922,6 +924,7 @@ defmodule FrontWeb.ProjectController do
       title: "#{project.name}・#{data.organization.name}",
       requester: data.user_page?,
       listing: data.list_mode,
+      listing_requester: combined_listing_requester(data.list_mode, data.user_page?),
       all_pipelines_enabled: show_all_pipelines?(conn),
       type: workflow_list_type_setting(conn),
       notice: conn |> get_flash(:notice),
@@ -947,7 +950,7 @@ defmodule FrontWeb.ProjectController do
         page_token: conn.params["page_token"] || "",
         direction: conn.params["direction"] || "",
         type: conn.params["type"] || memory["projectType"],
-        listing: model.list_mode || "latest"
+        listing: model.list_mode || workflow_list_mode_setting(conn)
       ]
     }
   end
@@ -961,7 +964,7 @@ defmodule FrontWeb.ProjectController do
   defp workflow_list_mode_setting(conn) do
     memory = conn.req_cookies["memory"] |> MemoryCookie.values()
 
-    requested_mode = conn.params["listing"] || memory["projectListing"] || "latest"
+    requested_mode = conn.params["listing"] || memory["projectListing"] || "all_pipelines"
 
     if show_all_pipelines?(conn) do
       normalize_list_mode(requested_mode)
@@ -980,12 +983,20 @@ defmodule FrontWeb.ProjectController do
   end
 
   defp filters(conn) do
+    list_mode = workflow_list_mode_setting(conn)
+    requester? = user_page?(conn)
+
     %{
       type: workflow_list_type_setting(conn),
-      requester: user_page?(conn),
-      listing: workflow_list_mode_setting(conn)
+      requester: requester?,
+      listing: list_mode,
+      listing_requester: combined_listing_requester(list_mode, requester?)
     }
   end
+
+  defp combined_listing_requester(_, true), do: "all_by_me"
+  defp combined_listing_requester("all_pipelines", _), do: "all_pipelines"
+  defp combined_listing_requester(_, _), do: "latest_per_branch"
 
   defp ref_types(conn) do
     conn |> workflow_list_type_setting() |> String.split(",", trim: true)
