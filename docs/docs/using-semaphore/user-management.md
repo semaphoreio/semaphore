@@ -73,7 +73,7 @@ To reset your Semaphore access token, follow these steps:
 
     ![Profile menu](./img/profile-menu.jpg)
 
-3. Under **API Tokek** press **Reset API Token**
+3. Under **API Token** press **Reset API Token**
 
     ![User profile page](./img/user-profile-page.jpg)
 
