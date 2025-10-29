@@ -9,11 +9,9 @@ import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/
 
 To install Semaphore Community Edition, you need:
 
-- A domain
-- A public IP address. 
-- Minimum memory: **16GB RAM**
-- Minimum compute: **8 CPUs**
-- For external access: ports SSH (22), HTTP (80) and HTTPS (443) must be open
+- A domain and public IP address
+- Minimum hardware: **16GB RAM** and **8 vCPUs**
+- Ports SSH (22), HTTP (80) and HTTPS (443) must be open
 
 ## Choose your platform {#install-method}
 
