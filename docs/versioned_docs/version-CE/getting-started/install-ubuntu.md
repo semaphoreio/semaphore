@@ -108,7 +108,7 @@ To upgrade Semaphore, follow these steps:
     kubectl get nodes
     ```
 
-3. Source your configuration file and ensure your certificates are located in the expected folders. See [Step 4](#certs)
+3. Source your configuration file and ensure your certificates are located in the expected folders.
 
     ```shell
     source semaphore-config
@@ -116,7 +116,7 @@ To upgrade Semaphore, follow these steps:
     ls certs/live/${DOMAIN}/privkey.pem
     ```
 
-4. Check the expiration date of the certificate. If it has expired, [regenerate the certificate](#certs) before upgrading
+4. Check the expiration date of the certificate. If it has expired, regenerate the certificate before upgrading
 
     ```shell
     openssl x509 -enddate -noout -in certs/live/${DOMAIN}/fullchain.pem

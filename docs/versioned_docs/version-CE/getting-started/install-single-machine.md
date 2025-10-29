@@ -593,7 +593,7 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 
 7. Set the default initialization agent (TODO)
 
-7. Follow the onboarding guide to complete the setup and build your first project
+8. Follow the onboarding guide to complete the setup and build your first project
 
     ![Onboarding guide screen](./img/on-boarding-guide.jpg)
 
