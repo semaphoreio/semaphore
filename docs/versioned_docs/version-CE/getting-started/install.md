@@ -29,7 +29,7 @@ You can install Semaphore Community Edition on a single Linux server or in a Kub
           No high availability
     </CardBody>
     <CardFooter>
-      <a href="./install-single-machine">
+      <a href="/CE/getting-started/install-single-machine">
         <button className='button button--secondary button--block'>Install on a Linux Server</button>
       </a>
     </CardFooter>
@@ -46,7 +46,7 @@ You can install Semaphore Community Edition on a single Linux server or in a Kub
           High availability and scalability <br/>
     </CardBody>
     <CardFooter>
-      <a href="./install-kubernetes">
+      <a href="/CE/getting-started/install-kubernetes">
         <button className='button button--secondary button--block'>Install in Kubernetes</button>
       </a>
     </CardFooter>
