@@ -5,12 +5,6 @@ sidebar_position: 1
 
 # Cache
 
-
-
-
-
-
-
 <VideoTutorial title="Build optimization with caching" src="https://www.youtube.com/embed/jo4RfgN9sBg?si=ajDtPml-joj1ghfn" />
 
 The cache provides fast and convenient storage for your jobs. Use the cache to store project dependencies to speed up builds. This page explains in detail how the cache works and shows examples.
@@ -38,16 +32,16 @@ The cache tool can recognize the structure for various popular languages and fra
 
 The cache tools recognize the following languages and dependency managers. See [advanced usage](#advanced) if your dependency manager is not listed below.
 
-| Language | Files to be cached | Observations |
-|--|--|--|
-| Ruby (bundler) | `vendor/bundle/` | Requires `Gemfile.lock` to be present |
-| Node.js (npm, yarn) | `node_modules/` or `$HOME/.cache/yarn` | Requires `package-lock.json` or `yarn.lock`  to be present |
-| Node (nvm) | `$HOME/.nvm` | Requires `.nvmrc` to be present |
-| Python (pip) | `.pip-cache/` | Requires `requirements.txt` to be present |
-| PHP (composer) | `vendor/` | Requires `composer.lock` to be present |
-| Elixir (mix) | `deps/` or `_build/` | Requires `mix.lock` to be present |
-| Java (maven) | `.m2` or `target` | Requires `pom.xml` to be present |
-| Go (native) | `$HOME/go/pkg/mod` | Requires `go.sum` to be present |
+| Language            | Files to be cached                     | Observations                                              |
+| ------------------- | -------------------------------------- | --------------------------------------------------------- |
+| Ruby (bundler)      | `vendor/bundle/`                       | Requires `Gemfile.lock` to be present                     |
+| Node.js (npm, yarn) | `node_modules/` or `$HOME/.cache/yarn` | Requires `package-lock.json` or `yarn.lock` to be present |
+| Node (nvm)          | `$HOME/.nvm`                           | Requires `.nvmrc` to be present                           |
+| Python (pip)        | `.pip-cache/`                          | Requires `requirements.txt` to be present                 |
+| PHP (composer)      | `vendor/`                              | Requires `composer.lock` to be present                    |
+| Elixir (mix)        | `deps/` or `_build/`                   | Requires `mix.lock` to be present                         |
+| Java (maven)        | `.m2` or `target`                      | Requires `pom.xml` to be present                          |
+| Go (native)         | `$HOME/go/pkg/mod`                     | Requires `go.sum` to be present                           |
 
 ### Store and restore dependencies
 
@@ -140,13 +134,13 @@ cache restore my-gems
 cache restore gems,my-gems
 ```
 
-Since *keys are not overwritten*, it's recommended to add a unique identifier for the stored files. The following example uses three keys and the checksum of `Gemfile.lock` as a key:
+Since _keys are not overwritten_, it's recommended to add a unique identifier for the stored files. The following example uses three keys and the checksum of `Gemfile.lock` as a key:
 
 ```shell
 # store
-cache store gems-master,gems-$SEMAPHORE_GIT_BRANCH,gems-$(checksum Gemfile.lock) vendor/bundle
+cache store gems-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master vendor/bundle
 # retrieve
-cache restore gems-master,gems-$SEMAPHORE_GIT_BRANCH,gems-$(checksum Gemfile.lock) 
+cache restore gems-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master
 ```
 
 ### Managing cache space
@@ -198,12 +192,12 @@ To provision the storage, follow these steps:
 
 1. Create and configure an S3 bucket as explained in [How to set up caching on self-hosted agents](./self-hosted-configure#aws-cache)
 2. Configure the following [environment variables](./jobs#environment-variables) in your job
-    - `SEMAPHORE_CACHE_BACKEND` set its value to "s3"
-    - `SEMAPHORE_CACHE_S3_BUCKET` set its value to the S3 bucket name
+   - `SEMAPHORE_CACHE_BACKEND` set its value to "s3"
+   - `SEMAPHORE_CACHE_S3_BUCKET` set its value to the S3 bucket name
 3. Create a [secret](./secrets) with the following credentials
-    - `AWS_ACCESS_KEY_ID`: the key for an IAM account with access to the bucket
-    - `AWS_SECRET_ACCESS_KEY`: the secret key for the account
-    - `AWS_DEFAULT_REGION`: the region where the bucket is located
+   - `AWS_ACCESS_KEY_ID`: the key for an IAM account with access to the bucket
+   - `AWS_SECRET_ACCESS_KEY`: the secret key for the account
+   - `AWS_DEFAULT_REGION`: the region where the bucket is located
 
 </Steps>
 
@@ -217,8 +211,8 @@ To provision storage, follow these steps
 
 1. [Create a Google Cloud Bucket](https://cloud.google.com/storage/docs/creating-buckets)
 2. Configure the following [environment variables](./jobs#environment-variables) in your job
-    - `SEMAPHORE_CACHE_BACKEND` set it to "gcs"
-    - `SEMAPHORE_CACHE_GCS_BUCKET` set it to your Google Cloud bucket name
+   - `SEMAPHORE_CACHE_BACKEND` set it to "gcs"
+   - `SEMAPHORE_CACHE_GCS_BUCKET` set it to your Google Cloud bucket name
 3. Provide the Google Cloud Application Default Credentials. See [How Application Default Credentials work](https://cloud.google.com/docs/authentication/application-default-credentials) to learn more
 
 </Steps>
