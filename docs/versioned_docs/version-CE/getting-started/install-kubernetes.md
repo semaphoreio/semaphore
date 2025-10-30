@@ -2,7 +2,7 @@
 description: Install Semaphore on a full-blown Kubernetes Cluster
 ---
 
-# Kubernetes Cluster
+# Kubernetes Cluster (WIP)
 
 Covers: GKE and EKS clusters
 

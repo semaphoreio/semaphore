@@ -23,7 +23,9 @@
       },
       "items": [
         "getting-started/install-single-machine",
-        "getting-started/install-kubernetes"
+        "getting-started/install-kubernetes",
+        "getting-started/upgrade-semaphore",
+        "getting-started/uninstall-semaphore"
       ]
     },
     {

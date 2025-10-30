@@ -7,11 +7,18 @@ description: Install Semaphore on your hardware
 import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
 import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
 
-To install Semaphore Community Edition, you need:
+To install Semaphore Community Edition control plane, you need:
 
 - A domain and public IP address
 - Minimum hardware: **16GB RAM** and **8 vCPUs**
 - Ports SSH (22), HTTP (80) and HTTPS (443) must be open
+
+
+:::info Important
+
+In addition, it's highly recommended to add several [self-hosted agents](../using-semaphore/self-hosted.md) to act as runners for your jobs. The amount of agents required depends on your workload. You can always add or remove agents to adjust to your team's demands.
+
+:::
 
 ## Choose your platform {#install-method}
 

@@ -4,13 +4,7 @@ description: Install Semaphore on a single Linux machine
 
 # Single Linux Machine
 
-TODOS: 
-- update image for onboarding
-- set default initialization agent image+description
-- check for helm argument for root email account
-- test installation
-
-This page explains how to install Semaphore Community Edition on a single Linux Server.
+This page explains how to install the Semaphore Community Edition control plane on a single Linux Server.
 
 ## Overview
 
@@ -25,7 +19,7 @@ The self-hosted installation is recommended for users and teams that are already
   - Minimum memory: **16GB RAM**
   - Minimum compute: **8 CPUs**
 - A public IP address. 
-- External access requires ports SSH (22), HTTP (80), and HTTPS (443) open
+- External access requires ports SSH (22), HTTP (80), and HTTPS (443) to be open
 - SSH access to the machine
 - Sudo or root access in the machine
 
@@ -70,11 +64,18 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     cd semaphore-install
     ```
 
-4. Create a file with the following environment variables. Change the values as needed
+4. Create a file with the following environment variables
 
-    ```shell title="Remote shell: create semaphore-config file"
-    echo export DOMAIN="your-subdomain" > semaphore-config
-    echo export IP_ADDRESS="public-IP-address" >> semaphore-config
+      - `DOMAIN`: subdomain + domain for your installation
+      - `IP_ADDRESS`: public IP address of the machine
+      - `ROOT_EMAIL`: email for the owner/administrator of the Semaphore server
+      - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
+
+    ```shell title="Remote shell: create semaphore-config file (example)"
+    echo export DOMAIN="ci.example.com" > semaphore-config
+    echo export IP_ADDRESS="1.2.3.4" >> semaphore-config
+    echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
+    echo export ROOT_NAME="Semaphore admin" >> semaphore-config
     ```
 
       <details>
@@ -122,8 +123,15 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
 4. Initialize a config file for your Semaphore and GCP project
 
-    ```shell title="Create a config file for Google project"
-    echo export DOMAIN="your-domain" > semaphore-config
+      - `DOMAIN`: subdomain + domain for your installation
+      - `ROOT_EMAIL`: email for the owner/administrator of the Semaphore server
+      - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
+
+
+    ```shell title="Remote shell: create semaphore-config file (example)"
+    echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
+    echo export ROOT_EMAIL="administrator-email" >> semaphore-config
+    echo export ROOT_NAME="administrator-name" >> semaphore-config
     echo export GOOGLE_CLOUD_PROJECT_ID="your-project-id" >> semaphore-config
     echo export GOOGLE_INSTANCE_NAME="name-for-your-VM" >> semaphore-config
     echo export GOOGLE_CLOUD_ZONE="gcp-region" >> semaphore-config
@@ -138,6 +146,8 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
         ```shell title="Create a config file for Google project"
         echo export DOMAIN="ci.example.com" > semaphore-config
+        echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
+        echo export ROOT_NAME="Semaphore Admin" >> semaphore-config
         echo export GOOGLE_CLOUD_PROJECT_ID="my-semaphore-323342" >> semaphore-config
         echo export GOOGLE_INSTANCE_NAME="semaphore-control-machine" >> semaphore-config
         echo export GOOGLE_CLOUD_ZONE="us-central1-a" >> semaphore-config
@@ -177,7 +187,6 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
     ```shell title="Get public IP of VM"
     export IP_ADDRESS=$(gcloud compute instances describe ${GOOGLE_INSTANCE_NAME} --zone ${GOOGLE_CLOUD_ZONE} --format='text(networkInterfaces.[].accessConfigs.[].natIP)' | awk -F': ' '{print $2}')
-    echo IP_ADDRESS=$IP_ADDRESS
     ```
 
 
@@ -236,6 +245,12 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     sudo chown semaphore:semaphore semaphore-config
     ```
 
+14. Optionally, install [k9s](https://k9scli.io/) to manage and observe your Semaphore installation
+
+    ```shell
+    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
+    ```
+
 </Steps>
 
 
@@ -255,9 +270,16 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
 3. Create a config file to store Semaphore and AWS settings
 
+      - `DOMAIN`: subdomain + domain for your installation
+      - `ROOT_EMAIL`: email for the owner/administrator of the Semaphore server
+      - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
+      - `AWS_SSH_KEY`: a name for the SSH key file to connect to the EC2 VM
+      - `AWS_SECURITY_GROUP`: name for the AWS security group for the EC2 VM
 
     ```shell title="Create config file for Semaphore and AWS"
-    echo export DOMAIN="your-subdomain" > semaphore-config
+    echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
+    echo export ROOT_EMAIL="administrator-email" >> semaphore-config
+    echo export ROOT_NAME="Administrator Name" >> semaphore-config
     echo export AWS_SSH_KEY="your-ssh-key-name" >> semaphore-config
     echo export AWS_SECURITY_GROUP="your-security-group-name" >> semaphore-config
     ```
@@ -269,6 +291,8 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
         ```shell title="Create a config file for Google project"
         echo export DOMAIN="ci.example.com" > semaphore-config
+        echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
+        echo export ROOT_NAME="Semaphore admin" >> semaphore-config
         echo export AWS_SSH_KEY="ssh-keys-semaphore" >> semaphore-config
         echo export AWS_SECURITY_GROUP="security-group-semaphore" >> semaphore-config
         ```
@@ -329,7 +353,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     echo export SUBNET_ID="my-new-SubnetId" >> semaphore-config
     ```
 
-10. Create the EC2 VM. This commands creates the minimum recommended instance to run Semaphore
+10. Create the EC2 VM. This command creates the minimum recommended instance to run Semaphore
 
     ```shell title="Create EC2 VM"
     export INSTANCE_ID=$(aws ec2 run-instances \
@@ -390,6 +414,12 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     sudo chown semaphore:semaphore semaphore-config
     ```
 
+17. Optionally, install [k9s](https://k9scli.io/) to manage and observe your Semaphore installation
+
+    ```shell
+    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
+    ```
+
 </Steps>
 
   </TabItem>
@@ -406,13 +436,13 @@ Configure your DNS by creating two A records that point to the server IP address
 2. Create A record for your subdomain
 
       - Type: A
-      - Name: `my-subdomain` (e.g. `ci.example.com`)
+      - Name: your subdomain + domain (e.g. `ci.example.com`)
       - Value: the public IP address of your Linux machine
 
 3. Create a wildcard record
 
       - Type: A
-      - Name: `*.my-subdomain` (e.g. `*.ci.example.com`)
+      - Name: your subdomain + domain (e.g. `*.ci.example.com`)
       - Value: the public IP address of your Linux machine
 
 4. Wait for DNS propagation (typically a few minutes)
@@ -432,7 +462,14 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
 
 <Steps>
 
-1. Run certbot to create a TLS certificate
+1. Still logged in your VM, install certbot in the Linux server
+
+    ```shell title="Remote shell: install certbot"
+    sudo apt-get update
+    sudo apt-get -y install certbot
+    ```
+
+2. Run certbot to create a TLS certificate
 
     ```shell title="Remote shell:  create certificates with certbot"
     source semaphore-config
@@ -445,7 +482,7 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
         --logs-dir certs
     ```
 
-2. You are prompted to create a DNS TXT record to verify ownership of the domain
+3. You are prompted to create a DNS TXT record to verify ownership of the domain
 
     ```text title="Remote shell:  certbot challenge message"
     Please deploy a DNS TXT record under the name:
@@ -457,7 +494,7 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
     EL545Zty7vUUvIHQRSkwxXTWsirldw91enasgB5uOHs
     ```
 
-3. Create the DNS TXT record before continuing the certificate generation. Once done, you should get a message like this:
+4. Create the DNS TXT record before continuing the certificate generation. Once done, you should get a message like this:
 
     ```shell title="Remote shell:  certificate generated message"
     Successfully received the certificate.
@@ -467,12 +504,12 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
     These files will be updated when the certificate renews.
     ```
 
-4. Check the existence of the certificate files on the following paths. You will require both files during the Semaphore installation.
+5. Check the existence of the certificate files on the following paths. You will require both files during the Semaphore installation.
 
     - **Full chain certificate**: `./certs/live/$DOMAIN/fullchain.pem`
     - **Private key certificate**: `./certs/live/$DOMAIN/privkey.pem`
 
-5. You may delete the DNS TXT record from your domain at this point. It's no longer needed.
+6. You may delete the DNS TXT record from your domain at this point. It's no longer needed.
 
 </Steps>
 
@@ -543,18 +580,20 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 2. Install Semaphore with Helm. The installation usually takes between 10 and 30 minutes
 
     ```shell title="Remote shell:  install Semaphore"
-    helm upgrade --install semaphore oci://ghcr.io/semaphoreio/semaphore \
+    helm upgrade --install semaphore "oci://ghcr.io/semaphoreio/semaphore" \
       --debug \
       --version v1.5.0 \
       --timeout 30m \
-      --set global.domain.ip=${IP_ADDRESS} \
-      --set global.domain.name=${DOMAIN} \
+      --set global.domain.ip="${IP_ADDRESS}" \
+      --set global.domain.name="${DOMAIN}" \
+      --set global.rootUser.email="${ROOT_EMAIL}" \
+      --set global.rootUser.name="${ROOT_NAME}" \
       --set ingress.enabled=true \
       --set ingress.ssl.enabled=true \
       --set ingress.className=traefik \
       --set ingress.ssl.type=custom \
-      --set ingress.ssl.crt=$(cat certs/live/${DOMAIN}/fullchain.pem | base64 -w 0) \
-      --set ingress.ssl.key=$(cat certs/live/${DOMAIN}/privkey.pem | base64 -w 0)
+      --set ingress.ssl.crt="$(base64 -w 0 < certs/live/${DOMAIN}/fullchain.pem)" \
+      --set ingress.ssl.key="$(base64 -w 0 < certs/live/${DOMAIN}/privkey.pem)"
     ```
 
 3. Once installed, you should see this message
@@ -564,12 +603,11 @@ This step installs the **Community Edition**. If you want to install the Enterpr
     =============================================================================================
     Congratulations, Semaphore has been installed successfully!
 
-    To start using the app, go to https://id.semaphore.example.com/login
+    To start using the app, go to: https://id.ci.tomfern.com/login
 
     You can fetch credentials for the login by running this command:
 
     echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
-
     =============================================================================================
     ```
 
@@ -577,25 +615,36 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 4. Execute the shown command to retrieve the login credentials.
 
     ```shell title="Remote shell:  get login credentials"
-    $ echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
+    echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
 
     Email: root@example.com
     Password: AhGg_2v6uHuy7hqvNmeLw0O4RqI=
     API Token: nQjnaPKQvW6TqXtpTNSx
     ```
 
+5. **Backup** your `semaphore-config` file in a safe place. It is required to [upgrade Semaphore](./upgrade-semaphore) and [renew expired certificates](./upgrade-semaphore#renew)
 
-5. On your browser, open the subdomain where Semaphore was installed, e.g., `ci.example.com/login`
+6. On your browser, open the subdomain where Semaphore was installed **prefixed with `id`, e.g., `id.ci.example.com`
 
-6. Fill in the username and password. You might be prompted to set a new password
+7. Fill in the username and password. You might be prompted to set a new password
 
     ![Log in screen for Semaphore](./img/first-login.jpg)
 
-7. Set the default initialization agent (TODO)
+8. Open the server menu and select **Settings**
 
-8. Follow the onboarding guide to complete the setup and build your first project
+    ![Server settings menu](./img/settings-menu.jpg)
 
-    ![Onboarding guide screen](./img/on-boarding-guide.jpg)
+9. Select **Initialization jobs**
+
+    ![Init job configuration](./img/init-job.jpg)
+
+10. Select the **Environment Type** to `Self-hosted Machine`
+
+11. Select **Machine Type** to `s1-kubernetes`. Leave **OS Image** empty and press **Save changes**
+
+12. Return to the Semaphore initial page. On the **Learn** tab, you'll find the onboarding guide. Follow it to complete the setup and build your first project
+
+    ![Onboarding guide screen](./img/onboarding.jpg)
 
 </Steps>
 
@@ -604,6 +653,8 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 
 - [Quickstart](./quickstart)
 - [Migration guide](./migration-overview)
+- [How to upgrade Semaphore](./upgrade-semaphore)
+- [How to uninstall Semaphore](./uninstall-semaphore)
 
 
 
