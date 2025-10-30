@@ -144,9 +144,9 @@ Since *keys are not overwritten*, it's recommended to add a unique identifier fo
 
 ```shell
 # store
-cache store gems-master,gems-$SEMAPHORE_GIT_BRANCH,gems-$(checksum Gemfile.lock) vendor/bundle
+cache store gems-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master vendor/bundle
 # retrieve
-cache restore gems-master,gems-$SEMAPHORE_GIT_BRANCH,gems-$(checksum Gemfile.lock) 
+cache restore gems-$(checksum Gemfile.lock),gems-$SEMAPHORE_GIT_BRANCH,gems-master 
 ```
 
 ### Managing cache space
