@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"

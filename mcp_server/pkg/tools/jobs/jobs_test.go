@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"

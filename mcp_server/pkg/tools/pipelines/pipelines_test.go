@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 
 	"google.golang.org/grpc"

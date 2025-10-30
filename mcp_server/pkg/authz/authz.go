@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	watchman "github.com/renderedtext/go-watchman"
-	rbacpb "github.com/semaphoreio/semaphore/bootstrapper/pkg/protos/rbac"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/sirupsen/logrus"
