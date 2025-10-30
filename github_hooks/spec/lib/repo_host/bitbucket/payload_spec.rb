@@ -251,7 +251,7 @@ RSpec.describe RepoHost::Bitbucket::Payload, :vcr => vcr_options do
 
   describe ".commit_range" do
     it "returns correct data" do
-      expect(payload_for_push_commit_empty_payload.commit_range).to eq "3e33408cb14ace049f9f5799caef3afeaeff4b40..."
+      expect(payload_for_push_commit_empty_payload.commit_range).to eq "3e33408cb14ace049f9f5799caef3afeaeff4b40...4fe4180681a5603b58961541d9020bfa68a38a7f"
     end
   end
 

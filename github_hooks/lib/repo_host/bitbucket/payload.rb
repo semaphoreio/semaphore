@@ -5,10 +5,7 @@ module RepoHost::Bitbucket
     attr_accessor :data, :branch, :commits, :head, :prev_head
     attr_reader :action
 
-    PULL_REQUEST_OPENED = "opened"
-    PULL_REQUEST_REOPENED = "reopened"
-    PULL_REQUEST_CLOSED = "closed"
-    PULL_REQUEST_COMMIT = "synchronize"
+    ZERO_SHA = "0" * 40
 
     def initialize(data)
       @data = data
@@ -24,28 +21,31 @@ module RepoHost::Bitbucket
     def ref
       if pull_request?
         "refs/pull/#{pull_request_number}/merge"
+      elsif tag?
+        "refs/tags/#{tag_name}"
       else
-        "refs/head/#{pull_request_name}"
+        branch_ref = branch_name.presence || first_push_change.dig("old", "name")
+        "refs/heads/#{branch_ref}"
       end
     end
 
     # ❌
     def pr_comment?
-      @data["comment"] && @data["issue"] && @data["issue"]["pull_request"]
+      pull_request? && @data["comment"].present?
     end
 
     # ❌
     def pr_approval?
       return false unless pr_comment?
 
-      @data["comment"]["body"].include?("/sem-approve")
+      @data.dig("comment", "content", "raw").to_s.include?("/sem-approve")
     end
 
     # ❌
     def comment_author
       return nil unless pr_comment?
 
-      @data["comment"]["user"]["login"]
+      @data.dig("comment", "user", "nickname")
     end
 
     # ✔️
@@ -58,13 +58,13 @@ module RepoHost::Bitbucket
       if pull_request?
         pull_request_opened?
       else
-        @data["created"] && @data["ref"].starts_with?("refs/heads/")
+        first_push_change["created"] && first_push_change.dig("new", "type") == "branch"
       end
     end
 
     # ❌
     def tag_created?
-      @data["created"] && @data["ref"].starts_with?("refs/tags/")
+      first_push_change["created"] && first_push_change.dig("new", "type") == "tag"
     end
 
     # ✔️
@@ -157,24 +157,19 @@ module RepoHost::Bitbucket
     def pull_request_within_repo?
       return false unless pull_request?
 
-      return true unless head_contains_owner?
+      source_repo = pull_request.dig("source", "repository", "full_name")
+      destination_repo = pull_request.dig("destination", "repository", "full_name")
 
-      head = payload_repo_label("head")
-      base = payload_repo_label("base")
+      return false if source_repo.blank? || destination_repo.blank?
 
-      head == base
+      source_repo == destination_repo
     end
 
     # ❌
     def pull_request_forked_repo?
       return false unless pull_request?
 
-      return false unless head_contains_owner?
-
-      head = payload_repo_label("head")
-      base = payload_repo_label("base")
-
-      head != base
+      !pull_request_within_repo?
     end
 
     # ✔️
@@ -189,17 +184,17 @@ module RepoHost::Bitbucket
 
     # ❌
     def pull_request_opened?
-      @action == PULL_REQUEST_OPENED || @action == PULL_REQUEST_REOPENED
+      %w[pullrequest:created pullrequest:reopened].include?(@action.to_s)
     end
 
     # ❌
     def pull_request_closed?
-      @action == PULL_REQUEST_CLOSED
+      %w[pullrequest:fulfilled pullrequest:rejected].include?(@action.to_s)
     end
 
     # ❌
     def pull_request_commit?
-      @action == PULL_REQUEST_COMMIT
+      %w[pullrequest:updated].include?(@action.to_s)
     end
 
     # ✔️
@@ -214,18 +209,18 @@ module RepoHost::Bitbucket
 
     # ❌
     def pull_request_commits_url
-      @data.dig("pullrequest", "commits_url") || ""
+      pull_request.dig("links", "commits", "href") || ""
     end
 
     # ❌
     def pull_request_repo
-      @data.dig("pullrequest", "base", "repo", "full_name") || ""
+      pull_request.dig("destination", "repository", "full_name") || ""
     end
 
     # ❌
     def repo_name
       if pull_request?
-        @data.dig("pullrequest", "base", "repo", "full_name")
+        pull_request_repo
       else
         @data.dig("repository", "full_name")
       end
@@ -233,17 +228,17 @@ module RepoHost::Bitbucket
 
     # ❌
     def pr_head_repo_name
-      @data.dig("pull_request", "head", "repo", "full_name") || ""
+      pull_request.dig("source", "repository", "full_name") || ""
     end
 
     # ❌
     def pr_head_repo_owner
-      @data.dig("pull_request", "head", "repo", "owner", "login") || ""
+      pr_head_repo_name.to_s.split("/").first.to_s
     end
 
     # ❌
     def pr_head_branch_name
-      @data.dig("pull_request", "head", "ref") || ""
+      pull_request.dig("source", "branch", "name") || ""
     end
 
     # ✔️
@@ -253,12 +248,12 @@ module RepoHost::Bitbucket
 
     # ✔️
     def pr_head_sha
-      pull_request.dig("destination", "commit", "hash") || ""
+      pull_request.dig("source", "commit", "hash") || ""
     end
 
     # ✔️
     def pr_base_sha
-      pull_request.dig("source", "commit", "hash") || ""
+      pull_request.dig("destination", "commit", "hash") || ""
     end
 
     # ✔️
@@ -318,9 +313,16 @@ module RepoHost::Bitbucket
     end
 
     def extract_action
-      if pull_request?
-        "undefined"
-      end
+      return unless pull_request?
+
+      @data["action"] ||
+        @data["event"] ||
+        @data["event_type"] ||
+        @data["event_key"] ||
+        @data["x-event-key"] ||
+        @data.dig("headers", "X-Event-Key") ||
+        @data.dig("headers", "x-event-key") ||
+        @data.dig("headers", "HTTP_X_EVENT_KEY")
     end
 
     def extract_branch
@@ -329,10 +331,7 @@ module RepoHost::Bitbucket
       elsif pr_comment?
         "pull-request-#{issue_number}"
       elsif tag?
-        # tag_name
-        # tmp revert of changes
-        # https://github.com/renderedtext/issues/issues/2172
-        ref.delete_prefix("refs/heads/")
+        tag_name
       else
         first_push_change.dig("new", "name")
       end
@@ -359,17 +358,10 @@ module RepoHost::Bitbucket
     def extract_head
       if pull_request?
         pr_head_sha
-      elsif @data["head_commit"]
-        # If head commit exists, use that one to extract the commit.
-        # The distinction between "head_commit" and "after" is important in
-        # case of annotated tags.
-        #
-        # In almost every case, we want to use head commits. If this field is
-        # missing (not sure how or why?) than we will fallback to "after".
-
-        @data["head_commit"]["id"]
       else
-        @data["after"]
+        first_push_change.dig("new", "target", "hash") ||
+          first_push_change.dig("new", "hash") ||
+          ZERO_SHA
       end
     end
 
@@ -383,16 +375,6 @@ module RepoHost::Bitbucket
 
     def pull_request_branch_name
       "pull-request-#{pull_request_number}"
-    end
-
-    # # unexpected payload from GH
-    # # GH always sends owner:branch until feb 19
-    def head_contains_owner?
-      @data["pull_request"]["head"]["label"].include?(":")
-    end
-
-    def payload_repo_label(repo)
-      @data["pull_request"][repo]["label"].split(":").first
     end
 
     def first_push_change
