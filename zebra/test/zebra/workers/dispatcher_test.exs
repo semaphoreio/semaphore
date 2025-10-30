@@ -320,7 +320,8 @@ defmodule Zebra.Workers.DispatcherTest do
       assert length(requested_os_images) == 50
       assert Enum.count(requested_os_images, &(&1 == "ubuntu1804")) == 20
       assert Enum.count(requested_os_images, &(&1 == "ubuntu2004")) == 20
-      assert Enum.count(requested_os_images, &(&1 == "ubuntu2404")) == 10 # only one batch requested
+      # only one batch requested
+      assert Enum.count(requested_os_images, &(&1 == "ubuntu2404")) == 10
     end
   end
 
