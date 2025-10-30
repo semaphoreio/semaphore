@@ -52,6 +52,8 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
 
   const canSubmit = name.trim().length > 0 && selectedRoleId.length > 0 && !loading;
 
+  const selectedRole = config.roles.find((role) => role.id === selectedRoleId);
+
   return (
     <Modal isOpen={isOpen} close={handleClose} title="Create Service Account">
       {!token ? (
@@ -92,11 +94,16 @@ export const CreateServiceAccount = ({ isOpen, onClose, onCreated }: CreateServi
               >
                 <option value="">Select a role...</option>
                 {config.roles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name} - {role.description}
+                  <option key={role.id} value={role.id} title={`${role.name} - ${role.description}`}>
+                    {role.name}
                   </option>
                 ))}
               </select>
+              {selectedRole && (
+                <p className="mt2 mb0 f6 mid-gray">
+                  {selectedRole.description}
+                </p>
+              )}
             </div>
 
             {error && (

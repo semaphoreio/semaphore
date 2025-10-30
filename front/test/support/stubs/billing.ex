@@ -77,7 +77,7 @@ defmodule Support.Stubs.Billing do
     spendings = [
       stub_spending(
         plan_summary: stub_plan(:startup_hybrid),
-        display_name: "Startup - Hybrid #{formatted_from} - #{formated_to}",
+        display_name: "Hybrid #{formatted_from} - #{formated_to}",
         from_date: [seconds: from_date |> Timex.to_unix()],
         to_date: [seconds: to_date |> Timex.to_unix()],
         summary:
@@ -639,7 +639,7 @@ defmodule Support.Stubs.Billing do
   def stub_plan(:startup_hybrid, params) do
     [
       id: Ecto.UUID.generate(),
-      name: "Startup - Hybrid - Postpaid",
+      name: "Hybrid - Postpaid",
       slug: "startup_hybrid",
       details: [],
       charging_type: :CHARGING_TYPE_POSTPAID,
@@ -653,7 +653,7 @@ defmodule Support.Stubs.Billing do
   def stub_plan(:startup_hybrid_prepaid, params) do
     [
       id: Ecto.UUID.generate(),
-      name: "Startup - Hybrid - Prepaid",
+      name: "Hybrid - Prepaid",
       slug: "startup_hybrid",
       details: [],
       charging_type: :CHARGING_TYPE_PREPAID,

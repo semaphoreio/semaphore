@@ -70,7 +70,7 @@ const ContactPlanSelection = () => {
         </div>
         <p className="f5 gray">
           Building frequently? Cut costs with the{` `}
-          <span className="b">Scaleup plan</span>. It offers advanced control,
+          <span className="b">Enterprise plan</span>. It offers advanced control,
           governance, and support SLAs, all in one annual package.
         </p>
         <p className="f5 gray pb3">
@@ -87,7 +87,7 @@ const ContactPlanSelection = () => {
               <tr>
                 <td className="ph3 bb b--black-10 pt3 pb2 v-top bg-purple white br3 br--top">
                   <div className="f2">
-                    <span className="b">Scaleup</span>
+                    <span className="b">Enterprise</span>
                   </div>
                   <div className="f5 pr3">
                     For peak performance teams that build frequently.

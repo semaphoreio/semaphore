@@ -3,25 +3,19 @@ description: Build and deploy Docker containers
 sidebar_position: 5
 ---
 
-# Working with Docker
-
-
-
-
-
-
+# Building Docker Images
 
 Use Semaphore to build, test, store, and deploy Docker images to production. This page explains how to use Docker inside Semaphore.
 
 :::tip
 
-This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see the [Docker environments page](../pipelines#docker-environments).
+This page describes how to build, test, and publish Docker images using Semaphore. If you want to run [jobs](../jobs) inside Docker containers, see [Running Jobs in Docker Containers](../containers).
 
 :::
 
 ## Overview
 
-Docker must be installed on your [self-hosted agents](../self-hosted) before you can use Docker commands in your pipelines. Alternatively, you can use [Docker based environments](../pipelines#docker-environments) when your self-hosted agent runs in a Kubernetes cluster.
+Docker must be installed on your [self-hosted agents](../self-hosted) before you can use Docker commands in your pipelines.
 
 ## How to build a Docker image {#build}
 
@@ -202,5 +196,6 @@ docker pull registry-owner/image-name
 
 ## See also
 
-- [How to run jobs inside Docker containers](../pipelines#docker-environments)
-- [How to create jobs](../jobs#job-create)
+- [Running jobs in Docker containers](../containers)
+- [Building Docker images in Semaphore](./docker)
+- [Pipeline YAML for containers](../../reference/pipeline-yaml#containers)

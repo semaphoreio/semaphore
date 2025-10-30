@@ -150,7 +150,7 @@ defmodule Front.Models.Billing.PlanSwitch do
   defp available_plans do
     [
       Billing.PlanSwitch.AvailablePlan.new(
-        name: "Startup - Cloud",
+        name: "Cloud",
         type: :startup_cloud,
         description: "Pay only for used machine time, no seat costs.",
         features: [
@@ -164,7 +164,7 @@ defmodule Front.Models.Billing.PlanSwitch do
         ]
       ),
       Billing.PlanSwitch.AvailablePlan.new(
-        name: "Startup - Hybrid",
+        name: "Hybrid",
         type: :startup_hybrid,
         description: "Run jobs on your own infrastructure.",
         features: [
