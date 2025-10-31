@@ -323,6 +323,44 @@ defmodule Zebra.Workers.DispatcherTest do
       # only one batch requested
       assert Enum.count(requested_os_images, &(&1 == "ubuntu2404")) == 10
     end
+
+    test "dispatches self-hosted jobs when os_image is blank or nil" do
+      System.put_env("DISPATCH_SELF_HOSTED_ONLY", "false")
+      System.put_env("DISPATCH_CLOUD_ONLY", "false")
+
+      {:ok, blank_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: ""
+        })
+
+      {:ok, nil_image_job} =
+        Support.Factories.Job.create(:scheduled, %{
+          machine_type: "s1-local-testing",
+          machine_os_image: nil
+        })
+
+      response = %InternalApi.SelfHosted.OccupyAgentResponse{
+        agent_id: @agent_id,
+        agent_name: "self-hosted-agent"
+      }
+
+      GrpcMock.stub(Support.FakeServers.SelfHosted, :occupy_agent, fn _, _ -> response end)
+
+      with_stubbed_http_calls(fn ->
+        Worker.init() |> Zebra.Workers.DbWorker.tick()
+      end)
+
+      blank_image_job = Job.reload(blank_image_job)
+      nil_image_job = Job.reload(nil_image_job)
+
+      assert Job.started?(blank_image_job)
+      assert Job.started?(nil_image_job)
+      assert blank_image_job.agent_id == @agent_id
+      assert nil_image_job.agent_id == @agent_id
+      assert blank_image_job.machine_os_image == ""
+      assert nil_image_job.machine_os_image in [nil, ""]
+    end
   end
 
   describe ".process" do
