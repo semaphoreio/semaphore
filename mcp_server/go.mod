@@ -8,11 +8,14 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/mark3labs/mcp-go v0.41.1
+	github.com/renderedtext/go-watchman v0.0.0-20221222100224-451a6f3c8d92
 	github.com/sirupsen/logrus v1.9.3
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251014184007-4626949a642f
 	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.10
 )
+
+require gopkg.in/alexcesaro/statsd.v2 v2.0.0 // indirect
 
 require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
