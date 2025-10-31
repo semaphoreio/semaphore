@@ -2,6 +2,7 @@ package pipelines
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
@@ -16,11 +18,12 @@ import (
 )
 
 const (
-	listToolName = "pipelines_list"
-	jobsToolName = "pipeline_jobs"
-	defaultLimit = 20
-	maxLimit     = 100
-	errNoClient  = "pipeline gRPC endpoint is not configured"
+	listToolName          = "pipelines_list"
+	jobsToolName          = "pipeline_jobs"
+	defaultLimit          = 20
+	maxLimit              = 100
+	errNoClient           = "pipeline gRPC endpoint is not configured"
+	projectViewPermission = "project.view"
 )
 
 func listFullDescription() string {
@@ -172,6 +175,7 @@ type pipelineSummary struct {
 	Name           string       `json:"name,omitempty"`
 	WorkflowID     string       `json:"workflowId,omitempty"`
 	ProjectID      string       `json:"projectId,omitempty"`
+	OrganizationID string       `json:"organizationId,omitempty"`
 	Branch         string       `json:"branch,omitempty"`
 	CommitSHA      string       `json:"commitSha,omitempty"`
 	State          string       `json:"state,omitempty"`
@@ -253,6 +257,24 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			}
 		}
 
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`%v
+
+The authentication layer must inject the X-Semaphore-User-ID header so we can enforce project permissions for pipelines.
+
+Troubleshooting:
+- Ensure requests pass through the authenticated proxy
+- Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Retry once the header is present`, err)), nil
+		}
+
+		if projectID != "" {
+			if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, projectViewPermission); err != nil {
+				return shared.ProjectAuthorizationError(err, orgID, projectID, projectViewPermission), nil
+			}
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
@@ -270,10 +292,16 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		cursorRaw := req.GetString("cursor", "")
+		cursor, err := shared.SanitizeCursorToken(cursorRaw, "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		request := &pipelinepb.ListKeysetRequest{
 			WfId:      workflowID,
 			PageSize:  pageSize,
-			PageToken: strings.TrimSpace(req.GetString("cursor", "")),
+			PageToken: cursor,
 			Order:     pipelinepb.ListKeysetRequest_BY_CREATION_TIME_DESC,
 			Direction: pipelinepb.ListKeysetRequest_NEXT,
 		}
@@ -308,9 +336,88 @@ Check that:
 `, err)), nil
 		}
 
+		normalizedOrg := normalizeID(orgID)
+		requestedProject := normalizeID(projectID)
+		projectAccess := map[string]bool{}
+		if requestedProject != "" {
+			projectAccess[requestedProject] = true
+		}
+
 		pipelines := make([]pipelineSummary, 0, len(resp.GetPipelines()))
 		for _, ppl := range resp.GetPipelines() {
-			pipelines = append(pipelines, summarizePipeline(ppl))
+			if ppl == nil {
+				continue
+			}
+
+			summary := summarizePipeline(ppl)
+			pipelineOrg := normalizeID(summary.OrganizationID)
+			if pipelineOrg == "" || pipelineOrg != normalizedOrg {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "organization"), nil
+			}
+
+			pipelineProject := normalizeID(summary.ProjectID)
+			if pipelineProject == "" {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "project"), nil
+			}
+
+			if requestedProject != "" && pipelineProject != requestedProject {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              listToolName,
+					ResourceType:      "pipeline",
+					ResourceID:        summary.ID,
+					RequestOrgID:      orgID,
+					ResourceOrgID:     summary.OrganizationID,
+					RequestProjectID:  projectID,
+					ResourceProjectID: summary.ProjectID,
+				})
+				return shared.ScopeMismatchError(listToolName, "project"), nil
+			}
+
+			allowed, known := projectAccess[pipelineProject]
+			if !known {
+				err := authz.CheckProjectPermission(ctx, api, userID, orgID, summary.ProjectID, projectViewPermission)
+				if err != nil {
+					if errors.Is(err, authz.ErrPermissionDenied) {
+						logging.ForComponent("tools").
+							WithFields(logrus.Fields{
+								"tool":       listToolName,
+								"pipelineId": summary.ID,
+								"workflowId": summary.WorkflowID,
+								"projectId":  summary.ProjectID,
+							}).
+							Info("skipping pipeline due to missing project permission")
+						projectAccess[pipelineProject] = false
+						continue
+					}
+					return shared.ProjectAuthorizationError(err, orgID, summary.ProjectID, projectViewPermission), nil
+				}
+				projectAccess[pipelineProject] = true
+				allowed = true
+			}
+
+			if !allowed {
+				continue
+			}
+
+			pipelines = append(pipelines, summary)
 		}
 
 		result := listResult{Pipelines: pipelines}
@@ -355,6 +462,18 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
+		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`%v
+
+The authentication layer must inject the X-Semaphore-User-ID header so we can verify project permissions before returning pipeline jobs.
+
+Troubleshooting:
+- Ensure requests pass through the authenticated proxy
+- Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
+- Retry once the header is present`, err)), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
@@ -391,6 +510,35 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		}
 
 		pipeline := summarizePipeline(describeResp.GetPipeline())
+		if normalized := normalizeID(pipeline.OrganizationID); normalized == "" || normalized != normalizeID(orgID) {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              jobsToolName,
+				ResourceType:      "pipeline",
+				ResourceID:        pipeline.ID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     pipeline.OrganizationID,
+				RequestProjectID:  "",
+				ResourceProjectID: pipeline.ProjectID,
+			})
+			return shared.ScopeMismatchError(jobsToolName, "organization"), nil
+		}
+
+		if strings.TrimSpace(pipeline.ProjectID) == "" {
+			shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+				Tool:              jobsToolName,
+				ResourceType:      "pipeline",
+				ResourceID:        pipeline.ID,
+				RequestOrgID:      orgID,
+				ResourceOrgID:     pipeline.OrganizationID,
+				RequestProjectID:  "",
+				ResourceProjectID: pipeline.ProjectID,
+			})
+			return shared.ScopeMismatchError(jobsToolName, "project"), nil
+		}
+
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, pipeline.ProjectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, pipeline.ProjectID, projectViewPermission), nil
+		}
 		blocks := make([]blockJobGroup, 0, len(describeResp.GetBlocks()))
 		jobs := make([]pipelineJobEntry, 0)
 		for _, block := range describeResp.GetBlocks() {
@@ -456,7 +604,8 @@ func summarizePipeline(ppl *pipelinepb.Pipeline) pipelineSummary {
 		ID:             ppl.GetPplId(),
 		Name:           ppl.GetName(),
 		WorkflowID:     ppl.GetWfId(),
-		ProjectID:      ppl.GetProjectId(),
+		ProjectID:      strings.TrimSpace(ppl.GetProjectId()),
+		OrganizationID: strings.TrimSpace(ppl.GetOrganizationId()),
 		Branch:         ppl.GetBranchName(),
 		CommitSHA:      ppl.GetCommitSha(),
 		State:          pipelineStateToString(ppl.GetState()),
@@ -494,6 +643,10 @@ func pipelineResultReasonToString(reason pipelinepb.Pipeline_ResultReason) strin
 		return strings.ToLower(name)
 	}
 	return "unspecified"
+}
+
+func normalizeID(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func summarizeQueue(q *pipelinepb.Queue) queueSummary {
