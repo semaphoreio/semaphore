@@ -42,7 +42,7 @@ func TestListWorkflows(t *testing.T) {
 	provider := &internalapi.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
-		RBACClient:     &allowRBACStub{},
+		RBACClient:     newRBACStub("project.view"),
 	}
 
 	handler := listHandler(provider)
@@ -111,7 +111,7 @@ func TestListWorkflowsWithRequesterOverride(t *testing.T) {
 		WorkflowClient: client,
 		UserClient:     userClient,
 		Timeout:        time.Second,
-		RBACClient:     &allowRBACStub{},
+		RBACClient:     newRBACStub("project.view"),
 	}
 
 	req := mcp.CallToolRequest{
@@ -147,6 +147,171 @@ func TestListWorkflowsWithRequesterOverride(t *testing.T) {
 	}
 }
 
+func TestListWorkflowsPermissionDenied(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	client := &workflowClientStub{}
+	rbac := newRBACStub()
+
+	provider := &internalapi.MockProvider{
+		WorkflowClient: client,
+		Timeout:        time.Second,
+		RBACClient:     rbac,
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"project_id":      projectID,
+				"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, `Permission denied while accessing project`) {
+		toFail(t, "expected permission denied message, got %q", msg)
+	}
+	if client.lastList != nil {
+		toFail(t, "expected no workflow RPC call, got %+v", client.lastList)
+	}
+	if len(rbac.lastRequests) != 1 {
+		toFail(t, "expected one RBAC request, got %d", len(rbac.lastRequests))
+	}
+}
+
+func TestListWorkflowsRBACUnavailable(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	client := &workflowClientStub{}
+
+	provider := &internalapi.MockProvider{
+		WorkflowClient: client,
+		Timeout:        time.Second,
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"project_id":      projectID,
+				"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Authorization service is not configured") {
+		toFail(t, "expected RBAC unavailable message, got %q", msg)
+	}
+	if client.lastList != nil {
+		toFail(t, "expected no workflow RPC call, got %+v", client.lastList)
+	}
+}
+
+func TestListWorkflowsScopeMismatchOrganization(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	client := &workflowClientStub{
+		listResp: &workflowpb.ListKeysetResponse{
+			Status: &statuspb.Status{Code: code.Code_OK},
+			Workflows: []*workflowpb.WorkflowDetails{
+				{
+					WfId:           "wf-123",
+					ProjectId:      projectID,
+					OrganizationId: "bbbbbbbb-cccc-dddd-eeee-ffffffffffff",
+				},
+			},
+		},
+	}
+	rbac := newRBACStub("project.view")
+
+	provider := &internalapi.MockProvider{
+		WorkflowClient: client,
+		Timeout:        time.Second,
+		RBACClient:     rbac,
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"project_id":      projectID,
+				"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized organization scope") {
+		toFail(t, "expected organization scope mismatch message, got %q", msg)
+	}
+}
+
+func TestListWorkflowsScopeMismatchProject(t *testing.T) {
+	projectID := "11111111-2222-3333-4444-555555555555"
+	client := &workflowClientStub{
+		listResp: &workflowpb.ListKeysetResponse{
+			Status: &statuspb.Status{Code: code.Code_OK},
+			Workflows: []*workflowpb.WorkflowDetails{
+				{
+					WfId:           "wf-123",
+					ProjectId:      "different-project",
+					OrganizationId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+				},
+			},
+		},
+	}
+	rbac := newRBACStub("project.view")
+
+	provider := &internalapi.MockProvider{
+		WorkflowClient: client,
+		Timeout:        time.Second,
+		RBACClient:     rbac,
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{
+			Arguments: map[string]any{
+				"project_id":      projectID,
+				"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+			},
+		},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "outside the authorized project scope") {
+		toFail(t, "expected project scope mismatch message, got %q", msg)
+	}
+}
+
 type workflowClientStub struct {
 	workflowpb.WorkflowServiceClient
 	listResp *workflowpb.ListKeysetResponse
@@ -154,17 +319,90 @@ type workflowClientStub struct {
 	lastList *workflowpb.ListKeysetRequest
 }
 
-type allowRBACStub struct {
-	rbacpb.RBACClient
+func requireErrorText(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	if res == nil {
+		t.Fatalf("expected tool result")
+	}
+	if !res.IsError {
+		t.Fatalf("expected error result, got success")
+	}
+	if len(res.Content) == 0 {
+		t.Fatalf("expected error content")
+	}
+	text, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		t.Fatalf("expected text content, got %T", res.Content[0])
+	}
+	return text.Text
 }
 
-func (a *allowRBACStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+func newRBACStub(perms ...string) *rbacStub {
+	copied := append([]string(nil), perms...)
+	return &rbacStub{permissions: copied}
+}
+
+type rbacStub struct {
+	rbacpb.RBACClient
+
+	permissions     []string
+	perProject      map[string][]string
+	perOrg          map[string][]string
+	err             error
+	errorForProject map[string]error
+	errorForOrg     map[string]error
+	lastRequests    []*rbacpb.ListUserPermissionsRequest
+}
+
+func (s *rbacStub) ListUserPermissions(ctx context.Context, in *rbacpb.ListUserPermissionsRequest, opts ...grpc.CallOption) (*rbacpb.ListUserPermissionsResponse, error) {
+	reqCopy := &rbacpb.ListUserPermissionsRequest{
+		UserId:    in.GetUserId(),
+		OrgId:     in.GetOrgId(),
+		ProjectId: in.GetProjectId(),
+	}
+	s.lastRequests = append(s.lastRequests, reqCopy)
+
+	if s.err != nil {
+		return nil, s.err
+	}
+
+	projectKey := normalizeKey(in.GetProjectId())
+	orgKey := normalizeKey(in.GetOrgId())
+
+	if projectKey != "" {
+		if err := s.errorForProject[projectKey]; err != nil {
+			return nil, err
+		}
+	} else if orgKey != "" {
+		if err := s.errorForOrg[orgKey]; err != nil {
+			return nil, err
+		}
+	}
+
+	perms := s.permissions
+	if projectKey != "" {
+		if override, ok := s.perProject[projectKey]; ok {
+			perms = override
+		}
+	} else if orgKey != "" {
+		if override, ok := s.perOrg[orgKey]; ok {
+			perms = override
+		}
+	}
+	if perms == nil {
+		perms = []string{}
+	}
+
 	return &rbacpb.ListUserPermissionsResponse{
 		UserId:      in.GetUserId(),
 		OrgId:       in.GetOrgId(),
 		ProjectId:   in.GetProjectId(),
-		Permissions: []string{"project.view", "organization.view"},
+		Permissions: append([]string(nil), perms...),
 	}, nil
+}
+
+func normalizeKey(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func (s *workflowClientStub) Schedule(context.Context, *workflowpb.ScheduleRequest, ...grpc.CallOption) (*workflowpb.ScheduleResponse, error) {
