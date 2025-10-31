@@ -107,6 +107,7 @@ defmodule FrontWeb.ProjectController do
           user_id: user_id,
           page_token: params["page_token"] || "",
           direction: params["direction"] || "",
+          list_mode: workflow_list_mode_setting(conn),
           user_page?: user_page?(conn),
           ref_types: ref_types(conn)
         )
@@ -819,6 +820,7 @@ defmodule FrontWeb.ProjectController do
         user_id: user_id,
         page_token: params["page_token"] || "",
         direction: params["direction"] || "",
+        list_mode: workflow_list_mode_setting(conn),
         user_page?: user_page?(conn),
         ref_types: ref_types(conn)
       )
@@ -841,6 +843,9 @@ defmodule FrontWeb.ProjectController do
         branches: model.branches,
         type: workflow_list_type_setting(conn),
         requester: model.user_page?,
+        listing: model.list_mode,
+        listing_requester: combined_listing_requester(model.list_mode, model.user_page?),
+        all_pipelines_enabled: show_all_pipelines?(conn),
         notice: conn |> get_flash(:notice),
         social_metatags: true,
         workflows: model.workflows
@@ -887,6 +892,7 @@ defmodule FrontWeb.ProjectController do
         user_id: user_id,
         page_token: params["page_token"] || "",
         direction: params["direction"] || "",
+        list_mode: workflow_list_mode_setting(conn),
         user_page?: false,
         ref_types: ref_types(conn)
       )
@@ -897,8 +903,10 @@ defmodule FrontWeb.ProjectController do
       state: "poll",
       href: "/projects/#{project.id}/workflows",
       params: [
+        requester: data.user_page?,
         page_token: params.page_token,
-        direction: params.direction
+        direction: params.direction,
+        listing: data.list_mode || workflow_list_mode_setting(conn)
       ]
     }
 
@@ -915,6 +923,9 @@ defmodule FrontWeb.ProjectController do
       pollman: pollman,
       title: "#{project.name}・#{data.organization.name}",
       requester: data.user_page?,
+      listing: data.list_mode,
+      listing_requester: combined_listing_requester(data.list_mode, data.user_page?),
+      all_pipelines_enabled: show_all_pipelines?(conn),
       type: workflow_list_type_setting(conn),
       notice: conn |> get_flash(:notice),
       social_metatags: true
@@ -938,7 +949,8 @@ defmodule FrontWeb.ProjectController do
         requester: user_page?(conn),
         page_token: conn.params["page_token"] || "",
         direction: conn.params["direction"] || "",
-        type: conn.params["type"] || memory["projectType"]
+        type: conn.params["type"] || memory["projectType"],
+        listing: model.list_mode || workflow_list_mode_setting(conn)
       ]
     }
   end
@@ -949,12 +961,42 @@ defmodule FrontWeb.ProjectController do
     conn.params["type"] || memory["projectType"]
   end
 
+  defp workflow_list_mode_setting(conn) do
+    memory = conn.req_cookies["memory"] |> MemoryCookie.values()
+
+    requested_mode = conn.params["listing"] || memory["projectListing"] || "all_pipelines"
+
+    if show_all_pipelines?(conn) do
+      normalize_list_mode(requested_mode)
+    else
+      "latest"
+    end
+  end
+
+  defp normalize_list_mode("all_pipelines"), do: "all_pipelines"
+  defp normalize_list_mode(_), do: "latest"
+
+  defp show_all_pipelines?(conn) do
+    FeatureProvider.feature_enabled?(:project_page_all_pipelines,
+      param: conn.assigns.organization_id
+    )
+  end
+
   defp filters(conn) do
+    list_mode = workflow_list_mode_setting(conn)
+    requester? = user_page?(conn)
+
     %{
       type: workflow_list_type_setting(conn),
-      requester: user_page?(conn)
+      requester: requester?,
+      listing: list_mode,
+      listing_requester: combined_listing_requester(list_mode, requester?)
     }
   end
+
+  defp combined_listing_requester(_, true), do: "all_by_me"
+  defp combined_listing_requester("all_pipelines", _), do: "all_pipelines"
+  defp combined_listing_requester(_, _), do: "latest_per_branch"
 
   defp ref_types(conn) do
     conn |> workflow_list_type_setting() |> String.split(",", trim: true)
