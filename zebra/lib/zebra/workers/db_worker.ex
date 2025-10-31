@@ -183,15 +183,29 @@ defmodule Zebra.Workers.DbWorker do
     records_per_tick = worker.records_per_tick || 100
     machine_os_image_field = worker.machine_os_image_field
 
-    Repo.all(
+    base_query =
       from(r in worker.schema,
         where: field(r, ^worker.state_field) == ^worker.state_value,
-        where: field(r, ^worker.machine_type_field) == ^machine_type,
-        where: field(r, ^machine_os_image_field) == ^machine_os_image,
+        where: field(r, ^worker.machine_type_field) == ^machine_type
+      )
+
+    filtered_query =
+      maybe_filter_machine_os_image(base_query, machine_os_image_field, machine_os_image)
+
+    Repo.all(
+      from(r in filtered_query,
         order_by: [{^order_dir, ^order_by}],
         select: r.id,
         limit: ^records_per_tick
       )
     )
+  end
+
+  defp maybe_filter_machine_os_image(query, field, nil) do
+    from(r in query, where: is_nil(field(r, ^field)))
+  end
+
+  defp maybe_filter_machine_os_image(query, field, value) do
+    from(r in query, where: field(r, ^field) == ^value)
   end
 end
