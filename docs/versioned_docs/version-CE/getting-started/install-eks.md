@@ -35,8 +35,7 @@ Install the following tools before starting the installation:
 
 - [AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html): to manage your AWS resources
 - [Terraform](https://developer.hashicorp.com/terraform/install): to create the Kubernetes cluster
-- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/): to manage your Kubernetes installation
-- [Helm](https://helm.sh/docs/intro/install/): to install Semaphore
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/): to manage your Kubernetes installation [Helm](https://helm.sh/docs/intro/install/): to install Semaphore
 
 In addition, you need to the domain where Semaphore will be installed to [Route53 DNS](https://aws.amazon.com/route53/). Take note of the **hosted Zone ID** for your domain within Route 53, for example, `Z05666441V6R4KFL4MJAA`, since it is used to create Semaphore infrastructure.
 

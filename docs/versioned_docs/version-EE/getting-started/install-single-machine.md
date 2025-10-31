@@ -92,7 +92,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     echo export LICENSE_FILE="license-file-name.txt" >> semaphore-config
     echo export IP_ADDRESS="1.2.3.4" >> semaphore-config
     echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
-    echo export ROOT_NAME="Semaphore admin" >> semaphore-config
+    echo export ROOT_NAME=\"Semaphore admin\" >> semaphore-config
     ```
 
 6. Move the license file to the installation directory
@@ -141,7 +141,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
     echo export LICENSE_FILE="license-file-name.txt" >> semaphore-config
     echo export ROOT_EMAIL="administrator-email" >> semaphore-config
-    echo export ROOT_NAME="administrator-name" >> semaphore-config
+    echo export ROOT_NAME=\"administrator-name\" >> semaphore-config
     echo export GOOGLE_CLOUD_PROJECT_ID="your-project-id" >> semaphore-config
     echo export GOOGLE_INSTANCE_NAME="name-for-your-VM" >> semaphore-config
     echo export GOOGLE_CLOUD_ZONE="gcp-region" >> semaphore-config
@@ -158,7 +158,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
         echo export DOMAIN="ci.example.com" > semaphore-config
         echo export LICENSE_FILE="license-851b7f23-7408-4e75-8591-25b90d1c7dac.txt" >> semaphore-config
         echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
-        echo export ROOT_NAME="Semaphore Admin" >> semaphore-config
+        echo export ROOT_NAME=\"Semaphore Admin\" >> semaphore-config
         echo export GOOGLE_CLOUD_PROJECT_ID="my-semaphore-323342" >> semaphore-config
         echo export GOOGLE_INSTANCE_NAME="semaphore-control-machine" >> semaphore-config
         echo export GOOGLE_CLOUD_ZONE="us-central1-a" >> semaphore-config
@@ -272,11 +272,10 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
 
 1. Install the [AWS CLI](https://aws.amazon.com/cli)
 
-2. Ensure your environment has the AWS access keys
+2. Login to your AWS Account
 
-    ```shell title="AWS Access Keys in Environment"
-    export AWS_ACCESS_KEY_ID=MyAccesskey
-    export AWS_SECRET_ACCESS_KEY=Mysecretkey
+    ```shell title="Login to AWS"
+    aws configure
     ```
 
 3. Create a config file to store Semaphore and AWS settings
@@ -294,7 +293,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
     echo export LICENSE_FILE="license-file-name.txt" >> semaphore-config
     echo export ROOT_EMAIL="administrator-email" >> semaphore-config
-    echo export ROOT_NAME="Administrator Name" >> semaphore-config
+    echo export ROOT_NAME=\"Administrator Name\" >> semaphore-config
     echo export AWS_SSH_KEY="your-ssh-key-name" >> semaphore-config
     echo export AWS_SECURITY_GROUP="your-security-group-name" >> semaphore-config
     ```
@@ -308,7 +307,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
         echo export DOMAIN="ci.example.com" > semaphore-config
         echo export LICENSE_FILE="license-851b7f23-7408-4e75-8591-25b90d1c7dac.txt" >> semaphore-config
         echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
-        echo export ROOT_NAME="Semaphore admin" >> semaphore-config
+        echo export ROOT_NAME=\"Semaphore admin\" >> semaphore-config
         echo export AWS_SSH_KEY="ssh-keys-semaphore" >> semaphore-config
         echo export AWS_SECURITY_GROUP="security-group-semaphore" >> semaphore-config
         ```
@@ -624,14 +623,13 @@ This step installs the **Enterprise Edition**. If you want to install the Commun
 
 3. Once installed, you should see this message
 
-
     ```text title="Remote shell:  installation complete message"
     =============================================================================================
     Congratulations, Semaphore has been installed successfully!
 
     To start using the app, go to: https://id.ci.tomfern.com/login
 
-    You can fetch credentials for the login by running this command:
+    You can fetch credentials for the login running this command:
 
     echo "Email: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_EMAIL}' | base64 -d)"; echo "Password: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_PASSWORD}' | base64 -d)"; echo "API Token: $(kubectl get secret semaphore-authentication -n default -o jsonpath='{.data.ROOT_USER_TOKEN}' | base64 -d)"
     =============================================================================================
@@ -648,7 +646,7 @@ This step installs the **Enterprise Edition**. If you want to install the Commun
     API Token: nQjnaPKQvW6TqXtpTNSx
     ```
 
-5. **Backup** your `semaphore-config` file in a safe place. It is required to [upgrade Semaphore](./upgrade-semaphore) and [renew expired certificates](./upgrade-semaphore#renew)
+5. **Backup** your `semaphore-config` file in a safe place. It is required to [upgrade Semaphore](./upgrade-semaphore), [update your license](./upgrade-semaphore#renew-license), and [renew expired certificates](./upgrade-semaphore#renew)
 
 6. On your browser, open the subdomain where Semaphore was installed **prefixed** with `id`, e.g., `id.ci.example.com`
 
@@ -662,11 +660,12 @@ This step installs the **Enterprise Edition**. If you want to install the Commun
 
 9. Select **Initialization jobs**
 
-    ![Init job configuration](./img/init-job.jpg)
+    ![Init job configuration](./img/init-job-ee.jpg)
+
 
 10. Select the **Environment Type** to `Self-hosted Machine`
 
-11. Select **Machine Type** to `s1-kubernetes`. Leave **OS Image** empty and press **Save changes**
+11. Select **Machine Type** to `s1-kubernetes` and press **Save changes**
 
     :::note
 

@@ -53,23 +53,6 @@ To upgrade Semaphore, you must re-run the `helm upgrade` command used to install
 
 3. Re-run the Helm upgrade command used in the initial installation. You may select a different `--version` argument to upgrade or downgrade your Semaphore version. The installation usually takes between 10 and 30 minutes
 
-    ```shell title="Remote shell:  install Semaphore"
-    helm upgrade --install semaphore "oci://ghcr.io/semaphoreio/semaphore" \
-      --debug \
-      --version <Semaphore_Version> \
-      --timeout 30m \
-      --set global.domain.ip="${IP_ADDRESS}" \
-      --set global.domain.name="${DOMAIN}" \
-      --set global.rootUser.email="${ROOT_EMAIL}" \
-      --set global.rootUser.name="${ROOT_NAME}" \
-      --set ingress.enabled=true \
-      --set ingress.ssl.enabled=true \
-      --set ingress.className=traefik \
-      --set ingress.ssl.type=custom \
-      --set ingress.ssl.crt="$(base64 -w 0 < certs/live/${DOMAIN}/fullchain.pem)" \
-      --set ingress.ssl.key="$(base64 -w 0 < certs/live/${DOMAIN}/privkey.pem)"
-    ```
-
 </Steps>
 
 ## See also
