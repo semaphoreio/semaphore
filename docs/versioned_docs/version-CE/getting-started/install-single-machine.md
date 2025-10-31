@@ -71,24 +71,14 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
       - `ROOT_EMAIL`: email for the owner/administrator of the Semaphore server
       - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
 
+      <br/>
+
     ```shell title="Remote shell: create semaphore-config file (example)"
     echo export DOMAIN="ci.example.com" > semaphore-config
     echo export IP_ADDRESS="1.2.3.4" >> semaphore-config
     echo export ROOT_EMAIL="admin@example.com" >> semaphore-config
     echo export ROOT_NAME="Semaphore admin" >> semaphore-config
     ```
-
-      <details>
-      <summary>Show me an example config</summary>
-      <div>
-
-        ```shell title="Create a config file for Google project"
-        echo export DOMAIN="ci.example.com" > semaphore-config
-        echo export IP_ADDRESS="1.2.3.4" >> semaphore-config
-        ```
-
-      </div>
-      </details>
 
 5. Install certbot
 
@@ -97,12 +87,6 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     sudo apt-get -y install certbot
     ```
 
-6. Optionally, install [k9s](https://k9scli.io/) to manage and observe your Semaphore installation
-
-
-    ```shell
-    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
-    ```
 
 </Steps>
 
@@ -127,6 +111,7 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
       - `ROOT_EMAIL`: email for the owner/administrator of the Semaphore server
       - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
 
+      <br/>
 
     ```shell title="Remote shell: create semaphore-config file (example)"
     echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
@@ -245,12 +230,6 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     sudo chown semaphore:semaphore semaphore-config
     ```
 
-14. Optionally, install [k9s](https://k9scli.io/) to manage and observe your Semaphore installation
-
-    ```shell
-    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
-    ```
-
 </Steps>
 
 
@@ -275,6 +254,8 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
       - `ROOT_NAME`: Name for the owner/administrator of the Semaphore server
       - `AWS_SSH_KEY`: a name for the SSH key file to connect to the EC2 VM
       - `AWS_SECURITY_GROUP`: name for the AWS security group for the EC2 VM
+
+      <br/>
 
     ```shell title="Create config file for Semaphore and AWS"
     echo export DOMAIN="your-subdomain-and-domain" > semaphore-config
@@ -414,12 +395,6 @@ If your base domain is `example.com`, you should define a subdomain such as `ci.
     sudo chown semaphore:semaphore semaphore-config
     ```
 
-17. Optionally, install [k9s](https://k9scli.io/) to manage and observe your Semaphore installation
-
-    ```shell
-    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
-    ```
-
 </Steps>
 
   </TabItem>
@@ -494,7 +469,16 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
     EL545Zty7vUUvIHQRSkwxXTWsirldw91enasgB5uOHs
     ```
 
-4. Create the DNS TXT record before continuing the certificate generation. Once done, you should get a message like this:
+4. Go to your domain's console and create the DNS TXT record required by certbot. Wait for the record to be propagated
+
+    :::tip
+
+    You can verify the creation of the TXT record in the [Google Dig Tool](https://toolbox.googleapps.com/apps/dig/#TXT/). Type the challenge DNS TXT record and check if its value corresponds to the correct value.
+
+    :::
+
+5. Continue the certbot process. You should see a message like this
+
 
     ```shell title="Remote shell:  certificate generated message"
     Successfully received the certificate.
@@ -504,20 +488,15 @@ Certificates **are not auto-renewed**. Once expired, you must execute this step 
     These files will be updated when the certificate renews.
     ```
 
-5. Check the existence of the certificate files on the following paths. You will require both files during the Semaphore installation.
+6. Check the existence of the certificate files on the following paths. You will require both files during the Semaphore installation.
 
     - **Full chain certificate**: `./certs/live/$DOMAIN/fullchain.pem`
     - **Private key certificate**: `./certs/live/$DOMAIN/privkey.pem`
 
-6. You may delete the DNS TXT record from your domain at this point. It's no longer needed.
+7. You may delete the DNS TXT record from your domain at this point. It's no longer needed.
 
 </Steps>
 
-:::tip
-
-You can verify the creation of the TXT record in the [Google Dig Tool](https://toolbox.googleapps.com/apps/dig/#TXT/). Type the challenge DNS TXT record and check if its value corresponds to the correct value.
-
-:::
 
 ## Step 5 - Install K3s and CRDs {#k3s}
 
@@ -546,7 +525,13 @@ In this step, we install and configure [K3s](https://k3s.io/) to run Semaphore.
     source ~/.bashrc
     ```
 
-4. Install [Emissary Ingress Controller](https://www.getambassador.io/docs/latest/topics/install/yaml-install/)
+4. Optionally, install [k9s](https://k9scli.io/) to manage and observe your K3s system
+
+    ```shell
+    wget https://github.com/derailed/k9s/releases/latest/download/k9s_linux_amd64.deb && sudo apt install ./k9s_linux_amd64.deb && rm k9s_linux_amd64.deb
+    ```
+
+5. Install [Emissary Ingress Controller](https://www.getambassador.io/docs/latest/topics/install/yaml-install/)
 
     ```shell title="Remote shell:  install Emissary CRD"
     kubectl apply -f https://app.getambassador.io/yaml/emissary/3.9.1/emissary-crds.yaml
@@ -624,7 +609,7 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 
 5. **Backup** your `semaphore-config` file in a safe place. It is required to [upgrade Semaphore](./upgrade-semaphore) and [renew expired certificates](./upgrade-semaphore#renew)
 
-6. On your browser, open the subdomain where Semaphore was installed **prefixed with `id`, e.g., `id.ci.example.com`
+6. On your browser, open the subdomain where Semaphore was installed **prefixed** with `id`, e.g., `id.ci.example.com`
 
 7. Fill in the username and password. You might be prompted to set a new password
 
@@ -641,6 +626,12 @@ This step installs the **Community Edition**. If you want to install the Enterpr
 10. Select the **Environment Type** to `Self-hosted Machine`
 
 11. Select **Machine Type** to `s1-kubernetes`. Leave **OS Image** empty and press **Save changes**
+
+    :::note
+
+    You should press **Save changes** even if the options were already selected.
+
+    :::
 
 12. Return to the Semaphore initial page. On the **Learn** tab, you'll find the onboarding guide. Follow it to complete the setup and build your first project
 

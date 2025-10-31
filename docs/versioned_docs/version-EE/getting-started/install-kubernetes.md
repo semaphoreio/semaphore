@@ -1,3 +1,7 @@
+---
+description: Install Semaphore on a Kubernetes cluster
+---
 
-# WIP
+# Kubernetes Cluster Install (WIP)
+
 

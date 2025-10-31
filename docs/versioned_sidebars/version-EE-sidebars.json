@@ -22,7 +22,10 @@
         "id": "getting-started/install"
       },
       "items": [
-        "getting-started/install-overview"
+        "getting-started/install-single-machine",
+        "getting-started/install-kubernetes",
+        "getting-started/upgrade-semaphore",
+        "getting-started/uninstall-semaphore"
       ]
     },
     {

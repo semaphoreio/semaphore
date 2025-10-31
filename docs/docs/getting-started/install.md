@@ -7,7 +7,7 @@ description: Install Semaphore on your hardware
 Semaphore has two self-hostable production-ready editions: 
 
 - **Community Edition**: is open source (Apache-2), free forever, and perfect for small teams and companies.
-- **Enterprise Edition**: is source available, requires a license, and supports Enterprise-level features such as multi-branching workflows, audit logs, and advanced Role-Based Access Controls.
+- **Enterprise Edition**: is source available, requires a license, and supports Enterprise-level features such as [advanced workflows](../using-semaphore/promotions), [audit logs](../using-semaphore/organizations#audit-log), and advanced Role-Based Access Controls.
 
 See the [feature comparison](./features) to decide which edition of Semaphore is best for you.
 
@@ -40,7 +40,7 @@ See the [feature comparison](./features) to decide which edition of Semaphore is
           For big teams and companies
     </CardBody>
     <CardFooter>
-      <a href="/EE/getting-started/install-overview">
+      <a href="/EE/getting-started/install">
         <button className='button button--secondary button--block'>Install Semaphore EE</button>
       </a>
     </CardFooter>
@@ -48,7 +48,7 @@ See the [feature comparison](./features) to decide which edition of Semaphore is
   </Column>
 </Columns>
 
-:::note
+:::info Development builds
 
 Developers interested in contributing to the [Semaphore repository](https://github.com/semaphoreio/semaphore) should use a [local development build](https://github.com/semaphoreio/semaphore/blob/main/LOCAL-DEVELOPMENT.md).
 

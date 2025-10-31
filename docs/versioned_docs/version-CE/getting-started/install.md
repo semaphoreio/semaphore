@@ -2,10 +2,7 @@
 description: Install Semaphore on your hardware
 ---
 
-# Install Semaphore CE
-
-import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
-import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
+# Install Semaphore Community Edition (CE)
 
 To install Semaphore Community Edition control plane, you need:
 
