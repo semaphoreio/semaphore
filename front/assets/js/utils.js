@@ -60,4 +60,19 @@ export class Utils {
   static endOfWeek(date) {
     return moment(date).endOf('isoWeek');
   }
+
+  // Escapes CSS attribute values
+  // Uses CSS.escape() when available, with fallback for older browsers
+  // Reference: https://developer.mozilla.org/en-US/docs/Web/API/CSS/escape
+  static escapeCSSAttributeValue(value) {
+    if (!value) return value;
+
+    // Use native CSS.escape() if available
+    if (typeof CSS !== 'undefined' && CSS.escape) {
+      return CSS.escape(value);
+    }
+
+    // Fallback for older browsers: escape quotes and backslashes
+    return value.replace(/(["'\\])/g, '\\$1');
+  }
 }

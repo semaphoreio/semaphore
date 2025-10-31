@@ -52,7 +52,7 @@ function renderPromotions(diagram, pipeline) {
       <div class="flex justify-between mb1">
         <label class="f4 normal gray mb0 pb0">Promotions</label>
 
-        <a href="https://docs.semaphoreci.com/article/67-deploying-with-promotions" target="_blank" rel="noopener" class="f6 gray default-tip" data-tippy="" data-original-title="Help: What are promotions?">?</a>
+        <a href="https://docs.semaphoreci.com/using-semaphore/promotions" target="_blank" rel="noopener" class="f6 gray default-tip" data-tippy="" data-original-title="Help: What are promotions?">?</a>
       </div>
     </div>`
 

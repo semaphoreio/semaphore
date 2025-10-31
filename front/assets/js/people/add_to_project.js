@@ -27,6 +27,7 @@ export var AddToProject = {
       if(addPeopleToProjectBtn){
         addPeopleToProjectBtn.onclick = () => {
           modal.style.display = "block";
+          this.setModalCopy("user")
           this.initProjectNonMembersFilter("user")
         }
       }
@@ -34,6 +35,7 @@ export var AddToProject = {
       if(addGroupsToProjectBtn){
         addGroupsToProjectBtn.onclick = () => {
           modal.style.display = "block";
+          this.setModalCopy("group")
           this.initProjectNonMembersFilter("group")
         }
       }
@@ -41,6 +43,7 @@ export var AddToProject = {
       if(addServiceAccountsToProjectBtn){
         addServiceAccountsToProjectBtn.onclick = () => {
           modal.style.display = "block";
+          this.setModalCopy("service_account")
           this.initProjectNonMembersFilter("service_account")
         }
       }
@@ -56,6 +59,36 @@ export var AddToProject = {
 
         modal.style.display = "none"
       }
+    }
+  },
+
+  setModalCopy(type) {
+    const modal = document.getElementById("modal_overlay");
+    const container = modal?.querySelector(".popup");
+    if(!container) return;
+
+    const suffix = type === "service_account"
+      ? "Service_account"
+      : type.charAt(0).toUpperCase() + type.slice(1);
+
+    const title = container.dataset[`title${suffix}`];
+    const subjectPlural = container.dataset[`subjectPlural${suffix}`];
+    const placeholder = container.dataset[`placeholder${suffix}`];
+
+    const titleEl = container.querySelector("[data-modal-title]");
+    if(titleEl && title){
+      titleEl.textContent = title;
+    }
+
+    if(subjectPlural){
+      container.querySelectorAll("[data-modal-subject-plural]").forEach((el) => {
+        el.textContent = subjectPlural;
+      });
+    }
+
+    const searchInput = container.querySelector("[data-modal-search]");
+    if(searchInput && placeholder){
+      searchInput.placeholder = placeholder;
     }
   },
 

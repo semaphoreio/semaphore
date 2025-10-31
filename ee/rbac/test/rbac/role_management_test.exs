@@ -298,6 +298,25 @@ defmodule Rbac.RoleManagement.Test do
 
       assert user_has_access_to_projects?(@user_id, @org_id, [@project_id])
     end
+
+    test "Organization does not have RepoToRoleMapping" do
+      Support.Rbac.assign_org_role_by_name(@org_id, @user_id, "Member")
+      Collaborators.insert_user(user_id: @user_id, github_uid: "1")
+      Collaborators.insert(github_uid: "1", project_id: @project_id)
+      Support.Projects.insert(project_id: @project_id, org_id: @org_id)
+
+      # Note: We deliberately do NOT create a RepoToRoleMapping for this org
+
+      {:ok, project_rbi} = RBI.new(org_id: @org_id, project_id: @project_id)
+
+      # Should succeed but skip role assignment due to missing RepoToRoleMapping
+      {:ok, _} = RoleManagement.assign_project_roles_to_repo_collaborators(project_rbi)
+
+      # Verify no project role was assigned to the collaborator
+      {:ok, admin} = Rbac.Repo.RbacRole.get_role_by_name("Admin", "project_scope", @org_id)
+      refute has_role_binding?(@user_id, @org_id, @project_id, admin.id, :github)
+      refute user_has_access_to_projects?(@user_id, @org_id, [@project_id])
+    end
   end
 
   describe "retract_role/2" do

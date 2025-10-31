@@ -24,8 +24,12 @@ defmodule FrontWeb.PeopleController do
   plug(FetchPermissions, [scope: "org"] when action in @person_action)
   plug(PageAccess, [permissions: "organization.view"] when action in @person_action)
 
-  plug(FetchPermissions, [scope: "org"] when action in [:organization])
-  plug(PageAccess, [permissions: "organization.view"] when action in [:organization])
+  plug(FetchPermissions, [scope: "org"] when action in [:organization, :organization_users])
+
+  plug(
+    PageAccess,
+    [permissions: "organization.view"] when action in [:organization, :organization_users]
+  )
 
   plug(
     FetchPermissions,
@@ -1061,6 +1065,51 @@ defmodule FrontWeb.PeopleController do
     end)
   end
 
+  def organization_users(conn, _params) do
+    Watchman.benchmark("people.organization_users.duration", fn ->
+      org_id = conn.assigns.organization_id
+
+      page_size = 100
+
+      data =
+        Stream.unfold(0, fn
+          nil ->
+            nil
+
+          page_no ->
+            case Members.list_org_members(org_id, page_no: page_no, page_size: page_size) do
+              {:ok, {members, total_pages}} ->
+                {members, next_valid_page_or_nil(total_pages, page_no)}
+
+              _ ->
+                nil
+            end
+        end)
+        |> Enum.flat_map(& &1)
+        |> Enum.map(fn e ->
+          %{
+            "name" => e.name,
+            "email" => e.email,
+            "github_login" => e.github_login,
+            "bitbucket_login" => e.bitbucket_login,
+            "gitlab_login" => e.gitlab_login
+          }
+        end)
+        |> CSV.encode(
+          headers: [
+            "name",
+            "email",
+            "github_login",
+            "bitbucket_login",
+            "gitlab_login"
+          ]
+        )
+        |> Enum.to_list()
+
+      send_download(conn, {:binary, data}, filename: "users.csv")
+    end)
+  end
+
   def sync(conn, %{"format" => "json"}) do
     Watchman.benchmark("sync.organization.duration", fn ->
       org_id = conn.assigns.organization_id
@@ -1212,5 +1261,15 @@ defmodule FrontWeb.PeopleController do
   defp valid_email_format?(email) do
     email_regex = ~r/^[^\s@]+@[^\s@]+\.[^\s@]+$/
     Regex.match?(email_regex, email)
+  end
+
+  defp next_valid_page_or_nil(total_pages, page) do
+    next_page_no = page + 1
+
+    if next_page_no <= total_pages do
+      next_page_no
+    else
+      nil
+    end
   end
 end

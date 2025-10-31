@@ -120,15 +120,12 @@ Semaphore Cloud provides the following Apple machine types:
 
 | Type | Virtual CPUs | Architecture | OS Supported | Memory | Disk |
 |--|--|--|--|--|--|
-| `a1-standard-4` | 4 | x86_64 (AMD) | [macOS Xcode15](./os-apple#mac-15) | 8 | 150 |
-| `a2-standard-4` | 4 | Apple Silicon | [macOS Xcode15](./os-apple#mac-15)<br/>[macOS Xcode16](./os-apple#mac-16) | 8 | 150 |
-
-A1 machines can only be paired with [macOS Xcode15](./os-apple#mac-15).
+| `a2-standard-4` | 4 | Apple Silicon | [macOS Xcode16](./os-apple#mac-16)<br/>[macOS Xcode26](./os-apple#mac-26) | 8 | 150 |
 
 A2 machines can be paired with:
 
-- [macOS Xcode15](./os-apple#mac-15)
 - [macOS Xcode16](./os-apple#mac-16)
+- [macOS Xcode26](./os-apple#mac-26)
 
 ## See also
 

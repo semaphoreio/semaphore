@@ -34,6 +34,7 @@ spec:
               path: features.yml
       initContainers:
 {{ include "initContainers.waitForPostgres" . | indent 8 }}
+{{ include "initContainers.waitForRabbitMQ" . | indent 8 }}
       containers:
         - name: {{ $baseName }}-agent-cleaner
           image: "{{ .Values.global.image.registry }}/{{ .Values.image }}:{{ .Values.imageTag }}"
@@ -54,6 +55,11 @@ spec:
                 - ALL
           env:
             {{- include "env.db.go" . | indent 12 }}
+            - name: RABBITMQ_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.global.rabbitmq.secretName }}
+                  key: amqp-url
             - name: FEATURE_YAML_PATH
               value: "/home/front/app/features.yml"
             - name: START_AGENT_CLEANER

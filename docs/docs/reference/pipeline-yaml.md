@@ -2,7 +2,7 @@
 description: Pipeline YAML reference
 ---
 
-# Pipeline YAML 
+# Pipeline YAML
 
 This page describes the formal pipeline YAML specification for Semaphore.
 
@@ -43,7 +43,7 @@ Defines the global agent's [`machine` type](#machine) and [`os_image`](#os-image
 The `agent` can contain the following properties:
 
 - [`machine`]: VM machine type to run the jobs
-- [`containers`]: optional Docker containers to run the jobs
+- [`containers`](#containers): optional Docker containers to run the jobs
 
 ```yaml title="Example"
 # highlight-next-line
@@ -61,7 +61,7 @@ The default `agent` can be overridden [inside `tasks`](#agent-in-task).
 
 ### machine {#machine}
 
-Part of the [`agent`](#agent) definition. It defines the global VM machine type to run the jobs. 
+Part of the [`agent`](#agent) definition. It defines the global VM machine type to run the jobs.
 
 It requires two properties:
 
@@ -95,7 +95,7 @@ Part of the [`agent`](#agent) definition. This is an optional property to specif
 If a value is not provided, the default for the machine type is used:
 
 - `e1-standard-*` machine types: `ubuntu2004`
-- `a1-standard-*` machine types: `macos-xcode15`
+- `a2-standard-*` machine types: `macos-xcode16`
 
 The list of valid values for Semaphore Cloud is available on the [machine types reference](./machine-types) page.
 
@@ -108,7 +108,7 @@ machine:
 
 ## containers {#containers}
 
-An optional part of [`agent`](#agent). Defines an array of Docker image names to run jobs. 
+An optional part of [`agent`](#agent). Defines an array of Docker image names to run jobs.
 
 The first container in the list runs the jobs. You may optionally add more items that run as separate containers. All containers can reference each other via their names, which are mapped to hostnames using DNS records.
 
@@ -116,7 +116,11 @@ Each `container` entry can have:
 
 - [`name`](#name-in-containers): the name of the container
 - [`image`](#image-in-containers): the image for the container
-- [`env_vars](#env-vars-in-containers): optional list of key-value pairs to define environment variables
+- [`env_vars`](#env-vars-in-containers): optional list of key-value pairs to define environment variables
+- [`secrets`](#secrets-in-containers): optional list of secrets to import into the container
+- [`user`](#user-in-containers): optional user to run the container as
+- [`command`](#command-in-containers): optional override for the Docker CMD
+- [`entrypoint`](#entrypoint-in-containers): optional override for the Docker ENTRYPOINT
 
 ```yaml title="Example"
 agent:
@@ -163,44 +167,92 @@ agent:
 
 An optional array of key-value pairs. The keys are exported as environment variables when the container starts.
 
-You can define special variables to modify the container initialization:
-
-- `user`: the active user inside the container
-- `command`: overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd)
-- `entrypoint`: overrides the Docker image' [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint)
-
-You may also supply environment variables with `env_vars` and `secrets`.
-
 ```yaml title="Example"
 agent:
   machine:
     type: e1-standard-2
-  # highlight-start
   containers:
     - name: main
       image: 'registry.semaphoreci.com/ruby:2.6'
     - name: db
       image: 'registry.semaphoreci.com/postgres:9.6'
-      user: postgres
-      secrets:
-        - name: mysecret
+  # highlight-start
       env_vars:
         - name: POSTGRES_PASSWORD
           value: keyboard-cat
   # highlight-end
 ```
 
-:::note
+### secrets {#secrets-in-containers}
 
-For `secrets`, only environment variables defined in the secret are imported. Any files in the secret are ignored.
+An optional array of secrets to import into the container. Only environment variables defined in the secret are imported. Any files in the secret are ignored.
 
-:::
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-start
+      secrets:
+        - name: mysecret
+  # highlight-end
+```
+
+### user {#user-in-containers}
+
+An optional property that specifies the active user inside the container.
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+    - name: db
+      image: 'registry.semaphoreci.com/postgres:9.6'
+  # highlight-next-line
+      user: postgres
+```
+
+### command {#command-in-containers}
+
+An optional property that overrides the Docker image's [CMD command](https://docs.docker.com/reference/dockerfile/#cmd).
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-next-line
+      command: ["bundle", "exec", "rails", "server"]
+```
+
+### entrypoint {#entrypoint-in-containers}
+
+An optional property that overrides the Docker image's [ENTRYPOINT entry](https://docs.docker.com/reference/dockerfile/#entrypoint).
+
+```yaml title="Example"
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: 'registry.semaphoreci.com/ruby:2.6'
+  # highlight-next-line
+      entrypoint: ["/bin/sh", "-c"]
+```
 
 ## execution_time_limit {#execution_time_limit}
 
 Defines an optional time limit for executing the pipeline. Jobs are forcibly terminated once the time limit is reached. The default value is 1 hour.
 
 The `execution_time_limit` property accepts one of two options:
+
 - `hours`: time limit expressed in hours. Maximum value is 24
 - `minutes`: The time limit is expressed in minutes. The maximum value is 1440
 
@@ -349,7 +401,7 @@ The following rules apply:
 
 When `scope: project` the queues with the same values for the `name` property in different projects are not queued together.
 
-When `scope: organization` the pipelines from the queue will be queued together with pipelines from other projects within the organization that have a queue configuration with the same `name` and `scope` values. 
+When `scope: organization` the pipelines from the queue will be queued together with pipelines from other projects within the organization that have a queue configuration with the same `name` and `scope` values.
 
 The `processing` property can have two values:
 
@@ -376,7 +428,6 @@ Sets a strategy for auto-canceling pipelines in a queue when a new pipeline appe
 - [`queued`](#queued-in-auto-cancel)
 
 At least one of them is required. If both are set, `running` will be evaluated first.
-
 
 ### running {#running-in-auto-cancel}
 
@@ -707,8 +758,8 @@ blocks:
    # highlight-start
       agent:
           machine:
-            type: a1-standard-4
-            os_image: macos-xcode15
+            type: a2-standard-4
+            os_image: macos-xcode16
    # highlight-end
       jobs:
         - name: Using agent job
@@ -749,7 +800,6 @@ blocks:
 The indentation level of the `prologue`, `epilogue`, `env_vars`, and `jobs` properties should be the same.
 
 :::
-
 
 ### prologue {#prologue-in-task}
 
@@ -860,7 +910,7 @@ The location of the file is relative to the pipeline file. For example, if your 
 
 ### secrets {#secrets-in-task}
 
-A [secret](../using-semaphore/secrets) is a place for keeping sensitive information in the form of environment variables and small files. Sharing sensitive data in secret is both safer and more flexible than storing it using plain text files or environment variables that anyone can access. 
+A [secret](../using-semaphore/secrets) is a place for keeping sensitive information in the form of environment variables and small files. Sharing sensitive data in secret is both safer and more flexible than storing it using plain text files or environment variables that anyone can access.
 
 The `secrets` property is used for importing all the environment variables and files from an existing secret into a Semaphore organization.
 
@@ -1130,7 +1180,6 @@ The following environment variables are added to each generated job:
 - `SEMAPHORE_JOB_COUNT`: total number of jobs generated via the `parallelism` property
 - `SEMAPHORE_JOB_INDEX`: value in the range from `1` to `SEMAPHORE_JOB_COUNT`, which represents the index of a particular job in the list of generated jobs.
 
-
 ```yaml title="Example"
 version: v1.0
 name: Using the parallelism property
@@ -1150,13 +1199,13 @@ blocks:
             - echo Job $SEMAPHORE_JOB_INDEX out of $SEMAPHORE_JOB_COUNT
             - make test PARTITION=$SEMAPHORE_JOB_INDEX
 ```
+
 It will automatically create 4 jobs with the following names:
 
 - `Parallel job - 1/4`
 - `Parallel job - 2/4`
 - `Parallel job - 3/4`
 - `Parallel job - 4/4`
-
 
 :::note
 
@@ -1444,7 +1493,6 @@ blocks:
 
 All the displayed files are correct pipeline YAML files that could be used as `semaphore.yml` files.
 
-
 ### result {#result-in-promotions}
 
 The value of the `result` property is a string that is used for matching the status of a pipeline.
@@ -1663,10 +1711,9 @@ The following functions are supported. Refer to the [Sprout documentation](https
 </div>
 </details>
 
-
 ### Pipeline name {#parameter-pipeline-name}
 
-The following example customizes the pipeline name given the parameters `DEPLOY_ENV` and `SERVER`. 
+The following example customizes the pipeline name given the parameters `DEPLOY_ENV` and `SERVER`.
 
 ```yaml title="deploy.yml"
 version: v1.0
@@ -1765,7 +1812,6 @@ blocks:
                 commands: ./deploy.sh
 ```
 
-
 ### Global config {#parameter-global}
 
 You can use parameters in the [global config](#global-job-config) for the pipeline.
@@ -1789,7 +1835,6 @@ global_job_config:
 ### Queue {#parameter-queue}
 
 The following example shows how to dynamically assign pipelines to [names queues](../using-semaphore/pipelines#named-queues) with parameters.
-
 
 ```yaml title="deploy.yml"
 version: v1.0
@@ -1833,7 +1878,6 @@ blocks:
 ### Job matrix {#parameter-matrix}
 
 You can define a [job matrix](../using-semaphore/jobs#matrix) with parameters. Given `AWS_REGIONS=us-central-1,us-east1`, the following example runs the `deploy.sh` script both regions by transforming the comma-separated regions in a YAML list.
-
 
 ```yaml title="deploy.yml"
 version: v1.0
@@ -1986,7 +2030,6 @@ The `auto_promote_on` property is a list of items that supports three properties
 
 For an `auto_promote_on` branch to execute, the return values of all the used properties of that branch must be `true`.
 
-
 <details>
 <summary>`auto_promote_on` example</summary>
 <div>
@@ -2090,7 +2133,6 @@ Both `p1.yml` and `p2.yml` are correct pipeline YAML files that could be used as
 </div>
 </details>
 
-
 ## Complete examples {#complete-examples}
 
 This section shows complete pipelines showcasing YAML features.
@@ -2155,7 +2197,6 @@ blocks:
 <summary>Pipeline using secrets</summary>
 <div>
 
-
 ``` yaml
 version: v1.0
 name: Pipeline configuration with secrets
@@ -2209,7 +2250,6 @@ blocks:
 </div>
 </details>
 
-
 ## See also
 
 - [Jobs YAML reference](./jobs-yaml)
@@ -2219,4 +2259,3 @@ blocks:
 - [Agents YAML reference](./agent-yaml)
 - [Notifications YAML reference](./notifications-yaml)
 - [Semaphore Command Line reference](./semaphore-cli)
-

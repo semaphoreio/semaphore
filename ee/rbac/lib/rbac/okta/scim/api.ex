@@ -258,7 +258,9 @@ defmodule Rbac.Okta.Scim.Api do
   end
 
   defp json(conn, status, payload) do
-    send_resp(conn, status, Jason.encode!(payload))
+    conn
+    |> put_resp_content_type("application/json")
+    |> send_resp(status, Jason.encode!(payload))
   end
 
   defp serialize_user(okta_user) do

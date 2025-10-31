@@ -3,7 +3,7 @@
         <div>
             <p class="mb0 b">Deployment Targets</p>
             <p class="mb3 measure">
-            Connect your servers and model the interaction between your continious delivery pipeline and your deployment environments.<br />
+            Connect your servers and model the interaction between your continuous delivery pipeline and your deployment environments.<br />
             Read in more details: <a href="https://docs.semaphoreci.com/">Docs: Deployment Targets</a>.
             </p>
         </div>
