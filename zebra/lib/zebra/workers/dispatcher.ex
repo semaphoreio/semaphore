@@ -14,6 +14,7 @@ defmodule Zebra.Workers.Dispatcher do
       state_field: :aasm_state,
       state_value: Zebra.Models.Job.state_scheduled(),
       machine_type_field: :machine_type,
+      machine_os_image_field: :machine_os_image,
       machine_type_environment: machine_type_environment(),
       order_by: :scheduled_at,
       order_direction: :asc,
