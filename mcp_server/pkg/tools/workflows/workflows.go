@@ -160,10 +160,19 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
 		}
 
-		branch := strings.TrimSpace(req.GetString("branch", ""))
-		requesterFilter := strings.TrimSpace(req.GetString("requester", ""))
+		branch, err := shared.SanitizeBranch(req.GetString("branch", ""), "branch")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		requesterFilter, err := shared.SanitizeRequesterFilter(req.GetString("requester", ""), "requester")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		myWorkflowsOnly := mcp.ParseBoolean(req, "my_workflows_only", true)
-		cursor := strings.TrimSpace(req.GetString("cursor", ""))
+		cursor, err := shared.SanitizeCursorToken(req.GetString("cursor", ""), "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
 		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {

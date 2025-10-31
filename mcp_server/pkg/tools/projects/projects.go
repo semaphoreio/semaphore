@@ -476,7 +476,11 @@ Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`,
 Use mode="summary" for quick scanning or mode="detailed" to include schedulers, tasks, and permission metadata.`, err)), nil
 		}
 
-		cursor := strings.TrimSpace(req.GetString("cursor", ""))
+		cursorRaw := req.GetString("cursor", "")
+		cursor, err := shared.SanitizeCursorToken(cursorRaw, "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		limit := req.GetInt("limit", defaultListLimit)
 		if limit <= 0 {
@@ -603,13 +607,19 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		rawQuery := strings.TrimSpace(req.GetString("query", ""))
-		queryDisplay := rawQuery
-		queryNormalized := strings.ToLower(rawQuery)
+		querySanitized, err := shared.SanitizeSearchQuery(req.GetString("query", ""), "query")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		queryDisplay := querySanitized
+		queryNormalized := strings.ToLower(querySanitized)
 
-		repoFilterRaw := strings.TrimSpace(req.GetString("repository_url", ""))
-		repoDisplay := repoFilterRaw
-		repoFilter := strings.ToLower(repoFilterRaw)
+		repoSanitized, err := shared.SanitizeRepositoryURLFilter(req.GetString("repository_url", ""), "repository_url")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		repoDisplay := repoSanitized
+		repoFilter := strings.ToLower(repoSanitized)
 
 		if queryNormalized == "" && repoFilter == "" {
 			return mcp.NewToolResultError("Provide at least one of query or repository_url."), nil
@@ -685,8 +695,8 @@ Troubleshooting:
 						"organizationId": orgID,
 						"page":           page,
 						"mode":           mode,
-						"query":          rawQuery,
-						"repositoryUrl":  repoFilterRaw,
+						"query":          queryDisplay,
+						"repositoryUrl":  repoDisplay,
 						"userId":         userID,
 					}).
 					WithError(err).

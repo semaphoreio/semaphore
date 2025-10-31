@@ -292,10 +292,16 @@ Troubleshooting:
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		cursorRaw := req.GetString("cursor", "")
+		cursor, err := shared.SanitizeCursorToken(cursorRaw, "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		request := &pipelinepb.ListKeysetRequest{
 			WfId:      workflowID,
 			PageSize:  pageSize,
-			PageToken: strings.TrimSpace(req.GetString("cursor", "")),
+			PageToken: cursor,
 			Order:     pipelinepb.ListKeysetRequest_BY_CREATION_TIME_DESC,
 			Direction: pipelinepb.ListKeysetRequest_NEXT,
 		}

@@ -12,8 +12,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	"github.com/sirupsen/logrus"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -195,7 +195,18 @@ Example: semaphore_organizations_list(limit=20)`, err)), nil
 			limit = maxPageSize
 		}
 
-		offset, err := parseCursorOffset(strings.TrimSpace(req.GetString("cursor", "")))
+		cursor, err := shared.SanitizeCursorToken(req.GetString("cursor", ""), "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`Invalid cursor parameter: %v
+
+The 'cursor' parameter must be the opaque value returned in a previous response's 'nextCursor' field.
+
+Tips:
+- Omit the cursor to start from the beginning
+- Use exactly the value returned from 'nextCursor' without modification`, err)), nil
+		}
+
+		offset, err := parseCursorOffset(cursor)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`Invalid cursor parameter: %v
 
