@@ -76,7 +76,7 @@ To upgrade Semaphore, you must re-run the `helm upgrade` command used to install
     source semaphore-config
     ```
 
-3. Re-run the Helm upgrade command used in the initial installation. You may select a different `--version` argument to upgrade or downgrade your Semaphore version. The installation usually takes between 10 and 30 minutes
+3. Re-run the Helm upgrade command used in the initial installation. You may select a different `--version` argument to maintain, upgrade, or downgrade your Semaphore version. The installation usually takes between 10 and 40 minutes
 
 </Steps>
 

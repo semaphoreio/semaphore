@@ -660,7 +660,7 @@ This step installs the **Enterprise Edition**. If you want to install the Commun
 
 9. Select **Initialization jobs**
 
-    ![Init job configuration](./img/init-job-ee.jpg)
+    ![Init job configuration](./img/init-agent-ee.jpg)
 
 
 10. Select the **Environment Type** to `Self-hosted Machine`

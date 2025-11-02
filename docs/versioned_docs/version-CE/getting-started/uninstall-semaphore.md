@@ -19,20 +19,13 @@ To uninstall Semaphore, follow these steps:
 
 1. If required, SSH into the Semaphore server
 
-2. Go to the `semaphore-install` directory and load the `semaphore-config` used in the original installation
-
-    ```shell title="Load Semaphore and cloud configuration"
-    cd semaphore-install
-    source semaphore-config
-    ```
-
-3. Run the following command to uninstall Semaphore
+2. Run the following command to uninstall Semaphore
 
     ```shell title="Uninstall Semaphore control plane"
     helm uninstall semaphore
     ```
 
-4. Remove the persistent volumes claims
+3. Remove the persistent volumes claims
 
     ```shell title="Delete PVCs"
     kubectl delete pvc \
@@ -44,7 +37,7 @@ To uninstall Semaphore, follow these steps:
       redis-data-redis-0
     ```
 
-5. Uninstall the agents in any [self-hosted agents](../using-semaphore/self-hosted) you were using
+4. Uninstall the agents in any [self-hosted agents](../using-semaphore/self-hosted) you were using
 
 </Steps>
 

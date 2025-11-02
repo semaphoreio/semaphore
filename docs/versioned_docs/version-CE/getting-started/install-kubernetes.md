@@ -109,24 +109,24 @@ This section creates [Google Cloud Kubernetes Engine (GKE)](https://cloud.google
     ```
 
 8. Go to your domain provider's DNS settings
+
 9. Create root domain A record
 
       - Type: A
-      - Name: `semaphore` (e.g. `semaphore.example.com`)
-      - Value: the public IP address of your Linux machine
+      - Name: "your-subdomain" (e.g. `ci.example.com`)
+      - Value: the IP address of the Kubernetes ingress
 
 10. Create a wildcard record
 
       - Type: A
-      - Name: `*.semaphore` (e.g. `*.semaphore.example.com`
-      - Value: the public IP address of your Linux machine
+      - Name: "*.your-subdomain" (e.g. `*.ci.example.com`)
+      - Value: the IP address of the Kubernetes ingress
 
-11. Wait for DNS propagation (typically a few minutes)
 
-    You can verify the creation of the TXT record in the [Online Dig Tool](https://toolbox.googleapps.com/apps/dig/#A/) for:
+11. Wait for DNS propagation (typically a few minutes). You can verify the creation of the TXT record in the [Online Dig Tool](https://toolbox.googleapps.com/apps/dig/#A/) for:
 
-      - `semaphore.example.com`
-      - `*.semaphore.example.com`
+      - `ci.example.com`
+      - `*.ci.example.com`
 
 12. Install certbot
 
@@ -499,7 +499,7 @@ This Helm command installs the Community Edition. If you want to install the Ent
 
 8. Select the **Environment Type** to `Self-hosted Machine`
 
-9. Select **Machine Type** to `s1-kubernetes`. Leave **OS Image** empty and press **Save changes**
+9. Select **Machine Type** to `s1-kubernetes` and press **Save changes**
 
     :::note
 
