@@ -37,6 +37,14 @@
         </div>
       <% end %>
     </div>
+    <div class="pv3 bt b--lighter-gray">
+      <div class="db b">Whitelist Enforcement</div>
+      <p class="measure mb2">Apply Whitelist Rules to old branches and tags</p>
+      <div>
+          <%= link "Enforce Whitelist", to: settings_path(@conn, :confirm_enforce_workflow), class: "btn btn-secondary danger" %>
+        </div>
+      
+    </div>
     <%= if FeatureProvider.feature_enabled?(:multiple_organizations, param: @conn.assigns[:organization_id]) do %>
       <%= if @permissions["organization.delete"] do %>
         <div class="pt3 bt b--lighter-gray">
