@@ -12,8 +12,8 @@ import (
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	"github.com/sirupsen/logrus"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -195,7 +195,18 @@ Example: semaphore_organizations_list(limit=20)`, err)), nil
 			limit = maxPageSize
 		}
 
-		offset, err := parseCursorOffset(strings.TrimSpace(req.GetString("cursor", "")))
+		cursor, err := shared.SanitizeCursorToken(req.GetString("cursor", ""), "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf(`Invalid cursor parameter: %v
+
+The 'cursor' parameter must be the opaque value returned in a previous response's 'nextCursor' field.
+
+Tips:
+- Omit the cursor to start from the beginning
+- Use exactly the value returned from 'nextCursor' without modification`, err)), nil
+		}
+
+		offset, err := parseCursorOffset(cursor)
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`Invalid cursor parameter: %v
 
@@ -253,7 +264,23 @@ The RBAC service confirms which organizations the authenticated user can access.
 The organization service could not describe the permitted organizations. Retry in a few moments or verify the service connectivity.`, err)), nil
 		}
 
-		filtered := filterAccessibleOrganizations(resp.GetOrganizations(), accessibleSet)
+		filtered, mismatches := filterAccessibleOrganizations(resp.GetOrganizations(), accessibleSet)
+		if len(mismatches) > 0 {
+			for _, org := range mismatches {
+				if org == nil {
+					continue
+				}
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:             listToolName,
+					ResourceType:     "organization",
+					ResourceID:       org.GetOrgId(),
+					RequestOrgID:     "(multiple)",
+					ResourceOrgID:    org.GetOrgId(),
+					RequestProjectID: "",
+				})
+			}
+			return shared.ScopeMismatchError(listToolName, "organization"), nil
+		}
 		if len(filtered) == 0 {
 			result := listResult{Organizations: []organizationSummary{}}
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
@@ -343,21 +370,25 @@ func normalizeAccessibleIDs(ids []string) (map[string]struct{}, []string) {
 	return set, dedup
 }
 
-func filterAccessibleOrganizations(orgs []*orgpb.Organization, allowed map[string]struct{}) []*orgpb.Organization {
+func filterAccessibleOrganizations(orgs []*orgpb.Organization, allowed map[string]struct{}) ([]*orgpb.Organization, []*orgpb.Organization) {
 	if len(orgs) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	filtered := make([]*orgpb.Organization, 0, len(orgs))
+	mismatches := make([]*orgpb.Organization, 0)
 	for _, org := range orgs {
 		if org == nil {
 			continue
 		}
-		if _, ok := allowed[normalizeOrgID(org.GetOrgId())]; ok {
+		norm := normalizeOrgID(org.GetOrgId())
+		if _, ok := allowed[norm]; ok {
 			filtered = append(filtered, org)
+			continue
 		}
+		mismatches = append(mismatches, org)
 	}
-	return filtered
+	return filtered, mismatches
 }
 
 func sortOrganizations(orgs []*orgpb.Organization) {
