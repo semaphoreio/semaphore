@@ -469,6 +469,10 @@ You can discover organizations by calling organizations_list first.`), nil
 Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`Invalid mode parameter: %v
@@ -604,6 +608,10 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 

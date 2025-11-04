@@ -86,6 +86,10 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		jobIDRaw, err := req.RequireString("job_id")
 		if err != nil {
 			return mcp.NewToolResultError("job_id is required. Provide the job UUID (e.g., 11111111-2222-3333-4444-555555555555)."), nil
