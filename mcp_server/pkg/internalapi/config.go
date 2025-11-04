@@ -54,6 +54,10 @@ var (
 		"INTERNAL_API_URL_RBAC",
 		"MCP_RBAC_GRPC_ENDPOINT",
 	}
+	FeatureHubEndpoint = []string{
+		"INTERNAL_API_URL_FEATURE",
+		"MCP_FEATURE_GRPC_ENDPOINT",
+	}
 )
 
 // Config captures the connection settings for talking to internal API services.
@@ -67,6 +71,7 @@ type Config struct {
 	Loghub2Endpoint      string
 	UserEndpoint         string
 	RBACEndpoint         string
+	FeatureHubEndpoint   string
 
 	DialTimeout time.Duration
 	CallTimeout time.Duration
