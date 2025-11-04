@@ -13,7 +13,7 @@ import (
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -39,7 +39,7 @@ func TestDescribeJob(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view", "organization.view")}
+	provider := &support.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view", "organization.view")}
 	handler := describeHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
@@ -79,7 +79,7 @@ func TestDescribeJobPermissionDenied(t *testing.T) {
 		},
 	}
 	rbac := newRBACStub("organization.view")
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
+	provider := &support.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
@@ -124,7 +124,7 @@ func TestDescribeJobRBACUnavailable(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second}
+	provider := &support.MockProvider{JobClient: client, Timeout: time.Second}
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
 		"job_id":          jobID,
@@ -159,7 +159,7 @@ func TestDescribeJobScopeMismatchOrganization(t *testing.T) {
 		},
 	}
 	rbac := newRBACStub("project.view")
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
+	provider := &support.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
@@ -198,7 +198,7 @@ func TestDescribeJobScopeMismatchMissingProject(t *testing.T) {
 		},
 	}
 	rbac := newRBACStub("project.view")
-	provider := &internalapi.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
+	provider := &support.MockProvider{JobClient: client, Timeout: time.Second, RBACClient: rbac}
 
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"organization_id": orgID,
@@ -243,7 +243,7 @@ func TestFetchHostedLogs(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		JobClient:    jobClient,
 		LoghubClient: loghubClient,
 		RBACClient:   newRBACStub("project.view"),
@@ -296,7 +296,7 @@ func TestFetchSelfHostedLogs(t *testing.T) {
 		resp: &loghub2pb.GenerateTokenResponse{Token: "token", Type: loghub2pb.TokenType_PULL},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		JobClient:     jobClient,
 		Loghub2Client: loghub2Client,
 		RBACClient:    newRBACStub("project.view"),
@@ -348,7 +348,7 @@ func TestLogsPermissionDenied(t *testing.T) {
 	loghubClient := &loghubClientStub{}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		JobClient:    jobClient,
 		LoghubClient: loghubClient,
 		RBACClient:   rbac,
@@ -397,7 +397,7 @@ func TestLogsScopeMismatchOrganization(t *testing.T) {
 	loghubClient := &loghubClientStub{}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		JobClient:    jobClient,
 		LoghubClient: loghubClient,
 		RBACClient:   rbac,
@@ -445,7 +445,7 @@ func TestLogsRBACUnavailable(t *testing.T) {
 	}
 	loghubClient := &loghubClientStub{}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		JobClient:    jobClient,
 		LoghubClient: loghubClient,
 		Timeout:      time.Second,

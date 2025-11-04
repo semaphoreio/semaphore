@@ -1,4 +1,4 @@
-package internalapi
+package support
 
 import (
 	"time"

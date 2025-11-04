@@ -11,8 +11,7 @@ import (
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	repoipb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
-
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -32,7 +31,7 @@ func TestListProjectsSummary(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    newRBACStub("organization.view", "project.view"),
 	}
@@ -79,7 +78,7 @@ func TestListProjectsPermissionDenied(t *testing.T) {
 	stub := &projectClientStub{}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    rbac,
 	}
@@ -117,7 +116,7 @@ func TestListProjectsRBACUnavailable(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 	stub := &projectClientStub{}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 	}
 
@@ -161,7 +160,7 @@ func TestListProjectsScopeMismatch(t *testing.T) {
 	}
 	rbac := newRBACStub("organization.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    rbac,
 	}
@@ -224,7 +223,7 @@ func TestSearchProjectsMatches(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    newRBACStub("organization.view", "project.view"),
 	}
@@ -284,7 +283,7 @@ func TestSearchProjectsPermissionDenied(t *testing.T) {
 	stub := &projectClientStub{}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    rbac,
 	}
@@ -339,7 +338,7 @@ func TestSearchProjectsScopeMismatch(t *testing.T) {
 	}
 	rbac := newRBACStub("organization.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		ProjectClient: stub,
 		RBACClient:    rbac,
 	}

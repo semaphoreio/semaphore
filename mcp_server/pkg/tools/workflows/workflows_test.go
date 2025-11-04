@@ -12,7 +12,7 @@ import (
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
@@ -39,7 +39,7 @@ func TestListWorkflows(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
 		RBACClient:     newRBACStub("project.view"),
@@ -107,7 +107,7 @@ func TestListWorkflowsWithRequesterOverride(t *testing.T) {
 		response: &userpb.User{Id: "00000000-1111-2222-3333-444444444444"},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		UserClient:     userClient,
 		Timeout:        time.Second,
@@ -152,7 +152,7 @@ func TestListWorkflowsPermissionDenied(t *testing.T) {
 	client := &workflowClientStub{}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
 		RBACClient:     rbac,
@@ -191,7 +191,7 @@ func TestListWorkflowsRBACUnavailable(t *testing.T) {
 	projectID := "11111111-2222-3333-4444-555555555555"
 	client := &workflowClientStub{}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
 	}
@@ -238,7 +238,7 @@ func TestListWorkflowsScopeMismatchOrganization(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
 		RBACClient:     rbac,
@@ -283,7 +283,7 @@ func TestListWorkflowsScopeMismatchProject(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		WorkflowClient: client,
 		Timeout:        time.Second,
 		RBACClient:     rbac,

@@ -96,6 +96,46 @@ func TestFeatureService_FeatureState(t *testing.T) {
 	assert.Equal(t, feature.Hidden, stateMissing)
 }
 
+func TestFeatureService_WithMockProviderAndYamlBackend(t *testing.T) {
+	t.Setenv("ON_PREM", "true")
+	t.Setenv("FEATURE_YAML_PATH", filepath.Join("..", "feature", "test_features.yml"))
+
+	cache := &noopCache{}
+	client := NewFeatureService("", cache, time.Second)
+
+	features, err := client.ListOrganizationFeatures("org1")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []feature.OrganizationFeature{
+		{Name: "mcp_feature1", State: feature.Enabled, Quantity: 1},
+	}, features)
+
+	state, err := client.FeatureState("org1", "mcp_feature1")
+	require.NoError(t, err)
+	assert.Equal(t, feature.Enabled, state)
+}
+
+func TestFeatureService_WithMockProviderAndStubbedCache(t *testing.T) {
+	t.Setenv("ON_PREM", "")
+
+	stubFeatures := []feature.OrganizationFeature{
+		{Name: "feature-a", State: feature.Enabled, Quantity: 10},
+		{Name: "feature-b", State: feature.Hidden, Quantity: 0},
+	}
+
+	cache := newFakeCache()
+	cache.store["org-local"] = append([]feature.OrganizationFeature(nil), stubFeatures...)
+
+	client := NewFeatureService("localhost:1234", cache, 10*time.Millisecond)
+
+	state, err := client.FeatureState("org-local", "feature-a")
+	require.NoError(t, err)
+	assert.Equal(t, feature.Enabled, state)
+
+	stateHidden, err := client.FeatureState("org-local", "feature-b")
+	require.NoError(t, err)
+	assert.Equal(t, feature.Hidden, stateHidden)
+}
+
 type fakeCache struct {
 	mu       sync.Mutex
 	store    map[string][]feature.OrganizationFeature
@@ -174,4 +214,14 @@ func (p *fakeFeatureProvider) CallCount() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	return p.calls
+}
+
+type noopCache struct{}
+
+func (n *noopCache) Get(context.Context, string, interface{}) error {
+	return errors.New("cache miss")
+}
+
+func (n *noopCache) Set(context.Context, string, interface{}) error {
+	return nil
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -45,7 +45,7 @@ func TestListPipelines(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
 	handler := listHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"workflow_id":     workflowID,
@@ -89,7 +89,7 @@ func TestListPipelinesPermissionDeniedWithProjectFilter(t *testing.T) {
 	pipelineClient := &pipelineClientStub{}
 	rbac := newRBACStub("organization.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: pipelineClient,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -152,7 +152,7 @@ func TestListPipelinesSkipsUnauthorizedProjects(t *testing.T) {
 		"proj-allowed": {"project.view"},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -205,7 +205,7 @@ func TestListPipelinesScopeMismatchOrganization(t *testing.T) {
 		},
 	}
 	rbac := newRBACStub("project.view")
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -253,7 +253,7 @@ func TestListPipelinesRBACError(t *testing.T) {
 		"proj-1": errors.New("rbac rpc failure"),
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -309,7 +309,7 @@ func TestListPipelineJobs(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
 	handler := jobsHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"pipeline_id":     pipelineID,
@@ -356,7 +356,7 @@ func TestPipelineJobsPermissionDenied(t *testing.T) {
 	}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -401,7 +401,7 @@ func TestPipelineJobsScopeMismatchOrganization(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -446,7 +446,7 @@ func TestPipelineJobsScopeMismatchProjectMissing(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
