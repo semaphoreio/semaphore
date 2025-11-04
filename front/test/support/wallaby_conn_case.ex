@@ -25,7 +25,7 @@ defmodule FrontWeb.WallabyCase do
 
     Application.put_env(:wallaby, :js_errors, true)
 
-    {:ok, session} = Wallaby.start_session(window_size: [width: 1280, height: 720])
+    {:ok, session} = Wallaby.start_session(window_size: [width: 1920, height: 1080])
 
     {:ok, conn: Phoenix.ConnTest.build_conn(), session: session}
   end

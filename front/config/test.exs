@@ -21,8 +21,17 @@ config :front,
 
 config :wallaby, screenshot_dir: System.get_env("WALLABY_SCREENSHOTS") || "./out"
 config :wallaby, screenshot_on_failure: true
-config :wallaby, driver: Wallaby.Experimental.Chrome
+config :wallaby, driver: Wallaby.Chrome
 config :wallaby, max_wait_time: 10_000
+config :wallaby, chrome: [
+    headless: true,
+    args: [
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--remote-debugging-port=0"
+    ]
+  ]
 
 config :joken, current_time_adapter: Support.TimeMock
 
