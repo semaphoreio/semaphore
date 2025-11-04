@@ -180,9 +180,9 @@ defmodule Front.Browser.SelfHostedAgentsTest do
   end
 
   defp click_disconnect_link(page) do
-    script = "document.querySelector('.disable-self-hosted-agent').scrollIntoView()"
+    # script = "document.querySelector('.disable-self-hosted-agent').scrollIntoView()"
 
-    page |> execute_script(script)
+    # page |> execute_script(script)
     page |> click(Query.link("Disconnect"))
   end
 
