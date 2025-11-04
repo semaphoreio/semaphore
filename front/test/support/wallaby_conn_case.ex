@@ -6,7 +6,6 @@ defmodule FrontWeb.WallabyCase do
       import Plug.Conn
       import Phoenix.ConnTest
       use Wallaby.DSL
-      use Wallaby.Feature
 
       @moduletag :browser
 
