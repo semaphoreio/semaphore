@@ -3,6 +3,7 @@ package support
 import (
 	"time"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -57,4 +58,21 @@ func (m *MockProvider) Users() userpb.UserServiceClient { return m.UserClient }
 
 func (m *MockProvider) RBAC() rbacpb.RBACClient { return m.RBACClient }
 
-func (m *MockProvider) Features() featuresvc.FeatureClient { return m.FeaturesService }
+func (m *MockProvider) Features() featuresvc.FeatureClient {
+	if m.FeaturesService == nil {
+		return alwaysEnabledFeatureClient{}
+	}
+	return m.FeaturesService
+}
+
+type alwaysEnabledFeatureClient struct{}
+
+func (alwaysEnabledFeatureClient) ListOrganizationFeatures(string) ([]feature.OrganizationFeature, error) {
+	return []feature.OrganizationFeature{
+		{Name: "mcp_server_read_tools", State: feature.Enabled, Quantity: 1},
+	}, nil
+}
+
+func (alwaysEnabledFeatureClient) FeatureState(string, string) (feature.State, error) {
+	return feature.Enabled, nil
+}

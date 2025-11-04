@@ -335,12 +335,20 @@ func (f *featureStub) ListOrganizationFeatures(organizationId string) ([]feature
 			State:    feature.Hidden,
 			Quantity: 0,
 		},
+		{
+			Name:     "mcp_server_read_tools",
+			State:    feature.Enabled,
+			Quantity: 1,
+		},
 	}, nil
 }
 
 func (f *featureStub) FeatureState(organizationId string, featureName string) (feature.State, error) {
-	if featureName == "feature-a" {
+	switch featureName {
+	case "feature-a", "mcp_server_read_tools":
 		return feature.Enabled, nil
+	case "feature-b":
+		return feature.Hidden, nil
 	}
 	return feature.Hidden, nil
 }

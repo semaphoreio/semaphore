@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
@@ -18,6 +19,70 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func TestDescribeJob_FeatureFlagDisabled(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          "11111111-2222-3333-4444-555555555555",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+	}
+
+	res, err := describeHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "unexpected error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		toFail(t, "expected disabled feature error, got %q", msg)
+	}
+}
+
+func TestLogsHandler_FeatureFlagDisabled(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": orgID,
+		"job_id":          "11111111-2222-3333-4444-555555555555",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+		LoghubClient:    &loghubClientStub{},
+		Loghub2Client:   &loghub2ClientStub{},
+		JobClient: &jobClientStub{
+			describeResp: &jobpb.DescribeResponse{
+				Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+				Job: &jobpb.Job{
+					Id:             "11111111-2222-3333-4444-555555555555",
+					ProjectId:      "proj-1",
+					OrganizationId: orgID,
+				},
+			},
+		},
+	}
+
+	res, err := logsHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "unexpected error: %v", err)
+	}
+
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		toFail(t, "expected disabled feature error, got %q", msg)
+	}
+}
 
 func TestDescribeJob(t *testing.T) {
 	jobID := "11111111-2222-3333-4444-555555555555"

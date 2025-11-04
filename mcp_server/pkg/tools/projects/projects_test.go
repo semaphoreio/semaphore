@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	repoipb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
@@ -16,6 +17,57 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func TestListProjects_FeatureFlagDisabled(t *testing.T) {
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+		ProjectClient:   &projectClientStub{},
+		RBACClient:      newRBACStub("organization.view", "project.view"),
+	}
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		t.Fatalf("expected disabled feature error, got %q", msg)
+	}
+}
+
+func TestSearchProjects_FeatureFlagDisabled(t *testing.T) {
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"query":           "search",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+		ProjectClient:   &projectClientStub{},
+		RBACClient:      newRBACStub("organization.view", "project.view"),
+	}
+
+	res, err := searchHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		t.Fatalf("expected disabled feature error, got %q", msg)
+	}
+}
 
 func TestListProjectsSummary(t *testing.T) {
 	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"

@@ -155,6 +155,10 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
