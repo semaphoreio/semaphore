@@ -13,6 +13,7 @@ import (
 	repoipb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/repository_integrator"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
@@ -27,6 +28,8 @@ const (
 	defaultSearchPages = 5
 	maxSearchPages     = 10
 	searchPageSize     = 100
+
+	orgViewPermission = "organization.view"
 )
 
 func listFullDescription() string {
@@ -473,7 +476,11 @@ Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`,
 Use mode="summary" for quick scanning or mode="detailed" to include schedulers, tasks, and permission metadata.`, err)), nil
 		}
 
-		cursor := strings.TrimSpace(req.GetString("cursor", ""))
+		cursorRaw := req.GetString("cursor", "")
+		cursor, err := shared.SanitizeCursorToken(cursorRaw, "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		limit := req.GetInt("limit", defaultListLimit)
 		if limit <= 0 {
@@ -497,6 +504,10 @@ Troubleshooting:
 		pageSize, err := shared.IntToInt32(limit, "limit")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if err := authz.CheckOrgPermission(ctx, api, userID, orgID, orgViewPermission); err != nil {
+			return shared.OrgAuthorizationError(err, orgID, orgViewPermission), nil
 		}
 
 		request := &projecthubpb.ListKeysetRequest{
@@ -552,6 +563,12 @@ Try removing optional filters or verifying access permissions.`, err)), nil
 
 		projects := make([]projectSummary, 0, len(resp.GetProjects()))
 		for _, proj := range resp.GetProjects() {
+			if proj == nil {
+				continue
+			}
+			if mismatch := ensureProjectInOrg(listToolName, orgID, "", proj); mismatch != nil {
+				return mismatch, nil
+			}
 			projects = append(projects, summarizeProject(proj, mode == "detailed"))
 		}
 
@@ -590,13 +607,19 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		rawQuery := strings.TrimSpace(req.GetString("query", ""))
-		queryDisplay := rawQuery
-		queryNormalized := strings.ToLower(rawQuery)
+		querySanitized, err := shared.SanitizeSearchQuery(req.GetString("query", ""), "query")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		queryDisplay := querySanitized
+		queryNormalized := strings.ToLower(querySanitized)
 
-		repoFilterRaw := strings.TrimSpace(req.GetString("repository_url", ""))
-		repoDisplay := repoFilterRaw
-		repoFilter := strings.ToLower(repoFilterRaw)
+		repoSanitized, err := shared.SanitizeRepositoryURLFilter(req.GetString("repository_url", ""), "repository_url")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		repoDisplay := repoSanitized
+		repoFilter := strings.ToLower(repoSanitized)
 
 		if queryNormalized == "" && repoFilter == "" {
 			return mcp.NewToolResultError("Provide at least one of query or repository_url."), nil
@@ -631,6 +654,10 @@ Troubleshooting:
 - Ensure requests go through the authenticated proxy
 - Verify the header contains a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 - Retry once the header is present`, err)), nil
+		}
+
+		if err := authz.CheckOrgPermission(ctx, api, userID, orgID, orgViewPermission); err != nil {
+			return shared.OrgAuthorizationError(err, orgID, orgViewPermission), nil
 		}
 
 		type candidate struct {
@@ -668,8 +695,8 @@ Troubleshooting:
 						"organizationId": orgID,
 						"page":           page,
 						"mode":           mode,
-						"query":          rawQuery,
-						"repositoryUrl":  repoFilterRaw,
+						"query":          queryDisplay,
+						"repositoryUrl":  repoDisplay,
 						"userId":         userID,
 					}).
 					WithError(err).
@@ -697,6 +724,12 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 			searchedPages++
 
 			for _, proj := range resp.GetProjects() {
+				if proj == nil {
+					continue
+				}
+				if mismatch := ensureProjectInOrg(searchToolName, orgID, "", proj); mismatch != nil {
+					return mismatch, nil
+				}
 				score := 0
 				matched := []string{}
 
@@ -812,6 +845,39 @@ func projectRequestMeta(orgID, userID string) *projecthubpb.RequestMeta {
 		UserId:     strings.TrimSpace(userID),
 		ReqId:      uuid.NewString(),
 	}
+}
+
+func ensureProjectInOrg(tool, orgID, expectedProjectID string, project *projecthubpb.Project) *mcp.CallToolResult {
+	if project == nil {
+		return nil
+	}
+	meta := project.GetMetadata()
+	if meta == nil {
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              tool,
+			ResourceType:      "project",
+			ResourceID:        "",
+			RequestOrgID:      orgID,
+			ResourceOrgID:     "",
+			RequestProjectID:  expectedProjectID,
+			ResourceProjectID: "",
+		})
+		return shared.ScopeMismatchError(tool, "organization")
+	}
+	resourceOrg := strings.TrimSpace(meta.GetOrgId())
+	if !strings.EqualFold(resourceOrg, orgID) || resourceOrg == "" {
+		shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+			Tool:              tool,
+			ResourceType:      "project",
+			ResourceID:        meta.GetId(),
+			RequestOrgID:      orgID,
+			ResourceOrgID:     resourceOrg,
+			RequestProjectID:  expectedProjectID,
+			ResourceProjectID: meta.GetId(),
+		})
+		return shared.ScopeMismatchError(tool, "organization")
+	}
+	return nil
 }
 
 func summarizeProject(project *projecthubpb.Project, includeDetails bool) projectSummary {

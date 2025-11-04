@@ -9,6 +9,7 @@ import (
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/sirupsen/logrus"
 
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/authz"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
@@ -17,10 +18,11 @@ import (
 )
 
 const (
-	searchToolName       = "workflows_search"
-	defaultLimit         = 20
-	maxLimit             = 100
-	missingWorkflowError = "workflow gRPC endpoint is not configured"
+	searchToolName        = "workflows_search"
+	defaultLimit          = 20
+	maxLimit              = 100
+	missingWorkflowError  = "workflow gRPC endpoint is not configured"
+	projectViewPermission = "project.view"
 )
 
 func searchFullDescription() string {
@@ -158,10 +160,19 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
 		}
 
-		branch := strings.TrimSpace(req.GetString("branch", ""))
-		requesterFilter := strings.TrimSpace(req.GetString("requester", ""))
+		branch, err := shared.SanitizeBranch(req.GetString("branch", ""), "branch")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+		requesterFilter, err := shared.SanitizeRequesterFilter(req.GetString("requester", ""), "requester")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 		myWorkflowsOnly := mcp.ParseBoolean(req, "my_workflows_only", true)
-		cursor := strings.TrimSpace(req.GetString("cursor", ""))
+		cursor, err := shared.SanitizeCursorToken(req.GetString("cursor", ""), "cursor")
+		if err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
 
 		userID := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Semaphore-User-ID")))
 		if err := shared.ValidateUUID(userID, "x-semaphore-user-id header"); err != nil {
@@ -173,6 +184,10 @@ Troubleshooting:
 - Ensure requests pass through the auth proxy
 - Verify the header value is a UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 - Retry once the header is present`, err)), nil
+		}
+
+		if err := authz.CheckProjectPermission(ctx, api, userID, orgID, projectID, projectViewPermission); err != nil {
+			return shared.ProjectAuthorizationError(err, orgID, projectID, projectViewPermission), nil
 		}
 
 		limit := req.GetInt("limit", defaultLimit)
@@ -262,13 +277,47 @@ Double-check that:
 - The organization is active and not suspended`, err)), nil
 		}
 
+		expectedOrg := normalizeID(orgID)
+		expectedProject := normalizeID(projectID)
 		workflows := make([]summary, 0, len(resp.GetWorkflows()))
 		for _, wf := range resp.GetWorkflows() {
+			if wf == nil {
+				continue
+			}
+
+			workflowOrg := normalizeID(wf.GetOrganizationId())
+			if workflowOrg == "" || workflowOrg != expectedOrg {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              searchToolName,
+					ResourceType:      "workflow",
+					ResourceID:        wf.GetWfId(),
+					RequestOrgID:      orgID,
+					ResourceOrgID:     wf.GetOrganizationId(),
+					RequestProjectID:  projectID,
+					ResourceProjectID: wf.GetProjectId(),
+				})
+				return shared.ScopeMismatchError(searchToolName, "organization"), nil
+			}
+
+			workflowProject := normalizeID(wf.GetProjectId())
+			if workflowProject == "" || workflowProject != expectedProject {
+				shared.ReportScopeMismatch(shared.ScopeMismatchMetadata{
+					Tool:              searchToolName,
+					ResourceType:      "workflow",
+					ResourceID:        wf.GetWfId(),
+					RequestOrgID:      orgID,
+					ResourceOrgID:     wf.GetOrganizationId(),
+					RequestProjectID:  projectID,
+					ResourceProjectID: wf.GetProjectId(),
+				})
+				return shared.ScopeMismatchError(searchToolName, "project"), nil
+			}
+
 			workflows = append(workflows, summary{
 				ID:              wf.GetWfId(),
 				InitialPipeline: wf.GetInitialPplId(),
-				ProjectID:       wf.GetProjectId(),
-				OrganizationID:  wf.GetOrganizationId(),
+				ProjectID:       strings.TrimSpace(wf.GetProjectId()),
+				OrganizationID:  strings.TrimSpace(wf.GetOrganizationId()),
 				Branch:          wf.GetBranchName(),
 				CommitSHA:       wf.GetCommitSha(),
 				RequesterID:     wf.GetRequesterId(),
@@ -381,6 +430,10 @@ func shortenCommit(sha string) string {
 		return sha[:12]
 	}
 	return sha
+}
+
+func normalizeID(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
 }
 
 func resolveRequesterID(ctx context.Context, api internalapi.Provider, raw string) (string, error) {
