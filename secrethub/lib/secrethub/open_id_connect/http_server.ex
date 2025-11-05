@@ -42,6 +42,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
   #
   # OpenID Configuration Endpoint
   #
+  @openid_configuration_cache_max_age 15 * 60
+
   get "/.well-known/openid-configuration" do
     Watchman.benchmark("ocid_well-known-configuration", fn ->
       base_domain = Application.fetch_env!(:secrethub, :domain)
@@ -52,7 +54,12 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
       jwks_uri = "https://#{org_username}.#{base_domain}/.well-known/jwks.json"
       configuration = openid_configuration(issuer, jwks_uri, org_id)
 
-      json(conn, 200, configuration)
+      conn
+      |> put_resp_header(
+        "cache-control",
+        "public, max-age=#{@openid_configuration_cache_max_age}, must-revalidate"
+      )
+      |> json(200, configuration)
     end)
   end
 
