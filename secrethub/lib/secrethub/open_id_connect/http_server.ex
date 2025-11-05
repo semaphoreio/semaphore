@@ -57,7 +57,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
       conn
       |> put_resp_header(
         "cache-control",
-        "max-age=#{@openid_configuration_cache_max_age}, private, must-revalidate"
+        "public, max-age=#{@openid_configuration_cache_max_age}, must-revalidate"
       )
       |> json(200, configuration)
     end)

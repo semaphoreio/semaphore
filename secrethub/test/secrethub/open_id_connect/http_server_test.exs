@@ -34,7 +34,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServerTest do
       {:ok, response} = request("/.well-known/openid-configuration")
 
       assert response.status_code == 200
-      assert {"cache-control", "max-age=900, private, must-revalidate"} in response.headers
+      assert {"cache-control", "public, max-age=900, must-revalidate"} in response.headers
 
       {:ok, body} = Poison.decode(response.body)
 
