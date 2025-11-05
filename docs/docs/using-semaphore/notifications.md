@@ -124,7 +124,7 @@ sem create notification master-pipelines \
     --projects "web,cli,api" \
     --branches master \
     --tag "/-rc$/" \
-    --slack-cndpoint <slack-webhook-endpoint>
+    --slack-endpoint <slack-webhook-endpoint>
 ```
 
 You can enable notifications only for a subset of the [pipelines](./pipelines):
