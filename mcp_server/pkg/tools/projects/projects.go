@@ -17,6 +17,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 const (
@@ -505,7 +506,7 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
-		pageSize, err := shared.IntToInt32(limit, "limit")
+		pageSize, err := utils.IntToInt32(limit, "limit")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -680,7 +681,7 @@ Troubleshooting:
 		moreAvailable := false
 
 		for page := 1; page <= maxPages; page++ {
-			pageNumber, err := shared.IntToInt32(page, "page")
+			pageNumber, err := utils.IntToInt32(page, "page")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

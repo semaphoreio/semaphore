@@ -15,6 +15,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 const (
@@ -201,7 +202,7 @@ Troubleshooting:
 			limit = maxLimit
 		}
 
-		pageSize, err := shared.IntToInt32(limit, "limit")
+		pageSize, err := utils.IntToInt32(limit, "limit")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}

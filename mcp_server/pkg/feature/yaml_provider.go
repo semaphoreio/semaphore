@@ -7,6 +7,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
+
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 type YamlProvider struct {
@@ -25,14 +27,18 @@ func (f yamlFeature) ToOrganizationFeature(name string) OrganizationFeature {
 		state = Enabled
 	}
 
-	quantity := 1
+	quantity := uint32(1)
 	if f.Quantity != nil && *f.Quantity >= 0 {
-		quantity = *f.Quantity
+		if safeQuantity, err := utils.IntToUint32(*f.Quantity, "quantity"); err != nil {
+			log.WithField("feature", name).Warnf("Ignoring invalid quantity: %v", err)
+		} else {
+			quantity = safeQuantity
+		}
 	}
 
 	return OrganizationFeature{
 		Name:     name,
-		Quantity: uint32(quantity),
+		Quantity: quantity,
 		State:    state,
 	}
 }
