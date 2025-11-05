@@ -18,13 +18,13 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi/stubs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 )
 
 var (
@@ -65,7 +65,7 @@ func main() {
 	bootstrapLog := logging.ForComponent("bootstrap")
 	if strings.EqualFold(os.Getenv("MCP_USE_STUBS"), "true") {
 		bootstrapLog.Info("using stubbed internal API clients (MCP_USE_STUBS=true)")
-		provider = stubs.New()
+		provider = support.New()
 	} else {
 		cfg, err := internalapi.LoadConfig()
 		if err != nil {

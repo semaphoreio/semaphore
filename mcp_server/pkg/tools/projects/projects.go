@@ -17,6 +17,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 const (
@@ -469,6 +470,10 @@ You can discover organizations by calling organizations_list first.`), nil
 Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf(`Invalid mode parameter: %v
@@ -501,7 +506,7 @@ Troubleshooting:
 - Retry once the header is present`, err)), nil
 		}
 
-		pageSize, err := shared.IntToInt32(limit, "limit")
+		pageSize, err := utils.IntToInt32(limit, "limit")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -607,6 +612,10 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		querySanitized, err := shared.SanitizeSearchQuery(req.GetString("query", ""), "query")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -672,7 +681,7 @@ Troubleshooting:
 		moreAvailable := false
 
 		for page := 1; page <= maxPages; page++ {
-			pageNumber, err := shared.IntToInt32(page, "page")
+			pageNumber, err := utils.IntToInt32(page, "page")
 			if err != nil {
 				return mcp.NewToolResultError(err.Error()), nil
 			}

@@ -16,6 +16,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 const (
@@ -102,6 +103,10 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		}
 		orgID := strings.TrimSpace(orgIDRaw)
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
@@ -195,7 +200,7 @@ func fetchHostedLogs(ctx context.Context, api internalapi.Provider, jobID string
 
 	request := &loghubpb.GetLogEventsRequest{JobId: jobID}
 	if startingLine > 0 {
-		offset, err := shared.IntToInt32(startingLine, "cursor offset")
+		offset, err := utils.IntToInt32(startingLine, "cursor offset")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
