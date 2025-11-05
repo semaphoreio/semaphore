@@ -9,3 +9,5 @@ config :junit_formatter,
   include_file_line?: true
 
 config :secrethub, Secrethub.Repo, pool: Ecto.Adapters.SQL.Sandbox
+
+config :logger, level: :debug
