@@ -22,25 +22,10 @@
         "id": "getting-started/install"
       },
       "items": [
-        "getting-started/install-overview",
-        {
-          "type": "category",
-          "label": "Choose your platform",
-          "collapsed": true,
-          "link": {
-            "type": "generated-index",
-            "title": "Platform specific installation",
-            "description": "Choose your installation platform"
-          },
-          "items": [
-            "getting-started/install-local",
-            "getting-started/install-ubuntu",
-            "getting-started/install-gcompute",
-            "getting-started/install-aws-ec2",
-            "getting-started/install-gke",
-            "getting-started/install-eks"
-          ]
-        }
+        "getting-started/install-single-machine",
+        "getting-started/install-kubernetes",
+        "getting-started/upgrade-semaphore",
+        "getting-started/uninstall-semaphore"
       ]
     },
     {
