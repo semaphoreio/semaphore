@@ -131,8 +131,6 @@ defmodule Front.Browser.WorkflowPage do
         params.blocks |> Enum.each(fn block -> Support.Stubs.Task.create(block) end)
       end)
 
-      params.session |> take_screenshot()
-
       open(params) |> assert_has(@waiting_for_quota_bagde)
     end
 
