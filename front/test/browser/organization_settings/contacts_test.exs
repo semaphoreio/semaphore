@@ -21,13 +21,16 @@ defmodule Front.Browser.OrganizationSettings.ContactsTest do
   end
 
   describe "form" do
-    test "when org does not have any contacts, it is empty", %{page: page} do
+    browser_test "when org does not have any contacts, it is empty", %{page: page} do
       page
       |> click(@contacts_tab)
       |> assert_contact_forms_are_shown()
     end
 
-    test "when org has only one contact set, display it's information", %{page: page, org: org} do
+    browser_test "when org has only one contact set, display it's information", %{
+      page: page,
+      org: org
+    } do
       insert_contact(org.id, "CONTACT_TYPE_MAIN", "Joe")
 
       page
@@ -35,7 +38,7 @@ defmodule Front.Browser.OrganizationSettings.ContactsTest do
       |> assert_contact_name_is_present("Joe")
     end
 
-    test "fill out financial contact info", %{page: page} do
+    browser_test "fill out financial contact info", %{page: page} do
       page
       |> click(@contacts_tab)
       |> submit_form()

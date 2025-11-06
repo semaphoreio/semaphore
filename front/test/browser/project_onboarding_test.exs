@@ -11,12 +11,12 @@ defmodule Front.Browser.ProjectOnboardingTest do
     {:ok, %{session: session, org_id: org_id}}
   end
 
-  test "bitbucket tab is shown by default", %{session: session} do
+  browser_test "bitbucket tab is shown by default", %{session: session} do
     page = session |> visit("/choose_repository")
     assert_text(page, "Bitbucket")
   end
 
-  test "bitbucket tab is hiiden if bitbucket feature is disabled", %{
+  browser_test "bitbucket tab is hiiden if bitbucket feature is disabled", %{
     session: session,
     org_id: org_id
   } do
