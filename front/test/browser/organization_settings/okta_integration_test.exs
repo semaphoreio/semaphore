@@ -28,7 +28,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   end
 
   describe "visiting empty state" do
-    test "it describes what is okta and shows a button for setting it up", %{page: page} do
+    browser_test "it describes what is okta and shows a button for setting it up", %{page: page} do
       page
       |> click(@okta_tab)
       |> assert_okta_tab_is_active()
@@ -37,13 +37,13 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   end
 
   describe "setting up a new okta integration" do
-    test "it asks for saml issues and certificate", %{page: page} do
+    browser_test "it asks for saml issues and certificate", %{page: page} do
       page
       |> navigate_to_setup_form()
       |> assert_we_are_on_setup_form()
     end
 
-    test "it displays errors if issuer or certificate are not filled in", %{page: page} do
+    browser_test "it displays errors if issuer or certificate are not filled in", %{page: page} do
       page
       |> navigate_to_setup_form()
       |> submit_form()
@@ -51,14 +51,16 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
       |> assert_has(Query.text("Certificate can't be blank"))
     end
 
-    test "it redirects back to empty state if you hit cancel", %{page: page} do
+    browser_test "it redirects back to empty state if you hit cancel", %{page: page} do
       page
       |> navigate_to_setup_form()
       |> cancel_form()
       |> assert_we_are_on_zero_state()
     end
 
-    test "if the form is valid it completes the setup and shows the SCIM token", %{page: page} do
+    browser_test "if the form is valid it completes the setup and shows the SCIM token", %{
+      page: page
+    } do
       page
       |> set_up()
       |> assert_has(Query.text("SCIM Authorization token"))
@@ -68,7 +70,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   end
 
   describe "visiting an already set up integration" do
-    test "the page shows that okta is connected", %{page: page} do
+    browser_test "the page shows that okta is connected", %{page: page} do
       page
       |> set_up()
       |> visit("/settings/okta")
