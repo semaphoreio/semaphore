@@ -1,23 +1,27 @@
-package stubs
+package support
 
 import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
-	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
+	featurepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	responsepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/response_status"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	statuspb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/status"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
 
 	code "google.golang.org/genproto/googleapis/rpc/code"
 	"google.golang.org/grpc"
@@ -37,6 +41,7 @@ func New() internalapi.Provider {
 		loghub2:       &loghub2Stub{},
 		users:         &userStub{},
 		rbac:          &rbacStub{},
+		features:      &featureStub{},
 	}
 }
 
@@ -51,6 +56,7 @@ type provider struct {
 	loghub2       loghub2pb.Loghub2Client
 	users         userpb.UserServiceClient
 	rbac          rbacpb.RBACClient
+	features      featuresvc.FeatureClient
 }
 
 func (p *provider) CallTimeout() time.Duration { return p.timeout }
@@ -72,6 +78,8 @@ func (p *provider) Loghub2() loghub2pb.Loghub2Client { return p.loghub2 }
 func (p *provider) Users() userpb.UserServiceClient { return p.users }
 
 func (p *provider) RBAC() rbacpb.RBACClient { return p.rbac }
+
+func (p *provider) Features() featuresvc.FeatureClient { return p.features }
 
 // --- workflow stub ---
 
@@ -309,4 +317,97 @@ func (p *projectStub) List(ctx context.Context, in *projecthubpb.ListRequest, op
 			},
 		},
 	}, nil
+}
+
+// --- features stub ---
+
+type featureStub struct {
+	featuresvc.FeatureClient
+}
+
+func (f *featureStub) ListOrganizationFeatures(organizationId string) ([]feature.OrganizationFeature, error) {
+	return []feature.OrganizationFeature{
+		{
+			Name:     "feature-a",
+			State:    feature.Enabled,
+			Quantity: 10,
+		},
+		{
+			Name:     "feature-b",
+			State:    feature.Hidden,
+			Quantity: 0,
+		},
+		{
+			Name:     "mcp_server_read_tools",
+			State:    feature.Enabled,
+			Quantity: 1,
+		},
+	}, nil
+}
+
+func (f *featureStub) FeatureState(organizationId string, featureName string) (feature.State, error) {
+	switch featureName {
+	case "feature-a", "mcp_server_read_tools":
+		return feature.Enabled, nil
+	case "feature-b":
+		return feature.Hidden, nil
+	}
+	return feature.Hidden, nil
+}
+
+// --- feature hub service stub ---
+
+type FeatureHubServiceStub struct {
+	featurepb.UnimplementedFeatureServiceServer
+
+	mu          sync.Mutex
+	response    *featurepb.ListOrganizationFeaturesResponse
+	err         error
+	lastRequest *featurepb.ListOrganizationFeaturesRequest
+	callCount   int
+}
+
+func NewFeatureHubServiceStub() *FeatureHubServiceStub {
+	return &FeatureHubServiceStub{}
+}
+
+func (s *FeatureHubServiceStub) SetResponse(response *featurepb.ListOrganizationFeaturesResponse) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.response = response
+}
+
+func (s *FeatureHubServiceStub) SetError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.err = err
+}
+
+func (s *FeatureHubServiceStub) ListOrganizationFeatures(ctx context.Context, req *featurepb.ListOrganizationFeaturesRequest) (*featurepb.ListOrganizationFeaturesResponse, error) {
+	s.mu.Lock()
+	s.lastRequest = req
+	s.callCount++
+	response := s.response
+	err := s.err
+	s.mu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+	if response != nil {
+		return response, nil
+	}
+	return &featurepb.ListOrganizationFeaturesResponse{}, nil
+}
+
+func (s *FeatureHubServiceStub) LastRequest() *featurepb.ListOrganizationFeaturesRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastRequest
+}
+
+func (s *FeatureHubServiceStub) CallCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.callCount
 }
