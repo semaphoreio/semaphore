@@ -37,6 +37,8 @@ global_job_config:
         - 'if [ -f out/dependency-scan-trivy.json ]; then CHECK_TYPE=deps make check.generate-report; fi'
         - 'if [ -f out/security-export.json ]; then artifact push workflow out/security-export.json -d scans/$SEMAPHORE_JOB_ID.json; fi'
         - 'if [ -f out/security-summary.md ]; then artifact push job out/security-summary.md -d .semaphore/REPORT.md; fi'
+        - 'if [ -d out/screenshots ] && [ "$(ls -A out/screenshots)" ]; then artifact push workflow out/screenshots -d screenshots; fi'
+
 
 after_pipeline:
   task:
