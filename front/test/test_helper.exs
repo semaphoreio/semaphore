@@ -30,7 +30,7 @@ Application.put_env(
         "--disable-renderer-backgrounding",
         "--disable-software-rasterizer",
         "--remote-debugging-port=0",
-        "window-size=1920,1080",
+        "window-size=1920,1600",
         "--user-agent=Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
       ])
   )
