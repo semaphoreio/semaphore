@@ -1,4 +1,4 @@
-ARG GO_VERSION=1.24.9
+ARG GO_VERSION=1.25.2
 ARG ALPINE_VERSION=3.22
 
 FROM golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS base
@@ -18,6 +18,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 COPY cmd ./cmd
 COPY pkg ./pkg
+COPY test ./test
 
 FROM base AS dev
 RUN --mount=type=cache,target=/root/.cache/go-build \

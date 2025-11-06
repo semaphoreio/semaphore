@@ -15,6 +15,7 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/internal/shared"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/utils"
 )
 
 const (
@@ -155,6 +156,10 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
+			return mcp.NewToolResultError(err.Error()), nil
+		}
+
 		mode, err := shared.NormalizeMode(req.GetString("mode", "summary"))
 		if err != nil {
 			return mcp.NewToolResultError(fmt.Sprintf("Invalid mode parameter: %v", err)), nil
@@ -197,7 +202,7 @@ Troubleshooting:
 			limit = maxLimit
 		}
 
-		pageSize, err := shared.IntToInt32(limit, "limit")
+		pageSize, err := utils.IntToInt32(limit, "limit")
 		if err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
