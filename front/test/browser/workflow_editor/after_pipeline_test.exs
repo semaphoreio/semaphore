@@ -17,7 +17,6 @@ defmodule Front.Browser.WorkflowEditor.AfterPipelineTest do
   end
 
   browser_test "when configure is clicked the after pipeline config panel is shown", %{page: page} do
-    page |> take_screenshot()
     page |> click(Query.css("[data-action=configureAfterPipeline]"))
 
     assert_text(page, "Job #1")
