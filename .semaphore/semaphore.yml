@@ -2626,6 +2626,77 @@ blocks:
         - name: "Lint"
           commands:
             - make lint
+
+
+  # MCP Server
+  - name: "MCP Server: Provision Prod Image"
+    dependencies: []
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd mcp_server
+      jobs:
+        - name: "Build prod image"
+          commands:
+            - make pull
+            - make build
+            - make push
+  - name: "MCP Server: Deployment Preconditions"
+    dependencies: ["MCP Server: Provision Prod Image"]
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+        - name: SERVICE_NAME
+          value: "MCP Server"
+      prologue:
+        commands:
+          - checkout && cd mcp_server
+          - make pull
+      jobs:
+        - name: "Check code"
+          commands:
+            - make check.go.code
+        - name: "Check dependencies"
+          commands:
+            - make check.go.deps
+        - name: "Check docker"
+          commands:
+            - make build
+            - make check.docker
+  - name: "MCP Server: QA"
+    dependencies: ["MCP Server: Provision Prod Image"]
+    run:
+      when: "change_in('/mcp_server', {pipeline_file: 'ignore', default_branch: 'main'})"
+    task:
+      env_vars:
+        - name: DOCKER_BUILDKIT
+          value: "1"
+        - name: APP_ENV
+          value: prod
+      prologue:
+        commands:
+          - checkout && cd mcp_server
+          - make build
+      jobs:
+        - name: "Test"
+          commands:
+            - make test.setup
+            - make test
+        - name: "Lint"
+          commands:
+            - make lint
   # Encryptor
   - name: "Encryptor: Provision Prod Image"
     dependencies: []

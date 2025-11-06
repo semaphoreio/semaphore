@@ -23,6 +23,7 @@
 /hooks_receiver/ @hamir-suspect @DamjanBecirovic @forestileao
 /keycloak/ @skipi @hamir-suspect
 /loghub2/ @lucaspin @hamir-suspect @DamjanBecirovic
+/mcp_server/ @DamjanBecirovic @hamir-suspect @dexyk
 /notifications/ @hamir-suspect @dexyk @DamjanBecirovic
 /periodic_scheduler/ @DamjanBecirovic @dexyk @skipi
 /plumber/ @DamjanBecirovic @dexyk @skipi
