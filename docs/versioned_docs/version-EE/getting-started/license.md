@@ -4,15 +4,6 @@ description: Semaphore License
 
 # Get a License
 
-
-
-
-
-
-
-import { NiceButton, ButtonContainer } from '@site/src/components/NiceButton';
-import { GKEIcon, EKSIcon, UbuntuIcon, GCPCompute, AWSEC2Icon } from '@site/src/components/CustomIcons';
-
 This page explains how to obtain a Semaphore Enterprise Edition (EE) license and under which conditions you must pay to run your Semaphore EE instance.
 
 ## Overview {#overview}
