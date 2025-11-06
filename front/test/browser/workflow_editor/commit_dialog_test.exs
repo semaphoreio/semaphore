@@ -16,7 +16,7 @@ defmodule Front.Browser.WorkflowEditor.CommitDialogTest do
     {:ok, %{page: page}}
   end
 
-  test "dismiss and exit editor goes back to workflow page", %{page: page} do
+  browser_test "dismiss and exit editor goes back to workflow page", %{page: page} do
     page =
       page
       |> Browser.disable_onbeforeunload_dialog()
@@ -28,7 +28,7 @@ defmodule Front.Browser.WorkflowEditor.CommitDialogTest do
   end
 
   describe "filling in the branch name and commit message and clicking submit" do
-    test "when the action succeds => it redirects to workflow", %{page: page} do
+    browser_test "when the action succeds => it redirects to workflow", %{page: page} do
       user = Support.Stubs.User.create_default()
       org = Support.Stubs.Organization.create_default()
       Support.Stubs.Feature.enable_feature(org.id, :permission_patrol)

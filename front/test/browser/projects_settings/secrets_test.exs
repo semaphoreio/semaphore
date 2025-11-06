@@ -16,7 +16,7 @@ defmodule Front.Browser.ProjectSettings.Secrets do
       {:ok, context}
     end
 
-    test "project level secrets just forwarding to manage org secrets", %{
+    browser_test "project level secrets just forwarding to manage org secrets", %{
       session: session,
       project: project
     } do
@@ -43,11 +43,11 @@ defmodule Front.Browser.ProjectSettings.Secrets do
       {:ok, context}
     end
 
-    test "without project secrets => secrets renders proper page",
-         %{
-           session: session,
-           project: project
-         } = ctx do
+    browser_test "without project secrets => secrets renders proper page",
+                 %{
+                   session: session,
+                   project: project
+                 } = ctx do
       Support.Stubs.Feature.enable_feature(ctx.org.id, :permission_patrol)
       Support.Stubs.PermissionPatrol.allow_everything(ctx.org.id, ctx.user.id)
       page = visit(session, "/projects/#{project.name}/settings/secrets")
