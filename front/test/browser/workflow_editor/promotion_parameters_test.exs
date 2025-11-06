@@ -23,7 +23,7 @@ defmodule Front.Browser.WorkflowEditor.PromotionParametersTest do
     {:ok, %{page: page}}
   end
 
-  test "adding a required promotion parameter", %{page: page} do
+  browser_test "adding a required promotion parameter", %{page: page} do
     page
     |> click(@add_env_var_buttom)
     |> Editor.fill(@input_name, "SERVER")
@@ -45,7 +45,7 @@ defmodule Front.Browser.WorkflowEditor.PromotionParametersTest do
     assert param["required"] == true
   end
 
-  test "adding an optional promotion parameter", %{page: page} do
+  browser_test "adding an optional promotion parameter", %{page: page} do
     page
     |> click(@add_env_var_buttom)
     |> Editor.fill(@input_name, "SERVER")
