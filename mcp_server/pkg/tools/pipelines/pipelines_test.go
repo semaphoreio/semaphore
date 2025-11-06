@@ -9,13 +9,66 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func TestListPipelines_FeatureFlagDisabled(t *testing.T) {
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"workflow_id":     "11111111-2222-3333-4444-555555555555",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+		PipelineClient:  &pipelineClientStub{},
+		RBACClient:      newRBACStub("project.view"),
+	}
+
+	res, err := listHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		t.Fatalf("expected disabled feature error, got %q", msg)
+	}
+}
+
+func TestPipelineJobs_FeatureFlagDisabled(t *testing.T) {
+	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
+		"organization_id": "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+		"pipeline_id":     "11111111-2222-3333-4444-555555555555",
+	}}}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", "99999999-aaaa-bbbb-cccc-dddddddddddd")
+	req.Header = header
+
+	provider := &support.MockProvider{
+		FeaturesService: support.FeatureClientStub{State: feature.Hidden},
+		Timeout:         time.Second,
+		PipelineClient:  &pipelineClientStub{},
+		RBACClient:      newRBACStub("project.view"),
+	}
+
+	res, err := jobsHandler(provider)(context.Background(), req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(strings.ToLower(msg), "disabled") {
+		t.Fatalf("expected disabled feature error, got %q", msg)
+	}
+}
 
 func TestListPipelines(t *testing.T) {
 	workflowID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
@@ -45,7 +98,7 @@ func TestListPipelines(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
 	handler := listHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"workflow_id":     workflowID,
@@ -89,7 +142,7 @@ func TestListPipelinesPermissionDeniedWithProjectFilter(t *testing.T) {
 	pipelineClient := &pipelineClientStub{}
 	rbac := newRBACStub("organization.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: pipelineClient,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -152,7 +205,7 @@ func TestListPipelinesSkipsUnauthorizedProjects(t *testing.T) {
 		"proj-allowed": {"project.view"},
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -205,7 +258,7 @@ func TestListPipelinesScopeMismatchOrganization(t *testing.T) {
 		},
 	}
 	rbac := newRBACStub("project.view")
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -253,7 +306,7 @@ func TestListPipelinesRBACError(t *testing.T) {
 		"proj-1": errors.New("rbac rpc failure"),
 	}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -309,7 +362,7 @@ func TestListPipelineJobs(t *testing.T) {
 		},
 	}
 
-	provider := &internalapi.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
+	provider := &support.MockProvider{PipelineClient: client, Timeout: time.Second, RBACClient: newRBACStub("project.view")}
 	handler := jobsHandler(provider)
 	req := mcp.CallToolRequest{Params: mcp.CallToolParams{Arguments: map[string]any{
 		"pipeline_id":     pipelineID,
@@ -356,7 +409,7 @@ func TestPipelineJobsPermissionDenied(t *testing.T) {
 	}
 	rbac := newRBACStub()
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -401,7 +454,7 @@ func TestPipelineJobsScopeMismatchOrganization(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,
@@ -446,7 +499,7 @@ func TestPipelineJobsScopeMismatchProjectMissing(t *testing.T) {
 	}
 	rbac := newRBACStub("project.view")
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		PipelineClient: client,
 		RBACClient:     rbac,
 		Timeout:        time.Second,

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
-	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
+	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -29,7 +29,7 @@ func TestListOrganizationsSummary(t *testing.T) {
 	}
 	rbacStub := &rbacClientStub{ids: []string{"org-1"}}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		OrganizationClient: orgStub,
 		RBACClient:         rbacStub,
 		Timeout:            time.Second,
@@ -86,7 +86,7 @@ func TestListOrganizationsDetailed(t *testing.T) {
 	}
 	rbacStub := &rbacClientStub{ids: []string{"org-1"}}
 
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		OrganizationClient: orgStub,
 		RBACClient:         rbacStub,
 		Timeout:            time.Second,
@@ -137,7 +137,7 @@ func TestListOrganizationsPagination(t *testing.T) {
 		},
 	}
 	rbacStub := &rbacClientStub{ids: []string{"org-1", "org-2", "org-3"}}
-	provider := &internalapi.MockProvider{
+	provider := &support.MockProvider{
 		OrganizationClient: orgStub,
 		RBACClient:         rbacStub,
 		Timeout:            time.Second,

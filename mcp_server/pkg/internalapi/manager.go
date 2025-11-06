@@ -7,15 +7,16 @@ import (
 	"strings"
 	"time"
 
-	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
 	pipelinepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber.pipeline"
 	workflowpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/plumber_w_f.workflow"
 	projecthubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/projecthub"
+	rbacpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/rbac"
 	jobpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/server_farm.job"
 	userpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/user"
+	featuresvc "github.com/semaphoreio/semaphore/mcp_server/pkg/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -32,6 +33,7 @@ type Provider interface {
 	Loghub2() loghub2pb.Loghub2Client
 	Users() userpb.UserServiceClient
 	RBAC() rbacpb.RBACClient
+	Features() featuresvc.FeatureClient
 }
 
 // Manager owns gRPC connections to internal API services and exposes typed clients.
@@ -57,6 +59,7 @@ type Manager struct {
 	loghub2Client      loghub2pb.Loghub2Client
 	userClient         userpb.UserServiceClient
 	rbacClient         rbacpb.RBACClient
+	featuresService    featuresvc.FeatureClient
 }
 
 // NewManager dials the configured services and returns a ready-to-use manager.
@@ -150,6 +153,10 @@ func NewManager(ctx context.Context, cfg Config) (*Manager, error) {
 		m.rbacClient = rbacpb.NewRBACClient(m.rbacConn)
 	}
 
+	cacheService := featuresvc.NewCacheService()
+
+	m.featuresService = featuresvc.NewFeatureService(cfg.FeatureHubEndpoint, cacheService, cfg.CallTimeout)
+
 	return m, nil
 }
 
@@ -221,6 +228,10 @@ func (m *Manager) Users() userpb.UserServiceClient {
 
 func (m *Manager) RBAC() rbacpb.RBACClient {
 	return m.rbacClient
+}
+
+func (m *Manager) Features() featuresvc.FeatureClient {
+	return m.featuresService
 }
 
 func joinErrors(errs []error) error {
