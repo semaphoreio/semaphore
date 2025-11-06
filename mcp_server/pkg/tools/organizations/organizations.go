@@ -30,7 +30,7 @@ const (
 func fullDescription() string {
 	return `List organizations available to the authenticated user.
 
-This tool retrieves all organizations the user can access. The caller's user ID is derived from the X-Semaphore-User-ID header that the authentication layer injects into every request, so no additional arguments are required to identify the caller.
+This tool retrieves all organizations the user can access. 
 
 Use this as the first step when users ask questions like:
 - "Show me my organizations"
@@ -67,7 +67,6 @@ Examples:
 Common Errors:
 - Empty list: User may not belong to any organizations (check authentication)
 - RPC failed: Organization service temporarily unavailable (retry after a few seconds)
-- Missing header: Ensure the authentication proxy forwards X-Semaphore-User-ID
 
 Next Steps After This Call:
 - Store the organization_id you intend to use (for example in a local ".semaphore/org" file) so future requests can reference it quickly
