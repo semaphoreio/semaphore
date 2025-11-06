@@ -29,7 +29,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Initialization failed. See logs for more details.")
@@ -50,7 +49,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Invalid when expression detected")
@@ -72,7 +70,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Unknown branch referenced")
@@ -96,7 +93,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Unprocessable YAML file.")
@@ -111,7 +107,6 @@ defmodule Front.Browser.WorkflowPage.ErrorTest do
     Support.Stubs.Pipeline.set_error(context.pipeline.id, err)
 
     page = open(context)
-    take_screenshot(page)
 
     assert has_text?(page, "We couldn't run your pipeline")
     assert has_text?(page, "Error")
