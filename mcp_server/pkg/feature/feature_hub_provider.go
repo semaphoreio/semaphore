@@ -4,6 +4,7 @@ package feature
 import (
 	"context"
 	"errors"
+	"net"
 	"time"
 
 	"google.golang.org/grpc"
@@ -14,13 +15,31 @@ import (
 
 type FeatureHubProvider struct {
 	grpcEndpoint string
+	dialContext  DialContextFunc
 }
 
-func NewFeatureHubProvider(grpcEndpoint string) (*FeatureHubProvider, error) {
+type DialContextFunc func(ctx context.Context, addr string) (net.Conn, error)
+
+type FeatureHubProviderOption func(*FeatureHubProvider)
+
+// WithDialContext overrides the default transport dialer used by the provider.
+// It is mainly intended for tests where an in-memory listener (for example
+// google.golang.org/grpc/test/bufconn) replaces a real network connection.
+func WithDialContext(dialer DialContextFunc) FeatureHubProviderOption {
+	return func(p *FeatureHubProvider) {
+		p.dialContext = dialer
+	}
+}
+
+func NewFeatureHubProvider(grpcEndpoint string, opts ...FeatureHubProviderOption) (*FeatureHubProvider, error) {
 	if grpcEndpoint == "" {
 		return nil, errors.New("FeatureHub configuration is invalid, missing grpc endpoint is not set")
 	}
-	return &FeatureHubProvider{grpcEndpoint: grpcEndpoint}, nil
+	provider := &FeatureHubProvider{grpcEndpoint: grpcEndpoint}
+	for _, opt := range opts {
+		opt(provider)
+	}
+	return provider, nil
 }
 
 func (p *FeatureHubProvider) ListFeatures(orgID string) ([]OrganizationFeature, error) {
@@ -29,7 +48,7 @@ func (p *FeatureHubProvider) ListFeatures(orgID string) ([]OrganizationFeature, 
 
 func (p *FeatureHubProvider) ListFeaturesWithContext(ctx context.Context, orgID string) ([]OrganizationFeature, error) {
 	defer watchman.Benchmark(time.Now(), "feature_hub.list_organization_features.duration")
-	conn, err := grpc.DialContext(ctx, p.grpcEndpoint, grpc.WithInsecure())
+	conn, err := grpc.DialContext(ctx, p.grpcEndpoint, p.dialOptions()...)
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +88,12 @@ func stateOfFeature(orgFeature *pb.OrganizationFeature) State {
 	default:
 		return Hidden
 	}
+}
+
+func (p *FeatureHubProvider) dialOptions() []grpc.DialOption {
+	opts := []grpc.DialOption{grpc.WithInsecure()}
+	if p.dialContext != nil {
+		opts = append(opts, grpc.WithContextDialer(p.dialContext))
+	}
+	return opts
 }

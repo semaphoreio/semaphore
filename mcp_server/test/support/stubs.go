@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/feature"
+	featurepb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/feature"
 	loghubpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub"
 	loghub2pb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/loghub2"
 	orgpb "github.com/semaphoreio/semaphore/mcp_server/pkg/internal_api/organization"
@@ -351,4 +353,61 @@ func (f *featureStub) FeatureState(organizationId string, featureName string) (f
 		return feature.Hidden, nil
 	}
 	return feature.Hidden, nil
+}
+
+// --- feature hub service stub ---
+
+type FeatureHubServiceStub struct {
+	featurepb.UnimplementedFeatureServiceServer
+
+	mu          sync.Mutex
+	response    *featurepb.ListOrganizationFeaturesResponse
+	err         error
+	lastRequest *featurepb.ListOrganizationFeaturesRequest
+	callCount   int
+}
+
+func NewFeatureHubServiceStub() *FeatureHubServiceStub {
+	return &FeatureHubServiceStub{}
+}
+
+func (s *FeatureHubServiceStub) SetResponse(response *featurepb.ListOrganizationFeaturesResponse) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.response = response
+}
+
+func (s *FeatureHubServiceStub) SetError(err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.err = err
+}
+
+func (s *FeatureHubServiceStub) ListOrganizationFeatures(ctx context.Context, req *featurepb.ListOrganizationFeaturesRequest) (*featurepb.ListOrganizationFeaturesResponse, error) {
+	s.mu.Lock()
+	s.lastRequest = req
+	s.callCount++
+	response := s.response
+	err := s.err
+	s.mu.Unlock()
+
+	if err != nil {
+		return nil, err
+	}
+	if response != nil {
+		return response, nil
+	}
+	return &featurepb.ListOrganizationFeaturesResponse{}, nil
+}
+
+func (s *FeatureHubServiceStub) LastRequest() *featurepb.ListOrganizationFeaturesRequest {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.lastRequest
+}
+
+func (s *FeatureHubServiceStub) CallCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.callCount
 }

@@ -54,7 +54,7 @@ var (
 		"INTERNAL_API_URL_RBAC",
 		"MCP_RBAC_GRPC_ENDPOINT",
 	}
-	FeatureHubEndpoint = []string{
+	featureHubEndpointEnvs = []string{
 		"INTERNAL_API_URL_FEATURE",
 		"MCP_FEATURE_GRPC_ENDPOINT",
 	}
@@ -98,6 +98,7 @@ func LoadConfig() (Config, error) {
 		Loghub2Endpoint:      endpointFromEnv(loghub2EndpointEnvs...),
 		UserEndpoint:         endpointFromEnv(userEndpointEnvs...),
 		RBACEndpoint:         endpointFromEnv(rbacEndpointEnvs...),
+		FeatureHubEndpoint:   endpointFromEnv(featureHubEndpointEnvs...),
 		DialTimeout:          dialTimeout,
 		CallTimeout:          callTimeout,
 	}
@@ -132,6 +133,12 @@ func (c Config) Validate() error {
 	}
 	if c.RBACEndpoint == "" {
 		missing = append(missing, "rbac gRPC endpoint")
+	}
+	if c.RBACEndpoint == "" {
+		missing = append(missing, "rbac gRPC endpoint")
+	}
+	if c.FeatureHubEndpoint == "" {
+		missing = append(missing, "feature hub gRPC endpoint")
 	}
 
 	if len(missing) > 0 {
