@@ -4,13 +4,6 @@ description: Install Semaphore on AWS EC2 Instance (VM)
 
 # AWS Compute Instance (EC2)
 
-
-
-
-
-
-
-
 This page explains how to install Semaphore Community Edition on a [AWS Elastic Compute Cloud (EC2)](https://aws.amazon.com/ec2/).
 
 ## Overview
@@ -488,6 +481,6 @@ aws ec2 terminate-instances --instance-ids $INSTANCE_ID
 
 ## See also
 
-- [Installation overview](./install-overview.md)
+- [Installation overview](./install.md)
 - [Quickstart](./quickstart)
 - [Migration guide](./migration-overview)
