@@ -173,16 +173,10 @@ defmodule Front.Browser.SelfHostedAgentsTest do
   end
 
   defp click_register_agent_type(page) do
-    script = "document.querySelector('#register-self-hosted-agent').scrollIntoView()"
-
-    page |> execute_script(script)
     page |> click(Query.button("Looks good. Register"))
   end
 
   defp click_disconnect_link(page) do
-    # script = "document.querySelector('.disable-self-hosted-agent').scrollIntoView()"
-
-    # page |> execute_script(script)
     page |> click(Query.link("Disconnect"))
   end
 
