@@ -134,9 +134,6 @@ func (c Config) Validate() error {
 	if c.RBACEndpoint == "" {
 		missing = append(missing, "rbac gRPC endpoint")
 	}
-	if c.RBACEndpoint == "" {
-		missing = append(missing, "rbac gRPC endpoint")
-	}
 	if c.FeatureHubEndpoint == "" {
 		missing = append(missing, "feature hub gRPC endpoint")
 	}
