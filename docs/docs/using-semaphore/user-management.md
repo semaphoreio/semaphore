@@ -141,6 +141,29 @@ Only an Admins, Owner, or dedicated [custom roles](./rbac#custom-roles) can remo
 
 :::
 
+### How to download list of users as CSV {#csv-users}
+
+Organization owners and admins can export a list of all users in their Semaphore organization.
+
+To download the list, follow these steps:
+
+<Steps>
+
+1. In the **People** section, press **Download .csv**
+
+    ![Download .csv button location](./img/csv-users.jpg)
+
+2. Semaphore will generate a .csv file containing the following user details:
+
+    - Semaphore account name
+    - Email address
+    - GitHub username
+    - Bitbucket username
+    - GitLab username
+
+</Steps>
+
+
 ### How to change user roles {#roles-people}
 
 To change the role of a user, press the **Change Role** button next to the person.
