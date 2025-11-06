@@ -2,6 +2,34 @@
 
 The `mcp_server` service is a Model Context Protocol (MCP) server implemented with [github.com/mark3labs/mcp-go](https://github.com/mark3labs/mcp-go). It exposes Semaphore workflow, pipeline, and job data to MCP-compatible clients.
 
+## Configuration:
+
+### Claude Code:
+
+In terminal export the env var called MY_MCP_TOKEN with the value of the API token that should be used to connect to Semaphore MCP server. run the following command:
+
+claude mcp add semaphore https://mcp.semaphoreci.com/mcp \
+  --scope user --transport http \
+  --header "Authorization: Bearer $MY_MCP_TOKEN"
+
+Example prompt: "Help me figure out why have my test failed on Semaphore"
+
+### Codex:
+
+Open your ~/.codex/config.toml (if you’re using the CLI) or via the Codex IDE Extension in VS Code (Gear icon → MCP settings → Open config.toml)
+
+[mcp_servers.semaphore]
+url = "https://mcp.semaphoreci.com/mcp"
+bearer_token_env_var = "MY_MCP_TOKEN"
+startup_timeout_sec = 30
+tool_timeout_sec = 300
+
+In terminal export the env var called MY_MCP_TOKEN with the value of the API token that should be used to connect to Semaphore MCP server.
+
+You can then use Semaphore MCP in codex CLI by starting it in that same terminal session, or in VS Code codex extension by starting the VS Code from that terminal session with `code <path-to-working-directory>` command.
+
+_Note_: Due to current limitations of Codex extension for VS Code, if you start VS Code in any other way except from the terminal session where MY_MCP_TOKEN env var has correct value, the Semaphore MCP server will not work. 
+
 ## Contributor Guide
 
 Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, and development workflows.
@@ -11,15 +39,18 @@ Refer to [`AGENTS.md`](AGENTS.md) for repository guidelines, project structure, 
 | Tool | Description |
 | ---- | ----------- |
 | `echo` | Returns the provided `message` verbatim (handy for smoke tests). |
-| `workflows_list` | Lists workflows for a project using keyset pagination. |
-| `pipelines_list` | Lists pipelines for a workflow, including state/result metadata. |
-| `pipelines_describe` | Describes a pipeline and its blocks (optionally detailed). |
+| `organizations_list` | Lists organizations that the user can access. |
+| `projects_list` | List projects that belong to a specific organization. |
+| `projects_search` | Search projects inside an organization by project name, repository URL, or description. |
+| `workflows_search` | Search recent workflows for a project (most recent first). |
+| `pipelines_list` | List pipelines associated with a workflow (most recent first). |
+| `pipeline_jobs` | List jobs belonging to a specific pipeline. |
 | `jobs_describe` | Describes a job, surfacing agent details and lifecycle timestamps. |
-| `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs mint a Loghub2 pull token. |
+| `jobs_logs` | Fetches job logs. Hosted jobs stream loghub events; self-hosted jobs return a URL to fetch logs. |
 
 ## Requirements
 
-- Go 1.24 (toolchain `go1.24.9` is configured in `go.mod`).
+- Go 1.25 (toolchain `go1.25.2` is configured in `go.mod` and `Dockerfile`).
 - SSH access to `renderedtext/internal_api` for protobuf generation.
 
 ## Generating protobuf stubs
@@ -44,6 +75,9 @@ The server dials internal gRPC services based on environment variables. Deployme
 | Job gRPC endpoint | `INTERNAL_API_URL_JOB`, `MCP_JOB_GRPC_ENDPOINT`, `JOBS_API_URL` |
 | Loghub gRPC endpoint (hosted logs) | `INTERNAL_API_URL_LOGHUB`, `MCP_LOGHUB_GRPC_ENDPOINT`, `LOGHUB_API_URL` |
 | Loghub2 gRPC endpoint (self-hosted logs) | `INTERNAL_API_URL_LOGHUB2`, `MCP_LOGHUB2_GRPC_ENDPOINT`, `LOGHUB2_API_URL` |
+| RBAC gRPC endpoint | `INTERNAL_API_URL_RBAC`, `MCP_RBAC_GRPC_ENDPOINT` |
+| Users gRPC endpoint | `INTERNAL_API_URL_USER`, `MCP_USER_GRPC_ENDPOINT` |
+| Featurehub gRPC endpoint | `INTERNAL_API_URL_FEATURE`, `MCP_FEATURE_GRPC_ENDPOINT` |
 | Dial timeout | `MCP_GRPC_DIAL_TIMEOUT` (default `5s`) |
 | Call timeout | `MCP_GRPC_CALL_TIMEOUT` (default `15s`) |
 

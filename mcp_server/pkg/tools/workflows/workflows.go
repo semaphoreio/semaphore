@@ -35,6 +35,7 @@ Use this when you need to answer:
 - "Who triggered the latest deployment workflow?"
 
 - organization_id: identify which organization’s project you are querying (required)
+- project_id: identify which project to search workflows for (required)
 - branch: limit results to a specific branch (e.g., "main" or "release/*")
 - requester: filter by a specific requester (UUID, username, or automation handle)
 - my_workflows_only: when true (default), limit results to workflows triggered by the authenticated user
