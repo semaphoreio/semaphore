@@ -17,7 +17,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     {:ok, context}
   end
 
-  test "adding and removing policies", params do
+  browser_test "adding and removing policies", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -72,7 +72,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "deleting all policies on a project", params do
+  browser_test "deleting all policies on a project", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -99,7 +99,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "empty rules are ignored", params do
+  browser_test "empty rules are ignored", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -130,7 +130,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "hitting the max limit for the number of defined policies", params do
+  browser_test "hitting the max limit for the number of defined policies", params do
     Support.Stubs.Feature.enable_feature(params.org.id, :permission_patrol)
     Support.Stubs.PermissionPatrol.allow_everything(params.org.id, params.user.id)
 

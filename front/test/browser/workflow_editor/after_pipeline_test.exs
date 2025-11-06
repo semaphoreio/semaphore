@@ -16,8 +16,7 @@ defmodule Front.Browser.WorkflowEditor.AfterPipelineTest do
     {:ok, %{page: page}}
   end
 
-  test "when configure is clicked the after pipeline config panel is shown", %{page: page} do
-    page |> take_screenshot()
+  browser_test "when configure is clicked the after pipeline config panel is shown", %{page: page} do
     page |> click(Query.css("[data-action=configureAfterPipeline]"))
 
     assert_text(page, "Job #1")
@@ -30,7 +29,7 @@ defmodule Front.Browser.WorkflowEditor.AfterPipelineTest do
       {:ok, %{page: page}}
     end
 
-    test "setting up a simple job", %{page: page} do
+    browser_test "setting up a simple job", %{page: page} do
       after_pipeline = after_pipeline_yaml(page)
 
       job = after_pipeline |> get_in(["task", "jobs", Access.at(0)])
@@ -38,7 +37,7 @@ defmodule Front.Browser.WorkflowEditor.AfterPipelineTest do
       assert job["name"] == "Job #1"
     end
 
-    test "setting up job parallelism", %{page: page} do
+    browser_test "setting up job parallelism", %{page: page} do
       page
       |> Editor.expand_config("Configure parallelism or a job matrix")
       |> select_parallelism_type("Multiple instances")
@@ -57,7 +56,7 @@ defmodule Front.Browser.WorkflowEditor.AfterPipelineTest do
       assert job["parallelism"] == 8
     end
 
-    test "setting up job matrix", %{page: page} do
+    browser_test "setting up job matrix", %{page: page} do
       page =
         page
         |> Editor.expand_config("Configure parallelism or a job matrix")
