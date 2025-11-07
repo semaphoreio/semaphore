@@ -1,9 +1,9 @@
 defmodule Front.Browser.ProjectSettings.ArtifactsTest do
   use FrontWeb.WallabyCase
 
-  @project_policies Query.css("[data-container=project-policies]")
-  @workflow_policies Query.css("[data-container=workflow-policies]")
-  @job_policies Query.css("[data-container=job-policies]")
+  @project_policies Query.data("container", "project-policies")
+  @workflow_policies Query.data("container", "workflow-policies")
+  @job_policies Query.data("container", "job-policies")
 
   @add_policy_link Query.css("a", text: "+ Add retention policy")
   @last_input_field Query.css("[data-name=input-form]:last-child input")
@@ -17,7 +17,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     {:ok, context}
   end
 
-  test "adding and removing policies", params do
+  browser_test "adding and removing policies", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -72,7 +72,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "deleting all policies on a project", params do
+  browser_test "deleting all policies on a project", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -99,7 +99,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "empty rules are ignored", params do
+  browser_test "empty rules are ignored", params do
     alias InternalApi.Artifacthub.RetentionPolicy, as: Policy
     alias InternalApi.Artifacthub.RetentionPolicy.RetentionPolicyRule, as: Rule
 
@@ -130,7 +130,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
     assert last_saved_policy() == expected_policy
   end
 
-  test "hitting the max limit for the number of defined policies", params do
+  browser_test "hitting the max limit for the number of defined policies", params do
     Support.Stubs.Feature.enable_feature(params.org.id, :permission_patrol)
     Support.Stubs.PermissionPatrol.allow_everything(params.org.id, params.user.id)
 
@@ -176,10 +176,10 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
 
   defp remove_policy(page, section_selector, index: index) do
     find(page, section_selector, fn section ->
-      input_forms = all(section, Query.css("[data-name=input-form]"))
+      input_forms = all(section, Query.data("name", "input-form"))
       input_form = Enum.at(input_forms, index)
 
-      input_form |> click(Query.css("[data-action=remove-retention-policy]"))
+      input_form |> click(Query.data("action", "remove-retention-policy"))
     end)
   end
 
