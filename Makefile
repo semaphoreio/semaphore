@@ -42,7 +42,7 @@ endif
 # Locally we want to bind volumes we're working on.
 # On CI environment this is not necessary and would only slow us down. The data is already on the host.
 #
-DOCKER_COMPOSE_OPTS=-f docker-compose.yml
+DOCKER_COMPOSE_OPTS :=
 ifeq ($(CI),)
 	VOLUME_BIND?=--volume $(PWD):/app
 	export BUILDKIT_INLINE_CACHE=0
