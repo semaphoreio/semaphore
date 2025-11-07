@@ -25,7 +25,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       |> length
 
     page
-    |> click(Query.css("[data-action=addBlock]"))
+    |> click(Query.data("action", "addBlock"))
     |> assert_text("Block ##{block_count + 1}")
   end
 
