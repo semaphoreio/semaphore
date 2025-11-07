@@ -73,9 +73,9 @@ defmodule Front.Browser.SelfHostedAgentsTest do
       assert_text(page, "Delete s1-test-1")
       assert_text(page, "This cannot be undone!")
 
-      page |> click(Query.button("Delete"))
-
-      assert_text(page, "Agent type s1-test-1 deleted")
+      page
+      |> click(Query.button("Delete"))
+      |> assert_flash_notice("Agent type s1-test-1 deleted")
     end
 
     browser_test "deleting an agent type with running agents", %{page: page, org: org} do
@@ -102,12 +102,9 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     assert_text(page, "Reset token for s1-test-1")
     assert_text(page, "This cannot be undone!")
 
-    page |> click(Query.button("Reset token"))
-
-    assert_text(
-      page,
-      "The registration token was successfully reset for s1-test-1"
-    )
+    page
+    |> click(Query.button("Reset token"))
+    |> assert_flash_notice("The registration token was successfully reset for s1-test-1")
   end
 
   browser_test "disable an agent", %{page: page, org: org} do
@@ -123,9 +120,9 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     assert_text(page, "Disconnect s1-vagrant-23o8127381")
     assert_text(page, "This cannot be undone!")
 
-    page |> click(Query.button("Disconnect"))
-
-    assert_text(page, "Agent s1-vagrant-23o8127381 disconnected")
+    page
+    |> click(Query.button("Disconnect"))
+    |> assert_flash_notice("Agent s1-vagrant-23o8127381 disconnected")
   end
 
   browser_test "disable all agents", %{page: page, org: org} do
@@ -144,8 +141,7 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     page
     |> click(Query.radio_button("Disable all (some of them might be running jobs)"))
     |> click(Query.button("Disable agents"))
-
-    assert_text(page, "All agents for s1-test-1 were disabled")
+    |> assert_flash_notice("All agents for s1-test-1 were disabled")
   end
 
   browser_test "disable all idle agents", %{page: page, org: org} do
@@ -164,8 +160,7 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     page
     |> click(Query.radio_button("Disable all idle agents"))
     |> click(Query.button("Disable agents"))
-
-    assert_text(page, "All idle agents for s1-test-1 were disabled")
+    |> assert_flash_notice("All idle agents for s1-test-1 were disabled")
   end
 
   defp click_add_agent_type(page) do
@@ -190,5 +185,9 @@ defmodule Front.Browser.SelfHostedAgentsTest do
 
   defp create_agent_type(org_id, name) do
     Stubs.SelfHostedAgent.create(org_id, name)
+  end
+
+  defp assert_flash_notice(page, text) do
+    page |> assert_has(Query.css("#changes-notification p", text: text))
   end
 end
