@@ -36,8 +36,4 @@ defmodule Support.Browser do
   def disable_onbeforeunload_dialog(session) do
     session |> execute_script("window.onbeforeunload = null;")
   end
-
-  def scroll_into_view(session, css_selector) do
-    session |> execute_script("document.querySelector('#{css_selector}').scrollIntoView()")
-  end
 end
