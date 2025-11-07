@@ -80,19 +80,19 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
 
   defp submit_form(page) do
     page
-    |> Support.Browser.scroll_into_view("button[type=submit]")
+    |> assert_has(@save_btn)
     |> click(@save_btn)
   end
 
   defp click_view_integration(page) do
     page
-    |> Support.Browser.scroll_into_view("a.btn-primary")
+    |> assert_has(Query.link("View Integration"))
     |> click(Query.link("View Integration"))
   end
 
   defp cancel_form(page) do
     page
-    |> Support.Browser.scroll_into_view("button[type=submit]")
+    |> assert_has(Query.link("Cancel"))
     |> click(Query.link("Cancel"))
   end
 
