@@ -13,14 +13,15 @@ defmodule Front.Browser.WorkflowPage.InitializationTest do
     {:ok, context}
   end
 
-  test "no compilation step => display nothing", context do
+  browser_test "no compilation step => display nothing", context do
     page = open(context)
 
     refute has_text?(page, "Initializing")
     refute has_text?(page, "Initialization")
   end
 
-  test "compile exists, not yet started => display the message with 00:00 timer", context do
+  browser_test "compile exists, not yet started => display the message with 00:00 timer",
+               context do
     Support.Stubs.Pipeline.add_compile_task(context.pipeline.id)
     Cacheman.clear(:front)
 
@@ -42,7 +43,7 @@ defmodule Front.Browser.WorkflowPage.InitializationTest do
     |> assert_has(Query.text("Cloning your reposi"))
   end
 
-  test "compile step exists and finished", context do
+  browser_test "compile step exists and finished", context do
     task = Support.Stubs.Pipeline.add_compile_task(context.pipeline.id)
     Support.Stubs.Task.change_state(task, :finished)
     Support.Stubs.Pipeline.change_state(context.pipeline.id, :running)
@@ -60,7 +61,8 @@ defmodule Front.Browser.WorkflowPage.InitializationTest do
     |> refute_has(Query.text("Cloning your reposi"))
   end
 
-  test "transitioning from initializing -> running expands the promotions as well", context do
+  browser_test "transitioning from initializing -> running expands the promotions as well",
+               context do
     task = Support.Stubs.Pipeline.add_compile_task(context.pipeline.id)
 
     page = open(context)
