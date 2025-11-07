@@ -81,10 +81,9 @@ defmodule Guard.Invitees do
     case Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(inviter_id, provider) do
       {:ok, rha} ->
         {:ok, rha}
+
       e ->
-        Logger.warning(
-          "Missing RHA for inviter #{inviter_id} and #{provider}, #{inspect(e)}"
-        )
+        Logger.warning("Missing RHA for inviter #{inviter_id} and #{provider}, #{inspect(e)}")
         {:ok, nil}
     end
   end
@@ -97,9 +96,7 @@ defmodule Guard.Invitees do
         {:ok, token}
 
       e ->
-        Logger.warning(
-          "Missing token for rha #{rha} and #{provider}, #{inspect(e)}"
-        )
+        Logger.warning("Missing token for rha #{rha} and #{provider}, #{inspect(e)}")
         {:ok, nil}
     end
   end
