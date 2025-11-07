@@ -64,7 +64,10 @@ defmodule Guard.Invitees do
       extract_uid(login, http_response, provider)
     else
       e ->
-        Logger.error("[Invitees] Error extracting #{provider} uid for #{inspect(login)}: #{inspect(e)}")
+        Logger.error(
+          "[Invitees] Error extracting #{provider} uid for #{inspect(login)}: #{inspect(e)}"
+        )
+
         {:error, "error finding #{provider} ID for #{login}"}
     end
   end
@@ -83,7 +86,10 @@ defmodule Guard.Invitees do
         {:ok, rha}
 
       e ->
-        Logger.warning("[Invitees] Missing RHA for inviter #{inviter_id} and #{provider}, #{inspect(e)}")
+        Logger.warning(
+          "[Invitees] Missing RHA for inviter #{inviter_id} and #{provider}, #{inspect(e)}"
+        )
+
         {:ok, nil}
     end
   end
@@ -96,7 +102,10 @@ defmodule Guard.Invitees do
         {:ok, token}
 
       e ->
-        Logger.warning("[Invitees] Missing token for rha #{inspect(rha)} and #{provider}, #{inspect(e)}")
+        Logger.warning(
+          "[Invitees] Missing token for rha #{inspect(rha)} and #{provider}, #{inspect(e)}"
+        )
+
         {:ok, nil}
     end
   end
