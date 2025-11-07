@@ -186,6 +186,6 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
   defp open(params) do
     path = "/projects/#{params.project.name}/settings/artifacts"
 
-    params.session |> visit(path) |> Support.Browser.scroll_into_view("form")
+    params.session |> visit(path)
   end
 end
