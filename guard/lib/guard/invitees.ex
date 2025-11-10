@@ -114,9 +114,7 @@ defmodule Guard.Invitees do
     Guard.FrontRepo.RepoHostAccount.get_github_token(rha)
   end
 
-  defp get_api_token(rha, "gitlab") do
-    Guard.FrontRepo.RepoHostAccount.get_gitlab_token(rha)
-  end
+  defp get_api_token(_, _), do: {:ok, {"", nil}}
 
   defp get_provider_uid(login, provider) do
     Guard.FrontRepo.RepoHostAccount.get_uid_by_login(login, provider)
@@ -124,10 +122,6 @@ defmodule Guard.Invitees do
 
   defp http_call(resource, token, "github") when is_binary(token) and token != "" do
     HTTPoison.get(resource, [{"Authorization", "Token #{token}"}])
-  end
-
-  defp http_call(resource, token, "gitlab") when is_binary(token) and token != "" do
-    HTTPoison.get(resource, [{"PRIVATE-TOKEN", token}])
   end
 
   defp http_call(resource, _, _), do: HTTPoison.get(resource, [])
