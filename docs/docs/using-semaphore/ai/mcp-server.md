@@ -30,10 +30,10 @@ Semaphore's MCP Server provides **read-only access** to your Semaphore organizat
 - `projects_list`: List projects that belong to a specific organization
 - `projects_search`: Search projects inside an organization by project name, repository URL, or description
 - `workflows_search`: Search recent workflows for a project (most recent first) 
-- `pipelines_list`: List pipelines associated with a workflow (most recent firs)
+- `pipelines_list`: List pipelines associated with a workflow (most recent first)
 - `pipeline_jobs`: List jobs belonging to a specific pipeline 
-- `jobs_describe`: Describes a job, surfacing agent details and lifecycle timestamps
-- `jobs_logs`: Fetches job logs. For cloud jobs, it streams loghub events. For self-hosted jobs returns a URL where logs can be fetche
+- `jobs_describe`: Describes a job, surfacing agent details, and lifecycle timestamps
+- `jobs_logs`: Fetches job logs. For cloud jobs, it streams loghub events. For self-hosted jobs, returns a URL where logs can be fetched
 
 See [example prompts](#examples) to see a bit of what's possible.
 
@@ -42,7 +42,7 @@ See [example prompts](#examples) to see a bit of what's possible.
 Access to the MCP Server is controlled via an API Token. You can obtain your API token in two ways:
 
 - [Personal API Token](../user-management#profile-token): if you don't know your personal API token, you can reset it and obtain a new one
-- [Service Account]: create a service account with *Member* role and use it's API token
+- [Service Account](../service-accounts): create a service account with *Member* role and use its API token
 
 Both types of tokens are used to communicate with the Semaphore MCP Server endpoint: `https://mcp.semaphoreci.com/mcp`
 
@@ -67,7 +67,7 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
       --header "Authorization: Bearer $SEMAPHORE_API_TOKEN"
     ```
 
-3. If you have a session opened, restart Claude Code
+3. If you have a session open, restart Claude Code
 
 </Steps>
 
@@ -126,7 +126,7 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
     export SEMAPHORE_API_TOKEN=my-token
     ```
 
-5. Start VS Code from the command line, in the same shell session where you set the environment variable. This ensures VS Code can has access to the API token
+5. Start VS Code from the command line, in the same shell session where you set the environment variable. This ensures VS Code can have access to the API token
 
     ```shell
     code path/to/project
@@ -134,7 +134,7 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 
     :::note
 
-      Due to current limitations of Codex extension for VS Code, if you start VS Code in any other way except from the terminal session where SEMAPHORE_API_TOKEN varariable has the correct value, the Semaphore MCP server **will not work**.
+      Due to current limitations of the Codex extension for VS Code, if you start VS Code in any other way except from the terminal session where the SEMAPHORE_API_TOKEN variable has the correct value, the Semaphore MCP server **will not work**.
 
     :::
 
@@ -146,12 +146,12 @@ If you have problems connecting to the MCP Server, see [troubleshooting](#troubl
 The MCP Server provides access to your Semaphore organization (assuming the MCP Server is enabled for your organization).
 
 
-Here a few example prompts you can use to interact with your projects, pipelines, and jobs. Use them as starting points to interact with Semaphore. Some prompts might require an API Token with [Admin Role](../rbac#org-admin).
+Here are a few example prompts you can use to interact with your projects, pipelines, and jobs. Use them as starting points to interact with Semaphore. Some prompts might require an API Token with [Admin Role](../rbac#org-admin).
 
 | Task | Prompt |
 |------|--------|
 | List organizations the Agent has access to | "List organizations you have access to" |
-| Save the organization and project IDs in `AGENTS.md` (speeds ups tasks and saves tokens) | "Find the current project in Semaphore and obtain the organization id and project id. Save the values in AGENTS.md for future reference" |
+| Save the organization and project IDs in `AGENTS.md` (speeds up tasks and saves tokens) | "Find the current project in Semaphore and obtain the organization id and project id. Save the values in AGENTS.md for future reference" |
 | Understand what the pipeline does | "Describe what my pipeline does for this project on Semaphore" |
 | Troubleshoot failed tests | "Help me figure out why have my test failed on Semaphore" |
 | Troubleshoot failed builds | "Why did my build fail?" |
@@ -169,19 +169,20 @@ Here a few example prompts you can use to interact with your projects, pipelines
 Client error: HTTP status client error (401 Unauthorized) for url (https://mcp.semaphoreci.com/mcp), when send initialize request
 ```
 
-**Solution**: This usually means the environment variable with the Semaphore API Token is not correctly loaded. Check your `config.toml` to learn what's the environment variable name and ensure you are setting it correctly in your shell before starting Codex.
+**Solution**: This usually means the environment variable with the Semaphore API Token is not correctly loaded. Check your `config.toml` to learn what the environment variable name and ensure you are setting it correctly in your shell before starting Codex.
 
 
 ### VS Code fails to connect
 
 **Symptom**: Your Codex extension in VS Code fails to connect with the MCP server.
 
-**Solution**: This usually means that VS Code does not have access to environment variable with the Semaphore API Token. Ensure you have set the environment variable as per `config.toml` in your shell, and that you are actually starting VS Code from that very same shell session. Starting VS Code by any other means causes Codex to fail the connection.
+**Solution**: This usually means that VS Code does not have access to the environment variable with the Semaphore API Token. Ensure you have set the environment variable as per `config.toml` in your shell, and that you are actually starting VS Code from that very same shell session. Starting VS Code by any other means causes Codex to fail the connection.
 
 ## See also
 
 - [User management](../user-management)
 - [Service accounts](../service-accounts)
+
 
 
 
