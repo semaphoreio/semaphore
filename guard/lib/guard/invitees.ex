@@ -128,12 +128,18 @@ defmodule Guard.Invitees do
 
   defp extract_uid(_, %{status_code: 200, body: body}, _) do
     with {:ok, body} <- body |> Jason.decode(),
-         {:ok, id} <- body |> Map.fetch("id"),
+         {:ok, id} <- fetch_id(body),
          do: id |> Integer.to_string() |> return_ok_tuple()
   end
 
   defp extract_uid(login, %{status_code: status_code}, _),
     do: {:error, "error finding #{login}: #{status_code}"}
+
+  defp fetch_id(%{"id" => id}), do: {:ok, id}
+
+  defp fetch_id([%{"id" => id} | _rest]), do: {:ok, id}
+
+  defp fetch_id(body), do: {:error, "error finding id in the body #{inspect(body)}"}
 
   defp return_ok_tuple(value), do: {:ok, value}
 end
