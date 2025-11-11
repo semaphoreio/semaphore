@@ -202,9 +202,9 @@ The workflow unique identifier. All jobs belonging to all pipelines in the workf
 - **Environment variable**: `SEMAPHORE_WORKFLOW_NUMBER`
 - **Example**: `42`
 
-This number is incremented every time the workflow runs. In other words, the number is incremented by one every time there is a Git push on any branch, every time there is a pull request, or a tag is pushed to the repository. It doesn't increment with debug jobs.
+This value tracks how many workflows have run for the current branch, tag, or pull request. Each context starts at `1`, and the counter increases by one on every push or workflow rerun within that same branch, tag, or pull request. Debug jobs do not increment the number.
 
-This number is available to all jobs in all pipelines belonging to the same workflow. This includes the initial pipeline and all manually or auto-promoted pipelines in the same build.
+The value remains constant during a workflow run and is available to all jobs in every pipeline that belongs to the workflow, including the initial pipeline and any manually or auto-promoted pipelines in the same build.
 
 ### Workflow is rerun {#workflow-rerun}
 
