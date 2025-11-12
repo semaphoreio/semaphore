@@ -6,6 +6,9 @@ defmodule FrontWeb.WallabyCase do
       import Plug.Conn
       import Phoenix.ConnTest
       use Wallaby.DSL
+      require Wallaby.Browser
+      import Wallaby.Browser, except: [assert_text: 2, assert_has: 2, refute_has: 2]
+      import Support.Browser.Assertions
       import FrontWeb.WallabyCase, only: [browser_test: 2, browser_test: 3]
 
       @moduletag :browser

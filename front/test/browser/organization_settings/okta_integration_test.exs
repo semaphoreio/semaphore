@@ -1,6 +1,6 @@
 defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   use FrontWeb.WallabyCase
-  alias Support.Stubs
+  alias Support.{Browser, Stubs}
 
   @page_header Query.css("h1", text: "Okta Integration")
   @setup_btn Query.css("a", text: "Set Up")
@@ -65,7 +65,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
       |> set_up()
       |> assert_has(Query.text("SCIM Authorization token"))
       |> click_view_integration()
-      |> assert_has(Query.css("div.bg-green", text: "Connected"))
+      |> Browser.assert_stable(Query.css("div.bg-green", text: "Connected"))
     end
   end
 
@@ -74,7 +74,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
       page
       |> set_up()
       |> visit("/settings/okta")
-      |> assert_has(Query.css("div.bg-green", text: "Connected"))
+      |> Browser.assert_stable(Query.css("div.bg-green", text: "Connected"))
     end
   end
 
