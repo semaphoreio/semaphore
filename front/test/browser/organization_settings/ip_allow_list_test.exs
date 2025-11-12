@@ -14,7 +14,7 @@ defmodule Front.Browser.OrganizationSettings.IpAllowListTest do
       {:ok, %{page: page}}
     end
 
-    test "IP allow list tab does not appear", %{page: page} do
+    browser_test "IP allow list tab does not appear", %{page: page} do
       page |> refute_has(Query.text("IP Allow List"))
     end
   end
@@ -31,7 +31,7 @@ defmodule Front.Browser.OrganizationSettings.IpAllowListTest do
       {:ok, %{page: page}}
     end
 
-    test "IP allow list tab does not appear", %{page: page} do
+    browser_test "IP allow list tab does not appear", %{page: page} do
       page |> refute_has(Query.text("IP Allow List"))
     end
   end
