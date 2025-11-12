@@ -4,11 +4,11 @@ defmodule Front.Browser.WorkflowEditor.PromotionParametersTest do
   alias Support.Browser.WorkflowEditor, as: Editor
 
   @add_env_var_buttom Query.css("a", text: "+ Add Environment Variable")
-  @input_name Query.css("[data-action=changePromotionParameterEnvName]")
-  @input_description Query.css("[data-action=changePromotionParameterEnvDescription]")
-  @input_default Query.css("[data-action=changePromotionParameterEnvDefault]")
-  @input_options Query.css("[data-action=changePromotionParameterEnvOptions]")
-  @input_required Query.css("[data-action=changePromotionParameterEnvRequired]")
+  @input_name Query.data("action", "changePromotionParameterEnvName")
+  @input_description Query.data("action", "changePromotionParameterEnvDescription")
+  @input_default Query.data("action", "changePromotionParameterEnvDefault")
+  @input_options Query.data("action", "changePromotionParameterEnvOptions")
+  @input_required Query.data("action", "changePromotionParameterEnvRequired")
 
   setup %{session: session} do
     Editor.init()
@@ -18,12 +18,12 @@ defmodule Front.Browser.WorkflowEditor.PromotionParametersTest do
     workflow = Editor.get_workflow()
 
     page = Editor.open(session, workflow.id)
-    page = page |> click(Query.css("[data-action=addPromotion]"))
+    page = page |> click(Query.data("action", "addPromotion"))
 
     {:ok, %{page: page}}
   end
 
-  test "adding a required promotion parameter", %{page: page} do
+  browser_test "adding a required promotion parameter", %{page: page} do
     page
     |> click(@add_env_var_buttom)
     |> Editor.fill(@input_name, "SERVER")
@@ -45,7 +45,7 @@ defmodule Front.Browser.WorkflowEditor.PromotionParametersTest do
     assert param["required"] == true
   end
 
-  test "adding an optional promotion parameter", %{page: page} do
+  browser_test "adding an optional promotion parameter", %{page: page} do
     page
     |> click(@add_env_var_buttom)
     |> Editor.fill(@input_name, "SERVER")
