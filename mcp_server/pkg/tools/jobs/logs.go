@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -21,6 +22,7 @@ import (
 
 const (
 	logsToolName         = "jobs_logs"
+	logsMetricBase       = "tools.jobs_logs"
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
@@ -106,6 +108,24 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		metrics := shared.NewToolMetrics(logsMetricBase, logsToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -174,10 +194,23 @@ Troubleshooting:
 			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
 		}
 
+		var (
+			result  *mcp.CallToolResult
+			callErr error
+		)
+
 		if job.GetSelfHosted() {
-			return fetchSelfHostedLogs(ctx, api, jobID)
+			result, callErr = fetchSelfHostedLogs(ctx, api, jobID)
+		} else {
+			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
-		return fetchHostedLogs(ctx, api, jobID, startingLine)
+		if callErr != nil {
+			return result, callErr
+		}
+		if result != nil && !result.IsError {
+			success = true
+		}
+		return result, nil
 	}
 }
 

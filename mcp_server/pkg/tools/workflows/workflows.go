@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -20,6 +21,7 @@ import (
 
 const (
 	searchToolName        = "workflows_search"
+	searchMetricBase      = "tools.workflows_search"
 	defaultLimit          = 20
 	maxLimit              = 100
 	missingWorkflowError  = "workflow gRPC endpoint is not configured"
@@ -156,6 +158,24 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		metrics := shared.NewToolMetrics(searchMetricBase, searchToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -342,6 +362,7 @@ Double-check that:
 		markdown := formatWorkflowsMarkdown(result, mode, projectID, orgID, branch, requesterFilter, myWorkflowsOnly, userID, limit)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

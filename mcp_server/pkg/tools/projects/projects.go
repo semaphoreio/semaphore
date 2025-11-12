@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -22,7 +23,9 @@ import (
 
 const (
 	listToolName       = "projects_list"
+	listMetricBase     = "tools.projects_list"
 	searchToolName     = "projects_search"
+	searchMetricBase   = "tools.projects_search"
 	defaultListLimit   = 25
 	maxListLimit       = 200
 	defaultSearchLimit = 20
@@ -470,6 +473,24 @@ You can discover organizations by calling organizations_list first.`), nil
 Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
+		metrics := shared.NewToolMetrics(listMetricBase, listToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -585,6 +606,7 @@ Try removing optional filters or verifying access permissions.`, err)), nil
 		markdown := formatProjectListMarkdown(result, mode, orgID)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
@@ -611,6 +633,24 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		metrics := shared.NewToolMetrics(searchMetricBase, searchToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -799,6 +839,7 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 			markdown := formatProjectSearchMarkdown(result, mode, orgID, queryDisplay, repoDisplay, limit, maxPages)
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			success = true
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					mcp.NewTextContent(markdown),
@@ -837,6 +878,7 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 		markdown := formatProjectSearchMarkdown(result, mode, orgID, queryDisplay, repoDisplay, limit, maxPages)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

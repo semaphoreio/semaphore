@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -15,6 +16,7 @@ import (
 
 const (
 	describeToolName      = "jobs_describe"
+	describeMetricBase    = "tools.jobs_describe"
 	projectViewPermission = "project.view"
 )
 
@@ -85,6 +87,24 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		metrics := shared.NewToolMetrics(describeMetricBase, describeToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -170,6 +190,7 @@ Troubleshooting:
 		markdown := formatJobMarkdown(summary, mode)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -20,7 +21,9 @@ import (
 
 const (
 	listToolName          = "pipelines_list"
+	listMetricBase        = "tools.pipelines_list"
 	jobsToolName          = "pipeline_jobs"
+	jobsMetricBase        = "tools.pipeline_jobs"
 	defaultLimit          = 20
 	maxLimit              = 100
 	errNoClient           = "pipeline gRPC endpoint is not configured"
@@ -241,6 +244,24 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		metrics := shared.NewToolMetrics(listMetricBase, listToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -433,6 +454,7 @@ Check that:
 		markdown := formatPipelineListMarkdown(result, mode, workflowID, projectID, orgID, limit)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
@@ -457,6 +479,24 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		metrics := shared.NewToolMetrics(jobsMetricBase, jobsToolName, orgID)
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -595,6 +635,7 @@ Troubleshooting:
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

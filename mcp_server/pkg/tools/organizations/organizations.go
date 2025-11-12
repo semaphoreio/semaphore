@@ -23,6 +23,7 @@ import (
 
 const (
 	listToolName    = "organizations_list"
+	listMetricBase  = "tools.organizations_list"
 	defaultPageSize = 20
 	maxPageSize     = 100
 )
@@ -136,6 +137,24 @@ type organizationDetails struct {
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		metrics := shared.NewToolMetrics(listMetricBase, listToolName, "")
+		if metrics != nil {
+			metrics.IncrementTotal()
+		}
+		start := time.Now()
+		success := false
+		defer func() {
+			if metrics == nil {
+				return
+			}
+			metrics.TrackDuration(start)
+			if success {
+				metrics.IncrementSuccess()
+			} else {
+				metrics.IncrementFailure()
+			}
+		}()
+
 		client := api.Organizations()
 		if client == nil {
 			return mcp.NewToolResultError(`Organization gRPC endpoint is not configured.
@@ -238,6 +257,7 @@ The RBAC service confirms which organizations the authenticated user can access.
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			success = true
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -285,6 +305,7 @@ The organization service could not describe the permitted organizations. Retry i
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			success = true
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -332,6 +353,7 @@ The organization service could not describe the permitted organizations. Retry i
 		markdown := formatOrganizationsMarkdown(orgs, mode, result.NextCursor)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		success = true
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

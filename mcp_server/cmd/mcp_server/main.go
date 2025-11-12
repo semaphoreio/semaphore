@@ -24,17 +24,25 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/projects"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/workflows"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/watchman"
 	support "github.com/semaphoreio/semaphore/mcp_server/test/support"
 )
 
 var (
-	versionFlag = flag.Bool("version", false, "print the server version and exit")
-	nameFlag    = flag.String("name", "semaphore-mcp-server", "implementation name advertised to MCP clients")
-	httpAddr    = flag.String("http", ":3001", "address to serve the streamable MCP transport")
-	version     = "0.1.0"
+	versionFlag      = flag.Bool("version", false, "print the server version and exit")
+	nameFlag         = flag.String("name", "semaphore-mcp-server", "implementation name advertised to MCP clients")
+	httpAddr         = flag.String("http", ":3001", "address to serve the streamable MCP transport")
+	version          = "0.1.0"
+	metricsNamespace = os.Getenv("METRICS_NAMESPACE")
+)
+
+const (
+	metricService = "mcp-server"
 )
 
 func main() {
+	watchman.Configure(fmt.Sprintf("%s.%s", metricService, metricsNamespace))
+
 	flag.Parse()
 
 	if *versionFlag {
