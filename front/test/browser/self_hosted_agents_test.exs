@@ -1,6 +1,7 @@
 defmodule Front.Browser.SelfHostedAgentsTest do
   use FrontWeb.WallabyCase
   alias Support.Stubs
+  alias Wallaby.StaleReferenceError
 
   setup %{session: session} do
     Stubs.init()
@@ -22,12 +23,14 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> click_add_agent_type()
     |> set_agent_type_name("test-agent")
     |> click_register_agent_type()
-    |> assert_text("Follow the instructions and you should see the agent running here shortly.")
+    |> assert_stable_text(
+      "Follow the instructions and you should see the agent running here shortly."
+    )
 
     simulate_booting_an_agent(org.id, "s1-test-agent", "s1-vagrant-23o8127381")
     :timer.sleep(3000)
 
-    page |> assert_text("s1-vagrant-23o8127381")
+    page |> assert_stable_text("s1-vagrant-23o8127381")
   end
 
   browser_test "listing existing agent types", %{page: page, org: org} do
@@ -40,11 +43,11 @@ defmodule Front.Browser.SelfHostedAgentsTest do
 
     page |> visit("/self_hosted_agents")
 
-    assert_text(page, "s1-test-1")
-    assert_text(page, "2 running agents")
+    assert_stable_text(page, "s1-test-1")
+    assert_stable_text(page, "2 running agents")
 
-    assert_text(page, "s1-test-2")
-    assert_text(page, "1 running agent")
+    assert_stable_text(page, "s1-test-2")
+    assert_stable_text(page, "1 running agent")
   end
 
   browser_test "viewing details about a self hosted agent type", %{page: page, org: org} do
@@ -57,8 +60,8 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> visit("/self_hosted_agents")
     |> click(Query.text("s1-test-1"))
 
-    assert_text(page, "s1-vagrant-23o8127381")
-    assert_text(page, "s1-vagrant-hlakdjhfal")
+    assert_stable_text(page, "s1-vagrant-23o8127381")
+    assert_stable_text(page, "s1-vagrant-hlakdjhfal")
   end
 
   describe "deleting an agent type" do
@@ -70,8 +73,8 @@ defmodule Front.Browser.SelfHostedAgentsTest do
       |> click(Query.text("s1-test-1"))
       |> click(Query.link("Delete…"))
 
-      assert_text(page, "Delete s1-test-1")
-      assert_text(page, "This cannot be undone!")
+      assert_stable_text(page, "Delete s1-test-1")
+      assert_stable_text(page, "This cannot be undone!")
 
       page
       |> click(Query.button("Delete"))
@@ -99,12 +102,12 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> click(Query.text("s1-test-1"))
     |> click(Query.link("Reset token…"))
 
-    assert_text(page, "Reset token for s1-test-1")
-    assert_text(page, "This cannot be undone!")
+    assert_stable_text(page, "Reset token for s1-test-1")
+    assert_stable_text(page, "This cannot be undone!")
 
     page
     |> click(Query.button("Reset token"))
-    |> assert_flash_notice("The registration token was successfully reset for s1-test-1")
+    |> assert_text("The registration token was successfully reset for s1-test-1")
   end
 
   browser_test "disable an agent", %{page: page, org: org} do
@@ -117,8 +120,8 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> click(Query.text("s1-test-1"))
     |> click_disconnect_link()
 
-    assert_text(page, "Disconnect s1-vagrant-23o8127381")
-    assert_text(page, "This cannot be undone!")
+    assert_stable_text(page, "Disconnect s1-vagrant-23o8127381")
+    assert_stable_text(page, "This cannot be undone!")
 
     page
     |> click(Query.button("Disconnect"))
@@ -135,8 +138,8 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> click(Query.text("s1-test-1"))
     |> click(Query.link("Disable all…"))
 
-    assert_text(page, "Disable agents for s1-test-1")
-    assert_text(page, "Proceed carefully, this cannot be undone!")
+    assert_stable_text(page, "Disable agents for s1-test-1")
+    assert_stable_text(page, "Proceed carefully, this cannot be undone!")
 
     page
     |> click(Query.radio_button("Disable all (some of them might be running jobs)"))
@@ -154,8 +157,8 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     |> click(Query.text("s1-test-1"))
     |> click(Query.link("Disable all…"))
 
-    assert_text(page, "Disable agents for s1-test-1")
-    assert_text(page, "Proceed carefully, this cannot be undone!")
+    assert_stable_text(page, "Disable agents for s1-test-1")
+    assert_stable_text(page, "Proceed carefully, this cannot be undone!")
 
     page
     |> click(Query.radio_button("Disable all idle agents"))
@@ -187,7 +190,24 @@ defmodule Front.Browser.SelfHostedAgentsTest do
     Stubs.SelfHostedAgent.create(org_id, name)
   end
 
+  defp assert_stable_text(page, text) do
+    retry_on_stale(fn -> assert_text(page, text) end)
+  end
+
   defp assert_flash_notice(page, text) do
-    page |> assert_has(Query.css("#changes-notification p", text: text))
+    retry_on_stale(fn ->
+      assert_has(page, Query.css("#changes-notification p", text: text))
+    end)
+  end
+
+  defp retry_on_stale(fun, attempts \\ 5)
+  defp retry_on_stale(fun, 0), do: fun.()
+
+  defp retry_on_stale(fun, attempts) do
+    fun.()
+  rescue
+    _ in StaleReferenceError ->
+      Process.sleep(100)
+      retry_on_stale(fun, attempts - 1)
   end
 end
