@@ -116,18 +116,19 @@ func (p *pipelineStub) ListKeyset(ctx context.Context, in *pipelinepb.ListKeyset
 	return &pipelinepb.ListKeysetResponse{
 		Pipelines: []*pipelinepb.Pipeline{
 			{
-				PplId:        "ppl-local",
-				Name:         "Build",
-				WfId:         orDefault(in.GetWfId(), "wf-local"),
-				ProjectId:    orDefault(in.GetProjectId(), "project-local"),
-				BranchName:   "main",
-				CommitSha:    "abcdef0",
-				State:        pipelinepb.Pipeline_RUNNING,
-				Result:       pipelinepb.Pipeline_PASSED,
-				ResultReason: pipelinepb.Pipeline_TEST,
-				CreatedAt:    timestamppb.New(time.Unix(1_700_000_000, 0)),
-				Queue:        &pipelinepb.Queue{QueueId: "queue-local", Name: "default", Type: pipelinepb.QueueType_IMPLICIT},
-				Triggerer:    &pipelinepb.Triggerer{PplTriggeredBy: pipelinepb.TriggeredBy_WORKFLOW},
+				PplId:          "ppl-local",
+				Name:           "Build",
+				WfId:           orDefault(in.GetWfId(), "wf-local"),
+				ProjectId:      orDefault(in.GetProjectId(), "project-local"),
+				OrganizationId: "org-local",
+				BranchName:     "main",
+				CommitSha:      "abcdef0",
+				State:          pipelinepb.Pipeline_RUNNING,
+				Result:         pipelinepb.Pipeline_PASSED,
+				ResultReason:   pipelinepb.Pipeline_TEST,
+				CreatedAt:      timestamppb.New(time.Unix(1_700_000_000, 0)),
+				Queue:          &pipelinepb.Queue{QueueId: "queue-local", Name: "default", Type: pipelinepb.QueueType_IMPLICIT},
+				Triggerer:      &pipelinepb.Triggerer{PplTriggeredBy: pipelinepb.TriggeredBy_WORKFLOW},
 			},
 		},
 	}, nil
@@ -137,10 +138,11 @@ func (p *pipelineStub) Describe(ctx context.Context, in *pipelinepb.DescribeRequ
 	return &pipelinepb.DescribeResponse{
 		ResponseStatus: &pipelinepb.ResponseStatus{Code: pipelinepb.ResponseStatus_OK},
 		Pipeline: &pipelinepb.Pipeline{
-			PplId:     orDefault(in.GetPplId(), "ppl-local"),
-			Name:      "Build",
-			ProjectId: "project-local",
-			WfId:      "wf-local",
+			PplId:          orDefault(in.GetPplId(), "ppl-local"),
+			Name:           "Build",
+			ProjectId:      "project-local",
+			OrganizationId: "org-local",
+			WfId:           "wf-local",
 		},
 		Blocks: []*pipelinepb.Block{
 			{
@@ -247,6 +249,22 @@ func orDefault(value, fallback string) string {
 
 type organizationStub struct {
 	orgpb.OrganizationServiceClient
+}
+
+func (o *organizationStub) Describe(ctx context.Context, in *orgpb.DescribeRequest, opts ...grpc.CallOption) (*orgpb.DescribeResponse, error) {
+	orgID := in.GetOrgId()
+	if orgID == "" {
+		orgID = "org-local"
+	}
+	return &orgpb.DescribeResponse{
+		Status: &responsepb.ResponseStatus{Code: responsepb.ResponseStatus_OK},
+		Organization: &orgpb.Organization{
+			OrgId:       orgID,
+			Name:        "Local Org",
+			OrgUsername: "local-org",
+			OwnerId:     "user-local",
+		},
+	}, nil
 }
 
 func (o *organizationStub) List(ctx context.Context, in *orgpb.ListRequest, opts ...grpc.CallOption) (*orgpb.ListResponse, error) {
