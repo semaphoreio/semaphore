@@ -19,6 +19,7 @@ import (
 
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/internalapi"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
+	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/jobs"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/organizations"
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/tools/pipelines"
@@ -98,6 +99,10 @@ func main() {
 			}
 		}()
 	}
+
+	// Configure organization name resolver for metrics tagging.
+	// This must be called once before registering tools that emit metrics.
+	tools.ConfigureMetrics(provider)
 
 	organizations.Register(srv, provider)
 	projects.Register(srv, provider)

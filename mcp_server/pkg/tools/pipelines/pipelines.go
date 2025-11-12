@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -242,23 +241,8 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(listToolName, orgID)
-		if metrics != nil {
-			metrics.IncrementTotal()
-		}
-		start := time.Now()
-		success := false
-		defer func() {
-			if metrics == nil {
-				return
-			}
-			metrics.TrackDuration(start)
-			if success {
-				metrics.IncrementSuccess()
-			} else {
-				metrics.IncrementFailure()
-			}
-		}()
+		tracker := shared.TrackToolExecution(ctx, listToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -452,7 +436,7 @@ Check that:
 		markdown := formatPipelineListMarkdown(result, mode, workflowID, projectID, orgID, limit)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-		success = true
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
@@ -478,23 +462,8 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(jobsToolName, orgID)
-		if metrics != nil {
-			metrics.IncrementTotal()
-		}
-		start := time.Now()
-		success := false
-		defer func() {
-			if metrics == nil {
-				return
-			}
-			metrics.TrackDuration(start)
-			if success {
-				metrics.IncrementSuccess()
-			} else {
-				metrics.IncrementFailure()
-			}
-		}()
+		tracker := shared.TrackToolExecution(ctx, jobsToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -633,7 +602,7 @@ Troubleshooting:
 		markdown := formatPipelineJobsMarkdown(result, mode, orgID)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-		success = true
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

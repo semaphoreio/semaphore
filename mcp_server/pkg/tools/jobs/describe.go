@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -87,23 +86,8 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(describeToolName, orgID)
-		if metrics != nil {
-			metrics.IncrementTotal()
-		}
-		start := time.Now()
-		success := false
-		defer func() {
-			if metrics == nil {
-				return
-			}
-			metrics.TrackDuration(start)
-			if success {
-				metrics.IncrementSuccess()
-			} else {
-				metrics.IncrementFailure()
-			}
-		}()
+		tracker := shared.TrackToolExecution(ctx, describeToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -189,7 +173,7 @@ Troubleshooting:
 		markdown := formatJobMarkdown(summary, mode)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-		success = true
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

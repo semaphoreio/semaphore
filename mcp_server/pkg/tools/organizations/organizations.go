@@ -136,23 +136,8 @@ type organizationDetails struct {
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		metrics := shared.NewToolMetrics(listToolName, "")
-		if metrics != nil {
-			metrics.IncrementTotal()
-		}
-		start := time.Now()
-		success := false
-		defer func() {
-			if metrics == nil {
-				return
-			}
-			metrics.TrackDuration(start)
-			if success {
-				metrics.IncrementSuccess()
-			} else {
-				metrics.IncrementFailure()
-			}
-		}()
+		tracker := shared.TrackToolExecution(ctx, listToolName, "")
+		defer tracker.Cleanup()
 
 		client := api.Organizations()
 		if client == nil {
@@ -256,7 +241,7 @@ The RBAC service confirms which organizations the authenticated user can access.
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-			success = true
+			tracker.MarkSuccess()
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -304,7 +289,7 @@ The organization service could not describe the permitted organizations. Retry i
 			markdown := formatOrganizationsMarkdown(result.Organizations, mode, "")
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-			success = true
+			tracker.MarkSuccess()
 			return &mcp.CallToolResult{
 				Content:           []mcp.Content{mcp.NewTextContent(markdown)},
 				StructuredContent: result,
@@ -352,7 +337,7 @@ The organization service could not describe the permitted organizations. Retry i
 		markdown := formatOrganizationsMarkdown(orgs, mode, result.NextCursor)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
-		success = true
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

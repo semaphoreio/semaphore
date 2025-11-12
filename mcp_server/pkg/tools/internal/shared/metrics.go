@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -21,7 +22,12 @@ type ToolMetrics struct {
 }
 
 // NewToolMetrics prepares a metrics emitter scoped to a tool and optional organization ID.
-func NewToolMetrics(toolName, orgID string) *ToolMetrics {
+func NewToolMetrics(ctx context.Context, toolName, orgID string) *ToolMetrics {
+	resolver := getOrgNameResolver()
+	return newToolMetricsWithResolver(ctx, toolName, orgID, resolver)
+}
+
+func newToolMetricsWithResolver(ctx context.Context, toolName, orgID string, resolver OrgNameResolver) *ToolMetrics {
 	name := strings.TrimSpace(toolName)
 	if name == "" {
 		return nil
@@ -30,10 +36,8 @@ func NewToolMetrics(toolName, orgID string) *ToolMetrics {
 	base := "tools." + name
 	tags := make([]string, 0, 1)
 
-	if normalizedOrg := strings.TrimSpace(strings.ToLower(orgID)); normalizedOrg != "" {
-		if tag := sanitizeMetricTag("org_" + normalizedOrg); tag != "" {
-			tags = append(tags, tag)
-		}
+	if tag := resolveOrgTag(ctx, orgID, resolver); tag != "" {
+		tags = append(tags, tag)
 	}
 
 	return &ToolMetrics{
@@ -89,6 +93,30 @@ func (tm *ToolMetrics) metricName(suffix string) string {
 	return tm.base + "." + suffix
 }
 
+func resolveOrgTag(ctx context.Context, orgID string, resolver OrgNameResolver) string {
+	orgID = strings.TrimSpace(orgID)
+	if orgID == "" {
+		return ""
+	}
+
+	value := orgID
+	if resolver != nil {
+		if name, err := resolver.Resolve(ctx, orgID); err == nil {
+			name = strings.TrimSpace(name)
+			if name != "" {
+				value = name
+			}
+		} else {
+			logging.ForComponent("metrics").
+				WithError(err).
+				WithField("orgId", orgID).
+				Debug("failed to resolve organization name for metrics")
+		}
+	}
+
+	return sanitizeMetricTag("org_" + value)
+}
+
 func sanitizeMetricTag(value string) string {
 	value = strings.TrimSpace(strings.ToLower(value))
 	if value == "" {
@@ -106,4 +134,57 @@ func logMetricError(metric string, err error) {
 		WithError(err).
 		WithField("metric", metric).
 		Debug("failed to submit Watchman metric")
+}
+
+// ToolExecutionTracker helps track tool execution metrics with a consistent pattern.
+// It provides methods to mark success and automatically handles cleanup via defer.
+type ToolExecutionTracker struct {
+	metrics *ToolMetrics
+	start   time.Time
+	success *bool
+}
+
+// TrackToolExecution creates a new tracker for monitoring tool execution metrics.
+// It automatically increments the total counter and sets up cleanup logic.
+//
+// Usage:
+//
+//	tracker := shared.TrackToolExecution(ctx, toolName, orgID)
+//	defer tracker.Cleanup()
+//	// ... tool logic ...
+//	tracker.MarkSuccess() // Call before successful return
+func TrackToolExecution(ctx context.Context, toolName, orgID string) *ToolExecutionTracker {
+	metrics := NewToolMetrics(ctx, toolName, orgID)
+	if metrics != nil {
+		metrics.IncrementTotal()
+	}
+
+	success := false
+	return &ToolExecutionTracker{
+		metrics: metrics,
+		start:   time.Now(),
+		success: &success,
+	}
+}
+
+// MarkSuccess marks the tool execution as successful.
+// This should be called just before returning a successful result.
+func (t *ToolExecutionTracker) MarkSuccess() {
+	if t != nil && t.success != nil {
+		*t.success = true
+	}
+}
+
+// Cleanup emits duration and success/failure metrics.
+// This should be called via defer immediately after creating the tracker.
+func (t *ToolExecutionTracker) Cleanup() {
+	if t == nil || t.metrics == nil {
+		return
+	}
+	t.metrics.TrackDuration(t.start)
+	if t.success != nil && *t.success {
+		t.metrics.IncrementSuccess()
+	} else {
+		t.metrics.IncrementFailure()
+	}
 }

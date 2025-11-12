@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -107,23 +106,8 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(logsToolName, orgID)
-		if metrics != nil {
-			metrics.IncrementTotal()
-		}
-		start := time.Now()
-		success := false
-		defer func() {
-			if metrics == nil {
-				return
-			}
-			metrics.TrackDuration(start)
-			if success {
-				metrics.IncrementSuccess()
-			} else {
-				metrics.IncrementFailure()
-			}
-		}()
+		tracker := shared.TrackToolExecution(ctx, logsToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -207,7 +191,14 @@ Troubleshooting:
 			return result, callErr
 		}
 		if result != nil && !result.IsError {
-			success = true
+			// For self-hosted jobs, also verify that a token was actually generated
+			if job.GetSelfHosted() {
+				if structured, ok := result.StructuredContent.(logsResult); ok && structured.Token != "" {
+					tracker.MarkSuccess()
+				}
+			} else {
+				tracker.MarkSuccess()
+			}
 		}
 		return result, nil
 	}
