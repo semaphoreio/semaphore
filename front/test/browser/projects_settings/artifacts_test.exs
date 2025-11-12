@@ -48,7 +48,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert_policy_saved(expected_policy)
 
     params
     |> open()
@@ -69,7 +69,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert_policy_saved(expected_policy)
   end
 
   browser_test "deleting all policies on a project", params do
@@ -96,7 +96,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         job_level_retention_policies: []
       )
 
-    assert last_saved_policy() == expected_policy
+    assert_policy_saved(expected_policy)
   end
 
   browser_test "empty rules are ignored", params do
@@ -127,7 +127,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert_policy_saved(expected_policy)
   end
 
   browser_test "hitting the max limit for the number of defined policies", params do
@@ -155,6 +155,23 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
 
   defp last_saved_policy do
     Support.Stubs.DB.last(:artifacts_retention_policies).api_model
+  end
+
+  defp assert_policy_saved(expected_policy) do
+    assert_eventually(fn ->
+      assert last_saved_policy() == expected_policy
+    end)
+  end
+
+  defp assert_eventually(fun, attempts \\ 20)
+  defp assert_eventually(fun, 0), do: fun.()
+
+  defp assert_eventually(fun, attempts) do
+    fun.()
+  rescue
+    error in [ExUnit.AssertionError, KeyError] ->
+      Process.sleep(100)
+      assert_eventually(fun, attempts - 1)
   end
 
   defp save(page) do
