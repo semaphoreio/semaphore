@@ -18,18 +18,18 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
     {:ok, %{page: page}}
   end
 
-  test "users can add new blocks", %{page: page} do
+  browser_test "users can add new blocks", %{page: page} do
     block_count =
       page
       |> all(Query.css("#workflow-editor-diagram [data-type=block]"))
       |> length
 
     page
-    |> click(Query.css("[data-action=addBlock]"))
+    |> click(Query.data("action", "addBlock"))
     |> assert_text("Block ##{block_count + 1}")
   end
 
-  test "adding a secret to block", %{page: page} do
+  browser_test "adding a secret to block", %{page: page} do
     secret = Support.Stubs.Secret.last()
     secret_name = secret.api_model.metadata.name
 
@@ -49,7 +49,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
     assert secret["name"] == secret_name
   end
 
-  test "editing prologue commands", %{page: page} do
+  browser_test "editing prologue commands", %{page: page} do
     text = "    \necho C\n      "
 
     page =
@@ -71,7 +71,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
     assert commands == ["echo C"]
   end
 
-  test "editing epilogue always commands", %{page: page} do
+  browser_test "editing epilogue always commands", %{page: page} do
     always_text = "echo always"
 
     page =
@@ -92,7 +92,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
     assert always == ["echo always"]
   end
 
-  test "editing epilogue on-fail commands", %{page: page} do
+  browser_test "editing epilogue on-fail commands", %{page: page} do
     on_fail_text = "    \necho fail\n      "
 
     page =
@@ -113,7 +113,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
     assert on_fail == ["echo fail"]
   end
 
-  test "editing epilogue on-pass commands", %{page: page} do
+  browser_test "editing epilogue on-pass commands", %{page: page} do
     on_pass_text = "echo pass1\n     \necho pass2"
 
     page =
@@ -140,7 +140,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       {:ok, %{page: page}}
     end
 
-    test "setting up job parallelism", %{page: page} do
+    browser_test "setting up job parallelism", %{page: page} do
       page
       |> Editor.expand_config("Configure parallelism or a job matrix")
       |> select_parallelism_type("Multiple instances")
@@ -159,7 +159,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       assert job["parallelism"] == 8
     end
 
-    test "setting up job matrix", %{page: page} do
+    browser_test "setting up job matrix", %{page: page} do
       page =
         page
         |> Editor.expand_config("Configure parallelism or a job matrix")
@@ -222,7 +222,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       {:ok, %{page: page}}
     end
 
-    test "enabling global override", %{page: page} do
+    browser_test "enabling global override", %{page: page} do
       # enable
       page = page |> click(Query.checkbox("Override global agent definition"))
 
@@ -236,7 +236,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       assert get_in(yaml, ["task", "agent"]) == nil
     end
 
-    test "configuring Linux VM agent", %{page: page} do
+    browser_test "configuring Linux VM agent", %{page: page} do
       # enable
       page = page |> click(Query.checkbox("Override global agent definition"))
       page = page |> Editor.change_agent_env_type_for_block("Linux Based Virtual Machine")
@@ -254,7 +254,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       assert get_in(yaml, ["task", "agent", "machine", "type"]) == "e1-standard-4"
     end
 
-    test "configuring Mac VM agent", %{page: page} do
+    browser_test "configuring Mac VM agent", %{page: page} do
       # enable
       page = page |> click(Query.checkbox("Override global agent definition"))
       page = page |> Editor.change_agent_env_type_for_block("Mac Based Virtual Machine")
@@ -264,7 +264,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       assert get_in(yaml, ["task", "agent", "machine", "type"]) == "a1-standard-4"
     end
 
-    test "configuring Docker based VM agent", %{page: page} do
+    browser_test "configuring Docker based VM agent", %{page: page} do
       # enable
       page = page |> click(Query.checkbox("Override global agent definition"))
 
@@ -318,7 +318,9 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
              ]
     end
 
-    test "self-hosted environment is not available if no agent types are created", %{page: page} do
+    browser_test "self-hosted environment is not available if no agent types are created", %{
+      page: page
+    } do
       page
       |> click(Query.checkbox("Override global agent definition"))
       |> Editor.in_config("Agent", fn cfg ->
@@ -341,7 +343,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       {:ok, %{page: page}}
     end
 
-    test "setting up a skip condition", %{page: page} do
+    browser_test "setting up a skip condition", %{page: page} do
       page =
         page
         |> change_skip_condition_type("Skip this block when conditions are met")
@@ -352,7 +354,7 @@ defmodule Front.Browser.WorkflowEditor.BlocksTest do
       assert page |> Editor.first_block_yaml() |> get_in(["skip", "when"]) == "branch = 'dev'"
     end
 
-    test "setting up a run condition", %{page: page} do
+    browser_test "setting up a run condition", %{page: page} do
       page =
         page
         |> change_skip_condition_type("Run this block when conditions are met")
