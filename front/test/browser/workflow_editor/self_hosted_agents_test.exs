@@ -31,7 +31,7 @@ defmodule Front.Browser.WorkflowEditor.SelfHostedAgentsTest do
       {:ok, %{page: page}}
     end
 
-    test "configure self-hosted machine", %{page: page} do
+    browser_test "configure self-hosted machine", %{page: page} do
       # enable
       page = page |> click(Query.checkbox("Override global agent definition"))
       page = page |> Editor.change_agent_env_type_for_block("Self-Hosted Machine")
@@ -52,7 +52,7 @@ defmodule Front.Browser.WorkflowEditor.SelfHostedAgentsTest do
       {:ok, %{page: page}}
     end
 
-    test "configure self-hosted machine", %{page: page} do
+    browser_test "configure self-hosted machine", %{page: page} do
       page = page |> Editor.change_agent_env_type_for_pipeline("Self-Hosted Machine")
 
       page =
