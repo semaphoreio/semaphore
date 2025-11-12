@@ -21,7 +21,6 @@ import (
 
 const (
 	searchToolName        = "workflows_search"
-	searchMetricBase      = "tools.workflows_search"
 	defaultLimit          = 20
 	maxLimit              = 100
 	missingWorkflowError  = "workflow gRPC endpoint is not configured"
@@ -159,7 +158,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(searchMetricBase, searchToolName, orgID)
+		metrics := shared.NewToolMetrics(searchToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

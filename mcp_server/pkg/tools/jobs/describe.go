@@ -16,7 +16,6 @@ import (
 
 const (
 	describeToolName      = "jobs_describe"
-	describeMetricBase    = "tools.jobs_describe"
 	projectViewPermission = "project.view"
 )
 
@@ -88,7 +87,7 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(describeMetricBase, describeToolName, orgID)
+		metrics := shared.NewToolMetrics(describeToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

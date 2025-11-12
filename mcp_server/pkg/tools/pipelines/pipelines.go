@@ -21,9 +21,7 @@ import (
 
 const (
 	listToolName          = "pipelines_list"
-	listMetricBase        = "tools.pipelines_list"
 	jobsToolName          = "pipeline_jobs"
-	jobsMetricBase        = "tools.pipeline_jobs"
 	defaultLimit          = 20
 	maxLimit              = 100
 	errNoClient           = "pipeline gRPC endpoint is not configured"
@@ -244,7 +242,7 @@ func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(listMetricBase, listToolName, orgID)
+		metrics := shared.NewToolMetrics(listToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}
@@ -480,7 +478,7 @@ func jobsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(jobsMetricBase, jobsToolName, orgID)
+		metrics := shared.NewToolMetrics(jobsToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

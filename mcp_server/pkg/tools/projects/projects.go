@@ -23,9 +23,7 @@ import (
 
 const (
 	listToolName       = "projects_list"
-	listMetricBase     = "tools.projects_list"
 	searchToolName     = "projects_search"
-	searchMetricBase   = "tools.projects_search"
 	defaultListLimit   = 25
 	maxListLimit       = 200
 	defaultSearchLimit = 20
@@ -473,7 +471,7 @@ You can discover organizations by calling organizations_list first.`), nil
 Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
-		metrics := shared.NewToolMetrics(listMetricBase, listToolName, orgID)
+		metrics := shared.NewToolMetrics(listToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}
@@ -634,7 +632,7 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(searchMetricBase, searchToolName, orgID)
+		metrics := shared.NewToolMetrics(searchToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

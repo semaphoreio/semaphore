@@ -23,7 +23,6 @@ import (
 
 const (
 	listToolName    = "organizations_list"
-	listMetricBase  = "tools.organizations_list"
 	defaultPageSize = 20
 	maxPageSize     = 100
 )
@@ -137,7 +136,7 @@ type organizationDetails struct {
 
 func listHandler(api internalapi.Provider) server.ToolHandlerFunc {
 	return func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		metrics := shared.NewToolMetrics(listMetricBase, listToolName, "")
+		metrics := shared.NewToolMetrics(listToolName, "")
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

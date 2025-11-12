@@ -22,7 +22,6 @@ import (
 
 const (
 	logsToolName         = "jobs_logs"
-	logsMetricBase       = "tools.jobs_logs"
 	loghubSource         = "loghub"
 	loghub2Source        = "loghub2"
 	loghub2TokenDuration = 300
@@ -108,7 +107,7 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
-		metrics := shared.NewToolMetrics(logsMetricBase, logsToolName, orgID)
+		metrics := shared.NewToolMetrics(logsToolName, orgID)
 		if metrics != nil {
 			metrics.IncrementTotal()
 		}

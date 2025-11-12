@@ -16,29 +16,19 @@ type ToolMetrics struct {
 }
 
 // NewToolMetrics prepares a metrics emitter scoped to a tool and optional organization ID.
-func NewToolMetrics(baseMetricName, toolName, orgID string) *ToolMetrics {
-	base := strings.TrimSpace(baseMetricName)
-	if base == "" {
+func NewToolMetrics(toolName, orgID string) *ToolMetrics {
+	name := strings.TrimSpace(toolName)
+	if name == "" {
 		return nil
 	}
 
-	tags := make([]string, 0, 3)
-	if tag := sanitizeMetricTag("tool_" + strings.TrimSpace(toolName)); tag != "" {
-		tags = append(tags, tag)
-	}
+	base := "tools." + name
+	tags := make([]string, 0, 1)
 
 	if normalizedOrg := strings.TrimSpace(strings.ToLower(orgID)); normalizedOrg != "" {
 		if tag := sanitizeMetricTag("org_" + normalizedOrg); tag != "" {
 			tags = append(tags, tag)
 		}
-	}
-
-	if len(tags) == 0 {
-		tags = append(tags, "tool_unknown")
-	}
-
-	if len(tags) > 3 {
-		tags = tags[:3]
 	}
 
 	return &ToolMetrics{
@@ -49,17 +39,17 @@ func NewToolMetrics(baseMetricName, toolName, orgID string) *ToolMetrics {
 
 // IncrementTotal bumps the total execution counter.
 func (tm *ToolMetrics) IncrementTotal() {
-	tm.increment("executions_total")
+	tm.increment("count_total")
 }
 
 // IncrementSuccess bumps the successful execution counter.
 func (tm *ToolMetrics) IncrementSuccess() {
-	tm.increment("executions_succeeded")
+	tm.increment("count_passed")
 }
 
 // IncrementFailure bumps the failed execution counter.
 func (tm *ToolMetrics) IncrementFailure() {
-	tm.increment("executions_failed")
+	tm.increment("count_failed")
 }
 
 // TrackDuration submits the elapsed duration since start.
