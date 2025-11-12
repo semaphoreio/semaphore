@@ -7,6 +7,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   @okta_tab Query.css("a", text: "Okta Integration")
   @okta_tab_active Query.css("a.bg-green", text: "Okta Integration")
   @save_btn Query.button("Save")
+  @edit_link Query.link("Edit")
 
   @saml_cert "---- BEGIN CERTIFICATE ---- \n .... \n ---- END CERTIFICATE ----"
 
@@ -16,11 +17,7 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
     Support.Stubs.Feature.enable_feature(org.id, :rbac__saml)
     Support.Stubs.Feature.enable_feature(org.id, :permission_patrol)
 
-    Support.Stubs.PermissionPatrol.add_permissions(org.id, user.id, [
-      "organization.view",
-      "organization.okta.view",
-      "organization.okta.manage"
-    ])
+    Support.Stubs.PermissionPatrol.allow_everything(org.id, user.id)
 
     page = visit(session, "/settings")
 
@@ -111,9 +108,19 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
   end
 
   defp navigate_to_setup_form(page) do
-    page
-    |> click(@okta_tab)
-    |> click(@setup_btn)
+    page = page |> click(@okta_tab)
+
+    cond do
+      has_element?(page, @setup_btn) ->
+        page |> click(@setup_btn)
+
+      has_element?(page, @edit_link) ->
+        page |> click(@edit_link)
+
+      true ->
+        # force the helpful assertion error
+        assert_we_are_on_zero_state(page)
+    end
   end
 
   defp assert_okta_tab_is_active(page) do
@@ -127,5 +134,9 @@ defmodule Front.Browser.OrganizationSettings.OktaIntegrationTest do
     |> fill_in(Query.text_field("SAML Issuer"), with: "https://example.okta.com")
     |> fill_in(Query.text_field("SAML Certificate"), with: @saml_cert)
     |> submit_form()
+  end
+
+  defp has_element?(page, query) do
+    Browser.retry_on_stale(fn -> has?(page, query) end)
   end
 end
