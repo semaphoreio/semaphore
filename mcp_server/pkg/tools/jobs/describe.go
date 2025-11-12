@@ -86,6 +86,9 @@ func describeHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		tracker := shared.TrackToolExecution(ctx, describeToolName, orgID)
+		defer tracker.Cleanup()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -170,6 +173,7 @@ Troubleshooting:
 		markdown := formatJobMarkdown(summary, mode)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
