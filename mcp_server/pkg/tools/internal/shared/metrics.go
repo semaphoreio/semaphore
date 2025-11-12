@@ -9,6 +9,11 @@ import (
 	"github.com/semaphoreio/semaphore/mcp_server/pkg/logging"
 )
 
+var (
+	watchmanBenchmarkWithTags = watchman.BenchmarkWithTags
+	watchmanIncrementWithTags = watchman.IncrementWithTags
+)
+
 // ToolMetrics emits Watchman metrics for a specific tool invocation.
 type ToolMetrics struct {
 	base string
@@ -59,7 +64,7 @@ func (tm *ToolMetrics) TrackDuration(start time.Time) {
 	}
 
 	name := tm.metricName("duration_ms")
-	if err := watchman.BenchmarkWithTags(start, name, tm.tags); err != nil {
+	if err := watchmanBenchmarkWithTags(start, name, tm.tags); err != nil {
 		logMetricError(name, err)
 	}
 }
@@ -69,7 +74,7 @@ func (tm *ToolMetrics) increment(suffix string) {
 		return
 	}
 	name := tm.metricName(suffix)
-	if err := watchman.IncrementWithTags(name, tm.tags); err != nil {
+	if err := watchmanIncrementWithTags(name, tm.tags); err != nil {
 		logMetricError(name, err)
 	}
 }
