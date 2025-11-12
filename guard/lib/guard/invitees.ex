@@ -22,8 +22,8 @@ defmodule Guard.Invitees do
     end
   end
 
-  def inject_github_uid(invitee, inviter_id) do
-    case extract_github_uid(invitee.provider.login, inviter_id) do
+  defp inject_github_uid(invitee, inviter_id) do
+    case extract_provider_uid(invitee.provider.login, inviter_id, "github") do
       {:ok, uid} ->
         provider = Map.merge(invitee.provider, %{uid: uid})
         {:ok, Map.merge(invitee, %{provider: provider})}
@@ -33,8 +33,8 @@ defmodule Guard.Invitees do
     end
   end
 
-  def inject_gitlab_uid(invitee, inviter_id) do
-    case extract_gitlab_uid(invitee.provider.login, inviter_id) do
+  defp inject_gitlab_uid(invitee, inviter_id) do
+    case extract_provider_uid(invitee.provider.login, inviter_id, "gitlab") do
       {:ok, uid} ->
         provider = Map.merge(invitee.provider, %{uid: uid})
         {:ok, Map.merge(invitee, %{provider: provider})}
@@ -44,51 +44,31 @@ defmodule Guard.Invitees do
     end
   end
 
-  defp extract_github_uid(login, inviter) do
-    case get_github_uid(login) do
+  defp extract_provider_uid(login, inviter, provider) do
+    case get_provider_uid(login, provider) do
       {:ok, uid} when not is_nil(uid) ->
         {:ok, uid}
 
       _ ->
-        extract_uid_from_github(login, inviter)
+        extract_uid_from_provider(login, inviter, provider)
     end
   end
 
-  defp extract_gitlab_uid(login, inviter) do
-    case get_gitlab_uid(login) do
-      {:ok, uid} when not is_nil(uid) ->
-        {:ok, uid}
+  defp extract_uid_from_provider("", _inviter_id, _), do: {:error, "empty login not allowed"}
 
-      _ ->
-        extract_uid_from_gitlab(login, inviter)
-    end
-  end
-
-  defp extract_uid_from_github("", _inviter_id), do: {:error, "empty login not allowed"}
-
-  defp extract_uid_from_github(login, inviter_id) do
-    with {:ok, resource} <- resource(login, "github"),
-         {:ok, api_token} <- get_api_token(inviter_id, "github"),
-         {:ok, http_response} <- http_call(resource, api_token, "github") do
-      extract_uid(login, http_response)
+  defp extract_uid_from_provider(login, inviter_id, provider) do
+    with {:ok, resource} <- resource(login, provider),
+         {:ok, rha} <- maybe_get_rha(inviter_id, provider),
+         {:ok, api_token} <- maybe_get_api_token(rha, provider),
+         {:ok, http_response} <- http_call(resource, api_token, provider) do
+      extract_uid(login, http_response, provider)
     else
       e ->
-        Logger.error("Error extracting github uid for #{inspect(login)}: #{inspect(e)}")
-        {:error, "error finding Github ID for #{login}"}
-    end
-  end
+        Logger.error(
+          "[Invitees] Error extracting #{provider} uid for #{inspect(login)}: #{inspect(e)}"
+        )
 
-  defp extract_uid_from_gitlab("", _inviter_id), do: {:error, "empty login not allowed"}
-
-  defp extract_uid_from_gitlab(login, inviter_id) do
-    with {:ok, resource} <- resource(login, "gitlab"),
-         {:ok, api_token} <- get_api_token(inviter_id, "gitlab"),
-         {:ok, http_response} <- http_call(resource, api_token, "gitlab") do
-      extract_uid(login, http_response)
-    else
-      e ->
-        Logger.error("Error extracting gitlab uid for #{inspect(login)}: #{inspect(e)}")
-        {:error, "error finding Gitlab ID for #{login}"}
+        {:error, "error finding #{provider} ID for #{login}"}
     end
   end
 
@@ -100,45 +80,66 @@ defmodule Guard.Invitees do
     |> return_ok_tuple()
   end
 
-  defp get_api_token(inviter_id, "github") do
-    Guard.FrontRepo.RepoHostAccount.get_github_token(inviter_id)
-  end
+  defp maybe_get_rha(inviter_id, provider) do
+    case Guard.FrontRepo.RepoHostAccount.get_for_user_by_repo_host(inviter_id, provider) do
+      {:ok, rha} ->
+        {:ok, rha}
 
-  defp get_api_token(inviter_id, "gitlab") do
-    case Guard.FrontRepo.RepoHostAccount.get_gitlab_token(inviter_id) do
-      {:ok, {token, _expires_at}} -> {:ok, token}
-      _ -> {:error, "error finding Gitlab token for #{inviter_id}"}
+      e ->
+        Logger.warning(
+          "[Invitees] Missing RHA for inviter #{inviter_id} and #{provider}, #{inspect(e)}"
+        )
+
+        {:ok, nil}
     end
   end
 
-  defp get_api_token(_, provider) do
-    {:error, "Provider #{provider} not supported for token extraction"}
+  defp maybe_get_api_token(nil, _), do: {:ok, nil}
+
+  defp maybe_get_api_token(rha, provider) do
+    case get_api_token(rha, provider) do
+      {:ok, {token, _expires_at}} ->
+        {:ok, token}
+
+      e ->
+        Logger.warning(
+          "[Invitees] Missing token for rha #{inspect(rha)} and #{provider}, #{inspect(e)}"
+        )
+
+        {:ok, nil}
+    end
   end
 
-  defp get_github_uid(login) do
-    Guard.FrontRepo.RepoHostAccount.get_uid_by_login(login, "github")
+  defp get_api_token(rha, "github") do
+    Guard.FrontRepo.RepoHostAccount.get_github_token(rha)
   end
 
-  defp get_gitlab_uid(login) do
-    Guard.FrontRepo.RepoHostAccount.get_uid_by_login(login, "gitlab")
+  defp get_api_token(_, _), do: {:ok, {"", nil}}
+
+  defp get_provider_uid(login, provider) do
+    Guard.FrontRepo.RepoHostAccount.get_uid_by_login(login, provider)
   end
 
-  defp http_call(resource, api_token, "github") do
-    resource |> HTTPoison.get([{"Authorization", "Token #{api_token}"}])
+  defp http_call(resource, token, "github") when is_binary(token) and token != "" do
+    HTTPoison.get(resource, [{"Authorization", "Token #{token}"}])
   end
 
-  defp http_call(resource, api_token, "gitlab") do
-    resource |> HTTPoison.get([{"PRIVATE-TOKEN", api_token}])
-  end
+  defp http_call(resource, _, _), do: HTTPoison.get(resource, [])
 
-  defp extract_uid(_, %{status_code: 200, body: body}) do
+  defp extract_uid(_, %{status_code: 200, body: body}, _) do
     with {:ok, body} <- body |> Jason.decode(),
-         {:ok, id} <- body |> Map.fetch("id"),
+         {:ok, id} <- fetch_id(body),
          do: id |> Integer.to_string() |> return_ok_tuple()
   end
 
-  defp extract_uid(login, %{status_code: status_code}),
+  defp extract_uid(login, %{status_code: status_code}, _),
     do: {:error, "error finding #{login}: #{status_code}"}
+
+  defp fetch_id(%{"id" => id}), do: {:ok, id}
+
+  defp fetch_id([%{"id" => id} | _rest]), do: {:ok, id}
+
+  defp fetch_id(body), do: {:error, "error finding id in the body #{inspect(body)}"}
 
   defp return_ok_tuple(value), do: {:ok, value}
 end
