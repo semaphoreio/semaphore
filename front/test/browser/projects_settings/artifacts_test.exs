@@ -48,7 +48,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert(last_saved_policy() == expected_policy)
 
     params
     |> open()
@@ -69,7 +69,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert(last_saved_policy() == expected_policy)
   end
 
   browser_test "deleting all policies on a project", params do
@@ -96,7 +96,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         job_level_retention_policies: []
       )
 
-    assert last_saved_policy() == expected_policy
+    assert(last_saved_policy() == expected_policy)
   end
 
   browser_test "empty rules are ignored", params do
@@ -127,7 +127,7 @@ defmodule Front.Browser.ProjectSettings.ArtifactsTest do
         ]
       )
 
-    assert last_saved_policy() == expected_policy
+    assert(last_saved_policy() == expected_policy)
   end
 
   browser_test "hitting the max limit for the number of defined policies", params do
