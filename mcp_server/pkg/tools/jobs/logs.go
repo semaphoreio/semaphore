@@ -106,6 +106,9 @@ func logsHandler(api internalapi.Provider) server.ToolHandlerFunc {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
 
+		tracker := shared.TrackToolExecution(ctx, logsToolName, orgID)
+		defer tracker.Cleanup()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -174,10 +177,30 @@ Troubleshooting:
 			return shared.ProjectAuthorizationError(err, orgID, jobProjectID, projectViewPermission), nil
 		}
 
+		var (
+			result  *mcp.CallToolResult
+			callErr error
+		)
+
 		if job.GetSelfHosted() {
-			return fetchSelfHostedLogs(ctx, api, jobID)
+			result, callErr = fetchSelfHostedLogs(ctx, api, jobID)
+		} else {
+			result, callErr = fetchHostedLogs(ctx, api, jobID, startingLine)
 		}
-		return fetchHostedLogs(ctx, api, jobID, startingLine)
+		if callErr != nil {
+			return result, callErr
+		}
+		if result != nil && !result.IsError {
+			// For self-hosted jobs, also verify that a token was actually generated
+			if job.GetSelfHosted() {
+				if structured, ok := result.StructuredContent.(logsResult); ok && structured.Token != "" {
+					tracker.MarkSuccess()
+				}
+			} else {
+				tracker.MarkSuccess()
+			}
+		}
+		return result, nil
 	}
 }
 
