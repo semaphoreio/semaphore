@@ -356,6 +356,67 @@ defmodule Zebra.Models.Job do
     )
   end
 
+  def get_organizations_with_jobs() do
+    import Ecto.Query, only: [from: 2, group_by: 2, order_by: 2, select: 2]
+
+    query =
+      from(j in Zebra.Models.Job,
+        group_by: j.organization_id,
+        order_by: j.organization_id,
+        select: j.organization_id
+      )
+
+    Zebra.LegacyRepo.all(query)
+  end
+
+  def delete_old_job_stop_requests(organization_id, days, limit) do
+    import Ecto.Query, only: [from: 2, where: 3, exists: 1, subquery: 1, limit: 2, order_by: 2]
+
+    subquery =
+      from(j in Zebra.Models.Job,
+        where: j.organization_id == ^organization_id,
+        where: j.finished_at < fragment("CURRENT_TIMESTAMP - INTERVAL '? days'", ^days),
+        where: j.id == parent_as(:job_stop_requests).job_id,
+        order_by: [asc: j.finished_at],
+        limit: ^limit,
+        select: 1
+      )
+
+    query =
+      from(jsr in Zebra.Models.JobStopRequest,
+        where: exists(subquery(subquery)),
+        as: :job_stop_requests
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
+  def delete_old_jobs(organization_id, days, limit) do
+    import Ecto.Query, only: [from: 2, where: 3, exists: 1, subquery: 1, limit: 2, order_by: 2]
+
+    subquery =
+      from(j in Zebra.Models.Job,
+        where: j.organization_id == ^organization_id,
+        where: j.finished_at < fragment("CURRENT_TIMESTAMP - INTERVAL '? days'", ^days),
+        where: j.id == parent_as(:job).id,
+        order_by: [asc: j.finished_at],
+        limit: ^limit,
+        select: 1
+      )
+
+    query =
+      from(js in Zebra.Models.Job,
+        where: exists(subquery(subquery)),
+        as: :job
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
   def wait_for_agent(job) do
     if valid_transition?(job.aasm_state, state_waiting_for_agent()) do
       update(job, %{aasm_state: state_waiting_for_agent()})
