@@ -1,6 +1,8 @@
 defmodule Guard.InviteesTest do
   use Guard.RepoCase, async: true
-  use ExVCR.Mock, adapter: ExVCR.Adapter.Hackney
+
+  import Mock
+  import ExUnit.CaptureLog
 
   alias Guard.Invitees
 
@@ -67,21 +69,91 @@ defmodule Guard.InviteesTest do
     end
 
     test "inject uid for github provider" do
-      use_cassette "existing user" do
-        invitee = %{provider: %{login: "radwo", uid: "", type: :GITHUB}}
+      invitee = %{provider: %{login: "radwo", uid: "", type: :GITHUB}}
 
-        invitee_with_uid = %{
-          provider: %{login: "radwo", uid: "184065", type: :GITHUB}
-        }
+      invitee_with_uid = %{
+        provider: %{login: "radwo", uid: "184065", type: :GITHUB}
+      }
 
+      response_body = Jason.encode!(%{"id" => 184_065})
+
+      with_mocks([
+        {Guard.FrontRepo.RepoHostAccount, [:passthrough],
+         get_github_token: fn _ -> {:ok, {"token", nil}} end},
+        {HTTPoison, [:passthrough],
+         get: fn url, headers ->
+           assert url == "https://api.github.com/users/radwo"
+           assert headers == [{"Authorization", "Token token"}]
+           {:ok, %{status_code: 200, body: response_body}}
+         end}
+      ]) do
         assert Invitees.inject_provider_uid(invitee, @inviter_id) == {:ok, invitee_with_uid}
       end
     end
 
-    test "return error for unknown github user" do
-      use_cassette "unknown user" do
-        invitee = %{provider: %{login: "unknown331123", uid: "", type: :GITHUB}}
+    test "falls back to github api without inviter token" do
+      Guard.FrontRepo.delete_all(Guard.FrontRepo.RepoHostAccount)
 
+      invitee = %{provider: %{login: "radwo", uid: "", type: :GITHUB}}
+      response_body = Jason.encode!(%{"id" => 123})
+
+      log =
+        capture_log(fn ->
+          with_mock HTTPoison, [:passthrough],
+            get: fn url, headers ->
+              assert url == "https://api.github.com/users/radwo"
+              assert headers == []
+              {:ok, %{status_code: 200, body: response_body}}
+            end do
+            invitee_with_uid = %{
+              provider: %{login: "radwo", uid: "123", type: :GITHUB}
+            }
+
+            assert Invitees.inject_provider_uid(invitee, @inviter_id) == {:ok, invitee_with_uid}
+          end
+        end)
+
+      assert log =~ "Missing RHA for inviter"
+    end
+
+    test "falls back to gitlab api without inviter token" do
+      Guard.FrontRepo.delete_all(Guard.FrontRepo.RepoHostAccount)
+
+      invitee = %{provider: %{login: "radwo_gitlab", uid: "", type: :GITLAB}}
+      response_body = Jason.encode!(%{"id" => 456})
+
+      log =
+        capture_log(fn ->
+          with_mock HTTPoison, [:passthrough],
+            get: fn url, headers ->
+              assert url == "https://gitlab.com/api/v4/users?username=radwo_gitlab"
+              assert headers == []
+              {:ok, %{status_code: 200, body: response_body}}
+            end do
+            invitee_with_uid = %{
+              provider: %{login: "radwo_gitlab", uid: "456", type: :GITLAB}
+            }
+
+            assert Invitees.inject_provider_uid(invitee, @inviter_id) == {:ok, invitee_with_uid}
+          end
+        end)
+
+      assert log =~ "Missing RHA for inviter"
+    end
+
+    test "return error for unknown github user" do
+      invitee = %{provider: %{login: "unknown331123", uid: "", type: :GITHUB}}
+
+      with_mocks([
+        {Guard.FrontRepo.RepoHostAccount, [:passthrough],
+         get_github_token: fn _ -> {:ok, {"token", nil}} end},
+        {HTTPoison, [:passthrough],
+         get: fn url, headers ->
+           assert url == "https://api.github.com/users/unknown331123"
+           assert headers == [{"Authorization", "Token token"}]
+           {:ok, %{status_code: 404}}
+         end}
+      ]) do
         assert Invitees.inject_provider_uid(invitee, @inviter_id) ==
                  {:error, "error finding unknown331123: 404"}
       end
