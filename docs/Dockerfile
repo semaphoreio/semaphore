@@ -1,7 +1,7 @@
 ARG RUNNER_IMAGE=nginx
 
 # Build stage
-FROM node AS builder
+FROM node:25.1 AS builder
 WORKDIR /app
 
 COPY package.json package.json
@@ -44,5 +44,3 @@ WORKDIR /app
 
 ADD default.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/build/ /usr/share/nginx/html/
-
-
