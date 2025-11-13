@@ -24,6 +24,12 @@ config :zebra, Zebra.Workers.TaskFinisher, timeout: 10_000
 config :zebra, Zebra.Workers.Dispatcher, timeout: 1_000
 config :zebra, Zebra.Workers.Monitor, timeout: 60_000
 
+config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
+  naptime: 28_800_000, # 8 hours
+  days: 490,
+  limit: 5,
+  deletion_delay: 1_000 # 1 second
+
 config :zebra, Zebra.Workers.Scheduler,
   cooldown_period: 1_000,
   batch_size: 3
