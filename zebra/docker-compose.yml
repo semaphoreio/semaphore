@@ -34,6 +34,7 @@ services:
       POSTGRES_DB_PASSWORD: "the-cake-is-a-lie"
       POSTGRES_DB_HOST: db
       POSTGRES_DB_POOL_SIZE: "5"
+      START_JOB_DELETION_POLICY_WORKER: "true"
       START_JOB_REQUEST_FACTORY: "false"
       START_DISPATCHER_WORKER: "false"
       START_TASK_FINISHER_WORKER: "false"
