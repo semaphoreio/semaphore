@@ -13,7 +13,7 @@ const config = {
   // https://docusaurus.io/docs/next/api/docusaurus-config#noIndex
   noIndex: false,
   title: 'Semaphore',
-  tagline: 'The open source delivery platform',
+  tagline: 'All-in-one delivery platform for teams who’ve outgrown default tools',
   favicon: 'img/favicon.ico',
 
   // extra themes

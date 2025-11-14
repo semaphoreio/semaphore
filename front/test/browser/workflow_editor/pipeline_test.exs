@@ -25,7 +25,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       {:ok, %{page: page}}
     end
 
-    test "configuring Linux VM agent", %{page: page} do
+    browser_test "configuring Linux VM agent", %{page: page} do
       page = page |> Editor.change_agent_env_type_for_pipeline("Linux Based Virtual Machine")
 
       page =
@@ -37,7 +37,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["agent", "machine", "type"]) == "e1-standard-4"
     end
 
-    test "configuring Mac VM agent", %{page: page} do
+    browser_test "configuring Mac VM agent", %{page: page} do
       page = page |> Editor.change_agent_env_type_for_pipeline("Mac Based Virtual Machine")
 
       yaml = Editor.get_first_pipeline(page)
@@ -45,7 +45,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["agent", "machine", "type"]) == "a1-standard-4"
     end
 
-    test "configuring Docker based VM agent", %{page: page} do
+    browser_test "configuring Docker based VM agent", %{page: page} do
       # first, make sure we are not in docker
       page = page |> Editor.change_agent_env_type_for_pipeline("Linux Based Virtual Machine")
 
@@ -80,7 +80,9 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
              ]
     end
 
-    test "self-hosted environment is not available if no agent types are created", %{page: page} do
+    browser_test "self-hosted environment is not available if no agent types are created", %{
+      page: page
+    } do
       page
       |> find(Query.select("Environment Type"), fn select ->
         select |> refute_has(Query.option("Self-Hosted Machine"))
@@ -95,7 +97,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       {:ok, %{page: page}}
     end
 
-    test "disable fail-fast", %{page: page} do
+    browser_test "disable fail-fast", %{page: page} do
       # setting to non-disabled
       page = page |> change_fail_fast_type("Stop all remaining jobs")
 
@@ -108,14 +110,14 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["fail_fast"]) == nil
     end
 
-    test "setting strategy to stop all remaining jobs", %{page: page} do
+    browser_test "setting strategy to stop all remaining jobs", %{page: page} do
       page = page |> change_fail_fast_type("Stop all remaining jobs")
 
       yaml = Editor.get_first_pipeline(page)
       assert get_in(yaml, ["fail_fast"]) == %{"stop" => %{"when" => "true"}}
     end
 
-    test "setting strategy to cancel all pending jobs", %{page: page} do
+    browser_test "setting strategy to cancel all pending jobs", %{page: page} do
       page =
         page |> change_fail_fast_type("Cancel all pending jobs, wait for started ones to finish")
 
@@ -123,7 +125,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["fail_fast"]) == %{"cancel" => %{"when" => "true"}}
     end
 
-    test "setting strategy to stop on non-master", %{page: page} do
+    browser_test "setting strategy to stop on non-master", %{page: page} do
       page =
         page
         |> change_fail_fast_type(
@@ -134,7 +136,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["fail_fast"]) == %{"stop" => %{"when" => "branch != 'master'"}}
     end
 
-    test "setting strategy to a custom one", %{page: page} do
+    browser_test "setting strategy to a custom one", %{page: page} do
       page = page |> change_fail_fast_type("Run a custom fail-fast strategy")
 
       page =
@@ -168,7 +170,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
     @strategy_master "On the master branch cancel only queued pipelines, on others cancel both running and queued"
     @strategy_custom "Run a custom auto-cancel strategy"
 
-    test "disable auto-cancel", %{page: page} do
+    browser_test "disable auto-cancel", %{page: page} do
       # setting to non-disabled
       page = page |> change_auto_cancel_type(@strategy_cancel_all)
 
@@ -183,21 +185,21 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["auto_cancel"]) == nil
     end
 
-    test "setting strategy to cancel all", %{page: page} do
+    browser_test "setting strategy to cancel all", %{page: page} do
       page = page |> change_auto_cancel_type(@strategy_cancel_all)
 
       yaml = Editor.get_first_pipeline(page)
       assert get_in(yaml, ["auto_cancel"]) == %{"running" => %{"when" => "true"}}
     end
 
-    test "setting strategy to cancel all queued pipelines", %{page: page} do
+    browser_test "setting strategy to cancel all queued pipelines", %{page: page} do
       page = page |> change_auto_cancel_type(@strategy_queued)
 
       yaml = Editor.get_first_pipeline(page)
       assert get_in(yaml, ["auto_cancel"]) == %{"queued" => %{"when" => "true"}}
     end
 
-    test "setting strategy to stop on non-master", %{page: page} do
+    browser_test "setting strategy to stop on non-master", %{page: page} do
       page = page |> change_auto_cancel_type(@strategy_master)
 
       yaml = Editor.get_first_pipeline(page)
@@ -208,7 +210,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
              }
     end
 
-    test "setting strategy to a custom one", %{page: page} do
+    browser_test "setting strategy to a custom one", %{page: page} do
       page = page |> change_auto_cancel_type(@strategy_custom)
 
       running_query = Query.text_field("Cancel both running and queued pipelines when:")
@@ -239,7 +241,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       {:ok, %{page: page}}
     end
 
-    test "editing prologue commands", %{page: page} do
+    browser_test "editing prologue commands", %{page: page} do
       page =
         page
         |> Editor.select_first_pipeline()
@@ -256,7 +258,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(yaml, ["global_job_config", "prologue", "commands"]) == ["echo hello"]
     end
 
-    test "editing epilogue always", %{page: page} do
+    browser_test "editing epilogue always", %{page: page} do
       page =
         page
         |> Editor.select_first_pipeline()
@@ -273,7 +275,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(epilogue, ["always", "commands"]) == ["echo always"]
     end
 
-    test "editing epilogue on fail", %{page: page} do
+    browser_test "editing epilogue on fail", %{page: page} do
       page =
         page
         |> Editor.select_first_pipeline()
@@ -290,7 +292,7 @@ defmodule Front.Browser.WorkflowEditor.PipelineTest do
       assert get_in(epilogue, ["on_fail", "commands"]) == ["echo fail"]
     end
 
-    test "editing epilogue on pass", %{page: page} do
+    browser_test "editing epilogue on pass", %{page: page} do
       page =
         page
         |> Editor.select_first_pipeline()

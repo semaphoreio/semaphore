@@ -55,10 +55,7 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
       configuration = openid_configuration(issuer, jwks_uri, org_id)
 
       conn
-      |> put_resp_header(
-        "cache-control",
-        "public, max-age=#{@openid_configuration_cache_max_age}, must-revalidate"
-      )
+      |> put_well_known_cache_control_header()
       |> json(200, configuration)
     end)
   end
@@ -89,15 +86,8 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
     public_keys = Secrethub.OpenIDConnect.KeyManager.public_keys(:openid_keys)
     Secrethub.OpenIDConnect.Utilization.submit_usage(conn.host)
 
-    if Secrethub.on_prem?() do
-      max_age = Secrethub.OpenIDConnect.KeyManager.cache_max_age_in_seconds()
-      cache_control_header = "max-age=#{max_age}, private, must-revalidate"
-
-      conn
-      |> put_resp_header("cache-control", cache_control_header)
-    else
-      conn
-    end
+    conn
+    |> put_well_known_cache_control_header()
     |> json(200, %{"keys" => public_keys})
   end
 
@@ -118,5 +108,17 @@ defmodule Secrethub.OpenIDConnect.HTTPServer do
     username = conn |> get_req_header("x-semaphore-org-username") |> List.first()
 
     assign(conn, :org_username, username)
+  end
+
+  defp put_well_known_cache_control_header(conn) do
+    put_resp_header(conn, "cache-control", well_known_cache_control_header())
+  end
+
+  defp well_known_cache_control_header do
+    max_age =
+      Secrethub.OpenIDConnect.KeyManager.cache_max_age_in_seconds()
+      |> max(@openid_configuration_cache_max_age)
+
+    "max-age=#{max_age}, public, must-revalidate"
   end
 end

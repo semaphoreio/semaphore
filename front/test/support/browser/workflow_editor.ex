@@ -125,18 +125,6 @@ defmodule Support.Browser.WorkflowEditor do
     query = Query.css("#workflow-editor-config-panel details summary", text: title)
 
     click(session, query)
-
-    scroll_into_view =
-      [
-        "let query = '#workflow-editor-config-panel details summary'",
-        "let els = document.querySelectorAll(query)",
-        "let el  = Array.from(els).find((el) => el.textContent === '#{title}')",
-        "el.scrollIntoView(true)",
-        "return true"
-      ]
-      |> Enum.join(";")
-
-    session |> execute_script(scroll_into_view)
   end
 
   def fill(session, query, value) do

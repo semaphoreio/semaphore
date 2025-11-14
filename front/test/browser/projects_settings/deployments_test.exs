@@ -17,12 +17,12 @@ defmodule Front.Browser.ProjectSettings.DeploymentsTest do
       {:ok, context}
     end
 
-    test "deployment targets tab does not appear", %{session: session, project: project} do
+    browser_test "deployment targets tab does not appear", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/")
       page |> refute_has(Query.text("Deployments"))
     end
 
-    test "deployment targets page renders 404", %{session: session, project: project} do
+    browser_test "deployment targets page renders 404", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/deployments")
       page |> assert_has(Query.text("Page not found"))
     end
@@ -44,14 +44,14 @@ defmodule Front.Browser.ProjectSettings.DeploymentsTest do
       {:ok, context}
     end
 
-    test "deployment targets tab appears", %{session: session, project: project} = ctx do
+    browser_test "deployment targets tab appears", %{session: session, project: project} = ctx do
       Support.Stubs.Feature.enable_feature(ctx.org.id, :permission_patrol)
       Support.Stubs.PermissionPatrol.allow_everything(ctx.org.id, ctx.user.id)
       page = visit(session, "/projects/#{project.name}/")
       page |> assert_has(Query.text("Deployments"))
     end
 
-    test "deployment targets page renders 404", %{session: session, project: project} do
+    browser_test "deployment targets page renders 404", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/deployments")
 
       page
@@ -73,14 +73,18 @@ defmodule Front.Browser.ProjectSettings.DeploymentsTest do
       {:ok, context}
     end
 
-    test "deployment targets tab does appear", %{session: session, project: project} = ctx do
+    browser_test "deployment targets tab does appear",
+                 %{session: session, project: project} = ctx do
       Support.Stubs.Feature.enable_feature(ctx.org.id, :permission_patrol)
       Support.Stubs.PermissionPatrol.allow_everything(ctx.org.id, ctx.user.id)
       page = visit(session, "/projects/#{project.name}/")
       page |> assert_has(Query.text("Deployments"))
     end
 
-    test "deployment targets page renders proper page", %{session: session, project: project} do
+    browser_test "deployment targets page renders proper page", %{
+      session: session,
+      project: project
+    } do
       page = visit(session, "/projects/#{project.name}/deployments")
       page |> assert_has(Query.text("Deployment Targets", count: 3))
       page |> assert_has(Query.text("Connect your servers and model the interaction"))
