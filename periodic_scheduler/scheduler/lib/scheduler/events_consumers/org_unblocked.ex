@@ -39,7 +39,12 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked do
   defp unsuspend_batch(org_id, batch_no) do
     with {:ok, periodics} <- PeriodicsQueries.get_all_from_org(org_id, batch_no),
          {:periodics_found, true} <- {:periodics_found, length(periodics) > 0},
-         {:ok, _periodics} <- unsuspend_periodics(periodics) do
+         {:ok, %{failed: failed}} <- unsuspend_periodics(periodics) do
+      if failed != [] do
+        failed
+        |> LT.warn("Failed to unsuspend some periodics for organization #{org_id}")
+      end
+
       unsuspend_batch(org_id, batch_no + 1)
     else
       {:periodics_found, false} ->
@@ -51,13 +56,27 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked do
   end
 
   defp unsuspend_periodics(periodics) do
-    periodics
-    |> Enum.reduce_while({:ok, []}, fn periodic, {:ok, results} ->
-      case unsuspend_periodic(periodic) do
-        {:ok, periodic} -> {:cont, {:ok, results ++ [periodic]}}
-        error -> {:halt, error}
-      end
-    end)
+    result =
+      Enum.reduce(periodics, %{unsuspended: [], failed: []}, fn periodic, acc ->
+        case unsuspend_periodic(periodic) do
+          {:ok, periodic} ->
+            %{acc | unsuspended: [periodic | acc.unsuspended]}
+
+          {:error, reason} ->
+            failed_entry = %{id: periodic.id, reason: reason}
+            %{acc | failed: [failed_entry | acc.failed]}
+
+          other ->
+            failed_entry = %{id: periodic.id, reason: other}
+            %{acc | failed: [failed_entry | acc.failed]}
+        end
+      end)
+
+    {:ok,
+     %{
+       unsuspended: Enum.reverse(result.unsuspended),
+       failed: Enum.reverse(result.failed)
+     }}
   end
 
   defp unsuspend_periodic(periodic) do
