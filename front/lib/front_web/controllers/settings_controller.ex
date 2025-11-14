@@ -90,6 +90,28 @@ defmodule FrontWeb.SettingsController do
     )
   end
 
+  def confirm_enforce_workflow(conn, _params) do
+    org_id = conn.assigns.organization_id
+
+    case Models.OrganizationSettings.modify(org_id, %{"enforce_whitelist" => "true"}) do
+      {:ok, _updated_settings} ->
+        conn
+        |> put_flash(:notice, "Whitelist enforcement applied successfully.")
+        |> redirect(to: settings_path(conn, :show))
+
+      {:error, changeset} ->
+        errors =
+          changeset.errors |> Enum.map(fn {field, {message, _}} -> "#{field}: #{message}" end)
+
+        conn
+        |> put_flash(:errors, errors)
+        |> put_flash(:alert, "Failed to apply whitelist enforcement.")
+        |> redirect(to: settings_path(conn, :show))
+    end
+
+    redirect(conn, to: settings_path(conn, :show))
+  end
+
   def confirm_delete(conn, _params) do
     org_id = conn.assigns.organization_id
 
