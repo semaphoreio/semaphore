@@ -5,20 +5,20 @@ sidebar_position: 2
 
 # Self-healing Pipelines
 
-This page shows how to implement self-healing CI pipelines with the help of an AI agent and the [Semaphore MCP server](./mcp-server). If you need a more tailored solution, please contact support and we can help you set up a self-healing workflow for your projects.
+This page shows how to implement self-healing CI pipelines using an AI agent and the [Semaphore MCP server](./mcp-server). If you need a more tailored solution, please get in touch with support, and we can help you set up a self-healing workflow for your projects.
 
 ## Overview
 
-AI Agents such as OpenAI Codex or Claude Code can diagnose and fix test errors inside your CI. When coupled with Semaphore's MCP server, these agents can implement, push fixes, and create pull requests automatically when build fails.
+AI Agents such as OpenAI Codex or Claude Code can diagnose and fix test errors inside your CI. When coupled with Semaphore's MCP server, these agents can implement, push fixes, and create pull requests automatically when a build fails.
 
-Self-healing pipelines solve the often tedius process of figuring out why tests run in your machine but fail in the CI. If the build fails you can expect to have in a few minutes a PR with the fix ready to merge.
+Self-healing pipelines solve the often tedious process of figuring out why tests run in your machine but fail in the CI. If the build fails, you can expect to have a PR with the fix ready to merge.
 
-The self-heal process works in this way:
+The self-healing process works in this way:
 
 1. You have a regular CI pipeline that builds and tests your application
 2. You add a [promotion](../promotions) that triggers the self-heal pipeline when the CI fails
 3. The self-heal pipeline spins up an AI agent. The agent pulls the job logs using Semaphore's MCP and implements a fix
-4. The self-heal pipeline pushes the fixed code into an separate branch
+4. The self-heal pipeline pushes the fixed code into a separate branch
 5. The push triggers a new CI build. If the pipeline passes, a PR is automatically submitted to GitHub for your evaluation
 
 ![Self-healing process overview](./img/self-healing-process.jpg)
@@ -33,7 +33,7 @@ The self-heal process works in this way:
 
 Whenever we push into the repository from inside the CI environment, we risk entering into a loop. In this solution, we present two mechanisms:
 
-- Always run the self-heal pipeline manually, i.e. without [autopromotion](../promotions#automatic-promotions)
+- Always run the self-heal pipeline manually, i.e., without [autopromotion](../promotions#automatic-promotions)
 - Enable autopromotions, but use [conditions](../../reference/conditions-dsl) to avoid triggering on branches created by previous self-heal runs
 
 ## Preparation
@@ -76,14 +76,14 @@ In this example, we'll use OpenAI Codex, but you can easily swap the agent if yo
 5. Create a prompt template file. This is a basic prompt that can be augmented to fit your project's needs
 
     ```text title="Minimal prompt template for the AI Agent"
-    Find out why the Semaphore the following pipeline has failed and implement a fix. Analyze all the jobs that have failed and fix all the errors one at a time.
+    Find out why the Semaphore in the following pipeline has failed and implement a fix. Analyze all the jobs that have failed and fix all the errors one at a time.
 
     Organization ID: $SEMAPHORE_ORGANIZATION_ID
     Project ID: $SEMAPHORE_PROJECT_ID
     Pipeline ID: $SEMAPHORE_PIPELINE_ID
     Workflow ID: $SEMAPHORE_WORKFLOW_ID
 
-    When done create a file called `commit-message.txt` with a one-line summary of changes suitable for a Git commit message.
+    When done, create a file called `commit-message.txt` with a one-line summary of changes suitable for a Git commit message.
     ```
 
 6. Push the `selfheal` directory and its contents to your GitHub repository
@@ -103,10 +103,10 @@ By default, the CI machine does not have write access to the repository. We need
 
 ## Set up Self-healing Pipelines
 
-The set up of self-healing pipelines can be split into two parts:
+The setup of self-healing pipelines can be split into two parts:
 
 - Agentic fix: here we use an AI agent to diagnose the problem and push a potential solution
-- Validation and PR: here we validate the solution in CI and, if effective, creates a pull request for review
+- Validation and PR: here we validate the solution in CI and, if effective, create a pull request for review
 
 Once the two pipelines are configured, use your CI as usual. The setup is complete and will work on any branch that doesn't start with the name `selfheal-`.
 
@@ -116,7 +116,7 @@ In this first step, we'll configure OpenAI's Codex to diagnose the problem and p
 
 <Steps>
 
-1. Open project in the workflow editor
+1. Open the project in the workflow editor
 
 2. Press **+Add Promotion**
 
@@ -168,7 +168,7 @@ The second pipeline only creates a pull request if the AI agent successfully fix
 
 <Steps>
 
-1. Open project in the workflow editor
+1. Open the project in the workflow editor
 
 2. Press **+Add Promotion**
 
@@ -176,13 +176,13 @@ The second pipeline only creates a pull request if the AI agent successfully fix
 
     :::note
 
-    This makes the PR pipeline start automatically when the main CI builds successfully on an self-healed workflow.
+    This makes the PR pipeline start automatically when the main CI builds successfully on a self-healed workflow.
 
     :::
 
     ![Configuring autopromotions for the PR pipeline](./img/pr-pipeline.jpg)
 
-4. Type the following commands in the **prologue** of the first block in the new pipeline. These commands checks out the solution branch and configure the repository to be writable
+4. Type the following commands in the **prologue** of the first block in the new pipeline. These commands check out the solution branch and configure the repository to be writable
 
     ```shell title="Checkout the self-healed branch and make the repository writeable"
     checkout
