@@ -16,12 +16,12 @@ Self-healing pipelines solve the often tedius process of figuring out why tests 
 The self-heal process works in this way:
 
 1. You have a regular CI pipeline that builds and tests your application
-2. You add a [promotion] that triggers the self-heal pipeline when the CI fails
+2. You add a [promotion](../promotions) that triggers the self-heal pipeline when the CI fails
 3. The self-heal pipeline spins up an AI agent. The agent pulls the job logs using Semaphore's MCP and implements a fix
 4. The self-heal pipeline pushes the fixed code into an separate branch
 5. The push triggers a new CI build. If the pipeline passes, a PR is automatically submitted to GitHub for your evaluation
 
-TODO: diagram
+![Self-healing process overview](./img/self-healing-process.jpg)
 
 ## Prerequisites
 
@@ -33,8 +33,8 @@ TODO: diagram
 
 Whenever we push into the repository from inside the CI environment, we risk entering into a loop. In this solution, we present two mechanisms:
 
-- Always run the self-heal pipeline manually, i.e. without [autopromotion]
-- Enable autopromotions, but use [conditions] to avoid triggering on branches created by previous self-heal runs
+- Always run the self-heal pipeline manually, i.e. without [autopromotion](../promotions#automatic-promotions)
+- Enable autopromotions, but use [conditions](../../reference/conditions-dsl) to avoid triggering on branches created by previous self-heal runs
 
 ## Preparation
 
@@ -42,11 +42,11 @@ Before you can set up self-healing pipelines, there are a few preparation tasks.
 
 ### Enable MCP Server
 
-1. Enable the [MCP Server] in your Semaphore organization, so the agent can pull build data and job logs.
+1. Enable the [MCP Server](./mcp-server) in your Semaphore organization, so the agent can pull build data and job logs.
 
-2. Create or obtain a [Semaphore API token] to connect with the MCP Server
+2. Create or obtain a Semaphore API token to connect with the MCP Server. Both [personal tokens](../user-management#profile-token) and [service accounts](../service-accounts) work as API tokens
 
-3. Create a [secret] called `semaphore-mcp` with the environment variable `SEMAPHORE_API_TOKEN` to store your Semahore token
+3. Create a [secret](../secrets) called `semaphore-mcp` with the environment variable `SEMAPHORE_API_TOKEN` to store your Semahore token
 
 ### Obtain API Token and configure Codex
 
@@ -54,37 +54,37 @@ In this example, we'll use OpenAI Codex, but you can easily swap the agent if yo
 
 1. Obtain an OpenAI API Token
 
-2. Create a [secret] named `openai-api` with the environment variable `OPENAI_API_KEY` to store your OpenAI API token
+2. Create a [secret](../secrets) named `openai-api` with the environment variable `OPENAI_API_KEY` to store your OpenAI API token
 
 3. Create a directory in your repository called `selfheal/codex`: `mkdir -p selfheal/codex`
 
 4. Add the following Codex configuration file to `selfheal/codex/config.toml`
 
-```toml title="Codex configuration"
-full-auto = true
-bypass-approvals = true
-bypass-sandbox = true
-trusted-workspace = true
+    ```toml title="Codex configuration"
+    full-auto = true
+    bypass-approvals = true
+    bypass-sandbox = true
+    trusted-workspace = true
 
-[mcp_servers.semaphore]
-url = "https://mcp.semaphoreci.com/mcp"
-bearer_token_env_var = "SEMAPHORE_API_TOKEN"
-startup_timeout_sec = 30
-tool_timeout_sec = 300
-```
+    [mcp_servers.semaphore]
+    url = "https://mcp.semaphoreci.com/mcp"
+    bearer_token_env_var = "SEMAPHORE_API_TOKEN"
+    startup_timeout_sec = 30
+    tool_timeout_sec = 300
+    ```
 
 5. Create a prompt template file. This is a basic prompt that can be augmented to fit your project's needs
 
-```text title="Minimal prompt template for the AI Agent"
-Find out why the Semaphore the following pipeline has failed and implement a fix. Analyze all the jobs that have failed and fix all the errors one at a time.
+    ```text title="Minimal prompt template for the AI Agent"
+    Find out why the Semaphore the following pipeline has failed and implement a fix. Analyze all the jobs that have failed and fix all the errors one at a time.
 
-Organization ID: $SEMAPHORE_ORGANIZATION_ID
-Project ID: $SEMAPHORE_PROJECT_ID
-Pipeline ID: $SEMAPHORE_PIPELINE_ID
-Workflow ID: $SEMAPHORE_WORKFLOW_ID
+    Organization ID: $SEMAPHORE_ORGANIZATION_ID
+    Project ID: $SEMAPHORE_PROJECT_ID
+    Pipeline ID: $SEMAPHORE_PIPELINE_ID
+    Workflow ID: $SEMAPHORE_WORKFLOW_ID
 
-When done create a file called `commit-message.txt` with a one-line summary of changes suitable for a Git commit message.
-```
+    When done create a file called `commit-message.txt` with a one-line summary of changes suitable for a Git commit message.
+    ```
 
 6. Push the `selfheal` directory and its contents to your GitHub repository
 
@@ -92,25 +92,25 @@ When done create a file called `commit-message.txt` with a one-line summary of c
 
 By default, the CI machine does not have write access to the repository. We need an additional API token to write from inside the CI environment.
 
-1. Create a [Personal Access Token] (classic) in GitHub with:
+1. Create a [Personal Access Token](https://github.com/settings/tokens) (classic) in GitHub with:
 
-- write permissions to the repository
-- permissions to create pull requests in the repository
+    - write permissions to the repository
+    - permissions to create pull requests in the repository
 
-2. Create a [secret] called `github-pat` with the environment variable `GITHUB_TOKEN` to store your GitHub token
+    ![Creating a GitHub Classic Token](./img/github-pat.jpg)
 
-IMAGE
+2. Create a [secret](../secrets) called `github-pat` with the environment variable `GITHUB_TOKEN` to store your GitHub token
 
-## Set up self-healing pipelines
+## Set up Self-healing Pipelines
 
 The set up of self-healing pipelines can be split into two parts:
 
-- Agentic solution: here we use an AI agent to diagnose the problem and push a potential solution
+- Agentic fix: here we use an AI agent to diagnose the problem and push a potential solution
 - Validation and PR: here we validate the solution in CI and, if effective, creates a pull request for review
 
 Once the two pipelines are configured, use your CI as usual. The setup is complete and will work on any branch that doesn't start with the name `selfheal-`.
 
-### Agentic Solution
+### Agentic Fix Pipeline
 
 In this first step, we'll configure OpenAI's Codex to diagnose the problem and propose a solution when the CI pipeline fails. This self-healing pipeline creates a branch called `selfheal-${GIT_SHA}` to track changes made by the AI agent.
 
@@ -122,13 +122,13 @@ In this first step, we'll configure OpenAI's Codex to diagnose the problem and p
 
 3. Optionally, enable **Automatic promotion** and type `result = 'failed' AND branch !~ '^selfheal-.*'`.
 
-    ::: note
+    :::note
 
     This makes the self-healing pipeline start automatically when the main CI fails for any reason.
 
     :::
 
-    IMAGE
+    ![Configuring auto-promotion on self-healing pipeline](./img/promotion-selfheal.jpg)
 
 4. Type the following commands in the **prologue** of the first block in the new pipeline. These commands create the solution branch and configure the repository to be writable
 
@@ -162,7 +162,7 @@ In this first step, we'll configure OpenAI's Codex to diagnose the problem and p
 
 </Steps>
 
-### Validate and create PR
+### Validate and Create PR Pipeline
 
 The second pipeline only creates a pull request if the AI agent successfully fixed the CI.
 
@@ -174,13 +174,13 @@ The second pipeline only creates a pull request if the AI agent successfully fix
 
 3. Optionally, enable **Automatic promotion** and type `result = 'passed' AND branch =~ '^selfheal-.*'`
 
-    ::: note
+    :::note
 
     This makes the PR pipeline start automatically when the main CI builds successfully on an self-healed workflow.
 
     :::
 
-    IMAGE
+    ![Configuring autopromotions for the PR pipeline](./img/pr-pipeline.jpg)
 
 4. Type the following commands in the **prologue** of the first block in the new pipeline. These commands checks out the solution branch and configure the repository to be writable
 
