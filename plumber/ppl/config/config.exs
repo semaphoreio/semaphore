@@ -43,6 +43,11 @@ config :gofer_client, gofer_grpc_timeout: 4_567
 # Time in hours before delete requests are processed
 config :ppl, deletion_offset_h: 24
 
+# Retention policy event consumer
+config :ppl, Ppl.Retention.PolicyConsumer,
+  exchange: System.get_env("USAGE_POLICY_EXCHANGE"),
+  routing_key: System.get_env("USAGE_POLICY_ROUTING_KEY")
+
 # How many times should wormhole retry to publish pipeline events to RabbitMQ
 config :ppl, publish_retry_count: 3
 # Timeout for publishing pipeline events to RabbitMQ
