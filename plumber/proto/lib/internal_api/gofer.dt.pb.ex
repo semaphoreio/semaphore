@@ -67,7 +67,9 @@ defmodule InternalApi.Gofer.DeploymentTargets.VerifyRequest do
   field(:target_id, 1, type: :string)
   field(:triggerer, 2, type: :string)
 
-  field(:git_ref_type, 3,
+  field(
+    :git_ref_type,
+    3,
     type: InternalApi.Gofer.DeploymentTargets.VerifyRequest.GitRefType,
     enum: true
   )
@@ -123,7 +125,9 @@ defmodule InternalApi.Gofer.DeploymentTargets.HistoryRequest do
 
   field(:target_id, 1, type: :string)
 
-  field(:cursor_type, 2,
+  field(
+    :cursor_type,
+    2,
     type: InternalApi.Gofer.DeploymentTargets.HistoryRequest.CursorType,
     enum: true
   )
@@ -421,7 +425,12 @@ defmodule InternalApi.Gofer.DeploymentTargets.Deployment do
   field(:switch_id, 9, type: :string)
   field(:target_name, 10, type: :string)
 
-  field(:env_vars, 11, repeated: true, type: InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar)
+  field(
+    :env_vars,
+    11,
+    repeated: true,
+    type: InternalApi.Gofer.DeploymentTargets.Deployment.EnvVar
+  )
 
   field(:can_requester_rerun, 12, type: :bool)
 end

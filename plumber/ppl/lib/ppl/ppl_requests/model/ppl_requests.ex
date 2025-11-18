@@ -23,6 +23,7 @@ defmodule Ppl.PplRequests.Model.PplRequests do
     field :wf_id, :string
     field :source_args, :map
     field :pre_flight_checks, :map
+    field :expires_at, :naive_datetime_usec
 
     timestamps(type: :naive_datetime_usec)
   end

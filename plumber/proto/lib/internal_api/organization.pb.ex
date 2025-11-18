@@ -322,7 +322,9 @@ defmodule InternalApi.Organization.AddMembersRequest do
   field(:org_id, 1, type: :string)
   field(:creator_id, 2, type: :string)
 
-  field(:members_data, 3,
+  field(
+    :members_data,
+    3,
     repeated: true,
     type: InternalApi.Organization.AddMembersRequest.MemberData
   )
@@ -696,13 +698,17 @@ defmodule InternalApi.Organization.RepositoryIntegratorsResponse do
 
   field(:primary, 1, type: InternalApi.RepositoryIntegrator.IntegrationType, enum: true)
 
-  field(:enabled, 2,
+  field(
+    :enabled,
+    2,
     repeated: true,
     type: InternalApi.RepositoryIntegrator.IntegrationType,
     enum: true
   )
 
-  field(:available, 3,
+  field(
+    :available,
+    3,
     repeated: true,
     type: InternalApi.RepositoryIntegrator.IntegrationType,
     enum: true
