@@ -106,6 +106,23 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
     assert nil != third_id |> String.to_atom() |> QuantumScheduler.find_job()
   end
 
+  test "returns error when database is unavailable", ctx do
+    repo_supervisor = Scheduler.Supervisor
+    repo_child = Scheduler.PeriodicsRepo
+
+    on_exit(fn ->
+      if Process.whereis(repo_child) == nil do
+        {:ok, _pid} = Supervisor.start_child(repo_supervisor, {repo_child, []})
+      end
+    end)
+
+    assert :ok = Supervisor.terminate_child(repo_supervisor, repo_child)
+    assert :ok = Supervisor.delete_child(repo_supervisor, repo_child)
+
+    assert {:error, _reason} =
+             OrgUnblocked.unsuspend_periodics_from_org({:ok, %{org_id: ctx.ids_1.org_id}})
+  end
+
   defp create_periodic(ids, ind) do
     {:ok, id} =
       %{
