@@ -43,7 +43,7 @@ defmodule Zebra.Models.Job do
   @primary_key {:id, :binary_id, autogenerate: true}
   @foreign_key_type :binary_id
   @required_fields ~w(name organization_id project_id aasm_state created_at updated_at machine_type spec)a
-  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key)a
+  @optional_fields ~w(build_id priority execution_time_limit deployment_target_id repository_id enqueued_at scheduled_at started_at finished_at request index port name machine_os_image failure_reason result agent_id agent_name agent_ip_address agent_ctrl_port agent_auth_token private_ssh_key expires_at)a
 
   schema "jobs" do
     belongs_to(:task, Zebra.Models.Task, foreign_key: :build_id)
@@ -355,6 +355,25 @@ defmodule Zebra.Models.Job do
         scheduled_at: now
       ]
     )
+  end
+
+  def mark_jobs_for_deletion(org_id, cutoff_date, deletion_days) do
+    import Ecto.Query, only: [from: 2]
+
+    query =
+      from(j in Zebra.Models.Job,
+        where:
+          is_nil(j.expires_at) and
+            j.organization_id == ^org_id and
+            j.created_at <= ^cutoff_date,
+        update: [
+          set: [
+            expires_at: fragment("CURRENT_TIMESTAMP + (? * INTERVAL '1 day')", ^deletion_days)
+          ]
+        ]
+      )
+
+    Zebra.LegacyRepo.update_all(query, [])
   end
 
   def delete_old_job_stop_requests(limit) do
