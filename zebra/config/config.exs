@@ -29,6 +29,9 @@ config :zebra, Zebra.Workers.JobDeletionPolicyWorker,
   longnaptime: 3_600_000, # 1 hour
   limit: 100
 
+config :zebra, Zebra.Workers.JobDeletionPolicyMarker,
+  days: 14
+
 config :zebra, Zebra.Workers.Scheduler,
   cooldown_period: 1_000,
   batch_size: 3
