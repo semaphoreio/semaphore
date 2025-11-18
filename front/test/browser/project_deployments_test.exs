@@ -13,12 +13,12 @@ defmodule Front.Browser.ProjectDeploymentsTest do
       {:ok, context}
     end
 
-    test "Deployments tab does not appear", %{session: session, project: project} do
+    browser_test "Deployments tab does not appear", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}")
       page |> refute_has(Query.text("Deployments"))
     end
 
-    test "Deployments endpoint returns 404", %{session: session, project: project} do
+    browser_test "Deployments endpoint returns 404", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/deployments")
       page |> assert_has(Query.text("Page not found"))
     end
@@ -36,15 +36,15 @@ defmodule Front.Browser.ProjectDeploymentsTest do
       {:ok, context}
     end
 
-    test "Deployments tab does appear", %{session: session, project: project} = ctx do
+    browser_test "Deployments tab does appear", %{session: session, project: project} = ctx do
       Support.Stubs.Feature.enable_feature(ctx.org.id, :permission_patrol)
       Support.Stubs.PermissionPatrol.allow_everything(ctx.org.id, ctx.user.id)
       page = visit(session, "/projects/#{project.name}")
       page |> assert_has(Query.text("Deployments"))
     end
 
-    test "when permissions are granted then deployments indexs renders proper page",
-         %{session: session, project: project} do
+    browser_test "when permissions are granted then deployments indexs renders proper page",
+                 %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/deployments")
 
       message =
@@ -54,8 +54,8 @@ defmodule Front.Browser.ProjectDeploymentsTest do
       page |> assert_has(Query.text(message))
     end
 
-    test "when permissions are not granted then Deployments index renders proper message",
-         %{session: session, project: project} do
+    browser_test "when permissions are not granted then Deployments index renders proper message",
+                 %{session: session, project: project} do
       org = Support.Stubs.Organization.default()
       user = Support.Stubs.User.default()
 
@@ -70,8 +70,8 @@ defmodule Front.Browser.ProjectDeploymentsTest do
       page |> assert_has(Query.text("Sorry, you can’t access Deployment Targets."))
     end
 
-    test "when permissions are not granted then Deployments new renders proper message",
-         %{session: session, project: project} do
+    browser_test "when permissions are not granted then Deployments new renders proper message",
+                 %{session: session, project: project} do
       org = Support.Stubs.Organization.default()
       user = Support.Stubs.User.default()
 

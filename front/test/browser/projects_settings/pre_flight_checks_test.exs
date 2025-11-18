@@ -12,12 +12,15 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       {:ok, context}
     end
 
-    test "Pre-flight checks tab does not appear", %{session: session, project: project} do
+    browser_test "Pre-flight checks tab does not appear", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/settings/general")
       page |> refute_has(Query.text("Pre-flight checks"))
     end
 
-    test "Pre-flight checks page renders proper message", %{session: session, project: project} do
+    browser_test "Pre-flight checks page renders proper message", %{
+      session: session,
+      project: project
+    } do
       page = visit(session, "/projects/#{project.name}/settings/pre_flight_checks")
       message = "Sorry, your organization doesn't have Pre-flight checks enabled."
       page |> assert_has(Query.text(message))
@@ -37,12 +40,15 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       {:ok, context}
     end
 
-    test "Pre-flight checks tab does appear", %{session: session, project: project} do
+    browser_test "Pre-flight checks tab does appear", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/settings/general")
       page |> assert_has(Query.text("Pre-flight checks"))
     end
 
-    test "Pre-flight checks page renders proper page", %{session: session, project: project} do
+    browser_test "Pre-flight checks page renders proper page", %{
+      session: session,
+      project: project
+    } do
       page = visit(session, "/projects/#{project.name}/settings/pre_flight_checks")
 
       message =
@@ -51,8 +57,8 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       page |> assert_has(Query.text(message))
     end
 
-    test "when Linux & MAC machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id, project: project} do
+    browser_test "when Linux & MAC machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id, project: project} do
       Support.Stubs.Feature.enable_machine(org_id, "e1-standard-2")
       Support.Stubs.Feature.enable_machine(org_id, "a1-standard-4")
 
@@ -66,8 +72,8 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       page |> refute_has(Query.text("No agent types available."))
     end
 
-    test "when only Linux machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id, project: project} do
+    browser_test "when only Linux machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id, project: project} do
       Support.Stubs.Feature.enable_machine(org_id, "e1-standard-2")
 
       page =
@@ -79,8 +85,8 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       page |> refute_has(Query.text("Mac Based Virtual Machine"))
     end
 
-    test "when only MAC machines are available then renders proper page without warning",
-         %{session: session, org_id: org_id, project: project} do
+    browser_test "when only MAC machines are available then renders proper page without warning",
+                 %{session: session, org_id: org_id, project: project} do
       Support.Stubs.Feature.enable_machine(org_id, "a1-standard-4")
 
       page =
@@ -92,8 +98,8 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       page |> assert_has(Query.text("Mac Based Virtual Machine"))
     end
 
-    test "when Linux & MAC machines are unavailable then renders proper page with warning",
-         %{session: session, org_id: _org_id, project: project} do
+    browser_test "when Linux & MAC machines are unavailable then renders proper page with warning",
+                 %{session: session, org_id: _org_id, project: project} do
       page = visit(session, "/projects/#{project.name}/settings/pre_flight_checks")
 
       page |> assert_has(Query.text("Define commands and used secrets"))
@@ -114,12 +120,15 @@ defmodule Front.Browser.ProjectSettings.PreFlightChecksTest do
       {:ok, context}
     end
 
-    test "Pre-flight checks tab does appear", %{session: session, project: project} do
+    browser_test "Pre-flight checks tab does appear", %{session: session, project: project} do
       page = visit(session, "/projects/#{project.name}/settings/general")
       page |> assert_has(Query.text("Pre-flight checks"))
     end
 
-    test "Pre-flight checks page renders proper page", %{session: session, project: project} do
+    browser_test "Pre-flight checks page renders proper page", %{
+      session: session,
+      project: project
+    } do
       page = visit(session, "/projects/#{project.name}/settings/pre_flight_checks")
 
       page

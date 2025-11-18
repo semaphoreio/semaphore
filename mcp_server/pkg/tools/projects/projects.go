@@ -470,6 +470,9 @@ You can discover organizations by calling organizations_list first.`), nil
 Example: projects_list(organization_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")`, err)), nil
 		}
 
+		tracker := shared.TrackToolExecution(ctx, listToolName, orgID)
+		defer tracker.Cleanup()
+
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
@@ -585,6 +588,7 @@ Try removing optional filters or verifying access permissions.`, err)), nil
 		markdown := formatProjectListMarkdown(result, mode, orgID)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),
@@ -611,6 +615,9 @@ Check INTERNAL_API_URL_PROJECT or MCP_PROJECT_GRPC_ENDPOINT and ensure ProjectHu
 		if err := shared.ValidateUUID(orgID, "organization_id"); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
 		}
+
+		tracker := shared.TrackToolExecution(ctx, searchToolName, orgID)
+		defer tracker.Cleanup()
 
 		if err := shared.EnsureReadToolsFeature(ctx, api, orgID); err != nil {
 			return mcp.NewToolResultError(err.Error()), nil
@@ -799,6 +806,7 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 			markdown := formatProjectSearchMarkdown(result, mode, orgID, queryDisplay, repoDisplay, limit, maxPages)
 			markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+			tracker.MarkSuccess()
 			return &mcp.CallToolResult{
 				Content: []mcp.Content{
 					mcp.NewTextContent(markdown),
@@ -837,6 +845,7 @@ Ensure you have permission to list projects in organization %s.`, err, orgID)), 
 		markdown := formatProjectSearchMarkdown(result, mode, orgID, queryDisplay, repoDisplay, limit, maxPages)
 		markdown = shared.TruncateResponse(markdown, shared.MaxResponseChars)
 
+		tracker.MarkSuccess()
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{
 				mcp.NewTextContent(markdown),

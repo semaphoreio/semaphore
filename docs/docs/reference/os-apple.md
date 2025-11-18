@@ -60,6 +60,7 @@ The following utilities are pre-installed:
 
 - homebrew
 - bundler
+- container
 - rbenv
 - nvm
 - curl
@@ -84,8 +85,9 @@ The following browsers are pre-installed:
 
 Installed versions:
 
-- 16.4
-- 26.0 (default)
+- 26.0
+- 26.1 (default)
+
 
 The default installed Xcode version is `26.0`.
 
@@ -97,13 +99,13 @@ Xcode 26.0 has the following SDKs preinstalled:
 - watchOS 26.0
 - visionOS 26.0
 
-Xcode 16.4 has the following SDKs preinstalled:
+Xcode 26.1 has the following SDKs preinstalled:
 
-- iOS 18.5
-- macOS 15.5
-- tvOS 18.5
-- watchOS 11.5
-- visionOS 2.5
+- iOS 26.1
+- macOS 26.1
+- tvOS 26.1
+- watchOS 26.1
+- visionOS 26.1
 
 </div>
 </details>
@@ -114,8 +116,8 @@ Xcode 16.4 has the following SDKs preinstalled:
 
 Installed standalone iOS simulators runtimes:
 
-- 18.5
 - 26
+- 26.1
 
 </div>
 </details>
@@ -126,7 +128,7 @@ Installed standalone iOS simulators runtimes:
 
 Installed version:
 
-- Node.js: v22.14.0
+- Node.js: v24.11.0
 - Yarn: 1.22.22
 
 </div>
@@ -153,7 +155,7 @@ Supporting libraries:
 
 Installed versions:
 
-- 3.4.6 (system)
+- 3.4.7 (system)
 - 3.2.9
 
 Following gems are pre-installed:
@@ -177,7 +179,7 @@ Following gems are pre-installed:
 <summary>Flutter</summary>
 <div>
 
-- 3.35.4
+- 3.35.7
 
 </div>
 </details>
