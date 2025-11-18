@@ -1,12 +1,31 @@
 defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
   use ExUnit.Case
 
+  import Ecto.Query, only: [from: 2]
+
   alias InternalApi.Organization.OrganizationUnblocked
   alias Scheduler.Periodics.Model.PeriodicsQueries
+  alias Scheduler.Periodics.Model.Periodics
+  alias Scheduler.PeriodicsRepo
   alias Scheduler.EventsConsumers.OrgUnblocked
   alias Scheduler.Workers.QuantumScheduler
   alias Scheduler.Actions
   alias Util.Proto
+
+  @grpc_port 50_057
+  @mocked_services [Test.MockFeatureService]
+
+  setup_all do
+    GRPC.Server.start(@mocked_services, @grpc_port)
+    {:ok, consumer_pid} = start_org_unblocked_consumer()
+
+    on_exit(fn ->
+      stop_org_unblocked_consumer(consumer_pid)
+      GRPC.Server.stop(@mocked_services)
+    end)
+
+    :ok
+  end
 
   setup do
     Test.Helpers.truncate_db()
@@ -15,13 +34,17 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
 
     ids_1 = Test.Helpers.seed_front_db()
     ids_2 = Test.Helpers.seed_front_db()
+    ids_3 = Test.Helpers.seed_front_db()
 
     start_supervised!(QuantumScheduler)
 
     System.put_env("GITHUB_APP_ID", "client_id")
     System.put_env("GITHUB_SECRET_ID", "client_secret")
 
-    {:ok, %{ids_1: ids_1, ids_2: ids_2}}
+    reset_mock_feature_service()
+    mock_feature_response("just_run")
+
+    {:ok, %{ids_1: ids_1, ids_2: ids_2, ids_3: ids_3}}
   end
 
   test "valid message received => all periodics from the org are unsuspended", ctx do
@@ -44,13 +67,38 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
     event = Proto.deep_new!(OrganizationUnblocked, %{org_id: ctx.ids_1.org_id})
     encoded = OrganizationUnblocked.encode(event)
 
-    assert {:ok, _pid} = OrgUnblocked.start_link()
-
     Tackle.publish(encoded, exchange_params())
 
     :timer.sleep(2_000)
 
     assert_only_periodics_from_unblocked_org_unsuspended(periodics, ctx.ids_1.org_id)
+  end
+
+  test "invalid cron expression does not block unsuspending other periodics", ctx do
+    [{:ok, first_id}, {:ok, invalid_id}, {:ok, third_id}] =
+      1..3
+      |> Enum.map(&create_periodic(ctx.ids_3, &1))
+
+    invalidate_cron_expression(invalid_id)
+
+    event = Proto.deep_new!(OrganizationUnblocked, %{org_id: ctx.ids_3.org_id})
+    encoded = OrganizationUnblocked.encode(event)
+
+    Tackle.publish(encoded, exchange_params())
+
+    :timer.sleep(2_000)
+
+    assert {:ok, first_periodic} = PeriodicsQueries.get_by_id(first_id)
+    assert first_periodic.suspended == false
+    assert nil != first_id |> String.to_atom() |> QuantumScheduler.find_job()
+
+    assert {:ok, invalid_periodic} = PeriodicsQueries.get_by_id(invalid_id)
+    assert invalid_periodic.suspended == false
+    assert nil == invalid_id |> String.to_atom() |> QuantumScheduler.find_job()
+
+    assert {:ok, third_periodic} = PeriodicsQueries.get_by_id(third_id)
+    assert third_periodic.suspended == false
+    assert nil != third_id |> String.to_atom() |> QuantumScheduler.find_job()
   end
 
   defp create_periodic(ids, ind) do
@@ -96,6 +144,11 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
     end)
   end
 
+  defp invalidate_cron_expression(id) do
+    from(p in Periodics, where: p.id == ^id)
+    |> PeriodicsRepo.update_all(set: [at: "invalid cron"])
+  end
+
   defp exchange_params() do
     %{
       url: System.get_env("RABBITMQ_URL"),
@@ -103,4 +156,47 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
       routing_key: "unblocked"
     }
   end
+
+  defp start_org_unblocked_consumer do
+    case OrgUnblocked.start_link() do
+      {:ok, pid} ->
+        wait_for_org_unblocked_consumer()
+        {:ok, pid}
+
+      {:error, {:already_started, pid}} ->
+        wait_for_org_unblocked_consumer()
+        {:ok, pid}
+
+      error ->
+        error
+    end
+  end
+
+  defp wait_for_org_unblocked_consumer do
+    # Give Tackle time to register a default consumer before publishing
+    Process.sleep(200)
+  end
+
+  defp stop_org_unblocked_consumer(pid) when is_pid(pid) do
+    if Process.alive?(pid) do
+      GenServer.stop(pid)
+    else
+      :ok
+    end
+  end
+
+  defp stop_org_unblocked_consumer(_), do: :ok
+
+  defp reset_mock_feature_service() do
+    Cachex.clear(Elixir.Scheduler.FeatureHubProvider)
+
+    Application.put_env(
+      :scheduler,
+      :feature_api_grpc_endpoint,
+      "localhost:#{inspect(@grpc_port)}"
+    )
+  end
+
+  defp mock_feature_response(value),
+    do: Application.put_env(:scheduler, :mock_feature_service_response, value)
 end
