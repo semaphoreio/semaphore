@@ -2,6 +2,7 @@ package workflows
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -515,6 +516,446 @@ func TestRunWorkflowPermissionDenied(t *testing.T) {
 	}
 	if workflowStub.lastSchedule != nil {
 		toFail(t, "workflow schedule should not have been invoked when permission is missing")
+	}
+}
+
+func TestRunWorkflowInvalidCommitSHA(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	testCases := []struct {
+		name      string
+		commitSHA string
+		expectErr string
+	}{
+		{
+			name:      "non-hex characters",
+			commitSHA: "xyz1234",
+			expectErr: "hexadecimal SHA",
+		},
+		{
+			name:      "too long",
+			commitSHA: "abc123" + strings.Repeat("0", 60),
+			expectErr: "must not exceed 64 characters",
+		},
+		{
+			name:      "too short",
+			commitSHA: "abc123",
+			expectErr: "hexadecimal SHA",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: mcp.CallToolParams{Arguments: map[string]any{
+					"organization_id": orgID,
+					"project_id":      projectID,
+					"reference":       "main",
+					"commit_sha":      tc.commitSHA,
+				}},
+			}
+			header := http.Header{}
+			header.Set("X-Semaphore-User-ID", userID)
+			req.Header = header
+
+			res, err := runHandler(provider)(context.Background(), req)
+			if err != nil {
+				toFail(t, "handler error: %v", err)
+			}
+			msg := requireErrorText(t, res)
+			if !strings.Contains(msg, tc.expectErr) {
+				toFail(t, "expected error containing %q, got %q", tc.expectErr, msg)
+			}
+		})
+	}
+}
+
+func TestRunWorkflowInvalidPipelineFile(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	testCases := []struct {
+		name         string
+		pipelineFile string
+		expectErr    string
+	}{
+		{
+			name:         "path traversal",
+			pipelineFile: "../../etc/passwd",
+			expectErr:    "must not contain '..' sequences",
+		},
+		{
+			name:         "absolute path",
+			pipelineFile: "/etc/passwd",
+			expectErr:    "must be a relative path",
+		},
+		{
+			name:         "backslash",
+			pipelineFile: "path\\to\\file",
+			expectErr:    "must not contain backslashes",
+		},
+		{
+			name:         "control characters",
+			pipelineFile: "file\x00.yml",
+			expectErr:    "contains control characters",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: mcp.CallToolParams{Arguments: map[string]any{
+					"organization_id": orgID,
+					"project_id":      projectID,
+					"reference":       "main",
+					"pipeline_file":   tc.pipelineFile,
+				}},
+			}
+			header := http.Header{}
+			header.Set("X-Semaphore-User-ID", userID)
+			req.Header = header
+
+			res, err := runHandler(provider)(context.Background(), req)
+			if err != nil {
+				toFail(t, "handler error: %v", err)
+			}
+			msg := requireErrorText(t, res)
+			if !strings.Contains(msg, tc.expectErr) {
+				toFail(t, "expected error containing %q, got %q", tc.expectErr, msg)
+			}
+		})
+	}
+}
+
+func TestRunWorkflowProjectDescribeFailure(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{err: fmt.Errorf("connection timeout")},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Unable to load project details") {
+		toFail(t, "expected project load error, got %q", msg)
+	}
+}
+
+func TestRunWorkflowScheduleFailure(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	repo := &projecthubpb.Project_Spec_Repository{
+		Owner:           "octo",
+		Name:            "repo",
+		PipelineFile:    ".semaphore/ci.yml",
+		IntegrationType: repopb.IntegrationType_GITHUB_APP,
+	}
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{scheduleErr: fmt.Errorf("scheduler unavailable")},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, repo)},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "Workflow schedule failed") {
+		toFail(t, "expected schedule failure error, got %q", msg)
+	}
+}
+
+func TestRunWorkflowScopeMismatch(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	wrongOrgID := "bbbbbbbb-cccc-dddd-eeee-ffffffffffff"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	repo := &projecthubpb.Project_Spec_Repository{
+		Owner:           "octo",
+		Name:            "repo",
+		IntegrationType: repopb.IntegrationType_GITHUB_APP,
+	}
+	// Project response indicates it belongs to a different org
+	response := newProjectDescribeResponse(wrongOrgID, projectID, repo)
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: response},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "does not belong to organization") {
+		toFail(t, "expected scope mismatch error, got %q", msg)
+	}
+}
+
+func TestRunWorkflowMissingRepository(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	// Project with nil repository
+	response := &projecthubpb.DescribeResponse{
+		Metadata: &projecthubpb.ResponseMeta{
+			Status: &projecthubpb.ResponseMeta_Status{Code: projecthubpb.ResponseMeta_OK},
+		},
+		Project: &projecthubpb.Project{
+			Metadata: &projecthubpb.Project_Metadata{Id: projectID, OrgId: orgID},
+			Spec:     &projecthubpb.Project_Spec{Repository: nil},
+		},
+	}
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: response},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "repository configuration is missing") {
+		toFail(t, "expected missing repository error, got %q", msg)
+	}
+}
+
+func TestRunWorkflowInvalidParameterNames(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	testCases := []struct {
+		name       string
+		parameters map[string]any
+		expectErr  string
+	}{
+		{
+			name:       "empty parameter name",
+			parameters: map[string]any{"": "value"},
+			expectErr:  "parameter names must not be empty",
+		},
+		{
+			name:       "whitespace only",
+			parameters: map[string]any{"  ": "value"},
+			expectErr:  "parameter names must not be empty",
+		},
+		{
+			name:       "starts with digit",
+			parameters: map[string]any{"9VAR": "value"},
+			expectErr:  "must start with a letter or underscore",
+		},
+		{
+			name:       "contains special chars",
+			parameters: map[string]any{"MY-VAR": "value"},
+			expectErr:  "must start with a letter or underscore",
+		},
+		{
+			name:       "contains space",
+			parameters: map[string]any{"MY VAR": "value"},
+			expectErr:  "must start with a letter or underscore",
+		},
+		{
+			name:       "contains control chars",
+			parameters: map[string]any{"VAR\x00NAME": "value"},
+			expectErr:  "contains control characters",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: mcp.CallToolParams{Arguments: map[string]any{
+					"organization_id": orgID,
+					"project_id":      projectID,
+					"reference":       "main",
+					"parameters":      tc.parameters,
+				}},
+			}
+			header := http.Header{}
+			header.Set("X-Semaphore-User-ID", userID)
+			req.Header = header
+
+			res, err := runHandler(provider)(context.Background(), req)
+			if err != nil {
+				toFail(t, "handler error: %v", err)
+			}
+			msg := requireErrorText(t, res)
+			if !strings.Contains(msg, tc.expectErr) {
+				toFail(t, "expected error containing %q, got %q", tc.expectErr, msg)
+			}
+		})
+	}
+}
+
+func TestRunWorkflowInvalidParameterValues(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, &projecthubpb.Project_Spec_Repository{})},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	testCases := []struct {
+		name       string
+		parameters map[string]any
+		expectErr  string
+	}{
+		{
+			name:       "array value",
+			parameters: map[string]any{"TAGS": []string{"tag1", "tag2"}},
+			expectErr:  "must be strings, numbers, booleans, or null",
+		},
+		{
+			name:       "nested object",
+			parameters: map[string]any{"CONFIG": map[string]string{"key": "value"}},
+			expectErr:  "must be strings, numbers, booleans, or null",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := mcp.CallToolRequest{
+				Params: mcp.CallToolParams{Arguments: map[string]any{
+					"organization_id": orgID,
+					"project_id":      projectID,
+					"reference":       "main",
+					"parameters":      tc.parameters,
+				}},
+			}
+			header := http.Header{}
+			header.Set("X-Semaphore-User-ID", userID)
+			req.Header = header
+
+			res, err := runHandler(provider)(context.Background(), req)
+			if err != nil {
+				toFail(t, "handler error: %v", err)
+			}
+			msg := requireErrorText(t, res)
+			if !strings.Contains(msg, tc.expectErr) {
+				toFail(t, "expected error containing %q, got %q", tc.expectErr, msg)
+			}
+		})
+	}
+}
+
+func TestRunWorkflowUnsupportedIntegrationType(t *testing.T) {
+	orgID := "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+	projectID := "11111111-2222-3333-4444-555555555555"
+	userID := "99999999-aaaa-bbbb-cccc-dddddddddddd"
+	repo := &projecthubpb.Project_Spec_Repository{
+		Owner:           "octo",
+		Name:            "repo",
+		IntegrationType: repopb.IntegrationType(999), // unknown type
+	}
+	provider := &support.MockProvider{
+		WorkflowClient: &workflowClientStub{},
+		ProjectClient:  &projectClientStub{response: newProjectDescribeResponse(orgID, projectID, repo)},
+		Timeout:        time.Second,
+		RBACClient:     newRBACStub(projectRunPermission),
+	}
+
+	req := mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			"organization_id": orgID,
+			"project_id":      projectID,
+			"reference":       "main",
+		}},
+	}
+	header := http.Header{}
+	header.Set("X-Semaphore-User-ID", userID)
+	req.Header = header
+
+	res, err := runHandler(provider)(context.Background(), req)
+	if err != nil {
+		toFail(t, "handler error: %v", err)
+	}
+	msg := requireErrorText(t, res)
+	if !strings.Contains(msg, "integration type is not supported") {
+		toFail(t, "expected unsupported integration type error, got %q", msg)
 	}
 }
 

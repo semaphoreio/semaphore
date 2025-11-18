@@ -563,6 +563,19 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 		label := labelFromReference(reference)
 		gitReference := ensureGitReference(reference)
 
+		serviceType, err := mapIntegrationType(repo.GetIntegrationType())
+		if err != nil {
+			logging.ForComponent("workflows").
+				WithFields(logrus.Fields{
+					"projectId":       projectID,
+					"orgId":           orgID,
+					"integrationType": repo.GetIntegrationType(),
+				}).
+				WithError(err).
+				Error("unsupported repository integration type")
+			return mcp.NewToolResultError("Project repository integration type is not supported. Please contact support."), nil
+		}
+
 		scheduleReq := &workflowpb.ScheduleRequest{
 			ProjectId:             projectID,
 			OrganizationId:        orgID,
@@ -573,7 +586,7 @@ The authentication layer must inject the X-Semaphore-User-ID header so we can au
 			Label:                 label,
 			TriggeredBy:           workflowpb.TriggeredBy_API,
 			StartInConceivedState: true,
-			Service:               mapIntegrationType(repo.GetIntegrationType()),
+			Service:               serviceType,
 			EnvVars:               envVars,
 			Repo: &workflowpb.ScheduleRequest_Repo{
 				Owner:        strings.TrimSpace(repo.GetOwner()),
@@ -766,7 +779,8 @@ func triggeredByToString(value workflowpb.TriggeredBy) string {
 }
 
 var (
-	commitPattern = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	commitPattern    = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+	parameterPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 )
 
 func sanitizeGitReference(raw, field string) (string, error) {
@@ -863,9 +877,9 @@ func validateParameterName(name string) error {
 		if r < 32 || r == 127 {
 			return fmt.Errorf("parameter %q contains control characters", name)
 		}
-		if r == ' ' {
-			return fmt.Errorf("parameter %q must not include spaces", name)
-		}
+	}
+	if !parameterPattern.MatchString(name) {
+		return fmt.Errorf("parameter %q must start with a letter or underscore, followed by letters, digits, or underscores", name)
 	}
 	return nil
 }
@@ -949,13 +963,15 @@ func validateProjectDescribeResponse(resp *projecthubpb.DescribeResponse, orgID,
 	return project, nil
 }
 
+// branchNameFromReference extracts the branch name from a git reference.
+// Note: Tags intentionally return the full "refs/tags/*" path as required by the workflow service API.
 func branchNameFromReference(ref string) string {
 	value := strings.TrimSpace(ref)
 	switch {
 	case strings.HasPrefix(value, "refs/heads/"):
 		return strings.TrimPrefix(value, "refs/heads/")
 	case strings.HasPrefix(value, "refs/tags/"):
-		return value
+		return value // Workflow service expects full path for tags
 	case strings.HasPrefix(value, "refs/pull/"):
 		return "pull-request-" + strings.TrimPrefix(value, "refs/pull/")
 	default:
@@ -985,16 +1001,20 @@ func ensureGitReference(ref string) string {
 	return "refs/heads/" + ref
 }
 
-func mapIntegrationType(integration repopb.IntegrationType) workflowpb.ScheduleRequest_ServiceType {
+func mapIntegrationType(integration repopb.IntegrationType) (workflowpb.ScheduleRequest_ServiceType, error) {
 	switch integration {
+	case repopb.IntegrationType_GITHUB_OAUTH_TOKEN:
+		return workflowpb.ScheduleRequest_GIT_HUB, nil
+	case repopb.IntegrationType_GITHUB_APP:
+		return workflowpb.ScheduleRequest_GIT_HUB, nil
 	case repopb.IntegrationType_BITBUCKET:
-		return workflowpb.ScheduleRequest_BITBUCKET
+		return workflowpb.ScheduleRequest_BITBUCKET, nil
 	case repopb.IntegrationType_GITLAB:
-		return workflowpb.ScheduleRequest_GITLAB
+		return workflowpb.ScheduleRequest_GITLAB, nil
 	case repopb.IntegrationType_GIT:
-		return workflowpb.ScheduleRequest_GIT
+		return workflowpb.ScheduleRequest_GIT, nil
 	default:
-		return workflowpb.ScheduleRequest_GIT_HUB
+		return workflowpb.ScheduleRequest_GIT_HUB, fmt.Errorf("unsupported repository integration type: %v", integration)
 	}
 }
 
