@@ -75,11 +75,12 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
   end
 
   test "invalid cron expression does not block unsuspending other periodics", ctx do
-    [{:ok, first_id}, {:ok, invalid_id}, {:ok, third_id}] =
-      1..3
+    [{:ok, first_id}, {:ok, invalid_id}, {:ok, nil_cron_id}, {:ok, third_id}] =
+      1..4
       |> Enum.map(&create_periodic(ctx.ids_3, &1))
 
     invalidate_cron_expression(invalid_id)
+    remove_cron_expression(nil_cron_id)
 
     event = Proto.deep_new!(OrganizationUnblocked, %{org_id: ctx.ids_3.org_id})
     encoded = OrganizationUnblocked.encode(event)
@@ -95,6 +96,10 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
     assert {:ok, invalid_periodic} = PeriodicsQueries.get_by_id(invalid_id)
     assert invalid_periodic.suspended == false
     assert nil == invalid_id |> String.to_atom() |> QuantumScheduler.find_job()
+
+    assert {:ok, nil_cron_periodic} = PeriodicsQueries.get_by_id(nil_cron_id)
+    assert nil_cron_periodic.suspended == false
+    assert nil == nil_cron_id |> String.to_atom() |> QuantumScheduler.find_job()
 
     assert {:ok, third_periodic} = PeriodicsQueries.get_by_id(third_id)
     assert third_periodic.suspended == false
@@ -147,6 +152,11 @@ defmodule Scheduler.EventsConsumers.OrgUnblocked.Test do
   defp invalidate_cron_expression(id) do
     from(p in Periodics, where: p.id == ^id)
     |> PeriodicsRepo.update_all(set: [at: "invalid cron"])
+  end
+
+  defp remove_cron_expression(id) do
+    from(p in Periodics, where: p.id == ^id)
+    |> PeriodicsRepo.update_all(set: [at: nil])
   end
 
   defp exchange_params() do
