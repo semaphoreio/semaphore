@@ -356,6 +356,68 @@ defmodule Zebra.Models.Job do
     )
   end
 
+  def mark_jobs_for_deletion(org_id, cutoff_date, deletion_days) do
+    import Ecto.Query, only: [from: 2]
+
+    query =
+      from(j in Zebra.Models.Job,
+        where:
+          is_nil(j.expires_at) and
+            j.organization_id == ^org_id and
+            j.created_at <= ^cutoff_date,
+        update: [
+          set: [
+            expires_at: fragment("CURRENT_TIMESTAMP + (? * INTERVAL '1 day')", ^deletion_days)
+          ]
+        ]
+      )
+
+    Zebra.LegacyRepo.update_all(query, [])
+  end
+
+  def delete_old_job_stop_requests(limit) do
+    import Ecto.Query,
+      only: [from: 2, where: 3, subquery: 1, limit: 2, order_by: 2]
+
+    jobs_subquery =
+      from(j in Zebra.Models.Job,
+        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+        order_by: [asc: j.created_at],
+        limit: ^limit,
+        select: j.id
+      )
+
+    query =
+      from(jsr in Zebra.Models.JobStopRequest,
+        where: jsr.job_id in subquery(jobs_subquery)
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
+  def delete_old_jobs(limit) do
+    import Ecto.Query, only: [from: 2]
+
+    jobs_subquery =
+      from(j in Zebra.Models.Job,
+        where: not is_nil(j.expires_at) and j.expires_at <= fragment("CURRENT_TIMESTAMP"),
+        order_by: [asc: j.created_at],
+        limit: ^limit,
+        select: j.id
+      )
+
+    query =
+      from(j in Zebra.Models.Job,
+        where: j.id in subquery(jobs_subquery)
+      )
+
+    {deleted_count, _} = Zebra.LegacyRepo.delete_all(query)
+
+    {:ok, deleted_count}
+  end
+
   def wait_for_agent(job) do
     if valid_transition?(job.aasm_state, state_waiting_for_agent()) do
       update(job, %{aasm_state: state_waiting_for_agent()})
